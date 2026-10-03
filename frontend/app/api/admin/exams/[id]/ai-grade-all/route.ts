@@ -8,15 +8,26 @@ export const dynamic = 'force-dynamic'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
-/** Pace = one LLM call per >1s so we stay under the backend 60 req/min cap. */
-const LLM_PACE_MS = 1100
+/** Reject if a promise exceeds ms (so one slow provider can't hang the request). */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(label)), ms)
+    p.then((v) => { clearTimeout(t); resolve(v) }, (e) => { clearTimeout(t); reject(e) })
+  })
+}
 
+/** Pace = one LLM call per >1s so we stay under the provider RPM cap. */
+const LLM_PACE_MS = 1100
+/** Hard cap on one grade (chain walk + Jev). A hung provider used to run 180s. */
+const GRADE_TIMEOUT_MS = 30000
 /**
- * POST — Bulk AI-grade all pending questions for one or many candidates.
- * Objective questions grade deterministically (no LLM cost); free-text answers
- * use the configured LLM. Grades + feedback are persisted to exam_submissions
- * so the admin never has to open each candidate's review to finish grading.
+ * Hard wall-clock budget per request. The proxy kills long requests (~100s) and
+ * returns an HTML 524 page → the client's JSON parse blows up. Stopping on TIME
+ * (not just grade count) guarantees we answer before that, whatever the
+ * providers do. The client loops until hasMore is false.
  */
+const REQUEST_BUDGET_MS = 55000
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -53,63 +64,99 @@ export async function POST(
     const results: Array<{ userId: string; graded: number; failed: string[] }> = []
     let totalGraded = 0
     let totalFailed = 0
+    let hasMore = false
+    const requestStart = Date.now()
 
+    type DetailDoc = {
+      qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; confidence?: number; jev_agree?: boolean | null; jev_confidence?: number | null; graded_by?: string | null
+    }
+
+    // Persist one submission's current detail set + recomputed score. Called
+    // incrementally so a request that stops early (budget) or times out still
+    // leaves completed grades in the DB — exiting never loses work.
+    const persist = async (userId: string, updatedDetails: DetailDoc[]) => {
+      let newScore = 0
+      let stillPending = false
+      for (const d of updatedDetails) {
+        if (d.awarded !== undefined) newScore += d.awarded
+        else if (d.correct) newScore += d.points
+        if (d.pending_review) stillPending = true
+      }
+      const setOp: Record<string, unknown> = { details: updatedDetails, score: newScore, has_pending_review: stillPending }
+      if (!stillPending) setOp.graded = true
+      await db.collection('exam_submissions').updateOne({ exam_id: examId, user_id: userId }, { $set: setOp })
+    }
+
+    outer:
     for (const submission of submissions) {
       const userId = submission.user_id
-      const details = (submission.details || []) as Array<{
-        qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; confidence?: number; jev_agree?: boolean | null; jev_confidence?: number | null; graded_by?: string | null
-      }>
+      const details = (submission.details || []) as DetailDoc[]
       const answers = (submission.answers || {}) as Record<string, string>
       const failList: string[] = []
 
-      const updatedDetails: typeof details = []
+      const updatedDetails: DetailDoc[] = []
       let gradedInSub = 0
-      for (const d of details) {
+
+      for (let i = 0; i < details.length; i++) {
+        const d = details[i]
         const isPending = d.pending_review === true
         const needsGrade = isPending || (d.awarded === undefined && !d.correct && (body.includeAnswered ? !!answers[d.qId] : false))
         const q = questions.find((x: any) => x.id === d.qId)
         const answer = String(answers[d.qId] || '').trim()
 
         if (needsGrade && q && answer) {
-          // Objective questions are deterministic (no LLM) so only pace the free-text ones.
           const isObjective = OBJECTIVE_TYPES.includes((q.type || '').toLowerCase())
+          // Free-text grades are the slow ones — stop once the request budget
+          // is spent and let the client resume on the next call.
+          if (!isObjective && Date.now() - requestStart > REQUEST_BUDGET_MS) {
+            updatedDetails.push(...details.slice(i))
+            hasMore = true
+            await persist(userId, updatedDetails)
+            results.push({ userId, graded: gradedInSub, failed: failList })
+            break outer
+          }
+
           let res: Awaited<ReturnType<typeof gradeAnswer>> | null = null
           try {
-            res = await gradeAnswer({
-              questionText: q.prompt || q.question || q.title || 'Question',
-              candidateAnswer: answer,
-              modelAnswer: String(q.answer || q.correct_answer || '').trim(),
-              type: q.type || '',
-              maxPoints: q.points || q.score || d.points || 10,
-              options: Array.isArray(q.options) ? q.options.map(String) : undefined,
-              testCases: q.test_cases || q.testCases,
-            })
+            res = await withTimeout(
+              gradeAnswer({
+                questionText: q.prompt || q.question || q.title || 'Question',
+                candidateAnswer: answer,
+                modelAnswer: String(q.answer || q.correct_answer || '').trim(),
+                type: q.type || '',
+                maxPoints: q.points || q.score || d.points || 10,
+                options: Array.isArray(q.options) ? q.options.map(String) : undefined,
+                testCases: q.test_cases || q.testCases,
+              }),
+              GRADE_TIMEOUT_MS,
+              'grade timeout',
+            )
           } catch (e: unknown) {
-            // Wait out a rate limit (60 req/min) then retry once; otherwise fail this question.
             if (e instanceof GradeRateLimitedError) {
-              const backoff = Math.max(1, Math.min(60, (e as any).retryAfterSec || 60))
+              // Cap the in-request wait small; a long provider cooldown would
+              // blow the request budget on a sleep. Remaining work resumes on
+              // the client's next call.
+              const backoff = Math.max(1, Math.min(8, (e as any).retryAfterSec || 8))
               await sleep(backoff * 1000 + 500)
               try {
-                res = await gradeAnswer({
-                  questionText: q.prompt || q.question || q.title || 'Question',
-                  candidateAnswer: answer,
-                  modelAnswer: String(q.answer || q.correct_answer || '').trim(),
-                  type: q.type || '',
-                  maxPoints: q.points || q.score || d.points || 10,
-                  options: Array.isArray(q.options) ? q.options.map(String) : undefined,
-                  testCases: q.test_cases || q.testCases,
-                })
-              } catch (e2) {
-                failList.push(d.qId)
-                totalFailed++
-                updatedDetails.push(d)
-                continue
+                res = await withTimeout(
+                  gradeAnswer({
+                    questionText: q.prompt || q.question || q.title || 'Question',
+                    candidateAnswer: answer,
+                    modelAnswer: String(q.answer || q.correct_answer || '').trim(),
+                    type: q.type || '',
+                    maxPoints: q.points || q.score || d.points || 10,
+                    options: Array.isArray(q.options) ? q.options.map(String) : undefined,
+                    testCases: q.test_cases || q.testCases,
+                  }),
+                  GRADE_TIMEOUT_MS,
+                  'grade timeout',
+                )
+              } catch {
+                failList.push(d.qId); totalFailed++; updatedDetails.push(d); continue
               }
             } else {
-              failList.push(d.qId)
-              totalFailed++
-              updatedDetails.push(d)
-              continue
+              failList.push(d.qId); totalFailed++; updatedDetails.push(d); continue
             }
           }
           if (res) {
@@ -128,36 +175,26 @@ export async function POST(
             totalGraded++
             gradedInSub++
           }
-          if (!isObjective) await sleep(LLM_PACE_MS)
+          if (!isObjective) {
+            await sleep(LLM_PACE_MS)
+          }
         } else {
           updatedDetails.push(d)
         }
       }
 
-      let newScore = 0
-      let stillPending = false
-      for (const d of updatedDetails) {
-        if (d.awarded !== undefined) {
-          newScore += d.awarded
-        } else if (d.correct) {
-          newScore += d.points
-        }
-        if (d.pending_review) stillPending = true
-      }
-
-      const setOp: Record<string, unknown> = {
-        details: updatedDetails,
-        score: newScore,
-        has_pending_review: stillPending,
-      }
-      if (!stillPending) setOp.graded = true
-
-      await db.collection('exam_submissions').updateOne(
-        { exam_id: examId, user_id: userId },
-        { $set: setOp }
-      )
-
+      await persist(userId, updatedDetails)
       results.push({ userId, graded: gradedInSub, failed: failList })
+    }
+
+    // Tell the client whether more free-text grades remain (it loops until false).
+    if (!hasMore) {
+      const pendingLeft = await db.collection('exam_submissions').countDocuments({
+        ...(userIds ? { user_id: { $in: userIds } } : {}),
+        exam_id: examId,
+        has_pending_review: true,
+      })
+      hasMore = pendingLeft > 0
     }
 
     return NextResponse.json({
@@ -165,6 +202,7 @@ export async function POST(
       failed: totalFailed,
       candidates: results.length,
       results,
+      hasMore,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Bulk AI grading failed'

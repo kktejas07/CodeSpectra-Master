@@ -24,53 +24,30 @@ interface CodingQuestionEditorProps {
   answer: string
   onChange: (code: string | undefined) => void
   language: string
+  /** Called when the candidate switches language. Value is a Piston runtime id. */
+  onLanguageChange?: (language: string) => void
 }
 
-const LANGUAGE_MAP: Record<string, string> = {
-  python: 'python',
-  python3: 'python',
-  javascript: 'javascript',
-  node: 'javascript',
-  typescript: 'typescript',
-  java: 'java',
-  cpp: 'cpp',
-  c: 'c',
-  go: 'go',
-  rust: 'rust',
-  csharp: 'csharp',
-  php: 'php',
-  ruby: 'ruby',
-  swift: 'swift',
-  kotlin: 'kotlin',
-  bash: 'bash',
-  sh: 'bash',
-}
+/** Languages + ids live in lib/code-languages.ts (shared with the take page + grader). */
+import { CODE_LANGUAGES, monacoIdFor } from '@/lib/code-languages'
 
-const LANGUAGE_LABELS: Record<string, string> = {
-  python: 'Python',
-  javascript: 'JavaScript',
-  typescript: 'TypeScript',
-  java: 'Java',
-  cpp: 'C++',
-  c: 'C',
-  go: 'Go',
-  rust: 'Rust',
-  csharp: 'C#',
-  php: 'PHP',
-  ruby: 'Ruby',
-  swift: 'Swift',
-  kotlin: 'Kotlin',
-  bash: 'Bash',
-}
+/** Seconds to wait for the Monaco CDN before falling back to a plain editor. */
+const MONACO_LOAD_TIMEOUT_MS = 7000
 
 export function CodingQuestionEditor({
   question,
   answer,
   onChange,
   language,
+  onLanguageChange,
 }: CodingQuestionEditorProps) {
   const [showTestCases, setShowTestCases] = useState(true)
   const [mounted, setMounted] = useState(false)
+  // Monaco loads its runtime from a CDN. On a blocked/slow campus network or a
+  // touch device it can fail to initialize with no error — the candidate then
+  // sees a dead box and cannot type. `plain` guarantees a working textarea.
+  const [editorMode, setEditorMode] = useState<'monaco' | 'plain'>('monaco')
+  const monacoReadyRef = useRef(false)
 
   const sampleTestCases = question.test_cases?.filter(tc => tc.isSample !== false) || []
   const hasTestCases = sampleTestCases.length > 0
@@ -78,6 +55,15 @@ export function CodingQuestionEditor({
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Auto-fallback if Monaco hasn't mounted in time.
+  useEffect(() => {
+    if (editorMode !== 'monaco') return
+    const timer = setTimeout(() => {
+      if (!monacoReadyRef.current) setEditorMode('plain')
+    }, MONACO_LOAD_TIMEOUT_MS)
+    return () => clearTimeout(timer)
+  }, [editorMode])
 
   const editorOptions = useMemo(() => ({
     fontSize: 13,
@@ -87,7 +73,7 @@ export function CodingQuestionEditor({
     tabSize: 2,
     wordWrap: 'on',
     theme: 'vs-dark',
-    language: LANGUAGE_MAP[language.toLowerCase()] || 'python',
+    language: monacoIdFor(language),
   }), [language])
 
   const initialCode = answer || question.starter_code || ''
@@ -108,12 +94,20 @@ export function CodingQuestionEditor({
     <div className="space-y-4">
       {/* Editor */}
       <div className="border border-border rounded-lg overflow-hidden bg-zinc-950">
-        <div className="flex items-center justify-between px-3 py-2 bg-zinc-900 border-b border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-zinc-400" />
-            <span className="text-xs font-medium text-zinc-300 capitalize">
-              {LANGUAGE_LABELS[language.toLowerCase()] || language}
-            </span>
+            {/* Language picker — value is the Piston runtime id used for grading. */}
+            <select
+              aria-label="Programming language"
+              value={language.toLowerCase()}
+              onChange={(e) => onLanguageChange?.(e.target.value)}
+              className="h-7 rounded border border-zinc-700 bg-zinc-800 px-2 text-xs font-medium text-zinc-200 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {CODE_LANGUAGES.map((l) => (
+                <option key={l.id} value={l.id}>{l.label}</option>
+              ))}
+            </select>
             {question.starter_code && (
               <span className="text-[10px] px-1.5 py-0.5 bg-zinc-800 text-zinc-400 rounded">
                 Starter code provided
@@ -131,18 +125,47 @@ export function CodingQuestionEditor({
               <Copy className="h-3.5 w-3.5" />
               <span className="text-[10px]">Copy</span>
             </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setEditorMode((m) => (m === 'monaco' ? 'plain' : 'monaco'))}
+              title="Switch between the rich editor and a plain text box"
+              className="h-8 px-2 text-xs"
+            >
+              <span className="text-[10px]">{editorMode === 'monaco' ? 'Plain editor' : 'Rich editor'}</span>
+            </Button>
           </div>
         </div>
         <div
           style={{ height: '400px', minHeight: '400px' }}
           className="relative"
         >
-          <Editor
-            height="100%"
-            value={initialCode}
-            onChange={onChange}
-            options={editorOptions}
-          />
+          {editorMode === 'plain' ? (
+            <textarea
+              value={initialCode}
+              onChange={(e) => onChange(e.target.value)}
+              spellCheck={false}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              aria-label="Code editor"
+              placeholder="Type your code here…"
+              className="w-full h-full resize-none bg-zinc-950 text-zinc-100 font-mono text-[13px] leading-relaxed p-3 outline-none"
+            />
+          ) : (
+            <Editor
+              height="100%"
+              value={initialCode}
+              onChange={onChange}
+              options={editorOptions}
+              onMount={() => { monacoReadyRef.current = true }}
+              loading={
+                <div className="flex h-full w-full items-center justify-center bg-zinc-950 text-xs text-zinc-400">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading editor…
+                </div>
+              }
+            />
+          )}
         </div>
       </div>
 
