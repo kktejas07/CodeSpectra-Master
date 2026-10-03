@@ -6,6 +6,7 @@
  * Human publishes from /dashboard/admin/resources.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { ebooksCol } from '@/lib/db/ebooks'
 import { generateEbookDraft, topicForDay } from '@/lib/ebooks-generate'
 // topicForDay exported as topicForDay
@@ -25,7 +26,7 @@ function authorize(req: NextRequest): boolean {
   return fromQuery === expected || fromHeader === expected
 }
 
-export async function POST(req: NextRequest) {
+async function postImpl(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -69,6 +70,8 @@ export async function POST(req: NextRequest) {
   await col.insertOne(ebook)
   return NextResponse.json({ ok: true, usedAi, slug: ebook.slug, topic, status: ebook.status })
 }
+
+export const POST = withCronHeartbeat('ebooks-daily', postImpl)
 
 export async function GET(req: NextRequest) {
   return POST(req)

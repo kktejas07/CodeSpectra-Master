@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
 
@@ -12,7 +13,9 @@ type ComponentStatus = {
   message?: string
 }
 
-export async function GET(req: Request) {
+export const GET = withCronHeartbeat('status-check', getImpl)
+
+async function getImpl(req: Request) {
   // Closed by default: allow the configured cron scheduler (Bearer header or
   // ?secret=, mirroring cron/tick) or an authenticated superadmin session.
   // Previously the check was skipped entirely when CRON_SECRET was unset,

@@ -19,6 +19,7 @@ import {
 import { runDueWorkflows } from '@/lib/scheduler'
 import { executeWorkflow } from '@/lib/workflow-engine'
 import { redisStatus } from '@/lib/upstash-rate-limit'
+import { getCronRuns } from '@/lib/cron-heartbeat'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,6 +34,17 @@ const HTTP_CRON_JOBS = [
     recommend: 'Every 1 minute',
     cronHint: '* * * * *',
     auth: 'CRON_SECRET',
+    intervalMinutes: 1,
+  },
+  {
+    id: 'status-check',
+    path: '/api/cron/status-check',
+    name: 'Status check',
+    what: 'Probes dependencies and records public status-page components.',
+    recommend: 'Every 5 minutes',
+    cronHint: '*/5 * * * *',
+    auth: 'CRON_SECRET',
+    intervalMinutes: 5,
   },
   {
     id: 'signals-ingest',
@@ -42,6 +54,7 @@ const HTTP_CRON_JOBS = [
     recommend: 'Every 6 hours',
     cronHint: '0 */6 * * *',
     auth: 'CRON_SECRET',
+    intervalMinutes: 360,
   },
   {
     id: 'weekly-digest',
@@ -51,6 +64,7 @@ const HTTP_CRON_JOBS = [
     recommend: 'Monday 09:00 UTC',
     cronHint: '0 9 * * 1',
     auth: 'CRON_SECRET',
+    intervalMinutes: 10080,
   },
   {
     id: 'exam-reminders',
@@ -60,6 +74,7 @@ const HTTP_CRON_JOBS = [
     recommend: 'Every hour',
     cronHint: '0 * * * *',
     auth: 'CRON_SECRET',
+    intervalMinutes: 60,
   },
   {
     id: 'ebooks-daily',
@@ -69,6 +84,17 @@ const HTTP_CRON_JOBS = [
     recommend: 'Daily',
     cronHint: '0 7 * * *',
     auth: 'CRON_SECRET',
+    intervalMinutes: 1440,
+  },
+  {
+    id: 'security-scan',
+    path: '/api/cron/security-scan',
+    name: 'Security scan',
+    what: 'Weekly vulnerability scan persisted to the security-scans collection.',
+    recommend: 'Weekly (Sunday 03:00 UTC)',
+    cronHint: '0 3 * * 0',
+    auth: 'CRON_SECRET',
+    intervalMinutes: 10080,
   },
 ] as const
 
@@ -95,6 +121,22 @@ export async function GET() {
       redisStatus(),
     ])
 
+    // Real last-run evidence (see lib/cron-heartbeat) — "secret is set" is not
+    // proof a job runs; this is.
+    const runIds = [...HTTP_CRON_JOBS.map((j) => j.id), 'scheduler-loop', 'trial-expiry']
+    const runMap = await getCronRuns(runIds)
+    const runMeta = (id: string) => {
+      const r = runMap[id]
+      return {
+        lastRunAt: r?.last_run_at ?? null,
+        lastStatus: r?.last_status ?? null,
+        lastDurationMs: r?.last_duration_ms ?? null,
+        lastError: r?.last_error ?? null,
+        runs: r?.runs ?? 0,
+        failures: r?.failures ?? 0,
+      }
+    }
+
     const schedulerDisabled = process.env.NEXT_PUBLIC_DISABLE_SCHEDULER === '1'
     const cronSecretSet = Boolean(process.env.CRON_SECRET?.trim())
     const activeWorkflows = wfDocs.filter((w) => w.is_active).length
@@ -120,6 +162,7 @@ export async function GET() {
           what: 'Checks due workflows every 60s while the Next.js server is up.',
           recommend: 'Always on (or hit /api/cron/tick every minute from an external cron)',
           status: schedulerDisabled ? 'disabled' : 'running',
+          ...runMeta('scheduler-loop'),
         },
         {
           id: 'trial-expiry',
@@ -127,6 +170,7 @@ export async function GET() {
           what: 'Expires trial subscriptions once per day.',
           recommend: 'Every 24 hours',
           status: schedulerDisabled ? 'disabled' : 'running',
+          ...runMeta('trial-expiry'),
         },
       ],
       httpJobs: HTTP_CRON_JOBS.map((j) => ({
@@ -134,6 +178,7 @@ export async function GET() {
         // External cron must be configured by ops; we only know if the secret exists.
         configured: cronSecretSet,
         status: cronSecretSet ? 'ready' : 'needs_secret',
+        ...runMeta(j.id),
       })),
       scheduledWorkflows: wfDocs.map((w) => ({
         id: w.id,
