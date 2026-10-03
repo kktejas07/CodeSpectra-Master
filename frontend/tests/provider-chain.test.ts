@@ -111,3 +111,20 @@ describe('custom gateway registry', () => {
     expect(custom!.endpoint).toBe('')
   })
 })
+
+describe('provider error classification', () => {
+  it('treats credit/billing exhaustion as DEAD (skip, no wait), not a rate limit', async () => {
+    const { isDeadProvider, isRateLimitError } = await import('@/lib/ai/provider-fallback')
+    for (const msg of ['insufficient credits', '402 Payment Required', 'exceeded quota', 'billing hard limit reached']) {
+      expect(isRateLimitError(msg).isRateLimit, msg).toBe(false)
+      expect(isDeadProvider(msg), msg).toBe(true)
+    }
+  })
+
+  it('still classifies genuine rate limits as retryable', async () => {
+    const { isRateLimitError, isDeadProvider } = await import('@/lib/ai/provider-fallback')
+    expect(isRateLimitError('429 Too Many Requests').isRateLimit).toBe(true)
+    expect(isRateLimitError('rate limit exceeded, try again in 20s').isRateLimit).toBe(true)
+    expect(isDeadProvider('429 Too Many Requests')).toBe(false)
+  })
+})
