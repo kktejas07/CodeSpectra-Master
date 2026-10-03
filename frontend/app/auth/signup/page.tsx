@@ -144,7 +144,18 @@ function SignupInner() {
 
     try {
       const extendedData = { mobile, userType, domain: domain === 'Other' ? customDomain : domain, experience, classGrade, graduationYear, currentJobRole, organisationName, organisationType };
-      await signUpWithEmail(email.trim().toLowerCase(), password, name.trim(), extendedData, turnstileToken || undefined);
+      // Forward the assessment invite token so invited bulk candidates skip
+      // the IP throttle. It usually rides nested inside ?redirect=/assessment/..?inviteToken=..
+      let inviteToken: string | undefined
+      try {
+        inviteToken =
+          searchParams.get('inviteToken') ||
+          new URLSearchParams((searchParams.get('redirect') || '').split('?')[1] || '').get('inviteToken') ||
+          undefined
+      } catch {
+        inviteToken = searchParams.get('inviteToken') || undefined
+      }
+      await signUpWithEmail(email.trim().toLowerCase(), password, name.trim(), extendedData, turnstileToken || undefined, inviteToken ? { inviteToken } : undefined);
       await applyReferral();
       // Redirect to Face Biometric Enrollment step
       router.push(`/auth/enroll-face?redirect=${encodeURIComponent(redirectTo)}`);
