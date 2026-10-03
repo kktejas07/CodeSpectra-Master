@@ -21,7 +21,7 @@ import { readServerSecrets, isMaskedSecret } from '@/lib/server-secrets-cache'
 
 const JEV_ENDPOINT = 'https://api.typesafe.ai/v1/systemone'
 const JEV_MODEL = 'jev-latest'
-const JEV_TIMEOUT_MS = 20000
+const JEV_TIMEOUT_MS = 8000
 
 export interface JevVerdict {
   /** Agree with the LLM grade (both questions lean yes). */

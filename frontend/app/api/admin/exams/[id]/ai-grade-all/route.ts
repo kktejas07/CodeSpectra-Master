@@ -8,16 +8,25 @@ export const dynamic = 'force-dynamic'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
+/** Reject if a promise exceeds ms (so one slow provider can't hang the request). */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(label)), ms)
+    p.then((v) => { clearTimeout(t); resolve(v) }, (e) => { clearTimeout(t); reject(e) })
+  })
+}
+
 /** Pace = one LLM call per >1s so we stay under the provider RPM cap. */
 const LLM_PACE_MS = 1100
-
+/** Hard cap on one grade (chain walk + Jev). A hung provider used to run 180s. */
+const GRADE_TIMEOUT_MS = 30000
 /**
- * Max free-text LLM grades per request. Each free-text grade is a chain walk +
- * 1.1s pacing + Jev, so a whole candidate's pending set in one request used to
- * exceed the ~100s proxy limit → 524 → nothing saved. The client calls back
- * until `hasMore` is false; partial progress is persisted each round.
+ * Hard wall-clock budget per request. The proxy kills long requests (~100s) and
+ * returns an HTML 524 page → the client's JSON parse blows up. Stopping on TIME
+ * (not just grade count) guarantees we answer before that, whatever the
+ * providers do. The client loops until hasMore is false.
  */
-const MAX_FREETEXT_PER_REQUEST = 3
+const REQUEST_BUDGET_MS = 55000
 
 export async function POST(
   req: NextRequest,
@@ -56,7 +65,7 @@ export async function POST(
     let totalGraded = 0
     let totalFailed = 0
     let hasMore = false
-    let budget = MAX_FREETEXT_PER_REQUEST
+    const requestStart = Date.now()
 
     type DetailDoc = {
       qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; confidence?: number; jev_agree?: boolean | null; jev_confidence?: number | null; graded_by?: string | null
@@ -97,9 +106,9 @@ export async function POST(
 
         if (needsGrade && q && answer) {
           const isObjective = OBJECTIVE_TYPES.includes((q.type || '').toLowerCase())
-          // Free-text grades are the slow ones — stop when the per-request
-          // budget is spent and let the client resume on the next call.
-          if (!isObjective && budget <= 0) {
+          // Free-text grades are the slow ones — stop once the request budget
+          // is spent and let the client resume on the next call.
+          if (!isObjective && Date.now() - requestStart > REQUEST_BUDGET_MS) {
             updatedDetails.push(...details.slice(i))
             hasMore = true
             await persist(userId, updatedDetails)
@@ -109,29 +118,40 @@ export async function POST(
 
           let res: Awaited<ReturnType<typeof gradeAnswer>> | null = null
           try {
-            res = await gradeAnswer({
-              questionText: q.prompt || q.question || q.title || 'Question',
-              candidateAnswer: answer,
-              modelAnswer: String(q.answer || q.correct_answer || '').trim(),
-              type: q.type || '',
-              maxPoints: q.points || q.score || d.points || 10,
-              options: Array.isArray(q.options) ? q.options.map(String) : undefined,
-              testCases: q.test_cases || q.testCases,
-            })
+            res = await withTimeout(
+              gradeAnswer({
+                questionText: q.prompt || q.question || q.title || 'Question',
+                candidateAnswer: answer,
+                modelAnswer: String(q.answer || q.correct_answer || '').trim(),
+                type: q.type || '',
+                maxPoints: q.points || q.score || d.points || 10,
+                options: Array.isArray(q.options) ? q.options.map(String) : undefined,
+                testCases: q.test_cases || q.testCases,
+              }),
+              GRADE_TIMEOUT_MS,
+              'grade timeout',
+            )
           } catch (e: unknown) {
             if (e instanceof GradeRateLimitedError) {
-              const backoff = Math.max(1, Math.min(60, (e as any).retryAfterSec || 60))
+              // Cap the in-request wait small; a long provider cooldown would
+              // blow the request budget on a sleep. Remaining work resumes on
+              // the client's next call.
+              const backoff = Math.max(1, Math.min(8, (e as any).retryAfterSec || 8))
               await sleep(backoff * 1000 + 500)
               try {
-                res = await gradeAnswer({
-                  questionText: q.prompt || q.question || q.title || 'Question',
-                  candidateAnswer: answer,
-                  modelAnswer: String(q.answer || q.correct_answer || '').trim(),
-                  type: q.type || '',
-                  maxPoints: q.points || q.score || d.points || 10,
-                  options: Array.isArray(q.options) ? q.options.map(String) : undefined,
-                  testCases: q.test_cases || q.testCases,
-                })
+                res = await withTimeout(
+                  gradeAnswer({
+                    questionText: q.prompt || q.question || q.title || 'Question',
+                    candidateAnswer: answer,
+                    modelAnswer: String(q.answer || q.correct_answer || '').trim(),
+                    type: q.type || '',
+                    maxPoints: q.points || q.score || d.points || 10,
+                    options: Array.isArray(q.options) ? q.options.map(String) : undefined,
+                    testCases: q.test_cases || q.testCases,
+                  }),
+                  GRADE_TIMEOUT_MS,
+                  'grade timeout',
+                )
               } catch {
                 failList.push(d.qId); totalFailed++; updatedDetails.push(d); continue
               }
@@ -156,7 +176,6 @@ export async function POST(
             gradedInSub++
           }
           if (!isObjective) {
-            budget--
             await sleep(LLM_PACE_MS)
           }
         } else {
