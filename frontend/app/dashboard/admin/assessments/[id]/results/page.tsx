@@ -1116,7 +1116,19 @@ export default function ExamResultsPage() {
   }
 
   const saveGradesWithAudit = async () => {
-    if (!reviewCandidate || Object.keys(manualGrades).length === 0) return
+    if (!reviewCandidate) return
+    // ponytail: saving used to send ONLY the boxes the admin typed in, so a
+    // question the AI graded but flagged for review (value shown, never
+    // touched) stayed pending_review forever and blocked release. Saving is an
+    // explicit "I've reviewed this candidate", so every still-pending question
+    // is now committed with its shown value (admin override wins).
+    const pendingDetails = (reviewData?.submission.details || []).filter(d => d.pending_review === true)
+    if (Object.keys(manualGrades).length === 0 && pendingDetails.length === 0) return
+    const grades: Record<string, number> = {}
+    for (const d of pendingDetails) {
+      grades[d.qId] = manualGrades[d.qId] ?? d.awarded ?? 0
+    }
+    Object.assign(grades, manualGrades)
     setSavingGrades(true)
     try {
       const uid = reviewCandidate.userId || reviewCandidate.id
@@ -1124,7 +1136,7 @@ export default function ExamResultsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ grades: manualGrades, remarks }),
+        body: JSON.stringify({ grades, remarks }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -1135,12 +1147,12 @@ export default function ExamResultsPage() {
       // Update local state
       if (reviewData) {
         const updatedDetails = reviewData.submission.details.map(d => {
-          if (manualGrades[d.qId] !== undefined) {
+          if (grades[d.qId] !== undefined) {
             const remark = remarks[d.qId]
             return {
               ...d,
-              awarded: manualGrades[d.qId],
-              correct: manualGrades[d.qId] > 0,
+              awarded: grades[d.qId],
+              correct: grades[d.qId] > 0,
               pending_review: false,
               ...(remark && remark.trim() ? { remarks: remark.trim() } : {}),
             }
@@ -1701,6 +1713,26 @@ export default function ExamResultsPage() {
                         </Badge>
                       )}
                     </h4>
+                    {(() => {
+                      const pendingIdx = reviewData.questions
+                        .map((q, i) => (reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)?.pending_review === true ? i + 1 : null))
+                        .filter((n): n is number => n !== null)
+                      if (pendingIdx.length === 0) return null
+                      return (
+                        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                          <p className="font-semibold">
+                            {pendingIdx.length} question{pendingIdx.length === 1 ? '' : 's'} need review before this score can be released:
+                          </p>
+                          <p className="break-words">
+                            {pendingIdx.map((n) => `Q${n}`).join(', ')}
+                          </p>
+                          <p className="text-amber-700/80 dark:text-amber-300/80">
+                            Scroll to the highlighted rows, set the points (the AI&apos;s value is pre-filled), then
+                            click <strong>Save Manual Grades</strong> — that clears them.
+                          </p>
+                        </div>
+                      )
+                    })()}
                     {reviewData.questions.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
                     ) : (
