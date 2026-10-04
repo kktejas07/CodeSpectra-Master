@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   LayoutDashboard,
   Loader2,
@@ -19,6 +20,7 @@ import {
   Mail,
   Play,
   BarChart3,
+  Download,
 } from 'lucide-react'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
@@ -29,6 +31,7 @@ interface ExamOption {
 
 interface PipelineCandidate {
   id: string
+  userId?: string
   email: string
   name: string
   company?: string | null
@@ -40,6 +43,7 @@ interface PipelineCandidate {
   score?: number
   scorePct?: number
   passed?: boolean
+  pipeline_stage?: string
 }
 
 interface PipelineData {
@@ -71,6 +75,19 @@ const STAGE_CONFIG = [
   { key: 'failed' as const, label: 'Failed', icon: XCircle, color: 'text-red-600', bg: 'bg-red-500/10', border: 'border-red-500/20' },
 ] as const
 
+/** Drag-and-drop recruitment board columns. 'none' holds everyone not yet moved. */
+const RECRUITMENT_STAGES = [
+  { key: 'none', label: 'New / Unstaged', color: 'text-slate-600', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
+  { key: 'shortlisted', label: 'Shortlisted', color: 'text-blue-600', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+  { key: 'hr', label: 'HR Round', color: 'text-violet-600', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+  { key: 'technical', label: 'Technical Round', color: 'text-indigo-600', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+  { key: 'offer', label: 'Offer', color: 'text-emerald-600', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+  { key: 'hold', label: 'On Hold', color: 'text-amber-600', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  { key: 'rejected', label: 'Rejected', color: 'text-rose-600', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+] as const
+
+type RecruitStageKey = (typeof RECRUITMENT_STAGES)[number]['key']
+
 export default function PipelinePage() {
   const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
@@ -80,6 +97,86 @@ export default function PipelinePage() {
   const [selectedExamId, setSelectedExamId] = useState('')
   const [pipeline, setPipeline] = useState<PipelineData | null>(null)
   const [loadingPipeline, setLoadingPipeline] = useState(false)
+  // Optimistic stage overrides (userId -> stage) applied on drop before the API confirms.
+  const [stageOverrides, setStageOverrides] = useState<Record<string, string>>({})
+  const [draggingKey, setDraggingKey] = useState<string | null>(null)
+  const [savingStage, setSavingStage] = useState<string | null>(null)
+
+  /** Everyone who actually submitted — the pool the recruitment board moves. */
+  const submitted = useMemo<PipelineCandidate[]>(() => {
+    if (!pipeline) return []
+    const all = [
+      ...pipeline.stages.completed,
+      ...pipeline.stages.passed,
+      ...pipeline.stages.failed,
+    ]
+    const seen = new Set<string>()
+    return all.filter((c) => {
+      const key = c.userId || c.id
+      if (!c.userId || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [pipeline])
+
+  const stageOf = (c: PipelineCandidate): RecruitStageKey =>
+    (stageOverrides[c.userId || c.id] || c.pipeline_stage || 'none') as RecruitStageKey
+
+  const moveStage = async (candidate: PipelineCandidate, stage: RecruitStageKey) => {
+    const key = candidate.userId || candidate.id
+    if (!candidate.userId) {
+      addToast({ type: 'error', title: 'Cannot move', message: 'No account linked to this candidate.' })
+      return
+    }
+    if (stageOf(candidate) === stage) return
+    const prev = stageOverrides[key]
+    setStageOverrides((s) => ({ ...s, [key]: stage }))
+    setSavingStage(key)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${selectedExamId}/submissions/${candidate.userId}/stage`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Failed to save stage')
+    } catch (e) {
+      // Revert the optimistic move on failure.
+      setStageOverrides((s) => {
+        const n = { ...s }
+        if (prev === undefined) delete n[key]
+        else n[key] = prev
+        return n
+      })
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Failed to save stage' })
+    } finally {
+      setSavingStage(null)
+    }
+  }
+
+  const exportShortlistCsv = () => {
+    const rows = submitted
+      .filter((c) => stageOf(c) !== 'none')
+      .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+    if (rows.length === 0) {
+      addToast({ type: 'info', title: 'No candidates have been moved to a stage yet' })
+      return
+    }
+    const header = 'name,email,stage,score_pct'
+    const body = rows.map((c) => {
+      const stage = RECRUITMENT_STAGES.find((s) => s.key === stageOf(c))?.label || stageOf(c)
+      const esc = (v: string) => `"${(v || '').replace(/"/g, '""')}"`
+      return [esc(c.name), esc(c.email), esc(stage), c.scorePct ?? ''].join(',')
+    })
+    const blob = new Blob([[header, ...body].join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `shortlist-${(pipeline?.examTitle || 'assessment').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   useEffect(() => {
     fetch('/api/exams', { credentials: 'include' })
@@ -91,6 +188,7 @@ export default function PipelinePage() {
 
   useEffect(() => {
     if (!selectedExamId) { setPipeline(null); return }
+    setStageOverrides({})
     setLoadingPipeline(true)
     fetch(`/api/admin/assessments/pipeline?examId=${selectedExamId}`, { credentials: 'include' })
       .then(r => r.json())
@@ -245,6 +343,90 @@ export default function PipelinePage() {
                 </div>
               )
             })}
+          </div>
+
+          {/* Recruitment board — drag candidates between hiring stages.
+              Independent of the assessment lanes above (those are computed). */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">Recruitment pipeline</h2>
+                <p className="text-xs text-muted-foreground">
+                  Drag a candidate card between columns to move them (e.g. Shortlisted → HR Round → Offer). Saves instantly.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="text-xs">
+                  {submitted.filter((c) => stageOf(c) === 'shortlisted').length} shortlisted
+                </Badge>
+                <Badge variant="secondary" className="text-xs">
+                  {submitted.filter((c) => stageOf(c) !== 'none').length}/{submitted.length} placed
+                </Badge>
+                <Button size="sm" variant="outline" className="gap-1.5" onClick={exportShortlistCsv}>
+                  <Download className="h-3.5 w-3.5" /> Export shortlist CSV
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {RECRUITMENT_STAGES.map(({ key, label, color, bg, border }) => {
+                const items = submitted.filter((c) => stageOf(c) === key)
+                return (
+                  <div
+                    key={key}
+                    className="flex w-64 shrink-0 flex-col"
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move' }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const dragged = submitted.find((c) => (c.userId || c.id) === draggingKey)
+                      setDraggingKey(null)
+                      if (dragged) void moveStage(dragged, key)
+                    }}
+                  >
+                    <div className={`flex items-center gap-2 rounded-t-lg border ${border} ${bg} px-3 py-2`}>
+                      <span className={`text-sm font-semibold ${color}`}>{label}</span>
+                      <Badge variant="secondary" className="ml-auto text-xs">{items.length}</Badge>
+                    </div>
+                    <div className={`min-h-40 flex-1 border border-t-0 ${border} rounded-b-lg bg-card/50 max-h-[28rem] overflow-y-auto`}>
+                      {items.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-muted-foreground">Drop candidates here</div>
+                      ) : (
+                        <div className="p-2 space-y-2">
+                          {items.map((c) => {
+                            const k = c.userId || c.id
+                            return (
+                              <div
+                                key={k}
+                                draggable
+                                onDragStart={(e) => { setDraggingKey(k); e.dataTransfer.effectAllowed = 'move' }}
+                                onDragEnd={() => setDraggingKey(null)}
+                                className={`cursor-grab active:cursor-grabbing rounded-md border border-border/60 bg-card p-2.5 space-y-1 hover:shadow-sm transition-shadow ${draggingKey === k ? 'opacity-50' : ''}`}
+                                title="Drag to another stage"
+                              >
+                                <div className="flex items-start justify-between gap-2">
+                                  <p className="text-sm font-medium truncate">{c.name}</p>
+                                  {savingStage === k && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground shrink-0" />}
+                                </div>
+                                <p className="text-xs text-muted-foreground truncate">{c.email}</p>
+                                <div className="flex items-center gap-1.5 pt-0.5">
+                                  {(c.scorePct ?? c.score) != null && (
+                                    <Badge variant={c.passed ? 'success' : 'secondary'} className="text-[10px]">
+                                      {c.scorePct ?? c.score}%
+                                    </Badge>
+                                  )}
+                                  {c.passed === true && <Badge variant="success" className="text-[10px]">Passed</Badge>}
+                                  {c.passed === false && <Badge variant="danger" className="text-[10px]">Below cutoff</Badge>}
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Empty state for pipeline */}

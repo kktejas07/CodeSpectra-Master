@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 declare global {
   interface Window {
@@ -17,6 +17,26 @@ const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ''
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js'
 
 let scriptPromise: Promise<void> | null = null
+// Resolved site key. Starts from the build-time inlined value; if that is empty
+// (image built without the site-key build-arg) we fall back to a runtime fetch
+// so an enforced-captcha server never gets a missing token.
+let resolvedSiteKey: string | null = SITE_KEY || null
+let siteKeyPromise: Promise<string> | null = null
+
+function loadSiteKey(): Promise<string> {
+  if (resolvedSiteKey) return Promise.resolve(resolvedSiteKey)
+  if (!siteKeyPromise) {
+    siteKeyPromise = fetch('/api/config/public', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((j) => {
+        const key = typeof j?.turnstileSiteKey === 'string' ? j.turnstileSiteKey.trim() : ''
+        if (key) resolvedSiteKey = key
+        return key
+      })
+      .catch(() => '')
+  }
+  return siteKeyPromise
+}
 
 function loadScript(): Promise<void> {
   if (typeof window === 'undefined') return Promise.resolve()
@@ -52,10 +72,20 @@ export function TurnstileWidget({ onVerify, resetKey }: TurnstileWidgetProps) {
   const boxRef = useRef<HTMLDivElement>(null)
   const widgetId = useRef<string | null>(null)
   const verifyRef = useRef(onVerify)
+  const [siteKey, setSiteKeyState] = useState<string>(SITE_KEY)
   verifyRef.current = onVerify
 
   useEffect(() => {
-    if (!SITE_KEY || !boxRef.current) return
+    let cancelled = false
+    loadSiteKey().then((key) => {
+      if (!cancelled && key && key !== siteKey) setSiteKeyState(key)
+    })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!siteKey || !boxRef.current) return
     let cancelled = false
     loadScript()
       .then(() => {
@@ -63,7 +93,7 @@ export function TurnstileWidget({ onVerify, resetKey }: TurnstileWidgetProps) {
         if (widgetId.current) window.turnstile.reset(widgetId.current)
         else {
           widgetId.current = window.turnstile.render(boxRef.current, {
-            sitekey: SITE_KEY,
+            sitekey: siteKey,
             theme: 'auto',
             callback: (token: string) => verifyRef.current(token),
             'expired-callback': () => verifyRef.current(null),
@@ -75,7 +105,7 @@ export function TurnstileWidget({ onVerify, resetKey }: TurnstileWidgetProps) {
     return () => {
       cancelled = true
     }
-  }, [resetKey])
+  }, [resetKey, siteKey])
 
   useEffect(() => {
     return () => {
@@ -90,6 +120,6 @@ export function TurnstileWidget({ onVerify, resetKey }: TurnstileWidgetProps) {
     }
   }, [])
 
-  if (!SITE_KEY) return null
+  if (!siteKey) return null
   return <div ref={boxRef} className="flex justify-center" />
 }
