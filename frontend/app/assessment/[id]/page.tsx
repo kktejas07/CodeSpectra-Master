@@ -177,7 +177,7 @@ export default function CandidateAssessmentPage() {
     if (!exam) return
     const map: Record<string, string[]> = {}
     for (const q of exam.questionList) {
-      if (q.options && q.options.length > 0 && ['mcq', 'multiple_response', 'true_false'].includes(q.type)) {
+      if (q.options && q.options.length > 0 && ['mcq', 'multiple_response', 'true_false', 'yes_no', 'ordering', 'ranking'].includes(q.type)) {
         const qSeed = q.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) + sessionSeed.current
         map[q.id] = shuffleArray(q.options, qSeed)
       }
