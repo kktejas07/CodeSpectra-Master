@@ -390,7 +390,9 @@ function sanitizeStructuredQuestionFields(q: Record<string, unknown>, clean: Rec
     }
   }
 
-  const imageUrl = qStr(q.image_url ?? q.imageUrl, 2000)
+  // Generous cap: a hotspot image may be an inline `data:` URI (SVG/PNG), which
+  // is easily a few KB — the old 2000-char cap truncated them and broke the img.
+  const imageUrl = qStr(q.image_url ?? q.imageUrl, 200000)
   if (imageUrl) clean.image_url = imageUrl
 
   if (Array.isArray(q.regions)) {

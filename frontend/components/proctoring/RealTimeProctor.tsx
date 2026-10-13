@@ -8,6 +8,13 @@ interface RealTimeProctorProps {
   sessionKind: 'exam' | 'problem' | 'interview'
   sessionId: string
   enabled?: boolean
+  /**
+   * Request fullscreen on start and re-request on tab focus. Fullscreen hides
+   * browser chrome — including Chrome's "Ask Gemini" side panel — so it is the
+   * most effective lever for this class of cheating. Programmatic requests need
+   * a user gesture, so we also arm a one-shot gesture listener.
+   */
+  enforceFullscreen?: boolean
 }
 
 /**
@@ -17,8 +24,11 @@ interface RealTimeProctorProps {
  * - Teams / Google Meet / Zoom / Discord running in background
  * - VPN / proxy usage (WebRTC IP leak detection)
  * - Audio anomalies (secondary voices, background noise)
- * - Fullscreen exit
+ * - Fullscreen exit (+ optional fullscreen enforcement)
+ * - Window blur/focus (catches side panels / other windows the page can't see)
+ * - Viewport-width shrink (heuristic for a docked side panel / DevTools)
  * - Window resize (possible screen share preparation)
+ * - Large clipboard paste (copy question → AI → paste answer)
  *
  * All events are sent to POST /api/proctor/events for the audit log.
  */
@@ -27,9 +37,14 @@ export function RealTimeProctor({
   sessionKind,
   sessionId,
   enabled = true,
+  enforceFullscreen = false,
 }: RealTimeProctorProps) {
   const lastUsbDevicesRef = useRef<string[]>([])
   const screenShareActiveRef = useRef(false)
+  // Baseline content width + whether a shrink has already been flagged.
+  const baselineWidthRef = useRef<number | null>(null)
+  const viewportFlaggedRef = useRef(false)
+  const lastWindowBlurRef = useRef(0)
   const sendEventRef = useCallback(
     async (eventType: string, meta?: Record<string, unknown>) => {
       if (!enabled || !sessionId) return
@@ -374,6 +389,44 @@ export function RealTimeProctor({
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [enabled, sendEventRef])
 
+  // ── 4a. Fullscreen Enforcement ───────────────────────────────────────
+  // Fullscreen hides the browser's own chrome (side panels, "Ask Gemini",
+  // DevTools button), so requesting it removes the easiest cheat surface.
+  // Programmatic requestFullscreen needs a user gesture → arm a one-shot
+  // listener, and re-request whenever the tab regains focus.
+  useEffect(() => {
+    if (!enabled || !enforceFullscreen) return
+    let armed = true
+
+    const request = () => {
+      if (document.fullscreenElement) return
+      document.documentElement.requestFullscreen().catch(() => {
+        sendEventRef('fullscreen_unavailable', { reason: 'request_rejected' })
+      })
+    }
+    const onGesture = () => {
+      armed = false
+      request()
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') request()
+    }
+
+    // If fullscreen was already granted by a prior gesture, request now; else
+    // wait for the first tap/click/keypress (e.g. the Start button).
+    request()
+    window.addEventListener('pointerdown', onGesture, { once: true })
+    window.addEventListener('keydown', onGesture, { once: true })
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      if (armed) {
+        window.removeEventListener('pointerdown', onGesture)
+        window.removeEventListener('keydown', onGesture)
+      }
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [enabled, enforceFullscreen, sendEventRef])
+
   // ── 4b. Tab / Window Switch Detection (visibilitychange) ─────────────
   // Catches Cmd+Tab (Mac), Alt+Tab (Windows), clicking another tab, and
   // switching to another window. This is the reliable cross-platform signal;
@@ -391,6 +444,85 @@ export function RealTimeProctor({
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [enabled, sendEventRef])
+
+  // ── 4c. Window Blur / Focus ──────────────────────────────────────────
+  // A browser side panel (Chrome "Ask Gemini") is a separate surface the page
+  // cannot see: it does not change the URL/title and usually does not fire
+  // visibilitychange. Clicking into it, however, blurs the page *window* — so
+  // window blur/focus is the closest page-observable signal. Throttled to avoid
+  // noise from rapid focus flicker.
+  useEffect(() => {
+    if (!enabled) return
+
+    const onBlur = () => {
+      const now = Date.now()
+      if (now - lastWindowBlurRef.current < 1500) return
+      lastWindowBlurRef.current = now
+      sendEventRef('window_blur', { timestamp: new Date().toISOString() })
+    }
+    const onFocus = () => {
+      sendEventRef('window_focus', { timestamp: new Date().toISOString() })
+    }
+
+    window.addEventListener('blur', onBlur)
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.removeEventListener('blur', onBlur)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [enabled, sendEventRef])
+
+  // ── 4d. Viewport Shrink Heuristic (side panel / docked DevTools) ──────
+  // Opening a side panel or docked DevTools shrinks the content viewport by a
+  // fixed amount (a Chrome side panel is ~360-400px). We record a baseline
+  // width and flag a large, sudden decrease — and clear it when restored.
+  // Heuristic only (also fires for window snapping / monitor changes), so the
+  // admin UI treats it as a review signal, not proof.
+  useEffect(() => {
+    if (!enabled) return
+    const SHRINK_PX = 220
+    const RESTORE_PX = 60
+    let timer: ReturnType<typeof setTimeout> | null = null
+
+    const measure = () => { baselineWidthRef.current = window.innerWidth }
+    // Defer the initial capture so layout/fullscreen settle first.
+    const initial = setTimeout(measure, 800)
+
+    // Fullscreen transitions change innerWidth legitimately — re-baseline.
+    const onFsChange = () => {
+      viewportFlaggedRef.current = false
+      setTimeout(measure, 300)
+    }
+
+    const onResize = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        const base = baselineWidthRef.current
+        if (base == null) { measure(); return }
+        const w = window.innerWidth
+        const delta = base - w
+        if (delta >= SHRINK_PX && !viewportFlaggedRef.current) {
+          viewportFlaggedRef.current = true
+          sendEventRef('viewport_shrunk', {
+            baseline: base, current: w, delta,
+            hint: 'side panel, docked DevTools, or window snapped — verify',
+          })
+        } else if (delta <= RESTORE_PX && viewportFlaggedRef.current) {
+          viewportFlaggedRef.current = false
+          sendEventRef('viewport_restored', { current: w })
+        }
+      }, 350)
+    }
+
+    window.addEventListener('resize', onResize)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => {
+      clearTimeout(initial)
+      if (timer) clearTimeout(timer)
+      window.removeEventListener('resize', onResize)
+      document.removeEventListener('fullscreenchange', onFsChange)
+    }
   }, [enabled, sendEventRef])
 
   // ── 5. Window Resize Detection (possible screen share prep) ──────────
@@ -427,6 +559,11 @@ export function RealTimeProctor({
         textLength: text.length,
         preview: text.slice(0, 100),
       })
+      // Copying a large block (e.g. the whole question prompt to paste into an
+      // AI) is more suspicious than copying a short snippet.
+      if (text.length >= 200) {
+        sendEventRef('large_copy', { textLength: text.length, preview: text.slice(0, 200) })
+      }
     }
 
     const handlePaste = (e: ClipboardEvent) => {
@@ -435,6 +572,10 @@ export function RealTimeProctor({
         textLength: text.length,
         preview: text.slice(0, 100),
       })
+      // A long paste into an answer is the classic "copy from an AI" pattern.
+      if (text.length >= 120) {
+        sendEventRef('large_paste', { textLength: text.length, preview: text.slice(0, 200) })
+      }
     }
 
     document.addEventListener('copy', handleCopy)

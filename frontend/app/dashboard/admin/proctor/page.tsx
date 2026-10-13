@@ -20,17 +20,21 @@ const EVENT_ICONS: Record<string, React.ReactNode> = {
   alt_tab_detected: <LogOut className="w-4 h-4" />,
   navigate_away_attempt: <LogOut className="w-4 h-4" />,
   fullscreen_exit: <Maximize className="w-4 h-4" />,
+  fullscreen_unavailable: <Maximize className="w-4 h-4" />,
+  window_blur: <LogOut className="w-4 h-4" />, window_focus: <RotateCcw className="w-4 h-4" />,
 
   // Clipboard
   copy: <Copy className="w-4 h-4" />, paste: <ClipboardPaste className="w-4 h-4" />,
   clipboard_copy: <Copy className="w-4 h-4" />, clipboard_paste: <ClipboardPaste className="w-4 h-4" />,
   copy_paste_attempt: <Copy className="w-4 h-4" />,
+  large_copy: <Copy className="w-4 h-4" />, large_paste: <ClipboardPaste className="w-4 h-4" />,
 
   // Screen & Display
   screen_share_started: <Monitor className="w-4 h-4" />,
   screen_share_ended: <Monitor className="w-4 h-4" />,
   screen_capture_detected: <Monitor className="w-4 h-4" />,
   rapid_window_resize: <Move className="w-4 h-4" />,
+  viewport_shrunk: <Move className="w-4 h-4" />, viewport_restored: <Move className="w-4 h-4" />,
 
   // USB & Hardware
   usb_device_plugged: <Usb className="w-4 h-4" />,
@@ -75,12 +79,15 @@ const EVENT_SEVERITY: Record<string, string> = {
   secondary_voice_detected: 'warning', volume_anomaly_detected: 'warning',
   alt_tab_detected: 'warning', navigate_away_attempt: 'warning',
   no_face: 'warning', rapid_window_resize: 'warning',
+  window_blur: 'warning', viewport_shrunk: 'warning',
+  large_copy: 'warning', large_paste: 'warning', fullscreen_unavailable: 'warning',
   // Info
   copy: 'info', paste: 'info', right_click: 'info',
   clipboard_copy: 'info', clipboard_paste: 'info', copy_paste_attempt: 'info',
   keyboard_shortcut_blocked: 'info', right_click_blocked: 'info',
   usb_device_unplugged: 'info', usb_device_removed: 'info',
   screen_share_ended: 'info', hardware_port_audit: 'info',
+  window_focus: 'info', viewport_restored: 'info',
 }
 
 export default function AdminProctorPage() {
@@ -98,10 +105,13 @@ export default function AdminProctorPage() {
   const EVENT_CATEGORIES: Record<string, string> = {
     tab_blur: 'focus', tab_focus: 'focus', alt_tab_detected: 'focus',
     navigate_away_attempt: 'focus', fullscreen_exit: 'focus',
+    fullscreen_unavailable: 'focus', window_blur: 'focus', window_focus: 'focus',
     copy: 'clipboard', paste: 'clipboard', clipboard_copy: 'clipboard',
     clipboard_paste: 'clipboard', copy_paste_attempt: 'clipboard',
+    large_copy: 'clipboard', large_paste: 'clipboard',
     screen_share_started: 'screen', screen_share_ended: 'screen',
     screen_capture_detected: 'screen', rapid_window_resize: 'screen',
+    viewport_shrunk: 'screen', viewport_restored: 'screen',
     usb_device_plugged: 'hardware', usb_device_unplugged: 'hardware',
     usb_device_inserted: 'hardware', usb_device_removed: 'hardware',
     hardware_port_anomaly: 'hardware', hardware_port_audit: 'hardware',

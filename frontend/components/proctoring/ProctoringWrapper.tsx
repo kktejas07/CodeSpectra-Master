@@ -242,13 +242,21 @@ export function ProctoringWrapper({
     let stream: MediaStream | null = null
     let intervalId: any = null
 
+    let inFlight = false
     async function initCamera() {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
         if (videoRef.current) videoRef.current.srcObject = stream
-        intervalId = setInterval(() => {
-          if (videoRef.current && trackerRef.current) {
-            const analysis = trackerRef.current.analyzeFrame(videoRef.current)
+        // Load the landmark models before the loop (falls back silently if the
+        // models are unavailable — the loop then reports no face).
+        await trackerRef.current?.load()
+        intervalId = setInterval(async () => {
+          // Landmark detection takes ~tens of ms; skip a tick if the previous
+          // frame is still being analysed so calls can't pile up.
+          if (inFlight || !videoRef.current || !trackerRef.current) return
+          inFlight = true
+          try {
+            const analysis = await trackerRef.current.analyzeFrame(videoRef.current)
             setGazeAnalysis(analysis)
             if (analysis.blinkCount > lastBlinkCountRef.current) {
               const newBlinks = analysis.blinkCount - lastBlinkCountRef.current
@@ -267,6 +275,8 @@ export function ProctoringWrapper({
                 setWarningMessage('Head turned away from camera center. Keep eyes on screen.')
               }
             }
+          } finally {
+            inFlight = false
           }
         }, 1000)
       } catch { /* camera optional */ }
