@@ -135,7 +135,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   if (!gate.ready) return null
 
   if (loading) return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
       <div className="flex items-start justify-between">
         <div className="space-y-2">
@@ -159,7 +159,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const currentQ = unanswered[0]
 
   return (
-    <div className="max-w-4xl space-y-6">
+    <div className="space-y-6">
       <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" data-tour="back-to-interviews">
         <ArrowLeft className="h-3 w-3" /> All interviews
       </Link>

@@ -14,18 +14,21 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES } from '@/lib/engineering-catalog'
+import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
+import { canonicalType, metaFor, QUESTION_TYPES } from '@/lib/question-types'
+import { CODE_LANGUAGES } from '@/lib/code-languages'
 
-type QuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
-
-const QUESTION_TYPE_META: Record<QuestionType, { label: string; icon: React.ReactNode }> = {
-  mcq: { label: 'Multiple Choice', icon: <List className="h-3 w-3 mr-1" /> },
-  multiple_response: { label: 'Multiple Response', icon: <CheckSquare className="h-3 w-3 mr-1" /> },
-  true_false: { label: 'True / False', icon: <HelpCircle className="h-3 w-3 mr-1" /> },
-  coding: { label: 'Coding Challenge', icon: <Code className="h-3 w-3 mr-1" /> },
-  descriptive: { label: 'Descriptive', icon: <FileText className="h-3 w-3 mr-1" /> },
-  fill_blanks: { label: 'Fill in the Blanks', icon: <Type className="h-3 w-3 mr-1" /> },
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  mcq: <List className="h-3 w-3 mr-1" />,
+  multiple_response: <CheckSquare className="h-3 w-3 mr-1" />,
+  true_false: <HelpCircle className="h-3 w-3 mr-1" />,
+  yes_no: <HelpCircle className="h-3 w-3 mr-1" />,
+  fill_blanks: <Type className="h-3 w-3 mr-1" />,
+  coding: <Code className="h-3 w-3 mr-1" />,
+  descriptive: <FileText className="h-3 w-3 mr-1" />,
 }
+const typeIcon = (t: string) => TYPE_ICONS[t] || <List className="h-3 w-3 mr-1" />
+const typeLabel = (t: string) => metaFor(t).label
 
 interface Question {
   id: string
@@ -37,6 +40,58 @@ interface Question {
   score: number
   /** Coding only: stdin → expected stdout pairs the grader executes. */
   test_cases?: { input: string; output: string }[]
+  /** Numeric: accepted absolute tolerance. */
+  tolerance?: number
+  /** Matching / labeling left→right pairs. */
+  pairs?: { left: string; right: string }[]
+  /** Matrix: rows × columns; answer is a column per row. */
+  matrix?: { rows: string[]; columns: string[] }
+  /** Table / grid fill rows; answer is one value per row. */
+  table?: { columns: string[]; rows: string[] }
+  /** Likert / rating scale bounds. */
+  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
+  /** Hotspot image + clickable regions (percentages 0-100). */
+  image_url?: string
+  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
+  /** Coding variants: runtime language + starter snippet. */
+  language?: string
+  starter_code?: string
+}
+
+/** Seed the per-type fields when the admin picks a question type. */
+function defaultsForType(type: QuestionType): Partial<Question> {
+  const base: Partial<Question> = {
+    options: undefined, answer: undefined, pairs: undefined, matrix: undefined, table: undefined,
+    scale: undefined, image_url: undefined, regions: undefined, tolerance: undefined,
+    language: undefined, starter_code: undefined, test_cases: undefined,
+  }
+  switch (type) {
+    case 'true_false': return { ...base, options: ['True', 'False'] }
+    case 'yes_no': return { ...base, options: ['Yes', 'No'] }
+    case 'mcq':
+    case 'multiple_response':
+    case 'fill_blanks': return { ...base, options: ['', '', '', ''] }
+    case 'ordering':
+    case 'ranking': return { ...base, options: ['', '', ''] }
+    case 'matching':
+    case 'drag_drop': return { ...base, pairs: [{ left: '', right: '' }, { left: '', right: '' }] }
+    case 'matrix': return { ...base, matrix: { rows: [''], columns: ['True', 'False'] } }
+    case 'table_fill': return { ...base, table: { columns: [''], rows: [''] } }
+    case 'hotspot': return { ...base, image_url: '', regions: [{ id: 'r1', x: 10, y: 10, w: 15, h: 15, label: '' }] }
+    case 'likert':
+    case 'rating': return { ...base, scale: { min: 1, max: 5 } }
+    case 'numeric': return { ...base, tolerance: 0 }
+    case 'coding':
+    case 'debugging':
+    case 'code_completion':
+    case 'output_prediction':
+    case 'code_review':
+    case 'sql':
+    case 'regex_config':
+    case 'refactoring':
+    case 'test_case_writing': return { ...base, language: 'python', test_cases: [] }
+    default: return base
+  }
 }
 
 interface BankQuestionRow {
@@ -55,6 +110,16 @@ interface BankQuestionRow {
   industry?: string
   tags?: string[]
   source: string
+  test_cases?: { input: string; output: string }[]
+  tolerance?: number
+  pairs?: { left: string; right: string }[]
+  matrix?: { rows: string[]; columns: string[] }
+  table?: { columns: string[]; rows: string[] }
+  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
+  image_url?: string
+  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
+  language?: string
+  starter_code?: string
 }
 
 interface Exam {
@@ -88,35 +153,28 @@ function parseQuestions(raw: string): { questions: Question[]; errors: string[] 
     const arr = JSON.parse(trimmed)
     if (Array.isArray(arr) && arr.length > 0) {
       const mapped = arr.map((item: any, i: number) => {
-        const rawType = String(item.type || '').toLowerCase().trim().replace(/[-_]/g, '')
-        let type: QuestionType = 'mcq'
-        if (['descriptive', 'openended', 'essay', 'shortanswer'].includes(rawType)) {
-          type = 'descriptive'
-        } else if (['mcq', 'multiplechoice', 'singlechoice'].includes(rawType)) {
-          type = 'mcq'
-        } else if (['multipleresponse', 'multiselect'].includes(rawType)) {
-          type = 'multiple_response'
-        } else if (['truefalse', 'boolean', 'tf'].includes(rawType)) {
-          type = 'true_false'
-        } else if (['coding', 'code', 'programming'].includes(rawType)) {
-          type = 'coding'
-        } else if (['fillblanks', 'fillintheblanks', 'fib'].includes(rawType)) {
-          type = 'fill_blanks'
-        } else {
-          type = ['mcq','multiple_response','true_false','coding','descriptive','fill_blanks'].includes(item.type) ? item.type : 'mcq'
-        }
-
+        const type: QuestionType = canonicalType(item.type, 'mcq')
         const opts = Array.isArray(item.options) ? item.options.map(String).filter(Boolean) : undefined
         const titleVal = item.title || item.category || (item.question && item.question.length > 60 ? item.question.slice(0, 60) + '...' : item.question) || `Question ${i + 1}`
-        
+
         return {
           id: crypto.randomUUID(),
           type,
           title: String(titleVal),
           prompt: String(item.prompt || item.question || item.description || ''),
-          options: ['mcq','multiple_response','true_false','fill_blanks'].includes(type) && opts?.length ? opts : undefined,
+          options: metaFor(type).hasOptions && opts?.length ? opts : undefined,
           answer: item.answer ? String(item.answer) : undefined,
           score: Number(item.score || item.marks || item.points) || 10,
+          test_cases: Array.isArray(item.test_cases) ? item.test_cases : undefined,
+          tolerance: typeof item.tolerance === 'number' ? item.tolerance : undefined,
+          pairs: Array.isArray(item.pairs) ? item.pairs : undefined,
+          matrix: item.matrix || undefined,
+          table: item.table || undefined,
+          scale: item.scale || undefined,
+          image_url: item.image_url || undefined,
+          regions: Array.isArray(item.regions) ? item.regions : undefined,
+          language: item.language || undefined,
+          starter_code: item.starter_code || undefined,
         }
       })
       return { questions: mapped, errors }
@@ -130,14 +188,14 @@ function parseQuestions(raw: string): { questions: Question[]; errors: string[] 
     for (let i = 1; i < lines.length; i++) {
       const parts = lines[i].split(',').map(s => s.trim().replace(/^"(.*)"$/, '$1'))
       if (parts.length < 2) { errors.push(`Row ${i + 1}: too few columns`); continue }
-      const type: QuestionType = ['mcq','multiple_response','true_false','coding','descriptive','fill_blanks'].includes(parts[0]) ? parts[0] as QuestionType : 'mcq'
+      const type: QuestionType = canonicalType(parts[0], 'mcq')
       const opts = parts[3] ? parts[3].split('|').map(s => s.trim()).filter(Boolean) : undefined
       parsed.push({
         id: crypto.randomUUID(),
         type,
         title: parts[1] || `Question ${i}`,
         prompt: parts[2] || '',
-        options: ['mcq','multiple_response','true_false','fill_blanks'].includes(type) && opts?.length ? opts : undefined,
+        options: metaFor(type).hasOptions && opts?.length ? opts : undefined,
         answer: parts[4] || undefined,
         score: parseInt(parts[5]) || 10,
       })
@@ -417,6 +475,16 @@ export default function ExamReviewPage() {
         options: r.options || [],
         answer: r.answer,
         score: r.marks || 10,
+        test_cases: r.test_cases,
+        tolerance: r.tolerance,
+        pairs: r.pairs,
+        matrix: r.matrix,
+        table: r.table,
+        scale: r.scale,
+        image_url: r.image_url,
+        regions: r.regions,
+        language: r.language,
+        starter_code: r.starter_code,
       }))
     if (newQuestions.length === 0) {
       addToast({ type: 'error', title: 'All selected questions are already in this exam' })
@@ -446,6 +514,10 @@ export default function ExamReviewPage() {
         addToast({ type: 'error', title: 'Please mark the correct answer' })
         return
       }
+    }
+    // Ordering / ranking store the correct order as the options order.
+    if (editingQuestion.type === 'ordering' || editingQuestion.type === 'ranking') {
+      editingQuestion.answer = (editingQuestion.options || []).map(o => o.trim()).filter(Boolean).join(', ')
     }
     const exists = exam.questionList.find(q => q.id === editingQuestion.id)
     const newQuestions = exists
@@ -748,8 +820,8 @@ export default function ExamReviewPage() {
                     {selectedIds.has(q.id) && <CheckSquare className="w-3.5 h-3.5" />}
                   </button>
                   <Badge variant="outline" className="bg-background">
-                    {QUESTION_TYPE_META[q.type]?.icon}
-                    {QUESTION_TYPE_META[q.type]?.label || q.type}
+                    {typeIcon(q.type)}
+                    {typeLabel(q.type)}
                   </Badge>
                   <span className="text-sm font-medium text-muted-foreground">Q{idx + 1}</span>
                   <span className="text-xs text-muted-foreground">({q.score} pts)</span>
@@ -769,24 +841,40 @@ export default function ExamReviewPage() {
               <h3 className="text-lg font-medium">{q.title}</h3>
               <p className="text-sm mt-2 text-foreground/80 whitespace-pre-wrap">{q.prompt}</p>
               
-              {q.options && q.options.length > 0 && ['mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(q.type) && (
+              {q.options && q.options.length > 0 && metaFor(q.type).hasOptions && (
                 <div className="mt-4 space-y-2">
                   {q.options.map((opt, i) => {
-                    const isCorrect = q.type === 'multiple_response'
-                      ? (q.answer || '').split(',').map(s => s.trim()).includes(opt)
-                      : opt === q.answer
+                    const isSeq = q.type === 'ordering' || q.type === 'ranking'
+                    const isCorrect = isSeq
+                      ? true
+                      : q.type === 'multiple_response'
+                        ? (q.answer || '').split(',').map(s => s.trim()).includes(opt)
+                        : opt === q.answer
                     return (
                       <div key={i} className={`p-2 border rounded text-sm ${isCorrect ? 'bg-primary/10 border-primary/30 font-medium' : 'bg-background'}`}>
                         <span className={q.type === 'multiple_response' ? 'flex items-center gap-2' : ''}>
+                          {isSeq && <span className="text-xs text-muted-foreground mr-2">{i + 1}.</span>}
                           {q.type === 'multiple_response' && (
                             <CheckSquare className={`h-3.5 w-3.5 ${isCorrect ? 'text-primary' : 'text-muted-foreground'}`} />
                           )}
                           {opt}
-                          {isCorrect && <span className="text-xs text-primary ml-2">({q.type === 'multiple_response' ? 'Correct' : 'Correct Answer'})</span>}
+                          {isCorrect && !isSeq && <span className="text-xs text-primary ml-2">({q.type === 'multiple_response' ? 'Correct' : 'Correct Answer'})</span>}
                         </span>
                       </div>
                     )
                   })}
+                </div>
+              )}
+              {!metaFor(q.type).hasOptions && (
+                <div className="mt-3 text-xs text-muted-foreground space-y-0.5">
+                  {q.type === 'numeric' && <p>Answer: {q.answer || '—'}{q.tolerance ? ` (±${q.tolerance})` : ''}</p>}
+                  {q.type === 'short_answer' && <p>Answer: {q.answer || '—'}</p>}
+                  {q.pairs && q.pairs.length > 0 && <p>{q.pairs.length} pair(s): {q.pairs.map(p => `${p.left}→${p.right}`).join(', ')}</p>}
+                  {q.matrix && <p>Matrix: {q.matrix.rows.length} row(s) × {q.matrix.columns.length} column(s)</p>}
+                  {q.table && <p>Table: {q.table.rows.length} row(s)</p>}
+                  {q.image_url && <p>Hotspot image: {q.image_url}</p>}
+                  {q.scale && <p>Scale: {q.scale.min}–{q.scale.max}{q.scale.minLabel || q.scale.maxLabel ? ` (${q.scale.minLabel || ''}…${q.scale.maxLabel || ''})` : ''}</p>}
+                  {q.answer && metaFor(q.type).group !== 'objective' && <p className="line-clamp-2">Model answer: {q.answer}</p>}
                 </div>
               )}
             </div>
@@ -822,7 +910,7 @@ export default function ExamReviewPage() {
       </div>
 
       <Dialog open={importModal} onOpenChange={setImportModal}>
-        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Import Questions</DialogTitle>
           </DialogHeader>
@@ -856,6 +944,10 @@ export default function ExamReviewPage() {
                   { type: 'descriptive', title: 'Explain REST', prompt: 'Explain the principles of RESTful API design and its key constraints.', score: 15 },
                   { type: 'multiple_response', title: 'CSS Selectors', prompt: 'Which of the following are valid CSS selectors?', options: ['.class', '#id', '$name', ':hover'], answer: '.class, #id, :hover', score: 10 },
                   { type: 'fill_blanks', title: 'HTTP Status Codes', prompt: 'HTTP 200 means ___, 404 means ___, and 500 means ___.', options: ['OK', 'Not Found', 'Server Error'], answer: 'OK, Not Found, Server Error', score: 5 },
+                  { type: 'numeric', title: 'Binary Search Comparisons', prompt: 'How many comparisons does binary search need in the worst case to find an item in a sorted array of 128 elements?', answer: '7', tolerance: 0, score: 5 },
+                  { type: 'matching', title: 'Match Algorithm to Complexity', prompt: 'Match each algorithm to its average-case time complexity.', pairs: [{ left: 'Binary Search', right: 'O(log n)' }, { left: 'Bubble Sort', right: 'O(n^2)' }, { left: 'Hash Lookup', right: 'O(1)' }], score: 10 },
+                  { type: 'ordering', title: 'Order the HTTP Request Stages', prompt: 'Put the stages of an HTTP request/response in the correct order.', options: ['DNS resolution', 'TCP handshake', 'HTTP request', 'Server response'], answer: 'DNS resolution, TCP handshake, HTTP request, Server response', score: 10 },
+                  { type: 'debugging', title: 'Fix Off-by-One Loop', prompt: 'The following function should return the sum of the first n natural numbers but is off by one. Identify the bug and fix it.', starter_code: 'def sum_n(n):\n    total = 0\n    for i in range(n):\n        total += i\n    return total', language: 'python', answer: 'The range should be range(1, n+1) (or add i+1) so the loop includes n.', score: 15 },
                 ]
                 const blob = new Blob([JSON.stringify(sample, null, 2)], { type: 'application/json' })
                 const url = URL.createObjectURL(blob)
@@ -929,7 +1021,7 @@ export default function ExamReviewPage() {
 
       {/* Pull from Question Bank modal */}
       <Dialog open={bankModal} onOpenChange={setBankModal}>
-        <DialogContent className="sm:max-w-200 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" /> Pull from Question Bank
@@ -1051,167 +1143,328 @@ export default function ExamReviewPage() {
       </Dialog>
 
       <Dialog open={questionModal} onOpenChange={setQuestionModal}>
-        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{exam.questionList.find(q => q.id === editingQuestion?.id) ? 'Edit Question' : 'Add Question'}</DialogTitle>
           </DialogHeader>
-          {editingQuestion && (
+          {editingQuestion && (() => {
+            const t = editingQuestion.type
+            const meta = metaFor(t)
+            const isSeq = t === 'ordering' || t === 'ranking'
+            const isMulti = t === 'multiple_response'
+            const setQ = (patch: Partial<Question>) => setEditingQuestion({ ...editingQuestion, ...patch })
+            return (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label>Question Type</Label>
-                <Select value={editingQuestion.type} onValueChange={(v: QuestionType) => {
-                  const needsOptions = ['mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(v)
-                  setEditingQuestion({
-                    ...editingQuestion,
-                    type: v,
-                    options: needsOptions ? (v === 'true_false' ? ['True', 'False'] : ['', '', '', '']) : undefined,
-                    answer: undefined,
-                  })
-                }}>
+                <Select value={t} onValueChange={(v) => setQ({ ...defaultsForType(v as QuestionType), type: v as QuestionType })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(QUESTION_TYPE_META).map(([key, meta]) => (
-                      <SelectItem key={key} value={key}>{meta.label}</SelectItem>
+                    {QUESTION_TYPES.map((qt) => (
+                      <SelectItem key={qt.id} value={qt.id}>{qt.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="q-title">Title</Label>
-                <Input id="q-title" value={editingQuestion.title} onChange={(e) => setEditingQuestion({ ...editingQuestion, title: e.target.value })} placeholder="e.g. Java Exception Handling" />
+                <Input id="q-title" value={editingQuestion.title} onChange={(e) => setQ({ title: e.target.value })} placeholder="e.g. Java Exception Handling" />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="q-prompt">Prompt / Description</Label>
-                <Textarea id="q-prompt" value={editingQuestion.prompt} onChange={(e) => setEditingQuestion({ ...editingQuestion, prompt: e.target.value })} rows={4} placeholder="Describe the question or coding task..." />
+                <Textarea id="q-prompt" value={editingQuestion.prompt} onChange={(e) => setQ({ prompt: e.target.value })} rows={4} placeholder="Describe the question or coding task..." />
               </div>
-              {['mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(editingQuestion.type) && (
+
+              {meta.hasOptions && (
                 <div className="grid gap-3">
-                  <Label>Options</Label>
+                  <Label>{isSeq ? 'Items (listed in the correct order)' : 'Options'}</Label>
                   {editingQuestion.options?.map((opt, i) => {
-                    const isMulti = editingQuestion.type === 'multiple_response'
                     const checked = isMulti
                       ? (editingQuestion.answer || '').split(',').map(s => s.trim()).includes(opt)
                       : editingQuestion.answer === opt
                     return (
                       <div key={i} className="flex items-center gap-2">
-                        <input
-                          type={isMulti ? 'checkbox' : 'radio'}
-                          name="correct-answer"
-                          checked={checked}
-                          onChange={() => {
-                            if (isMulti) {
-                              const current = (editingQuestion.answer || '').split(',').map(s => s.trim()).filter(Boolean)
-                              const newAnswer = current.includes(opt)
-                                ? current.filter(a => a !== opt).join(', ')
-                                : [...current, opt].join(', ')
-                              setEditingQuestion({ ...editingQuestion, answer: newAnswer })
-                            } else {
-                              setEditingQuestion({ ...editingQuestion, answer: opt })
-                            }
-                          }}
-                          className="h-4 w-4"
-                        />
+                        {!isSeq && (
+                          <input
+                            type={isMulti ? 'checkbox' : 'radio'}
+                            name="correct-answer"
+                            checked={checked}
+                            onChange={() => {
+                              if (isMulti) {
+                                const current = (editingQuestion.answer || '').split(',').map(s => s.trim()).filter(Boolean)
+                                const newAnswer = current.includes(opt)
+                                  ? current.filter(a => a !== opt).join(', ')
+                                  : [...current, opt].join(', ')
+                                setQ({ answer: newAnswer })
+                              } else {
+                                setQ({ answer: opt })
+                              }
+                            }}
+                            className="h-4 w-4"
+                          />
+                        )}
                         <Input
                           value={opt}
                           onChange={(e) => {
                             const newOpts = [...(editingQuestion.options || [])]
                             newOpts[i] = e.target.value
-                            const oldAnswer = isMulti
-                              ? (editingQuestion.answer || '')
-                              : (editingQuestion.answer === opt ? e.target.value : editingQuestion.answer)
-                            setEditingQuestion({ ...editingQuestion, options: newOpts, answer: oldAnswer })
+                            if (isSeq) {
+                              setQ({ options: newOpts, answer: newOpts.map(s => s.trim()).filter(Boolean).join(', ') })
+                            } else {
+                              const oldAnswer = isMulti
+                                ? (editingQuestion.answer || '')
+                                : (editingQuestion.answer === opt ? e.target.value : editingQuestion.answer)
+                              setQ({ options: newOpts, answer: oldAnswer })
+                            }
                           }}
-                          placeholder={`Option ${i + 1}`}
+                          placeholder={isSeq ? `Item ${i + 1}` : `Option ${i + 1}`}
                         />
+                        <Button
+                          variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove"
+                          onClick={() => {
+                            const newOpts = (editingQuestion.options || []).filter((_, j) => j !== i)
+                            setQ({ options: newOpts, answer: isSeq ? newOpts.map(s => s.trim()).filter(Boolean).join(', ') : editingQuestion.answer })
+                          }}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
                     )
                   })}
+                  <Button
+                    variant="outline" size="sm" className="w-fit gap-1"
+                    onClick={() => setQ({ options: [...(editingQuestion.options || []), ''] })}
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add {isSeq ? 'item' : 'option'}
+                  </Button>
                   <p className="text-xs text-muted-foreground">
-                    {editingQuestion.type === 'multiple_response'
-                      ? 'Check all correct options'
-                      : 'Select the radio button next to the correct answer'}
+                    {isSeq
+                      ? 'Enter the items in the correct order — they are shuffled for the candidate.'
+                      : isMulti
+                        ? 'Check all correct options'
+                        : 'Select the radio button next to the correct answer'}
                   </p>
                 </div>
               )}
-              {/* Model Answer for coding/descriptive types */}
-              {['coding', 'descriptive'].includes(editingQuestion.type) && (
+
+              {t === 'numeric' && (
+                <div className="grid gap-2">
+                  <Label>Correct numeric answer</Label>
+                  <Input value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. 42" />
+                  <Label htmlFor="q-tolerance">Accepted tolerance (±, 0 = exact)</Label>
+                  <Input id="q-tolerance" type="number" min="0" step="any" value={editingQuestion.tolerance ?? 0} onChange={(e) => setQ({ tolerance: parseFloat(e.target.value) || 0 })} />
+                </div>
+              )}
+
+              {t === 'short_answer' && (
+                <div className="grid gap-2">
+                  <Label>Correct answer <span className="text-muted-foreground font-normal">(matched case/space-insensitive)</span></Label>
+                  <Input value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. Binary Search" />
+                </div>
+              )}
+
+              {(t === 'matching' || t === 'drag_drop') && (
+                <div className="grid gap-3">
+                  <Label>{t === 'drag_drop' ? 'Labels (target → label)' : 'Pairs (left → right)'}</Label>
+                  {(editingQuestion.pairs || []).map((p, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input value={p.left} placeholder={`Item ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], left: e.target.value }; setQ({ pairs: next }) }} />
+                      <span className="text-muted-foreground">→</span>
+                      <Input value={p.right} placeholder={`Match ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], right: e.target.value }; setQ({ pairs: next }) }} />
+                      <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove" onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ pairs: [...(editingQuestion.pairs || []), { left: '', right: '' }] })}>
+                    <Plus className="h-3.5 w-3.5" /> Add pair
+                  </Button>
+                </div>
+              )}
+
+              {t === 'matrix' && editingQuestion.matrix && (() => {
+                const m = editingQuestion.matrix!
+                const ans = (editingQuestion.answer || '').split(',').map(s => s.trim())
+                return (
+                  <div className="grid gap-3">
+                    <Label>Columns</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {m.columns.map((c, i) => (
+                        <div key={i} className="flex items-center gap-1">
+                          <Input className="w-32" value={c} onChange={(e) => { const cols = [...m.columns]; cols[i] = e.target.value; setQ({ matrix: { ...m, columns: cols } }) }} />
+                          <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove column" onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                      <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ matrix: { ...m, columns: [...m.columns, ''] } })}>
+                        <Plus className="h-3.5 w-3.5" /> Column
+                      </Button>
+                    </div>
+                    <Label>Rows (choose the correct column per row)</Label>
+                    {m.rows.map((r, ri) => (
+                      <div key={ri} className="flex items-center gap-2">
+                        <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...m.rows]; rows[ri] = e.target.value; setQ({ matrix: { ...m, rows } }) }} />
+                        <Select value={ans[ri] || ''} onValueChange={(v) => { const next = [...ans]; next[ri] = v; setQ({ answer: next.map(s => s || '').join(', ') }) }}>
+                          <SelectTrigger className="w-40"><SelectValue placeholder="Correct" /></SelectTrigger>
+                          <SelectContent>
+                            {m.columns.filter(Boolean).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ matrix: { ...m, rows: m.rows.filter((_, j) => j !== ri) } })}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ matrix: { ...m, rows: [...m.rows, ''] } })}>
+                      <Plus className="h-3.5 w-3.5" /> Row
+                    </Button>
+                  </div>
+                )
+              })()}
+
+              {t === 'table_fill' && editingQuestion.table && (() => {
+                const tb = editingQuestion.table!
+                const ans = (editingQuestion.answer || '').split(',').map(s => s.trim())
+                return (
+                  <div className="grid gap-3">
+                    <Label>Rows (label + correct value)</Label>
+                    {tb.rows.map((r, ri) => (
+                      <div key={ri} className="flex items-center gap-2">
+                        <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...tb.rows]; rows[ri] = e.target.value; setQ({ table: { ...tb, rows } }) }} />
+                        <Input value={ans[ri] || ''} placeholder="Correct value" onChange={(e) => { const next = [...ans]; next[ri] = e.target.value; setQ({ answer: next.map(s => s || '').join(', ') }) }} />
+                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ table: { ...tb, rows: [...tb.rows, ''] } })}>
+                      <Plus className="h-3.5 w-3.5" /> Row
+                    </Button>
+                  </div>
+                )
+              })()}
+
+              {t === 'hotspot' && (
+                <div className="grid gap-3">
+                  <Label>Image URL</Label>
+                  <Input value={editingQuestion.image_url || ''} onChange={(e) => setQ({ image_url: e.target.value })} placeholder="https://..." />
+                  <Label>Regions <span className="text-muted-foreground font-normal">(percentages 0-100; radio = correct region)</span></Label>
+                  {(editingQuestion.regions || []).map((r, i) => (
+                    <div key={r.id} className="flex items-center gap-2">
+                      <input type="radio" name="hotspot-correct" checked={editingQuestion.answer === r.id} onChange={() => setQ({ answer: r.id })} className="h-4 w-4" />
+                      <Input className="w-32" value={r.label || ''} placeholder="Label" onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], label: e.target.value }; setQ({ regions: next }) }} />
+                      {(['x', 'y', 'w', 'h'] as const).map((k) => (
+                        <Input key={k} type="number" className="w-20" value={r[k]} title={k} onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], [k]: parseFloat(e.target.value) || 0 }; setQ({ regions: next }) }} />
+                      ))}
+                      <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove region" onClick={() => setQ({ regions: (editingQuestion.regions || []).filter((_, j) => j !== i) })}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ regions: [...(editingQuestion.regions || []), { id: `r${(editingQuestion.regions || []).length + 1}`, x: 10, y: 10, w: 15, h: 15, label: '' }] })}>
+                    <Plus className="h-3.5 w-3.5" /> Region
+                  </Button>
+                </div>
+              )}
+
+              {(t === 'likert' || t === 'rating') && (
+                <div className="grid gap-2">
+                  <Label>Scale bounds</Label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Min</span>
+                    <Input type="number" className="w-20" value={editingQuestion.scale?.min ?? 1} onChange={(e) => setQ({ scale: { min: parseInt(e.target.value) || 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: editingQuestion.scale?.maxLabel } })} />
+                    <span className="text-xs text-muted-foreground">Max</span>
+                    <Input type="number" className="w-20" value={editingQuestion.scale?.max ?? 5} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: parseInt(e.target.value) || 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: editingQuestion.scale?.maxLabel } })} />
+                    <Input className="w-40" placeholder="Min label" value={editingQuestion.scale?.minLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: e.target.value, maxLabel: editingQuestion.scale?.maxLabel } })} />
+                    <Input className="w-40" placeholder="Max label" value={editingQuestion.scale?.maxLabel || ''} onChange={(e) => setQ({ scale: { min: editingQuestion.scale?.min ?? 1, max: editingQuestion.scale?.max ?? 5, minLabel: editingQuestion.scale?.minLabel, maxLabel: e.target.value } })} />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Not scored — for surveys / attitudinal questions.</p>
+                </div>
+              )}
+
+              {meta.group === 'coding' && (
+                <>
+                  <div className="grid gap-2">
+                    <Label>Language</Label>
+                    <Select value={editingQuestion.language || 'python'} onValueChange={(v) => setQ({ language: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CODE_LANGUAGES.map((l) => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="q-starter">Starter code <span className="text-muted-foreground font-normal">(optional — shown in the editor)</span></Label>
+                    <Textarea id="q-starter" value={editingQuestion.starter_code || ''} onChange={(e) => setQ({ starter_code: e.target.value })} rows={4} className="font-mono text-xs" placeholder="Function signature / scaffolding the candidate starts from..." />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="q-model-answer">Model Answer / Rubric</Label>
+                    <Textarea
+                      id="q-model-answer"
+                      value={editingQuestion.answer || ''}
+                      onChange={(e) => setQ({ answer: e.target.value })}
+                      rows={5}
+                      placeholder="Expected solution or key patterns to look for..."
+                      className="font-mono text-xs"
+                    />
+                    <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Hidden Test Cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
+                    {(editingQuestion.test_cases || []).map((tc, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <Input
+                          value={tc.input}
+                          onChange={(e) => { const next = [...(editingQuestion.test_cases || [])]; next[i] = { ...next[i], input: e.target.value }; setQ({ test_cases: next }) }}
+                          placeholder={`stdin ${i + 1}`}
+                          className="font-mono text-xs"
+                        />
+                        <Input
+                          value={tc.output}
+                          onChange={(e) => { const next = [...(editingQuestion.test_cases || [])]; next[i] = { ...next[i], output: e.target.value }; setQ({ test_cases: next }) }}
+                          placeholder={`expected stdout ${i + 1}`}
+                          className="font-mono text-xs"
+                        />
+                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove test case" onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    {(editingQuestion.test_cases || []).length < 10 && (
+                      <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '' }] })}>
+                        <Plus className="h-3.5 w-3.5" /> Add test case
+                      </Button>
+                    )}
+                    <p className="text-xs text-muted-foreground">Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total).</p>
+                  </div>
+                </>
+              )}
+
+              {t === 'descriptive' && (
                 <div className="grid gap-2">
                   <Label htmlFor="q-model-answer">Model Answer / Rubric</Label>
                   <Textarea
                     id="q-model-answer"
                     value={editingQuestion.answer || ''}
-                    onChange={(e) => setEditingQuestion({ ...editingQuestion, answer: e.target.value })}
+                    onChange={(e) => setQ({ answer: e.target.value })}
                     rows={5}
-                    placeholder={editingQuestion.type === 'coding'
-                      ? 'Paste the expected code solution or key patterns to look for...'
-                      : 'Write the ideal answer or grading rubric / key points...'}
+                    placeholder="Write the ideal answer or grading rubric / key points..."
                     className="font-mono text-xs"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    This will be shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.
-                  </p>
-                </div>
-              )}
-              {/* Hidden test cases for coding questions — executed for scoring */}
-              {editingQuestion.type === 'coding' && (
-                <div className="grid gap-2">
-                  <Label>Hidden Test Cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
-                  {(editingQuestion.test_cases || []).map((tc, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <Input
-                        value={tc.input}
-                        onChange={(e) => {
-                          const next = [...(editingQuestion.test_cases || [])]
-                          next[i] = { ...next[i], input: e.target.value }
-                          setEditingQuestion({ ...editingQuestion, test_cases: next })
-                        }}
-                        placeholder={`stdin ${i + 1}`}
-                        className="font-mono text-xs"
-                      />
-                      <Input
-                        value={tc.output}
-                        onChange={(e) => {
-                          const next = [...(editingQuestion.test_cases || [])]
-                          next[i] = { ...next[i], output: e.target.value }
-                          setEditingQuestion({ ...editingQuestion, test_cases: next })
-                        }}
-                        placeholder={`expected stdout ${i + 1}`}
-                        className="font-mono text-xs"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-9 w-9 shrink-0 p-0 text-destructive"
-                        title="Remove test case"
-                        onClick={() => setEditingQuestion({ ...editingQuestion, test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                  {(editingQuestion.test_cases || []).length < 10 && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-fit gap-1"
-                      onClick={() => setEditingQuestion({ ...editingQuestion, test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '' }] })}
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add test case
-                    </Button>
-                  )}
-                  <p className="text-xs text-muted-foreground">
-                    Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total).
-                  </p>
+                  <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
                 </div>
               )}
               <div className="grid gap-2">
                 <Label htmlFor="q-score">Score (points)</Label>
-                <Input id="q-score" type="number" min="0" value={editingQuestion.score} onChange={(e) => setEditingQuestion({ ...editingQuestion, score: parseInt(e.target.value) || 0 })} />
+                <Input id="q-score" type="number" min="0" value={editingQuestion.score} onChange={(e) => setQ({ score: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
-          )}
+            )
+          })()}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuestionModal(false)}>Cancel</Button>
             <Button onClick={saveQuestion}>

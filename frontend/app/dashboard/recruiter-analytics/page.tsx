@@ -129,7 +129,7 @@ export default function RecruiterAnalyticsPage() {
           <p className="text-muted-foreground mt-1">Candidate performance and interview insights</p>
         </div>
         <Card className="border-border/60 p-10 text-center">
-          <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <Users className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No interview data available yet. Create interviews to see analytics.</p>
         </Card>
       </div>

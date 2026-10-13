@@ -81,8 +81,8 @@ export default function TeamInvitePage() {
   if (!info || info.error) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md p-8 text-center">
-          <XCircle className="mx-auto h-10 w-10 text-destructive" />
+        <Card className="w-full p-8 text-center">
+          <XCircle className="h-10 w-10 text-destructive" />
           <h1 className="mt-3 text-lg font-semibold">Invitation unavailable</h1>
           <p className="mt-1 text-sm text-muted-foreground">{info?.error || 'This invite may have expired or already been used.'}</p>
           <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>
@@ -93,19 +93,19 @@ export default function TeamInvitePage() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8 text-center">
+      <Card className="w-full p-8 text-center">
         {done ? (
           <>
             {done.ok
-              ? <CheckCircle2 className="mx-auto h-10 w-10 text-green-600" />
-              : <XCircle className="mx-auto h-10 w-10 text-destructive" />}
+              ? <CheckCircle2 className="h-10 w-10 text-green-600" />
+              : <XCircle className="h-10 w-10 text-destructive" />}
             <h1 className="mt-3 text-lg font-semibold">{done.ok ? 'Welcome!' : 'Could not join'}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{done.message}</p>
             {!done.ok && <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>}
           </>
         ) : (
           <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
               <Building2 className="h-6 w-6 text-primary" />
             </div>
             <h1 className="mt-4 text-lg font-semibold">Join {info.org_name || 'your organization'}</h1>

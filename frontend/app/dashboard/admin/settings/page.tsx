@@ -1743,7 +1743,7 @@ function SystemSettingsInner() {
                   </DialogDescription>
                 </DialogHeader>
                 {previewTemplate && (
-                  <div className="w-full max-w-275 mx-auto">
+                  <div className="w-full">
                     <div className="overflow-hidden rounded-lg border shadow-sm">
                       <CertificateRenderer data={CERT_PREVIEW_DATA} template={previewTemplate} />
                     </div>

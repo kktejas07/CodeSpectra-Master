@@ -108,7 +108,7 @@ export default function DashboardJobsPage() {
         </div>
       ) : applications.length === 0 ? (
         <Card className="border-border/60 p-12 text-center">
-          <Briefcase className="mx-auto h-12 w-12 text-muted-foreground/30" />
+          <Briefcase className="h-12 w-12 text-muted-foreground/30" />
           <p className="mt-3 text-lg font-medium">No applications yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Browse open positions and apply to ones that interest you.

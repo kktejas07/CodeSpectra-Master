@@ -999,7 +999,7 @@ export default function AdminCodeathonsPage() {
             {r.title}
             <ExternalLink className="h-3 w-3 text-muted-foreground inline" />
           </Link>
-          <p className="text-[11px] text-muted-foreground truncate max-w-xs">{r.description || 'No description'}</p>
+          <p className="text-[11px] text-muted-foreground truncate">{r.description || 'No description'}</p>
         </div>
       ),
     },
@@ -1196,7 +1196,7 @@ export default function AdminCodeathonsPage() {
 
       {/* CREATE DIALOG MODAL (Unified with Integrated Problem Set Manager) */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
@@ -1242,7 +1242,7 @@ export default function AdminCodeathonsPage() {
 
       {/* EDIT DIALOG MODAL (Wide Horizontal View with Problem Set Manager) */}
       <Dialog open={Boolean(editing)} onOpenChange={(o) => { if (!o) setEditing(null) }}>
-        <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
+        <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 border border-primary/30 text-primary">
@@ -1288,7 +1288,7 @@ export default function AdminCodeathonsPage() {
 
       {/* DEDICATED PROBLEM SET MANAGER MODAL */}
       <Dialog open={Boolean(problemManagerTarget)} onOpenChange={(o) => { if (!o) setProblemManagerTarget(null) }}>
-        <DialogContent className="sm:max-w-3xl max-h-[88vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
+        <DialogContent className="max-h-[88vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
@@ -1327,7 +1327,7 @@ export default function AdminCodeathonsPage() {
 
       {/* SUBMISSIONS & JUDGE CODE REVIEW MODAL */}
       <Dialog open={Boolean(submissionsTarget)} onOpenChange={(o) => { if (!o) setSubmissionsTarget(null) }}>
-        <DialogContent className="sm:max-w-5xl max-h-[92vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
+        <DialogContent className="max-h-[92vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -1357,7 +1357,7 @@ export default function AdminCodeathonsPage() {
               </div>
             ) : submissionsList.length === 0 ? (
               <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-xl">
-                <Code2 className="h-10 w-10 mx-auto text-muted-foreground/50 mb-2" />
+                <Code2 className="h-10 w-10 text-muted-foreground/50 mb-2" />
                 <p className="text-sm font-semibold text-foreground">No submissions yet</p>
                 <p className="text-xs mt-1">When participants write code and click Submit, their solutions will appear here for review.</p>
               </div>
@@ -1521,7 +1521,7 @@ export default function AdminCodeathonsPage() {
                         <tr key={s.id} className="hover:bg-muted/20 transition-colors">
                           <td className="p-3">
                             <span className="font-bold text-foreground block">{s.userName}</span>
-                            <span className="text-[10px] text-muted-foreground block truncate max-w-35">{s.userEmail}</span>
+                            <span className="text-[10px] text-muted-foreground block truncate">{s.userEmail}</span>
                           </td>
                           <td className="p-3">
                             <span className="font-semibold text-foreground">{s.problemTitle}</span>
@@ -1584,7 +1584,7 @@ export default function AdminCodeathonsPage() {
 
       {/* SHARE CODEATHON MODAL */}
       <Dialog open={Boolean(shareTarget)} onOpenChange={(o) => { if (!o) setShareTarget(null) }}>
-        <DialogContent className="sm:max-w-lg p-6 border-border bg-card/95 backdrop-blur-xl shadow-2xl">
+        <DialogContent className="p-6 border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">

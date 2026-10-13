@@ -395,7 +395,7 @@ function CodeScannerPageInner() {
       {isModeLocked(mode) && (
         <Card className="flex items-center justify-center p-12 border-border bg-card/30">
           <div className="text-center">
-            <Lock className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <Lock className="w-10 h-10 text-muted-foreground/40 mb-3" />
             <p className="font-semibold text-foreground">Feature Locked</p>
             <p className="text-sm text-muted-foreground mt-1">This scanner mode is currently disabled by admin.</p>
           </div>
@@ -674,7 +674,7 @@ function CodeScannerPageInner() {
             ) : !analysis ? (
               <Card className="h-full flex items-center justify-center bg-card/30 border border-border">
                 <div className="text-center p-6">
-                  <Code2 className="w-12 h-12 text-foreground/40 mx-auto mb-3" />
+                  <Code2 className="w-12 h-12 text-foreground/40 mb-3" />
                   <p className="text-foreground/60">
                     Paste your code and click <strong>Scan Code</strong> to see detailed analysis
                   </p>
@@ -822,7 +822,7 @@ function CodeScannerPageInner() {
             {!analysis ? (
               <Card className="flex min-h-[280px] items-center justify-center border border-border bg-card/30 p-6">
                 <div className="text-center text-muted-foreground">
-                  <Code2 className="mx-auto mb-3 h-10 w-10 opacity-40" />
+                  <Code2 className="mb-3 h-10 w-10 opacity-40" />
                   <p className="text-sm">Select a repository, then click a file to scan and persist results.</p>
                 </div>
               </Card>
@@ -954,14 +954,14 @@ function CodeScannerPageInner() {
 
       {/* Dependency Scan Mode */}
       {mode === 'dependencies' && !isModeLocked('dependencies') && (
-        <div className="max-w-4xl mx-auto">
+        <div>
           <DependencyScannerPanel />
         </div>
       )}
 
       {/* Secret Detection Mode */}
       {mode === 'secrets' && !isModeLocked('secrets') && (
-        <div className="max-w-4xl mx-auto">
+        <div>
           <SecretScannerPanel />
         </div>
       )}
@@ -993,7 +993,7 @@ function CodeScannerPageInner() {
 
       {/* Codebase Chat Mode */}
       {mode === 'chat' && !isModeLocked('chat') && (
-        <div className="max-w-4xl mx-auto">
+        <div>
           <CodebaseChatSidebar 
             scanId={analysis?.scanId}
             files={analysis ? [

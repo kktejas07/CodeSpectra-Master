@@ -315,7 +315,7 @@ export default function GenerateCoursePage() {
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                 <Video className="h-5 w-5 text-indigo-500" /> How it works
               </h3>
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-border before:to-transparent">
+              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-border before:to-transparent">
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                   <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                     <Database className="h-4 w-4" />
@@ -349,7 +349,7 @@ export default function GenerateCoursePage() {
         </div>
       ) : (
         /* Generation Loading State */
-        <Card className="max-w-2xl mx-auto p-12 text-center border-indigo-500/50 shadow-2xl shadow-indigo-500/20 relative overflow-hidden">
+        <Card className="p-12 text-center border-indigo-500/50 shadow-2xl shadow-indigo-500/20 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-muted">
             <div 
               className="h-full bg-indigo-600 transition-all duration-1000 ease-out" 
@@ -372,7 +372,7 @@ export default function GenerateCoursePage() {
               {currentTask}
             </p>
             
-            <div className="w-full max-w-md bg-secondary/50 rounded-lg p-4 text-left border border-border/50">
+            <div className="w-full bg-secondary/50 rounded-lg p-4 text-left border border-border/50">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Estimated Time: 12 Hours</span>
                 <span className="font-medium text-indigo-500">{progress}%</span>
@@ -389,11 +389,11 @@ export default function GenerateCoursePage() {
       {/* PRO Upsell Modal Overlay */}
       {showUpsell && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-md p-8 border-amber-500/30 shadow-2xl relative overflow-hidden">
+          <Card className="w-full p-8 border-amber-500/30 shadow-2xl relative overflow-hidden">
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-amber-500/20 rounded-full blur-3xl" />
             
             <div className="relative z-10 text-center">
-              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-6">
                 <ShieldAlert className="h-8 w-8 text-amber-600 dark:text-amber-400" />
               </div>
               <h2 className="text-2xl font-bold mb-3">Out of AI Credits</h2>

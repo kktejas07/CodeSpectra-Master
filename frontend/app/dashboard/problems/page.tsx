@@ -191,10 +191,10 @@ export default function ProblemsListPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="max-w-[1400px] mx-auto pb-12 space-y-6">
+    <div className="pb-12 space-y-6">
       
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-md">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search Opportunities" className="pl-9 h-10 rounded-full bg-muted/50 border-none" />
         </div>

@@ -268,7 +268,7 @@ export default function EmailMonitoring() {
               </div>
             ) : (
               <div className="py-12 text-center text-muted-foreground">
-                <Mail className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                <Mail className="h-8 w-8 mb-2 text-muted-foreground/40" />
                 <p className="text-sm">No email logs yet. Emails appear after the first send.</p>
               </div>
             )}
@@ -393,7 +393,7 @@ export default function EmailMonitoring() {
               </div>
             ) : (
               <div className="py-12 text-center text-muted-foreground">
-                <MailOpen className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                <MailOpen className="h-8 w-8 mb-2 text-muted-foreground/40" />
                 <p className="text-sm">No bounces or failures recorded. All emails delivering cleanly.</p>
               </div>
             )}
@@ -436,7 +436,7 @@ function EmailRow({ log }: { log: EmailLog }) {
       <tr className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setExpanded(!expanded)}>
         <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">{time.toLocaleString()}</td>
         <td className="py-3 px-4 text-sm font-mono">{log.to_email}</td>
-        <td className="py-3 px-4 text-sm max-w-62.5 truncate" title={log.subject}>{log.subject}</td>
+        <td className="py-3 px-4 text-sm .5 truncate" title={log.subject}>{log.subject}</td>
         <td className="py-3 px-4">
           <Badge variant="outline" className={`text-[10px] ${(CATEGORY_COLORS[log.category] || '') as any}`}>{log.category}</Badge>
         </td>

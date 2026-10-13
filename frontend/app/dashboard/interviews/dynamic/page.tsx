@@ -39,7 +39,7 @@ export default function DynamicInterviewPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-4xl space-y-6">
+        <div className="space-y-6">
           <SkeletonCard />
           <SkeletonText lines={4} />
           <SkeletonCard />

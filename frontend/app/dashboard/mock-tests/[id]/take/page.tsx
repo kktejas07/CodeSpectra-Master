@@ -111,10 +111,10 @@ export default function TakeMockTestPage() {
   if (!gate.ready || loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-6">
-        <div className="w-full max-w-md space-y-4">
+        <div className="w-full space-y-4">
           <div className="space-y-2">
-            <div className="h-8 w-64 bg-muted/60 rounded mx-auto animate-pulse" />
-            <div className="h-4 w-80 bg-muted/40 rounded mx-auto animate-pulse" />
+            <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
+            <div className="h-4 w-80 bg-muted/40 rounded animate-pulse" />
           </div>
           <SkeletonCard />
         </div>
@@ -135,7 +135,7 @@ export default function TakeMockTestPage() {
 
   if (!started) {
     return (
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
         <Button variant="ghost" onClick={() => router.back()} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to config
         </Button>
@@ -169,7 +169,7 @@ export default function TakeMockTestPage() {
     const percentage = Math.round((score / questions.length) * 100)
     
     return (
-      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
+      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
         <Card className="text-center p-8">
           <div className="mb-6 flex justify-center">
             {percentage >= 70 ? (
@@ -239,7 +239,7 @@ export default function TakeMockTestPage() {
   const hasAnsweredCurrent = answers[currentIndex] !== undefined
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-8 pt-6 max-w-5xl mx-auto w-full h-full">
+    <div className="flex-1 flex flex-col p-4 md:p-8 pt-6 w-full h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>

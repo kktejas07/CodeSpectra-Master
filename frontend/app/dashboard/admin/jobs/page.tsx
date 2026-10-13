@@ -291,7 +291,7 @@ export default function AdminJobsPage() {
 
       {jobs.length === 0 && !loading ? (
         <Card className="p-10 text-center">
-          <Briefcase className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <Briefcase className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No job postings yet. Create your first one.</p>
           <Button className="mt-4" onClick={openCreate}><Plus className="w-4 h-4 mr-1" />Post a Job</Button>
         </Card>
@@ -311,7 +311,7 @@ export default function AdminJobsPage() {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-8">
-          <Card className="w-full max-w-2xl m-auto">
+          <Card className="w-full m-auto">
             <div className="flex items-center justify-between p-5 border-b border-border">
               <h2 className="text-lg font-semibold">
                 {editingId ? 'Edit Job Posting' : 'Post New Job'}

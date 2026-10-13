@@ -251,7 +251,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               <Link href="/dashboard/arena" className="group" data-tour="practice-arena">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:shadow-md group-hover:shadow-emerald-950/40 group-hover:-translate-y-0.5">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
                     <FileText className="h-4.5 w-4.5 text-emerald-400" />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">Assessments</p>
@@ -261,7 +261,7 @@ export default function DashboardPage() {
 
               <Link href="/dashboard/problems" className="group">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:shadow-md group-hover:shadow-emerald-950/40 group-hover:-translate-y-0.5">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
                     <Code className="h-4.5 w-4.5 text-emerald-400" />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">Problems</p>
@@ -271,7 +271,7 @@ export default function DashboardPage() {
 
               <Link href="/dashboard/assessments" className="group" data-tour="assessments">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-red-500/50 group-hover:shadow-md group-hover:shadow-red-950/40 group-hover:-translate-y-0.5">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
                     <Target className="h-4.5 w-4.5 text-red-400" />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">Arena</p>
@@ -281,7 +281,7 @@ export default function DashboardPage() {
 
               <Link href="/dashboard/scanner?mode=manual" className="group" data-tour="scanner-tool">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-cyan-500/50 group-hover:shadow-md group-hover:shadow-cyan-950/40 group-hover:-translate-y-0.5">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
                     <Activity className="h-4.5 w-4.5 text-cyan-400" />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">Run Scan</p>
@@ -291,7 +291,7 @@ export default function DashboardPage() {
 
               <Link href="/dashboard/tracks" className="group">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-cyan-500/50 group-hover:shadow-md group-hover:shadow-cyan-950/40 group-hover:-translate-y-0.5">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
                     <Layers className="h-4.5 w-4.5 text-cyan-400" />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">Tracks</p>
@@ -301,7 +301,7 @@ export default function DashboardPage() {
 
               <Link href="/dashboard/achievements" className="group">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-amber-500/50 group-hover:shadow-md group-hover:shadow-amber-950/40 group-hover:-translate-y-0.5">
-                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
                     <Star className="h-4.5 w-4.5 text-amber-400" />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">Achievements</p>

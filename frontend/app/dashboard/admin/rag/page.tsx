@@ -83,7 +83,7 @@ export default function RagAdminPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="mx-auto max-w-4xl space-y-8">
+      <div className="space-y-8">
         <SkeletonText lines={2} />
         <SkeletonStats />
         <SkeletonCard />
@@ -92,7 +92,7 @@ export default function RagAdminPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card"><Database className="h-5 w-5 text-primary" /></div>

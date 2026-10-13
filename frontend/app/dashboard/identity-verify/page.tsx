@@ -180,8 +180,8 @@ export default function IdentityVerificationPage() {
 
   if (identityProvider === 'off') {
     return (
-      <div className="mx-auto max-w-lg space-y-4 py-16 text-center" data-testid="identity-verify-page">
-        <ShieldCheck className="mx-auto h-12 w-12 text-muted-foreground" />
+      <div className="space-y-4 py-16 text-center" data-testid="identity-verify-page">
+        <ShieldCheck className="h-12 w-12 text-muted-foreground" />
         <h1 className="text-2xl font-bold">Identity verification is off</h1>
         <p className="text-sm text-muted-foreground">
           SuperAdmin disabled full KYC for this platform. Exam/profile Aadhaar may still use Anon Aadhaar
@@ -193,8 +193,8 @@ export default function IdentityVerificationPage() {
 
   if (identityProvider === 'digilocker') {
     return (
-      <div className="mx-auto max-w-lg space-y-4 py-16 text-center" data-testid="identity-verify-page">
-        <ShieldCheck className="mx-auto h-12 w-12 text-primary" />
+      <div className="space-y-4 py-16 text-center" data-testid="identity-verify-page">
+        <ShieldCheck className="h-12 w-12 text-primary" />
         <h1 className="text-2xl font-bold">DigiLocker KYC</h1>
         <p className="text-sm text-muted-foreground">
           DigiLocker is selected for identity verification but the OAuth flow is not wired yet.
@@ -216,9 +216,9 @@ export default function IdentityVerificationPage() {
         <div className={`rounded-xl border p-8 ${isReview ? 'border-amber-400/40 bg-amber-400/5' : 'border-blue-400/40 bg-blue-400/5'}`}>
           <div className="text-center mb-6">
             {isReview ? (
-              <Eye className="h-12 w-12 mx-auto text-amber-400 mb-3" />
+              <Eye className="h-12 w-12 text-amber-400 mb-3" />
             ) : (
-              <Clock className="h-12 w-12 mx-auto text-blue-400 mb-3" />
+              <Clock className="h-12 w-12 text-blue-400 mb-3" />
             )}
             <h1 className="text-2xl font-bold text-foreground mb-1">
               {isReview ? 'Under Review' : 'Verification Pending'}
@@ -232,7 +232,7 @@ export default function IdentityVerificationPage() {
 
           {/* Verification Details */}
           {status.result && (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="space-y-4">
               {/* Document Info */}
               <div className="p-4 rounded-lg bg-background/50 border border-border/50">
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -415,14 +415,14 @@ export default function IdentityVerificationPage() {
       <div className="space-y-6" data-testid="identity-verify-page">
         <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/5 p-8">
           <div className="text-center mb-6">
-            <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-400 mb-3" />
+            <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-3" />
             <h1 className="text-2xl font-bold text-foreground mb-1">Identity Verified</h1>
             <p className="text-muted-foreground">Your identity has been verified successfully.</p>
           </div>
 
           {/* Verification Details */}
           {status.result && (
-            <div className="max-w-3xl mx-auto space-y-4">
+            <div className="space-y-4">
               {/* Document Info */}
               <div className="p-4 rounded-lg bg-background/50 border border-border/50">
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">

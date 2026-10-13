@@ -5,11 +5,11 @@ import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
-import { sanitizeTestCases, sanitizeExamQuestionList } from '@/lib/grading'
+import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
+import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
+import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 
 export const runtime = 'nodejs'
-
-type QuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
 
 interface QuestionDoc {
   id: string
@@ -20,6 +20,15 @@ interface QuestionDoc {
   answer?: string
   score: number
   test_cases?: { input: string; output: string }[]
+  tolerance?: number
+  pairs?: { left: string; right: string }[]
+  matrix?: { rows: string[]; columns: string[] }
+  table?: { columns: string[]; rows: string[] }
+  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
+  image_url?: string
+  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
+  language?: string
+  starter_code?: string
 }
 
 const CODE_BLOCK_RE = /```(?:json)?\s*([\s\S]*?)```/
@@ -52,24 +61,14 @@ function tryParseJsonArray(s: string): unknown[] | null {
   return null
 }
 
-const VALID_TYPES: QuestionType[] = ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks']
+const VALID_TYPES: QuestionType[] = BANK_QUESTION_TYPES
 
 function normalizeQuestion(raw: Record<string, unknown>): QuestionDoc {
-  const type = VALID_TYPES.includes(raw.type as QuestionType) ? (raw.type as QuestionType) : 'mcq'
-  const options = Array.isArray(raw.options) ? raw.options.map(String).filter(Boolean) : undefined
-  const answer = raw.answer ? String(raw.answer) : undefined
-  // Injection-safe: only string input/output pairs survive (see lib/grading.ts).
-  const cases = sanitizeTestCases((raw as Record<string, unknown>).test_cases ?? (raw as Record<string, unknown>).testCases)
-  return {
-    id: crypto.randomUUID(),
-    type,
-    title: String(raw.title || 'Question'),
-    prompt: String(raw.prompt || ''),
-    options: ['mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(type) ? options : undefined,
-    answer: type === 'coding' || type === 'descriptive' ? answer : answer,
-    score: Number(raw.score) || 10,
-    ...(cases.length ? { test_cases: cases } : {}),
-  }
+  // Injection-safe passthrough (see lib/grading.ts sanitizeExamQuestion): keeps
+  // known scalars + structured fields (pairs/matrix/table/regions/tolerance),
+  // drops operator keys and blobs. Override id + canonicalize type after.
+  const clean = sanitizeExamQuestion(raw)
+  return { ...clean, id: crypto.randomUUID(), type: canonicalType(clean.type, 'mcq') } as unknown as QuestionDoc
 }
 
 export async function GET() {
@@ -198,11 +197,13 @@ export async function POST(request: Request) {
     const screeningType = ['aptitude', 'technical', 'coding', 'mixed'].includes(String(body.screening_type))
       ? String(body.screening_type)
       : 'mixed'
+    // Types the AI generator can author reliably (hotspot needs an image URL
+    // and Likert/rating are unscored — admins author those directly).
     const typePoolByScreening: Record<string, QuestionType[]> = {
-      aptitude: ['mcq', 'true_false'],
-      technical: ['mcq', 'multiple_response', 'fill_blanks', 'true_false'],
-      coding: ['coding', 'mcq'],
-      mixed: ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks'],
+      aptitude: ['mcq', 'true_false', 'yes_no', 'multiple_response', 'numeric', 'short_answer', 'ordering'],
+      technical: ['mcq', 'multiple_response', 'true_false', 'fill_blanks', 'numeric', 'short_answer', 'matching', 'matrix', 'table_fill'],
+      coding: ['coding', 'debugging', 'code_completion', 'output_prediction', 'code_review', 'sql', 'mcq'],
+      mixed: ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'numeric', 'short_answer', 'ordering', 'ranking', 'matching', 'matrix', 'table_fill', 'coding', 'debugging', 'code_completion', 'output_prediction', 'code_review', 'sql', 'refactoring', 'test_case_writing', 'descriptive'],
     }
     const allowedTypes = typePoolByScreening[screeningType]
     let questionList: QuestionDoc[] = []
@@ -238,13 +239,8 @@ export async function POST(request: Request) {
           '- Write clear, specific questions with well-crafted wrong options that seem plausible (good distractors)\n' +
           '- Include a mix of conceptual, practical, scenario-based, and coding questions\n' +
           '- Coding questions should describe a real task with expected output or behavior\n' +
-          '- For mcq: exactly 4 distinct options, one clearly correct, others realistic but wrong\n' +
-          '- For multiple_response: 4-5 options, mark ALL correct answers in answer field (comma separated)\n' +
-          '- For true_false: options=["True","False"], answer="True" or "False"\n' +
-          '- For coding: omit options and answer, prompt must describe a specific coding task\n' +
-          '- For coding: ALSO include test_cases as 2-4 objects {"input": "<stdin>", "output": "<exact expected stdout>"} that verify the task — these execute the candidate\'s code for scoring\n' +
-          '- For descriptive: omit options, answer should be key points or a model answer\n' +
-          '- For fill_blanks: use ___ in prompt for blanks, answer is the missing word(s)\n\n' +
+          'TYPE RULES:\n' + buildTypeInstructions(allowedTypes) + '\n' +
+          buildExtraFieldHint(allowedTypes) + '\n\n' +
           'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number' + (allowedTypes.includes('coding') ? ', test_cases?:[{input:string, output:string}] (coding only)' : '') + '}.\n' +
           'Never repeat content. Return exactly ' + remaining + ' items.'
         const aiRes = await backendComplete({
@@ -264,7 +260,11 @@ export async function POST(request: Request) {
     }
 
     if (questionList.length === 0 && numQuestions > 0) {
-      const typesPool: QuestionType[] = allowedTypes
+      // Last-resort template questions. Only types this template can build
+      // correctly are eligible; anything else would emit a malformed doc.
+      const buildable = ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'coding', 'descriptive'] as const
+      const filtered = allowedTypes.filter((t) => (buildable as readonly string[]).includes(t))
+      const typesPool: QuestionType[] = filtered.length ? filtered : ['mcq']
       for (let i = 0; i < numQuestions; i++) {
         const stack = stacks[i % stacks.length]
         const type = typesPool[i % typesPool.length]
@@ -278,6 +278,10 @@ export async function POST(request: Request) {
         }
         if (type === 'coding') {
           q.prompt = `Write a ${stack} function that demonstrates ${sub.toLowerCase()} at a ${body.level || 'Beginner'} level. Include input validation, edge cases, and follow best practices.`
+        } else if (type === 'yes_no') {
+          q.prompt = `In ${stack}, does ${sub.toLowerCase()} warrant extra attention at a ${body.level || 'Beginner'} level?`
+          q.options = ['Yes', 'No']
+          q.answer = 'Yes'
         } else if (type === 'true_false') {
           q.prompt = `In ${stack}, ${sub.toLowerCase()} is an important concept that every ${body.level || 'Beginner'} should know. Determine if the following statement is true or false.`
           q.options = ['True', 'False']

@@ -65,7 +65,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="space-y-4 w-full max-w-md">
+        <div className="space-y-4 w-full">
           <SkeletonText lines={2} />
           <SkeletonCard />
         </div>
@@ -99,13 +99,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
         descriptionComponent={
           problem?.statement_md ? (
             <div
-              className="prose prose-sm max-w-none text-foreground leading-relaxed
-                prose-headings:text-foreground prose-p:text-muted-foreground
-                prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-                prose-strong:text-foreground prose-li:text-muted-foreground
-                prose-pre:bg-muted prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg
-                prose-ul:text-muted-foreground prose-ol:text-muted-foreground
-                prose-li:marker:text-muted-foreground"
+              className="prose prose-sm max-w-none text-foreground leading-relaxed prose-headings:text-foreground prose-p:text-muted-foreground prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-strong:text-foreground prose-li:text-muted-foreground prose-pre:bg-muted prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-ul:text-muted-foreground prose-ol:text-muted-foreground prose-li:marker:text-muted-foreground"
             >
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>
             </div>

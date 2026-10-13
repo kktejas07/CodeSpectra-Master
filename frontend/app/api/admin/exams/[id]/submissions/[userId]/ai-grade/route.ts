@@ -66,6 +66,10 @@ export async function POST(
       maxPoints,
       options: Array.isArray(q.options) ? q.options.map(String) : undefined,
       testCases: q.test_cases || q.testCases,
+      tolerance: typeof q.tolerance === 'number' ? q.tolerance : undefined,
+      pairs: Array.isArray(q.pairs) ? q.pairs : undefined,
+      matrix: q.matrix || undefined,
+      table: q.table || undefined,
     })
 
     return NextResponse.json({

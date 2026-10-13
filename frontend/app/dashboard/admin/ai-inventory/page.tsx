@@ -306,7 +306,7 @@ export default function AiInventoryPage() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">
+                  <p className="text-xs .5">
                     Superadmin control plane: view auto-discovered AI assets, toggle features on/off, add custom endpoints, and review dependency vulnerabilities.
                   </p>
                 </TooltipContent>
@@ -617,7 +617,7 @@ export default function AiInventoryPage() {
       {/* Add Custom Component Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-lg p-6 space-y-4 bg-background border border-border shadow-2xl">
+          <Card className="w-full p-6 space-y-4 bg-background border border-border shadow-2xl">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <h3 className="text-lg font-bold">Register Custom AI Component</h3>
               <button

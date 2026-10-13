@@ -238,7 +238,7 @@ export default function EbookReaderPage() {
                 {ebook.title}
               </h1>
               {ebook.subtitle ? (
-                <p className="mt-1 max-w-3xl text-sm text-white/85">{ebook.subtitle}</p>
+                <p className="mt-1 text-sm text-white/85">{ebook.subtitle}</p>
               ) : null}
               <p className="mt-2 text-xs text-white/70">
                 {ebook.readMinutes ? `${ebook.readMinutes} min read` : ''}
@@ -275,7 +275,7 @@ export default function EbookReaderPage() {
       )}
 
       {showQuiz && quizQuestions.length > 0 && (
-        <div className="max-w-2xl mx-auto">
+        <div>
           <EbookQuiz questions={quizQuestions} onComplete={(score, total) => {
             console.log(`Quiz completed: ${score}/${total}`)
           }} />

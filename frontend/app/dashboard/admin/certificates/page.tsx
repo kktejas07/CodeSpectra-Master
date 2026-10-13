@@ -299,7 +299,7 @@ export default function CertificatesPage() {
               placeholder="Search audit log..."
               value={auditSearch}
               onChange={(e) => setAuditSearch(e.target.value)}
-              className="h-8 max-w-xs text-xs"
+              className="h-8 text-xs"
             />
           </div>
         </div>
@@ -320,7 +320,7 @@ export default function CertificatesPage() {
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin" />
                   </td>
                 </tr>
               ) : filteredCerts.length === 0 ? (
@@ -386,7 +386,7 @@ export default function CertificatesPage() {
       </Card>
 
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Issue Certificate</DialogTitle>
             <DialogDescription>
@@ -535,7 +535,7 @@ export default function CertificatesPage() {
       </Dialog>
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Certificate Preview</DialogTitle>
             <DialogDescription>Preview of the selected certificate template.</DialogDescription>

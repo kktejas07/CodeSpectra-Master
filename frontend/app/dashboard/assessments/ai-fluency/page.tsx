@@ -166,7 +166,7 @@ export default function AiFluencySessionPage() {
   const avgScore = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : '--'
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -328,14 +328,14 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
           <SkeletonButton />
         </div>
         <div className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-3 animate-pulse">
-          <div className="h-16 w-24 bg-muted/60 rounded mx-auto" />
-          <div className="h-4 w-20 bg-muted/40 rounded mx-auto" />
+          <div className="h-16 w-24 bg-muted/60 rounded" />
+          <div className="h-4 w-20 bg-muted/40 rounded" />
         </div>
         <SkeletonCard />
         <div className="grid grid-cols-2 gap-4">
@@ -360,7 +360,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
   const scoreColor = report.overallScore >= 80 ? 'text-green-500' : report.overallScore >= 60 ? 'text-amber-500' : 'text-red-500'
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <BrainCircuit className="h-6 w-6 text-primary" /> AI Fluency Report

@@ -102,7 +102,7 @@ export default function InterviewsPage() {
         </div>
       ) : interviews.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
-          <Bot className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+          <Bot className="h-10 w-10 mb-3 text-muted-foreground/50" />
           No interviews yet. Schedule your first AI-powered interview.
         </Card>
       ) : (

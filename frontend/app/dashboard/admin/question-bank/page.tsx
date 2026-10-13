@@ -14,7 +14,26 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react'
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
+import { metaFor, QUESTION_TYPES } from '@/lib/question-types'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+
+/** Structured fields (pairs/matrix/table/hotspot/scale/tolerance/coding) are
+ * authored as JSON in the bank form and merged into the payload on save. */
+interface StructuredFields {
+  tolerance?: number
+  pairs?: { left: string; right: string }[]
+  matrix?: { rows: string[]; columns: string[] }
+  table?: { columns: string[]; rows: string[] }
+  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
+  image_url?: string
+  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
+  language?: string
+  starter_code?: string
+}
+
+const STRUCTURED_TYPES = ['matching', 'drag_drop', 'matrix', 'table_fill', 'hotspot', 'numeric', 'likert', 'rating']
+
+const STRUCTURED_HINT = '{"pairs":[{"left":"A","right":"1"}],"matrix":{"rows":["r1"],"columns":["T","F"]},"table":{"rows":["r1"]},"scale":{"min":1,"max":5},"image_url":"https://...","regions":[{"id":"r1","x":10,"y":10,"w":15,"h":15,"label":"L"}],"tolerance":0.5,"language":"python","starter_code":"..."}'
 
 interface BankQuestion {
   id: string
@@ -35,6 +54,15 @@ interface BankQuestion {
   level?: string
   assessment_category?: string
   source: string
+  tolerance?: number
+  pairs?: { left: string; right: string }[]
+  matrix?: { rows: string[]; columns: string[] }
+  table?: { columns: string[]; rows: string[] }
+  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
+  image_url?: string
+  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
+  language?: string
+  starter_code?: string
 }
 
 interface Stats {
@@ -48,7 +76,7 @@ interface Stats {
 const EMPTY_FORM = {
   title: '', question: '', type: 'mcq' as QuestionType, options: '', answer: '', explanation: '',
   difficulty: 'Medium' as 'Easy' | 'Medium' | 'Hard', marks: 10, degree_type: '', branch: '', subject: '', tech_stack: '', tags: '',
-  industry: '', level: '', assessment_category: '',
+  industry: '', level: '', assessment_category: '', structured: '',
 }
 
 export default function QuestionBankPage() {
@@ -130,11 +158,23 @@ export default function QuestionBankPage() {
 
   const openEdit = (q?: BankQuestion) => {
     setEditing(q || null)
+    const structured: StructuredFields = q ? {
+      ...(q.tolerance !== undefined ? { tolerance: q.tolerance } : {}),
+      ...(q.pairs ? { pairs: q.pairs } : {}),
+      ...(q.matrix ? { matrix: q.matrix } : {}),
+      ...(q.table ? { table: q.table } : {}),
+      ...(q.scale ? { scale: q.scale } : {}),
+      ...(q.image_url ? { image_url: q.image_url } : {}),
+      ...(q.regions ? { regions: q.regions } : {}),
+      ...(q.language ? { language: q.language } : {}),
+      ...(q.starter_code ? { starter_code: q.starter_code } : {}),
+    } : {}
     setForm(q ? {
       title: q.title, question: q.question, type: q.type, options: (q.options || []).join('\n'), answer: q.answer || '',
       explanation: q.explanation || '', difficulty: q.difficulty, marks: q.marks || 10, degree_type: q.degree_type || '',
       branch: q.branch || '', subject: q.subject || '', tech_stack: (q.tech_stack || []).join(', '), tags: (q.tags || []).join(', '),
       industry: q.industry || '', level: q.level || '', assessment_category: q.assessment_category || '',
+      structured: Object.keys(structured).length ? JSON.stringify(structured, null, 2) : '',
     } : { ...EMPTY_FORM })
     setEditOpen(true)
   }
@@ -144,6 +184,17 @@ export default function QuestionBankPage() {
       addToast({ type: 'error', title: 'Question prompt is required' })
       return
     }
+    let structured: StructuredFields = {}
+    if (form.structured.trim()) {
+      try {
+        const parsed = JSON.parse(form.structured)
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error()
+        structured = parsed as StructuredFields
+      } catch {
+        addToast({ type: 'error', title: 'Advanced fields must be a valid JSON object' })
+        return
+      }
+    }
     const payload = {
       title: form.title.trim(), question: form.question.trim(), type: form.type,
       options: form.options.split('\n').map(s => s.trim()).filter(Boolean),
@@ -152,6 +203,7 @@ export default function QuestionBankPage() {
       subject: form.subject.trim(), tech_stack: form.tech_stack.split(',').map(s => s.trim()).filter(Boolean),
       tags: form.tags.split(',').map(s => s.trim().replace(/^#/, '')).filter(Boolean),
       industry: form.industry || undefined, level: form.level || undefined, assessment_category: form.assessment_category || undefined,
+      ...structured,
     }
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `/api/question-bank?id=${editing.id}` : '/api/question-bank'
@@ -328,7 +380,7 @@ export default function QuestionBankPage() {
         </Select>
         <Input
           placeholder="Search questions, subjects, tags..."
-          className="h-9 flex-1 min-w-50 max-w-sm text-sm"
+          className="h-9 flex-1 min-w-50 text-sm"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1) }}
         />
@@ -367,7 +419,7 @@ export default function QuestionBankPage() {
                   </td>
                   <td className="py-3 px-4">{r.branch ? <Badge variant="outline">{branchLabel(r.branch)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
                   <td className="py-3 px-4 text-xs">{r.level ? <Badge variant="outline">{levelLabel(r.level)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
-                  <td className="py-3 px-4 max-w-35 truncate text-xs">{r.subject || '—'}</td>
+                  <td className="py-3 px-4 truncate text-xs">{r.subject || '—'}</td>
                   <td className="py-3 px-4"><Badge className={diffColor(r.difficulty)}>{r.difficulty}</Badge></td>
                   <td className="py-3 px-4 text-xs">{r.type}</td>
                   <td className="py-3 px-4 text-xs truncate max-w-[130px]">{r.industry ? industryLabel(r.industry) : <span className="text-muted-foreground text-xs">—</span>}</td>
@@ -403,7 +455,7 @@ export default function QuestionBankPage() {
 
       {/* Add / Edit modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Question' : 'Add Question'}</DialogTitle>
             <DialogDescription>Create or update an engineering question.</DialogDescription>
@@ -422,7 +474,7 @@ export default function QuestionBankPage() {
                 <Label>Type</Label>
                 <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as QuestionType })}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent>{BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                  <SelectContent>{QUESTION_TYPES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
@@ -435,10 +487,17 @@ export default function QuestionBankPage() {
                 </Select>
               </div>
             </div>
-            {['mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(form.type) && (
+            {metaFor(form.type).hasOptions && (
               <div className="space-y-2">
-                <Label>Options (one per line)</Label>
-                <Textarea value={form.options} onChange={e => setForm({ ...form, options: e.target.value })} rows={4} placeholder={form.type === 'true_false' ? 'True\nFalse' : 'Option 1\nOption 2\nOption 3\nOption 4'} />
+                <Label>{form.type === 'ordering' || form.type === 'ranking' ? 'Items (one per line, in the correct order)' : 'Options (one per line)'}</Label>
+                <Textarea value={form.options} onChange={e => setForm({ ...form, options: e.target.value })} rows={4} placeholder={form.type === 'true_false' ? 'True\nFalse' : form.type === 'yes_no' ? 'Yes\nNo' : 'Option 1\nOption 2\nOption 3\nOption 4'} />
+              </div>
+            )}
+            {STRUCTURED_TYPES.includes(form.type) && (
+              <div className="space-y-2">
+                <Label>Advanced fields (JSON) <span className="text-muted-foreground font-normal">— pairs / matrix / table / hotspot / scale / tolerance / language</span></Label>
+                <Textarea value={form.structured} onChange={e => setForm({ ...form, structured: e.target.value })} rows={4} className="font-mono text-xs" placeholder={STRUCTURED_HINT} />
+                <p className="text-xs text-muted-foreground">Optional. Use the assessment editor for a guided UI of these fields.</p>
               </div>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -533,7 +592,7 @@ export default function QuestionBankPage() {
 
       {/* View modal */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-primary" />

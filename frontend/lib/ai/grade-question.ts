@@ -1,10 +1,9 @@
 import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
-import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
+import { compareObjectiveAnswer } from '@/lib/grading'
+import { isDeterministicType, metaFor } from '@/lib/question-types'
 import { executeOnce } from '@/lib/piston'
 import { verifyGrade, isJevConfigured } from '@/lib/ai/jev'
-
-export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
 
 /** Map a free-form provider name to a backend enum the AI router understands. */
 function normalizeProvider(provider: string): string {
@@ -67,15 +66,6 @@ export interface GradeResult {
   graded_by?: string | null
 }
 
-function normalizeSet(value: string): Set<string> {
-  return new Set(value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))
-}
-
-/** Split a comma list into non-empty trimmed parts. */
-function parts(value: string): string[] {
-  return (value || '').split(',').map(s => s.trim()).filter(Boolean)
-}
-
 /** Extract a JSON object from an LLM response that may contain prose/markdown. */
 function extractJson(raw: string): Record<string, unknown> | null {
   if (!raw) return null
@@ -112,54 +102,44 @@ export async function gradeAnswer(input: {
   maxPoints: number
   options?: string[]
   testCases?: { input: string; output: string }[]
+  tolerance?: number
+  pairs?: { left: string; right: string }[]
+  matrix?: { rows: string[]; columns: string[] }
+  table?: { columns: string[]; rows: string[] }
 }): Promise<GradeResult> {
-  const { questionText, candidateAnswer, modelAnswer, type, maxPoints, options, testCases } = input
+  const { questionText, candidateAnswer, modelAnswer, type, maxPoints, options, testCases, tolerance, pairs, matrix, table } = input
   const t = (type || '').toLowerCase()
-  const objective = canonicalObjectiveType(t)
-  const isObjective = objective !== 'free_text'
 
-  if (isObjective) {
-    const userSet = normalizeSet(candidateAnswer)
-    const correctSet = normalizeSet(modelAnswer)
+  if (isDeterministicType(type)) {
+    const kind = metaFor(type).kind
+    const cmp = compareObjectiveAnswer({ type, options, answer: modelAnswer, tolerance, pairs, matrix, table }, candidateAnswer)
+    const recommended = Math.round(cmp.ratio * maxPoints)
+    const verdict = cmp.ratio >= 1 ? 'correct' : cmp.ratio > 0 ? 'partial' : 'incorrect'
 
-    if (objective === 'multiple_response') {
-      const correct = multisetEqual(candidateAnswer, modelAnswer, options)
-      return {
-        recommended: correct ? maxPoints : 0,
-        verdict: correct ? 'correct' : 'incorrect',
-        feedback: correct
-          ? 'All correct choices selected.'
-          : userSet.size === 0
-            ? 'No choice selected for a multi-select question.'
-            : parts(candidateAnswer).some(v => !correctSet.has(v.toLowerCase().trim()))
-              ? 'One or more selected choices are not part of the correct answer.'
-              : 'An incomplete selection — some correct choices were missed.',
-      }
+    let feedback: string
+    if (kind === 'multi') {
+      feedback = cmp.ratio >= 1 ? 'All correct choices selected.'
+        : !candidateAnswer.trim() ? 'No choice selected for a multi-select question.'
+        : cmp.ratio > 0 ? 'An incomplete selection — some correct choices were missed.'
+        : 'One or more selected choices are not part of the correct answer.'
+    } else if (kind === 'blanks') {
+      const n = modelAnswer.split(',').map((s) => s.trim()).filter(Boolean).length
+      const matched = Math.round(cmp.ratio * n)
+      feedback = cmp.ratio >= 1 ? 'Fill-in-the-blank answer matches the expected value.'
+        : cmp.ratio > 0 ? `Partially correct — matches ${matched} of ${n} expected value(s).`
+        : 'Blank answer does not match the expected value.'
+    } else if (kind === 'numeric') {
+      feedback = cmp.ratio >= 1 ? 'Numeric answer is within the accepted range.' : 'Numeric answer is incorrect or outside the accepted tolerance.'
+    } else if (kind === 'sequence') {
+      feedback = cmp.ratio >= 1 ? 'Correct order.' : 'The order is incorrect.'
+    } else if (kind === 'pairs') {
+      feedback = cmp.ratio >= 1 ? 'All pairs matched correctly.' : cmp.ratio > 0 ? 'Partially correct — some pairs are mismatched.' : 'No pairs matched correctly.'
+    } else if (kind === 'matrix' || kind === 'table') {
+      feedback = cmp.ratio >= 1 ? 'All rows are correct.' : cmp.ratio > 0 ? 'Partially correct — some rows are wrong.' : 'The answers are incorrect.'
+    } else {
+      feedback = cmp.ratio >= 1 ? 'Correct answer selected.' : 'Selected answer does not match the correct answer.'
     }
-
-    if (objective === 'fill_blanks') {
-      const userP = parts(candidateAnswer)
-      const correctP = parts(modelAnswer)
-      const matched = correctP.filter((c) => userP.some((u) => answersEqual(u, c, options))).length
-      const full = correctP.length > 0 && matched === correctP.length && userP.length === correctP.length
-      const recommended = full ? maxPoints : matched > 0 ? Math.max(1, Math.round((matched / Math.max(1, correctP.length)) * maxPoints)) : 0
-      return {
-        recommended,
-        verdict: full ? 'correct' : matched > 0 ? 'partial' : 'incorrect',
-        feedback: full
-          ? 'Fill-in-the-blank answer matches the expected value.'
-          : matched > 0
-            ? `Partially correct — matches ${matched} of ${correctP.length} expected value(s).`
-            : 'Blank answer does not match the expected value.',
-      }
-    }
-
-    const correct = answersEqual(candidateAnswer, modelAnswer, options)
-    return {
-      recommended: correct ? maxPoints : 0,
-      verdict: correct ? 'correct' : 'incorrect',
-      feedback: correct ? 'Correct answer selected.' : 'Selected answer does not match the correct answer.',
-    }
+    return { recommended, verdict, feedback }
   }
 
   // ── Free-text (code / descriptive): grade with the configured LLM ──

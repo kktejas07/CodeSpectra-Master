@@ -86,7 +86,7 @@ export default function AiFluencySetupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/dashboard/assessments" className="rounded-lg p-2 hover:bg-muted">
           <ArrowLeft className="h-4 w-4" />

@@ -890,7 +890,7 @@ function LiveTab({ sessions, activeNow, expandedSession, onToggleSession }: {
         </div>
         {sessions.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            <Users className="mx-auto h-8 w-8 mb-2 opacity-50" />
+            <Users className="h-8 w-8 mb-2 opacity-50" />
             <p>No active sessions right now</p>
           </div>
         ) : (
@@ -977,7 +977,7 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
             <tbody className="divide-y divide-border/40">
               {(data?.topPages || []).map(p => (
                 <tr key={p.path} className="hover:bg-muted/30">
-                  <td className="px-6 py-3 font-mono text-xs truncate max-w-xs" title={p.path}>{p.path}</td>
+                  <td className="px-6 py-3 font-mono text-xs truncate" title={p.path}>{p.path}</td>
                   <td className="px-6 py-3 text-right tabular-nums font-medium">{p.views.toLocaleString()}</td>
                   <td className="px-6 py-3 text-right tabular-nums">{p.uniqueVisitors.toLocaleString()}</td>
                   <td className="px-6 py-3 text-right tabular-nums">{fmtDuration(p.avgTime)}</td>
@@ -1105,7 +1105,7 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
       key: 'user_id',
       header: 'User',
       cell: (row) => (
-        <span className="text-xs font-mono text-muted-foreground truncate max-w-30 block" title={row.user_id || row.anonymous_id || ''}>
+        <span className="text-xs font-mono text-muted-foreground truncate block" title={row.user_id || row.anonymous_id || ''}>
           {row.user_id?.slice(0, 10) || row.anonymous_id?.slice(0, 10) || '—'}
         </span>
       ),
@@ -1292,7 +1292,7 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
 
       {!loading && !result && funnels.length === 0 && (
         <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-          <Filter className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+          <Filter className="h-8 w-8 text-muted-foreground/40 mb-2" />
           <p>No funnels yet. Create one to track conversion flows.</p>
         </Card>
       )}
@@ -1310,7 +1310,7 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
   if (!data || data.cohorts.length === 0) {
     return (
       <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-        <UserCheck className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        <UserCheck className="h-8 w-8 text-muted-foreground/40 mb-2" />
         <p>No retention data yet. Data appears as users sign in and return.</p>
       </Card>
     )
@@ -1367,7 +1367,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
   if (!data || data.totalRequests === 0) {
     return (
       <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-        <Zap className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        <Zap className="h-8 w-8 text-muted-foreground/40 mb-2" />
         <p>No AI usage data yet. Data appears as users interact with AI features.</p>
       </Card>
     )
@@ -1497,7 +1497,7 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
   if (!data) {
     return (
       <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-        <TrendingUp className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        <TrendingUp className="h-8 w-8 text-muted-foreground/40 mb-2" />
         <p>No billing data yet. Revenue analytics appear when users subscribe.</p>
       </Card>
     )
@@ -1650,7 +1650,7 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
         </div>
       ) : flags.length === 0 ? (
         <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-          <Monitor className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+          <Monitor className="h-8 w-8 text-muted-foreground/40 mb-2" />
           <p>No feature flags yet. Create one to start toggling features.</p>
         </Card>
       ) : (

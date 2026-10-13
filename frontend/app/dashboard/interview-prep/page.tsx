@@ -426,7 +426,7 @@ export default function InterviewPrepPage() {
 
           {quizLoading && (
             <Card className="p-8 text-center space-y-3">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-purple-500" />
+              <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
               <p className="text-sm text-muted-foreground">Generating your quiz...</p>
             </Card>
           )}

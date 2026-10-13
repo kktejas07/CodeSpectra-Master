@@ -249,7 +249,7 @@ export default function AdminResourcesPage() {
       {/* Outline Review Modal */}
       {outlineReview?.show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="w-full max-h-[90vh] overflow-y-auto">
             <EbookOutlineReview
               topic={outlineReview.topic}
               outline={outlineReview.outline}

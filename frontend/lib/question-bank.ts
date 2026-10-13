@@ -7,10 +7,11 @@
  */
 import { getMongoDb } from '@/lib/mongodb'
 import { createHash } from 'crypto'
-import { sanitizeTestCases } from '@/lib/grading'
+import { sanitizeTestCases, sanitizeExamQuestion } from '@/lib/grading'
+import { canonicalType, metaFor, BANK_QUESTION_TYPES as ALL_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import type { Collection } from 'mongodb'
 
-export type BankQuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
+export type BankQuestionType = QuestionType
 
 /** Sample inputs + expected outputs used to verify a coding question. */
 export interface BankTestCase {
@@ -43,13 +44,29 @@ export interface BankQuestionDoc {
   level?: string
   /** Assessment category (e.g. 'skills', 'cognitive', 'behavioral'). */
   assessment_category?: string
+  /** Accepted absolute tolerance for numeric questions. */
+  tolerance?: number
+  /** Matching / labeling question left→right pairs. */
+  pairs?: { left: string; right: string }[]
+  /** Matrix (rows × columns) — answer is a column choice per row. */
+  matrix?: { rows: string[]; columns: string[] }
+  /** Table / grid fill columns + row labels. */
+  table?: { columns: string[]; rows: string[] }
+  /** Likert / rating scale bounds. */
+  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
+  /** Hotspot image URL + clickable regions. */
+  image_url?: string
+  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
+  /** Coding language + starter snippet (coding variants). */
+  language?: string
+  starter_code?: string
   source: 'seed' | 'ai' | 'import' | 'manual'
   is_active: boolean
   createdAt: string
   updatedAt: string
 }
 
-export const BANK_QUESTION_TYPES: BankQuestionType[] = ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks']
+export const BANK_QUESTION_TYPES: BankQuestionType[] = ALL_QUESTION_TYPES
 
 export async function questionBank(): Promise<Collection<BankQuestionDoc>> {
   return (await getMongoDb()).collection<BankQuestionDoc>('question_bank')
@@ -124,8 +141,7 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
   const title = !cleaned || isPlaceholderTitle(cleaned) ? deriveTitleFromQuestion(question) : cleaned
   if (!question) return null
 
-  const rawType = normString(raw.type || 'mcq', 40).toLowerCase()
-  const type: BankQuestionType = BANK_QUESTION_TYPES.includes(rawType as BankQuestionType) ? (rawType as BankQuestionType) : 'mcq'
+  const type: BankQuestionType = canonicalType(normString(raw.type || 'mcq', 40), 'mcq')
 
   const difficultyRaw = normString(raw.difficulty || 'Medium', 20).toLowerCase()
   const difficulty: BankQuestionDoc['difficulty'] = difficultyRaw === 'easy' ? 'Easy' : difficultyRaw === 'hard' ? 'Hard' : 'Medium'
@@ -153,6 +169,11 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
   // {input, output}, operator keys dropped). See lib/grading.ts.
   const testCases: BankTestCase[] = sanitizeTestCases(raw.test_cases)
 
+  // Structured fields for the newer question types (pairs/matrix/table/hotspot
+  // regions/scale/tolerance/language), run through the same write-path guard
+  // as exams so no operator keys or blobs can enter the bank.
+  const sf = sanitizeExamQuestion(raw)
+
   const branch = normString(raw.branch || raw.domain, 60).toLowerCase()
   const degreeType = normString(raw.degree_type, 40).toLowerCase()
   const subject = normString(raw.subject || raw.topic, 120)
@@ -168,7 +189,7 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     title,
     question,
     type,
-    options: ['mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(type) ? options : undefined,
+    options: metaFor(type).hasOptions ? options : undefined,
     answer: answer || undefined,
     explanation: explanation || undefined,
     difficulty,
@@ -182,6 +203,15 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     industry: industry || undefined,
     level: level || undefined,
     assessment_category: assessmentCategory || undefined,
+    tolerance: typeof sf.tolerance === 'number' ? sf.tolerance : undefined,
+    pairs: (sf.pairs as BankQuestionDoc['pairs']) || undefined,
+    matrix: (sf.matrix as BankQuestionDoc['matrix']) || undefined,
+    table: (sf.table as BankQuestionDoc['table']) || undefined,
+    scale: (sf.scale as BankQuestionDoc['scale']) || undefined,
+    image_url: typeof sf.image_url === 'string' ? sf.image_url : undefined,
+    regions: (sf.regions as BankQuestionDoc['regions']) || undefined,
+    language: typeof sf.language === 'string' ? sf.language : undefined,
+    starter_code: typeof sf.starter_code === 'string' ? sf.starter_code : undefined,
     source: sourceRaw === 'ai' || sourceRaw === 'seed' || sourceRaw === 'import' ? (sourceRaw as BankQuestionDoc['source']) : 'manual',
     is_active: raw.is_active !== false,
     createdAt: normString(raw.createdAt, 40) || nowIso(),
@@ -206,6 +236,15 @@ export function bankToExamQuestion(b: BankQuestionDoc): Record<string, unknown> 
     answer: b.answer,
     score: b.marks,
     ...(cases.length ? { test_cases: cases } : {}),
+    ...(b.tolerance !== undefined ? { tolerance: b.tolerance } : {}),
+    ...(b.pairs ? { pairs: b.pairs } : {}),
+    ...(b.matrix ? { matrix: b.matrix } : {}),
+    ...(b.table ? { table: b.table } : {}),
+    ...(b.scale ? { scale: b.scale } : {}),
+    ...(b.image_url ? { image_url: b.image_url } : {}),
+    ...(b.regions ? { regions: b.regions } : {}),
+    ...(b.language ? { language: b.language } : {}),
+    ...(b.starter_code ? { starter_code: b.starter_code } : {}),
     ...(b.branch ? { branch: b.branch } : {}),
     ...(b.subject ? { subject: b.subject } : {}),
     ...(b.difficulty ? { difficulty: b.difficulty } : {}),

@@ -92,7 +92,7 @@ export default function ScheduleInterviewPage() {
   }
 
   if (!gate.ready) return (
-    <div className="max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
       <div className="h-8 w-48 bg-muted/60 rounded animate-pulse" />
       <SkeletonCard />
@@ -100,7 +100,7 @@ export default function ScheduleInterviewPage() {
   )
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="space-y-6">
       <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ArrowLeft className="h-3 w-3" /> Back to interviews
       </Link>

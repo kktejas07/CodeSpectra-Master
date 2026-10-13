@@ -428,7 +428,7 @@ export default function TenantsPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs max-w-62.5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
+                    <p className="text-xs .5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -442,7 +442,7 @@ export default function TenantsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-50">
+        <div className="relative flex-1 min-w-50">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
         </div>
@@ -455,7 +455,7 @@ export default function TenantsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <Card className="border-border/60 p-12 text-center">
-          <Building2 className="mx-auto h-12 w-12 text-muted-foreground/30" />
+          <Building2 className="h-12 w-12 text-muted-foreground/30" />
           <p className="mt-3 text-muted-foreground">No organizations yet. Create your first tenant to assign Organization admins.</p>
           <Button className="mt-4 gap-2" size="sm" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" /> New organization</Button>
         </Card>
@@ -531,7 +531,7 @@ export default function TenantsPage() {
 
       {/* Create drawer */}
       <Sheet open={createOpen} onOpenChange={setCreateOpen}>
-        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>New organization</SheetTitle>
             <SheetDescription>
@@ -592,7 +592,7 @@ export default function TenantsPage() {
 
       {/* Edit drawer */}
       <Sheet open={Boolean(editTenant)} onOpenChange={(o) => !o && setEditTenant(null)}>
-        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Edit organization</SheetTitle>
             <SheetDescription>Update tenant details. Changes apply immediately to members scoped to this org.</SheetDescription>
@@ -642,7 +642,7 @@ export default function TenantsPage() {
 
       {/* Members drawer */}
       <Sheet open={Boolean(membersOf)} onOpenChange={(o) => !o && setMembersOf(null)}>
-        <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
+        <SheetContent side="right" className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Building2 className="h-4 w-4" /> {membersOf?.name || ''} members
@@ -663,7 +663,7 @@ export default function TenantsPage() {
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : members.length === 0 ? (
                 <div className="text-center py-10">
-                  <UserRound className="mx-auto h-10 w-10 text-muted-foreground/30" />
+                  <UserRound className="h-10 w-10 text-muted-foreground/30" />
                   <p className="mt-2 text-sm text-muted-foreground">No members in this organization yet.</p>
                   <p className="text-xs text-muted-foreground">Use "Add member" to create one and attach it to this org.</p>
                 </div>
@@ -758,7 +758,7 @@ export default function TenantsPage() {
 
       {/* Add member dialog */}
       <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <form onSubmit={handleAddMember}>
             <DialogHeader>
               <DialogTitle>Add member</DialogTitle>
@@ -823,7 +823,7 @@ export default function TenantsPage() {
 
       {/* Edit member dialog */}
       <Dialog open={Boolean(editingMember)} onOpenChange={(o) => { if (!o) { setEditingMember(null); setEditMemberPassword(''); setShowEditMemberPassword(false) } }}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit member</DialogTitle>
             <DialogDescription>

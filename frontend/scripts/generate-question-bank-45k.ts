@@ -1,6 +1,8 @@
 import { MongoClient } from 'mongodb'
 import { createHash } from 'crypto'
 import { normalizeBankQuestion, bankContentHash, deriveTitleFromQuestion, type BankQuestionDoc } from '../lib/question-bank'
+import { buildTypeInstructions, buildExtraFieldHint } from '../lib/question-gen-prompt'
+import { isCodingType } from '../lib/question-types'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Local question-bank generator.
@@ -105,8 +107,8 @@ const SOFT_INDUSTRIES = [
   { id: 'legal_services', label: 'Legal Services', category: 'cognitive', focus: 'logical reasoning, attention to detail, comprehension' },
 ]
 
-const ALL_TYPES = ['mcq', 'multiple_response', 'true_false', 'fill_blanks', 'coding', 'descriptive'] as const
-const SOFT_TYPES = ['mcq', 'multiple_response', 'true_false', 'fill_blanks', 'descriptive'] as const
+const ALL_TYPES = ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'numeric', 'short_answer', 'ordering', 'ranking', 'matching', 'matrix', 'table_fill', 'coding', 'debugging', 'code_completion', 'output_prediction', 'code_review', 'sql', 'refactoring', 'test_case_writing', 'descriptive'] as const
+const SOFT_TYPES = ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'numeric', 'short_answer', 'ordering', 'matching', 'descriptive'] as const
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -334,7 +336,7 @@ const BRANCH_TECH_STACK: Record<string, string[]> = {
 function enforceQuality(docs: BankQuestionDoc[], seenTitles: Set<string>): BankQuestionDoc[] {
   const out: BankQuestionDoc[] = []
   for (const doc of docs) {
-    if (doc.type === 'coding') {
+    if (isCodingType(doc.type)) {
       if (!doc.tech_stack?.length) doc.tech_stack = BRANCH_TECH_STACK[doc.branch || ''] || ['Python']
     }
     let titleKey = (doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim()
@@ -365,7 +367,7 @@ function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVEL
     `Focus subject/topic: ${topic}.`,
     `Degree level of candidate: ${degree.toUpperCase()}.`,
     `Question types (approximate counts): ${typeSpec}.`,
-    `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers comma-separated. 'true_false' = options ["True","False"]. 'fill_blanks' = question has a ____ blank + 4 candidate fill-ins as options. 'coding' = empty options, answer is a short approach outline (no full solution), MUST include "tech_stack" (array of 1-3 programming languages) and "test_cases" (array of 2-4 objects {"input": "...", "output": "..."} that verify the approach). 'descriptive' = empty options, answer is a model-answer paragraph.`,
+    `Type rules: ${buildTypeInstructions(typeList)}${buildExtraFieldHint(typeList)}`,
     `TITLE RULE (mandatory): the "title" field MUST be a concise human-readable summary of that specific question (e.g. "Binary Search worst-case time complexity", "Banker's algorithm safe-state check"), 4-12 words, unique per question. NEVER use "Q1", "Question 2", "1.1", or any numbering scheme as a title — a numbered title is an automatic rejection.`,
     `Vary concepts: do NOT repeat the same concept twice in one batch.`,
     `${authNote}${hardNote}`,
@@ -380,7 +382,7 @@ function buildSoftPrompt(industry: (typeof SOFT_INDUSTRIES)[0], level: (typeof L
     `Generate exactly ${count} distinct ${industry.label} screening questions for MNC hiring, targeting ${level.label}.`,
     `Assessment category: ${industry.category.toUpperCase()} aptitude. Focus: ${focus}.`,
     `Question types (approximate counts): ${typeSpec}.`,
-    `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers. 'true_false' = options ["True","False"]. 'fill_blanks' = statement with a ____ blank + 4 fill-ins. 'descriptive' = empty options, model-answer paragraph.`,
+    `Type rules: ${buildTypeInstructions(typeList)}${buildExtraFieldHint(typeList)}`,
     `TITLE RULE (mandatory): the "title" field MUST be a concise human-readable summary of that specific question, 4-12 words, unique per question. NEVER use "Q1", "Question 2", "1.1", or any numbering scheme as a title.`,
     `Vary the scenarios: do NOT repeat the same situation twice in one batch.`,
     `Respond with ONLY a JSON array. Each object: {"title": short label, "question": full prompt, "type", "options": [string], "answer", "explanation", "difficulty": "Easy"|"Medium"|"Hard", "marks": 5-20, "subject": "${industry.category}", "tags": [2-4 tags]}.`,
@@ -393,6 +395,8 @@ function buildSoftPrompt(industry: (typeof SOFT_INDUSTRIES)[0], level: (typeof L
 async function main() {
   const client = new MongoClient(MONGO_URI_ASSERTED, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
+  // ponytail: wrap the run so the `finally` below always closes the client.
+  try {
   const col = client.db(MONGO_DB).collection<BankQuestionDoc>('question_bank')
   await loadSecrets()
 
@@ -414,6 +418,7 @@ async function main() {
   const startedAt = Date.now()
   let totalInserted = 0
   let totalFailed = 0
+  let stopRequested = false
 
   // Rotating counters per dimension (global across the whole run).
   let branchIdx = 0
@@ -431,79 +436,10 @@ async function main() {
       if (seenHashes.has(h) || seenFp.has(f)) continue
       seenHashes.add(h)
       seenFp.add(f)
+      out.push(doc)
     }
     return enforceQuality(out, seenTitles)
   }
-
-  // Technical industries: 10 × 3 levels × 1000 = 30k
-  let bucketCount = 0
-  for (const [industry, branchIds] of Object.entries(TECH_INDUSTRY_BRANCHES)) {
-    if (ONLY_INDUSTRY && industry !== ONLY_INDUSTRY) continue
-    for (const level of LEVELS) {
-      if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
-      bucketCount++
-      if (bucketCount > MAX_BUCKETS) { console.log(`Reached MAX_BUCKETS=${MAX_BUCKETS}, stopping.`); process.exit(0) }
-      const key = `${industry}/${level.id}`
-      const current = await col.countDocuments({ industry, level: level.id })
-      const remaining = TARGET_PER_BUCKET - current
-      console.log(`\n=== Bucket ${key}: ${current}/${TARGET_PER_BUCKET} existing, ${Math.max(0, remaining)} to generate ===`)
-      if (remaining <= 0) { console.log(`Bucket ${key} already at target, skipping.`); continue }
-
-      const branches = branchIds.map((id) => BRANCHES.find((b) => b.id === id)!).filter(Boolean)
-      let topicIdx = 0
-      let failures = 0
-      let inserted = 0
-      while (inserted < remaining) {
-        const need = Math.min(BATCH, remaining - inserted)
-        const branch = branches[topicIdx % branches.length]
-        const topic = branch.topics[topicIdx % branch.topics.length]
-        topicIdx++
-        const degree = DEGREES[degreeIdx++ % DEGREES.length]
-        const types = [ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length]]
-        const typeList = [...new Set(types)]
-
-        const prompt = buildTechnicalPrompt(branch, level, topic, need, typeList, degree, industry)
-        let raw = ''
-        let providerUsed = ''
-        try { const r = await aiComplete(prompt); raw = r.content; providerUsed = r.provider } catch (e) {
-          failures++
-          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} failures.`); break }
-          console.log(`  [${key}] ai error (${e instanceof Error ? e.message : e}) failure ${failures}/${MAX_CONSECUTIVE_FAILURES}`)
-          await sleep(3000)
-          continue
-        }
-        const parsed = extractArray(raw)
-        if (!parsed.length) {
-          failures++
-          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} empty batches.`); break }
-          console.log(`  [${key}] empty/unparseable batch (failure ${failures}/${MAX_CONSECUTIVE_FAILURES})`)
-          await sleep(2000)
-          continue
-        }
-        failures = 0
-
-        const docs = buildDocs(parsed, {
-          branch: branch.id,
-          level: level.id,
-          industry,
-          degree_type: degree,
-          assessment_category: 'skills',
-        })
-        if (docs.length) {
-          await col.insertMany(docs)
-          inserted += docs.length
-          totalInserted += docs.length
-          console.log(`  [${key}] +${docs.length} (${typeList.join(',')} @${branch.id}/${degree} via ${providerUsed}); bucket ${current + inserted}/${TARGET_PER_BUCKET}`)
-        } else {
-          console.log(`  [${key}] batch all duplicates (${parsed.length} parsed)`)
-        }
-        const el = ((Date.now() - startedAt) / 60000).toFixed(1)
-        console.log(`  [elapsed ${el}m, total ${totalInserted} new, ${totalFailed} failed]`)
-        if (MAX_INSERTS > 0 && totalInserted >= MAX_INSERTS) { console.log(`  [${key}] reached MAX_INSERTS=${MAX_INSERTS}, stopping.`); process.exit(0) }
-        await sleep(1200)
-      }
-      return out
-    }
 
     // Technical industries: 10 × 3 levels × 1000 = 30k
     let bucketCount = 0
@@ -743,6 +679,7 @@ async function main() {
     }
 
     console.log(`\n=== DONE: inserted ${totalInserted} new questions, ${totalFailed} rejected/failed. ===`)
+    }
   } finally {
     // Always close Mongo — even on error or MAX_* early-stop. Previously
     // process.exit(0) skipped this line, leaking a connection.

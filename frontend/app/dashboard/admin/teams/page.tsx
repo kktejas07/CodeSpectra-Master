@@ -54,7 +54,7 @@ export default function TeamsManagement() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Manage organization teams</p>
+                  <p className="text-xs .5">Manage organization teams</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -71,7 +71,7 @@ export default function TeamsManagement() {
 
       {safeTeams.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
-          <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <Users className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No teams created yet.</p>
         </Card>
       ) : (

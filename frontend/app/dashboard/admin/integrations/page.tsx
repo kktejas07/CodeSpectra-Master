@@ -107,7 +107,7 @@ export default function IntegrationsPage() {
               <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p className="text-xs max-w-62.5">Connect external services as optional bridges. Scanner, interviews, and dashboards are native and require no plugins.</p>
+              <p className="text-xs .5">Connect external services as optional bridges. Scanner, interviews, and dashboards are native and require no plugins.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

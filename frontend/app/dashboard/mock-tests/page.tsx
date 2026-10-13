@@ -111,7 +111,7 @@ export default function MockTestsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-8 max-w-xl">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input

@@ -241,7 +241,7 @@ export default function AiMockSetupPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-3" data-tour="ai-mock-setup-header">
         <Link href="/dashboard/interviews" className="rounded-lg p-2 hover:bg-muted">
           <ArrowLeft className="h-4 w-4" />

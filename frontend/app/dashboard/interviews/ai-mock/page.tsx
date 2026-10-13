@@ -351,7 +351,7 @@ export default function AiMockSessionPage() {
               </p>
             )}
             {interimText && (
-              <p className="text-white/70 text-xs mt-2 max-w-md truncate">{interimText}</p>
+              <p className="text-white/70 text-xs mt-2 truncate">{interimText}</p>
             )}
           </div>
 
@@ -519,7 +519,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
+      <div className="space-y-6">
         <SkeletonCard />
         <SkeletonCard />
         <SkeletonCard />
@@ -541,7 +541,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
   const scoreColor = report.overallScore >= 80 ? 'text-green-500' : report.overallScore >= 60 ? 'text-amber-500' : 'text-red-500'
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Brain className="h-6 w-6 text-primary" /> Interview Report

@@ -7,6 +7,13 @@
  * ('14.0' vs '14', 'B' vs the option text, 'O(log  n)' vs 'O(log n)') is
  * scored consistently everywhere.
  */
+import { metaFor, resolveQuestionType, type GradingKind } from '@/lib/question-types'
+
+/**
+ * Legacy alias table kept for backward compatibility. New code should rely on
+ * {@link canonicalObjectiveType}, which resolves through the canonical registry
+ * (lib/question-types.ts) and therefore covers every objective alias too.
+ */
 export const OBJECTIVE_TYPE_ALIASES: Record<string, string> = {
   mcq: 'mcq',
   multiplechoice: 'mcq',
@@ -26,14 +33,20 @@ export const OBJECTIVE_TYPE_ALIASES: Record<string, string> = {
   fillblank: 'fill_blanks',
 }
 
-/** Canonicalize any objective question-type string → canonical id, else 'free_text'. */
+/**
+ * Canonicalize any objective question-type string → canonical id, else
+ * 'free_text'. "Objective" here means the deterministic kinds the submit route
+ * can grade without an LLM (choice / multi / blanks / numeric / text /
+ * sequence / pairs / matrix / table). Coding variants and descriptive resolve
+ * to 'free_text' because they use execution or an LLM.
+ */
 export function canonicalObjectiveType(type: string): string | 'free_text' {
-  const t = (type || '').toLowerCase().replace(/[\s-]/g, '')
-  if (OBJECTIVE_TYPE_ALIASES[t]) return OBJECTIVE_TYPE_ALIASES[t]
-  return 'free_text'
+  const resolved = resolveQuestionType(type)
+  if (!resolved) return 'free_text'
+  return metaFor(resolved).deterministic ? resolved : 'free_text'
 }
 
-/** True for machine-gradeable types (MCQ / true-false / multi-response / fill-blanks). */
+/** True for machine-gradeable (non-LLM) types. */
 export function isObjectiveType(type: string): boolean {
   return canonicalObjectiveType(type) !== 'free_text'
 }
@@ -122,6 +135,149 @@ export function multisetEqual(a: string, b: string, options?: string[]): boolean
   return true
 }
 
+/** Numeric equality within an absolute tolerance (tolerance 0 = exact number). */
+export function numericEqualTol(a: string, b: string, tolerance?: number): boolean {
+  const na = leadingNumber(a)
+  const nb = leadingNumber(b)
+  if (na === null || nb === null) return false
+  const tol = typeof tolerance === 'number' && Number.isFinite(tolerance) && tolerance > 0 ? tolerance : 0
+  return Math.abs(na - nb) <= tol + 1e-9
+}
+
+/** Split a comma list into non-empty trimmed parts. */
+function splitCsv(value: string): string[] {
+  return (value || '').split(',').map((s) => s.trim()).filter(Boolean)
+}
+
+/**
+ * Ordered-list equality: same length and every position equal (per-element
+ * answersEqual tolerance). Used for ordering / ranking questions.
+ */
+export function sequenceEqual(a: string, b: string, options?: string[]): boolean {
+  const u = splitCsv(a)
+  const c = splitCsv(b)
+  if (u.length === 0 || u.length !== c.length) return false
+  return u.every((x, i) => answersEqual(x, c[i], options))
+}
+
+/** Parse a matching/drag-drop answer into a normalized left→right map. */
+function parsePairsAnswer(candidate: string): Map<string, string> {
+  const out = new Map<string, string>()
+  const raw = (candidate || '').trim()
+  if (!raw) return out
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      for (const p of parsed) {
+        if (p && typeof p === 'object' && 'left' in p && 'right' in p) {
+          out.set(normalizeForCompare(String((p as Record<string, unknown>).left)), String((p as Record<string, unknown>).right))
+        }
+      }
+      return out
+    }
+    if (parsed && typeof parsed === 'object') {
+      for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) out.set(normalizeForCompare(k), String(v))
+      return out
+    }
+  } catch {
+    // Fall through — maybe a CSV of right-hand values in left order.
+  }
+  return out
+}
+
+/**
+ * Fraction of pairs matched. `pairs` is the correct left→right mapping; the
+ * candidate answer is a JSON map (or legacy CSV of rights in left order).
+ */
+export function matchingRatio(candidate: string, pairs: Array<{ left: string; right: string }>): number {
+  if (!Array.isArray(pairs) || pairs.length === 0) return 0
+  const map = parsePairsAnswer(candidate)
+  let hit = 0
+  for (const p of pairs) {
+    const given = map.get(normalizeForCompare(p.left))
+    if (given !== undefined && answersEqual(given, p.right)) hit++
+  }
+  return hit / pairs.length
+}
+
+/** Fraction of matrix rows whose chosen column matches the answer CSV. */
+export function matrixRatio(candidate: string, rowCount: number, answerCsv: string): number {
+  if (rowCount <= 0) return 0
+  const u = splitCsv(candidate)
+  const c = splitCsv(answerCsv)
+  let hit = 0
+  for (let i = 0; i < rowCount; i++) {
+    if (u[i] !== undefined && c[i] !== undefined && answersEqual(u[i], c[i])) hit++
+  }
+  return hit / rowCount
+}
+
+/** Shape of a question that {@link compareObjectiveAnswer} can grade. */
+export interface QuestionGradingSpec {
+  type: string
+  options?: string[]
+  answer?: string
+  tolerance?: number
+  pairs?: Array<{ left: string; right: string }>
+  matrix?: { rows: string[]; columns: string[] }
+  table?: { columns: string[]; rows: string[] }
+}
+
+export interface ObjectiveComparison {
+  /** Fully correct (all-or-nothing pass for the submit route). */
+  correct: boolean
+  /** 0..1 partial credit used by the AI-grading review path. */
+  ratio: number
+}
+
+/**
+ * Single deterministic grader for every objective kind. Both the instant submit
+ * route (which uses `correct`) and the AI-grade path (which uses `ratio` for
+ * partial credit) call this, so the two can never disagree on an answer.
+ */
+export function compareObjectiveAnswer(q: QuestionGradingSpec, userAnswer: string): ObjectiveComparison {
+  const kind: GradingKind = metaFor(q.type).kind
+  const answer = q.answer || ''
+  const u = (userAnswer || '').trim()
+  const bin = (c: boolean): ObjectiveComparison => ({ correct: c, ratio: c ? 1 : 0 })
+
+  switch (kind) {
+    case 'choice':
+      return bin(answersEqual(u, answer, q.options))
+    case 'multi':
+      return bin(multisetEqual(u, answer, q.options))
+    case 'numeric':
+      return bin(numericEqualTol(u, answer, q.tolerance))
+    case 'text':
+      return bin(answersEqual(u, answer))
+    case 'sequence':
+      return bin(sequenceEqual(u, answer, q.options))
+    case 'pairs': {
+      const ratio = matchingRatio(u, q.pairs || [])
+      return { correct: ratio >= 1, ratio }
+    }
+    case 'matrix': {
+      const ratio = matrixRatio(u, q.matrix?.rows?.length || 0, answer)
+      return { correct: ratio >= 1, ratio }
+    }
+    case 'table': {
+      const ratio = matrixRatio(u, q.table?.rows?.length || 0, answer)
+      return { correct: ratio >= 1, ratio }
+    }
+    case 'blanks': {
+      const cp = splitCsv(answer)
+      const up = splitCsv(u)
+      if (cp.length === 0) return { correct: false, ratio: 0 }
+      const matched = cp.filter((c) => up.some((x) => answersEqual(x, c, q.options))).length
+      const ratio = matched / cp.length
+      const full = matched === cp.length && up.length === cp.length
+      return { correct: full, ratio }
+    }
+    default:
+      return { correct: false, ratio: 0 }
+  }
+}
+
 /** A single executable test case: stdin → expected stdout. Strings only. */
 export interface SanitizedTestCase {
   input: string
@@ -166,6 +322,99 @@ export function sanitizeTestCases(raw: unknown): SanitizedTestCase[] {
  * PATCH + PUT passthrough guards) so a crafted payload can never smuggle
  * NoSQL operator keys, nested objects, or unbounded blobs into `questionList`.
  */
+const MAX_Q_ITEMS = 40
+
+/** Coerce to a capped string; numbers/booleans allowed, objects/arrays dropped. */
+function qStr(v: unknown, max = 2000): string {
+  if (typeof v === 'string') return v.slice(0, max)
+  if (typeof v === 'number' || typeof v === 'boolean') return String(v).slice(0, max)
+  return ''
+}
+
+/** Capped string[] from an array; non-scalar members become ''. */
+function qStrArray(v: unknown, cap = 30, max = 500): string[] {
+  if (!Array.isArray(v)) return []
+  return v.slice(0, cap).map((x) => qStr(x, max)).filter(Boolean)
+}
+
+/**
+ * Carry the structured fields used by the newer question types (pairs, matrix,
+ * table, hotspot regions, scale, tolerance, coding language/starter code)
+ * through the write-path guard, keeping only known scalar shapes so NoSQL
+ * operator keys and unbounded blobs can never reach the database. Absent fields
+ * stay absent (the legacy shape is preserved exactly).
+ */
+function sanitizeStructuredQuestionFields(q: Record<string, unknown>, clean: Record<string, unknown>): void {
+  const tolerance = Number(q.tolerance)
+  if (Number.isFinite(tolerance) && tolerance > 0) clean.tolerance = tolerance
+
+  if (Array.isArray(q.pairs)) {
+    const pairs = (q.pairs as unknown[])
+      .slice(0, MAX_Q_ITEMS)
+      .map((p) => {
+        if (!p || typeof p !== 'object' || Array.isArray(p)) return null
+        const rec = p as Record<string, unknown>
+        const left = qStr(rec.left, 500)
+        const right = qStr(rec.right, 500)
+        return left && right ? { left, right } : null
+      })
+      .filter((p): p is { left: string; right: string } => p !== null)
+    if (pairs.length) clean.pairs = pairs
+  }
+
+  const matrix = q.matrix
+  if (matrix && typeof matrix === 'object' && !Array.isArray(matrix)) {
+    const rec = matrix as Record<string, unknown>
+    const rows = qStrArray(rec.rows, MAX_Q_ITEMS, 500)
+    const columns = qStrArray(rec.columns, 20, 500)
+    if (rows.length && columns.length) clean.matrix = { rows, columns }
+  }
+
+  const table = q.table
+  if (table && typeof table === 'object' && !Array.isArray(table)) {
+    const rec = table as Record<string, unknown>
+    const columns = qStrArray(rec.columns, 20, 500)
+    const rows = qStrArray(rec.rows, MAX_Q_ITEMS, 500)
+    if (rows.length) clean.table = { columns, rows }
+  }
+
+  const scale = q.scale
+  if (scale && typeof scale === 'object' && !Array.isArray(scale)) {
+    const rec = scale as Record<string, unknown>
+    const min = Number(rec.min)
+    const max = Number(rec.max)
+    if (Number.isFinite(min) && Number.isFinite(max)) {
+      const minLabel = qStr(rec.minLabel, 80)
+      const maxLabel = qStr(rec.maxLabel, 80)
+      clean.scale = { min, max, ...(minLabel ? { minLabel } : {}), ...(maxLabel ? { maxLabel } : {}) }
+    }
+  }
+
+  const imageUrl = qStr(q.image_url ?? q.imageUrl, 2000)
+  if (imageUrl) clean.image_url = imageUrl
+
+  if (Array.isArray(q.regions)) {
+    const regions = (q.regions as unknown[])
+      .slice(0, 50)
+      .map((r) => {
+        if (!r || typeof r !== 'object' || Array.isArray(r)) return null
+        const rec = r as Record<string, unknown>
+        const id = qStr(rec.id, 80)
+        const x = Number(rec.x), y = Number(rec.y), w = Number(rec.w), h = Number(rec.h)
+        if (!id || ![x, y, w, h].every((n) => Number.isFinite(n))) return null
+        const label = qStr(rec.label, 200)
+        return { id, x, y, w, h, ...(label ? { label } : {}) }
+      })
+      .filter((r): r is { id: string; x: number; y: number; w: number; h: number; label?: string } => r !== null)
+    if (regions.length) clean.regions = regions
+  }
+
+  const language = qStr(q.language, 40)
+  if (language) clean.language = language
+  const starter = qStr(q.starter_code ?? q.starterCode, 20000)
+  if (starter) clean.starter_code = starter
+}
+
 export function sanitizeExamQuestion(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
   const q = raw as Record<string, unknown>
@@ -178,10 +427,11 @@ export function sanitizeExamQuestion(raw: unknown): Record<string, unknown> {
     score: Number(q.score ?? q.points) || 10,
   }
   if (Array.isArray(q.options)) {
-    clean.options = (q.options as unknown[]).map(String).slice(0, 10).map((o) => o.slice(0, 2000))
+    clean.options = (q.options as unknown[]).map(String).slice(0, MAX_Q_ITEMS).map((o) => o.slice(0, 2000))
   }
   if (q.answer !== undefined) clean.answer = String(q.answer).slice(0, 20000)
   if (cases.length) clean.test_cases = cases
+  sanitizeStructuredQuestionFields(q, clean)
   return clean
 }
 

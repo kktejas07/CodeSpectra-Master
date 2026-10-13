@@ -194,7 +194,7 @@ export default function RolesPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs max-w-62.5">Assign roles to users. Manage role permissions to control what each role can access.</p>
+                    <p className="text-xs .5">Assign roles to users. Manage role permissions to control what each role can access.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -222,7 +222,7 @@ export default function RolesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-50">
+        <div className="relative flex-1 min-w-50">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
         </div>
@@ -309,7 +309,7 @@ export default function RolesPage() {
                     <select
                       value={u.tenant_id || '__none__'}
                       onChange={e => updateUserTenant(u.id, e.target.value)}
-                      className="text-xs bg-background border border-border rounded px-2 py-1 max-w-35"
+                      className="text-xs bg-background border border-border rounded px-2 py-1"
                       aria-label="Organization"
                     >
                       <option value="__none__">— No org —</option>
