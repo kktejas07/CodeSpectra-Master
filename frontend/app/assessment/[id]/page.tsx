@@ -16,8 +16,8 @@ import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
-import { CodingQuestionEditor } from '@/components/assessment/CodingQuestionEditor'
-import { normalizeCodeLang } from '@/lib/code-languages'
+import { QuestionAnswerInput } from '@/components/assessment/QuestionAnswerInput'
+import { metaFor } from '@/lib/question-types'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -34,13 +34,19 @@ import {
 
 interface Question {
   id: string
-  type: 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
+  type: string
   title: string
   prompt: string
   options?: string[]
   test_cases?: TestCase[]
   starter_code?: string
   language?: string
+  pairs?: { left: string; right: string }[]
+  matrix?: { rows: string[]; columns: string[] }
+  table?: { columns: string[]; rows: string[] }
+  scale?: { min: number; max: number; minLabel?: string; maxLabel?: string }
+  image_url?: string
+  regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
 }
 
 interface TestCase {
@@ -69,15 +75,7 @@ function pseudoRandom(n: number): number {
 }
 
 function typeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    mcq: 'Multiple Choice',
-    multiple_response: 'Multiple Response',
-    true_false: 'True / False',
-    coding: 'Coding Challenge',
-    descriptive: 'Written Response',
-    fill_blanks: 'Fill in the Blanks',
-  }
-  return labels[type] || 'Knowledge Check'
+  return metaFor(type).label
 }
 
 interface Exam {
@@ -764,143 +762,16 @@ export default function CandidateAssessmentPage() {
             </div>
 
             <div className="pt-4">
-              {['mcq', 'multiple_response', 'true_false'].includes(currentQ.type) ? (
-                <div className="space-y-3">
-                  {(shuffledOpts[currentQ.id] || currentQ.options || []).map((opt, i) => {
-                    const isMulti = currentQ.type === 'multiple_response'
-                    const selectedArr = isMulti ? (Array.isArray(answers[currentQ.id]) ? answers[currentQ.id] as string[] : []) : []
-                    const checked = isMulti ? selectedArr.includes(opt) : answers[currentQ.id] === opt
-                    return (
-                      <label 
-                        key={i} 
-                        className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                          checked 
-                            ? 'bg-primary/10 border-primary shadow-xs' 
-                            : 'bg-card hover:border-primary/50'
-                        }`}
-                      >
-                        <input 
-                          type={isMulti ? 'checkbox' : 'radio'}
-                          name={`q-${currentQ.id}`}
-                          value={opt}
-                          checked={checked}
-                          onChange={() => {
-                            if (isMulti) {
-                              const arr: string[] = Array.isArray(answers[currentQ.id]) ? [...answers[currentQ.id] as string[]] : []
-                              const next = arr.includes(opt) ? arr.filter(a => a !== opt) : [...arr, opt]
-                              setAnswers(prev => ({ ...prev, [currentQ.id]: next }))
-                            } else {
-                              setAnswers(prev => ({ ...prev, [currentQ.id]: opt }))
-                            }
-                            trackAnswer(currentQ.id, 'answer')
-                          }}
-                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                        />
-                        <span className="text-sm font-medium">{opt}</span>
-                      </label>
-                    )
-                  })}
-                </div>
-              ) : currentQ.type === 'fill_blanks' ? (
-                (() => {
-                  const blankCount = (currentQ.prompt.match(/___/g) || []).length
-                  if (blankCount > 1) {
-                    const fillAnswers = typeof answers[currentQ.id] === 'string'
-                      ? (answers[currentQ.id] as string).split(',').map(s => s.trim())
-                      : []
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <label className="text-sm font-medium text-muted-foreground">Fill in {blankCount} blank(s):</label>
-                          <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
-                        </div>
-                        {Array.from({ length: blankCount }, (_, idx) => (
-                          <div key={idx} className="space-y-1.5">
-                            <label className="text-xs text-muted-foreground font-medium">Blank {idx + 1}</label>
-                            <input
-                              type="text"
-                              value={fillAnswers[idx] || ''}
-                              onChange={(e) => {
-                                const arr = [...fillAnswers]
-                                arr[idx] = e.target.value
-                                setAnswers(prev => ({ ...prev, [currentQ.id]: arr.map(s => s.trim()).join(', ') }))
-                                trackAnswer(currentQ.id, 'answer')
-                              }}
-                              placeholder={`Answer for blank ${idx + 1}...`}
-                              className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                              autoComplete="off"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  }
-                  return (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
-                        <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
-                      </div>
-                      <input
-                        type="text"
-                        value={typeof answers[currentQ.id] === 'string' ? answers[currentQ.id] as string : ''}
-                        onChange={(e) => {
-                          setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))
-                          trackAnswer(currentQ.id, 'answer')
-                        }}
-                        placeholder="Type your answer..."
-                        className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                        autoComplete="off"
-                      />
-                    </div>
-                  )
-                })()
-              ) : currentQ.type === 'coding' ? (
-                (() => {
-                  const stored = answers[currentQ.id]
-                  let code = ''
-                  let lang = normalizeCodeLang(currentQ.language || 'python')
-                  if (typeof stored === 'string') {
-                    try {
-                      const parsed = JSON.parse(stored)
-                      code = parsed?.code || ''
-                      lang = normalizeCodeLang(parsed?.language || lang)
-                    } catch {
-                      code = stored
-                    }
-                  }
-                  const writeAnswer = (nextLang: string, nextCode: string) => {
-                    setAnswers(prev => ({ ...prev, [currentQ.id]: JSON.stringify({ language: nextLang, code: nextCode }) }))
-                    trackAnswer(currentQ.id, 'answer')
-                  }
-                  return (
-                    <CodingQuestionEditor
-                      question={currentQ as any}
-                      answer={code}
-                      language={lang}
-                      onChange={(nextCode) => writeAnswer(lang, nextCode ?? '')}
-                      onLanguageChange={(nextLang) => writeAnswer(nextLang, code)}
-                    />
-                  )
-                })()
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
-                    <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
-                  </div>
-                  <textarea 
-                    value={(answers[currentQ.id] as string) || ''}
-                    onChange={(e) => {
-                      setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))
-                      trackAnswer(currentQ.id, 'answer')
-                    }}
-                    placeholder="Write your response here..."
-                    className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                    spellCheck={false}
-                  />
-                </div>
-              )}
+              <QuestionAnswerInput
+                question={currentQ}
+                value={answers[currentQ.id]}
+                shuffledOptions={shuffledOpts[currentQ.id]}
+                showSavedBadge
+                onChange={(v) => {
+                  setAnswers((prev) => ({ ...prev, [currentQ.id]: v }))
+                  trackAnswer(currentQ.id, "answer")
+                }}
+              />
             </div>
 
             {/* Pagination Controls */}

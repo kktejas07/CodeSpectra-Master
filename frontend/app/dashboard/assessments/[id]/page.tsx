@@ -5,12 +5,12 @@ import { useParams, useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
+import { QuestionAnswerInput } from '@/components/assessment/QuestionAnswerInput'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -159,15 +159,6 @@ export default function ExamPage() {
     }, 1000)
     return () => clearInterval(timer)
   }, [exam, submitted, extVerified, timeRemaining])
-
-  const toggleMultiOption = (qId: string, opt: string) => {
-    setAnswers(a => {
-      const prev = a[qId]
-      const current = Array.isArray(prev) ? prev : prev ? [prev] : []
-      if (current.includes(opt)) return { ...a, [qId]: current.filter(o => o !== opt) }
-      return { ...a, [qId]: [...current, opt] }
-    })
-  }
 
   const handleSubmit = useCallback(async (autoSubmitted = false) => {
     if (submitted || submitting) return
@@ -459,61 +450,26 @@ export default function ExamPage() {
                 )}
               </div>
 
-              {['multiple-choice', 'mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(question.type) && question.options && (
-                <div className="space-y-2">
-                  {question.options.map((opt, i) =>
-                    question.type === 'multiple_response' ? (
-                      <label
-                        key={i}
-                        className={`flex items-center gap-3 w-full p-3 rounded-lg border cursor-pointer transition-colors ${
-                          Array.isArray(answers[question.id]) && (answers[question.id] as string[]).includes(opt)
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          className="accent-primary h-4 w-4 rounded"
-                          checked={Array.isArray(answers[question.id]) && (answers[question.id] as string[]).includes(opt)}
-                          onChange={() => toggleMultiOption(question.id, opt)}
-                        />
-                        <span className="font-medium mr-1">{String.fromCharCode(65 + i)}.</span>
-                        {opt}
-                      </label>
-                    ) : (
-                      <button
-                        key={i}
-                        onClick={() => setAnswers(a => ({ ...a, [question.id]: opt }))}
-                        className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                          answers[question.id] === opt
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50'
-                        }`}
-                      >
-                        <span className="font-medium mr-2">{String.fromCharCode(65 + i)}.</span>
-                        {opt}
-                      </button>
-                    )
-                  )}
-                </div>
-              )}
+              <QuestionAnswerInput
+                question={{
+                  id: question.id,
+                  type: question.type,
+                  prompt: question.prompt || question.question,
+                  options: question.options,
+                  pairs: (question as any).pairs,
+                  matrix: (question as any).matrix,
+                  table: (question as any).table,
+                  scale: (question as any).scale,
+                  image_url: (question as any).image_url,
+                  regions: (question as any).regions,
+                  language: (question as any).language,
+                  starter_code: (question as any).starter_code,
+                }}
+                value={answers[question.id]}
+                onChange={(v) => setAnswers((a) => ({ ...a, [question.id]: v }))}
+                showSavedBadge
+              />
 
-              {(['short-answer', 'code', 'descriptive', 'coding'].includes(question.type)) && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-muted-foreground">
-                      {['code', 'coding'].includes(question.type) ? 'Your Code Solution:' : 'Your Answer:'}
-                    </label>
-                    <Badge variant="info">Saved locally</Badge>
-                  </div>
-                  <Textarea
-                    value={answers[question.id] || ''}
-                    onChange={e => setAnswers(a => ({ ...a, [question.id]: e.target.value }))}
-                    placeholder={['code', 'coding'].includes(question.type) ? 'Write your code here...' : 'Type your answer...'}
-                    className="min-h-32 font-mono text-sm"
-                  />
-                </div>
-              )}
             </Card>
 
             {/* Navigation */}
