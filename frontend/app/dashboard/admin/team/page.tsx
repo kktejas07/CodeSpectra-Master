@@ -99,7 +99,7 @@ export default function TeamManagement() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs .5">Members of your organization. Add users here — they are scoped to your org automatically.</p>
+                  <p className="text-xs max-w-62.5">Members of your organization. Add users here — they are scoped to your org automatically.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -168,7 +168,7 @@ export default function TeamManagement() {
       </Card>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <form onSubmit={handleAddMember}>
             <DialogHeader>
               <DialogTitle>Add member</DialogTitle>

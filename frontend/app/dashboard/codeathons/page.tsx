@@ -168,7 +168,7 @@ export default function CodeathonsPage() {
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p className="text-xs .5">Compete in coding competitions, solve challenges, and win prizes</p>
+                <p className="text-xs max-w-62.5">Compete in coding competitions, solve challenges, and win prizes</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

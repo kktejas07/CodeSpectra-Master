@@ -621,7 +621,7 @@ export default function ProfilePage() {
 
       {/* Cover Theme Selection Modal */}
       <Dialog open={coverModalOpen} onOpenChange={setCoverModalOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-175">
           <DialogHeader>
             <DialogTitle>Customize Cover Banner</DialogTitle>
           </DialogHeader>

@@ -284,7 +284,7 @@ export default function CronJobsPage() {
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
             <Timer className="h-6 w-6 shrink-0 text-teal-600" /> Cron jobs
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
             What is configured, what is running, and what your external cron provider should call.
             The secret stays on the server — use <strong>Run now</strong> here to test.
           </p>

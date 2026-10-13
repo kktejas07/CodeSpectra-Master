@@ -313,7 +313,7 @@ export default function NotificationsPage() {
       </div>
 
       <Dialog open={newsletterOpen} onOpenChange={setNewsletterOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="pr-6 text-left text-xl leading-snug">
               {newsletterLoading ? 'Loading…' : (newsletter?.subject || 'Newsletter')}

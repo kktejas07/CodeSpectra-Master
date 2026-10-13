@@ -2233,7 +2233,7 @@ export default function ExamResultsPage() {
       {/* Bulk grading progress — chunked batches with live counts so a
           minutes-long grade never looks stuck, plus cancel + retry remainder. */}
       <Dialog open={!!gradeProg} onOpenChange={(open) => { if (!open && !gradeProg?.running) setGradeProg(null) }}>
-        <DialogContent onInteractOutside={(e) => { if (gradeProg?.running) e.preventDefault() }}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => { if (gradeProg?.running) e.preventDefault() }}>
           <DialogHeader>
             <DialogTitle>{gradeProg?.running ? 'Grading in progress…' : 'Grading finished'}</DialogTitle>
             <DialogDescription>
@@ -2279,7 +2279,7 @@ export default function ExamResultsPage() {
 
       {/* On-demand plagiarism report — deterministic pairs + AI flags. */}
       <Dialog open={plagOpen} onOpenChange={setPlagOpen}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Plagiarism check</DialogTitle>
             <DialogDescription>
@@ -2352,7 +2352,7 @@ export default function ExamResultsPage() {
       </Dialog>
 
       <AlertDialog open={showReleaseAllConfirm} onOpenChange={setShowReleaseAllConfirm}>
-        <AlertDialogContent className="max-h-[90vh] overflow-y-auto">
+        <AlertDialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
             <AlertDialogTitle>Release scores with cutoff</AlertDialogTitle>
             <AlertDialogDescription>

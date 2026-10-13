@@ -54,7 +54,7 @@ export default function TeamsManagement() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs .5">Manage organization teams</p>
+                  <p className="text-xs max-w-62.5">Manage organization teams</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

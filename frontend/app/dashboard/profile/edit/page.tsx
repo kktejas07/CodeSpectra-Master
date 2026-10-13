@@ -495,7 +495,7 @@ export default function EditProfileWizard() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-lg">Profile Photo</h3>
-                    <p className="text-sm text-muted-foreground">Upload a professional photo. We recommend a square image at least 256x256px.</p>
+                    <p className="text-sm text-muted-foreground max-w-sm">Upload a professional photo. We recommend a square image at least 256x256px.</p>
                   </div>
                 </div>
                 
@@ -1404,7 +1404,7 @@ export default function EditProfileWizard() {
         const tipData = STEP_TIPS[step] || STEP_TIPS[1]
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowTips(false)}>
-            <div className="bg-card w-full p-6 rounded-2xl shadow-2xl border border-border animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+            <div className="bg-card w-full max-w-md p-6 rounded-2xl shadow-2xl border border-border animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-5">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{tipData.icon}</span>
@@ -1436,7 +1436,7 @@ export default function EditProfileWizard() {
       {/* Email update + verify */}
       {showEmailUpdate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !emailBusy && setShowEmailUpdate(false)}>
-          <div className="w-full rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Update email</h3>
               <button type="button" onClick={() => setShowEmailUpdate(false)}><X className="h-4 w-4" /></button>
@@ -1490,7 +1490,7 @@ export default function EditProfileWizard() {
       {/* Phone OTP (emailed — free; SMS provider later) */}
       {phoneOtpSent && !isPhoneVerified && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !phoneVerifyBusy && setPhoneOtpSent(false)}>
-          <div className="w-full rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Verify mobile</h3>
               <button type="button" onClick={() => setPhoneOtpSent(false)}><X className="h-4 w-4" /></button>
