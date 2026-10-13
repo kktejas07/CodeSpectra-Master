@@ -120,6 +120,7 @@
 | Feature | Status | Priority | Notes |
 |---------|--------|----------|-------|
 | Exam CRUD | ✅ | P2 | `db/content.ts` — `ExamDoc`, `ExamSubmissionDoc` |
+| Question type coverage | ✅ | P2 | 27 types via `lib/question-types.ts` — objective (mcq, multiple_response, true_false, yes_no, fill_blanks, numeric, short_answer, matching, ordering, ranking, matrix, table_fill, hotspot, drag_drop, likert, rating), coding variants (coding, debugging, code_completion, output_prediction, code_review, sql, regex_config, refactoring, test_case_writing), written (descriptive). Deterministic grader `compareObjectiveAnswer`; shared runner `QuestionAnswerInput`; per-type admin editors |
 | Exam degree/branch/screening metadata | ✅ | P2 | `degree_type`/`branch`/`screening_type` on exams + create/editor UI |
 | Exam auto-pick from question bank | ✅ | P2 | `POST /api/exams` samples from `question_bank` before AI top-up |
 | Question bank CRUD (filters, pagination, edit) | ✅ | P2 | `/dashboard/admin/question-bank` + `/api/question-bank` |

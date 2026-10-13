@@ -7,6 +7,7 @@ import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
 import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
+import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 
 export const runtime = 'nodejs'
 
@@ -196,14 +197,13 @@ export async function POST(request: Request) {
     const screeningType = ['aptitude', 'technical', 'coding', 'mixed'].includes(String(body.screening_type))
       ? String(body.screening_type)
       : 'mixed'
-    // ponytail: keep generation to the types the runner UI can render today.
-    // New registry types are accepted on import/edit (normalizeQuestion) but are
-    // only added to these pools once their runner UI ships (Phase 2).
+    // Types the AI generator can author reliably (hotspot needs an image URL
+    // and Likert/rating are unscored — admins author those directly).
     const typePoolByScreening: Record<string, QuestionType[]> = {
-      aptitude: ['mcq', 'true_false'],
-      technical: ['mcq', 'multiple_response', 'fill_blanks', 'true_false'],
-      coding: ['coding', 'mcq'],
-      mixed: ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks'],
+      aptitude: ['mcq', 'true_false', 'yes_no', 'multiple_response', 'numeric', 'short_answer', 'ordering'],
+      technical: ['mcq', 'multiple_response', 'true_false', 'fill_blanks', 'numeric', 'short_answer', 'matching', 'matrix', 'table_fill'],
+      coding: ['coding', 'debugging', 'code_completion', 'output_prediction', 'code_review', 'sql', 'mcq'],
+      mixed: ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'numeric', 'short_answer', 'ordering', 'ranking', 'matching', 'matrix', 'table_fill', 'coding', 'debugging', 'code_completion', 'output_prediction', 'code_review', 'sql', 'refactoring', 'test_case_writing', 'descriptive'],
     }
     const allowedTypes = typePoolByScreening[screeningType]
     let questionList: QuestionDoc[] = []
@@ -239,13 +239,8 @@ export async function POST(request: Request) {
           '- Write clear, specific questions with well-crafted wrong options that seem plausible (good distractors)\n' +
           '- Include a mix of conceptual, practical, scenario-based, and coding questions\n' +
           '- Coding questions should describe a real task with expected output or behavior\n' +
-          '- For mcq: exactly 4 distinct options, one clearly correct, others realistic but wrong\n' +
-          '- For multiple_response: 4-5 options, mark ALL correct answers in answer field (comma separated)\n' +
-          '- For true_false: options=["True","False"], answer="True" or "False"\n' +
-          '- For coding: omit options and answer, prompt must describe a specific coding task\n' +
-          '- For coding: ALSO include test_cases as 2-4 objects {"input": "<stdin>", "output": "<exact expected stdout>"} that verify the task — these execute the candidate\'s code for scoring\n' +
-          '- For descriptive: omit options, answer should be key points or a model answer\n' +
-          '- For fill_blanks: use ___ in prompt for blanks, answer is the missing word(s)\n\n' +
+          'TYPE RULES:\n' + buildTypeInstructions(allowedTypes) + '\n' +
+          buildExtraFieldHint(allowedTypes) + '\n\n' +
           'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number' + (allowedTypes.includes('coding') ? ', test_cases?:[{input:string, output:string}] (coding only)' : '') + '}.\n' +
           'Never repeat content. Return exactly ' + remaining + ' items.'
         const aiRes = await backendComplete({

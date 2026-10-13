@@ -467,7 +467,7 @@
 | `passing_score` | number | | | 0–100 |
 | `description` | string | | | |
 | `status` | string | ✓ | | `available`, `archived`, `draft` |
-| `questionList` | array | | | Embedded `[{id, type, title, prompt, options?, answer?, score}]` |
+| `questionList` | array | | | Embedded questions — `{id, type, title, prompt, options?, answer?, score, test_cases?, tolerance?, pairs?, matrix?, table?, scale?, image_url?, regions?, language?, starter_code?}`. `type` is any of the 27 registry ids (see `lib/question-types.ts`). |
 | `questions` | number | | | Question count |
 | `access_type` | string | | | `invite_only` / `open` |
 | `published` | bool | | | |
@@ -480,10 +480,18 @@
 | `id` | string | ✓ | PK | UUID |
 | `title` | string | ✓ | | Short question label |
 | `question` | string | ✓ | | Full question prompt |
-| `type` | string | ✓ | | `mcq`, `multiple_response`, `true_false`, `coding`, `descriptive`, `fill_blanks` |
-| `options` | array | | | Only for choice types |
-| `answer` | string | | | Correct answer / explanation for coding-descriptive |
+| `type` | string | ✓ | | Any of the 27 registry ids — see `lib/question-types.ts` (e.g. `mcq`, `multiple_response`, `true_false`, `yes_no`, `fill_blanks`, `numeric`, `short_answer`, `matching`, `ordering`, `ranking`, `matrix`, `table_fill`, `hotspot`, `drag_drop`, `likert`, `rating`, `coding`, `debugging`, `code_completion`, `output_prediction`, `code_review`, `sql`, `regex_config`, `refactoring`, `test_case_writing`, `descriptive`) |
+| `options` | array | | | Choice/word-bank types only (`meta.hasOptions`) |
+| `answer` | string | | | Correct answer / key / explanation (format depends on type) |
 | `explanation` | string | | | Optional post-answer explanation |
+| `test_cases` | array | | | Coding: `[{input, output}]` |
+| `tolerance` | number | | | Numeric: accepted ± range |
+| `pairs` | array | | | Matching / drag-drop: `[{left, right}]` |
+| `matrix` | object | | | Matrix: `{rows:[], columns:[]}` (answer = column per row) |
+| `table` | object | | | Table/grid fill: `{columns:[], rows:[]}` (answer = value per row) |
+| `scale` | object | | | Likert/rating: `{min, max, minLabel?, maxLabel?}` |
+| `image_url` / `regions` | string / array | | | Hotspot image + `[{id,x,y,w,h,label}]` (percentages 0-100) |
+| `language` / `starter_code` | string | | | Coding variants: runtime id + starter snippet |
 | `difficulty` | string | ✓ | | `Easy`, `Medium`, `Hard` |
 | `marks` | number | ✓ | | Default 10 |
 | `degree_type` | string | | | `btech`, `mtech`, `mca`, `diploma`, `other` |

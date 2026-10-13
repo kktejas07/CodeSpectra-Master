@@ -944,6 +944,10 @@ export default function ExamReviewPage() {
                   { type: 'descriptive', title: 'Explain REST', prompt: 'Explain the principles of RESTful API design and its key constraints.', score: 15 },
                   { type: 'multiple_response', title: 'CSS Selectors', prompt: 'Which of the following are valid CSS selectors?', options: ['.class', '#id', '$name', ':hover'], answer: '.class, #id, :hover', score: 10 },
                   { type: 'fill_blanks', title: 'HTTP Status Codes', prompt: 'HTTP 200 means ___, 404 means ___, and 500 means ___.', options: ['OK', 'Not Found', 'Server Error'], answer: 'OK, Not Found, Server Error', score: 5 },
+                  { type: 'numeric', title: 'Binary Search Comparisons', prompt: 'How many comparisons does binary search need in the worst case to find an item in a sorted array of 128 elements?', answer: '7', tolerance: 0, score: 5 },
+                  { type: 'matching', title: 'Match Algorithm to Complexity', prompt: 'Match each algorithm to its average-case time complexity.', pairs: [{ left: 'Binary Search', right: 'O(log n)' }, { left: 'Bubble Sort', right: 'O(n^2)' }, { left: 'Hash Lookup', right: 'O(1)' }], score: 10 },
+                  { type: 'ordering', title: 'Order the HTTP Request Stages', prompt: 'Put the stages of an HTTP request/response in the correct order.', options: ['DNS resolution', 'TCP handshake', 'HTTP request', 'Server response'], answer: 'DNS resolution, TCP handshake, HTTP request, Server response', score: 10 },
+                  { type: 'debugging', title: 'Fix Off-by-One Loop', prompt: 'The following function should return the sum of the first n natural numbers but is off by one. Identify the bug and fix it.', starter_code: 'def sum_n(n):\n    total = 0\n    for i in range(n):\n        total += i\n    return total', language: 'python', answer: 'The range should be range(1, n+1) (or add i+1) so the loop includes n.', score: 15 },
                 ]
                 const blob = new Blob([JSON.stringify(sample, null, 2)], { type: 'application/json' })
                 const url = URL.createObjectURL(blob)
