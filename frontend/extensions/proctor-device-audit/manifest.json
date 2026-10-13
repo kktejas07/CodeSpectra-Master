@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "CodeSpectra Device Audit",
-  "version": "1.0.5",
-  "description": "Detects USB/HID/storage devices during proctored assessments. Pen drives, peripherals, and hotplug events flagged in real time.",
+  "version": "1.0.6",
+  "description": "Detects USB/HID/storage devices plus tab switches and OS-window focus loss during proctored assessments. Pen drives, peripherals, hotplug, and focus changes flagged in real time.",
   "permissions": [
     "system.storage",
     "hid",

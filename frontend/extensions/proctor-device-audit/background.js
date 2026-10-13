@@ -19,6 +19,8 @@ const DEVICES_KEY = 'cspectra_known_devices'
 let currentSession = null // { sessionKind, sessionId }
 let knownDevices = new Map() // key: id → device snapshot
 let pollTimer = null
+let examTabId = null // the assessment tab we're proctoring
+let focusListeners = null // named handlers so we can remove them on stop
 
 // ─── Session Persistence ─────────────────────────────────────────────────────
 
@@ -328,6 +330,63 @@ function stopHotplugWatcher() {
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
 }
 
+// ─── Focus / Tab watcher ─────────────────────────────────────────────────────
+// These fire outside the page sandbox, so a candidate cannot suppress them from
+// JS. They catch tab switches and OS-window focus loss (e.g. switching to
+// another app) that an in-page `visibilitychange`/`blur` handler can miss.
+// NOTE: they do NOT detect Chrome's built-in "Ask Gemini" side panel — that is
+// the same window/tab and exposes no event; fullscreen enforcement covers it.
+const ASSESSMENT_URL_RE = /^https:\/\/codespectra\.ai\/(assessment|dashboard\/assessments|dashboard\/admin\/assessments)\b/
+
+function isAssessmentUrl(url) {
+  return typeof url === 'string' && ASSESSMENT_URL_RE.test(url)
+}
+
+function startFocusWatcher() {
+  if (focusListeners) return
+
+  const onActivated = async (activeInfo) => {
+    if (!currentSession) return
+    // Switching away from the exam tab (or back to it).
+    if (examTabId != null && activeInfo.tabId !== examTabId) {
+      let toUrl = ''
+      try { toUrl = (await chrome.tabs.get(activeInfo.tabId))?.url || '' } catch { /* ignore */ }
+      await reportToApi('tab_switched', { toTabId: activeInfo.tabId, toUrl: toUrl.slice(0, 500) })
+    } else if (activeInfo.tabId === examTabId) {
+      await reportToApi('tab_returned', {})
+    }
+  }
+
+  const onFocusChanged = async (windowId) => {
+    if (!currentSession) return
+    if (windowId === chrome.windows.WINDOW_ID_NONE) {
+      await reportToApi('os_focus_lost', { hint: 'Chrome lost OS focus (another app/window)' })
+    } else {
+      await reportToApi('os_focus_returned', { windowId })
+    }
+  }
+
+  const onCreated = async (tab) => {
+    if (!currentSession || !tab?.id || tab.id === examTabId) return
+    if (!isAssessmentUrl(tab.url || tab.pendingUrl)) {
+      await reportToApi('new_tab_opened', { tabId: tab.id, url: (tab.url || tab.pendingUrl || '').slice(0, 500) })
+    }
+  }
+
+  focusListeners = { onActivated, onFocusChanged, onCreated }
+  chrome.tabs.onActivated.addListener(onActivated)
+  if (chrome.windows?.onFocusChanged) chrome.windows.onFocusChanged.addListener(onFocusChanged)
+  if (chrome.tabs?.onCreated) chrome.tabs.onCreated.addListener(onCreated)
+}
+
+function stopFocusWatcher() {
+  if (!focusListeners) return
+  chrome.tabs.onActivated.removeListener(focusListeners.onActivated)
+  if (chrome.windows?.onFocusChanged) chrome.windows.onFocusChanged.removeListener(focusListeners.onFocusChanged)
+  if (chrome.tabs?.onCreated) chrome.tabs.onCreated.removeListener(focusListeners.onCreated)
+  focusListeners = null
+}
+
 // ─── Content script bridge ───────────────────────────────────────────────────
 
 function notifyContentScript(msg) {
@@ -356,9 +415,11 @@ function notifyContentScript(msg) {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'start-audit') {
     currentSession = { sessionKind: msg.sessionKind, sessionId: msg.sessionId }
+    examTabId = sender?.tab?.id ?? examTabId
     saveSession() // Persist session to storage
     runFullAudit().then((audit) => {
       startHotplugWatcher()
+      startFocusWatcher()
       sendResponse({ ok: true, audit })
     }).catch((e) => {
       console.error('[cspectra] audit failed:', e)
@@ -376,7 +437,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
   if (msg.type === 'stop-audit') {
     stopHotplugWatcher()
+    stopFocusWatcher()
     currentSession = null
+    examTabId = null
     saveSession() // Clear session from storage
     sendResponse({ ok: true })
     return false
