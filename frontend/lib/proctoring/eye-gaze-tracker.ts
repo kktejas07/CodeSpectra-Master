@@ -1,11 +1,16 @@
 /**
  * Eye Gaze, Blink Counter & Head Pose Tracker for AI Proctoring.
  *
- * Real-time vision analytics operating on camera frame buffers:
- * 1. Blink Detection & Counter (Eye Aspect Ratio).
- * 2. Gaze Vector Direction (Center, Left, Right, Up, Down).
- * 3. Head Pose Rotation (Yaw, Pitch, Roll).
- * 4. Facial Gesture & Emotion Anomaly Detection.
+ * Uses `@vladmandic/face-api` (the same library + self-hosted models as the
+ * face-camera) to detect 68 face landmarks per frame, then derives:
+ * 1. Blink detection via Eye Aspect Ratio (EAR).
+ * 2. Gaze direction from eye/nose geometry.
+ * 3. Head pose (yaw/pitch) from landmark geometry.
+ * 4. A basic attentiveness gesture.
+ *
+ * History: this used to guess everything from raw luma of fixed pixel regions
+ * with thresholds (< 22 or > 200) that almost never fire on a normally-lit
+ * face, so blinks stayed 0 and gaze stayed "center" forever. Landmarks fix that.
  */
 
 export interface EyeGazeAnalysis {
@@ -18,125 +23,140 @@ export interface EyeGazeAnalysis {
   confidenceScore: number
 }
 
+const EMPTY: EyeGazeAnalysis = {
+  gazeDirection: 'center',
+  blinkCount: 0,
+  isEyeClosed: false,
+  headPose: { yaw: 0, pitch: 0, roll: 0, isTurnedAway: false },
+  faceDetected: false,
+  emotionGesture: 'neutral',
+  confidenceScore: 0,
+}
+
+// Eye Aspect Ratio below this (on a closed frame, after having been open) = blink.
+const EAR_BLINK_THRESHOLD = 0.21
+// Gaze / head-pose dead-zone (degrees).
+const YAW_THRESHOLD = 14
+const PITCH_THRESHOLD = 14
+const TURNED_AWAY_THRESHOLD = 25
+
+type Pt = { x: number; y: number }
+const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y)
+
+function eyeAspectRatio(pts: Pt[]): number {
+  // Standard 6-point EAR: (|p2-p6| + |p3-p5|) / (2 * |p1-p4|)
+  const [p1, p2, p3, p4, p5, p6] = pts
+  const horiz = dist(p1, p4)
+  if (horiz === 0) return 0
+  return (dist(p2, p6) + dist(p3, p5)) / (2 * horiz)
+}
+
+const mid = (a: Pt, b: Pt): Pt => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 })
+
 export class EyeGazeTracker {
   private blinkCount = 0
   private lastEyeClosed = false
-  private eyeClosedFrames = 0
+  private ready = false
+  private loading: Promise<boolean> | null = null
+  private faceapi: typeof import('@vladmandic/face-api') | null = null
 
-  public analyzeFrame(video: HTMLVideoElement): EyeGazeAnalysis {
-    if (!video || video.paused || video.ended || video.readyState < 2) {
-      return {
-        gazeDirection: 'center',
-        blinkCount: this.blinkCount,
-        isEyeClosed: false,
-        headPose: { yaw: 0, pitch: 0, roll: 0, isTurnedAway: false },
-        faceDetected: false,
-        emotionGesture: 'neutral',
-        confidenceScore: 0,
+  /** Load the tiny face detector + landmark models (self-hosted, CDN fallback). */
+  public async load(): Promise<boolean> {
+    if (this.ready) return true
+    if (this.loading) return this.loading
+    this.loading = (async () => {
+      try {
+        const faceapi = await import('@vladmandic/face-api')
+        await (faceapi.tf as { ready?: () => Promise<void> })?.ready?.()
+        try {
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
+            faceapi.nets.faceLandmark68TinyNet.loadFromUri('/models'),
+          ])
+        } catch {
+          // Fallback to the public CDN if the self-hosted models are missing.
+          const base = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(base),
+            faceapi.nets.faceLandmark68TinyNet.loadFromUri(base),
+          ])
+        }
+        this.faceapi = faceapi
+        this.ready = true
+        return true
+      } catch {
+        this.ready = false
+        return false
       }
-    }
+    })()
+    return this.loading
+  }
+
+  public isReady(): boolean {
+    return this.ready
+  }
+
+  public async analyzeFrame(video: HTMLVideoElement): Promise<EyeGazeAnalysis> {
+    if (!video || video.paused || video.ended || video.readyState < 2) return { ...EMPTY, blinkCount: this.blinkCount }
+    if (!this.ready || !this.faceapi) return { ...EMPTY, blinkCount: this.blinkCount }
 
     try {
-      const canvas = document.createElement('canvas')
-      canvas.width = 160
-      canvas.height = 120
-      const ctx = canvas.getContext('2d')
-      if (!ctx) throw new Error('Canvas 2D context unavailable')
-
-      ctx.drawImage(video, 0, 0, 160, 120)
-      const imgData = ctx.getImageData(0, 0, 160, 120)
-      const data = imgData.data
-
-      // Analyze Left Eye region (x: 40-70, y: 35-55) & Right Eye region (x: 90-120, y: 35-55)
-      let leftEyeLuma = 0
-      let rightEyeLuma = 0
-      let leftEyePixels = 0
-      let rightEyePixels = 0
-
-      // Compute regional brightness and gradient vectors
-      let leftRegionLuma = 0
-      let rightRegionLuma = 0
-      let topRegionLuma = 0
-      let bottomRegionLuma = 0
-
-      for (let y = 0; y < 120; y++) {
-        for (let x = 0; x < 160; x++) {
-          const idx = (y * 160 + x) * 4
-          const luma = (data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114)
-
-          if (x >= 40 && x <= 70 && y >= 35 && y <= 55) {
-            leftEyeLuma += luma
-            leftEyePixels++
-          }
-          if (x >= 90 && x <= 120 && y >= 35 && y <= 55) {
-            rightEyeLuma += luma
-            rightEyePixels++
-          }
-
-          if (x < 60) leftRegionLuma += luma
-          if (x > 100) rightRegionLuma += luma
-          if (y < 40) topRegionLuma += luma
-          if (y > 80) bottomRegionLuma += luma
-        }
-      }
-
-      const avgLeftEye = leftEyeLuma / (leftEyePixels || 1)
-      const avgRightEye = rightEyeLuma / (rightEyePixels || 1)
-      const avgEyeLuma = (avgLeftEye + avgRightEye) / 2
-
-      // Blink Detection: Significant drop in eye region brightness indicates eyelid closure
-      const isEyeClosed = avgEyeLuma < 22 || (avgEyeLuma > 200)
-
-      if (isEyeClosed) {
-        this.eyeClosedFrames++
-        if (!this.lastEyeClosed && this.eyeClosedFrames >= 1) {
-          this.blinkCount++
-          this.lastEyeClosed = true
-        }
-      } else {
-        this.eyeClosedFrames = 0
+      const faceapi = this.faceapi
+      const detection = await faceapi
+        .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 }))
+        .withFaceLandmarks(true)
+      if (!detection) {
         this.lastEyeClosed = false
+        return { ...EMPTY, blinkCount: this.blinkCount, faceDetected: false, emotionGesture: 'neutral' }
       }
 
-      // Gaze Vector Direction Estimation (comparing left/right/top/bottom luma distribution)
-      let gazeDirection: 'center' | 'left' | 'right' | 'up' | 'down' = 'center'
-      const lrDiff = (leftRegionLuma - rightRegionLuma) / (leftRegionLuma + rightRegionLuma || 1)
-      const tbDiff = (topRegionLuma - bottomRegionLuma) / (topRegionLuma + bottomRegionLuma || 1)
+      const pts = detection.landmarks.positions as Pt[]
+      const leftEye = pts.slice(36, 42)
+      const rightEye = pts.slice(42, 48)
+      const earAvg = (eyeAspectRatio(leftEye) + eyeAspectRatio(rightEye)) / 2
 
-      if (lrDiff > 0.12) gazeDirection = 'right'
-      else if (lrDiff < -0.12) gazeDirection = 'left'
-      else if (tbDiff > 0.10) gazeDirection = 'down'
-      else if (tbDiff < -0.10) gazeDirection = 'up'
+      // Blink: eye must be closed (EAR < threshold) then reopen to count once.
+      const closed = earAvg < EAR_BLINK_THRESHOLD
+      if (closed && !this.lastEyeClosed) {
+        this.lastEyeClosed = true
+      } else if (!closed && this.lastEyeClosed) {
+        this.lastEyeClosed = false
+        this.blinkCount++
+      }
 
-      // Head Pose Yaw estimation
-      const yaw = Math.round(lrDiff * 90)
-      const pitch = Math.round(tbDiff * 90)
-      const isTurnedAway = Math.abs(yaw) > 25 || Math.abs(pitch) > 25
+      // Gaze / head pose from eye-line vs nose geometry.
+      const leftCenter = mid(pts[36], pts[39])
+      const rightCenter = mid(pts[42], pts[45])
+      const eyeMid = mid(leftCenter, rightCenter)
+      const interOcular = Math.max(1, dist(leftCenter, rightCenter))
+      const nose = pts[30]
+      const yawRatio = (nose.x - eyeMid.x) / interOcular
+      const pitchRatio = (nose.y - eyeMid.y) / interOcular
+      const yaw = Math.round(yawRatio * 90)
+      const pitch = Math.round((pitchRatio - 0.7) * 90)
+      const isTurnedAway = Math.abs(yaw) > TURNED_AWAY_THRESHOLD || Math.abs(pitch) > TURNED_AWAY_THRESHOLD
 
-      // Emotion / Gesture Anomaly Detection
-      let emotionGesture: 'neutral' | 'focused' | 'distracted' | 'suspicious_motion' = 'focused'
+      let gazeDirection: EyeGazeAnalysis['gazeDirection'] = 'center'
+      if (yaw > YAW_THRESHOLD) gazeDirection = 'right'
+      else if (yaw < -YAW_THRESHOLD) gazeDirection = 'left'
+      else if (pitch > PITCH_THRESHOLD) gazeDirection = 'down'
+      else if (pitch < -PITCH_THRESHOLD) gazeDirection = 'up'
+
+      let emotionGesture: EyeGazeAnalysis['emotionGesture'] = closed ? 'neutral' : 'focused'
       if (isTurnedAway) emotionGesture = 'distracted'
       if (Math.abs(yaw) > 35) emotionGesture = 'suspicious_motion'
 
       return {
         gazeDirection,
         blinkCount: this.blinkCount,
-        isEyeClosed,
+        isEyeClosed: closed,
         headPose: { yaw, pitch, roll: 0, isTurnedAway },
-        faceDetected: avgEyeLuma > 10,
-        emotionGesture,
-        confidenceScore: 0.94,
-      }
-    } catch (e) {
-      return {
-        gazeDirection: 'center',
-        blinkCount: this.blinkCount,
-        isEyeClosed: false,
-        headPose: { yaw: 0, pitch: 0, roll: 0, isTurnedAway: false },
         faceDetected: true,
-        emotionGesture: 'neutral',
-        confidenceScore: 0.85,
+        emotionGesture,
+        confidenceScore: detection.detection.score,
       }
+    } catch {
+      return { ...EMPTY, blinkCount: this.blinkCount, faceDetected: false }
     }
   }
 

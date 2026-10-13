@@ -26,6 +26,12 @@ interface CodingQuestionEditorProps {
   language: string
   /** Called when the candidate switches language. Value is a Piston runtime id. */
   onLanguageChange?: (language: string) => void
+  /**
+   * When the question is authored for a fixed language (it ships a
+   * `starter_code`/`language`, e.g. debug/completion/review tasks), lock the
+   * picker so the candidate can't switch and end up with a mismatched snippet.
+   */
+  lockLanguage?: boolean
 }
 
 /** Languages + ids live in lib/code-languages.ts (shared with the take page + grader). */
@@ -40,6 +46,7 @@ export function CodingQuestionEditor({
   onChange,
   language,
   onLanguageChange,
+  lockLanguage = false,
 }: CodingQuestionEditorProps) {
   const [showTestCases, setShowTestCases] = useState(true)
   const [mounted, setMounted] = useState(false)
@@ -97,17 +104,26 @@ export function CodingQuestionEditor({
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-zinc-400" />
-            {/* Language picker — value is the Piston runtime id used for grading. */}
-            <select
-              aria-label="Programming language"
-              value={language.toLowerCase()}
-              onChange={(e) => onLanguageChange?.(e.target.value)}
-              className="h-7 rounded border border-zinc-700 bg-zinc-800 px-2 text-xs font-medium text-zinc-200 focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              {CODE_LANGUAGES.map((l) => (
-                <option key={l.id} value={l.id}>{l.label}</option>
-              ))}
-            </select>
+            {/* Language — the question's authored runtime id (used for grading). */}
+            {lockLanguage ? (
+              <span
+                title="This question is written in a fixed language"
+                className="h-7 inline-flex items-center rounded border border-zinc-700 bg-zinc-800 px-2 text-xs font-medium text-zinc-200"
+              >
+                {CODE_LANGUAGES.find((l) => l.id === language.toLowerCase())?.label || language}
+              </span>
+            ) : (
+              <select
+                aria-label="Programming language"
+                value={language.toLowerCase()}
+                onChange={(e) => onLanguageChange?.(e.target.value)}
+                className="h-7 rounded border border-zinc-700 bg-zinc-800 px-2 text-xs font-medium text-zinc-200 focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {CODE_LANGUAGES.map((l) => (
+                  <option key={l.id} value={l.id}>{l.label}</option>
+                ))}
+              </select>
+            )}
             {question.starter_code && (
               <span className="text-[10px] px-1.5 py-0.5 bg-zinc-800 text-zinc-400 rounded">
                 Starter code provided

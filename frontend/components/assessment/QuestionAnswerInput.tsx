@@ -366,7 +366,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">{type === 'rating' ? 'Rate:' : 'How much do you agree?'}</label>
+          <label className="text-sm font-medium text-muted-foreground">{type === 'rating' ? 'Rate:' : 'Select a level:'}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="flex flex-wrap gap-2 items-center">
@@ -390,13 +390,17 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
 
   // ── Coding + variants (shared code editor) ──
   if (meta.group === 'coding') {
+    // A question authored for a specific language (it ships starter_code, e.g.
+    // debug/completion/review tasks) is locked to that language — switching
+    // would leave the candidate a snippet in the wrong language.
+    const locked = !!question.language
     let code = ''
     let lang = normalizeCodeLang(question.language || 'python')
     if (typeof value === 'string') {
       try {
         const parsed = JSON.parse(value)
         code = parsed?.code || ''
-        lang = normalizeCodeLang(parsed?.language || lang)
+        if (!locked) lang = normalizeCodeLang(parsed?.language || lang)
       } catch {
         code = value
       }
@@ -412,6 +416,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         question={{ ...question, starter_code: question.starter_code } as never}
         answer={code}
         language={lang}
+        lockLanguage={locked}
         onChange={(nextCode) => writeAnswer(lang, nextCode ?? '')}
         onLanguageChange={(nextLang) => writeAnswer(nextLang, code)}
       />

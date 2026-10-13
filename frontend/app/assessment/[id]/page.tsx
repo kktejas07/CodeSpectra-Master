@@ -678,7 +678,7 @@ export default function CandidateAssessmentPage() {
     <ExtensionGate>
     <>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined}>
-      <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted}>
+      <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted} enforceFullscreen={hasStarted}>
       <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent} />
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
