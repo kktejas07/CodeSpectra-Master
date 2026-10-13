@@ -445,7 +445,7 @@ export default function ProblemDetailPage() {
   if (loadError) {
     return (
       <div className="flex items-center justify-center p-6 py-20">
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 max-w-md">
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6">
           <h2 className="font-semibold text-destructive mb-1">Could not load problem</h2>
           <p className="text-sm text-muted-foreground">{loadError}</p>
           <Link href="/dashboard/problems" className="inline-flex items-center gap-1 text-primary mt-3 text-sm">
@@ -718,7 +718,7 @@ export default function ProblemDetailPage() {
 
              {leftTab === 'submissions' && (
                 <div>
-                   {submissionsLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto mt-10" /> :
+                   {submissionsLoading ? <Loader2 className="h-5 w-5 animate-spin mt-10" /> :
                     submissionsList.length === 0 ? <p className="text-sm text-center text-muted-foreground mt-10">No submissions yet.</p> :
                     <div className="space-y-2">
                        {submissionsList.map(s => (
@@ -891,7 +891,7 @@ export default function ProblemDetailPage() {
           {/* Feedback Modal */}
           {feedbackOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
-              <div className="bg-background rounded-xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-background rounded-xl border p-6 w-full mx-4" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold mb-4">
                   {feedbackType === 'bug' ? 'Report Bug' : feedbackType === 'feature' ? 'Request Feature' : 'Suggest Idea'}
                 </h3>
@@ -914,7 +914,7 @@ export default function ProblemDetailPage() {
           {/* AI Mentor Modal */}
           {aiMentorOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAiMentorOpen(false)}>
-              <div className="bg-background rounded-xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-background rounded-xl border p-6 w-full mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="h-5 w-5 text-purple-500" />
                   <h3 className="text-lg font-bold">AI Mentor</h3>

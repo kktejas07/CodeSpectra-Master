@@ -702,7 +702,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             {(!course.sections || course.sections.length === 0) && (
               <div className="text-center py-12 text-muted-foreground bg-card border border-dashed border-border rounded-xl">
-                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                <BookOpen className="w-12 h-12 mb-3 opacity-20" />
                 <p>Your curriculum is empty. Add a module to start building.</p>
               </div>
             )}

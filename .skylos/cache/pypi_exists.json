@@ -1,0 +1,12 @@
+{
+  "core": "exists",
+  "backend": "exists",
+  "ai-client": "missing",
+  "models": "exists",
+  "services": "exists",
+  "routers": "exists",
+  "scheduler": "exists",
+  "rag": "exists",
+  "live-frontend": "missing",
+  "server": "exists"
+}

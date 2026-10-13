@@ -60,7 +60,7 @@ export default function MockTestSetupPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
+    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
       <div className="flex items-center gap-4" data-tour="mock-test-detail-header">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />

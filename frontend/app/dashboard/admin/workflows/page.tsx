@@ -219,7 +219,7 @@ export default function WorkflowsPage() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Compose pipelines visually or via JSON. Built-in node types: trigger.manual, http.request, ai.complete, mongo.find, log, delay.</p>
+                  <p className="text-xs .5">Compose pipelines visually or via JSON. Built-in node types: trigger.manual, http.request, ai.complete, mongo.find, log, delay.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

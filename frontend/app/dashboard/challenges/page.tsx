@@ -83,7 +83,7 @@ export default function ChallengesPage() {
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Practice coding, system design, and behavioral interviews</p>
+                <p className="text-xs .5">Practice coding, system design, and behavioral interviews</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -98,7 +98,7 @@ export default function ChallengesPage() {
         </div>
       ) : challenges.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
-          <Trophy className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <Trophy className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No challenges available yet.</p>
         </Card>
       ) : (

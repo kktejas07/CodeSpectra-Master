@@ -141,7 +141,7 @@ export default function ArenaPage() {
         </div>
       ) : challenges.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
-          <Code className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <Code className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No arena challenges available yet.</p>
         </Card>
       ) : (

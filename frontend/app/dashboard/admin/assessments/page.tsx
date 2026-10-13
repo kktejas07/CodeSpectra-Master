@@ -593,7 +593,7 @@ export default function AdminExamsPage() {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-y-auto">
+        <DialogContent className="max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
           </DialogHeader>
@@ -776,7 +776,7 @@ export default function AdminExamsPage() {
       </Dialog>
 
       <Sheet open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
-        <SheetContent side="right" className="w-full sm:w-120 sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-120 overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Invite Candidate</SheetTitle>
             <SheetDescription>
@@ -838,7 +838,7 @@ export default function AdminExamsPage() {
       </Sheet>
 
       <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
-        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Bulk Invite Candidates — {bulkInviteExam?.title}</DialogTitle>
           </DialogHeader>
@@ -942,7 +942,7 @@ export default function AdminExamsPage() {
       </Dialog>
 
       <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
-        <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Share Links — {linkExam?.title}</DialogTitle>
           </DialogHeader>
@@ -1010,12 +1010,12 @@ export default function AdminExamsPage() {
                 </button>
               </div>
               {linkPreset === 'custom' && (
-                <Input type="datetime-local" value={linkCustom} onChange={(e) => setLinkCustom(e.target.value)} className="max-w-60" />
+                <Input type="datetime-local" value={linkCustom} onChange={(e) => setLinkCustom(e.target.value)} />
               )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="linkMaxUses">Max uses <span className="text-muted-foreground">(optional)</span></Label>
-              <Input id="linkMaxUses" type="number" min="1" value={linkMaxUses} onChange={(e) => setLinkMaxUses(e.target.value)} placeholder="Unlimited" className="max-w-40" />
+              <Input id="linkMaxUses" type="number" min="1" value={linkMaxUses} onChange={(e) => setLinkMaxUses(e.target.value)} placeholder="Unlimited" />
             </div>
             {linkCreatedUrl && (
               <div className="space-y-2">

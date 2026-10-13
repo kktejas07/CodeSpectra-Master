@@ -413,7 +413,7 @@ export default function NewsletterPage() {
                       disabled={uploadingImage}
                       className="mt-1.5 w-full border-2 border-dashed rounded-lg p-8 text-center text-muted-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
                     >
-                      {uploadingImage ? <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" /> : <Upload className="h-6 w-6 mx-auto mb-2" />}
+                      {uploadingImage ? <Loader2 className="h-6 w-6 animate-spin mb-2" /> : <Upload className="h-6 w-6 mb-2" />}
                       <p className="text-sm">{uploadingImage ? 'Uploading...' : 'Click to upload hero image'}</p>
                       <p className="text-xs mt-1">JPEG, PNG, GIF, WebP — Max 5MB</p>
                     </button>
@@ -511,7 +511,7 @@ export default function NewsletterPage() {
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : campaigns.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground"><Megaphone className="h-8 w-8 mx-auto mb-3 opacity-50" /><p>No campaigns yet.</p></div>
+            <div className="text-center py-12 text-muted-foreground"><Megaphone className="h-8 w-8 mb-3 opacity-50" /><p>No campaigns yet.</p></div>
           ) : (
             <div className="space-y-3">
               {campaigns.map(c => {

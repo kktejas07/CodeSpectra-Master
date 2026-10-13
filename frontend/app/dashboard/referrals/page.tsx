@@ -108,7 +108,7 @@ export default function ReferralsPage() {
       <div data-tour="referrals-action">
       {!stats?.code ? (
         <Card className="border-border/60 p-10 text-center">
-          <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <Users className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">Generate your unique referral code to start inviting friends.</p>
           <Button onClick={handleGenerate} disabled={generating} className="mt-4">
             {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}

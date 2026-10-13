@@ -632,7 +632,7 @@ export default function Security() {
               </div>
             ) : (
               <div className="py-12 text-center text-muted-foreground">
-                <Shield className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
                 <p className="text-sm">No active sessions. Sessions appear after users log in.</p>
               </div>
             )}
@@ -671,7 +671,7 @@ export default function Security() {
                 </div>
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
-                  <LogIn className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                  <LogIn className="h-8 w-8 mb-2 text-muted-foreground/40" />
                   <p className="text-sm">No login events today</p>
                 </div>
               )}
@@ -709,7 +709,7 @@ export default function Security() {
                 </div>
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
-                  <Shield className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                  <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
                   <p className="text-sm">No security alerts in the past 7 days</p>
                 </div>
               )}
@@ -739,7 +739,7 @@ export default function Security() {
               </div>
             ) : (
               <div className="py-12 text-center text-muted-foreground">
-                <Shield className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
                 <p className="text-sm">No security settings configured. Run the seed script to populate defaults.</p>
               </div>
             )}
@@ -819,7 +819,6 @@ export default function Security() {
                       <Input
                         type="number"
                         min={0}
-                        className="sm:max-w-30"
                         placeholder="0"
                         defaultValue={String(cur)}
                         onChange={e => setConcurrentLimitDraft(e.target.value)}
@@ -968,7 +967,7 @@ export default function Security() {
                 </div>
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
-                  <Fingerprint className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                  <Fingerprint className="h-8 w-8 mb-2 text-muted-foreground/40" />
                   <p className="text-sm">No fingerprints yet. They appear as users sign in from this platform.</p>
                 </div>
               )}
@@ -1048,7 +1047,7 @@ export default function Security() {
                 </div>
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
-                  <Shield className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                  <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
                   <p className="text-sm">No blocked IPs. IPs are auto-blocked after brute-force attempts or added manually above.</p>
                 </div>
               )}
@@ -1112,7 +1111,7 @@ export default function Security() {
                 </div>
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
-                  <ShieldAlert className="mx-auto h-8 w-8 mb-2 text-muted-foreground/40" />
+                  <ShieldAlert className="h-8 w-8 mb-2 text-muted-foreground/40" />
                   <p className="text-sm">No security events yet.</p>
                 </div>
               )}

@@ -114,7 +114,7 @@ export default function AchievementsPage() {
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Showcase your platform achievements and earned skill badges.</p>
+                <p className="text-xs .5">Showcase your platform achievements and earned skill badges.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -123,7 +123,7 @@ export default function AchievementsPage() {
 
       {achievements.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
-          <Trophy className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <Trophy className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No achievements yet. Start completing challenges to earn them.</p>
         </Card>
       ) : (

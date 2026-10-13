@@ -300,7 +300,7 @@ export default function MyAssessmentsPage() {
       <div data-tour="assessments-table">
       {attempts.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
-          <FileText className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <FileText className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">You haven't taken any assessments yet.</p>
           <Link href="/dashboard/assessments">
             <Button variant="outline" size="sm" className="mt-4">Browse Assessments</Button>

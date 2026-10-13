@@ -282,7 +282,7 @@ export default function BulkSchedulePage() {
                   variant="outline"
                   role="combobox"
                   aria-expanded={examPickerOpen}
-                  className="w-full max-w-xl justify-between font-normal"
+                  className="w-full justify-between font-normal"
                   disabled={loadingExams}
                 >
                   <span className="truncate">
@@ -422,7 +422,7 @@ export default function BulkSchedulePage() {
         {step === 3 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Schedule Settings</h2>
-            <div className="grid gap-4 max-w-lg">
+            <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="deadline">Deadline (optional)</Label>
                 <Input

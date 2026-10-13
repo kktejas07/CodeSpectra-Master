@@ -514,7 +514,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         <TabsContent value="problems" className="space-y-4">
           {!problemsVisible ? (
             <Card className="p-8 text-center">
-              <Target className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+              <Target className="h-10 w-10 text-muted-foreground/40 mb-3" />
               <p className="text-muted-foreground">Problems will be visible when the contest starts</p>
               <p className="text-xs text-muted-foreground mt-1">Start time: {codeathon.startDate ? new Date(codeathon.startDate).toLocaleString() : 'TBA'}</p>
             </Card>

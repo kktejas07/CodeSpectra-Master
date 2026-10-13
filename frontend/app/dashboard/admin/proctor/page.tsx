@@ -222,7 +222,7 @@ export default function AdminProctorPage() {
 
       <div className="flex gap-2 flex-wrap">
         <Input placeholder="Search by session ID, user ID, or event type…" value={search}
-          onChange={(e) => setSearch(e.target.value)} className="max-w-md" />
+          onChange={(e) => setSearch(e.target.value)} />
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value)}

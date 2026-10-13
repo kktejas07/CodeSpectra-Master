@@ -276,7 +276,7 @@ export default function HundredDaysPage() {
                 <div className="flex-1">
                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Current progress</p>
                    <h2 className="text-xl font-bold text-foreground mb-2">Day {stats.done}/100 Completed</h2>
-                   <p className="text-sm text-muted-foreground max-w-sm">
+                   <p className="text-sm text-muted-foreground">
                      Embark on a 100-day coding journey to achieve mastery in programming!
                    </p>
                     <Button className="mt-4 gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full"

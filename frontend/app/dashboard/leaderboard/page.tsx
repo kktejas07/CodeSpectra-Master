@@ -249,7 +249,7 @@ export default function LeaderboardPage() {
                 <h2 className="text-2xl font-bold text-muted-foreground/50" />
                 <Card className="overflow-hidden rounded-2xl">
                   <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
-                    <div className="relative w-full sm:max-w-xs">
+                    <div className="relative w-full">
                       <div className="h-4 w-16 bg-muted/50 rounded animate-pulse" />
                     </div>
                     <div className="overflow-x-auto">
@@ -385,7 +385,7 @@ export default function LeaderboardPage() {
               <h2 className="text-2xl font-bold">Rankings</h2>
               <Card className="overflow-hidden rounded-2xl">
                 <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
-                  <div className="relative w-full sm:max-w-xs">
+                  <div className="relative w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       placeholder="Find developer…"

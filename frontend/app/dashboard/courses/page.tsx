@@ -278,7 +278,7 @@ function LearningPageInner() {
   }, [loading, pageParam, totalPages])
 
   return (
-    <div className="space-y-8 w-full mx-auto pb-12 px-2 sm:px-4">
+    <div className="space-y-8 w-full pb-12 px-2 sm:px-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2" data-tour="courses-header">
         <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
           <h1 className="text-3xl font-bold">
@@ -289,7 +289,7 @@ function LearningPageInner() {
             <Heart className="h-4 w-4" /> Wishlist
           </Link>
         </div>
-        <div className="relative max-w-sm w-full" data-tour="courses-search">
+        <div className="relative w-full" data-tour="courses-search">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9 bg-background/50 border-muted rounded-full"
@@ -385,7 +385,7 @@ function LearningPageInner() {
 
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex items-center justify-between mb-3">
-                      <Badge variant="secondary" className="text-[10px] font-medium text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 uppercase truncate max-w-30">
+                      <Badge variant="secondary" className="text-[10px] font-medium text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 uppercase truncate">
                         {course.category || course.tags?.[0] || 'General'}
                       </Badge>
                       <div className="flex items-center gap-1 text-xs font-medium text-amber-500 shrink-0">

@@ -303,7 +303,7 @@ export default function MyResumesPage() {
 
       {/* Creation Option Dialog */}
       <Dialog open={creationModalOpen} onOpenChange={setCreationModalOpen}>
-        <DialogContent className="max-w-xl">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle className="text-xl text-center">Choose creation option</DialogTitle>
             <DialogDescription className="text-center pt-2">

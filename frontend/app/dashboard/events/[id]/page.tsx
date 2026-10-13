@@ -959,7 +959,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <TabsContent value="problems" className="mt-4 space-y-3">
           {(!event.tasks || event.tasks.length === 0) ? (
             <Card className="p-8 text-center">
-              <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <Target className="h-8 w-8 mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">No problems added yet</p>
             </Card>
           ) : (
@@ -991,12 +991,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <TabsContent value="submissions" className="mt-4 space-y-3">
           {!myTeam ? (
             <Card className="p-8 text-center">
-              <Send className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <Send className="h-8 w-8 mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Join a team to see submissions</p>
             </Card>
           ) : submissions.length === 0 ? (
             <Card className="p-8 text-center">
-              <Send className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <Send className="h-8 w-8 mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">No submissions yet</p>
             </Card>
           ) : (
@@ -1027,7 +1027,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <TabsContent value="leaderboard" className="mt-4 space-y-3">
           {leaderboard.length === 0 ? (
             <Card className="p-8 text-center">
-              <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <Trophy className="h-8 w-8 mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">No teams yet</p>
             </Card>
           ) : (
@@ -1074,12 +1074,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <TabsContent value="judge" className="mt-4 space-y-4">
           {judgeLoading ? (
             <Card className="p-8 text-center">
-              <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-muted-foreground" />
+              <Loader2 className="h-6 w-6 animate-spin mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Loading submissions...</p>
             </Card>
           ) : judgeSubmissions.length === 0 ? (
             <Card className="p-8 text-center">
-              <Shield className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <Shield className="h-8 w-8 mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">No submissions to review</p>
             </Card>
           ) : (
@@ -1375,7 +1375,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   {screenBoard.length === 0 && rankedBoard.length === 0 && (
                     <Card className="p-8 text-center">
-                      <Sparkles className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <Sparkles className="h-8 w-8 mb-2 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">No screening results or reports yet — run audits and screening in Evaluate.</p>
                     </Card>
                   )}
@@ -1758,7 +1758,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Results Tab */}
         <TabsContent value="results" className="mt-4">
           <Card className="p-8 text-center">
-            <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <Trophy className="h-8 w-8 mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Results have been released</p>
           </Card>
         </TabsContent>

@@ -365,7 +365,7 @@ export default function UsersManagement() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Use Edit for display names and Change role for access level, or remove accounts. New users without a manual password follow Platform settings &rarr; Admin user invitations. Last active combines recent sign-in and in-app activity.</p>
+                  <p className="text-xs .5">Use Edit for display names and Change role for access level, or remove accounts. New users without a manual password follow Platform settings &rarr; Admin user invitations. Last active combines recent sign-in and in-app activity.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

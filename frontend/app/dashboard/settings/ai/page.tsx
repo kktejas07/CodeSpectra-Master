@@ -40,7 +40,7 @@ export default function AISettingsPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6">
       <h1 className="text-3xl font-bold flex items-center gap-2" data-tour="ai-settings-header">
         <Sparkles className="h-7 w-7 text-primary" /> AI Model Preferences
       </h1>

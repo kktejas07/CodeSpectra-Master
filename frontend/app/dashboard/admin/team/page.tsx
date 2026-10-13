@@ -99,7 +99,7 @@ export default function TeamManagement() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Members of your organization. Add users here — they are scoped to your org automatically.</p>
+                  <p className="text-xs .5">Members of your organization. Add users here — they are scoped to your org automatically.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -143,7 +143,7 @@ export default function TeamManagement() {
         </div>
         {members.length === 0 ? (
           <div className="text-center py-10">
-            <Users className="mx-auto h-12 w-12 text-muted-foreground/30" />
+            <Users className="h-12 w-12 text-muted-foreground/30" />
             <p className="mt-3 text-muted-foreground">No members in your organization yet.</p>
             <Button className="mt-4 gap-2" size="sm" onClick={() => setAddOpen(true)}>
               <UserPlus className="h-4 w-4" /> Add member
@@ -168,7 +168,7 @@ export default function TeamManagement() {
       </Card>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent>
           <form onSubmit={handleAddMember}>
             <DialogHeader>
               <DialogTitle>Add member</DialogTitle>

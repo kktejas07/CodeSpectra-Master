@@ -683,7 +683,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div>
                     {activeLesson?.description && (
-                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed max-w-3xl">
+                      <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
                         {activeLesson?.description}
                       </p>
                     )}

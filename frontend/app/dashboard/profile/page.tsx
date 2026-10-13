@@ -122,7 +122,7 @@ function TwoFactorAuth() {
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">Scan with authenticator app, then enter the 6-digit code:</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {qrCode ? <img src={qrCode} alt="QR Code" className="mx-auto h-40 w-40 rounded border" /> : <div className="mx-auto h-40 w-40 rounded border flex items-center justify-center"><Loader className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+          {qrCode ? <img src={qrCode} alt="QR Code" className="h-40 w-40 rounded border" /> : <div className="h-40 w-40 rounded border flex items-center justify-center"><Loader className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
           <p className="text-center text-[10px] text-muted-foreground break-all font-mono">{setupData.secret}</p>
           <div className="flex gap-2">
             <input
@@ -327,7 +327,7 @@ export default function ProfilePage() {
   )
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 mx-auto pb-10">
+    <div className="w-full px-4 sm:px-6 lg:px-8 pb-10">
       {/* Banner */}
       <div className={`h-48 lg:h-64 w-full rounded-b-2xl relative overflow-hidden shadow-sm group ${
         (coverTheme.includes('-3d') || ['dark-tech','gradient-blue','emerald-code'].includes(coverTheme)) ? 'bg-slate-900' :
@@ -369,7 +369,7 @@ export default function ProfilePage() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-mint-pulse/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             
-            <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-mint-pulse to-emerald-500 p-0.75 shadow-lg">
+            <div className="relative w-fit rounded-full bg-linear-to-br from-mint-pulse to-emerald-500 p-0.75 shadow-lg">
               <div className="rounded-full bg-background p-1">
                 <UserAvatar
                   src={avatar}
@@ -621,7 +621,7 @@ export default function ProfilePage() {
 
       {/* Cover Theme Selection Modal */}
       <Dialog open={coverModalOpen} onOpenChange={setCoverModalOpen}>
-        <DialogContent className="sm:max-w-175">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Customize Cover Banner</DialogTitle>
           </DialogHeader>

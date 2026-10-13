@@ -910,7 +910,7 @@ export default function ExamReviewPage() {
       </div>
 
       <Dialog open={importModal} onOpenChange={setImportModal}>
-        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Import Questions</DialogTitle>
           </DialogHeader>
@@ -1021,7 +1021,7 @@ export default function ExamReviewPage() {
 
       {/* Pull from Question Bank modal */}
       <Dialog open={bankModal} onOpenChange={setBankModal}>
-        <DialogContent className="sm:max-w-200 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Database className="h-4 w-4 text-primary" /> Pull from Question Bank
@@ -1143,7 +1143,7 @@ export default function ExamReviewPage() {
       </Dialog>
 
       <Dialog open={questionModal} onOpenChange={setQuestionModal}>
-        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{exam.questionList.find(q => q.id === editingQuestion?.id) ? 'Edit Question' : 'Add Question'}</DialogTitle>
           </DialogHeader>

@@ -369,7 +369,7 @@ export default function HackathonDetailPage({
                     <HelpCircle className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-help transition-colors ml-1" />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="border-border/50 bg-background/95 backdrop-blur-xl shadow-xl p-3">
-                    <p className="text-sm max-w-70 font-medium leading-relaxed">
+                    <p className="text-sm font-medium leading-relaxed">
                       <span className="font-semibold text-foreground">Slug:</span> /{event.slug}<br/>
                       <span className="font-semibold text-foreground">Capacity:</span> {event.num_teams} teams<br/>
                       <span className="font-semibold text-foreground">Team Size:</span> max {event.max_per_team}<br/>
@@ -806,7 +806,7 @@ export default function HackathonDetailPage({
       <Card className="overflow-hidden rounded-3xl border-primary/30 bg-primary/5 relative shadow-sm mt-8">
         <div className="absolute top-0 left-0 w-1.5 h-full bg-linear-to-b from-primary to-primary/50" />
         <div className="p-8 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="space-y-3 max-w-2xl">
+          <div className="space-y-3">
             <h2 className="flex items-center gap-2.5 text-xl font-extrabold text-foreground tracking-tight">
               <Trophy className="h-6 w-6 text-primary drop-shadow-sm" /> Results Management
             </h2>

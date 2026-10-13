@@ -80,7 +80,7 @@ export default function InterviewSetupPage() {
 
   if (!gate.ready) return (
     <div className="min-h-screen bg-background py-12">
-      <div className="max-w-4xl mx-auto space-y-6 px-4">
+      <div className="space-y-6 px-4">
         <SkeletonCard />
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <SkeletonButton />

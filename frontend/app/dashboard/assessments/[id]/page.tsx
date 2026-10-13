@@ -195,7 +195,7 @@ export default function ExamPage() {
 
   if (!gate.ready) return null
   if (loading) return (
-    <div className="max-w-4xl mx-auto space-y-6 p-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center gap-3">
         <SkeletonButton />
         <div className="h-6 w-48 bg-muted/60 rounded animate-pulse" />
@@ -219,9 +219,9 @@ export default function ExamPage() {
 
     if (!isReleased) {
       return (
-        <div className="max-w-md mx-auto p-6 mt-10">
+        <div className="p-6 mt-10">
           <Card className="p-8 text-center border-primary/20 space-y-6 shadow-xl bg-card/60 backdrop-blur">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mx-auto text-green-500 animate-pulse">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-500 animate-pulse">
               <CheckCircle className="h-8 w-8" />
             </div>
             <div className="space-y-2">
@@ -243,7 +243,7 @@ export default function ExamPage() {
 
     // If released, display premium, clean results list
     return (
-      <div className="max-w-3xl mx-auto p-6 space-y-8">
+      <div className="p-6 space-y-8">
         <Card className="p-8 text-center space-y-4 bg-card/60 backdrop-blur border-primary/10 shadow-lg">
           <h1 className="text-3xl font-bold tracking-tight">Assessment Results</h1>
           <div className="flex justify-center items-baseline gap-1">
@@ -423,7 +423,7 @@ export default function ExamPage() {
 
       <div className="flex-1 overflow-auto p-6">
         {question && (
-          <div className="max-w-4xl mx-auto space-y-6">
+          <div className="space-y-6">
             <Card className="p-6 space-y-4" data-tour="assessment-detail-question">
               <div className="flex items-center gap-2">
                 <Badge>{question.type}</Badge>

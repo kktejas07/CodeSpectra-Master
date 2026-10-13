@@ -133,7 +133,7 @@ export default function SupportPage() {
 
   if (selectedTicket) {
     return (
-      <div className="max-w-3xl mx-auto space-y-6">
+      <div className="space-y-6">
         <button onClick={() => setSelectedTicket(null)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to tickets
         </button>
@@ -176,7 +176,7 @@ export default function SupportPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center justify-between" data-tour="support-header">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2"><MessageSquare className="h-8 w-8 text-primary" />Support Tickets</h1>

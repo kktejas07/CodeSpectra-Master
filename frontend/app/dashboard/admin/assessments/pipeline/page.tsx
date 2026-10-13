@@ -222,7 +222,7 @@ export default function PipelinePage() {
         <div className="flex items-center gap-4">
           <span className="text-sm font-medium text-muted-foreground">Assessment:</span>
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-            <SelectTrigger className="max-w-sm">
+            <SelectTrigger>
               <SelectValue placeholder={loadingExams ? 'Loading...' : 'Select an assessment'} />
             </SelectTrigger>
             <SelectContent>

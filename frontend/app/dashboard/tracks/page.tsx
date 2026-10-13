@@ -103,7 +103,7 @@ export default function TracksPage() {
               <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
             </TooltipTrigger>
             <TooltipContent side="right">
-              <p className="text-xs max-w-62.5">Pick a stack and grind through curated problems.</p>
+              <p className="text-xs .5">Pick a stack and grind through curated problems.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -115,7 +115,7 @@ export default function TracksPage() {
         </div>
       ) : tracks.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
-          <TrendingUp className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <TrendingUp className="h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No tracks available yet.</p>
         </Card>
       ) : (

@@ -151,7 +151,7 @@ export default function CalendarPage() {
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <CalendarDays className="h-7 w-7 text-primary" /> Calendar
         </h1>
-        <p className="text-sm text-muted-foreground max-w-md">
+        <p className="text-sm text-muted-foreground">
           Stay on CodeSpectra — events live here. Optional .ics / Google export remains available from courses if you want external sync.
         </p>
       </div>

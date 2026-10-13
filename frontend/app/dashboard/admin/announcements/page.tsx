@@ -146,7 +146,7 @@ export default function AnnouncementsPage() {
                   ) : (
                     <button type="button" onClick={() => imageFileRef.current?.click()} disabled={uploadingImage}
                       className="mt-1.5 w-full border-2 border-dashed rounded-lg p-6 text-center text-muted-foreground hover:border-primary/50 transition-colors">
-                      {uploadingImage ? <Loader2 className="h-5 w-5 animate-spin mx-auto mb-1" /> : <Upload className="h-5 w-5 mx-auto mb-1" />}
+                      {uploadingImage ? <Loader2 className="h-5 w-5 animate-spin mb-1" /> : <Upload className="h-5 w-5 mb-1" />}
                       <p className="text-xs">{uploadingImage ? 'Uploading...' : 'Click to upload image'}</p>
                     </button>
                   )}

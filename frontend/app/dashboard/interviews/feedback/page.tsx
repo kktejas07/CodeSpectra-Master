@@ -248,7 +248,7 @@ export default function InterviewFeedbackPage() {
           <TabsContent value="chat" className="space-y-4">
             {session.questions.length === 0 ? (
               <Card className="p-8 text-center text-muted-foreground">
-                <MessageSquare className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <MessageSquare className="h-8 w-8 mb-2 opacity-50" />
                 <p className="text-sm">No questions recorded for this interview.</p>
               </Card>
             ) : (
@@ -324,7 +324,7 @@ export default function InterviewFeedbackPage() {
           <TabsContent value="analysis" className="space-y-6">
             {!hasFeedback ? (
               <Card className="p-8 text-center text-muted-foreground">
-                <BarChart3 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <BarChart3 className="h-8 w-8 mb-2 opacity-50" />
                 <p className="text-sm">No feedback data available for this interview.</p>
                 <p className="text-xs mt-1">Feedback will appear after the interview is completed.</p>
               </Card>
@@ -379,7 +379,7 @@ export default function InterviewFeedbackPage() {
             <AudioPlayer url={(session as unknown as { audioUrl: string }).audioUrl} />
           ) : (
             <Card className="p-8 text-center text-muted-foreground">
-              <Volume2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <Volume2 className="h-8 w-8 mb-2 opacity-50" />
               <p className="text-sm">Audio recording not available for this interview.</p>
             </Card>
           )}

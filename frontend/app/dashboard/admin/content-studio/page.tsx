@@ -727,7 +727,7 @@ function SignalsTab() {
       )}
 
       <Dialog open={!!previewDraft} onOpenChange={(open) => !open && setPreviewDraft(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{previewDraft?.title}</DialogTitle>
             <DialogDescription>{previewDraft?.category} · {previewDraft?.source_feed}</DialogDescription>

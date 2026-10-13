@@ -313,7 +313,7 @@ export default function ResumeBuilderPage() {
         <div className="flex-1 bg-muted/30 dark:bg-muted/10 p-6 flex flex-col relative h-full overflow-hidden">
           
           {/* Template Switcher */}
-          <div className="bg-card border border-border rounded-full px-2 py-2 flex items-center justify-center gap-2 mb-6 mx-auto shadow-sm w-max">
+          <div className="bg-card border border-border rounded-full px-2 py-2 flex items-center justify-center gap-2 mb-6 shadow-sm w-max">
             {(['modern', 'minimal', 'elegant', 'professional', 'creative'] as const).map(t => (
               <Button
                 key={t}
@@ -329,7 +329,7 @@ export default function ResumeBuilderPage() {
           {/* Resume Canvas Wrapper */}
           <div className="flex-1 overflow-y-auto custom-scrollbar flex justify-center pb-20">
             {/* The Resume A4 Paper */}
-            <div className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
+            <div className="bg-white shadow-xl rounded-sm w-full min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
               
               {/* --- Template: Modern --- */}
               {template === 'modern' && (
@@ -418,7 +418,7 @@ export default function ResumeBuilderPage() {
                   </div>
 
                   {data.summary && (
-                    <div className="mb-8 text-center text-sm text-slate-700 leading-relaxed max-w-2xl mx-auto">
+                    <div className="mb-8 text-center text-sm text-slate-700 leading-relaxed">
                       {data.summary}
                     </div>
                   )}
