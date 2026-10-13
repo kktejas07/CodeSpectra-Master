@@ -20,7 +20,7 @@ export default function InterviewResultsPage() {
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <Card className="border-border/60 p-10 text-center w-full space-y-6">
+      <Card className="border-border/60 p-10 text-center max-w-md w-full space-y-6">
         <CheckCircle className="h-12 w-12 text-green-500" />
         <div>
           <h2 className="text-xl font-bold text-foreground">Interview Completed!</h2>

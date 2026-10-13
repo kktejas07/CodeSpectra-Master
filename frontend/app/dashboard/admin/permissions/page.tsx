@@ -296,7 +296,7 @@ export default function PermissionsPage() {
 
       {/* Search + category filter */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter resources..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
+        <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter resources..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
         <div className="flex items-center gap-1.5">
           {([['all', 'All'], ['platform', 'Platform'], ['organization', 'Organization'], ['user', 'User']] as const).map(([key, label]) => (
             <button
@@ -340,7 +340,7 @@ export default function PermissionsPage() {
                     <td className="px-3 py-1.5">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[9px] shrink-0">{r.resourceType}</Badge>
-                        <span className="font-mono text-[11px] text-foreground truncate" title={r.resource}>{r.label || r.resource.split('/').pop() || r.resource}</span>
+                        <span className="font-mono text-[11px] text-foreground truncate max-w-70" title={r.resource}>{r.label || r.resource.split('/').pop() || r.resource}</span>
                         {isNew && <Badge className="text-[9px] bg-amber-500/20 text-amber-600">new</Badge>}
                       </div>
                     </td>
@@ -388,7 +388,7 @@ export default function PermissionsPage() {
             </div>
           ) : (
             <>
-              <div className="relative"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter pages..." value={lockFilter} onChange={e => setLockFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
+              <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter pages..." value={lockFilter} onChange={e => setLockFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
             <Card className="overflow-hidden border-border/60">
               <div className="max-h-[60vh] overflow-y-auto">
                 <table className="w-full text-xs">

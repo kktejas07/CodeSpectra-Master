@@ -386,7 +386,7 @@ export default function CertificatesPage() {
       </Card>
 
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Issue Certificate</DialogTitle>
             <DialogDescription>
@@ -535,7 +535,7 @@ export default function CertificatesPage() {
       </Dialog>
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle>Certificate Preview</DialogTitle>
             <DialogDescription>Preview of the selected certificate template.</DialogDescription>

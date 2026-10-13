@@ -81,7 +81,7 @@ export default function TeamInvitePage() {
   if (!info || info.error) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full p-8 text-center">
+        <Card className="w-full max-w-md p-8 text-center">
           <XCircle className="h-10 w-10 text-destructive" />
           <h1 className="mt-3 text-lg font-semibold">Invitation unavailable</h1>
           <p className="mt-1 text-sm text-muted-foreground">{info?.error || 'This invite may have expired or already been used.'}</p>
@@ -93,7 +93,7 @@ export default function TeamInvitePage() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full p-8 text-center">
+      <Card className="w-full max-w-md p-8 text-center">
         {done ? (
           <>
             {done.ok

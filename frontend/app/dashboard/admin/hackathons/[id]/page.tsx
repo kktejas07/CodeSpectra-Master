@@ -369,7 +369,7 @@ export default function HackathonDetailPage({
                     <HelpCircle className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-help transition-colors ml-1" />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="border-border/50 bg-background/95 backdrop-blur-xl shadow-xl p-3">
-                    <p className="text-sm font-medium leading-relaxed">
+                    <p className="text-sm max-w-70 font-medium leading-relaxed">
                       <span className="font-semibold text-foreground">Slug:</span> /{event.slug}<br/>
                       <span className="font-semibold text-foreground">Capacity:</span> {event.num_teams} teams<br/>
                       <span className="font-semibold text-foreground">Team Size:</span> max {event.max_per_team}<br/>

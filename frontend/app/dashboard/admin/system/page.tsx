@@ -465,7 +465,7 @@ export default function SystemAdminDashboard() {
                 <div className="max-h-75 overflow-y-auto space-y-2">
                   {server.containers.list.slice(0, 12).map((c) => (
                     <div key={c.name} className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-xs">
-                      <span className="font-mono truncate" title={c.name}>{c.name}</span>
+                      <span className="font-mono truncate max-w-50" title={c.name}>{c.name}</span>
                       <div className="flex items-center gap-3 text-muted-foreground">
                         <span>{c.cpu}</span>
                         <span>{c.memory}</span>

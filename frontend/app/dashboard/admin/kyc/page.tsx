@@ -194,7 +194,7 @@ export default function AdminKycPage() {
       {/* Detail Modal — Full Didit-style view */}
       {selectedRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setSelectedRecord(null)}>
-          <Card className="w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+          <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h3 className="text-lg font-semibold">{selectedRecord.full_name || selectedRecord.user_name || 'User'}</h3>

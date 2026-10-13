@@ -329,7 +329,7 @@ export default function ResumeBuilderPage() {
           {/* Resume Canvas Wrapper */}
           <div className="flex-1 overflow-y-auto custom-scrollbar flex justify-center pb-20">
             {/* The Resume A4 Paper */}
-            <div className="bg-white shadow-xl rounded-sm w-full min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
+            <div className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
               
               {/* --- Template: Modern --- */}
               {template === 'modern' && (
