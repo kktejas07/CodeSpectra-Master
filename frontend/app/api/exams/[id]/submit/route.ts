@@ -4,7 +4,8 @@ import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
-import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
+import { compareObjectiveAnswer } from '@/lib/grading'
+import { isScoredType, isDeterministicType } from '@/lib/question-types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -143,31 +144,37 @@ export async function POST(
 
     for (const q of questions) {
       const points = q.points || q.score || 10
-      maxScore += points
+      const scored = isScoredType(q.type)
+      if (scored) maxScore += points
       const userAnswer = String(answers[q.id] || '').trim()
-      const correctAns = String(q.answer || q.correct_answer || '').trim()
 
       let correct = false
       let pendingReview = false
 
-      const qType = (q.type || '').toLowerCase().replace(/[-_]/g, '')
-      const objective = canonicalObjectiveType(qType)
-
-      if (['mcq', 'true_false'].includes(objective)) {
-        correct = answersEqual(userAnswer, correctAns, q.options)
-      } else if (objective === 'multiple_response') {
-        correct = multisetEqual(userAnswer, correctAns, q.options)
-      } else if (objective === 'fill_blanks') {
-        correct = multisetEqual(userAnswer, correctAns)
-      } else {
-        // coding / descriptive — manual (or AI) grading, unless blank.
-        if (userAnswer) {
-          pendingReview = true
-          hasPendingReview = true
-        }
+      if (!scored) {
+        // Attitudinal scales (Likert/rating) are recorded but never graded and
+        // never counted toward the max score.
+        correct = false
+      } else if (isDeterministicType(q.type)) {
+        // All objective kinds (choice/multi/blanks/numeric/text/sequence/
+        // pairs/matrix/table) go through one grader so submit and AI-grade
+        // can never diverge.
+        correct = compareObjectiveAnswer({
+          type: q.type,
+          options: q.options,
+          answer: String(q.answer ?? q.correct_answer ?? ''),
+          tolerance: q.tolerance,
+          pairs: q.pairs,
+          matrix: q.matrix,
+          table: q.table,
+        }, userAnswer).correct
+      } else if (userAnswer) {
+        // coding variants / descriptive — manual (or AI) grading, unless blank.
+        pendingReview = true
+        hasPendingReview = true
       }
 
-      if (correct) totalScore += points
+      if (correct && scored) totalScore += points
       details.push({ qId: q.id, correct, points, answer: userAnswer, pending_review: pendingReview })
     }
 

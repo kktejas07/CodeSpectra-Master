@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { gradeAnswer, GradeRateLimitedError, OBJECTIVE_TYPES } from '@/lib/ai/grade-question'
+import { gradeAnswer, GradeRateLimitedError } from '@/lib/ai/grade-question'
+import { isDeterministicType } from '@/lib/question-types'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -106,7 +107,7 @@ export async function POST(
         const answer = String(answers[d.qId] || '').trim()
 
         if (needsGrade && q && answer) {
-          const isObjective = OBJECTIVE_TYPES.includes((q.type || '').toLowerCase())
+          const isObjective = isDeterministicType(q.type)
           // Free-text grades are the slow ones — stop once the request budget
           // is spent and let the client resume on the next call.
           if (!isObjective && Date.now() - requestStart > REQUEST_BUDGET_MS) {
@@ -128,6 +129,10 @@ export async function POST(
                 maxPoints: q.points || q.score || d.points || 10,
                 options: Array.isArray(q.options) ? q.options.map(String) : undefined,
                 testCases: q.test_cases || q.testCases,
+                tolerance: typeof q.tolerance === 'number' ? q.tolerance : undefined,
+                pairs: Array.isArray(q.pairs) ? q.pairs : undefined,
+                matrix: q.matrix || undefined,
+                table: q.table || undefined,
               }),
               GRADE_TIMEOUT_MS,
               'grade timeout',

@@ -51,19 +51,10 @@ export const SCREENING_TYPES: ScreeningTypeDef[] = [
   { id: 'mixed', label: 'Mixed', short: 'Mixed', description: 'Aptitude + technical + coding' },
 ]
 
-export type QuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
-
-/** Question types usable by the question bank and exams. Kept here (pure constants, no server deps) so client pages can import it safely. */
-export const BANK_QUESTION_TYPES: QuestionType[] = ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks']
-
-export const QUESTION_TYPES: { id: string; label: string }[] = [
-  { id: 'mcq', label: 'Multiple Choice' },
-  { id: 'multiple_response', label: 'Multiple Response' },
-  { id: 'true_false', label: 'True / False' },
-  { id: 'fill_blanks', label: 'Fill in the Blanks' },
-  { id: 'coding', label: 'Coding' },
-  { id: 'descriptive', label: 'Descriptive' },
-]
+// Single source of truth lives in lib/question-types.ts — re-exported here so
+// existing client imports (question bank, exam builder) keep working.
+export type { QuestionType } from '@/lib/question-types'
+export { BANK_QUESTION_TYPES, QUESTION_TYPES } from '@/lib/question-types'
 
 export const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const
 export type Difficulty = (typeof DIFFICULTIES)[number]
