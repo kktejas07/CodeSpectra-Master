@@ -470,7 +470,16 @@ export default function AdminExamsPage() {
     }
   }
 
-  const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: 'Title', sortable: true, cell: (r) => <span className="font-medium">{r.title}</span> },
+  const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: 'Title', sortable: true, cell: (r) => (
+      <button
+        type="button"
+        title="Open assessment"
+        onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/admin/assessments/${r.id}/edit`) }}
+        className="font-medium text-left hover:text-primary hover:underline underline-offset-4 transition-colors"
+      >
+        {r.title}
+      </button>
+    ) },
     { key: 'subject', header: 'Subject', sortable: true, cell: (r) => r.subject },
     { key: 'tenant', header: 'Organization', sortable: true, cell: (r) => {
       if (!r.tenant_id) return <span className="text-muted-foreground">Platform</span>
