@@ -333,7 +333,7 @@ export default function SettingsPage() {
               Language
             </Label>
             <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger id="language" className="mt-2 h-10 w-full rounded-lg border-border/60" size="default">
+              <SelectTrigger id="language" className="mt-2 h-10 w-full max-w-md rounded-lg border-border/60" size="default">
                 <SelectValue placeholder="Select language" />
               </SelectTrigger>
               <SelectContent>

@@ -419,7 +419,7 @@ export default function QuestionBankPage() {
                   </td>
                   <td className="py-3 px-4">{r.branch ? <Badge variant="outline">{branchLabel(r.branch)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
                   <td className="py-3 px-4 text-xs">{r.level ? <Badge variant="outline">{levelLabel(r.level)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
-                  <td className="py-3 px-4 truncate text-xs">{r.subject || '—'}</td>
+                  <td className="py-3 px-4 max-w-35 truncate text-xs">{r.subject || '—'}</td>
                   <td className="py-3 px-4"><Badge className={diffColor(r.difficulty)}>{r.difficulty}</Badge></td>
                   <td className="py-3 px-4 text-xs">{r.type}</td>
                   <td className="py-3 px-4 text-xs truncate max-w-[130px]">{r.industry ? industryLabel(r.industry) : <span className="text-muted-foreground text-xs">—</span>}</td>
@@ -455,7 +455,7 @@ export default function QuestionBankPage() {
 
       {/* Add / Edit modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit Question' : 'Add Question'}</DialogTitle>
             <DialogDescription>Create or update an engineering question.</DialogDescription>
@@ -592,7 +592,7 @@ export default function QuestionBankPage() {
 
       {/* View modal */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-primary" />

@@ -385,7 +385,7 @@ function LearningPageInner() {
 
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex items-center justify-between mb-3">
-                      <Badge variant="secondary" className="text-[10px] font-medium text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 uppercase truncate">
+                      <Badge variant="secondary" className="text-[10px] font-medium text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 uppercase truncate max-w-30">
                         {course.category || course.tags?.[0] || 'General'}
                       </Badge>
                       <div className="flex items-center gap-1 text-xs font-medium text-amber-500 shrink-0">

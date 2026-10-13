@@ -108,7 +108,7 @@ export default function LiveInterviewPage() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 h-[60vh]">
-        <p className="text-destructive text-sm text-center">{error}</p>
+        <p className="text-destructive text-sm max-w-md text-center">{error}</p>
         {error.includes('unreachable') && (
           <p className="text-muted-foreground text-xs">Run: docker compose up livekit</p>
         )}

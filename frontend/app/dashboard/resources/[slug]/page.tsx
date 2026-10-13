@@ -238,7 +238,7 @@ export default function EbookReaderPage() {
                 {ebook.title}
               </h1>
               {ebook.subtitle ? (
-                <p className="mt-1 text-sm text-white/85">{ebook.subtitle}</p>
+                <p className="mt-1 max-w-3xl text-sm text-white/85">{ebook.subtitle}</p>
               ) : null}
               <p className="mt-2 text-xs text-white/70">
                 {ebook.readMinutes ? `${ebook.readMinutes} min read` : ''}

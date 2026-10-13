@@ -428,7 +428,7 @@ export default function TenantsPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs .5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
+                    <p className="text-xs max-w-62.5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -531,7 +531,7 @@ export default function TenantsPage() {
 
       {/* Create drawer */}
       <Sheet open={createOpen} onOpenChange={setCreateOpen}>
-        <SheetContent side="right" className="overflow-y-auto">
+        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>New organization</SheetTitle>
             <SheetDescription>
@@ -592,7 +592,7 @@ export default function TenantsPage() {
 
       {/* Edit drawer */}
       <Sheet open={Boolean(editTenant)} onOpenChange={(o) => !o && setEditTenant(null)}>
-        <SheetContent side="right" className="overflow-y-auto">
+        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Edit organization</SheetTitle>
             <SheetDescription>Update tenant details. Changes apply immediately to members scoped to this org.</SheetDescription>
@@ -642,7 +642,7 @@ export default function TenantsPage() {
 
       {/* Members drawer */}
       <Sheet open={Boolean(membersOf)} onOpenChange={(o) => !o && setMembersOf(null)}>
-        <SheetContent side="right" className="overflow-y-auto">
+        <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Building2 className="h-4 w-4" /> {membersOf?.name || ''} members
@@ -758,7 +758,7 @@ export default function TenantsPage() {
 
       {/* Add member dialog */}
       <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <form onSubmit={handleAddMember}>
             <DialogHeader>
               <DialogTitle>Add member</DialogTitle>
@@ -823,7 +823,7 @@ export default function TenantsPage() {
 
       {/* Edit member dialog */}
       <Dialog open={Boolean(editingMember)} onOpenChange={(o) => { if (!o) { setEditingMember(null); setEditMemberPassword(''); setShowEditMemberPassword(false) } }}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit member</DialogTitle>
             <DialogDescription>

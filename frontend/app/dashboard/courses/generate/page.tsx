@@ -349,7 +349,7 @@ export default function GenerateCoursePage() {
         </div>
       ) : (
         /* Generation Loading State */
-        <Card className="p-12 text-center border-indigo-500/50 shadow-2xl shadow-indigo-500/20 relative overflow-hidden">
+        <Card className="max-w-2xl mx-auto p-12 text-center border-indigo-500/50 shadow-2xl shadow-indigo-500/20 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-muted">
             <div 
               className="h-full bg-indigo-600 transition-all duration-1000 ease-out" 
@@ -372,7 +372,7 @@ export default function GenerateCoursePage() {
               {currentTask}
             </p>
             
-            <div className="w-full bg-secondary/50 rounded-lg p-4 text-left border border-border/50">
+            <div className="w-full max-w-md bg-secondary/50 rounded-lg p-4 text-left border border-border/50">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Estimated Time: 12 Hours</span>
                 <span className="font-medium text-indigo-500">{progress}%</span>
@@ -389,7 +389,7 @@ export default function GenerateCoursePage() {
       {/* PRO Upsell Modal Overlay */}
       {showUpsell && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <Card className="w-full p-8 border-amber-500/30 shadow-2xl relative overflow-hidden">
+          <Card className="w-full max-w-md p-8 border-amber-500/30 shadow-2xl relative overflow-hidden">
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-amber-500/20 rounded-full blur-3xl" />
             
             <div className="relative z-10 text-center">

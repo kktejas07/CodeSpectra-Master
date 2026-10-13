@@ -170,7 +170,7 @@ export default function AdminCoursesPage() {
       </div>
 
       <Tabs defaultValue="manage" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-2 max-w-100">
           <TabsTrigger value="manage">Manage Courses</TabsTrigger>
           <TabsTrigger value="generator">AI Course Generator</TabsTrigger>
         </TabsList>
@@ -204,7 +204,7 @@ export default function AdminCoursesPage() {
       </Tabs>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
+        <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-400">

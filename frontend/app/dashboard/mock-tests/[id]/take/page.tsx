@@ -111,7 +111,7 @@ export default function TakeMockTestPage() {
   if (!gate.ready || loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-6">
-        <div className="w-full space-y-4">
+        <div className="w-full max-w-md space-y-4">
           <div className="space-y-2">
             <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
             <div className="h-4 w-80 bg-muted/40 rounded animate-pulse" />

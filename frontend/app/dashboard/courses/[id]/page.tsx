@@ -421,7 +421,7 @@ const handleEnroll = async () => {
                 {course.title}
               </h1>
 
-              <p className="text-white/70 text-lg leading-relaxed">
+              <p className="text-white/70 text-lg leading-relaxed max-w-2xl">
                 {course.description}
               </p>
 

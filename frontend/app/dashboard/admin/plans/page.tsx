@@ -128,7 +128,7 @@ export default function PlansPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs .5">Manage feature access per subscription tier. Changes take effect immediately.</p>
+                    <p className="text-xs max-w-62.5">Manage feature access per subscription tier. Changes take effect immediately.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

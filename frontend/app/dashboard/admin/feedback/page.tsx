@@ -139,7 +139,7 @@ export default function AdminFeedbackPage() {
       key: 'content', header: 'Content',
       cell: (item) => (
         <div className="flex items-center gap-2">
-          <div className="truncate text-sm flex-1" title={displayContent(item.content)}>{displayContent(item.content)}</div>
+          <div className="max-w-xs truncate text-sm flex-1" title={displayContent(item.content)}>{displayContent(item.content)}</div>
           <button
             onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === item._id ? null : item._id); setReplyText('') }}
             className="text-xs text-primary hover:underline shrink-0"
@@ -209,7 +209,7 @@ export default function AdminFeedbackPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs .5">View and manage user feedback. Click a row to expand and reply.</p>
+                    <p className="text-xs max-w-62.5">View and manage user feedback. Click a row to expand and reply.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

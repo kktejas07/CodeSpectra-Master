@@ -65,7 +65,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="space-y-4 w-full">
+        <div className="space-y-4 w-full max-w-md">
           <SkeletonText lines={2} />
           <SkeletonCard />
         </div>

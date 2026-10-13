@@ -50,7 +50,7 @@ export default function CertificationsPage() {
       {/* Header */}
       <div data-tour="certifications-header">
         <h1 className="text-3xl font-bold mb-2">Certifications</h1>
-        <p className="text-muted-foreground">
+        <p className="text-muted-foreground max-w-3xl">
           Real, recognized certifications — the honest guide. The official AWS, Azure, and
           Google exams are paid, so we give you the free study path, a free official practice
           exam, and the booking link. We also curate free verifiable credentials you can earn

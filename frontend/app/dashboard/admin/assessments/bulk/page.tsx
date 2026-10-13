@@ -282,7 +282,7 @@ export default function BulkSchedulePage() {
                   variant="outline"
                   role="combobox"
                   aria-expanded={examPickerOpen}
-                  className="w-full justify-between font-normal"
+                  className="w-full max-w-xl justify-between font-normal"
                   disabled={loadingExams}
                 >
                   <span className="truncate">

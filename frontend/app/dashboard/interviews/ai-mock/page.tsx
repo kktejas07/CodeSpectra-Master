@@ -351,7 +351,7 @@ export default function AiMockSessionPage() {
               </p>
             )}
             {interimText && (
-              <p className="text-white/70 text-xs mt-2 truncate">{interimText}</p>
+              <p className="text-white/70 text-xs mt-2 max-w-md truncate">{interimText}</p>
             )}
           </div>
 
