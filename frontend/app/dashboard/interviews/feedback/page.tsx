@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDate } from '@/lib/format-datetime'
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -188,7 +189,7 @@ export default function InterviewFeedbackPage() {
               <span>{session.role}</span>
               <Badge variant="outline" className={statusColors[session.status] || ''}>{session.status}</Badge>
               {session.completed_at && (
-                <span className="ml-2">Completed {new Date(session.completed_at).toLocaleDateString()}</span>
+                <span className="ml-2">Completed {formatDate(session.completed_at)}</span>
               )}
             </div>
           </div>
