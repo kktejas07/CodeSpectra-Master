@@ -20,6 +20,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES } from '@/lib/engineering-catalog'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
+import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { toZonedDateInput } from '@/lib/format-datetime'
 
 interface Exam {
   id: string
@@ -52,6 +55,8 @@ interface Tenant {
 
 export default function AdminExamsPage() {
   const gate = usePageGuard('tenant_admin')
+  // Platform timezone (Settings → General) for every date display / entry.
+  const tz = usePlatformTimezone()
   const addToast = useToast()
   const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
@@ -123,9 +128,9 @@ export default function AdminExamsPage() {
 
   const applyDatePreset = (preset: 'all' | '7d' | '30d' | '90d' | 'year'): { from: string; to: string } => {
     if (preset === 'all') return { from: '', to: '' }
-    const to = new Date().toISOString().split('T')[0]
+    const to = toZonedDateInput(new Date(), tz)
     const days = preset === '7d' ? 7 : preset === '30d' ? 30 : preset === '90d' ? 90 : 0
-    const from = days === 0 ? `${new Date().getFullYear()}-01-01` : new Date(Date.now() - days * 86400000).toISOString().split('T')[0]
+    const from = days === 0 ? `${toZonedDateInput(new Date(), tz).slice(0, 4)}-01-01` : toZonedDateInput(Date.now() - days * 86400000, tz)
     return { from, to }
   }
 
@@ -205,8 +210,8 @@ export default function AdminExamsPage() {
     setLevel(exam.level)
     setTechStack((exam.techStack || []).join(', '))
     setDuration(exam.duration)
-    setStartsAt(exam.starts_at ? new Date(exam.starts_at).toISOString().slice(0, 16) : '')
-    setEndsAt(exam.ends_at ? new Date(exam.ends_at).toISOString().slice(0, 16) : '')
+    setStartsAt(exam.starts_at ? toZonedDatetimeString(new Date(exam.starts_at), tz) : '')
+    setEndsAt(exam.ends_at ? toZonedDatetimeString(new Date(exam.ends_at), tz) : '')
     setRequireIdVerification(exam.require_id_verification !== false)
     setRequireFaceCapture(exam.require_face_capture !== false)
     setQuestions(exam.questions)
@@ -222,8 +227,8 @@ export default function AdminExamsPage() {
       addToast({ type: 'error', title: 'Title is required' })
       return
     }
-    const startsIso = startsAt ? new Date(startsAt).toISOString() : null
-    const endsIso = endsAt ? new Date(endsAt).toISOString() : null
+    const startsIso = startsAt ? fromZonedDatetimeString(startsAt, tz) : null
+    const endsIso = endsAt ? fromZonedDatetimeString(endsAt, tz) : null
     if (startsIso && endsIso && new Date(endsIso).getTime() <= new Date(startsIso).getTime()) {
       addToast({ type: 'error', title: 'Deadline must be after the available-from time' })
       return
@@ -412,7 +417,7 @@ export default function AdminExamsPage() {
 
   const linkExpiryIso = (): string | null => {
     if (linkPreset === 'never') return null
-    if (linkPreset === 'custom') return linkCustom ? new Date(linkCustom).toISOString() : null
+    if (linkPreset === 'custom') return linkCustom ? fromZonedDatetimeString(linkCustom, tz) : null
     const hours = linkPreset === '1h' ? 1 : linkPreset === '24h' ? 24 : linkPreset === '7d' ? 168 : 720
     return new Date(Date.now() + hours * 3600000).toISOString()
   }

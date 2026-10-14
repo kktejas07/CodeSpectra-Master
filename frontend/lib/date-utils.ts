@@ -1,14 +1,22 @@
 // Date and Time Utilities
-export function formatDate(date: Date | string): string {
+//
+// Pass the platform timezone (admin Settings → General) as the optional `tz`
+// argument so dates render consistently on every page/role. When omitted these
+// fall back to the runtime's timezone (browser on the client, server on SSR).
+// Client components should prefer `useDateFormat()` (lib/use-platform-timezone)
+// to always bind the live setting.
+
+export function formatDate(date: Date | string, tz?: string): string {
   const d = new Date(date)
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    ...(tz ? { timeZone: tz } : {}),
   })
 }
 
-export function formatDateTime(date: Date | string): string {
+export function formatDateTime(date: Date | string, tz?: string): string {
   const d = new Date(date)
   return d.toLocaleDateString('en-US', {
     year: 'numeric',
@@ -16,10 +24,11 @@ export function formatDateTime(date: Date | string): string {
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    ...(tz ? { timeZone: tz } : {}),
   })
 }
 
-export function formatRelativeTime(date: Date | string): string {
+export function formatRelativeTime(date: Date | string, tz?: string): string {
   const d = new Date(date)
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
@@ -32,7 +41,7 @@ export function formatRelativeTime(date: Date | string): string {
   if (diffHours < 24) return `${diffHours}h ago`
   if (diffDays < 7) return `${diffDays}d ago`
 
-  return formatDate(d)
+  return formatDate(d, tz)
 }
 
 export function addDays(date: Date, days: number): Date {
@@ -41,7 +50,7 @@ export function addDays(date: Date, days: number): Date {
   return result
 }
 
-export function getDayOfWeek(date: Date | string): string {
+export function getDayOfWeek(date: Date | string, tz?: string): string {
   const d = new Date(date)
-  return d.toLocaleDateString('en-US', { weekday: 'long' })
+  return d.toLocaleDateString('en-US', { weekday: 'long', ...(tz ? { timeZone: tz } : {}) })
 }

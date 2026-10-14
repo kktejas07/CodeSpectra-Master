@@ -18,6 +18,7 @@ import { IdentityVerification } from '@/components/proctoring/IdentityVerificati
 import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
 import { QuestionAnswerInput } from '@/components/assessment/QuestionAnswerInput'
 import { metaFor } from '@/lib/question-types'
+import { useDateFormat } from '@/lib/use-platform-timezone'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -97,6 +98,7 @@ export default function CandidateAssessmentPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const { dateTime: fmtDateTime } = useDateFormat()
   
   const isShareLink = searchParams.get('share') === 'true'
   
@@ -502,8 +504,8 @@ export default function CandidateAssessmentPage() {
           <h1 className="text-xl font-bold">{windowState === 'closed' ? 'Assessment Closed' : 'Assessment Not Yet Open'}</h1>
           <p className="text-sm text-muted-foreground">
             {windowState === 'closed'
-              ? `This assessment closed on ${exam.ends_at ? new Date(exam.ends_at).toLocaleString() : 'its deadline'}. Please contact your administrator if you need access.`
-              : `This assessment opens on ${exam.starts_at ? new Date(exam.starts_at).toLocaleString() : 'its scheduled start time'}. Please check back then.`}
+              ? `This assessment closed on ${exam.ends_at ? fmtDateTime(exam.ends_at) : 'its deadline'}. Please contact your administrator if you need access.`
+              : `This assessment opens on ${exam.starts_at ? fmtDateTime(exam.starts_at) : 'its scheduled start time'}. Please check back then.`}
           </p>
           <div className="pt-2">
             <Link href="/">
