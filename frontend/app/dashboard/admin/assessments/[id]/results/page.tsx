@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard } from 'lucide-react'
 import { SkeletonStats, SkeletonTable, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useDateFormat } from '@/lib/use-platform-timezone'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
@@ -272,6 +273,8 @@ function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Re
 
 export default function ExamResultsPage() {
   const gate = usePageGuard('tenant_admin')
+  // Format all dates in the platform timezone (Settings → General).
+  const { dateTime: fmtDateTime, date: fmtDate, time: fmtTime } = useDateFormat()
   const addToast = useToast()
   const router = useRouter()
   const params = useParams()
@@ -811,7 +814,7 @@ export default function ExamResultsPage() {
         r.deliveryStatus || '',
         r.proctoringFlags ?? 0,
         r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
-        r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
+        r.submittedAt ? fmtDateTime(r.submittedAt) : '--',
         r.released ? 'Yes' : 'No',
       ])
 
@@ -880,7 +883,7 @@ export default function ExamResultsPage() {
       r.email || '',
       r.status || '',
       r.score !== null ? String(r.score) : '',
-      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '',
+      r.submittedAt ? fmtDateTime(r.submittedAt) : '',
       String(r.proctoringFlags || 0),
       r.graded ? 'Yes' : 'No',
       r.released ? 'Yes' : 'No',
@@ -947,7 +950,7 @@ export default function ExamResultsPage() {
 </style></head><body>
 <div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#fff">Print / Save PDF</button></div>
 <h1>Proctor Report: ${examData.title}</h1>
-<p class="meta">Level: ${examData.level} | Duration: ${examData.duration} min | Generated: ${new Date().toLocaleString()}</p>
+<p class="meta">Level: ${examData.level} | Duration: ${examData.duration} min | Generated: ${fmtDateTime(new Date())}</p>
 <p class="meta">Total Candidates: ${json.total_candidates} | Total Proctor Events: ${json.total_events}</p>
 <h2>Event Type Summary</h2>
 <div class="summary-box"><table><tr><th>Event Type</th><th>Count</th></tr>`
@@ -966,7 +969,7 @@ export default function ExamResultsPage() {
         html += `<div class="summary-box">`
         html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity Events</th><th>Rating</th></tr>`
         html += `<tr><td>${pct !== null ? pct + '%' : '--'}</td><td class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</td>`
-        html += `<td>${c.submitted_at ? new Date(c.submitted_at).toLocaleString() : '--'}</td>`
+        html += `<td>${c.submitted_at ? fmtDateTime(c.submitted_at) : '--'}</td>`
         html += `<td>${c.event_count || 0}</td><td><strong>${rating}</strong></td></tr></table>`
 
         if (c.id_photo || c.face_photo) {
@@ -999,7 +1002,7 @@ export default function ExamResultsPage() {
           html += `<h3>Proctoring Event Log</h3><table><tr><th>Event</th><th>Time</th><th>Details</th></tr>`
           for (const evt of c.proctor_events) {
             const evtType = formatEvtType(evt.event_type)
-            const time = evt.created_at ? new Date(evt.created_at).toLocaleString() : '--'
+            const time = evt.created_at ? fmtDateTime(evt.created_at) : '--'
             const meta = evt.meta || {}
             const details = Object.entries(meta)
               .filter(([k]) => !['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source', 'ip', 'browser', 'os', 'device'].includes(k))
@@ -1220,8 +1223,8 @@ export default function ExamResultsPage() {
       cell: (row: CandidateResult) => (
         row.invitedAt ? (
           <div>
-            <div className="text-sm">{new Date(row.invitedAt).toLocaleDateString()}</div>
-            <div className="text-xs text-muted-foreground">{new Date(row.invitedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            <div className="text-sm">{fmtDate(row.invitedAt)}</div>
+            <div className="text-xs text-muted-foreground">{fmtTime(row.invitedAt)}</div>
           </div>
         ) : <span className="text-xs text-muted-foreground">--</span>
       ),
@@ -1233,8 +1236,8 @@ export default function ExamResultsPage() {
       cell: (row: CandidateResult) => (
         row.submittedAt ? (
           <div>
-            <div className="text-sm">{new Date(row.submittedAt).toLocaleDateString()}</div>
-            <div className="text-xs text-muted-foreground">{new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+            <div className="text-sm">{fmtDate(row.submittedAt)}</div>
+            <div className="text-xs text-muted-foreground">{fmtTime(row.submittedAt)}</div>
           </div>
         ) : <span className="text-xs text-muted-foreground">--</span>
       ),
@@ -1468,7 +1471,7 @@ export default function ExamResultsPage() {
           {exam?.plagiarismReport && (
             <Badge
               variant="secondary"
-              title={`Checked ${new Date(exam.plagiarismReport.checked_at).toLocaleString()} · ${exam.plagiarismReport.pairs} pair(s), ${exam.plagiarismReport.aiFlags} AI flag(s), ${exam.plagiarismReport.bankMatches} bank match(es)`}
+              title={`Checked ${fmtDateTime(exam.plagiarismReport.checked_at)} · ${exam.plagiarismReport.pairs} pair(s), ${exam.plagiarismReport.aiFlags} AI flag(s), ${exam.plagiarismReport.bankMatches} bank match(es)`}
               className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-rose-500/10 text-rose-500 border-rose-500/20' : 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}
             >
               <ShieldAlert className="w-3.5 h-3.5" /> Plagiarism {exam.plagiarismReport.score}/100
@@ -1704,7 +1707,7 @@ export default function ExamResultsPage() {
                       <span className="text-muted-foreground block text-xs">Submitted</span>
                       <span className="text-sm font-medium">
                         {reviewData.submission.submitted_at
-                          ? new Date(reviewData.submission.submitted_at).toLocaleString()
+                          ? fmtDateTime(reviewData.submission.submitted_at)
                           : '--'}
                       </span>
                     </div>
@@ -2111,7 +2114,7 @@ export default function ExamResultsPage() {
                                         <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
                                         <span className="shrink-0 font-medium truncate">{formatProctorType(evt.event_type)}</span>
                                         <span className="text-muted-foreground ml-auto shrink-0 text-[10px] sm:text-xs">
-                                          {evt.created_at ? new Date(evt.created_at).toLocaleString() : ''}
+                                          {evt.created_at ? fmtDateTime(evt.created_at) : ''}
                                         </span>
                                       </div>
                                       {evt.meta && Object.keys(evt.meta).length > 0 && (
@@ -2166,7 +2169,7 @@ export default function ExamResultsPage() {
                   <div className="text-xs text-muted-foreground min-w-0">
                     {reviewData.submission.released_at ? (
                       <span className="text-emerald-500 flex items-center gap-1">
-                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Score released on {new Date(reviewData.submission.released_at).toLocaleString()}</span>
+                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Score released on {fmtDateTime(reviewData.submission.released_at)}</span>
                       </span>
                     ) : (
                       'Score not yet released to candidate'

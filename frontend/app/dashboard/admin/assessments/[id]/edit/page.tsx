@@ -17,6 +17,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 import { canonicalType, metaFor, QUESTION_TYPES } from '@/lib/question-types'
 import { CODE_LANGUAGES } from '@/lib/code-languages'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
+import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   mcq: <List className="h-3 w-3 mr-1" />,
@@ -282,6 +284,9 @@ const emptyQuestion = (): Question => ({
 
 export default function ExamReviewPage() {
   const gate = usePageGuard('tenant_admin')
+  // Platform timezone (Settings → General). All exam window times are displayed
+  // and entered in this tz; they are stored as UTC ISO.
+  const tz = usePlatformTimezone()
   const addToast = useToast()
   const router = useRouter()
   const params = useParams()
@@ -337,9 +342,9 @@ export default function ExamReviewPage() {
         setMetaSubject(found.subject || '')
         setMetaLevel(found.level || found.difficulty_level || '')
         setMetaDuration(found.duration || 30)
-        // datetime-local inputs (stored UTC ISO); empty = unbounded.
-        setMetaStartsAt(found.starts_at ? new Date(found.starts_at).toISOString().slice(0, 16) : '')
-        setMetaEndsAt(found.ends_at ? new Date(found.ends_at).toISOString().slice(0, 16) : '')
+        // datetime-local inputs shown in the PLATFORM timezone (stored UTC ISO); empty = unbounded.
+        setMetaStartsAt(found.starts_at ? toZonedDatetimeString(new Date(found.starts_at), tz) : '')
+        setMetaEndsAt(found.ends_at ? toZonedDatetimeString(new Date(found.ends_at), tz) : '')
         setMetaRequireTokenLinks((found as { require_token_links?: boolean }).require_token_links === true)
         // Missing/null = true (strict, backward-compat for pre-flag assessments).
         setMetaRequireId((found as { require_id_verification?: boolean | null }).require_id_verification !== false)
@@ -379,8 +384,9 @@ export default function ExamReviewPage() {
 
   const saveExamMeta = async () => {
     if (!exam) return
-    const startsIso = metaStartsAt ? new Date(metaStartsAt).toISOString() : null
-    const endsIso = metaEndsAt ? new Date(metaEndsAt).toISOString() : null
+    // Interpret the datetime-local values in the PLATFORM timezone, store UTC ISO.
+    const startsIso = metaStartsAt ? fromZonedDatetimeString(metaStartsAt, tz) : null
+    const endsIso = metaEndsAt ? fromZonedDatetimeString(metaEndsAt, tz) : null
     if (startsIso && endsIso && new Date(endsIso).getTime() <= new Date(startsIso).getTime()) {
       addToast({ type: 'error', title: 'Deadline must be after the available-from time' })
       return
