@@ -90,7 +90,7 @@ export function ContributionGraph({
           m.set(key, {
             year: d.getFullYear(),
             month: d.getMonth(),
-            label: d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            label: tzFormatDate(d, undefined, { month: 'short', year: 'numeric' }),
             days: []
           })
         }
