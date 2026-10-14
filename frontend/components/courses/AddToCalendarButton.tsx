@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useMemo, useState } from 'react'
 import { Calendar, Download, ExternalLink, X } from 'lucide-react'
@@ -143,7 +144,7 @@ export function AddToCalendarButton({
                     <span>
                       <span className="font-semibold block">{o.label}</span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(o.at).toLocaleString(undefined, {
+                        {formatDateTime(o.at, undefined, {
                           dateStyle: 'medium',
                           timeStyle: 'short',
                         })}

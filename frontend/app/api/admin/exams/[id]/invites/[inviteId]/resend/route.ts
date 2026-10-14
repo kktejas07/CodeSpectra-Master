@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
@@ -35,7 +36,7 @@ export async function POST(
     const inviteUrl = `${appUrl}/assessment/invite/${invite.token}`
 
     const expiresAt = new Date(invite.expires_at)
-    const expiresStr = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
 
     const template = isReminder
       ? emailTemplates.assessmentReminder({

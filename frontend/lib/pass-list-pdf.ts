@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 export interface PassListEntry {
   name: string
@@ -30,7 +31,7 @@ export async function downloadPassListPdf(
   doc.text(examTitle, pageWidth / 2, y, { align: 'center' })
   y += 6
   doc.text(
-    `Cutoff: ${cutoff}%  |  Passed: ${passers.length}  |  ${new Date().toLocaleDateString()}`,
+    `Cutoff: ${cutoff}%  |  Passed: ${passers.length}  |  ${formatDate(new Date())}`,
     pageWidth / 2,
     y,
     { align: 'center' }

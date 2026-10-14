@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -516,7 +517,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
             <Card className="p-8 text-center">
               <Target className="h-10 w-10 text-muted-foreground/40 mb-3" />
               <p className="text-muted-foreground">Problems will be visible when the contest starts</p>
-              <p className="text-xs text-muted-foreground mt-1">Start time: {codeathon.startDate ? new Date(codeathon.startDate).toLocaleString() : 'TBA'}</p>
+              <p className="text-xs text-muted-foreground mt-1">Start time: {codeathon.startDate ? formatDateTime(codeathon.startDate) : 'TBA'}</p>
             </Card>
           ) : (
             <div className="space-y-2">

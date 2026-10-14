@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
@@ -177,7 +178,7 @@ export default function CertVerifyPage() {
               <p className="text-sm text-muted-foreground">
                 Awarded to <span className="font-semibold text-foreground" data-testid="cert-verify-name">{certData.candidateName}</span> · score{' '}
                 <span className="font-semibold text-foreground" data-testid="cert-verify-score">{certData.score}%</span> · issued{' '}
-                {new Date(certData.issuedAt).toLocaleDateString()}
+                {formatDate(certData.issuedAt)}
               </p>
             </div>
           </div>

@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
@@ -492,7 +493,7 @@ function ForumSection({ codeathonId, problemId }: { codeathonId: string; problem
             <div key={post.id} className="p-3 rounded border border-border/60 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{post.user_name}</span>
-                <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleString()}</span>
+                <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
               </div>
               <p className="text-sm">{post.content}</p>
               <div className="flex items-center gap-2">

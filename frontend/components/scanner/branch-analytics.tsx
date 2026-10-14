@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -166,11 +167,11 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
                 <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-4 text-sm text-foreground/60">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    <span>Last commit: {branch.lastCommit.toLocaleDateString()}</span>
+                    <span>Last commit: {formatDate(branch.lastCommit)}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4" />
-                    <span>Last analyzed: {branch.lastAnalysis.toLocaleDateString()}</span>
+                    <span>Last analyzed: {formatDate(branch.lastAnalysis)}</span>
                   </div>
                 </div>
 

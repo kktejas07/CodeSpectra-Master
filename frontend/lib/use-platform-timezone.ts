@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import { DEFAULT_TIMEZONE, formatDate, formatDateTime, formatTime, toZonedDateInput } from './format-datetime'
+import { DEFAULT_TIMEZONE, formatDate, formatDateTime, formatTime, setDefaultTimezone, toZonedDateInput } from './format-datetime'
 
 let cached: string | null = null
 
@@ -8,13 +8,18 @@ let cached: string | null = null
 export function usePlatformTimezone(): string {
   const [tz, setTz] = useState(cached || DEFAULT_TIMEZONE)
   useEffect(() => {
-    if (cached) return
+    if (cached) { setDefaultTimezone(cached); return }
     fetch('/api/platform/tz', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.timezone && d.timezone !== cached) { cached = d.timezone; setTz(d.timezone) } })
+      .then(d => { if (d?.timezone) { cached = d.timezone; setDefaultTimezone(d.timezone); if (d.timezone !== tz) setTz(d.timezone) } })
       .catch(() => {})
-  }, [])
+  }, [tz])
   return tz
+}
+
+/** Imperatively prime the global default (used by the app shell before render). */
+export function primePlatformTimezone(tz: string | null | undefined): void {
+  if (tz) { cached = tz; setDefaultTimezone(tz) }
 }
 
 /**

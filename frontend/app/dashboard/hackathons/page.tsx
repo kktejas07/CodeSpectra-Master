@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -210,7 +211,7 @@ function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon
         {hk.description && <p className="text-xs text-muted-foreground line-clamp-2">{hk.description}</p>}
 
         <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {starts.toLocaleDateString()}</span>
+          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {formatDate(starts)}</span>
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {hk.timeout_minutes} min</span>
           <span className="flex items-center gap-1"><ListChecks className="h-3 w-3" /> {hk.tasks?.length || 0} problems</span>
           <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {hk.num_teams} teams</span>

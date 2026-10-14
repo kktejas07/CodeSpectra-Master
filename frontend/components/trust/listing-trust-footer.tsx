@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useState } from 'react'
 import { Flag, Search } from 'lucide-react'
@@ -41,7 +42,7 @@ export function ListingTrustFooter({
   const updatedLabel = (() => {
     if (!updatedAt) return null
     try {
-      return new Date(updatedAt).toLocaleString(undefined, {
+      return formatDateTime(updatedAt, undefined, {
         day: '2-digit',
         month: 'short',
         year: '2-digit',

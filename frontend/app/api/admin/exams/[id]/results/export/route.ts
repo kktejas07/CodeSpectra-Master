@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
@@ -93,7 +94,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         email,
         status,
         score: sub && sub.score !== undefined && sub.score !== null ? `${Math.round(sub.score)}%` : '--',
-        submittedAt: sub?.submitted_at ? new Date(sub.submitted_at).toLocaleString() : '--',
+        submittedAt: sub?.submitted_at ? formatDateTime(sub.submitted_at) : '--',
         proctoringFlags: 0,
         released: sub?.released_at ? 'Yes' : 'No',
         deliveryStatus: inv.delivery_status || '--',
@@ -113,7 +114,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         email: fetched.email || email,
         status: 'completed',
         score: sub.score !== undefined && sub.score !== null ? `${Math.round(sub.score)}%` : '--',
-        submittedAt: sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : '--',
+        submittedAt: sub.submitted_at ? formatDateTime(sub.submitted_at) : '--',
         proctoringFlags: 0,
         released: sub.released_at ? 'Yes' : 'No',
         deliveryStatus: '--',

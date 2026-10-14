@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
@@ -1115,7 +1116,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                           <span className="capitalize">{sub.status.replace('_', ' ')}</span>
                           {sub.score !== null && <span className="text-muted-foreground">· {sub.score}/{sub.max_score}</span>}
                         </div>
-                        <span className="text-muted-foreground">{new Date(sub.submitted_at).toLocaleString()}</span>
+                        <span className="text-muted-foreground">{formatDateTime(sub.submitted_at)}</span>
                       </div>
                     ))}
                   </div>

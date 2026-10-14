@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import { Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2, XCircle } from 'lucide-react'
@@ -159,7 +160,7 @@ export default function SupportPage() {
           <h3 className="font-semibold text-foreground">Replies ({replies.length})</h3>
           {replies.map(r => (
             <Card key={r.id} className="p-4">
-              <p className="text-xs text-muted-foreground mb-1">{r.user_email} · {new Date(r.created_at).toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground mb-1">{r.user_email} · {formatDateTime(r.created_at)}</p>
               <p className="text-sm whitespace-pre-wrap">{r.message}</p>
             </Card>
           ))}
@@ -229,7 +230,7 @@ export default function SupportPage() {
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline">{t.category}</Badge>
                     {t.user_email && <span className="text-xs text-muted-foreground">{t.user_email}</span>}
-                    <span className="text-xs text-muted-foreground"><Clock className="h-3 w-3 inline mr-0.5" />{new Date(t.created_at).toLocaleDateString()}</span>
+                    <span className="text-xs text-muted-foreground"><Clock className="h-3 w-3 inline mr-0.5" />{formatDate(t.created_at)}</span>
                   </div>
                 </div>
                 <Badge className={statusColor(t.status)}>{t.status}</Badge>

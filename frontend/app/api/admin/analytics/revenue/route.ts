@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 /**
  * GET /api/admin/analytics/revenue — Revenue analytics (superadmin).
  *
@@ -98,7 +99,7 @@ export async function GET(req: NextRequest) {
         .find({ status: 'paid', created_at: { $gte: monthStart, $lte: monthEnd } })
         .toArray()
       const monthRevenue = monthOrders.reduce((sum: number, o: any) => sum + (Number(o.amount_paise) || 0) / 100, 0)
-      const monthLabel = new Date(now.getFullYear(), now.getMonth() - i, 1).toLocaleDateString([], { month: 'short' })
+      const monthLabel = formatDate(new Date(now.getFullYear(), now.getMonth() - i, 1), undefined, { month: 'short' })
       monthlyTrend.push({ month: monthLabel, revenue: Math.round(monthRevenue), subscriptions: monthOrders.length })
     }
 

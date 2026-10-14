@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatDateTime } from '@/lib/format-datetime'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -152,7 +153,7 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
                     </div>
 
                     <p className="text-xs text-foreground/50 mt-2">
-                      {activity.timestamp.toLocaleString()}
+                      {formatDateTime(activity.timestamp)}
                     </p>
 
                     {activity.details && (

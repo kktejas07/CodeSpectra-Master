@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -132,7 +133,7 @@ export default function JudgeDashboardPage() {
                 )}
                 <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> {new Date(h.starts_at).toLocaleDateString()}
+                    <Clock className="w-3 h-3" /> {formatDate(h.starts_at)}
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Users className="w-3 h-3" /> {h.num_teams} teams

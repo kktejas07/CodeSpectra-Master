@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
@@ -235,7 +236,7 @@ export async function POST(request: Request) {
         // Send login notification email
         const deviceInfo = userAgent.includes('Mobile') ? 'Mobile device' : 'Desktop browser'
         const location = actorIp || 'Unknown location'
-        const time = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+        const time = formatDateTime(new Date(), undefined, { dateStyle: 'medium', timeStyle: 'short' })
         const displayName = (user.name || normalizedEmail.split('@')[0])
         const template = emailTemplates.loginNotification(displayName, deviceInfo, location, time)
         await sendEmail(normalizedEmail, template).catch((e) => console.error('[Login] Notification email failed:', e))

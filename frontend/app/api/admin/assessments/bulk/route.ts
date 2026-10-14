@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { candidateInvites, newId, nowIso } from '@/lib/db/admin'
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
           candidateName: c.name || email.split('@')[0],
           examTitle: exam.title,
           inviteUrl,
-          expiresIn: deadline ? new Date(deadline).toLocaleDateString() : '7 days',
+          expiresIn: deadline ? formatDate(deadline) : '7 days',
         })
         await sendEmail(email, tpl)
       } catch {

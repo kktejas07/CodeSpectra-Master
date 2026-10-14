@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -124,7 +125,7 @@ export default function ArticlesNewsroomPage() {
                 <p className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   {p.read_minutes || 5} min
-                  {p.published_at ? ` · ${new Date(p.published_at).toLocaleDateString()}` : ''}
+                  {p.published_at ? ` · ${formatDate(p.published_at)}` : ''}
                 </p>
               </Card>
             </Link>

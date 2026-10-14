@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
@@ -168,7 +169,7 @@ export default function CouponsAdminPage() {
     { key: 'usage', header: 'Usage', cell: (r) => <span>{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
     { key: 'status', header: 'Status',
       cell: (r) => r.active ? <Badge className="bg-green-500/10 text-green-600">Active</Badge> : <Badge variant="secondary">Inactive</Badge> },
-    { key: 'expiry', header: 'Expiry', cell: (r) => <span className="text-muted-foreground text-xs">{r.valid_until ? new Date(r.valid_until).toLocaleDateString() : 'Never'}</span> },
+    { key: 'expiry', header: 'Expiry', cell: (r) => <span className="text-muted-foreground text-xs">{r.valid_until ? formatDate(r.valid_until) : 'Never'}</span> },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center gap-1">
         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title="View users"><Users className="h-3 w-3" /></Button>
@@ -279,7 +280,7 @@ export default function CouponsAdminPage() {
                       <td className="py-2 pr-2 font-medium">{displayName}</td>
                       <td className="py-2 pr-2 text-xs text-muted-foreground">{displayEmail}</td>
                       <td className="py-2 text-xs">{r.plan_id || '—'}</td>
-                      <td className="py-2 text-xs text-muted-foreground">{r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : '—'}</td>
+                      <td className="py-2 text-xs text-muted-foreground">{r.redeemed_at ? formatDateTime(r.redeemed_at) : '—'}</td>
                     </tr>
                     )
                   })}

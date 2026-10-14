@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import React, { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
@@ -1043,7 +1044,7 @@ export default function AdminCodeathonsPage() {
       header: 'Dates',
       cell: (r) => (
         <span className="text-xs text-muted-foreground font-mono">
-          {r.startDate ? new Date(r.startDate).toLocaleDateString() : 'N/A'} — {r.endDate ? new Date(r.endDate).toLocaleDateString() : 'N/A'}
+          {r.startDate ? formatDate(r.startDate) : 'N/A'} — {r.endDate ? formatDate(r.endDate) : 'N/A'}
         </span>
       ),
     },
@@ -1407,7 +1408,7 @@ export default function AdminCodeathonsPage() {
                   <div>
                     <span className="text-muted-foreground block text-[11px]">Submission Time</span>
                     <span className="font-mono font-medium text-foreground">
-                      {selectedSubmission.created_at ? new Date(selectedSubmission.created_at).toLocaleString() : 'N/A'}
+                      {selectedSubmission.created_at ? formatDateTime(selectedSubmission.created_at) : 'N/A'}
                     </span>
                   </div>
                 </div>

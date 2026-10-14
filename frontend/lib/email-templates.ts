@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 // ponytail: Brand update from purple-indigo to green (#22c55e) to match icon.svg
 import { getCurrencySymbol } from '@/lib/currency'
 
@@ -185,7 +186,7 @@ export const emailTemplates: { [key: string]: (...args: any[]) => { subject: str
   subscriptionConfirmation: (planName: string, amount: number, currency = 'INR') => {
     const base = getBaseUrl()
     const symbol = getCurrencySymbol(currency || 'USD')
-    const nextBilling = new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    const nextBilling = formatDate(Date.now() + 30 * 86400000, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
     return {
       subject: `Welcome to ${planName} — subscription active`,
       html: `${baseStyles.wrapper}

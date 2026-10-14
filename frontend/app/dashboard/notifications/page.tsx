@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -291,7 +292,7 @@ export default function NotificationsPage() {
                         {n.title}
                       </p>
                       <span className="shrink-0 text-[10px] text-muted-foreground">
-                        {new Date(n.created_at).toLocaleDateString()}
+                        {formatDate(n.created_at)}
                       </span>
                     </div>
                     {n.message && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>}
@@ -320,7 +321,7 @@ export default function NotificationsPage() {
             </DialogTitle>
             {newsletter?.completed_at && (
               <DialogDescription className="text-left">
-                {new Date(newsletter.completed_at).toLocaleDateString()}
+                {formatDate(newsletter.completed_at)}
               </DialogDescription>
             )}
           </DialogHeader>

@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -434,7 +435,7 @@ function EmailRow({ log }: { log: EmailLog }) {
   return (
     <>
       <tr className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setExpanded(!expanded)}>
-        <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">{time.toLocaleString()}</td>
+        <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(time)}</td>
         <td className="py-3 px-4 text-sm font-mono">{log.to_email}</td>
         <td className="py-3 px-4 text-sm max-w-62.5 truncate" title={log.subject}>{log.subject}</td>
         <td className="py-3 px-4">
@@ -460,7 +461,7 @@ function EmailRow({ log }: { log: EmailLog }) {
               {log.delivery_error && (
                 <div className="col-span-3"><span className="font-medium text-red-500">Error</span><p className="font-mono mt-0.5 text-red-600 break-all">{log.delivery_error}</p></div>
               )}
-              <div><span className="font-medium text-foreground">Updated</span><p className="mt-0.5">{log.delivery_updated_at ? new Date(log.delivery_updated_at).toLocaleString() : '—'}</p></div>
+              <div><span className="font-medium text-foreground">Updated</span><p className="mt-0.5">{log.delivery_updated_at ? formatDateTime(log.delivery_updated_at) : '—'}</p></div>
               <div><span className="font-medium text-foreground">Geo</span><p className="mt-0.5">{log.geo ? `${log.geo.city || ''}, ${log.geo.country || ''}`.trim() || '—' : '—'}</p></div>
               <div><span className="font-medium text-foreground">Postal ID</span><p className="font-mono mt-0.5">{log.delivery_status === 'sending' ? 'Pending webhook' : log.postal_message_id || 'N/A'}</p></div>
             </div>

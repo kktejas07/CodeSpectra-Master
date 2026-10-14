@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { NextRequest, NextResponse } from 'next/server'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
@@ -48,7 +49,7 @@ async function postImpl(req: NextRequest) {
       try {
         const name = user.fullName || user.name || 'there'
         await sendEmail(user.email, {
-          subject: `CodeSpectra Weekly Digest — ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+          subject: `CodeSpectra Weekly Digest — ${formatDate(new Date(), undefined, { month: 'short', day: 'numeric' })}`,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
               <h2 style="color: #1a1a2e;">Weekly Platform Digest</h2>

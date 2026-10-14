@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 import { useConfirm } from '@/lib/confirm-context'
 
 /**
@@ -598,7 +599,7 @@ export default function AiInventoryPage() {
                   <ShieldAlert className="h-5 w-5 text-amber-500" /> Dependency Vulnerabilities & Audit
                 </h2>
                 <Badge variant="outline" className="text-[11px] font-mono">
-                  Scanned {new Date(audit.scanned_at).toLocaleString()}
+                  Scanned {formatDateTime(audit.scanned_at)}
                 </Badge>
                 <Badge className="ml-auto text-xs" variant={audit.python.count + audit.npm.count > 0 ? 'destructive' : 'secondary'}>
                   {audit.python.count + audit.npm.count} finding(s) detected

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { Card } from '@/components/ui/card'
@@ -250,7 +251,7 @@ export default function AnnouncementsPage() {
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: ann.message }} />
                       {ann.link && <a href={ann.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">{ann.link}</a>}
                       <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
-                        <span>{new Date(ann.created_at).toLocaleDateString()}</span>
+                        <span>{formatDate(ann.created_at)}</span>
                         {ann.channels?.in_app && <Badge variant="outline" className="text-[9px]">In-App</Badge>}
                         {ann.channels?.email && <Badge variant="outline" className="text-[9px]">Email</Badge>}
                         {ann.channels?.push && <Badge variant="outline" className="text-[9px]">Push</Badge>}

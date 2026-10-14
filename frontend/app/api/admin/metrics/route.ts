@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/api-auth'
 import { users } from '@/lib/db/admin'
@@ -54,7 +55,7 @@ export async function GET() {
           created_at: { $gte: day.toISOString(), $lt: next.toISOString() },
         })
         return {
-          date: day.toLocaleDateString('en-US', { weekday: 'short' }),
+          date: formatDate(day, undefined, { weekday: 'short' }),
           accepted: c,
         }
       })

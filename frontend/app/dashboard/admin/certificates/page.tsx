@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -352,7 +353,7 @@ export default function CertificatesPage() {
                       )}
                     </td>
                     <td className="py-2.5 px-4 text-[10px] text-muted-foreground">
-                      {new Date(cert.issuedAt).toLocaleDateString()}
+                      {formatDate(cert.issuedAt)}
                     </td>
                     <td className="py-2.5 px-4 text-[10px] text-muted-foreground">
                       {cert.issuedBy || 'System'}

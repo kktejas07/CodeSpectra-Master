@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -140,7 +141,7 @@ export default function AdminKycPage() {
     { key: 'document_type', header: 'Document', cell: (r) => r.document_type || '—' },
     { key: 'liveness_score', header: 'Liveness', cell: (r) => r.liveness_score ? `${r.liveness_score}/100` : '—' },
     { key: 'face_match_similarity', header: 'Face Match', cell: (r) => r.face_match_similarity ? `${r.face_match_similarity}%` : '—' },
-    { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString() : '—' },
+    { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? formatDate(r.created_at) : '—' },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center justify-end gap-1">
         <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View Details">
@@ -338,7 +339,7 @@ export default function AdminKycPage() {
               {/* Meta */}
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50">
                 <span>Provider: {selectedRecord.provider}</span>
-                <span>{selectedRecord.created_at ? new Date(selectedRecord.created_at).toLocaleString() : '—'}</span>
+                <span>{selectedRecord.created_at ? formatDateTime(selectedRecord.created_at) : '—'}</span>
               </div>
             </div>
           </Card>

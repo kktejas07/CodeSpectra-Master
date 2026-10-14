@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -474,7 +475,7 @@ export default function BulkSchedulePage() {
             <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
               <p><strong>Assessment:</strong> {selectedExam?.title}</p>
               <p><strong>Candidates:</strong> {validCount} valid candidates will be invited</p>
-              {deadline && <p><strong>Deadline:</strong> {new Date(deadline).toLocaleString()}</p>}
+              {deadline && <p><strong>Deadline:</strong> {formatDateTime(deadline)}</p>}
               {durationMinutes && <p><strong>Duration override:</strong> {durationMinutes} minutes</p>}
               {customMessage && <p><strong>Custom message:</strong> Yes</p>}
             </div>

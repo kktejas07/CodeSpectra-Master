@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -196,7 +197,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       <div className="flex gap-2 text-xs text-muted-foreground">
-        <Calendar className="h-3 w-3" /> {new Date(interview.scheduled_at).toLocaleString()}
+        <Calendar className="h-3 w-3" /> {formatDateTime(interview.scheduled_at)}
         <Clock className="h-3 w-3 ml-2" /> {interview.duration_minutes} min
         <BarChart3 className="h-3 w-3 ml-2" /> {answered.length}/{interview.questions.length} answered
       </div>

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -139,7 +140,7 @@ export default function DashboardJobsPage() {
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-xs text-muted-foreground hidden sm:block">
-                    Applied {new Date(app.appliedAt).toLocaleDateString()}
+                    Applied {formatDate(app.appliedAt)}
                   </span>
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/jobs/${app.jobId}`} target="_blank">

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState, useCallback } from 'react'
@@ -314,7 +315,7 @@ export default function ProfilePage() {
 
   const memberSince = stats?.memberSince as string | undefined
   const memberDate = memberSince
-    ? new Date(memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? formatDate(memberSince, undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     : null
 
   if (!gate.ready) return (

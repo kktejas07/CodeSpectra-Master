@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { Metadata } from 'next'
 import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
@@ -68,7 +69,7 @@ function EventCard({ event }: { event: any }) {
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="w-3 h-3" />
-            {new Date(event.starts_at).toLocaleDateString()}
+            {formatDate(event.starts_at)}
           </span>
           <span className="inline-flex items-center gap-1">
             <Clock className="w-3 h-3" />

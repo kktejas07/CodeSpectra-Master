@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
@@ -183,7 +184,7 @@ export default function UserProfilePage({
   }
 
   const { user, stats, recent } = data
-  const memberDate = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
+  const memberDate = user.joinedAt ? formatDate(user.joinedAt, undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null
   const level = Math.floor(stats.xp / 1000) + 1
 
   return (
@@ -403,7 +404,7 @@ export default function UserProfilePage({
                         <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                         <span className={r.status === 'accepted' ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : ''}>{r.status}</span>
                         <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                        <span>{new Date(r.created_at).toLocaleDateString()}</span>
+                        <span>{formatDate(r.created_at)}</span>
                       </p>
                     </div>
                     {r.problem && (

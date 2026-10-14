@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
@@ -330,10 +331,10 @@ export default function PipelinePage() {
                             )}
                             <p className="text-[11px] text-muted-foreground">
                               {c.completedAt
-                                ? `Completed ${new Date(c.completedAt).toLocaleDateString()}`
+                                ? `Completed ${formatDate(c.completedAt)}`
                                 : c.startedAt
-                                ? `Started ${new Date(c.startedAt).toLocaleDateString()}`
-                                : `Invited ${new Date(c.invitedAt).toLocaleDateString()}`}
+                                ? `Started ${formatDate(c.startedAt)}`
+                                : `Invited ${formatDate(c.invitedAt)}`}
                             </p>
                           </div>
                         ))}

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -69,7 +70,7 @@ function timeAgo(iso: string): string {
   const d = Math.floor(h / 24)
   if (d === 1) return 'Yesterday'
   if (d < 7) return `${d}d ago`
-  return new Date(iso).toLocaleDateString()
+  return formatDate(iso)
 }
 
 function dayGroup(iso: string): string {

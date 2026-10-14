@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import DOMPurify from 'isomorphic-dompurify'
@@ -26,9 +27,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
     ADD_TAGS: ['img'],
     ADD_ATTR: ['src', 'alt', 'width', 'height', 'style', 'class'],
   })
-  const dateLabel = new Date(
-    String(campaign.completed_at || campaign.created_at),
-  ).toLocaleDateString(undefined, {
+  const dateLabel = formatDate(String(campaign.completed_at || campaign.created_at), undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

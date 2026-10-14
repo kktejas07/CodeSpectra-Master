@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 /**
  * Public QR scan landing page.
@@ -241,7 +242,7 @@ export default function QrScanPage({
             {teamData?.hackathon?.ends_at && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
                 <Clock className="h-3 w-3" />
-                Event ends {new Date(teamData.hackathon.ends_at).toLocaleString()}
+                Event ends {formatDateTime(teamData.hackathon.ends_at)}
               </div>
             )}
             {teamData?.hackathon?.status === 'live' || teamData?.hackathon?.status === 'closed' ? (
@@ -313,7 +314,7 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
       </div>
 
       <p className="mt-5 text-xs text-muted-foreground">
-        Member since {new Date(u.joined_at).toLocaleDateString()}
+        Member since {formatDate(u.joined_at)}
       </p>
 
       <Link href={data.dashboard_url} className="mt-6 block">
@@ -364,7 +365,7 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
       {ends && (
         <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
           <Clock className="h-3 w-3" />
-          Event ends {ends.toLocaleString()}
+          Event ends {formatDateTime(ends)}
         </div>
       )}
 

@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -412,7 +413,7 @@ export default function HackathonCreatePage() {
                 <Label className="text-sm font-medium">Starts at</Label>
                 <Input type="datetime-local" className="h-10" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
                 <p className="mt-1.5 text-[11px] text-muted-foreground bg-muted/30 p-2 rounded-md border border-border/50 inline-block">
-                  Ends at {new Date(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000).toLocaleString()}
+                  Ends at {formatDateTime(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000)}
                 </p>
               </div>
               <div className="space-y-2.5">
@@ -1051,7 +1052,7 @@ export default function HackathonCreatePage() {
                 <div><span className="text-muted-foreground">Duration:</span> <span className="font-medium">{form.timeout_minutes} min</span></div>
                 <div><span className="text-muted-foreground">Teams:</span> <span className="font-medium">{form.num_teams} max</span></div>
                 <div><span className="text-muted-foreground">Per team:</span> <span className="font-medium">{form.max_per_team} members</span></div>
-                <div className="col-span-2"><span className="text-muted-foreground">Starts:</span> <span className="font-medium">{new Date(form.starts_at).toLocaleString()}</span></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Starts:</span> <span className="font-medium">{formatDateTime(form.starts_at)}</span></div>
                 {form.description && (
                   <div className="col-span-2"><span className="text-muted-foreground">Description:</span> <span className="font-medium line-clamp-2">{form.description}</span></div>
                 )}

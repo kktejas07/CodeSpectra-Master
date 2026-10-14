@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 import { useToast } from '@/lib/toast-context'
 
 import { useEffect, useState } from 'react'
@@ -177,7 +178,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
             <div className="col-span-2">
               <p className="text-xs text-foreground/60">Generated</p>
               <p className="text-sm font-medium text-foreground">
-                {new Date(defaultData.timestamp).toLocaleString()}
+                {formatDateTime(defaultData.timestamp)}
               </p>
             </div>
           </div>

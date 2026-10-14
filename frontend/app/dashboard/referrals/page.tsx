@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -199,7 +200,7 @@ export default function ReferralsPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant={statusColor(r.status)} className="capitalize">{r.status}</Badge>
-                      <span className="text-xs text-muted-foreground">{new Date(r.date).toLocaleDateString()}</span>
+                      <span className="text-xs text-muted-foreground">{formatDate(r.date)}</span>
                     </div>
                   </div>
                 ))}

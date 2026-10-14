@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { emailCampaigns } from '@/lib/db/email-campaigns'
@@ -76,7 +77,7 @@ export default async function NewsletterIndexPage() {
                       ) : null}
                       <p className="mt-auto flex items-center justify-between pt-2 text-[11px] text-muted-foreground">
                         <span>
-                          {new Date(String(c.completed_at || c.created_at)).toLocaleDateString()}
+                          {formatDate(String(c.completed_at || c.created_at))}
                         </span>
                         <span className="inline-flex items-center gap-1 font-medium text-teal-600 dark:text-teal-400">
                           Read <ArrowRight className="h-3 w-3" />

@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 import { useConfirm } from '@/lib/confirm-context'
 
 /**
@@ -374,7 +375,7 @@ export default function HackathonDetailPage({
                       <span className="font-semibold text-foreground">Capacity:</span> {event.num_teams} teams<br/>
                       <span className="font-semibold text-foreground">Team Size:</span> max {event.max_per_team}<br/>
                       <span className="font-semibold text-foreground">Duration:</span> {event.timeout_minutes} min<br/>
-                      <span className="font-semibold text-foreground">Ends:</span> {new Date(event.ends_at).toLocaleString()}
+                      <span className="font-semibold text-foreground">Ends:</span> {formatDateTime(event.ends_at)}
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -812,7 +813,7 @@ export default function HackathonDetailPage({
             </h2>
             <p className="text-sm font-medium text-muted-foreground leading-relaxed opacity-90">
               {event.results_released
-                ? `Results were officially released on ${event.released_at ? new Date(event.released_at).toLocaleString() : 'an unknown date'}. Participants can now view their final standings on the leaderboard.`
+                ? `Results were officially released on ${event.released_at ? formatDateTime(event.released_at) : 'an unknown date'}. Participants can now view their final standings on the leaderboard.`
                 : 'Scores and standings are currently hidden from participants. When you are ready to finalize the event, release the results to make the leaderboard public.'}
             </p>
           </div>

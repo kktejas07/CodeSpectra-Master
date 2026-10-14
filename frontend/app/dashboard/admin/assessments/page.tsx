@@ -22,7 +22,7 @@ import { Switch } from '@/components/ui/switch'
 import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES } from '@/lib/engineering-catalog'
 import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
-import { toZonedDateInput } from '@/lib/format-datetime'
+import { toZonedDateInput, formatDateTime } from '@/lib/format-datetime'
 
 interface Exam {
   id: string
@@ -424,7 +424,7 @@ export default function AdminExamsPage() {
 
   const linkExpirySummary = (iso: string | null): string => {
     if (!iso) return 'never expires'
-    return `expires ${new Date(iso).toLocaleString()}`
+    return `expires ${formatDateTime(iso)}`
   }
 
   const handleCreateLink = async () => {
@@ -1059,7 +1059,7 @@ export default function AdminExamsPage() {
                         <Badge variant={l.revoked ? 'destructive' : 'secondary'}>{l.revoked ? 'revoked' : l.type}</Badge>
                         <span className="text-muted-foreground break-all flex-1 min-w-0" title={l.url}>{l.url}</span>
                         <span className="text-muted-foreground whitespace-nowrap shrink-0">
-                          {l.expires_at ? new Date(l.expires_at).toLocaleString() : 'never'}
+                          {l.expires_at ? formatDateTime(l.expires_at) : 'never'}
                           {l.max_uses ? ` · ${l.used_count}/${l.max_uses}` : ` · ${l.used_count} uses`}
                         </span>
                         {!l.revoked && (
@@ -1092,7 +1092,7 @@ export default function AdminExamsPage() {
                               </div>
                               {usageRows.map((u) => (
                                 <div key={u.id} className="grid grid-cols-12 gap-2 px-2 py-1 rounded hover:bg-muted/30">
-                                  <span className="col-span-2 text-muted-foreground">{new Date(u.accessed_at).toLocaleString()}</span>
+                                  <span className="col-span-2 text-muted-foreground">{formatDateTime(u.accessed_at)}</span>
                                   <span className="col-span-2 font-mono text-muted-foreground">{u.ip_address || '—'}</span>
                                   <span className="col-span-2 flex items-center gap-1">
                                     {u.device_type === 'mobile' ? <Smartphone className="h-3 w-3" /> : u.device_type === 'tablet' ? <Tablet className="h-3 w-3" /> : <Monitor className="h-3 w-3" />}

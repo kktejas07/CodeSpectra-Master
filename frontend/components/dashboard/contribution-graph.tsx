@@ -1,4 +1,5 @@
 'use client'
+import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 
 import { useMemo, useState, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
@@ -37,7 +38,7 @@ const LEVEL_COLORS = [
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+  return tzFormatDate(d, undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function pluralize(n: number, word: string): string {

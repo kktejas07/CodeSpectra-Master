@@ -1,4 +1,5 @@
 'use client'
+import { formatTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
@@ -135,7 +136,7 @@ export function ProctoringPanel() {
         <div className="flex items-center gap-3">
           {lastUpdated && (
             <span className="text-xs text-muted-foreground">
-              Updated: {lastUpdated.toLocaleTimeString()}
+              Updated: {formatTime(lastUpdated)}
             </span>
           )}
           <button
