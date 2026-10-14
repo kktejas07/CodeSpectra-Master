@@ -143,43 +143,90 @@ interface Exam {
   screening_type?: string
 }
 
+/** Map one imported JSON item into the exam's Question shape. */
+function mapImportItem(item: any, i: number): Question {
+  const type: QuestionType = canonicalType(item.type, 'mcq')
+  const opts = Array.isArray(item.options) ? item.options.map(String).filter(Boolean) : undefined
+  const titleVal = item.title || item.category || (item.question && item.question.length > 60 ? item.question.slice(0, 60) + '...' : item.question) || `Question ${i + 1}`
+  return {
+    id: crypto.randomUUID(),
+    type,
+    title: String(titleVal),
+    prompt: String(item.prompt || item.question || item.description || ''),
+    options: metaFor(type).hasOptions && opts?.length ? opts : undefined,
+    answer: item.answer ? String(item.answer) : undefined,
+    score: Number(item.score || item.marks || item.points) || 10,
+    test_cases: Array.isArray(item.test_cases) ? item.test_cases : undefined,
+    tolerance: typeof item.tolerance === 'number' ? item.tolerance : undefined,
+    pairs: Array.isArray(item.pairs) ? item.pairs : undefined,
+    matrix: item.matrix || undefined,
+    table: item.table || undefined,
+    scale: item.scale || undefined,
+    image_url: item.image_url || undefined,
+    regions: Array.isArray(item.regions) ? item.regions : undefined,
+    language: item.language || undefined,
+    starter_code: item.starter_code || undefined,
+  }
+}
+
+/**
+ * Best-effort recovery of a JSON array when the pasted text is not a clean
+ * array — e.g. a fragment beginning `}, {...}` (missing the opening `[`), a raw
+ * stream of concatenated objects, or JSON wrapped in prose/markdown fences.
+ * Without this, such input fell through to the plain-text path and collapsed
+ * into a single descriptive question.
+ */
+function recoverJsonArray(text: string): any[] | null {
+  // 1) Parse the outermost `[ ... ]` slice (handles leading/trailing prose).
+  const start = text.indexOf('[')
+  const end = text.lastIndexOf(']')
+  if (start !== -1 && end > start) {
+    try {
+      const arr = JSON.parse(text.slice(start, end + 1))
+      if (Array.isArray(arr) && arr.length) return arr
+    } catch { /* fall through to object scan */ }
+  }
+  // 2) Scan balanced `{ ... }` objects (string-aware, so braces inside code
+  // strings are ignored). Recovers a `}, {...}` fragment or an object stream.
+  const objs: any[] = []
+  let depth = 0, objStart = -1, inStr = false, esc = false
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inStr) { if (esc) esc = false; else if (c === '\\') esc = true; else if (c === '"') inStr = false; continue }
+    if (c === '"') { inStr = true; continue }
+    if (c === '{') { if (depth === 0) objStart = i; depth++ }
+    else if (c === '}') {
+      if (depth > 0) depth--
+      if (depth === 0 && objStart !== -1) {
+        try { objs.push(JSON.parse(text.slice(objStart, i + 1))) } catch { /* skip malformed object */ }
+        objStart = -1
+      }
+    }
+  }
+  return objs.length ? objs : null
+}
+
 function parseQuestions(raw: string): { questions: Question[]; errors: string[] } {
   const errors: string[] = []
   const trimmed = raw.trim()
   if (!trimmed) return { questions: [], errors: ['No content provided'] }
 
-  // Try JSON
+  // Try a clean JSON payload (array, or { questions: [...] }).
   try {
     const arr = JSON.parse(trimmed)
     if (Array.isArray(arr) && arr.length > 0) {
-      const mapped = arr.map((item: any, i: number) => {
-        const type: QuestionType = canonicalType(item.type, 'mcq')
-        const opts = Array.isArray(item.options) ? item.options.map(String).filter(Boolean) : undefined
-        const titleVal = item.title || item.category || (item.question && item.question.length > 60 ? item.question.slice(0, 60) + '...' : item.question) || `Question ${i + 1}`
-
-        return {
-          id: crypto.randomUUID(),
-          type,
-          title: String(titleVal),
-          prompt: String(item.prompt || item.question || item.description || ''),
-          options: metaFor(type).hasOptions && opts?.length ? opts : undefined,
-          answer: item.answer ? String(item.answer) : undefined,
-          score: Number(item.score || item.marks || item.points) || 10,
-          test_cases: Array.isArray(item.test_cases) ? item.test_cases : undefined,
-          tolerance: typeof item.tolerance === 'number' ? item.tolerance : undefined,
-          pairs: Array.isArray(item.pairs) ? item.pairs : undefined,
-          matrix: item.matrix || undefined,
-          table: item.table || undefined,
-          scale: item.scale || undefined,
-          image_url: item.image_url || undefined,
-          regions: Array.isArray(item.regions) ? item.regions : undefined,
-          language: item.language || undefined,
-          starter_code: item.starter_code || undefined,
-        }
-      })
-      return { questions: mapped, errors }
+      return { questions: arr.map(mapImportItem), errors }
     }
-  } catch {}
+    if (arr && typeof arr === 'object' && Array.isArray((arr as { questions?: unknown[] }).questions)) {
+      return { questions: ((arr as { questions: unknown[] }).questions as any[]).map(mapImportItem), errors }
+    }
+  } catch { /* not clean JSON — try recovery below */ }
+
+  // Recover from a fragment / object stream / fenced JSON before giving up.
+  const recovered = recoverJsonArray(trimmed)
+  if (recovered && recovered.length) {
+    return { questions: recovered.map(mapImportItem), errors }
+  }
 
   // Try CSV (header: type,title,prompt,options,answer,score)
   const lines = trimmed.split('\n').map(l => l.trim()).filter(Boolean)
