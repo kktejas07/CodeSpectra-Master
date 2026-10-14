@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import {
   DASHBOARD_ROUTES,
@@ -163,6 +164,9 @@ export default function DashboardLayout({
 }) {
   const router = useRouter()
   const pathname = usePathname()
+  // Prime the app-wide default timezone from Settings → General so every page's
+  // date formatting reflects it (see lib/format-datetime.ts).
+  usePlatformTimezone()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)

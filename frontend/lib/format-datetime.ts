@@ -15,9 +15,22 @@
 
 export const DEFAULT_TIMEZONE = 'Asia/Kolkata'
 
+/**
+ * App-wide fallback timezone. The app shell calls {@link setDefaultTimezone}
+ * once the platform setting loads, so call sites can use `formatDateTime(x)`
+ * without threading `tz` through every component.
+ */
+let _defaultTz: string | null = null
+export function setDefaultTimezone(tz?: string | null): void {
+  _defaultTz = tz && tz.trim() ? tz.trim() : null
+}
+export function getDefaultTimezone(): string {
+  return _defaultTz || DEFAULT_TIMEZONE
+}
+
 /** Normalize a possibly-missing timezone to a usable IANA id. */
 export function resolveTimezone(tz?: string | null): string {
-  return (tz && tz.trim()) || DEFAULT_TIMEZONE
+  return (tz && tz.trim()) || _defaultTz || DEFAULT_TIMEZONE
 }
 
 function toDate(value: string | number | Date | null | undefined): Date | null {
