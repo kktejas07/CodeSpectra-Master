@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
@@ -561,7 +562,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         `"${(sub.problem_slug || '').replace(/"/g, '""')}"`,
         `"${(sub.status || '').replace(/"/g, '""')}"`,
         `"${sub.score ?? ''}"`,
-        `"${new Date(sub.submitted_at).toLocaleString()}"`,
+        `"${formatDateTime(sub.submitted_at)}"`,
         `"${(sub.repo_url || '').replace(/"/g, '""')}"`,
         `"${(sub.live_url || '').replace(/"/g, '""')}"`,
         `"${(sub.video_url || '').replace(/"/g, '""')}"`,
@@ -610,7 +611,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       key: 'submitted_at',
       header: 'Latest Submission',
       sortable: true,
-      cell: (row: any) => <span className="text-xs text-muted-foreground">{new Date(row.submitted_at).toLocaleString()}</span>
+      cell: (row: any) => <span className="text-xs text-muted-foreground">{formatDateTime(row.submitted_at)}</span>
     },
     {
       key: 'evidence',
@@ -878,11 +879,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground text-xs block">Starts</span>
-                <span className="font-medium">{new Date(event.starts_at).toLocaleString()}</span>
+                <span className="font-medium">{formatDateTime(event.starts_at)}</span>
               </div>
               <div>
                 <span className="text-muted-foreground text-xs block">Ends</span>
-                <span className="font-medium">{new Date(event.ends_at).toLocaleString()}</span>
+                <span className="font-medium">{formatDateTime(event.ends_at)}</span>
               </div>
               <div>
                 <span className="text-muted-foreground text-xs block">Teams</span>
@@ -1010,7 +1011,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className={`text-xs ${statusConfig.color}`}>{statusConfig.label}</Badge>
                         {sub.score !== null && <span className="text-xs font-medium">{sub.score}/{sub.max_score}</span>}
-                        <span className="text-xs text-muted-foreground">{new Date(sub.submitted_at).toLocaleString()}</span>
+                        <span className="text-xs text-muted-foreground">{formatDateTime(sub.submitted_at)}</span>
                       </div>
                       {sub.rejection_reason && (
                         <p className="text-xs text-rose-500 mt-1">Reason: {sub.rejection_reason}</p>
@@ -1277,7 +1278,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <h3 className="font-semibold text-sm text-blue-500">Step 4 — Publish results</h3>
                       <p className="text-xs text-muted-foreground">
                         {event.results_released
-                          ? `Results released${event.released_at ? ` on ${new Date(event.released_at).toLocaleString()}` : ''}.`
+                          ? `Results released${event.released_at ? ` on ${formatDateTime(event.released_at)}` : ''}.`
                           : 'Release when judging is complete. Unreviewed submissions score as 0 — this cannot be undone.'}
                       </p>
                     </div>
@@ -1542,7 +1543,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="grid grid-cols-2 gap-4 text-sm p-4 rounded-xl border bg-muted/20">
                     <div>
                       <span className="text-muted-foreground text-xs font-medium block mb-1">Submitted</span>
-                      <span className="font-semibold">{new Date(selectedSub.submitted_at).toLocaleString()}</span>
+                      <span className="font-semibold">{formatDateTime(selectedSub.submitted_at)}</span>
                     </div>
                     <div>
                       <span className="text-muted-foreground text-xs font-medium block mb-1">Current Score</span>
@@ -1717,7 +1718,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   <span className="font-semibold text-foreground block">
                                     Revision {selectedSub.history.length - idx} {isCurrent && <span className="text-[10px] text-primary ml-2 uppercase">(Viewing)</span>}
                                   </span>
-                                  <span className="text-muted-foreground text-xs">{new Date(rev.submitted_at).toLocaleString()}</span>
+                                  <span className="text-muted-foreground text-xs">{formatDateTime(rev.submitted_at)}</span>
                                 </div>
                                 <div className="text-right">
                                   <Badge variant="outline" className="text-[10px]">{rev.status}</Badge>

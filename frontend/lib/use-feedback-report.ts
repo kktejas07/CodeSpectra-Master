@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useCallback } from 'react'
 import type { InterviewFeedback } from '@/lib/interview-service'
@@ -40,7 +41,7 @@ export function useFeedbackReport() {
       doc.setFont('helvetica', 'normal')
       doc.text(`Type: ${data.interviewType}  |  Role: ${data.roleId}`, pageWidth / 2, y, { align: 'center' })
       y += 6
-      doc.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth / 2, y, { align: 'center' })
+      doc.text(`Date: ${formatDate(new Date())}`, pageWidth / 2, y, { align: 'center' })
       y += 6
       doc.text(`Overall Score: ${data.overallScore}%`, pageWidth / 2, y, { align: 'center' })
       y += 12
@@ -152,7 +153,7 @@ function downloadHtmlFallback(data: FeedbackReportData) {
   <h1>Technical Interview Report</h1>
   <p><strong>Type:</strong> ${data.interviewType} | <strong>Role:</strong> ${data.roleId}</p>
   <p><strong>Overall Score:</strong> <span class="score-badge ${data.overallScore >= 70 ? 'high' : data.overallScore >= 40 ? 'mid' : 'low'}">${data.overallScore}%</span></p>
-  <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+  <p><strong>Date:</strong> ${formatDate(new Date())}</p>
   <hr />
   ${data.feedback.map(f => `
     <div class="dimension">

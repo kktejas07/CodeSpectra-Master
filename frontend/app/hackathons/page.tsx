@@ -1,4 +1,5 @@
 'use client'
+import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { PublicPageWrapper } from '@/app/public-layout'
@@ -17,7 +18,7 @@ interface Hackathon {
 
 function formatDate(iso: string) {
   if (!iso) return 'TBA'
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return tzFormatDate(iso, undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 function StatusBadge({ status }: { status: string }) {

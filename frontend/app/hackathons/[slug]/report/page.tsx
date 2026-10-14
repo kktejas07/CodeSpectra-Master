@@ -1,4 +1,5 @@
 'use client'
+import { formatTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -287,10 +288,10 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
                       </div>
                       <div className="flex gap-4 mt-1.5 text-[10px] text-muted-foreground">
                         {pActivity?.firstSubmit && (
-                          <span>First attempt: {new Date(pActivity.firstSubmit).toLocaleTimeString()}</span>
+                          <span>First attempt: {formatTime(pActivity.firstSubmit)}</span>
                         )}
                         {pActivity?.lastSubmit && (
-                          <span>Submitted: {new Date(pActivity.lastSubmit).toLocaleTimeString()}</span>
+                          <span>Submitted: {formatTime(pActivity.lastSubmit)}</span>
                         )}
                       </div>
                     </div>
@@ -314,7 +315,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
                   <span className="text-muted-foreground flex-1">{activityLabels[evt.type] || evt.type}</span>
                   {evt.problem_slug && <Badge variant="outline" className="text-[10px]">{evt.problem_slug}</Badge>}
                   <span className="text-muted-foreground font-mono text-[10px]">
-                    {new Date(evt.created_at).toLocaleTimeString()}
+                    {formatTime(evt.created_at)}
                   </span>
                 </div>
               ))}

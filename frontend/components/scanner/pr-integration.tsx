@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -143,7 +144,7 @@ export function PRIntegration({ prs = [], loading = false }: PRIntegrationProps)
 
                 <div className="text-center">
                   <p className="text-xs text-foreground/50">
-                    {pr.createdAt.toLocaleDateString()}
+                    {formatDate(pr.createdAt)}
                   </p>
                   <p className="text-xs text-foreground/60">Created</p>
                 </div>

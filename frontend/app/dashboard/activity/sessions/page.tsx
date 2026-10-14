@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -103,7 +104,7 @@ export default function MySessionsPage() {
                     <p className="truncate font-medium">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
                       {[s.type, s.role].filter(Boolean).join(' · ')}
-                      {s.scheduledAt ? ` · ${new Date(s.scheduledAt).toLocaleString()}` : ''}
+                      {s.scheduledAt ? ` · ${formatDateTime(s.scheduledAt)}` : ''}
                     </p>
                   </div>
                   <Badge variant="secondary" className="capitalize">

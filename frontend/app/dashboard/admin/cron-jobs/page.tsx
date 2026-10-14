@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -576,7 +577,7 @@ export default function CronJobsPage() {
                           {w.cron || 'no cron'}
                         </code>
                         <span>
-                          {w.nodes} nodes · {new Date(w.created_at).toLocaleDateString()}
+                          {w.nodes} nodes · {formatDate(w.created_at)}
                         </span>
                       </div>
                     </div>
@@ -637,7 +638,7 @@ export default function CronJobsPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{r.workflow_id}</p>
                       <p className="text-[11px] text-muted-foreground">
-                        {new Date(r.started_at).toLocaleString()}
+                        {formatDateTime(r.started_at)}
                         {r.duration_ms != null ? ` · ${r.duration_ms}ms` : ''}
                       </p>
                     </div>

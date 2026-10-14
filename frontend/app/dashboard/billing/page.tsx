@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -369,7 +370,7 @@ function BillingContent() {
 
   const isCanceled = subscription.status === 'canceled'
   const nextBill = subscription.currentPeriodEnd
-    ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+    ? formatDate(subscription.currentPeriodEnd)
     : '—'
 
   return (
@@ -677,7 +678,7 @@ function BillingContent() {
               </p>
               <p>
                 <span className="text-muted-foreground">Date:</span>{' '}
-                {new Date(invoiceDetail.createdAt).toLocaleString()}
+                {formatDateTime(invoiceDetail.createdAt)}
               </p>
               {invoiceDetail.description ? (
                 <p>

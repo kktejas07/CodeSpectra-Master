@@ -1,4 +1,5 @@
 'use client'
+import { formatTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Users, RotateCcw } from 'lucide-react'
@@ -59,7 +60,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
       if (data.version) {
         setVersion(data.version)
         setRemoteVersion(data.version)
-        setLastSave(new Date().toLocaleTimeString())
+        setLastSave(formatTime(new Date()))
       }
     } catch {} // silent
   }, [sessionId, language, version])

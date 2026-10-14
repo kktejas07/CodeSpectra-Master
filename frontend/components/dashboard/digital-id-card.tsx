@@ -1,4 +1,5 @@
 'use client'
+import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 
 import { useState, useEffect, useRef } from 'react'
 
@@ -15,9 +16,9 @@ interface DigitalIdCardProps {
 function formatDate(iso?: string): string {
   if (iso) {
     const d = new Date(iso)
-    if (!isNaN(d.getTime())) return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    if (!isNaN(d.getTime())) return tzFormatDate(d, undefined, { month: 'short', day: 'numeric', year: 'numeric' })
   }
-  return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return tzFormatDate(new Date(), undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycVerified }: DigitalIdCardProps) {

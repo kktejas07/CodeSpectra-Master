@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -179,7 +180,7 @@ export default function AdminFeedbackPage() {
     },
     {
       key: 'created_at', header: 'Date', sortable: true,
-      cell: (item) => <span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</span>
+      cell: (item) => <span className="text-xs text-muted-foreground">{formatDate(item.created_at)}</span>
     },
   ], [handleUpdateStatus])
 
@@ -284,7 +285,7 @@ export default function AdminFeedbackPage() {
                     <MessageSquare className="h-3.5 w-3.5 text-primary" />
                     <span className="text-xs font-semibold text-primary">Admin Response</span>
                     {expandedFeedback.replied_at && (
-                      <span className="text-[10px] text-muted-foreground">{new Date(expandedFeedback.replied_at).toLocaleString()}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatDateTime(expandedFeedback.replied_at)}</span>
                     )}
                   </div>
                   <p className="text-sm text-foreground whitespace-pre-wrap">{expandedFeedback.admin_reply}</p>

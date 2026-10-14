@@ -1,5 +1,6 @@
 'use client'
 
+import { formatDateTime } from '@/lib/format-datetime'
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -256,7 +257,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
               <div className="mt-6 flex flex-wrap gap-3">
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
                   <CalendarDays className="h-4 w-4 text-primary" />
-                  <span>{starts.toLocaleString()}</span>
+                  <span>{formatDateTime(starts)}</span>
                 </div>
                 {!isClosed && !isLive && (
                   <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm font-medium text-yellow-600 dark:text-yellow-500">

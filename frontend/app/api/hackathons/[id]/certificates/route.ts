@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
@@ -37,7 +38,7 @@ function renderClassic(name: string, rank: number, total: number, eventName: str
     <text x="561" y="320" font-family="serif" font-size="42" font-weight="bold" fill="#2d2d2d" text-anchor="middle">${escapeXml(name)}</text>
     <text x="561" y="370" font-family="sans-serif" font-size="18" fill="#666" text-anchor="middle">ranked #${rank} of ${total} teams in</text>
     <text x="561" y="420" font-family="serif" font-size="28" font-weight="bold" fill="#d4a843" text-anchor="middle">${escapeXml(eventName)}</text>
-    <text x="561" y="500" font-family="sans-serif" font-size="16" fill="#999" text-anchor="middle">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</text>
+    <text x="561" y="500" font-family="sans-serif" font-size="16" fill="#999" text-anchor="middle">${formatDate(new Date(), undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</text>
     <text x="561" y="600" font-family="sans-serif" font-size="12" fill="#bbb" text-anchor="middle">Verified on CodeSpectra</text>
   </svg>`
 }
@@ -66,7 +67,7 @@ function renderModern(name: string, rank: number, total: number, eventName: stri
     <text x="561" y="390" font-family="sans-serif" font-size="24" fill="#ccc" text-anchor="middle">${escapeXml(eventName)}</text>
     <circle cx="200" cy="500" r="60" fill="none" stroke="#00b4d8" stroke-width="1" opacity="0.3"/>
     <circle cx="923" cy="500" r="60" fill="none" stroke="#00b4d8" stroke-width="1" opacity="0.3"/>
-    <text x="561" y="560" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</text>
+    <text x="561" y="560" font-family="sans-serif" font-size="14" fill="#666" text-anchor="middle">${formatDate(new Date(), undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</text>
     <text x="561" y="650" font-family="sans-serif" font-size="12" fill="#444" text-anchor="middle">Verified on CodeSpectra</text>
   </svg>`
 }
@@ -82,7 +83,7 @@ function renderMinimal(name: string, rank: number, total: number, eventName: str
     <text x="561" y="280" font-family="sans-serif" font-size="16" fill="#999" text-anchor="middle">Awarded to</text>
     <text x="561" y="350" font-family="sans-serif" font-size="40" font-weight="bold" fill="#333" text-anchor="middle">${escapeXml(name)}</text>
     <text x="561" y="410" font-family="sans-serif" font-size="16" fill="#666" text-anchor="middle">#${rank} of ${total} · ${escapeXml(eventName)}</text>
-    <text x="561" y="520" font-family="sans-serif" font-size="12" fill="#bbb" text-anchor="middle">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</text>
+    <text x="561" y="520" font-family="sans-serif" font-size="12" fill="#bbb" text-anchor="middle">${formatDate(new Date(), undefined, { year: 'numeric', month: 'long', day: 'numeric' })}</text>
     <text x="561" y="600" font-family="sans-serif" font-size="10" fill="#ddd" text-anchor="middle">Verified on CodeSpectra</text>
   </svg>`
 }

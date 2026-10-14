@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -101,7 +102,7 @@ export default function RecruiterAnalyticsPage() {
       c.interviews,
       `${Math.round(c.avgScore)}%`,
       c.roles.join('; '),
-      new Date(c.latestInterview).toLocaleDateString(),
+      formatDate(c.latestInterview),
     ])
     const csv = [headers, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -361,7 +362,7 @@ export default function RecruiterAnalyticsPage() {
                       </div>
                     </td>
                     <td className="py-3 px-3 text-xs text-muted-foreground">
-                      {new Date(c.latestInterview).toLocaleDateString()}
+                      {formatDate(c.latestInterview)}
                     </td>
                   </tr>
                 ))}
@@ -430,7 +431,7 @@ export default function RecruiterAnalyticsPage() {
                       )}
                     </td>
                     <td className="py-3 px-3 text-xs text-muted-foreground">
-                      {new Date(interview.created_at).toLocaleDateString()}
+                      {formatDate(interview.created_at)}
                     </td>
                   </tr>
                 ))}

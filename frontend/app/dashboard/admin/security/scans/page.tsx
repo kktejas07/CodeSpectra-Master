@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -91,7 +92,7 @@ export default function SecurityScansPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Weekly Trivy image CVEs + ClamAV filesystem sweep, reported from the host.
           {latest
-            ? ` Last run ${new Date(latest.ranAt).toLocaleString()}.`
+            ? ` Last run ${formatDateTime(latest.ranAt)}.`
             : ' No reports yet — the next scheduled run will populate this page.'}
         </p>
       </div>
@@ -204,7 +205,7 @@ export default function SecurityScansPage() {
                 {history.map((h) => (
                   <div key={h.ranAt} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-xs">
                     <span className="tabular-nums text-muted-foreground">
-                      {new Date(h.ranAt).toLocaleString()}
+                      {formatDateTime(h.ranAt)}
                     </span>
                     <span className="ml-auto tabular-nums">{h.images} images</span>
                     <Badge variant={h.critical > 0 ? 'destructive' : 'outline'} className="tabular-nums">

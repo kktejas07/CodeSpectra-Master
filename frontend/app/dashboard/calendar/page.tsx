@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -253,7 +254,7 @@ export default function CalendarPage() {
                     <li key={ev.id} className="flex gap-2 rounded-lg border border-border p-2 text-sm">
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium">{ev.title}</p>
-                        <p className="text-[11px] text-muted-foreground">{new Date(ev.start).toLocaleString()}</p>
+                        <p className="text-[11px] text-muted-foreground">{formatDateTime(ev.start)}</p>
                         {ev.url && (
                           <Link href={ev.url} className="text-[11px] text-primary hover:underline">
                             Open →

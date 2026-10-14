@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import {
@@ -392,7 +393,7 @@ export default function IdentityVerificationPage() {
 
           {status.created_at && (
             <p className="text-xs text-muted-foreground text-center mt-4">
-              Submitted on {new Date(status.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              Submitted on {formatDate(status.created_at, undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
 
@@ -582,7 +583,7 @@ export default function IdentityVerificationPage() {
                 </div>
               )}
 
-              Verified on {new Date(status.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+              Verified on {formatDate(status.created_at, undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           )}
 

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState, useRef } from 'react'
 import { Card } from '@/components/ui/card'
@@ -525,7 +526,7 @@ export default function NewsletterPage() {
                           <Badge className={`${s.color} border-0 gap-1`}>{s.icon} {s.label}</Badge>
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>{new Date(c.created_at).toLocaleDateString()}</span>
+                          <span>{formatDate(c.created_at)}</span>
                           <span>{c.recipients_count} recipients</span>
                         </div>
                         <div className="flex items-center gap-4 mt-2 text-xs">

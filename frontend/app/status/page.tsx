@@ -1,4 +1,5 @@
 'use client'
+import { formatTime } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { Activity, CheckCircle2, AlertTriangle, XCircle, Info, RefreshCw } from 'lucide-react'
@@ -69,7 +70,7 @@ export default function StatusPage() {
   const chartData = data.historical_logs.map((log) => {
     const db = log.components.find((c) => c.name.includes('Database'))
     return {
-      time: new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: formatTime(log.timestamp, undefined, { hour: '2-digit', minute: '2-digit' }),
       latency: db?.latency || 0,
       status: log.status
     }
@@ -126,7 +127,7 @@ export default function StatusPage() {
              data.status === 'degraded' ? 'Partial System Outage' : 'Major System Outage'}
           </h2>
           <p className="text-sm opacity-80 mt-1">
-            Last updated at {new Date(data.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            Last updated at {formatTime(data.updated_at, undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
@@ -250,7 +251,7 @@ export async function POST(request: Request) {
       const { sendEmail } = await import('@/lib/send-email')
       const { emailTemplates } = await import('@/lib/email-templates')
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      const expiresStr = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
       const template = emailTemplates.assessmentInvite({
         candidateName: full_name,
         examTitle: body.exam_title || 'Technical Assessment',

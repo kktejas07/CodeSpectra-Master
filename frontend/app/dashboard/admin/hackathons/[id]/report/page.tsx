@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -260,7 +261,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                                 <span className="text-muted-foreground">{eventTypeLabel[evt.type] || evt.type}</span>
                                 {evt.problem_slug && <Badge variant="outline" className="text-[10px]">{evt.problem_slug}</Badge>}
                                 <span className="ml-auto text-muted-foreground font-mono">
-                                  {new Date(evt.created_at).toLocaleTimeString()}
+                                  {formatTime(evt.created_at)}
                                 </span>
                               </div>
                             ))}
@@ -281,7 +282,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                                 <Badge variant="outline" className="text-[10px]">{sub.problem_slug}</Badge>
                                 <span className="font-mono text-muted-foreground">{sub.score ?? '—'}/{sub.max_score}</span>
                                 <span className="ml-auto text-muted-foreground">
-                                  {new Date(sub.submitted_at).toLocaleTimeString()}
+                                  {formatTime(sub.submitted_at)}
                                 </span>
                               </div>
                             ))}
@@ -359,7 +360,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                         <Badge className={`${severityColors[evt.severity]} text-[10px]`}>{evt.severity}</Badge>
                       </td>
                       <td className="py-2 font-mono text-xs text-muted-foreground">
-                        {new Date(evt.created_at).toLocaleString()}
+                        {formatDateTime(evt.created_at)}
                       </td>
                     </tr>
                   )

@@ -1,4 +1,5 @@
 'use client'
+import { formatTime } from '@/lib/format-datetime'
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
@@ -731,7 +732,7 @@ export default function CourseGeneratorTab() {
                               <div className="space-y-1">
                                 {job.logs.slice().reverse().map((log, i) => (
                                   <div key={i} className="flex items-start gap-2 text-xs">
-                                    <span className="text-muted-foreground shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                                    <span className="text-muted-foreground shrink-0">{formatTime(log.timestamp)}</span>
                                     <span className={
                                       log.type === 'success' || /MP4 .+object storage/i.test(log.message || '')
                                         ? 'text-green-600'

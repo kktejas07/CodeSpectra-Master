@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 import { NextRequest, NextResponse } from 'next/server'
 import { candidateInvites } from '@/lib/db/admin'
 import { getMongoDb } from '@/lib/mongodb'
@@ -43,7 +44,7 @@ export async function POST(
     // Generate new token and 48-hour expiration
     const newToken = crypto.randomUUID()
     const newExpiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
-    const expiresStr = new Date(newExpiresAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    const expiresStr = formatDate(newExpiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
 
     await col.updateOne(
       { token },

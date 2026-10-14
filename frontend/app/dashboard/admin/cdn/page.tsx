@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
@@ -58,7 +59,7 @@ function formatTimeSeriesData(data: Array<{ datetime: string; requests: number }
   return data.map(d => {
     const date = new Date(d.datetime)
     const hour = date.getHours()
-    const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    const day = formatDate(date, undefined, { month: 'short', day: 'numeric' })
     return {
       ...d,
       label: `${day} ${hour}:00`,

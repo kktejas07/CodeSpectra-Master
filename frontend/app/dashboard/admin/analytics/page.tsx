@@ -1,4 +1,5 @@
 'use client'
+import { formatTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
@@ -142,7 +143,7 @@ function fmtDuration(ms: number): string {
 
 function fmtTimestamp(iso: string): string {
   const d = new Date(iso)
-  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return formatTime(d, undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 function fmtDate(iso: string): string {

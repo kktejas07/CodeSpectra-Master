@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -479,7 +480,7 @@ export default function HackathonsAdminPage() {
                 <Label>Starts at</Label>
                 <Input type="datetime-local" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Ends at {new Date(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000).toLocaleString()}
+                  Ends at {formatDateTime(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000)}
                 </p>
               </div>
               <div className="space-y-2">
@@ -994,7 +995,7 @@ export default function HackathonsAdminPage() {
               </div>
               <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
                 <CalendarDays className="h-3 w-3" />
-                {new Date(hk.starts_at).toLocaleString()} → {new Date(hk.ends_at).toLocaleTimeString()}
+                {formatDateTime(hk.starts_at)} → {formatTime(hk.ends_at)}
               </div>
               <div className="flex gap-2 pt-2">
                 <Link href={`/hackathons/${hk.slug}`}>

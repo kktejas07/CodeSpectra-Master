@@ -1,4 +1,5 @@
 'use client'
+import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
@@ -36,7 +37,7 @@ const LEVEL_CLASSES = [
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+  return tzFormatDate(d, undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']

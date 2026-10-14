@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -280,7 +281,7 @@ export default function AdminProctorPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{e.event_type}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {userMap[e.user_id]?.name || e.user_id.slice(0, 16)} · {e.session_id.slice(0, 24)}… · {new Date(e.created_at).toLocaleTimeString()}
+                    {userMap[e.user_id]?.name || e.user_id.slice(0, 16)} · {e.session_id.slice(0, 24)}… · {formatTime(e.created_at)}
                   </p>
                 </div>
                 <Badge variant={EVENT_SEVERITY[e.event_type] === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
@@ -293,7 +294,7 @@ export default function AdminProctorPage() {
                   <p>ID: {e.id}</p>
                   <p>User: {userMap[e.user_id]?.name || e.user_id}{userMap[e.user_id]?.email ? ` (${userMap[e.user_id].email})` : ''}</p>
                   <p>Session: {e.session_id}</p>
-                  <p>Time: {new Date(e.created_at).toLocaleString()}</p>
+                  <p>Time: {formatDateTime(e.created_at)}</p>
                   {Object.keys(e.meta).length > 0 && (
                     <pre className="text-[10px] mt-1">{JSON.stringify(e.meta, null, 2)}</pre>
                   )}

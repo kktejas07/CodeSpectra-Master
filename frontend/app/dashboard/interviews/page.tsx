@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -128,7 +129,7 @@ export default function InterviewsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <Calendar className="h-3 w-3" /> {new Date(iv.scheduled_at).toLocaleString()}
+                  <Calendar className="h-3 w-3" /> {formatDateTime(iv.scheduled_at)}
                   <Clock className="h-3 w-3 ml-2" /> {iv.duration_minutes} min
                 </div>
                 {iv.overall_score !== undefined && (

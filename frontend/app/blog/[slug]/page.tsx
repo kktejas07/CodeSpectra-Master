@@ -1,3 +1,4 @@
+import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import DOMPurify from 'isomorphic-dompurify'
@@ -12,9 +13,9 @@ export const dynamic = 'force-dynamic'
 function formatDate(iso?: string | null) {
   if (!iso) return ''
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return tzFormatDate(iso, undefined, {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     })
   } catch {

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState } from 'react'
@@ -222,7 +223,7 @@ export default function AdminJobsPage() {
     },
     {
       key: 'created_at', header: 'Posted',
-      cell: (r) => <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</span>,
+      cell: (r) => <span className="text-xs text-muted-foreground">{formatDate(r.created_at)}</span>,
     },
     {
       key: 'actions', header: 'Actions', className: 'text-right',

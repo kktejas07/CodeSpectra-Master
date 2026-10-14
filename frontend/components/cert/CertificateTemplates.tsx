@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format-datetime'
 /**
  * Certificate template components.
  *
@@ -39,7 +40,7 @@ export interface CertificateData {
 }
 
 const dateFmt = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, {
+  formatDate(iso, undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric',

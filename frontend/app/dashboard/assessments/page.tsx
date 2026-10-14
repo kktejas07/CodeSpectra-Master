@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -170,7 +171,7 @@ export default function MyAssessmentsPage() {
       header: 'Date',
       cell: (row) => (
         <span className="text-xs text-muted-foreground">
-          {row.submitted_at ? new Date(row.submitted_at).toLocaleDateString('en-US', {
+          {row.submitted_at ? formatDate(row.submitted_at, undefined, {
             month: 'short', day: 'numeric', year: 'numeric',
           }) : '—'}
         </span>

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -144,7 +145,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
-                  Posted {new Date(job.created_at).toLocaleDateString()}
+                  Posted {formatDate(job.created_at)}
                 </span>
               </div>
             </div>
@@ -260,7 +261,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
               <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground text-center">
                 <span className="flex items-center justify-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Posted {new Date(job.created_at).toLocaleDateString()}
+                  Posted {formatDate(job.created_at)}
                 </span>
                 <span className="flex items-center justify-center gap-1 mt-1">
                   <Users className="h-3 w-3" />

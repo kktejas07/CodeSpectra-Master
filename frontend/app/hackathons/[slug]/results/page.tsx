@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime, formatDate } from '@/lib/format-datetime'
 import { useToast } from '@/lib/toast-context'
 
 import { use, useCallback, useEffect, useRef, useState } from 'react'
@@ -468,7 +469,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
     ctx.fillText(`Event: ${hackathon.name}`, 400, 420)
     if (hackathon.released_at) {
       ctx.fillText(
-        `Results released: ${new Date(hackathon.released_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+        `Results released: ${formatDate(hackathon.released_at, undefined, { year: 'numeric', month: 'long', day: 'numeric' })}`,
         400, 445
       )
     }
@@ -553,7 +554,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
           <p className="text-muted-foreground mt-2">Final Results</p>
           {hackathon.released_at && (
             <p className="text-xs text-muted-foreground mt-1">
-              Released {new Date(hackathon.released_at).toLocaleString()}
+              Released {formatDateTime(hackathon.released_at)}
             </p>
           )}
         </section>
@@ -750,7 +751,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                                     )}
                                   </td>
                                   <td className="p-3 text-right text-muted-foreground text-xs">
-                                    {new Date(sub.submitted_at).toLocaleDateString()}
+                                    {formatDate(sub.submitted_at)}
                                   </td>
                                 </tr>
                               )

@@ -1,4 +1,5 @@
 'use client'
+import { formatDate, formatDateTime, formatTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
@@ -164,7 +165,7 @@ function ScanBanner() {
           </span>
           <span className="block text-xs text-muted-foreground">
             {summary
-              ? `Last run ${new Date(summary.ranAt).toLocaleString()} — open the full report`
+              ? `Last run ${formatDateTime(summary.ranAt)} — open the full report`
               : 'Weekly Trivy + ClamAV reports appear here after the first run'}
           </span>
         </span>
@@ -213,7 +214,7 @@ function SessionRow({ session }: { session: UserSession }) {
               <div><span className="font-medium text-foreground">Session ID</span><p className="font-mono mt-0.5">{session.id}</p></div>
               <div><span className="font-medium text-foreground">User Agent</span><p className="truncate mt-0.5">{session.user_agent}</p></div>
               <div><span className="font-medium text-foreground">ISP</span><p className="mt-0.5">{session.isp || '—'}</p></div>
-              <div><span className="font-medium text-foreground">Signed in</span><p className="mt-0.5">{new Date(session.created_at).toLocaleString()}</p></div>
+              <div><span className="font-medium text-foreground">Signed in</span><p className="mt-0.5">{formatDateTime(session.created_at)}</p></div>
               <div><span className="font-medium text-foreground">Last seen</span><p className="mt-0.5">{lastSeen.toLocaleString()}</p></div>
               <div><span className="font-medium text-foreground">User ID</span><p className="font-mono mt-0.5">{session.user_id}</p></div>
             </div>
@@ -412,7 +413,7 @@ export default function Security() {
     const hours: { hour: string; success: number; failed: number }[] = []
     for (let i = 23; i >= 0; i--) {
       const h = new Date(now.getTime() - i * 3600_000)
-      const label = h.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const label = formatTime(h, undefined, { hour: '2-digit', minute: '2-digit' })
       const hourStr = h.toISOString().slice(0, 13)
       const events = (data?.loginEvents || []).filter(e => e.ts.slice(0, 13) === hourStr)
       hours.push({
@@ -431,7 +432,7 @@ export default function Security() {
     const days: { day: string; critical: number; warning: number; info: number }[] = []
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now.getTime() - i * 86400_000)
-      const label = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+      const label = formatDate(d, undefined, { weekday: 'short', month: 'short', day: 'numeric' })
       const dayStr = d.toISOString().slice(0, 10)
       const events = (data?.securityEvents || []).filter(e => e.ts.slice(0, 10) === dayStr)
       days.push({
@@ -659,7 +660,7 @@ export default function Security() {
                           <span className="text-muted-foreground"> — {e.outcome === 'success' ? 'signed in' : `failed (${e.detail || 'unknown'})`}</span>
                         </p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(e.ts).toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDateTime(e.ts)}</span>
                           <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{e.actorIp}</span>
                         </div>
                       </div>
@@ -697,7 +698,7 @@ export default function Security() {
                           {a.detail && <span className="text-muted-foreground"> — {a.detail}</span>}
                         </p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(a.ts).toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDateTime(a.ts)}</span>
                           <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{a.actorIp}</span>
                         </div>
                       </div>
@@ -939,7 +940,7 @@ export default function Security() {
                             </div>
                           </td>
                           <td className="py-3 px-4 text-sm">{fp.seen_count ?? 0}</td>
-                          <td className="py-3 px-4 text-sm text-muted-foreground">{new Date(fp.last_seen).toLocaleString()}</td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground">{formatDateTime(fp.last_seen)}</td>
                           <td className="py-3 px-4">
                             {fp.is_blocked ? (
                               <Badge variant="destructive" className="text-[10px]">Blocked</Badge>
@@ -1027,7 +1028,7 @@ export default function Security() {
                           <td className="py-3 px-4 font-mono">{ip.ip}</td>
                           <td className="py-3 px-4 text-muted-foreground">{ip.reason || '—'}</td>
                           <td className="py-3 px-4 text-muted-foreground">{ip.blocked_by || 'system'}</td>
-                          <td className="py-3 px-4 text-muted-foreground">{new Date(ip.blocked_at).toLocaleString()}</td>
+                          <td className="py-3 px-4 text-muted-foreground">{formatDateTime(ip.blocked_at)}</td>
                           <td className="py-3 px-4 text-right">
                             <Button
                               variant="outline"
@@ -1097,7 +1098,7 @@ export default function Security() {
                           <span className="text-muted-foreground"> — {e.detail}</span>
                         </p>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(e.ts).toLocaleString()}</span>
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDateTime(e.ts)}</span>
                           {e.email && <span className="font-mono">{e.email}</span>}
                           {e.ip && <span className="font-mono">{e.ip}</span>}
                           {e.visitorId && <span className="font-mono">{e.visitorId.slice(0, 12)}…</span>}

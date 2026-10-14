@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -24,7 +25,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 function formatEarnedDate(dateStr: string | null): string {
   if (!dateStr) return 'Not earned yet'
   const d = new Date(dateStr)
-  return `Earned ${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+  return `Earned ${formatDate(d, undefined, { month: 'short', day: 'numeric', year: 'numeric' })}`
 }
 
 export function SkillBadges() {

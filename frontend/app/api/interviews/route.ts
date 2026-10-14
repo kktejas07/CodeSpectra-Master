@@ -1,3 +1,4 @@
+import { formatDateTime } from '@/lib/format-datetime'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { interviewSessions, createInterviewSession, newId, nowIso } from '@/lib/db/interviews'
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
     const candidate = await db.collection('user').findOne({ id: session.candidate_id })
     if (candidate?.email) {
       const liveUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/interviews/${session.id}/live`
-      const startTime = new Date(session.scheduled_at).toLocaleString()
+      const startTime = formatDateTime(session.scheduled_at)
       await sendEmail(candidate.email, {
         subject: `Interview Scheduled: ${session.title}`,
         html: `<p>You have been scheduled for an interview.</p>

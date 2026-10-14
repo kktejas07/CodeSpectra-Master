@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -105,7 +106,7 @@ export default function MyResumesPage() {
         {r.status || 'pending'}
       </Badge>
     )},
-    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</span> },
+    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? formatDate(r.created_at) : '—'}</span> },
   ]
 
   const bulkActions: BulkAction[] = [

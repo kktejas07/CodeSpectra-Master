@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -21,7 +22,7 @@ function formatIssueDate(iso: string): string {
   if (!iso) return 'Unknown date'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+  return formatDate(d, undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 export default function CertificatePreviewPage({ params }: { params: Promise<{ id: string }> }) {

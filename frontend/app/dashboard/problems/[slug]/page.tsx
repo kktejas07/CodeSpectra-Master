@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -678,7 +679,7 @@ export default function ProblemDetailPage() {
                                <div key={d.id} className="mb-3 border-b border-border pb-2 last:border-0">
                                   <div className="font-bold text-xs text-foreground flex items-center gap-2"><UserAvatar seed={d.user_name} name={d.user_name} className="h-5 w-5" fallbackClassName="text-[8px]" /> {d.user_name}</div>
                                   <p className="text-xs mt-1 text-foreground/80">{d.content}</p>
-                                  <p className="text-[10px] text-muted-foreground mt-1">{new Date(d.created_at).toLocaleString()}</p>
+                                  <p className="text-[10px] text-muted-foreground mt-1">{formatDateTime(d.created_at)}</p>
                                </div>
                              ))
                             }
@@ -728,7 +729,7 @@ export default function ProblemDetailPage() {
                                  {s.status === 'accepted' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                                  {s.status}
                                </div>
-                               <div className="text-xs text-muted-foreground">{new Date(s.created_at).toLocaleString()}</div>
+                               <div className="text-xs text-muted-foreground">{formatDateTime(s.created_at)}</div>
                             </div>
                             <div className="text-right flex flex-col gap-1">
                                <div className="font-bold text-foreground">{s.language}</div>

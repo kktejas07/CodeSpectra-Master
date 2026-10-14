@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -262,7 +263,7 @@ export default function CodeathonsPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{h.startDate ? new Date(h.startDate).toLocaleDateString() : 'TBA'}</span>
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{h.startDate ? formatDate(h.startDate) : 'TBA'}</span>
                     <span className="flex items-center gap-1"><Users className="h-3 w-3" />{h.participants || 0}{h.maxParticipants ? `/${h.maxParticipants}` : ''}</span>
                   </div>
                 )}

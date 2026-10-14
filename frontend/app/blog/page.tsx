@@ -1,3 +1,4 @@
+import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BLOG_CATEGORIES, blogPosts, categoryLabel, type BlogPostDoc } from '@/lib/db/blog-posts'
@@ -10,7 +11,7 @@ export const dynamic = 'force-dynamic'
 function formatDate(iso?: string | null) {
   if (!iso) return ''
   try {
-    return new Date(iso).toLocaleDateString(undefined, {
+    return tzFormatDate(iso, undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

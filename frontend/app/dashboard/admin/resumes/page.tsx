@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -60,7 +61,7 @@ export default function AdminResumesPage() {
         {(r.skills || []).slice(0, 4).map(s => <Badge key={s} className="text-[10px] bg-muted">{s}</Badge>)}
       </div>
     )},
-    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</span> },
+    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? formatDate(r.created_at) : '—'}</span> },
   ]
 
   const bulkActions: BulkAction[] = [

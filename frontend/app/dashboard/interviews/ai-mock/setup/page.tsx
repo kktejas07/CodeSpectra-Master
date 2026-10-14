@@ -1,4 +1,5 @@
 'use client'
+import { formatDate } from '@/lib/format-datetime'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -448,7 +449,7 @@ export default function AiMockSetupPage() {
                         <p className="text-xs text-muted-foreground">
                           {resume.text_content ? 'Text ready' : 'Upload PDF to use'}
                           {' · '}
-                          {new Date(resume.uploaded_at).toLocaleDateString()}
+                          {formatDate(resume.uploaded_at)}
                         </p>
                       </div>
                       {selectedResumeId === resume.id && (
