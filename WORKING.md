@@ -6,7 +6,7 @@
 
 ## Current Claims
 
-| opencode (this session, GRADE-DISPLAY-FIX) | IN PROGRESS — admin review shows raw JSON blob for code answers; grader prompt also gets raw JSON. Fix: shared parseCodingAnswer helper + review render + prompt. | frontend/lib/coding-answer.ts (new), frontend/lib/ai/grade-question.ts, frontend/app/dashboard/admin/assessments/[id]/results/page.tsx, frontend/tests/coding-answer.test.ts (new) | CLAIMED | 2026-10-15 |
+| opencode (this session, GRADE-DISPLAY-FIX) | DONE — pushed c005f35c to dev-fixes (gate green). Review shows language badge + formatted code; grader gets clean code. 6 vitest green, tsc clean. NOTE: AI Grade still needs an LLM key in prod (none configured) — code fix alone can't grade. | frontend/lib/coding-answer.ts (new), frontend/lib/ai/grade-question.ts, frontend/app/dashboard/admin/assessments/[id]/results/page.tsx, frontend/tests/coding-answer.test.ts (new) | DONE — PUSHED | 2026-10-15 |
 
 | opencode (this session, IPBLOCK-FIX) | DONE — committed 314b0493 (no push). blockIp defaults to 24h expiry (was permanent); 2 vitest green, tsc clean. Prod: cleared 3 remaining active edge-IP blocks (13/16 already inactive), still_active=0. | frontend/lib/db/security.ts, frontend/tests/ip-block-expiry.test.ts | DONE — COMMITTED, UNPUSHED | 2026-10-15 |
 
