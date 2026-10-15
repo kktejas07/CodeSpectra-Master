@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| opencode (this session, GRADE-DISPLAY-FIX) | IN PROGRESS — admin review shows raw JSON blob for code answers; grader prompt also gets raw JSON. Fix: shared parseCodingAnswer helper + review render + prompt. | frontend/lib/coding-answer.ts (new), frontend/lib/ai/grade-question.ts, frontend/app/dashboard/admin/assessments/[id]/results/page.tsx, frontend/tests/coding-answer.test.ts (new) | CLAIMED | 2026-10-15 |
+
 | opencode (this session, IPBLOCK-FIX) | DONE — committed 314b0493 (no push). blockIp defaults to 24h expiry (was permanent); 2 vitest green, tsc clean. Prod: cleared 3 remaining active edge-IP blocks (13/16 already inactive), still_active=0. | frontend/lib/db/security.ts, frontend/tests/ip-block-expiry.test.ts | DONE — COMMITTED, UNPUSHED | 2026-10-15 |
 
 | opencode (this session, PROCTOR-AI-PANEL) | DONE — anti-Gemini-panel hardening + working eye/blink analytics. Fullscreen enforcement on /assessment/[id]; new persisted proctor events window_blur/window_focus/viewport_shrunk/viewport_restored/large_copy/large_paste/fullscreen_unavailable (+ admin catalog severities); EyeGazeTracker rewritten on @vladmandic/face-api landmarks (EAR blinks + gaze/head-pose) with self-hosted models + in-flight guard (was a luma heuristic that never fired); hotspot image_url cap 2000→200000 (data-URI truncation); coding editor locks language when starter_code present; Likert label fixed. tsc clean, 357 vitest, build green. NOT pushed. | frontend/components/proctoring/{RealTimeProctor,ProctoringWrapper}.tsx, lib/proctoring/eye-gaze-tracker.ts, app/dashboard/admin/proctor/page.tsx, app/assessment/[id]/page.tsx, lib/grading.ts, components/assessment/{CodingQuestionEditor,QuestionAnswerInput}.tsx | DONE — committed (no push) | 2026-10-13 |

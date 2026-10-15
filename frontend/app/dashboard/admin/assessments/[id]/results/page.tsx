@@ -16,6 +16,7 @@ import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { parseCodingAnswer, isCodingType } from '@/lib/coding-answer'
 import { ScoreHistogram, StatusDonut, QuestionBars } from '@/components/assessment/results-charts'
 import {
   AlertDialog,
@@ -1760,6 +1761,10 @@ export default function ExamResultsPage() {
                       reviewData.questions.map((q, i) => {
                         const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
                         const userAnswer = reviewData.submission.answers[q.id] || ''
+                        // Coding answers are stored as {"language":"...","code":"..."} —
+                        // parse once so the UI shows code, not the JSON envelope.
+                        const parsedCoding = isCodingType(q.type) ? parseCodingAnswer(userAnswer) : null
+                        const showStructuredCode = !!parsedCoding?.isStructured
                         const isMcq = ['multiple-choice', 'mcq', 'true_false', 'multiple_response'].includes(q.type)
                         const isPendingReview = detail?.pending_review === true
                         const isManuallyGraded = detail?.awarded !== undefined && !isPendingReview
@@ -1875,7 +1880,14 @@ export default function ExamResultsPage() {
                                 <div>
                                   <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
                                   {userAnswer ? (
-                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border wrap-break-word">{userAnswer}</pre>
+                                    showStructuredCode ? (
+                                      <div className="space-y-1.5">
+                                        <Badge variant="outline" className="text-[10px] font-mono">{parsedCoding?.language || 'code'}</Badge>
+                                        <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto border wrap-break-word">{parsedCoding?.code || '(empty code)'}</pre>
+                                      </div>
+                                    ) : (
+                                      <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border wrap-break-word">{userAnswer}</pre>
+                                    )
                                   ) : (
                                     <span className="text-xs text-muted-foreground italic">No answer provided</span>
                                   )}
