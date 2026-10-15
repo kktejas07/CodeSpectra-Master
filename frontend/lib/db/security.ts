@@ -102,6 +102,11 @@ export async function blockIp(params: {
 }): Promise<void> {
   try {
     const db = await getMongoDb()
+    // ponytail: auto-blocks used to be permanent (expires_at null = blocked
+    // forever, and isIpBlocked treats null as active). Default to 24h so a
+    // false positive — e.g. a shared Cloudflare edge IP — self-heals.
+    // Pass an explicit expiresAt for longer/manual blocks.
+    const expiresAt = params.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
     await db.collection('security_blocklist').updateOne(
       { ip: params.ip },
       {
@@ -109,7 +114,7 @@ export async function blockIp(params: {
           ip: params.ip,
           reason: params.reason,
           active: true,
-          expires_at: params.expiresAt || null,
+          expires_at: expiresAt,
           blocked_by: params.actor || 'system',
           blocked_at: nowIso(),
         },
