@@ -6,7 +6,7 @@
 
 ## Current Claims
 
-| opencode (this session, ASSESS-LIST-FIX) | IN PROGRESS — title navigates to edit (want results); invites count counts docs not people (re-invites double it). Fix: title → results, distinct-email count. | frontend/app/dashboard/admin/assessments/page.tsx, frontend/app/api/exams/route.ts | CLAIMED | 2026-10-16 |
+| opencode (this session, ASSESS-LIST-FIX) | DONE — title → results page (edit stays in row … menu); invites counter dedupes by email per exam (was counting re-invite docs). tsc clean, gate green. | frontend/app/dashboard/admin/assessments/page.tsx, frontend/app/api/exams/route.ts | DONE — PUSHED | 2026-10-16 |
 
 | opencode (this session, LLMKEY-NORMALIZE) | DONE — normalized prod platform_settings.secrets (backup: secrets-backup-20261016): comma-joined, deduped, moved sk-or-v stray to openrouter, dropped github PATs/oauth/hex unknowns. Live-tested: openrouter 200, groq 200, gemini key INVALID (needs replacement, chain skips it). | prod Mongo data fix, no code | DONE | 2026-10-16 |
 
