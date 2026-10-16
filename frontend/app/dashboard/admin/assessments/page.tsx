@@ -478,8 +478,8 @@ export default function AdminExamsPage() {
   const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: 'Title', sortable: true, cell: (r) => (
       <button
         type="button"
-        title="Open assessment"
-        onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/admin/assessments/${r.id}/edit`) }}
+        title="Open results"
+        onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/admin/assessments/${r.id}/results`) }}
         className="font-medium text-left hover:text-primary hover:underline underline-offset-4 transition-colors"
       >
         {r.title}

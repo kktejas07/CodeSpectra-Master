@@ -6,6 +6,10 @@
 
 ## Current Claims
 
+| opencode (this session, ASSESS-LIST-FIX) | IN PROGRESS — title navigates to edit (want results); invites count counts docs not people (re-invites double it). Fix: title → results, distinct-email count. | frontend/app/dashboard/admin/assessments/page.tsx, frontend/app/api/exams/route.ts | CLAIMED | 2026-10-16 |
+
+| opencode (this session, LLMKEY-NORMALIZE) | DONE — normalized prod platform_settings.secrets (backup: secrets-backup-20261016): comma-joined, deduped, moved sk-or-v stray to openrouter, dropped github PATs/oauth/hex unknowns. Live-tested: openrouter 200, groq 200, gemini key INVALID (needs replacement, chain skips it). | prod Mongo data fix, no code | DONE | 2026-10-16 |
+
 | opencode (this session, GRADE-DISPLAY-FIX) | DONE — pushed c005f35c to dev-fixes (gate green). Review shows language badge + formatted code; grader gets clean code. 6 vitest green, tsc clean. NOTE: AI Grade still needs an LLM key in prod (none configured) — code fix alone can't grade. | frontend/lib/coding-answer.ts (new), frontend/lib/ai/grade-question.ts, frontend/app/dashboard/admin/assessments/[id]/results/page.tsx, frontend/tests/coding-answer.test.ts (new) | DONE — PUSHED | 2026-10-15 |
 
 | opencode (this session, IPBLOCK-FIX) | DONE — committed 314b0493 (no push). blockIp defaults to 24h expiry (was permanent); 2 vitest green, tsc clean. Prod: cleared 3 remaining active edge-IP blocks (13/16 already inactive), still_active=0. | frontend/lib/db/security.ts, frontend/tests/ip-block-expiry.test.ts | DONE — COMMITTED, UNPUSHED | 2026-10-15 |

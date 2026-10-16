@@ -130,12 +130,20 @@ export async function GET() {
     ]).toArray()
     const statsMap = new Map(stats.map(s => [s._id, s]))
 
-    const allInvites = await db.collection('candidate_invites').find({}, { projection: { target_url: 1, assigned_assessments: 1 } }).toArray()
+    const allInvites = await db.collection('candidate_invites').find({}, { projection: { target_url: 1, assigned_assessments: 1, email: 1, user_id: 1 } }).toArray()
     const invitesMap = new Map<string, number>()
+    // ponytail: count PEOPLE, not invite docs. Every re-invite expires the old
+    // row and inserts a new one, so raw doc counts showed 2x (or more) the
+    // actual recipients. Dedupe by email per exam, same as the results page.
+    const seenInvitee = new Set<string>()
     for (const inv of allInvites) {
       const urls = [inv.target_url, ...(inv.assigned_assessments || []).map((a: any) => a.target_url)].filter(Boolean)
       const examIds = urls.map(url => url.match(/\/assessment\/([a-zA-Z0-9-]+)/)?.[1]).filter(Boolean)
+      const who = String(inv.email || inv.user_id || '').toLowerCase()
       for (const eid of examIds) {
+        const key = eid + '|' + who
+        if (seenInvitee.has(key)) continue
+        seenInvitee.add(key)
         invitesMap.set(eid, (invitesMap.get(eid) || 0) + 1)
       }
     }
