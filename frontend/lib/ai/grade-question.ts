@@ -2,6 +2,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isDeterministicType, metaFor } from '@/lib/question-types'
+import { parseCodingAnswer } from '@/lib/coding-answer'
 import { executeOnce } from '@/lib/piston'
 import { verifyGrade, isJevConfigured } from '@/lib/ai/jev'
 
@@ -152,17 +153,10 @@ export async function gradeAnswer(input: {
   let prompt = ''
 
   if (isCoding && testCases && testCases.length > 0) {
-    let codeValue = candidateAnswer
-    let codeLang = 'python'
-    try {
-      const parsed = JSON.parse(candidateAnswer)
-      if (parsed && typeof parsed === 'object') {
-        codeValue = parsed.code || ''
-        codeLang = parsed.language || 'python'
-      }
-    } catch {
-      // Ignore, leave as text
-    }
+    // Stored as {"language":"java","code":"..."} — execute the code, not the envelope.
+    const parsed = parseCodingAnswer(candidateAnswer)
+    const codeValue = parsed.isStructured ? parsed.code : candidateAnswer
+    const codeLang = (parsed.isStructured && parsed.language) || 'python'
 
     let passed = 0
     const results = []
@@ -213,6 +207,10 @@ Respond ONLY as JSON with this exact shape:
   "requires_human_review": <boolean>
 }`
   } else {
+    // Stored as {"language":"java","code":"..."} — judge the code, not the envelope.
+    const parsedAnswer = isCoding ? parseCodingAnswer(candidateAnswer) : null
+    const candidateDisplay = parsedAnswer?.isStructured ? parsedAnswer.code : candidateAnswer
+    const langLabel = parsedAnswer?.isStructured && parsedAnswer.language ? ` (${parsedAnswer.language})` : ''
     prompt = `You are a strict, fair technical examiner. Your task is to evaluate a candidate's ${isCoding ? 'code' : 'written'} answer.
 DO NOT simply compare strings. Instead, evaluate the underlying concepts.
 
@@ -224,8 +222,8 @@ ${modelAnswer || '(No model answer provided — judge based on the question and 
 
 MAX POINTS: ${maxPoints}
 
-CANDIDATE'S ANSWER:
-${candidateAnswer}
+CANDIDATE'S ANSWER${langLabel}:
+${candidateDisplay}
 
 EVALUATION PROCESS:
 1. Identify the core concepts, required knowledge, and potential incorrect claims from the Reference.
