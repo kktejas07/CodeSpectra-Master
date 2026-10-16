@@ -6,6 +6,12 @@
 
 ## Current Claims
 
+| opencode (this session, ASSESS-LIST-FIX) | DONE — title → results page (edit stays in row … menu); invites counter dedupes by email per exam (was counting re-invite docs). tsc clean, gate green. | frontend/app/dashboard/admin/assessments/page.tsx, frontend/app/api/exams/route.ts | DONE — PUSHED | 2026-10-16 |
+
+| opencode (this session, LLMKEY-NORMALIZE) | DONE — normalized prod platform_settings.secrets (backup: secrets-backup-20261016): comma-joined, deduped, moved sk-or-v stray to openrouter, dropped github PATs/oauth/hex unknowns. Live-tested: openrouter 200, groq 200, gemini key INVALID (needs replacement, chain skips it). | prod Mongo data fix, no code | DONE | 2026-10-16 |
+
+| opencode (this session, GRADE-DISPLAY-FIX) | DONE — pushed c005f35c to dev-fixes (gate green). Review shows language badge + formatted code; grader gets clean code. 6 vitest green, tsc clean. NOTE: AI Grade still needs an LLM key in prod (none configured) — code fix alone can't grade. | frontend/lib/coding-answer.ts (new), frontend/lib/ai/grade-question.ts, frontend/app/dashboard/admin/assessments/[id]/results/page.tsx, frontend/tests/coding-answer.test.ts (new) | DONE — PUSHED | 2026-10-15 |
+
 | opencode (this session, IPBLOCK-FIX) | DONE — committed 314b0493 (no push). blockIp defaults to 24h expiry (was permanent); 2 vitest green, tsc clean. Prod: cleared 3 remaining active edge-IP blocks (13/16 already inactive), still_active=0. | frontend/lib/db/security.ts, frontend/tests/ip-block-expiry.test.ts | DONE — COMMITTED, UNPUSHED | 2026-10-15 |
 
 | opencode (this session, PROCTOR-AI-PANEL) | DONE — anti-Gemini-panel hardening + working eye/blink analytics. Fullscreen enforcement on /assessment/[id]; new persisted proctor events window_blur/window_focus/viewport_shrunk/viewport_restored/large_copy/large_paste/fullscreen_unavailable (+ admin catalog severities); EyeGazeTracker rewritten on @vladmandic/face-api landmarks (EAR blinks + gaze/head-pose) with self-hosted models + in-flight guard (was a luma heuristic that never fired); hotspot image_url cap 2000→200000 (data-URI truncation); coding editor locks language when starter_code present; Likert label fixed. tsc clean, 357 vitest, build green. NOT pushed. | frontend/components/proctoring/{RealTimeProctor,ProctoringWrapper}.tsx, lib/proctoring/eye-gaze-tracker.ts, app/dashboard/admin/proctor/page.tsx, app/assessment/[id]/page.tsx, lib/grading.ts, components/assessment/{CodingQuestionEditor,QuestionAnswerInput}.tsx | DONE — committed (no push) | 2026-10-13 |
