@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -271,59 +271,51 @@ export default function QuestionBankPage() {
   if (!gate.ready) return null
 
   const totalPages = Math.max(1, Math.ceil(total / limit))
-  const diffColor = (d: string) => d === 'Hard' ? 'bg-red-500/20 text-red-700' : d === 'Medium' ? 'bg-yellow-500/20 text-yellow-700' : 'bg-green-500/20 text-green-700'
+  const diffColor = (d: string) => d === 'Hard' ? 'border-transparent bg-red-500/15 text-red-700 dark:text-red-300' : d === 'Medium' ? 'border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-300' : 'border-transparent bg-green-500/15 text-green-700 dark:text-green-300'
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Database className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Engineering Question Bank</h1>
-            <p className="text-muted-foreground text-sm">{stats ? `${stats.total} questions in bank` : `${total} shown`}</p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" className="gap-2" onClick={() => setAiOpen(true)}>
-            <Sparkles className="w-4 h-4" />Generate with AI
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
-            <FileUp className="w-4 h-4" />Import
-          </Button>
-          <Button variant="outline" className="gap-2" onClick={handleExport} disabled={rows.length === 0}>
-            <Download className="w-4 h-4" />Export
-          </Button>
-          <Button className="gap-2" onClick={() => openEdit()}>
-            <Plus className="w-4 h-4" />Add Question
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={<Database />}
+        title="Question bank"
+        description={stats ? `${stats.total} engineering questions you can reuse across assessments.` : `${total} questions shown. Reuse them across assessments.`}
+        actions={
+          <>
+            <Button variant="outline" className="gap-2" onClick={() => setAiOpen(true)}>
+              <Sparkles className="w-4 h-4" />Generate with AI
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+              <FileUp className="w-4 h-4" />Import
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={rows.length === 0}>
+              <Download className="w-4 h-4" />Export
+            </Button>
+            <Button className="gap-2" onClick={() => openEdit()}>
+              <Plus className="w-4 h-4" />Add question
+            </Button>
+          </>
+        }
+        className="mb-0"
+      />
 
       {/* Stats */}
       {stats && (
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Total</p>
-            <p className="text-2xl font-bold">{stats.total}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Easy / Medium / Hard</p>
-            <p className="text-2xl font-bold">{stats.byDifficulty.Easy || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Medium || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Hard || 0}</p>
-          </CardContent></Card>
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Branches covered</p>
-            <p className="text-2xl font-bold">{Object.keys(stats.byBranch).length}</p>
-            <p className="text-xs text-muted-foreground truncate">
-              {Object.entries(stats.byBranch).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([b, c]) => `${branchLabel(b)} ${c}`).join(' · ')}
-            </p>
-          </CardContent></Card>
-          <Card><CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">Coding / MCQ</p>
-            <p className="text-2xl font-bold">{stats.byType.coding || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byType.mcq || 0}</p>
-          </CardContent></Card>
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Total questions" value={stats.total} />
+          <StatCard
+            label="Easy / medium / hard"
+            value={<>{stats.byDifficulty.Easy || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Medium || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byDifficulty.Hard || 0}</>}
+          />
+          <StatCard
+            label="Branches covered"
+            value={Object.keys(stats.byBranch).length}
+            hint={<span className="block truncate">{Object.entries(stats.byBranch).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([b, c]) => `${branchLabel(b)} ${c}`).join(' · ')}</span>}
+            className="min-w-0 [&>div]:min-w-0"
+          />
+          <StatCard
+            label="Coding / MCQ"
+            value={<>{stats.byType.coding || 0} <span className="text-sm text-muted-foreground font-normal">/</span> {stats.byType.mcq || 0}</>}
+          />
         </div>
       )}
 
@@ -384,24 +376,24 @@ export default function QuestionBankPage() {
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1) }}
         />
-        <p className="text-xs text-muted-foreground ml-auto">{total} question{total !== 1 ? 's' : ''}</p>
+        <p className="text-xs tabular-nums text-muted-foreground ml-auto">{total} question{total !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Table */}
-      <Card className="overflow-hidden">
+      <Panel className="overflow-hidden p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Question</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Branch</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Level</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Subject</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Difficulty</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Type</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Industry</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Marks</th>
-                <th className="text-right py-3 px-4 font-semibold text-xs">Actions</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Question</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Branch</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Level</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Subject</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Difficulty</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Type</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Industry</th>
+                <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Marks</th>
+                <th className="text-right py-3 px-4 font-medium text-xs text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -409,10 +401,10 @@ export default function QuestionBankPage() {
                 <tr><td colSpan={9} className="p-4"><SkeletonTable rows={5} /></td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
-                  No questions found. Add one, import a CSV/JSON, or generate with AI.
+                  No questions match these filters. Clear a filter, add a question, import a CSV or JSON file, or generate some with AI.
                 </td></tr>
               ) : rows.map(r => (
-                <tr key={r.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">
                   <td className="py-3 px-4 max-w-[320px]">
                     <p className="font-medium truncate">{r.title}</p>
                     <p className="text-xs text-muted-foreground truncate">{r.question}</p>
@@ -423,12 +415,12 @@ export default function QuestionBankPage() {
                   <td className="py-3 px-4"><Badge className={diffColor(r.difficulty)}>{r.difficulty}</Badge></td>
                   <td className="py-3 px-4 text-xs">{r.type}</td>
                   <td className="py-3 px-4 text-xs truncate max-w-[130px]">{r.industry ? industryLabel(r.industry) : <span className="text-muted-foreground text-xs">—</span>}</td>
-                  <td className="py-3 px-4 text-xs">{r.marks}</td>
+                  <td className="py-3 px-4 text-xs tabular-nums">{r.marks}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="inline-flex items-center gap-1">
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setViewing(r); setViewOpen(true) }} title="View"><Eye className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Edit"><Pencil className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(r)} title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setViewing(r); setViewOpen(true) }} title="View" aria-label="View question"><Eye className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Edit" aria-label="Edit question"><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(r)} title="Delete" aria-label="Delete question"><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -436,12 +428,12 @@ export default function QuestionBankPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Panel>
 
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">Page {page} of {totalPages}</p>
+          <p className="text-xs tabular-nums text-muted-foreground">Page {page} of {totalPages}</p>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8 text-xs" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
               <ChevronLeft className="h-3 w-3 mr-1" />Prev
@@ -457,12 +449,12 @@ export default function QuestionBankPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Edit Question' : 'Add Question'}</DialogTitle>
+            <DialogTitle>{editing ? 'Edit question' : 'Add question'}</DialogTitle>
             <DialogDescription>Create or update an engineering question.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Short Title</Label>
+              <Label>Short title</Label>
               <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g., Time complexity of binary search" />
             </div>
             <div className="space-y-2">
@@ -502,7 +494,7 @@ export default function QuestionBankPage() {
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Correct Answer</Label>
+                <Label>Correct answer</Label>
                 <Input value={form.answer} onChange={e => setForm({ ...form, answer: e.target.value })} placeholder="Correct option text or explanation" />
               </div>
               <div className="space-y-2">
@@ -569,12 +561,12 @@ export default function QuestionBankPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Subject / Topic</Label>
+              <Label>Subject or topic</Label>
               <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="e.g., Data Structures, Thermodynamics" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Tech Stack (comma separated)</Label>
+                <Label>Tech stack (comma separated)</Label>
                 <Input value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder="e.g., Java, React" />
               </div>
               <div className="space-y-2">
@@ -585,7 +577,7 @@ export default function QuestionBankPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>{editing ? 'Save Changes' : 'Add Question'}</Button>
+            <Button onClick={handleSave}>{editing ? 'Save changes' : 'Add question'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -617,19 +609,19 @@ export default function QuestionBankPage() {
               </div>
               {viewing.options && viewing.options.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Options</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Options</p>
                   {viewing.options.map((opt, i) => (
                     <p key={i} className="rounded-md border border-border px-3 py-1.5">{opt}</p>
                   ))}
                 </div>
               )}
               <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4">
-                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Answer</p>
+                <p className="text-xs font-semibold text-green-700 dark:text-green-300">Answer</p>
                 <p className="mt-1 leading-relaxed">{viewing.answer || '—'}</p>
               </div>
               {viewing.explanation && (
                 <div className="rounded-lg border border-border p-4">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explanation</p>
+                  <p className="text-xs font-semibold text-muted-foreground">Explanation</p>
                   <p className="mt-1 leading-relaxed">{viewing.explanation}</p>
                 </div>
               )}
@@ -666,7 +658,7 @@ export default function QuestionBankPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Subject / Topic</Label>
+              <Label>Subject or topic</Label>
               <Input value={aiForm.subject} onChange={e => setAiForm({ ...aiForm, subject: e.target.value })} placeholder="e.g., Binary Trees, Thermodynamics" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -703,7 +695,7 @@ export default function QuestionBankPage() {
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Import Questions</DialogTitle>
+            <DialogTitle>Import questions</DialogTitle>
             <DialogDescription>Paste JSON array or CSV (header: question,title,type,options,answer,explanation,difficulty,branch,degree_type,subject,tags,marks). Options pipe-delimited.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, Fragment } from 'react'
 import { Card } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,7 +27,7 @@ interface RoleData {
 }
 
 const ROLE_COLORS: Record<string, string> = {
-  superadmin: 'bg-red-500/20 text-red-700', tenant_admin: 'bg-blue-500/20 text-blue-700', user: 'bg-green-500/20 text-green-700',
+  superadmin: 'border-transparent bg-red-500/15 text-red-700 dark:text-red-300', tenant_admin: 'border-transparent bg-primary/10 text-primary', user: 'border-transparent bg-muted text-muted-foreground',
 }
 
 export default function PermissionsPage() {
@@ -226,32 +227,29 @@ export default function PermissionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"><Shield className="h-6 w-6 text-primary" /></div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Role & Permission Manager</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">
-              {autoSeeded ? `${roles.length} roles · ${allResources.length} resources` : 'Loading...'} · DB-driven · Changes take effect immediately.
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchRoles} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button onClick={() => save(true)} disabled={saving} variant="outline" size="sm"><Database className="h-4 w-4 mr-1" />Reseed All</Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={<Shield />}
+        title="Roles and permissions"
+        description={<>{autoSeeded ? `${roles.length} roles · ${allResources.length} resources` : 'Loading...'} · Changes take effect immediately.</>}
+        actions={
+          <>
+            <Button onClick={fetchRoles} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
+            <Button onClick={() => save(true)} disabled={saving} variant="outline" size="sm"><Database className="h-4 w-4 mr-1" />Reseed all</Button>
+          </>
+        }
+        className="mb-0"
+      />
 
       {/* Status */}
       {autoSeeded ? (
-        <Card className="p-3 border-green-500/20 bg-green-500/5 flex items-center gap-2">
+        <Card className="rounded-2xl p-3 border-green-500/20 bg-green-500/5 flex items-center gap-2">
           <CheckCircle2 className="h-4 w-4 text-green-500" />
-          <span className="text-sm text-green-600">Auto-seeded: {roles.length} roles, {pageCount} pages, {entityCount} entities. All dynamic — no hardcoded lists.</span>
+          <span className="text-sm text-green-700 dark:text-green-300">Roles loaded: {roles.length} roles, {pageCount} pages and {entityCount} data types, discovered automatically.</span>
         </Card>
       ) : (
-        <Card className="p-3 border-amber-500/20 bg-amber-500/5 flex items-center gap-2">
+        <Card className="rounded-2xl p-3 border-amber-500/20 bg-amber-500/5 flex items-center gap-2">
           <Loader2 className="h-4 w-4 text-amber-500 animate-spin" />
-          <span className="text-sm text-amber-600">Initializing... roles auto-seed on first load.</span>
+          <span className="text-sm text-amber-700 dark:text-amber-300">Setting up roles. They are created automatically on first load.</span>
         </Card>
       )}
 
@@ -259,7 +257,7 @@ export default function PermissionsPage() {
       <Tabs defaultValue="permissions" className="space-y-6">
         <TabsList>
           <TabsTrigger value="permissions" className="gap-1.5"><Key className="h-3.5 w-3.5" />Permissions</TabsTrigger>
-          <TabsTrigger value="locks" className="gap-1.5"><Lock className="h-3.5 w-3.5" />Page Locks</TabsTrigger>
+          <TabsTrigger value="locks" className="gap-1.5"><Lock className="h-3.5 w-3.5" />Page locks</TabsTrigger>
         </TabsList>
 
         <TabsContent value="permissions" className="space-y-6">
@@ -286,11 +284,11 @@ export default function PermissionsPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {(['read','create','update','delete'] as PermissionAction[]).map(action => {
           const perms = currentRole?.permissions || []
           const count = perms.filter(p => p.actions.includes('manage') || p.actions.includes(action)).length
-          return <Card key={action} className="p-3 text-center"><p className="text-xs text-muted-foreground capitalize">{action}</p><p className="text-xl font-bold text-foreground">{count}</p></Card>
+          return <StatCard key={action} label={<span className="capitalize">{action}</span>} value={count} hint="resources allowed" />
         })}
       </div>
 
@@ -316,10 +314,10 @@ export default function PermissionsPage() {
       </div>
 
       {/* Permission grid */}
-      <Card className="overflow-hidden border-border/60">
+      <Panel className="overflow-hidden p-0">
         <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
           <table className="w-full min-w-[560px] md:min-w-0 text-xs">
-            <thead className="sticky top-0 bg-muted/60 z-10">
+            <thead className="sticky top-0 bg-muted z-10">
               <tr className="border-b border-border/60">
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[40%]">Resource</th>
                 <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[12%]">Read</th>
@@ -348,10 +346,11 @@ export default function PermissionsPage() {
                       <td key={action} className="px-1 py-1.5 text-center">
                         <button
                           onClick={() => togglePerm(r.resource, action)}
+                          aria-label={`${action} ${r.label || r.resource}`}
                           className={`inline-flex h-9 w-9 sm:h-6 sm:w-6 items-center justify-center rounded border text-[10px] font-medium transition-all ${
                             actions.includes(action) || (action !== 'manage' && actions.includes('manage'))
                               ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                              : 'border-muted-foreground/20 text-muted-foreground/30 hover:border-primary/40 hover:text-muted-foreground'
+                              : 'border-border text-muted-foreground/40 hover:border-primary/40 hover:text-muted-foreground'
                           }`}
                         >{actions.includes(action) || (action !== 'manage' && actions.includes('manage')) ? '✓' : ''}</button>
                       </td>
@@ -359,24 +358,24 @@ export default function PermissionsPage() {
                   </tr>
                 )
               })}
-              {filteredResources.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-xs">No resources match filter.</td></tr>}
+              {filteredResources.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-xs">No resources match this filter. Try a different word or category.</td></tr>}
             </tbody>
           </table>
         </div>
-      </Card>
+      </Panel>
 
       {/* Legend */}
-      <Card className="p-4 border-border/60 text-xs text-muted-foreground space-y-2">
+      <Panel className="p-5 text-xs text-muted-foreground space-y-2">
         <p><strong className="text-foreground">How it works:</strong> Resources auto-discover from <code className="bg-muted px-1 rounded">page-permissions.ts</code> + API entities. Toggle actions per role. Changes → MongoDB → enforced by <code className="bg-muted px-1 rounded">route-auth.ts</code> and <code className="bg-muted px-1 rounded">usePageGuard()</code>.</p>
         <p><strong className="text-foreground">Adding a new page:</strong> Create page.tsx → add route to <code className="bg-muted px-1 rounded">page-permissions.ts</code> → deploy → open this page → new resource appears with "new" badge → assign permissions → done. No RBAC editing needed.</p>
         <p className="flex items-center gap-2"><span className="inline-flex h-3 w-3 rounded-full bg-primary" /><code className="bg-muted px-1 rounded">manage</code> grants all CRUD actions. Toggle per role to override.</p>
-      </Card>
+      </Panel>
         </TabsContent>
 
         <TabsContent value="locks" className="space-y-6">
-          <Card className="p-4 border-amber-500/20 bg-amber-500/5 flex items-center gap-2">
+          <Card className="rounded-2xl p-4 border-amber-500/20 bg-amber-500/5 flex items-center gap-2">
             <Lock className="h-4 w-4 text-amber-600" />
-            <span className="text-sm text-amber-700">
+            <span className="text-sm text-amber-700 dark:text-amber-300">
               Lock a page to show a &quot;Coming Soon&quot; screen to all non-superadmin users.
               Pages with sub-features (like scanner modes, tabs) can be expanded to lock individual features.
             </span>
@@ -389,14 +388,14 @@ export default function PermissionsPage() {
           ) : (
             <>
               <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter pages..." value={lockFilter} onChange={e => setLockFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
-            <Card className="overflow-hidden border-border/60">
+            <Panel className="overflow-hidden p-0">
               <div className="max-h-[60vh] overflow-y-auto">
                 <table className="w-full text-xs">
-                  <thead className="sticky top-0 bg-muted/60 z-10">
+                  <thead className="sticky top-0 bg-muted z-10">
                     <tr className="border-b border-border/60">
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[45%]">Page / Feature</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[20%]">Route / ID</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[15%]">Required Role</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[45%]">Page or feature</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[20%]">Route or ID</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[15%]">Required role</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground w-[20%]">Status</th>
                     </tr>
                   </thead>
@@ -492,7 +491,7 @@ export default function PermissionsPage() {
                   </tbody>
                 </table>
               </div>
-            </Card>
+            </Panel>
             </>
           )}
         </TabsContent>

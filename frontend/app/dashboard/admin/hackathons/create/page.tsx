@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberField } from '@/components/ui/number-field'
@@ -313,32 +314,27 @@ export default function HackathonCreatePage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/admin/hackathons" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="h-4 w-4" /> Back to listing
+      <PageHeader
+        icon={<Trophy />}
+        title="New hackathon event"
+        description="Create a coding competition, assign problems and configure rules, features and scoring."
+        actions={
+          <Link href="/dashboard/admin/hackathons" className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-4 w-4" /> Back to events
           </Link>
-          <div className="w-px h-6 bg-border" />
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Trophy className="h-7 w-7 text-primary" /> New Hackathon Event
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Create a new coding competition, assign problems, and configure rules.
-            </p>
-          </div>
-        </div>
-      </div>
+        }
+        className="mb-0"
+      />
 
-      {error && <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
+      {error && <Card className="rounded-2xl border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
 
-      <Card className="space-y-6 p-6">
+      <Panel className="space-y-6">
         {/* Step indicator */}
         <EventStepIndicator
           steps={[
             { n: 1, label: 'Basics', icon: FileText },
             { n: 2, label: 'Problems', icon: ListChecks },
-            { n: 3, label: 'Rules & Scoring', icon: Sliders },
+            { n: 3, label: 'Rules and scoring', icon: Sliders },
             { n: 4, label: 'Features', icon: Settings },
             { n: 5, label: 'Review', icon: CheckSquare },
           ]}
@@ -349,7 +345,7 @@ export default function HackathonCreatePage() {
         {/* Step 1: Basics */}
         {step === 1 && (
           <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Event Details</h3>
+            <h3 className="font-semibold text-lg">Event details</h3>
             <div className="space-y-2">
               <Label>Event name</Label>
               <Input autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Frostbyte Winter 2026" />
@@ -425,6 +421,7 @@ export default function HackathonCreatePage() {
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, banner_url: '' }))}
                     className="absolute top-2 right-2 rounded-full bg-black/60 text-white p-1.5 hover:bg-black/80"
+                    aria-label="Remove banner image"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -460,7 +457,7 @@ export default function HackathonCreatePage() {
         {/* Step 2: Problems */}
         {step === 2 && (
           <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Assign Problems</h3>
+            <h3 className="font-semibold text-lg">Assign problems</h3>
             <p className="text-sm text-muted-foreground">
               Choose how to add problems — pick from your library, write your own, or generate with AI.
             </p>
@@ -533,7 +530,7 @@ export default function HackathonCreatePage() {
 
             {/* Own questions */}
             {problemSource === 'own' && (
-              <div className="space-y-4 rounded-lg border border-border/60 bg-card/40 p-5">
+              <div className="space-y-4 rounded-2xl border border-border/60 bg-muted/20 p-5">
                 <div className="space-y-3">
                   <p className="text-sm font-semibold">
                     {editingSlug ? 'Edit problem' : 'Write your own problem'}
@@ -624,7 +621,7 @@ export default function HackathonCreatePage() {
                         </div>
                         <div className="grid gap-2 sm:grid-cols-2">
                           <div>
-                            <Label className="text-[10px] uppercase tracking-wider">Input</Label>
+                            <Label className="text-xs text-muted-foreground">Input</Label>
                             <Textarea rows={2} value={tc.stdin}
                               onChange={(e) => {
                                 const next = [...ownTestCases]
@@ -634,7 +631,7 @@ export default function HackathonCreatePage() {
                               placeholder="[2,7,11,15]&#10;9" className="font-mono text-xs" />
                           </div>
                           <div>
-                            <Label className="text-[10px] uppercase tracking-wider">Expected output</Label>
+                            <Label className="text-xs text-muted-foreground">Expected output</Label>
                             <Textarea rows={2} value={tc.expected}
                               onChange={(e) => {
                                 const next = [...ownTestCases]
@@ -670,7 +667,7 @@ export default function HackathonCreatePage() {
 
             {/* AI generate */}
             {problemSource === 'ai' && (
-              <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-5">
+              <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-5">
                 <div className="flex items-start gap-3">
                   <Sparkles className="h-5 w-5 text-primary mt-0.5" />
                   <div className="flex-1 space-y-3">
@@ -680,7 +677,7 @@ export default function HackathonCreatePage() {
                     </p>
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="space-y-1.5">
-                        <Label>Role / Persona</Label>
+                        <Label>Role / persona</Label>
                         <Input value={aiConfig.role}
                           onChange={(e) => setAiConfig((c) => ({ ...c, role: e.target.value }))}
                           placeholder="Software Engineer" />
@@ -772,7 +769,7 @@ export default function HackathonCreatePage() {
         {/* Step 3: Rules & Scoring */}
         {step === 3 && (
           <div className="space-y-6">
-            <h3 className="font-semibold text-lg">Rules & Scoring</h3>
+            <h3 className="font-semibold text-lg">Rules and scoring</h3>
 
             <div className="space-y-4">
               {form.rules.map((r, i) => (
@@ -802,7 +799,7 @@ export default function HackathonCreatePage() {
             </div>
 
             <div className="rounded border p-4 space-y-4">
-              <h4 className="text-sm font-semibold">Scoring Configuration</h4>
+              <h4 className="text-sm font-semibold">Scoring configuration</h4>
               <div className="grid gap-4 md:grid-cols-4">
                 <NumberField
                   label="Points per problem"
@@ -861,27 +858,27 @@ export default function HackathonCreatePage() {
         {step === 4 && (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Features & Visibility</h3>
+              <h3 className="font-semibold text-lg">Features and visibility</h3>
               <p className="text-sm text-muted-foreground mt-1">Toggle features on/off for this event. Participants will see and use only the enabled features.</p>
             </div>
 
             {/* Team & Participation */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Team & Participation</h4>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <h4 className="text-sm font-semibold text-muted-foreground">Team and participation</h4>
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Team Formation</Label>
+                    <Label className="text-sm font-medium">Team formation</Label>
                     <p className="text-xs text-muted-foreground">Allow participants to create and join teams</p>
                   </div>
                   <Switch checked={form.features.team_formation}
                     onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, team_formation: checked } }))} />
                 </div>
               </div>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Claims System</Label>
+                    <Label className="text-sm font-medium">Claims system</Label>
                     <p className="text-xs text-muted-foreground">First-come lock on problems (5-minute claim timer)</p>
                   </div>
                   <Switch checked={form.features.claims_system}
@@ -892,10 +889,10 @@ export default function HackathonCreatePage() {
 
             {/* Submission Settings */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Submission Settings</h4>
+              <h4 className="text-sm font-semibold text-muted-foreground">Submission settings</h4>
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                  <Label className="text-sm font-medium">Demo Video</Label>
+                <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">Demo video</Label>
                   <select value={form.features.demo_video}
                     onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, demo_video: e.target.value as 'required' | 'optional' | 'disabled' } }))}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
@@ -904,7 +901,7 @@ export default function HackathonCreatePage() {
                     <option value="disabled">Disabled</option>
                   </select>
                 </div>
-                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
                   <Label className="text-sm font-medium">Live URL</Label>
                   <select value={form.features.live_url}
                     onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, live_url: e.target.value as 'required' | 'optional' | 'disabled' } }))}
@@ -915,10 +912,10 @@ export default function HackathonCreatePage() {
                   </select>
                 </div>
               </div>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Code Upload (Editor)</Label>
+                    <Label className="text-sm font-medium">Code upload (editor)</Label>
                     <p className="text-xs text-muted-foreground">Allow participants to write code in the built-in editor</p>
                   </div>
                   <Switch checked={form.features.code_upload}
@@ -929,11 +926,11 @@ export default function HackathonCreatePage() {
 
             {/* Judging */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Judging & Scoring</h4>
-              <div className="rounded-lg border bg-muted/30 p-4">
+              <h4 className="text-sm font-semibold text-muted-foreground">Judging and scoring</h4>
+              <div className="rounded-2xl border bg-muted/30 p-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label className="text-sm font-medium">Judging Rubrics</Label>
+                    <Label className="text-sm font-medium">Judging rubrics</Label>
                     <p className="text-xs text-muted-foreground">Use weighted criteria instead of simple 0-100</p>
                   </div>
                   <Switch checked={form.features.judging_rubrics}
@@ -969,14 +966,14 @@ export default function HackathonCreatePage() {
 
             {/* Visibility */}
             <div className="space-y-3">
-              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Visibility & Engagement</h4>
-              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
-                <Label className="text-sm font-medium">Leaderboard Visibility</Label>
+              <h4 className="text-sm font-semibold text-muted-foreground">Visibility and engagement</h4>
+              <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
+                <Label className="text-sm font-medium">Leaderboard visibility</Label>
                 <select value={form.features.leaderboard_visibility}
                   onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, leaderboard_visibility: e.target.value as 'public' | 'private' | 'after_event' } }))}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
                   <option value="public">Public (visible during event)</option>
-                  <option value="after_event">After Event Ends</option>
+                  <option value="after_event">After event ends</option>
                   <option value="private">Private (admin only)</option>
                 </select>
               </div>
@@ -986,7 +983,7 @@ export default function HackathonCreatePage() {
                 { key: 'proctoring' as const, label: 'Proctoring', desc: 'Detect cheating (tab switch, copy, paste, etc.)' },
                 { key: 'certificates' as const, label: 'Certificates', desc: 'Generate certificates for participants' },
               ].map((item) => (
-                <div key={item.key} className="rounded-lg border bg-muted/30 p-4">
+                <div key={item.key} className="rounded-2xl border bg-muted/30 p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-sm font-medium">{item.label}</Label>
@@ -1002,7 +999,7 @@ export default function HackathonCreatePage() {
             {/* Sponsor Tracks */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Sponsor Tracks</h4>
+                <h4 className="text-sm font-semibold text-muted-foreground">Sponsor tracks</h4>
                 <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
                   ...f, features: { ...f.features, sponsor_tracks: [...f.features.sponsor_tracks, { name: '', prize: '', description: '' }] }
                 }))}>+ Add Track</Button>
@@ -1010,7 +1007,7 @@ export default function HackathonCreatePage() {
               {form.features.sponsor_tracks.length > 0 && (
                 <div className="space-y-2">
                   {form.features.sponsor_tracks.map((t, i) => (
-                    <div key={i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                    <div key={i} className="flex items-center gap-2 rounded-xl border bg-muted/30 p-3">
                       <Input value={t.name} placeholder="Track name" className="flex-1 h-8 text-xs"
                         onChange={(e) => setForm((f) => ({
                           ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
@@ -1040,13 +1037,13 @@ export default function HackathonCreatePage() {
         {step === 5 && (
           <div className="space-y-6">
             <div>
-              <h3 className="font-semibold text-lg">Review & Create</h3>
+              <h3 className="font-semibold text-lg">Review and create</h3>
               <p className="text-sm text-muted-foreground mt-1">Review your event configuration before creating.</p>
             </div>
 
             {/* Event Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <h4 className="text-sm font-semibold">Event Details</h4>
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Event details</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{form.name || '—'}</span></div>
                 <div><span className="text-muted-foreground">Duration:</span> <span className="font-medium">{form.timeout_minutes} min</span></div>
@@ -1060,10 +1057,10 @@ export default function HackathonCreatePage() {
             </div>
 
             {/* Problems Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
               <h4 className="text-sm font-semibold">Problems ({form.tasks.length})</h4>
               {form.tasks.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No problems added</p>
+                <p className="text-xs text-muted-foreground">No problems added yet. Go back to Problems to add some.</p>
               ) : (
                 <div className="space-y-2">
                   {form.tasks.map((t, i) => (
@@ -1073,12 +1070,12 @@ export default function HackathonCreatePage() {
                         <span className="text-sm">{t.title}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-[10px] ${
-                          t.difficulty === 'hard' ? 'text-rose-500 border-rose-500/30' :
-                          t.difficulty === 'medium' ? 'text-amber-500 border-amber-500/30' :
-                          'text-emerald-500 border-emerald-500/30'
+                        <Badge variant="outline" className={`text-[11px] capitalize ${
+                          t.difficulty === 'hard' ? 'text-red-600 dark:text-red-400 border-red-500/30' :
+                          t.difficulty === 'medium' ? 'text-amber-700 dark:text-amber-300 border-amber-500/30' :
+                          'text-green-700 dark:text-green-300 border-green-500/30'
                         }`}>{t.difficulty}</Badge>
-                        <span className="text-xs text-muted-foreground">{t.points} pts</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{t.points} pts</span>
                       </div>
                     </div>
                   ))}
@@ -1087,10 +1084,10 @@ export default function HackathonCreatePage() {
             </div>
 
             {/* Rules Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
               <h4 className="text-sm font-semibold">Rules ({form.rules.length})</h4>
               {form.rules.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No rules added</p>
+                <p className="text-xs text-muted-foreground">No rules added yet.</p>
               ) : (
                 <div className="space-y-2">
                   {form.rules.map((r, i) => (
@@ -1104,20 +1101,20 @@ export default function HackathonCreatePage() {
             </div>
 
             {/* Features Summary */}
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
-              <h4 className="text-sm font-semibold">Enabled Features</h4>
+            <div className="rounded-2xl border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Enabled features</h4>
               <div className="flex flex-wrap gap-2">
-                {form.features.team_formation && <Badge variant="secondary">Team Formation</Badge>}
-                {form.features.claims_system && <Badge variant="secondary">Claims System</Badge>}
-                {form.features.code_upload && <Badge variant="secondary">Code Editor</Badge>}
-                {form.features.judging_rubrics && <Badge variant="secondary">Rubric Judging</Badge>}
+                {form.features.team_formation && <Badge variant="secondary">Team formation</Badge>}
+                {form.features.claims_system && <Badge variant="secondary">Claims system</Badge>}
+                {form.features.code_upload && <Badge variant="secondary">Code editor</Badge>}
+                {form.features.judging_rubrics && <Badge variant="secondary">Rubric judging</Badge>}
                 {form.features.project_showcase && <Badge variant="secondary">Showcase</Badge>}
                 {form.features.forum && <Badge variant="secondary">Forum</Badge>}
                 {form.features.proctoring && <Badge variant="secondary">Proctoring</Badge>}
                 {form.features.certificates && <Badge variant="secondary">Certificates</Badge>}
-                {form.features.demo_video !== 'disabled' && <Badge variant="secondary">Demo Video {form.features.demo_video}</Badge>}
+                {form.features.demo_video !== 'disabled' && <Badge variant="secondary">Demo video {form.features.demo_video}</Badge>}
                 {form.features.live_url !== 'disabled' && <Badge variant="secondary">Live URL {form.features.live_url}</Badge>}
-                {form.features.sponsor_tracks.length > 0 && <Badge variant="secondary">{form.features.sponsor_tracks.length} Sponsor Tracks</Badge>}
+                {form.features.sponsor_tracks.length > 0 && <Badge variant="secondary">{form.features.sponsor_tracks.length} sponsor tracks</Badge>}
               </div>
               <div className="text-xs text-muted-foreground">
                 Leaderboard: <span className="font-medium">{form.features.leaderboard_visibility}</span>
@@ -1128,12 +1125,12 @@ export default function HackathonCreatePage() {
               <Button variant="outline" onClick={() => setStep(4)}>← Back</Button>
               <Button onClick={create} disabled={busy}>
                 {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trophy className="mr-1 h-3 w-3" />}
-                Create Hackathon
+                Create hackathon
               </Button>
             </div>
           </div>
         )}
-      </Card>
+      </Panel>
         <ProblemViewDialog open={viewSlug !== null} slug={viewSlug} onClose={() => setViewSlug(null)} />
     </div>
   )

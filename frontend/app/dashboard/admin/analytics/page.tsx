@@ -2,7 +2,7 @@
 import { formatTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -129,8 +129,9 @@ interface RetentionData {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const PIE_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#06b6d4', '#ec4899']
-const CHART_GREEN = '#10b981'
+// Primary royal blue leads; remaining slices use the shared chart tokens (globals.css), then a neutral.
+const PIE_COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-4))', 'hsl(var(--chart-3))', 'hsl(var(--chart-5))', 'hsl(var(--muted-foreground))']
+const CHART_PRIMARY = 'hsl(var(--primary))'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -163,13 +164,13 @@ function sessionStatus(s: LiveSession): 'active' | 'recent' {
 function vitalRating(name: string, value: number | null): { label: string; color: string; bg: string } {
   if (value == null) return { label: 'No data', color: 'text-muted-foreground', bg: 'bg-muted' }
   if (name === 'CLS') {
-    if (value <= 0.1) return { label: 'Good', color: 'text-green-500', bg: 'bg-green-500/10' }
-    if (value <= 0.25) return { label: 'Needs work', color: 'text-amber-500', bg: 'bg-amber-500/10' }
-    return { label: 'Poor', color: 'text-red-500', bg: 'bg-red-500/10' }
+    if (value <= 0.1) return { label: 'Good', color: 'text-green-700 dark:text-green-300', bg: 'bg-green-500/10' }
+    if (value <= 0.25) return { label: 'Needs work', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-500/10' }
+    return { label: 'Poor', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-500/10' }
   }
-  if (value <= 2500) return { label: 'Good', color: 'text-green-500', bg: 'bg-green-500/10' }
-  if (value <= 4000) return { label: 'Needs work', color: 'text-amber-500', bg: 'bg-amber-500/10' }
-  return { label: 'Poor', color: 'text-red-500', bg: 'bg-red-500/10' }
+  if (value <= 2500) return { label: 'Good', color: 'text-green-700 dark:text-green-300', bg: 'bg-green-500/10' }
+  if (value <= 4000) return { label: 'Needs work', color: 'text-amber-700 dark:text-amber-300', bg: 'bg-amber-500/10' }
+  return { label: 'Poor', color: 'text-red-700 dark:text-red-300', bg: 'bg-red-500/10' }
 }
 
 function fmtVitalValue(name: string, value: number | null): string {
@@ -188,25 +189,21 @@ function deviceIcon(type?: string) {
 
 // ─── KPI Card ────────────────────────────────────────────────────────────────
 
-function KpiCard({ icon, color, label, value, trend, suffix }: {
-  icon: React.ReactNode; color: string; label: string; value: number | string; trend?: number; suffix?: string
+function KpiCard({ icon, label, value, trend, suffix }: {
+  icon: React.ReactNode; color?: string; label: string; value: number | string; trend?: number; suffix?: string
 }) {
   return (
-    <Card className="p-5 border-border/60">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums">{typeof value === 'number' ? value.toLocaleString() : value}{suffix || ''}</p>
-          {trend !== undefined && trend !== 0 && (
-            <p className={`text-xs mt-0.5 flex items-center gap-1 ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {trend > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
-              {Math.abs(trend)}%
-            </p>
-          )}
-        </div>
-        <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${color}`}>{icon}</div>
-      </div>
-    </Card>
+    <StatCard
+      icon={icon}
+      label={label}
+      value={<>{typeof value === 'number' ? value.toLocaleString() : value}{suffix || ''}</>}
+      hint={trend !== undefined && trend !== 0 ? (
+        <span className={`inline-flex items-center gap-1 tabular-nums ${trend > 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          {trend > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+          {Math.abs(trend)}%
+        </span>
+      ) : undefined}
+    />
   )
 }
 
@@ -526,44 +523,41 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <BarChart3 className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Analytics</h1>
-            <p className="text-muted-foreground">Real-time visitor insights, page performance, and event tracking</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Select value={range} onValueChange={setRange}>
-            <SelectTrigger className="w-[120px] h-9 text-sm">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">Last 24h</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { void loadOverview(); void loadEvents(); void loadPages() }}
-            disabled={overviewLoading}
-          >
-            <RefreshCw className={`mr-1.5 h-4 w-4 ${overviewLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        icon={<BarChart3 />}
+        title="Analytics"
+        description="Live visitors, page performance, events, funnels, AI usage and revenue in one place."
+        actions={
+          <>
+            <Select value={range} onValueChange={setRange}>
+              <SelectTrigger className="w-[140px] h-9 text-sm" aria-label="Date range">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="24h">Last 24 hours</SelectItem>
+                <SelectItem value="7d">Last 7 days</SelectItem>
+                <SelectItem value="30d">Last 30 days</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { void loadOverview(); void loadEvents(); void loadPages() }}
+              disabled={overviewLoading}
+            >
+              <RefreshCw className={`mr-1.5 h-4 w-4 ${overviewLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </>
+        }
+        className="mb-0"
+      />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-12">
+        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -592,7 +586,7 @@ export default function AnalyticsPage() {
             <Monitor className="h-4 w-4" /> Flags
           </TabsTrigger>
           <TabsTrigger value="performance" className="gap-1.5">
-            <Gauge className="h-4 w-4" /> Perf
+            <Gauge className="h-4 w-4" /> Performance
           </TabsTrigger>
           <TabsTrigger value="scores" className="gap-1.5">
             <Award className="h-4 w-4" /> Scores
@@ -725,16 +719,16 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
     <div className="space-y-6">
       {/* KPIs */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={<Users className="h-5 w-5 text-blue-500" />} color="bg-blue-500/10" label="Unique Visitors" value={data?.uniqueVisitors ?? 0} />
-        <KpiCard icon={<Activity className="h-5 w-5 text-purple-500" />} color="bg-purple-500/10" label="Total Sessions" value={data?.totalSessions ?? 0} />
-        <KpiCard icon={<Eye className="h-5 w-5 text-amber-500" />} color="bg-amber-500/10" label="Pageviews" value={data?.totalPageviews ?? 0} />
-        <KpiCard icon={<Zap className="h-5 w-5 text-green-500" />} color="bg-green-500/10" label="Active Now" value={data?.activeNow ?? 0} />
+        <KpiCard icon={<Users />} label="Unique visitors" value={data?.uniqueVisitors ?? 0} />
+        <KpiCard icon={<Activity />} label="Total sessions" value={data?.totalSessions ?? 0} />
+        <KpiCard icon={<Eye />} label="Pageviews" value={data?.totalPageviews ?? 0} />
+        <KpiCard icon={<Zap />} label="Active now" value={data?.activeNow ?? 0} />
       </div>
 
       {/* Hourly Activity */}
-      <Card className="p-6 border-border/60">
+      <Panel>
         <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-primary" /> Hourly Activity (Last 24h)
+          <TrendingUp className="h-5 w-5 text-primary" /> Hourly activity (last 24 hours)
         </h2>
         <div className="h-[200px]">
           <ResponsiveContainer width="100%" height="100%">
@@ -746,17 +740,17 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                 labelStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Area type="monotone" dataKey="events" stroke={CHART_GREEN} fill={CHART_GREEN} fillOpacity={0.15} strokeWidth={2} />
+              <Area type="monotone" dataKey="events" stroke={CHART_PRIMARY} fill={CHART_PRIMARY} fillOpacity={0.15} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </Panel>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Top Pages */}
-        <Card className="p-6 border-border/60">
+        <Panel>
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-            <Eye className="h-5 w-5 text-primary" /> Top Pages
+            <Eye className="h-5 w-5 text-primary" /> Top pages
           </h2>
           <div className="space-y-2.5">
             {(data?.topPages || []).slice(0, 8).map(p => (
@@ -768,35 +762,35 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
                 <span className="text-sm font-medium tabular-nums w-16 text-right">{p.views.toLocaleString()}</span>
               </div>
             ))}
-            {(!data?.topPages || data.topPages.length === 0) && <p className="text-sm text-muted-foreground">No data yet</p>}
+            {(!data?.topPages || data.topPages.length === 0) && <p className="text-sm text-muted-foreground">No page views recorded in this range yet.</p>}
           </div>
-        </Card>
+        </Panel>
 
-        {/* Traffic Sources */}
-        <Card className="p-6 border-border/60">
+        {/* Traffic sources */}
+        <Panel>
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-            <Globe className="h-5 w-5 text-primary" /> Traffic Sources
+            <Globe className="h-5 w-5 text-primary" /> Traffic sources
           </h2>
           <div className="space-y-2.5">
             {(data?.trafficSources || []).slice(0, 8).map(s => (
               <div key={s.source} className="flex items-center gap-3">
                 <span className="w-40 text-sm text-muted-foreground truncate" title={s.source}>{s.source}</span>
                 <div className="flex-1 h-4 rounded-full bg-muted/50 overflow-hidden">
-                  <div className="h-full rounded-full bg-blue-500/40 transition-all" style={{ width: `${(s.count / Math.max(data?.trafficSources?.[0]?.count || 1, 1)) * 100}%` }} />
+                  <div className="h-full rounded-full bg-primary/40 transition-all" style={{ width: `${(s.count / Math.max(data?.trafficSources?.[0]?.count || 1, 1)) * 100}%` }} />
                 </div>
                 <span className="text-sm font-medium tabular-nums w-16 text-right">{s.count.toLocaleString()}</span>
               </div>
             ))}
-            {(!data?.trafficSources || data.trafficSources.length === 0) && <p className="text-sm text-muted-foreground">No referral data</p>}
+            {(!data?.trafficSources || data.trafficSources.length === 0) && <p className="text-sm text-muted-foreground">No referral traffic recorded in this range.</p>}
           </div>
-        </Card>
+        </Panel>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Device Breakdown */}
-        <Card className="p-6 border-border/60">
+        {/* Device breakdown */}
+        <Panel>
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-            <Monitor className="h-5 w-5 text-primary" /> Device Breakdown
+            <Monitor className="h-5 w-5 text-primary" /> Device breakdown
           </h2>
           {devicePie.length > 0 ? (
             <div className="h-[200px]">
@@ -810,12 +804,12 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
               </ResponsiveContainer>
             </div>
           ) : <p className="text-sm text-muted-foreground">No data</p>}
-        </Card>
+        </Panel>
 
-        {/* Browser Breakdown */}
-        <Card className="p-6 border-border/60">
+        {/* Browser breakdown */}
+        <Panel>
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-            <Globe className="h-5 w-5 text-primary" /> Browser Breakdown
+            <Globe className="h-5 w-5 text-primary" /> Browser breakdown
           </h2>
           {browserPie.length > 0 ? (
             <div className="h-[200px]">
@@ -829,14 +823,14 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
               </ResponsiveContainer>
             </div>
           ) : <p className="text-sm text-muted-foreground">No data</p>}
-        </Card>
+        </Panel>
       </div>
 
       {/* Event Breakdown */}
       {(data?.eventBreakdown || []).length > 0 && (
-        <Card className="p-6 border-border/60">
+        <Panel>
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
-            <Zap className="h-5 w-5 text-primary" /> Event Breakdown
+            <Zap className="h-5 w-5 text-primary" /> Event breakdown
           </h2>
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -851,7 +845,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </Panel>
       )}
     </div>
   )
@@ -868,31 +862,31 @@ function LiveTab({ sessions, activeNow, expandedSession, onToggleSession }: {
   return (
     <div className="space-y-6">
       {/* Status Banner */}
-      <Card className="p-6 border-border/60">
+      <Panel>
         <div className="flex items-center gap-4">
           <div className="relative flex h-12 w-12 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
+            <span className="absolute inline-flex h-full w-full motion-safe:animate-ping rounded-full bg-green-400 opacity-75" />
             <span className="relative inline-flex h-4 w-4 rounded-full bg-green-500" />
           </div>
           <div>
             <p className="text-2xl font-bold tabular-nums">{activeNow}</p>
             <p className="text-sm text-muted-foreground">users online now</p>
           </div>
-          <Badge variant="outline" className="ml-auto gap-1 text-green-600 border-green-500/30">
+          <Badge variant="outline" className="ml-auto gap-1 text-green-700 dark:text-green-300 border-green-500/30">
             <Activity className="h-3 w-3" /> Live — auto-refreshing every 5s
           </Badge>
         </div>
-      </Card>
+      </Panel>
 
       {/* Sessions List */}
-      <Card className="border-border/60 overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/60">
-          <h2 className="text-lg font-semibold text-foreground">Live Sessions</h2>
+      <Panel className="overflow-hidden p-0">
+        <div className="px-6 py-4 border-b">
+          <h2 className="text-lg font-semibold text-foreground">Live sessions</h2>
         </div>
         {sessions.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            <Users className="h-8 w-8 mb-2 opacity-50" />
-            <p>No active sessions right now</p>
+            <Users className="h-8 w-8 mb-2 mx-auto opacity-50" />
+            <p>No one is on the site right now. Sessions appear here as soon as someone visits.</p>
           </div>
         ) : (
           <div className="divide-y divide-border/60">
@@ -906,7 +900,7 @@ function LiveTab({ sessions, activeNow, expandedSession, onToggleSession }: {
                     onClick={() => onToggleSession(isExpanded ? null : s.id)}
                     className="w-full px-6 py-3 flex items-center gap-4 hover:bg-muted/30 transition-colors text-left"
                   >
-                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${status === 'active' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+                    <span className={`h-2.5 w-2.5 rounded-full shrink-0 ${status === 'active' ? 'bg-green-500' : 'bg-amber-500'}`} />
                     {deviceIcon(s.device_type)}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -922,7 +916,7 @@ function LiveTab({ sessions, activeNow, expandedSession, onToggleSession }: {
                   </button>
                   {isExpanded && (
                     <div className="px-6 pb-4 bg-muted/20 border-t border-border/30">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-3 mb-2">Page Journey</p>
+                      <p className="text-xs font-semibold text-muted-foreground mt-3 mb-2">Page journey</p>
                       <ol className="relative ml-3 border-l-2 border-primary/30 space-y-2">
                         {(s.pages || [s.entry_page || '/']).map((page, i) => (
                           <li key={i} className="ml-4 relative">
@@ -943,7 +937,7 @@ function LiveTab({ sessions, activeNow, expandedSession, onToggleSession }: {
             })}
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -960,18 +954,18 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
   return (
     <div className="space-y-6">
       {/* Top Pages Table */}
-      <Card className="border-border/60 overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/60">
-          <h2 className="text-lg font-semibold text-foreground">Top Pages</h2>
+      <Panel className="overflow-hidden p-0">
+        <div className="px-6 py-4 border-b">
+          <h2 className="text-lg font-semibold text-foreground">Top pages</h2>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border/60 text-muted-foreground">
+              <tr className="border-b text-muted-foreground">
                 <th className="px-6 py-3 text-left font-medium">Page</th>
                 <th className="px-6 py-3 text-right font-medium">Views</th>
-                <th className="px-6 py-3 text-right font-medium">Unique Visitors</th>
-                <th className="px-6 py-3 text-right font-medium">Avg. Time</th>
+                <th className="px-6 py-3 text-right font-medium">Unique visitors</th>
+                <th className="px-6 py-3 text-right font-medium">Avg. time</th>
                 <th className="px-6 py-3 text-left font-medium w-40">Views</th>
               </tr>
             </thead>
@@ -995,12 +989,12 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
             </tbody>
           </table>
         </div>
-      </Card>
+      </Panel>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Entry Pages */}
-        <Card className="p-6 border-border/60">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Entry Pages</h2>
+        <Panel>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Entry pages</h2>
           <div className="space-y-2">
             {(data?.entryPages || []).map((p, i) => (
               <div key={p.path} className="flex items-center gap-3">
@@ -1010,11 +1004,11 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
 
         {/* Exit Pages */}
-        <Card className="p-6 border-border/60">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Exit Pages</h2>
+        <Panel>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Exit pages</h2>
           <div className="space-y-2">
             {(data?.exitPages || []).map((p, i) => (
               <div key={p.path} className="flex items-center gap-3">
@@ -1024,13 +1018,13 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
       </div>
 
       {/* Bounce Rate */}
       {data?.bounceRate && data.bounceRate.length > 0 && (
-        <Card className="p-6 border-border/60">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Bounce Rate by Page</h2>
+        <Panel>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Bounce rate by page</h2>
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.bounceRate.slice(0, 10)}>
@@ -1049,13 +1043,13 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Top Pages Bar Chart */}
       {data?.topPages && data.topPages.length > 0 && (
-        <Card className="p-6 border-border/60">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Page Views</h2>
+        <Panel>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Page views</h2>
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.topPages.slice(0, 10)}>
@@ -1069,7 +1063,7 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </Panel>
       )}
     </div>
   )
@@ -1160,17 +1154,17 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
       {/* Event Type Breakdown */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {(data?.breakdown || []).slice(0, 5).map(b => (
-          <Card key={b.event} className="p-4 border-border/60">
+          <Panel key={b.event} className="p-4 rounded-2xl">
             <p className="text-xs text-muted-foreground truncate">{b.event}</p>
             <p className="text-xl font-bold tabular-nums mt-1">{b.count.toLocaleString()}</p>
-          </Card>
+          </Panel>
         ))}
       </div>
 
       {/* Events Table */}
-      <Card className="border-border/60 overflow-hidden">
-        <div className="px-6 py-4 border-b border-border/60 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Event Log</h2>
+      <Panel className="overflow-hidden p-0">
+        <div className="px-6 py-4 border-b flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Event log</h2>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1204,7 +1198,7 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
             searchPlaceholder="Search events…"
           />
         </div>
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -1220,7 +1214,7 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Conversion Funnels</h2>
+          <h2 className="text-xl font-bold">Conversion funnels</h2>
           <p className="text-sm text-muted-foreground">Track user progression through multi-step flows</p>
         </div>
         <div className="flex gap-2">
@@ -1230,22 +1224,22 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
               {funnels.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button size="sm" onClick={onToggleForm}>{showForm ? 'Cancel' : '+ New Funnel'}</Button>
+          <Button size="sm" onClick={onToggleForm}>{showForm ? 'Cancel' : '+ New funnel'}</Button>
         </div>
       </div>
 
       {showForm && (
-        <Card className="p-6 border-border/60 space-y-4">
-          <h3 className="font-semibold">Create Funnel</h3>
+        <Panel className="p-6 space-y-4">
+          <h3 className="font-semibold">Create a funnel</h3>
           <Input placeholder="Funnel name (e.g. Signup to Paid)" value={funnelName} onChange={e => onFunnelNameChange(e.target.value)} />
           <div>
             <p className="text-xs text-muted-foreground mb-1">Steps (one per line: <code>event_name</code> or <code>event_name|/path</code>)</p>
-            <textarea className="w-full h-32 rounded-md border border-border bg-background px-3 py-2 text-sm font-mono" placeholder={"page_view|/signup\nsignup_completed\nproject_created\ncode_run\nsubscription_started"} value={funnelSteps} onChange={e => onFunnelStepsChange(e.target.value)} />
+            <textarea aria-label="Funnel steps" className="w-full h-32 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder={"page_view|/signup\nsignup_completed\nproject_created\ncode_run\nsubscription_started"} value={funnelSteps} onChange={e => onFunnelStepsChange(e.target.value)} />
           </div>
           <Button onClick={onCreate} disabled={creating || !funnelName.trim() || !funnelSteps.trim()}>
-            {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Create Funnel
+            {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Create funnel
           </Button>
-        </Card>
+        </Panel>
       )}
 
       {loading && !result && (
@@ -1253,15 +1247,15 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
       )}
 
       {result && (
-        <Card className="p-6 border-border/60">
+        <Panel>
           <div className="flex items-center gap-4 mb-6">
             <div className="text-center">
-              <p className="text-3xl font-bold">{result.total_starters.toLocaleString()}</p>
+              <p className="text-3xl font-bold tabular-nums">{result.total_starters.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Started</p>
             </div>
             <TrendingUp className="h-5 w-5 text-muted-foreground" />
             <div className="text-center">
-              <p className="text-3xl font-bold text-primary">{result.total_completers.toLocaleString()}</p>
+              <p className="text-3xl font-bold tabular-nums text-primary">{result.total_completers.toLocaleString()}</p>
               <p className="text-xs text-muted-foreground">Completed</p>
             </div>
             <Badge variant="outline" className="ml-auto">{result.completion_rate}% conversion</Badge>
@@ -1283,19 +1277,19 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
                   </div>
                 </div>
                 {i > 0 && step.dropoff_rate > 0 && (
-                  <span className="text-xs text-red-500 tabular-nums w-16 text-right">-{step.dropoff_rate}%</span>
+                  <span className="text-xs text-red-600 dark:text-red-400 tabular-nums w-16 text-right">-{step.dropoff_rate}%</span>
                 )}
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
       )}
 
       {!loading && !result && funnels.length === 0 && (
-        <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-          <Filter className="h-8 w-8 text-muted-foreground/40 mb-2" />
+        <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
+          <Filter className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
           <p>No funnels yet. Create one to track conversion flows.</p>
-        </Card>
+        </Panel>
       )}
     </div>
   )
@@ -1310,10 +1304,10 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
 
   if (!data || data.cohorts.length === 0) {
     return (
-      <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-        <UserCheck className="h-8 w-8 text-muted-foreground/40 mb-2" />
+      <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
+        <UserCheck className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
         <p>No retention data yet. Data appears as users sign in and return.</p>
-      </Card>
+      </Panel>
     )
   }
 
@@ -1322,11 +1316,11 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">User Retention</h2>
+        <h2 className="text-xl font-bold">User retention</h2>
         <p className="text-sm text-muted-foreground">{data.total_users.toLocaleString()} total tracked users · Weekly cohorts</p>
       </div>
 
-      <Card className="p-6 border-border/60 overflow-x-auto">
+      <Panel className="p-6 overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border/40">
@@ -1353,7 +1347,7 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
             ))}
           </tbody>
         </table>
-      </Card>
+      </Panel>
     </div>
   )
 }
@@ -1367,10 +1361,10 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
 
   if (!data || data.totalRequests === 0) {
     return (
-      <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+      <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
         <Zap className="h-8 w-8 text-muted-foreground/40 mb-2" />
         <p>No AI usage data yet. Data appears as users interact with AI features.</p>
-      </Card>
+      </Panel>
     )
   }
 
@@ -1380,22 +1374,22 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">AI Analytics</h2>
+        <h2 className="text-xl font-bold">AI analytics</h2>
         <p className="text-sm text-muted-foreground">LLM usage, token consumption, and cost tracking</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={<Zap className="h-5 w-5 text-blue-500" />} color="bg-blue-500/10" label="Total Requests" value={data.totalRequests} />
-        <KpiCard icon={<Activity className="h-5 w-5 text-green-500" />} color="bg-green-500/10" label="Success Rate" value={`${data.successRate}%`} />
-        <KpiCard icon={<TrendingUp className="h-5 w-5 text-purple-500" />} color="bg-purple-500/10" label="Total Tokens" value={data.totalTokens > 1_000_000 ? `${(data.totalTokens / 1_000_000).toFixed(1)}M` : data.totalTokens.toLocaleString()} />
-        <KpiCard icon={<Globe className="h-5 w-5 text-amber-500" />} color="bg-amber-500/10" label="Estimated Cost" value={`$${data.totalCost.toFixed(2)}`} />
+        <KpiCard icon={<Zap />} label="Total requests" value={data.totalRequests} />
+        <KpiCard icon={<Activity />} label="Success rate" value={`${data.successRate}%`} />
+        <KpiCard icon={<TrendingUp />} label="Total tokens" value={data.totalTokens > 1_000_000 ? `${(data.totalTokens / 1_000_000).toFixed(1)}M` : data.totalTokens.toLocaleString()} />
+        <KpiCard icon={<Globe />} label="Estimated cost" value={`$${data.totalCost.toFixed(2)}`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* By Feature */}
-        <Card className="p-6 border-border/60">
-          <h3 className="font-semibold text-sm mb-4">Usage by Feature</h3>
+        <Panel>
+          <h3 className="font-semibold text-sm mb-4">Usage by feature</h3>
           {featureBarData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={featureBarData} layout="vertical">
@@ -1409,11 +1403,11 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
           ) : (
             <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
           )}
-        </Card>
+        </Panel>
 
         {/* By Model */}
-        <Card className="p-6 border-border/60">
-          <h3 className="font-semibold text-sm mb-4">Usage by Model</h3>
+        <Panel>
+          <h3 className="font-semibold text-sm mb-4">Usage by model</h3>
           {modelBarData.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={modelBarData}>
@@ -1421,18 +1415,18 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="requests" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Requests" />
+                <Bar dataKey="requests" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name="Requests" />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
           )}
-        </Card>
+        </Panel>
       </div>
 
       {/* Hourly Activity */}
-      <Card className="p-6 border-border/60">
-        <h3 className="font-semibold text-sm mb-4">AI Requests (24h)</h3>
+      <Panel>
+        <h3 className="font-semibold text-sm mb-4">AI requests (last 24 hours)</h3>
         {data.hourly?.length > 0 ? (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={data.hourly.map((h: any) => ({ hour: h.hour?.slice(11, 13) ? `${h.hour.slice(11, 13)}:00` : h.hour, requests: h.requests }))}>
@@ -1440,18 +1434,18 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
               <XAxis dataKey="hour" tick={{ fontSize: 10 }} interval={3} />
               <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
               <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-              <Area type="monotone" dataKey="requests" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.2} />
+              <Area type="monotone" dataKey="requests" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
         )}
-      </Card>
+      </Panel>
 
       {/* Latency + Provider breakdown */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 border-border/60">
-          <h3 className="font-semibold text-sm mb-4">Provider Breakdown</h3>
+        <Panel>
+          <h3 className="font-semibold text-sm mb-4">Provider breakdown</h3>
           <div className="space-y-3">
             {(data.byProvider || []).map((p: any) => (
               <div key={p.provider} className="flex items-center justify-between">
@@ -1464,25 +1458,25 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
 
-        <Card className="p-6 border-border/60">
+        <Panel>
           <h3 className="font-semibold text-sm mb-4">Performance</h3>
           <div className="space-y-4">
             <div>
-              <p className="text-xs text-muted-foreground">Avg Latency</p>
+              <p className="text-xs text-muted-foreground">Avg. latency</p>
               <p className="text-2xl font-bold tabular-nums">{data.avgLatency}ms</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Failed Requests</p>
+              <p className="text-xs text-muted-foreground">Failed requests</p>
               <p className="text-2xl font-bold tabular-nums text-red-500">{data.failed}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Avg Tokens/Request</p>
+              <p className="text-xs text-muted-foreground">Avg. tokens per request</p>
               <p className="text-2xl font-bold tabular-nums">{data.totalRequests > 0 ? Math.round(data.totalTokens / data.totalRequests) : 0}</p>
             </div>
           </div>
-        </Card>
+        </Panel>
       </div>
     </div>
   )
@@ -1497,10 +1491,10 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
 
   if (!data) {
     return (
-      <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+      <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
         <TrendingUp className="h-8 w-8 text-muted-foreground/40 mb-2" />
         <p>No billing data yet. Revenue analytics appear when users subscribe.</p>
-      </Card>
+      </Panel>
     )
   }
 
@@ -1510,22 +1504,22 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">Revenue Analytics</h2>
+        <h2 className="text-xl font-bold">Revenue</h2>
         <p className="text-sm text-muted-foreground">MRR, subscriptions, and payment insights</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard icon={<TrendingUp className="h-5 w-5 text-green-500" />} color="bg-green-500/10" label="MRR" value={`${sym}${data.mrr.toLocaleString()}`} />
-        <KpiCard icon={<TrendingUp className="h-5 w-5 text-blue-500" />} color="bg-blue-500/10" label="ARR" value={`${sym}${data.arr.toLocaleString()}`} />
-        <KpiCard icon={<Users className="h-5 w-5 text-purple-500" />} color="bg-purple-500/10" label="Active Subs" value={data.activeSubscriptions} />
-        <KpiCard icon={<Activity className="h-5 w-5 text-amber-500" />} color="bg-amber-500/10" label="Total Revenue" value={`${sym}${data.totalRevenue.toLocaleString()}`} />
+        <KpiCard icon={<TrendingUp />} label="MRR" value={`${sym}${data.mrr.toLocaleString()}`} />
+        <KpiCard icon={<TrendingUp />} label="ARR" value={`${sym}${data.arr.toLocaleString()}`} />
+        <KpiCard icon={<Users />} label="Active subscriptions" value={data.activeSubscriptions} />
+        <KpiCard icon={<Activity />} label="Total revenue" value={`${sym}${data.totalRevenue.toLocaleString()}`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Monthly Trend */}
-        <Card className="p-6 border-border/60">
-          <h3 className="font-semibold text-sm mb-4">Revenue Trend (6 months)</h3>
+        <Panel>
+          <h3 className="font-semibold text-sm mb-4">Revenue trend (6 months)</h3>
           {data.monthlyTrend?.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={data.monthlyTrend}>
@@ -1533,17 +1527,17 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
                 <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                 <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-                <Bar dataKey="revenue" fill="#22c55e" radius={[4, 4, 0, 0]} name={`Revenue (${sym})`} />
+                <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} name={`Revenue (${sym})`} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
           )}
-        </Card>
+        </Panel>
 
         {/* Subscriptions by Plan */}
-        <Card className="p-6 border-border/60">
-          <h3 className="font-semibold text-sm mb-4">Subscriptions by Plan</h3>
+        <Panel>
+          <h3 className="font-semibold text-sm mb-4">Subscriptions by plan</h3>
           <div className="space-y-3">
             {(data.subsByPlan || []).map((s: any) => {
               const max = Math.max(...(data.subsByPlan || []).map((x: any) => x.count), 1)
@@ -1552,7 +1546,7 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
                 <div key={s.plan}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-muted-foreground">{s.plan}</span>
-                    <span className="font-medium">{s.count}</span>
+                    <span className="font-medium tabular-nums">{s.count}</span>
                   </div>
                   <div className="h-2 w-full rounded-full bg-muted/50">
                     <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
@@ -1561,25 +1555,25 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
               )
             })}
           </div>
-        </Card>
+        </Panel>
       </div>
 
       {/* Revenue by Plan + Payment Methods */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 border-border/60">
-          <h3 className="font-semibold text-sm mb-4">Revenue by Plan</h3>
+        <Panel>
+          <h3 className="font-semibold text-sm mb-4">Revenue by plan</h3>
           <div className="space-y-2">
             {(data.revenueByPlan || []).map((r: any) => (
               <div key={r.plan} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{r.plan}</span>
-                <span className="font-medium">{sym}{r.revenue.toLocaleString()}</span>
+                <span className="font-medium tabular-nums">{sym}{r.revenue.toLocaleString()}</span>
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
 
-        <Card className="p-6 border-border/60">
-          <h3 className="font-semibold text-sm mb-4">Payment Methods</h3>
+        <Panel>
+          <h3 className="font-semibold text-sm mb-4">Payment methods</h3>
           <div className="space-y-2">
             {(data.paymentMethods || []).map((m: any) => (
               <div key={m.method} className="flex items-center justify-between text-sm">
@@ -1588,16 +1582,16 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
               </div>
             ))}
           </div>
-        </Card>
+        </Panel>
       </div>
 
       {/* Churn + Coupons */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 border-border/60">
+        <Panel>
           <h3 className="font-semibold text-sm mb-4">Churn</h3>
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-muted-foreground">Churn Rate</p>
+              <p className="text-xs text-muted-foreground">Churn rate</p>
               <p className="text-2xl font-bold tabular-nums">{data.churnRate}%</p>
             </div>
             <div>
@@ -1605,15 +1599,15 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
               <p className="text-2xl font-bold tabular-nums">{data.cancelledInPeriod}</p>
             </div>
           </div>
-        </Card>
+        </Panel>
 
-        <Card className="p-6 border-border/60">
+        <Panel>
           <h3 className="font-semibold text-sm mb-4">Coupons</h3>
           <div>
-            <p className="text-xs text-muted-foreground">Total Redemptions</p>
+            <p className="text-xs text-muted-foreground">Total redemptions</p>
             <p className="text-2xl font-bold tabular-nums">{data.totalRedemptions}</p>
           </div>
-        </Card>
+        </Panel>
       </div>
     </div>
   )
@@ -1630,19 +1624,19 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Feature Flags</h2>
-          <p className="text-sm text-muted-foreground">Toggle features on/off without deploying</p>
+          <h2 className="text-xl font-bold">Feature flags</h2>
+          <p className="text-sm text-muted-foreground">Turn features on or off without a deploy</p>
         </div>
-        <Button size="sm" onClick={onToggleForm}>{showForm ? 'Cancel' : '+ New Flag'}</Button>
+        <Button size="sm" onClick={onToggleForm}>{showForm ? 'Cancel' : '+ New flag'}</Button>
       </div>
 
       {showForm && (
-        <Card className="p-6 border-border/60 space-y-4">
-          <h3 className="font-semibold">Create Feature Flag</h3>
+        <Panel className="p-6 space-y-4">
+          <h3 className="font-semibold">Create a feature flag</h3>
           <Input placeholder="Flag name (e.g. new_dashboard)" value={flagName} onChange={e => onFlagNameChange(e.target.value)} />
           <Input placeholder="Description (optional)" value={flagDesc} onChange={e => onFlagDescChange(e.target.value)} />
-          <Button onClick={onCreate} disabled={!flagName.trim()}>Create Flag</Button>
-        </Card>
+          <Button onClick={onCreate} disabled={!flagName.trim()}>Create flag</Button>
+        </Panel>
       )}
 
       {loading ? (
@@ -1650,14 +1644,14 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading flags…
         </div>
       ) : flags.length === 0 ? (
-        <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-          <Monitor className="h-8 w-8 text-muted-foreground/40 mb-2" />
+        <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
+          <Monitor className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
           <p>No feature flags yet. Create one to start toggling features.</p>
-        </Card>
+        </Panel>
       ) : (
         <div className="space-y-2">
           {flags.map((f: any) => (
-            <Card key={f.id} className="p-4 border-border/60">
+            <Panel key={f.id} className="p-4 rounded-2xl">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className={`w-3 h-3 rounded-full ${f.enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
@@ -1667,14 +1661,14 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={f.enabled ? 'default' : 'secondary'} className="text-[10px]">
-                    {f.enabled ? 'ON' : 'OFF'}
+                  <Badge variant={f.enabled ? 'success' : 'secondary'} className="text-[11px]">
+                    {f.enabled ? 'On' : 'Off'}
                   </Badge>
-                  <Switch checked={f.enabled} onCheckedChange={(v) => onToggle(f.name, v)} />
-                  <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => onDelete(f.name)}>Delete</Button>
+                  <Switch checked={f.enabled} onCheckedChange={(v) => onToggle(f.name, v)} aria-label={`Toggle ${f.name}`} />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => onDelete(f.name)}>Delete</Button>
                 </div>
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}
@@ -1705,10 +1699,10 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
   return (
     <div className="space-y-6">
       {/* Summary Banner */}
-      <Card className="p-6 border-border/60">
+      <Panel>
         <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Gauge className="h-6 w-6 text-primary" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
+            <Gauge className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h2 className="text-lg font-semibold">Core Web Vitals</h2>
@@ -1717,7 +1711,7 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
             </p>
           </div>
         </div>
-      </Card>
+      </Panel>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -1726,7 +1720,7 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
           const r = vitalRating(m.key, val)
           const samples = data?.countsByMetric?.[m.key] ?? 0
           return (
-            <Card key={m.key} className="p-5 border-border/60">
+            <Panel key={m.key} className="p-5 rounded-2xl">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <p className="text-xs text-muted-foreground">{m.label}</p>
@@ -1736,14 +1730,14 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
               </div>
               <p className="text-3xl font-bold tabular-nums mt-3">{fmtVitalValue(m.key, val)}</p>
               <p className="text-xs text-muted-foreground mt-1">{samples.toLocaleString()} samples</p>
-            </Card>
+            </Panel>
           )
         })}
       </div>
 
       {/* Bar Chart */}
-      <Card className="p-6 border-border/60">
-        <h2 className="text-lg font-semibold text-foreground mb-4">p75 Values</h2>
+      <Panel>
+        <h2 className="text-lg font-semibold text-foreground mb-4">p75 values</h2>
         <div className="h-[250px]">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData}>
@@ -1752,9 +1746,8 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
               <Tooltip
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                formatter={(val: any, name: any) => {
-                  const metricName = chartData[0]?.name || 'LCP'
-                  return [fmtVitalValue(name, val), 'p75']
+                formatter={(val: any, _name: any, item: any) => {
+                  return [fmtVitalValue(item?.payload?.name || 'LCP', val), 'p75']
                 }}
               />
               <Bar dataKey="p75" radius={[4, 4, 0, 0]}>
@@ -1766,15 +1759,15 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </Panel>
 
       {/* FID Legacy Note */}
       {data?.p75?.FID != null && (
-        <Card className="p-4 border-border/60">
+        <Panel className="p-4">
           <p className="text-xs text-muted-foreground">
             <strong className="text-foreground">FID (First Input Delay):</strong> {fmtVitalValue('FID', data.p75.FID)} — This is a legacy metric. Consider migrating to INP for a more comprehensive measure of interactivity.
           </p>
-        </Card>
+        </Panel>
       )}
     </div>
   )

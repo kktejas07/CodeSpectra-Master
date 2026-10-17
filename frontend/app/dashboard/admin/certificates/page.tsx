@@ -2,7 +2,7 @@
 import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -251,53 +251,32 @@ export default function CertificatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Award className="h-6 w-6 text-primary" />
-          <h1 className="text-2xl font-bold">Certificates</h1>
-        </div>
-        <Button size="sm" onClick={() => setIssueDialogOpen(true)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          Issue Certificate
-        </Button>
-      </div>
+      <PageHeader
+        icon={<Award />}
+        title="Certificates"
+        description="Issue certificates, preview them and check every certificate issued so far."
+        actions={
+          <Button size="sm" onClick={() => setIssueDialogOpen(true)}>
+            <Plus className="mr-1.5 h-4 w-4" />
+            Issue certificate
+          </Button>
+        }
+        className="mb-0"
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">Total issued</p>
-              <p className="text-2xl font-bold">{issued.length}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <Trophy className="h-5 w-5 text-amber-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">This month</p>
-              <p className="text-2xl font-bold">{thisMonthCount}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <FileText className="h-5 w-5 text-blue-500" />
-            <div>
-              <p className="text-xs text-muted-foreground">Templates</p>
-              <p className="text-2xl font-bold">{TEMPLATE_KEYS.length}</p>
-            </div>
-          </div>
-        </Card>
+        <StatCard label="Total issued" value={issued.length} icon={<CheckCircle2 />} />
+        <StatCard label="This month" value={thisMonthCount} icon={<Trophy />} />
+        <StatCard label="Templates" value={TEMPLATE_KEYS.length} icon={<FileText />} />
       </div>
 
-      <Card className="border-border/60">
+      <Panel className="overflow-hidden p-0">
         <div className="border-b border-border/60 px-4 py-3">
           <div className="flex items-center gap-2">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search audit log..."
+              placeholder="Search by name, email, title or certificate ID..."
+              aria-label="Search issued certificates"
               value={auditSearch}
               onChange={(e) => setAuditSearch(e.target.value)}
               className="h-8 text-xs"
@@ -306,14 +285,14 @@ export default function CertificatesPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
-            <thead>
+            <thead className="bg-muted/50">
               <tr className="border-b border-border/60 text-left text-muted-foreground">
                 <th className="py-2.5 px-4 font-medium">Recipient</th>
                 <th className="py-2.5 px-4 font-medium">Certificate</th>
                 <th className="py-2.5 px-4 font-medium">Template</th>
                 <th className="py-2.5 px-4 font-medium">Score</th>
                 <th className="py-2.5 px-4 font-medium">Issued</th>
-                <th className="py-2.5 px-4 font-medium">Issued By</th>
+                <th className="py-2.5 px-4 font-medium">Issued by</th>
                 <th className="py-2.5 px-4 font-medium">Actions</th>
               </tr>
             </thead>
@@ -321,25 +300,25 @@ export default function CertificatesPage() {
               {loading ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                   </td>
                 </tr>
               ) : filteredCerts.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    No certificates found
+                    {auditSearch ? 'No certificates match your search.' : 'No certificates issued yet. Use Issue certificate to create the first one.'}
                   </td>
                 </tr>
               ) : (
                 filteredCerts.map((cert) => (
-                  <tr key={cert.id} className="border-b border-border/30 hover:bg-accent/50">
+                  <tr key={cert.id} className="border-b border-border/40 last:border-0 hover:bg-muted/40">
                     <td className="py-2.5 px-4">
                       <p className="font-medium">{cert.user.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{cert.user.email}</p>
+                      <p className="text-[11px] text-muted-foreground">{cert.user.email}</p>
                     </td>
                     <td className="py-2.5 px-4">
                       <p className="font-medium">{cert.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{cert.level}</p>
+                      <p className="text-[11px] text-muted-foreground">{cert.level}</p>
                     </td>
                     <td className="py-2.5 px-4">
                       <Badge variant="outline" className="text-[10px] capitalize">
@@ -347,15 +326,15 @@ export default function CertificatesPage() {
                       </Badge>
                     </td>
                     <td className="py-2.5 px-4">
-                      <span className="font-medium">{cert.score}</span>
+                      <span className="font-medium tabular-nums">{cert.score}</span>
                       {cert.scoreLabel && (
-                        <p className="text-[10px] text-muted-foreground">{cert.scoreLabel}</p>
+                        <p className="text-[11px] text-muted-foreground">{cert.scoreLabel}</p>
                       )}
                     </td>
-                    <td className="py-2.5 px-4 text-[10px] text-muted-foreground">
+                    <td className="py-2.5 px-4 text-[11px] tabular-nums text-muted-foreground">
                       {formatDate(cert.issuedAt)}
                     </td>
-                    <td className="py-2.5 px-4 text-[10px] text-muted-foreground">
+                    <td className="py-2.5 px-4 text-[11px] text-muted-foreground">
                       {cert.issuedBy || 'System'}
                     </td>
                     <td className="py-2.5 px-4">
@@ -364,6 +343,7 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
+                          aria-label="Preview certificate"
                           onClick={() => openPreview(cert)}
                         >
                           <Eye className="h-3.5 w-3.5" />
@@ -372,6 +352,7 @@ export default function CertificatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-7 w-7"
+                          aria-label="Open verification page"
                           onClick={() => window.open(`/cert/verify/${cert.verifyToken}`, '_blank')}
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
@@ -384,12 +365,12 @@ export default function CertificatesPage() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Panel>
 
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Issue Certificate</DialogTitle>
+            <DialogTitle>Issue certificate</DialogTitle>
             <DialogDescription>
               Search for a user and fill in the certificate details to issue a new certificate.
             </DialogDescription>
@@ -401,7 +382,7 @@ export default function CertificatesPage() {
                 <div className="flex items-center justify-between rounded-md border border-border/60 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium">{formSelectedUser.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{formSelectedUser.email}</p>
+                    <p className="text-[11px] text-muted-foreground">{formSelectedUser.email}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -440,7 +421,7 @@ export default function CertificatesPage() {
                         >
                           <div>
                             <p className="font-medium">{u.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{u.email}</p>
+                            <p className="text-[11px] text-muted-foreground">{u.email}</p>
                           </div>
                         </button>
                       ))}
@@ -501,7 +482,7 @@ export default function CertificatesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Score Label (optional)</Label>
+              <Label className="text-xs">Score label (optional)</Label>
               <Input
                 placeholder="e.g. +420 XP earned"
                 value={formScoreLabel}
@@ -510,7 +491,7 @@ export default function CertificatesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-xs">Event Title (optional)</Label>
+              <Label className="text-xs">Event title (optional)</Label>
               <Input
                 placeholder="e.g. Spring 2026 Codeathon"
                 value={formEventTitle}
@@ -529,7 +510,7 @@ export default function CertificatesPage() {
               disabled={issuing || !formSelectedUser || !formTitle.trim()}
             >
               {issuing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              Issue Certificate
+              Issue certificate
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -538,7 +519,7 @@ export default function CertificatesPage() {
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
         <DialogContent className="max-w-5xl">
           <DialogHeader>
-            <DialogTitle>Certificate Preview</DialogTitle>
+            <DialogTitle>Certificate preview</DialogTitle>
             <DialogDescription>Preview of the selected certificate template.</DialogDescription>
           </DialogHeader>
           <div className="w-full overflow-hidden rounded-lg border shadow-sm my-4 bg-muted/20">

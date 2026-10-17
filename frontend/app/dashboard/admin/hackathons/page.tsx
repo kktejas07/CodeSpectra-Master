@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
+import { BentoGrid, PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberField } from '@/components/ui/number-field'
@@ -378,26 +379,32 @@ export default function HackathonsAdminPage() {
 
   return (
     <div className="space-y-6" data-testid="hackathons-admin-page">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Trophy className="h-7 w-7 text-primary" /> Hackathon events
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Create coding competitions, assign problems, manage teams, and release results.
-          </p>
-        </div>
-        <Link href="/dashboard/admin/hackathons/create" data-testid="hackathon-new-btn">
-          <Button><Plus className="mr-1 h-4 w-4" /> New event</Button>
-        </Link>
-      </div>
+      <PageHeader
+        icon={<Trophy />}
+        title="Hackathon events"
+        description="Create coding competitions, assign problems, manage teams and release results."
+        actions={
+          <Link href="/dashboard/admin/hackathons/create" data-testid="hackathon-new-btn">
+            <Button><Plus className="mr-1 h-4 w-4" /> New event</Button>
+          </Link>
+        }
+        className="mb-0"
+      />
 
-      {error && <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
+      {!loading && items.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="Events" value={items.length} icon={<Trophy />} />
+          <StatCard label="Live now" value={items.filter((h) => h.status === 'live').length} icon={<Timer />} />
+          <StatCard label="Team slots" hint="Across all events" value={items.reduce((sum, h) => sum + (Number(h.num_teams) || 0), 0)} icon={<Users />} />
+        </div>
+      )}
+
+      {error && <Card className="rounded-2xl border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
 
       {(creating || isEditing) && (
-        <Card className="space-y-6 p-6">
+        <Panel className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">{isEditing ? `Edit: ${editing?.name}` : 'New Hackathon Event'}</h2>
+            <h2 className="text-lg font-semibold">{isEditing ? `Edit: ${editing?.name}` : 'New hackathon event'}</h2>
             <Button variant="ghost" size="sm" onClick={() => { setEditing(null); setCreating(false); setStep(1) }}>Cancel</Button>
           </div>
           {/* Step indicator */}
@@ -405,10 +412,10 @@ export default function HackathonsAdminPage() {
             {[
               { n: 1, label: 'Basics' },
               { n: 2, label: 'Problems' },
-              { n: 3, label: 'Rules & Scoring' },
+              { n: 3, label: 'Rules and scoring' },
             ].map((s) => (
               <button key={s.n} onClick={() => setStep(s.n)}
-                className={`px-4 py-2 rounded-lg transition-colors ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+                className={`px-4 py-2 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
                 {s.n}. {s.label}
               </button>
             ))}
@@ -417,7 +424,7 @@ export default function HackathonsAdminPage() {
           {/* Step 1: Basics */}
           {step === 1 && (
             <div className="space-y-6">
-              <h3 className="font-semibold text-lg">Event Details</h3>
+              <h3 className="font-semibold text-lg">Event details</h3>
               <div className="space-y-2">
                 <Label>Event name</Label>
                 <Input autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Frostbyte Winter 2026" />
@@ -520,6 +527,7 @@ export default function HackathonsAdminPage() {
                         type="button"
                         onClick={() => setForm((f) => ({ ...f, banner_url: '' }))}
                         className="absolute top-1 right-1 rounded-full bg-black/60 text-white p-1 hover:bg-black/80"
+                        aria-label="Remove banner image"
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -553,7 +561,7 @@ export default function HackathonsAdminPage() {
           {/* Step 2: Problem/Task Selection */}
           {step === 2 && (
             <div className="space-y-6">
-              <h3 className="font-semibold text-lg">Assign Problems</h3>
+              <h3 className="font-semibold text-lg">Assign problems</h3>
               <p className="text-sm text-muted-foreground">
                 Choose how to add problems — pick from your library, write your own, or generate with AI.
               </p>
@@ -727,7 +735,7 @@ export default function HackathonsAdminPage() {
                           </div>
                           <div className="grid gap-2 sm:grid-cols-2">
                             <div>
-                              <Label className="text-[10px] uppercase tracking-wider">Input</Label>
+                              <Label className="text-xs text-muted-foreground">Input</Label>
                               <Textarea rows={2} value={tc.stdin}
                                 onChange={(e) => {
                                   const next = [...ownTestCases]
@@ -737,7 +745,7 @@ export default function HackathonsAdminPage() {
                                 placeholder="[2,7,11,15]&#10;9" className="font-mono text-xs" />
                             </div>
                             <div>
-                              <Label className="text-[10px] uppercase tracking-wider">Expected output</Label>
+                              <Label className="text-xs text-muted-foreground">Expected output</Label>
                               <Textarea rows={2} value={tc.expected}
                                 onChange={(e) => {
                                   const next = [...ownTestCases]
@@ -783,7 +791,7 @@ export default function HackathonsAdminPage() {
                       </p>
                       <div className="grid gap-3 md:grid-cols-2">
                           <div className="space-y-1.5">
-                            <Label>Role / Persona</Label>
+                            <Label>Role / persona</Label>
                             <Input value={aiConfig.role}
                               onChange={(e) => setAiConfig((c) => ({ ...c, role: e.target.value }))}
                               placeholder="Software Engineer" />
@@ -875,7 +883,7 @@ export default function HackathonsAdminPage() {
           {/* Step 3: Rules & Scoring */}
           {step === 3 && (
             <div className="space-y-6">
-              <h3 className="font-semibold text-lg">Rules & Scoring</h3>
+              <h3 className="font-semibold text-lg">Rules and scoring</h3>
 
               <div className="space-y-4">
                 {form.rules.map((r, i) => (
@@ -905,7 +913,7 @@ export default function HackathonsAdminPage() {
               </div>
 
               <div className="rounded border p-4 space-y-4">
-                <h4 className="text-sm font-semibold">Scoring Configuration</h4>
+                <h4 className="text-sm font-semibold">Scoring configuration</h4>
                 <div className="grid gap-3 md:grid-cols-4">
                   <NumberField
                     label="Points per problem"
@@ -957,47 +965,48 @@ export default function HackathonsAdminPage() {
                 <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
                 <Button onClick={isEditing ? update : create} disabled={busy}>
                   {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                  {isEditing ? 'Update Event' : 'Create Event'}
+                  {isEditing ? 'Update event' : 'Create event'}
                 </Button>
               </div>
             </div>
           )}
-        </Card>
+        </Panel>
       )}
 
       {loading ? (
-        <Card className="p-0">
+        <Panel className="p-0">
           <div className="space-y-4 p-6">
             <SkeletonList count={4} />
           </div>
-        </Card>
+        </Panel>
       ) : items.length === 0 ? (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          No hackathon events yet. Click <strong>New event</strong> to host your first one.
-        </Card>
+        <Panel className="p-10 text-center text-sm text-muted-foreground">
+          <Trophy className="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
+          No hackathon events yet. Select <strong className="text-foreground">New event</strong> to host your first one.
+        </Panel>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <BentoGrid>
           {items.map((hk) => (
-            <Card key={hk.id} className="space-y-3 p-5">
+            <Panel key={hk.id} interactive className="space-y-3 p-5 sm:col-span-2">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <Link href={`/hackathons/${hk.slug}`} className="text-lg font-semibold hover:underline">{hk.name}</Link>
-                  <p className="text-xs text-muted-foreground">/{hk.slug} · {hk.tasks?.length || 0} problems</p>
+                  <p className="text-xs text-muted-foreground"><span className="font-mono">/{hk.slug}</span> · <span className="tabular-nums">{hk.tasks?.length || 0}</span> problems</p>
                 </div>
-                <Badge variant={hk.status === 'live' ? 'default' : 'secondary'} className="uppercase">{hk.status}</Badge>
+                <Badge variant={hk.status === 'live' ? 'success' : 'secondary'} className="capitalize">{hk.status}</Badge>
               </div>
               {hk.description && <p className="text-xs text-muted-foreground line-clamp-2">{hk.description}</p>}
-              <div className="grid grid-cols-4 gap-2 text-[11px]">
-                <Stat icon={<Users />} label="Teams" value={hk.num_teams} />
+              <div className="grid grid-cols-2 gap-2 text-[11px] sm:grid-cols-4">
+                <Stat icon={<Users />} label="Team slots" value={hk.num_teams} />
                 <Stat icon={<Users />} label="Per team" value={hk.max_per_team} />
                 <Stat icon={<Timer />} label="Mins" value={hk.timeout_minutes} />
                 <Stat icon={<ListChecks />} label="Problems" value={hk.tasks?.length || 0} />
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
                 <CalendarDays className="h-3 w-3" />
                 {formatDateTime(hk.starts_at)} → {formatTime(hk.ends_at)}
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Link href={`/hackathons/${hk.slug}`}>
                   <Button variant="outline" size="sm">Open <ExternalLink className="ml-1 h-3 w-3" /></Button>
                 </Link>
@@ -1014,18 +1023,18 @@ export default function HackathonsAdminPage() {
                     <TooltipContent>Edit event settings</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ id: hk.id, name: hk.name })} className="text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ id: hk.id, name: hk.name })} className="text-destructive hover:text-destructive" aria-label={`Delete ${hk.name}`}><Trash2 className="h-3 w-3" /></Button>
               </div>
-            </Card>
+            </Panel>
           ))}
-        </div>
+        </BentoGrid>
       )}
 
       {deleteTarget && (
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Hackathon</AlertDialogTitle>
+            <AlertDialogTitle>Delete hackathon</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteTarget ? `Delete "${deleteTarget.name}"? Only allowed if no teams registered.` : ''}
             </AlertDialogDescription>
@@ -1040,7 +1049,7 @@ export default function HackathonsAdminPage() {
                 setDeleteTarget(null)
                 if (!res.ok) {
                   const err = await res.json().catch(() => ({ error: 'Delete failed' }))
-                  addToast({ type: 'error', title: 'Delete Failed', message: err.error || 'Cannot delete — teams are registered' })
+                  addToast({ type: 'error', title: 'Delete failed', message: err.error || 'Cannot delete — teams are registered' })
                 }
                 await load()
               }}
@@ -1058,8 +1067,8 @@ export default function HackathonsAdminPage() {
 
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
   return (
-    <div className="rounded border border-border/40 bg-muted/30 px-2 py-1">
-      <p className="flex items-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-xl border border-border/50 bg-muted/40 px-2.5 py-1.5">
+      <p className="flex items-center gap-1 text-[11px] text-muted-foreground [&_svg]:h-3 [&_svg]:w-3">
         {icon} {label}
       </p>
       <p className="font-semibold tabular-nums">{value}</p>

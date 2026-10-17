@@ -3,7 +3,7 @@ import { formatDateTime, formatTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -111,7 +111,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
   }
 
   if (!hackathon) {
-    return <div className="p-8 text-center text-muted-foreground">Hackathon not found</div>
+    return <div className="p-8 text-center text-muted-foreground">Hackathon not found. It may have been deleted — go back to all events.</div>
   }
 
   const totalSuspicion = proctorEvents.reduce((acc, e) => acc + (severityWeight[e.severity] || 0), 0)
@@ -165,51 +165,51 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link href={`/dashboard/admin/hackathons/${id}`}>
-            <Button variant="ghost" size="icon" title="Back"><ArrowLeft className="h-4 w-4" /></Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{hackathon.name} — Judge Report</h1>
-            <p className="text-sm text-muted-foreground">Activity logs, proctor events & suspicion scores</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
-            <Download className="h-3.5 w-3.5" /> Export CSV
-          </Button>
-          <Badge variant={hackathon.status === 'live' ? 'default' : 'secondary'} className="uppercase">
-            {hackathon.status}
-          </Badge>
-        </div>
-      </div>
+      <PageHeader
+        icon={<FileText />}
+        title={<>{hackathon.name} — judge report</>}
+        description="Activity logs, proctoring events and suspicion scores for every team."
+        actions={
+          <>
+            <Link href={`/dashboard/admin/hackathons/${id}`}>
+              <Button variant="outline" size="sm" className="gap-1.5" title="Back"><ArrowLeft className="h-3.5 w-3.5" /> Back to event</Button>
+            </Link>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </Button>
+            <Badge variant={hackathon.status === 'live' ? 'success' : 'secondary'} className="capitalize">
+              {hackathon.status}
+            </Badge>
+          </>
+        }
+        className="mb-0"
+      />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Teams', value: teams.length, icon: <Users className="h-4 w-4" /> },
-          { label: 'Total Proctor Events', value: proctorEvents.length, icon: <Shield className="h-4 w-4" />, accent: proctorEvents.length > 0 },
-          { label: 'Suspicion Score', value: totalSuspicion, icon: <AlertTriangle className="h-4 w-4" />, accent: totalSuspicion > 10 },
-          { label: 'Flagged Teams', value: criticalTeams.length, icon: <Activity className="h-4 w-4" />, accent: criticalTeams.length > 0 },
+          { label: 'Proctoring events', value: proctorEvents.length, icon: <Shield className="h-4 w-4" />, accent: proctorEvents.length > 0 },
+          { label: 'Suspicion score', value: totalSuspicion, icon: <AlertTriangle className="h-4 w-4" />, accent: totalSuspicion > 10 },
+          { label: 'Flagged teams', value: criticalTeams.length, icon: <Activity className="h-4 w-4" />, accent: criticalTeams.length > 0 },
         ].map(stat => (
-          <Card key={stat.label} className={`p-4 ${stat.accent ? 'border-red-200 dark:border-red-800' : ''}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</span>
-              <span className={`${stat.accent ? 'text-red-500' : 'text-muted-foreground'}`}>{stat.icon}</span>
-            </div>
-            <p className={`text-2xl font-bold ${stat.accent ? 'text-red-500' : ''}`}>{stat.value}</p>
-          </Card>
+          <StatCard
+            key={stat.label}
+            label={stat.label}
+            icon={stat.icon}
+            value={<span className={stat.accent ? 'text-red-600 dark:text-red-400' : undefined}>{stat.value}</span>}
+            className={stat.accent ? 'border-red-500/30' : undefined}
+          />
         ))}
       </div>
 
       {/* Per-team breakdown */}
-      <Card className="p-5">
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2">
-          <Users className="h-4 w-4" /> Team Breakdown
+      <Panel className="p-5">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Users className="h-4 w-4 text-primary" /> Team breakdown
         </h2>
         {teams.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">No teams registered</p>
+          <p className="text-sm text-muted-foreground text-center py-6">No teams registered yet. Teams appear here once people sign up for the event.</p>
         ) : (
           <div className="space-y-2">
             {teams.sort((a, b) => {
@@ -222,7 +222,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
               const teamSubs = submissions.filter(s => s.team_id === team.id)
 
               return (
-                <div key={team.id} className="border rounded-lg overflow-hidden">
+                <div key={team.id} className="border border-border rounded-2xl overflow-hidden">
                   <button
                     className="w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-left"
                     onClick={() => setExpandedTeam(expanded ? null : team.id)}
@@ -230,17 +230,17 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold">{team.name}</span>
-                        <Badge variant="outline">{team.members.length} members</Badge>
+                        <Badge variant="outline" className="tabular-nums">{team.members.length} members</Badge>
                         {score > 0 && (
-                          <Badge className={severityColors[level]}>{level.toUpperCase()} ({score})</Badge>
+                          <Badge className={`${severityColors[level]} capitalize tabular-nums`}>{level} ({score})</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {team.members.map(m => m.name).join(', ')}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>{teamProctor.length} proctor events</span>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs tabular-nums text-muted-foreground">
+                      <span>{teamProctor.length} proctoring events</span>
                       <span>{teamSubs.length} submissions</span>
                       <span>{team.xp} XP</span>
                       {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
@@ -251,7 +251,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                     <div className="border-t p-4 space-y-4 bg-muted/20">
                       {teamProctor.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Proctor Events</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-2">Proctoring events</p>
                           <div className="space-y-1 max-h-48 overflow-y-auto">
                             {teamProctor.slice(0, 50).map(evt => (
                               <div key={evt.id} className="flex items-center gap-2 text-xs py-1 border-b border-border/50">
@@ -259,8 +259,8 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                                   {eventTypeIcon[evt.type] || <Activity className="h-3.5 w-3.5" />}
                                 </span>
                                 <span className="text-muted-foreground">{eventTypeLabel[evt.type] || evt.type}</span>
-                                {evt.problem_slug && <Badge variant="outline" className="text-[10px]">{evt.problem_slug}</Badge>}
-                                <span className="ml-auto text-muted-foreground font-mono">
+                                {evt.problem_slug && <Badge variant="outline" className="text-[11px] font-mono">{evt.problem_slug}</Badge>}
+                                <span className="ml-auto text-muted-foreground font-mono tabular-nums">
                                   {formatTime(evt.created_at)}
                                 </span>
                               </div>
@@ -270,18 +270,18 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                       )}
                       {teamSubs.length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Submissions</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-2">Submissions</p>
                           <div className="space-y-1">
                             {teamSubs.map(sub => (
                               <div key={sub.id} className="flex items-center gap-2 text-xs py-1">
-                                <span className={sub.score !== null && sub.score >= sub.max_score * 0.5 ? 'text-green-500' : 'text-yellow-500'}>
+                                <span className={sub.score !== null && sub.score >= sub.max_score * 0.5 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}>
                                   {sub.score !== null && sub.score >= sub.max_score * 0.5
                                     ? <CheckCircle className="h-3.5 w-3.5" />
                                     : <Clock className="h-3.5 w-3.5" />}
                                 </span>
-                                <Badge variant="outline" className="text-[10px]">{sub.problem_slug}</Badge>
-                                <span className="font-mono text-muted-foreground">{sub.score ?? '—'}/{sub.max_score}</span>
-                                <span className="ml-auto text-muted-foreground">
+                                <Badge variant="outline" className="text-[11px] font-mono">{sub.problem_slug}</Badge>
+                                <span className="font-mono tabular-nums text-muted-foreground">{sub.score ?? '—'}/{sub.max_score}</span>
+                                <span className="ml-auto text-muted-foreground tabular-nums">
                                   {formatTime(sub.submitted_at)}
                                 </span>
                               </div>
@@ -299,15 +299,15 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
             })}
           </div>
         )}
-      </Card>
+      </Panel>
 
       {/* Full proctor event log */}
-      <Card className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Proctor Event Log
+      <Panel className="p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" /> Proctoring event log
           </h2>
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {(['all', 'low', 'medium', 'high', 'critical'] as const).map(s => (
               <Button
                 key={s}
@@ -316,23 +316,23 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                 className="text-xs h-7"
                 onClick={() => setFilterSeverity(s)}
               >
-                {s === 'all' ? 'All' : s.toUpperCase()}
+                {s === 'all' ? 'All' : s.charAt(0).toUpperCase() + s.slice(1)}
               </Button>
             ))}
           </div>
         </div>
         {filteredEvents.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">No proctor events recorded</p>
+          <p className="text-sm text-muted-foreground text-center py-6">No proctoring events at this severity. Choose All to see every event.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b text-xs text-muted-foreground uppercase tracking-wider">
-                  <th className="text-left py-2 pr-4">Team</th>
-                  <th className="text-left py-2 pr-4">Event</th>
-                  <th className="text-left py-2 pr-4">Problem</th>
-                  <th className="text-left py-2 pr-4">Severity</th>
-                  <th className="text-left py-2">Timestamp</th>
+                <tr className="border-b text-xs text-muted-foreground">
+                  <th className="font-medium text-left py-2 pr-4">Team</th>
+                  <th className="font-medium text-left py-2 pr-4">Event</th>
+                  <th className="font-medium text-left py-2 pr-4">Problem</th>
+                  <th className="font-medium text-left py-2 pr-4">Severity</th>
+                  <th className="font-medium text-left py-2">Timestamp</th>
                 </tr>
               </thead>
               <tbody>
@@ -353,13 +353,13 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
                       </td>
                       <td className="py-2 pr-4">
                         {evt.problem_slug
-                          ? <Badge variant="outline" className="text-[10px]">{evt.problem_slug}</Badge>
+                          ? <Badge variant="outline" className="text-[11px] font-mono">{evt.problem_slug}</Badge>
                           : <span className="text-muted-foreground">—</span>}
                       </td>
                       <td className="py-2 pr-4">
-                        <Badge className={`${severityColors[evt.severity]} text-[10px]`}>{evt.severity}</Badge>
+                        <Badge className={`${severityColors[evt.severity]} text-[11px] capitalize`}>{evt.severity}</Badge>
                       </td>
-                      <td className="py-2 font-mono text-xs text-muted-foreground">
+                      <td className="py-2 font-mono tabular-nums text-xs text-muted-foreground">
                         {formatDateTime(evt.created_at)}
                       </td>
                     </tr>
@@ -369,7 +369,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
             </table>
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }

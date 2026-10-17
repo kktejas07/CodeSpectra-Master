@@ -23,7 +23,7 @@ import {
 import { SkeletonCard, SkeletonStats } from '@/components/ui/skeleton-boneyard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -156,9 +156,9 @@ function loopState(loop: LoopRow): JobState {
 function StatePill({ state }: { state: JobState }) {
   const cls =
     state.tone === 'ok'
-      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+      ? 'bg-green-500/15 text-green-700 dark:text-green-300'
       : state.tone === 'bad'
-        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
+        ? 'bg-red-500/15 text-red-700 dark:text-red-300'
         : 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
   return (
     <Badge variant="outline" className={`shrink-0 border-transparent ${cls}`} title={state.hint}>
@@ -265,7 +265,7 @@ export default function CronJobsPage() {
 
   if (!gate.ready) {
     return (
-      <div className="w-full min-w-0 space-y-6 p-4 sm:p-6">
+      <div className="w-full min-w-0 space-y-6">
         <SkeletonStats />
         <SkeletonCard />
         <SkeletonCard />
@@ -279,44 +279,46 @@ export default function CronJobsPage() {
   const attentionJobs = httpStates.filter((s) => s.tone !== 'ok').length
 
   return (
-    <div className="w-full min-w-0 space-y-6 p-4 sm:p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
-            <Timer className="h-6 w-6 shrink-0 text-teal-600" /> Cron jobs
-          </h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+    <div className="w-full min-w-0 space-y-6">
+      <PageHeader
+        icon={<Timer />}
+        title="Cron jobs"
+        description={
+          <>
             What is configured, what is running, and what your external cron provider should call.
-            The secret stays on the server — use <strong>Run now</strong> here to test.
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Button variant="outline" onClick={() => void load()} disabled={loading || !!busy}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Button onClick={() => void runAction('run-tick')} disabled={!!busy} className="text-white font-bold">
-            {busy === 'run-tick' ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Play className="mr-2 h-4 w-4" />
-            )}
-            Run tick now
-          </Button>
-        </div>
-      </div>
+            The secret stays on the server — use <strong className="text-foreground">Run now</strong> here to test.
+          </>
+        }
+        actions={
+          <>
+            <Button variant="outline" onClick={() => void load()} disabled={loading || !!busy}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button onClick={() => void runAction('run-tick')} disabled={!!busy}>
+              {busy === 'run-tick' ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="mr-2 h-4 w-4" />
+              )}
+              Run tick now
+            </Button>
+          </>
+        }
+        className="mb-0"
+      />
 
       {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span className="min-w-0 wrap-break-word">{error}</span>
         </div>
       )}
 
       {secretMissing && (
-        <Card className="border-amber-500/40 bg-amber-500/5 p-4 sm:p-5">
+        <Panel className="border-amber-500/40 bg-amber-500/5 p-4 sm:p-5">
           <div className="flex gap-3">
-            <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
             <div className="min-w-0 space-y-2 text-sm">
               <p className="font-semibold text-amber-900 dark:text-amber-200">
                 Set <code className="rounded bg-muted px-1">CRON_SECRET</code> so external cron can
@@ -355,7 +357,7 @@ export default function CronJobsPage() {
               </p>
             </div>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {loading && !data ? (
@@ -368,16 +370,16 @@ export default function CronJobsPage() {
 
       {data && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="min-w-0 p-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Panel className="min-w-0 p-5">
+              <p className="text-sm font-medium text-muted-foreground">
                 Scheduler loop
               </p>
               <div className="mt-2 flex items-center gap-2">
                 {data.scheduler.inProcessLoop ? (
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
                 ) : (
-                  <XCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                  <XCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                 )}
                 <span className="text-sm font-semibold">
                   {data.scheduler.inProcessLoop ? 'Running' : 'Disabled'}
@@ -388,10 +390,10 @@ export default function CronJobsPage() {
                   NEXT_PUBLIC_DISABLE_SCHEDULER={data.scheduler.disabledEnv}
                 </p>
               ) : null}
-            </Card>
+            </Panel>
 
-            <Card className="min-w-0 p-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Panel className="min-w-0 p-5">
+              <p className="text-sm font-medium text-muted-foreground">
                 CRON_SECRET
               </p>
               <div className="mt-2">
@@ -401,10 +403,10 @@ export default function CronJobsPage() {
                   badLabel="Missing — external cron will fail"
                 />
               </div>
-            </Card>
+            </Panel>
 
-            <Card className="min-w-0 p-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Panel className="min-w-0 p-5">
+              <p className="text-sm font-medium text-muted-foreground">
                 Redis lock
               </p>
               <div className="mt-2">
@@ -422,25 +424,25 @@ export default function CronJobsPage() {
                     : ''}
                 </p>
               ) : null}
-            </Card>
+            </Panel>
 
-            <Card className="min-w-0 p-4">
-              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Panel className="min-w-0 p-5">
+              <p className="text-sm font-medium text-muted-foreground">
                 GitHub scan queue
               </p>
-              <p className="mt-2 text-sm font-semibold">
+              <p className="mt-2 text-2xl font-bold tabular-nums">
                 {data.queue.pending}{' '}
-                <span className="font-normal text-muted-foreground">
+                <span className="text-sm font-normal text-muted-foreground">
                   pending / {data.queue.total}
                 </span>
               </p>
-            </Card>
+            </Panel>
           </div>
 
-          <Card className="min-w-0 overflow-hidden">
+          <Panel className="min-w-0 overflow-hidden p-0">
             <div className="border-b border-border/60 px-4 py-3 sm:px-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <Activity className="h-4 w-4 shrink-0" /> Built-in loops
+                <Activity className="h-4 w-4 shrink-0 text-primary" /> Built-in loops
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Run inside the app process when the server is alive.
@@ -464,15 +466,15 @@ export default function CronJobsPage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </Panel>
 
-          <Card className="min-w-0 overflow-hidden">
+          <Panel className="min-w-0 overflow-hidden p-0">
             <div className="border-b border-border/60 px-4 py-3 sm:px-5">
               <h2 className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                <Zap className="h-4 w-4 shrink-0" /> HTTP cron endpoints
-                <Badge variant="success" className="text-[10px]">{runningJobs} running</Badge>
+                <Zap className="h-4 w-4 shrink-0 text-primary" /> HTTP cron endpoints
+                <Badge variant="success" className="text-[11px] tabular-nums">{runningJobs} running</Badge>
                 {attentionJobs > 0 ? (
-                  <Badge variant="warning" className="text-[10px]">{attentionJobs} need attention</Badge>
+                  <Badge variant="warning" className="text-[11px] tabular-nums">{attentionJobs} need attention</Badge>
                 ) : null}
               </h2>
               <p className="mt-0.5 wrap-break-word text-xs text-muted-foreground">
@@ -492,7 +494,7 @@ export default function CronJobsPage() {
                       <p className="text-sm font-medium">{job.name}</p>
                       <StatePill state={httpState(job)} />
                       {job.id === 'signals-ingest' ? (
-                        <Badge variant="outline" className="gap-1 text-[10px]">
+                        <Badge variant="outline" className="gap-1 text-[11px]">
                           <Radio className="h-3 w-3" /> Signals
                         </Badge>
                       ) : null}
@@ -515,12 +517,12 @@ export default function CronJobsPage() {
                         Drafts land in{' '}
                         <Link
                           href="/dashboard/admin/signals"
-                          className="text-teal-600 hover:underline"
+                          className="text-primary hover:underline"
                         >
                           Signals
                         </Link>{' '}
                         for human approve →{' '}
-                        <Link href="/dashboard/admin/blog" className="text-teal-600 hover:underline">
+                        <Link href="/dashboard/admin/blog" className="text-primary hover:underline">
                           Newsroom
                         </Link>
                         .
@@ -544,12 +546,12 @@ export default function CronJobsPage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </Panel>
 
-          <Card className="min-w-0 overflow-hidden">
+          <Panel className="min-w-0 overflow-hidden p-0">
             <div className="border-b border-border/60 px-4 py-3 sm:px-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <Clock className="h-4 w-4 shrink-0" /> Scheduled workflows (
+                <Clock className="h-4 w-4 shrink-0 text-primary" /> Scheduled workflows (
                 {data.scheduledWorkflows.length})
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
@@ -558,7 +560,7 @@ export default function CronJobsPage() {
             </div>
             {data.scheduledWorkflows.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
-                No schedule workflows yet. Create one in Workflows with trigger = schedule.
+                No scheduled workflows yet. Create one in Workflows and set its trigger to Schedule.
               </p>
             ) : (
               <div className="divide-y divide-border/60">
@@ -583,7 +585,7 @@ export default function CronJobsPage() {
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       {w.is_active ? (
-                        <Badge variant="success" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                        <Badge variant="success">
                           Active
                         </Badge>
                       ) : (
@@ -593,6 +595,7 @@ export default function CronJobsPage() {
                         size="sm"
                         variant="outline"
                         disabled={!!busy}
+                        aria-label={`Run ${w.name} now`}
                         onClick={() => void runAction('run-workflow', { workflowId: w.id })}
                       >
                         {busy === `run-workflow${w.id}` ? (
@@ -616,17 +619,17 @@ export default function CronJobsPage() {
                 ))}
               </div>
             )}
-          </Card>
+          </Panel>
 
-          <Card className="min-w-0 overflow-hidden">
+          <Panel className="min-w-0 overflow-hidden p-0">
             <div className="border-b border-border/60 px-4 py-3 sm:px-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <Database className="h-4 w-4 shrink-0" /> Recent workflow runs
+                <Database className="h-4 w-4 shrink-0 text-primary" /> Recent workflow runs
               </h2>
             </div>
             {data.recentRuns.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
-                No runs recorded yet.
+                No runs recorded yet. Runs appear here after the scheduler fires a workflow.
               </p>
             ) : (
               <div className="divide-y divide-border/60">
@@ -637,7 +640,7 @@ export default function CronJobsPage() {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{r.workflow_id}</p>
-                      <p className="text-[11px] text-muted-foreground">
+                      <p className="text-[11px] tabular-nums text-muted-foreground">
                         {formatDateTime(r.started_at)}
                         {r.duration_ms != null ? ` · ${r.duration_ms}ms` : ''}
                       </p>
@@ -659,25 +662,25 @@ export default function CronJobsPage() {
                 ))}
               </div>
             )}
-          </Card>
+          </Panel>
 
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <ExternalLink className="h-3 w-3" />
               Public blog:{' '}
-              <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
+              <Link href="/blog" className="text-primary hover:underline" target="_blank">
                 /blog
               </Link>
             </span>
             <span>
               Admin Newsroom:{' '}
-              <Link href="/dashboard/admin/blog" className="text-teal-600 hover:underline">
+              <Link href="/dashboard/admin/blog" className="text-primary hover:underline">
                 /dashboard/admin/blog
               </Link>
             </span>
             <span>
               Signals queue:{' '}
-              <Link href="/dashboard/admin/signals" className="text-teal-600 hover:underline">
+              <Link href="/dashboard/admin/signals" className="text-primary hover:underline">
                 /dashboard/admin/signals
               </Link>
             </span>
