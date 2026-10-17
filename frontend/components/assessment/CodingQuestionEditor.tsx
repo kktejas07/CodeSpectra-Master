@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, Terminal, ChevronDown, ChevronUp, Copy } from 'lucide-react'
+import { Loader2, Terminal, ChevronDown, ChevronUp, Copy, Play, CheckCircle2, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import dynamic from 'next/dynamic'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
@@ -58,6 +59,35 @@ export function CodingQuestionEditor({
 
   const sampleTestCases = question.test_cases?.filter(tc => tc.isSample !== false) || []
   const hasTestCases = sampleTestCases.length > 0
+
+  // Run the visible sample cases only (hidden cases are graded server-side
+  // after submit). Rate-limited by /api/execute-code.
+  const [running, setRunning] = useState(false)
+  const [runError, setRunError] = useState<string | null>(null)
+  const [runResults, setRunResults] = useState<Array<{ passed: boolean; output: string; stderr: string }> | null>(null)
+  const runSamples = async () => {
+    const source = answer || question.starter_code || ''
+    if (!source.trim() || running) return
+    setRunning(true)
+    setRunError(null)
+    try {
+      const res = await csrfFetch('/api/execute-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ language, source, test_cases: sampleTestCases.map((tc) => ({ input: tc.input, output: tc.output })) }),
+      })
+      const j = await res.json().catch(() => ({})) as { error?: string; results?: Array<{ passed: boolean; output: string; stderr: string }> }
+      if (!res.ok || !Array.isArray(j.results)) throw new Error(j.error || (res.status === 429 ? 'Too many runs. Wait a moment and try again.' : 'Couldn’t run your code.'))
+      setRunResults(j.results)
+      setShowTestCases(true)
+    } catch (e) {
+      setRunResults(null)
+      setRunError(e instanceof Error ? e.message : 'Couldn’t run your code.')
+    } finally {
+      setRunning(false)
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -131,6 +161,19 @@ export function CodingQuestionEditor({
             )}
           </div>
           <div className="flex items-center gap-1.5">
+            {hasTestCases && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={runSamples}
+                disabled={running || !(answer || question.starter_code || '').trim()}
+                title="Run your code against the sample test cases"
+                className="h-8 px-2 text-xs gap-1 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50"
+              >
+                {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+                <span className="text-[10px]">Run samples</span>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -185,7 +228,11 @@ export function CodingQuestionEditor({
         </div>
       </div>
 
-      {/* Sample Test Cases Panel (reference only — no live execution) */}
+      {runError && (
+        <p role="alert" className="text-xs text-destructive">{runError}</p>
+      )}
+
+      {/* Sample test cases (Run samples fills in pass/fail; hidden cases are graded after submit) */}
       {hasTestCases && (
         <div className="border border-border rounded-2xl overflow-hidden bg-card">
           <button
@@ -220,6 +267,12 @@ export function CodingQuestionEditor({
                 >
                   <div className="flex items-center gap-2 text-xs">
                     <span className="font-medium text-muted-foreground">Test case {i + 1}</span>
+                    {runResults?.[i] && (
+                      <span className={cn('inline-flex items-center gap-1 font-medium', runResults[i].passed ? 'text-green-600 dark:text-green-400' : 'text-destructive')}>
+                        {runResults[i].passed ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                        {runResults[i].passed ? 'Passed' : 'Failed'}
+                      </span>
+                    )}
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div>
@@ -235,6 +288,14 @@ export function CodingQuestionEditor({
                       </pre>
                     </div>
                   </div>
+                  {runResults?.[i] && !runResults[i].passed && (
+                    <div className="text-[11px]">
+                      <span className="text-muted-foreground block mb-0.5">Your output</span>
+                      <pre className="font-mono text-foreground whitespace-pre-wrap break-all bg-background border border-border/60 p-2 rounded-lg max-h-24 overflow-auto">
+                        {runResults[i].stderr || runResults[i].output || '(no output)'}
+                      </pre>
+                    </div>
+                  )}
                   {tc.explanation && (
                     <p className="text-[11px] text-muted-foreground italic">{tc.explanation}</p>
                   )}

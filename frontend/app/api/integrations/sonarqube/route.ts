@@ -1,14 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export async function GET(req: NextRequest) {
-  const clientId = process.env.SONARQUBE_CLIENT_ID
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/sonarqube/callback`
-  
-  const authUrl = new URL(`${process.env.SONARQUBE_URL || 'https://sonarqube.example.com'}/oauth2/authorize`)
-  authUrl.searchParams.set('client_id', clientId || '')
-  authUrl.searchParams.set('redirect_uri', redirectUri)
-  authUrl.searchParams.set('response_type', 'code')
-  authUrl.searchParams.set('state', Math.random().toString(36).substring(7))
-
-  return NextResponse.redirect(authUrl)
+/**
+ * SonarQube connect is not built yet: there is no OAuth callback route and no
+ * stored state, so starting the flow only led to a 404 on return. Say so
+ * plainly instead of redirecting to the provider.
+ */
+export async function GET() {
+  return NextResponse.json({ error: "SonarQube integration isn't available yet." }, { status: 501 })
 }

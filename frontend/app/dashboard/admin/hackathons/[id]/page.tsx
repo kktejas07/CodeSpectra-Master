@@ -69,6 +69,8 @@ interface Team {
   qr_token: string
   xp: number
   level: number
+  /** Judged total and rank, stored at release. */
+  final_total?: number | null
   submissions: number
   members: Array<{ name: string; role: 'captain' | 'member' }>
   achievements: Array<{ id: string; name: string }>
@@ -359,8 +361,9 @@ export default function HackathonDetailPage({
     )
   }
 
-  // Rank by XP so equal scores share a rank (list order alone is not a rank).
-  const teamRanks = rankByScore(teams, (t) => t.id, (t) => t.xp)
+  // Rank on the judged totals stored at release (equal totals share a rank);
+  // before release there is no rank yet.
+  const teamRanks = rankByScore(teams, (t) => t.id, (t) => (typeof t.final_total === 'number' ? t.final_total : null))
 
   return (
     <div className="space-y-6" data-testid="hackathon-detail-page">
@@ -412,7 +415,10 @@ export default function HackathonDetailPage({
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ status: newStatus }),
                     })
-                    if (!res.ok) throw new Error('Failed')
+                    if (!res.ok) {
+                      const data = await res.json().catch(() => ({}))
+                      throw new Error(data.error || 'Could not change the status')
+                    }
                     await load()
                   } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
                 }}
@@ -623,7 +629,7 @@ export default function HackathonDetailPage({
         />
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {[...teams].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0)).map((t) => {
+          {[...teams].sort((a, b) => (teamRanks.get(a.id)?.rank ?? 1e9) - (teamRanks.get(b.id)?.rank ?? 1e9)).map((t) => {
             const g = grant[t.id] || { xp: '', achievement: '', busy: false }
             const rankInfo = teamRanks.get(t.id)
             return (
@@ -631,7 +637,7 @@ export default function HackathonDetailPage({
                 <div className="flex items-start justify-between">
                   <div className="flex-1 mr-2">
                     <p className="text-xs tabular-nums text-muted-foreground">
-                      {formatRank(rankInfo)} <span className="sr-only">by XP</span>
+                      {formatRank(rankInfo)} <span className="sr-only">by judged score</span>
                     </p>
                     {editingTeamId === t.id ? (
                       <div className="flex gap-1.5 mt-1">
@@ -857,9 +863,18 @@ export default function HackathonDetailPage({
                   if (!await confirmDialog({ title: 'Confirmation', description: 'Release all results to participants? This action cannot be undone.' })) return
                   setBusy(true)
                   try {
-                    const res = await csrfFetch(`/api/hackathons/${id}/release-results`, { method: 'POST' })
-                    const data = await res.json()
-                    if (!res.ok) throw new Error(data.error)
+                    const post = (force: boolean) => csrfFetch(`/api/hackathons/${id}/release-results`, {
+                      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force }),
+                    })
+                    let res = await post(false)
+                    let data = await res.json().catch(() => ({}))
+                    // The server asks for a second confirm when the event hasn't ended or some entries are unscored.
+                    if (res.status === 409 && data.code === 'confirm_release') {
+                      if (!await confirmDialog({ title: 'Release anyway?', description: String(data.error || '') })) return
+                      res = await post(true)
+                      data = await res.json().catch(() => ({}))
+                    }
+                    if (!res.ok) throw new Error(data.error || 'Could not release results')
                     await load()
                   } catch (e) {
                     setError(e instanceof Error ? e.message : String(e))

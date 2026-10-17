@@ -211,13 +211,3 @@ export async function unapplySuggestedFix(fixId: string): Promise<{ success: boo
   if (!res.ok || json.success === false) return { success: false, error: json.error || 'Could not undo apply' }
   return { success: true }
 }
-
-export async function linkGitHubRepository(repoId: number, repoName: string, repoUrl: string): Promise<{ success: boolean; error?: string }> {
-  const res = await csrfFetch('/api/github/link', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ repo_id: repoId, name: repoName, url: repoUrl }),
-  })
-  if (!res.ok) return { success: false, error: 'Failed to link repository' }
-  return res.json()
-}

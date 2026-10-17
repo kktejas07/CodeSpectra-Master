@@ -2,9 +2,9 @@ import { headers } from 'next/headers'
 import { cookies } from 'next/headers'
 import { getAdminAuthInstance } from './firebase-admin'
 import { bootSchedulerOnce } from './boot-scheduler'
-import { normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
-import { users as getUsersCollection, getUserById } from '@/lib/db/admin'
-import { verifySessionToken, type SessionPayload } from '@/lib/session'
+import type { UserRole as RBACUserRole } from './rbac'
+import { verifySessionToken, loadAuthProfile, isTenantActive, type AuthProfile } from '@/lib/session'
+import { issuedAfterRevocation, profileTenantId, resolveAccount } from '@/lib/auth-account'
 import { checkResourcePermission } from '@/lib/permissions-db'
 import { isFeatureEnabled, isPageAllowed } from '@/lib/plans-client'
 import { getPlanForRole } from '@/lib/plans'
@@ -50,33 +50,52 @@ async function getPermissionsForRole(role: string): Promise<Array<{ resource: st
 
 export function invalidatePermissionCache() { _permCache = null; _permCacheAt = 0 }
 
-async function lookupRole(uid: string): Promise<UserRole> {
+/**
+ * Build the request user from the DB profile. The token only proves who the
+ * caller is; role, status and tenant always come from the `user` doc (short
+ * cache in lib/session), so a demotion, deactivation or deletion takes effect
+ * on the next request instead of when the token expires.
+ */
+async function buildAPIUser(
+  uid: string,
+  fallbackEmail: string,
+  tokenName?: string | null,
+): Promise<APIUser | null> {
+  let profile: AuthProfile | null
   try {
-    const profile = await getUserById(uid)
-    if (profile?.role) return normalizeUserRole(profile.role as string)
-  } catch { /* fall through */ }
-  return 'user'
+    profile = await loadAuthProfile(uid)
+  } catch (e) {
+    console.error('[route-auth] profile lookup failed — denying:', e)
+    return null
+  }
+  const tenantId = profileTenantId(profile)
+  let tenantActive = true
+  if (tenantId) {
+    try { tenantActive = await isTenantActive(tenantId) } catch { tenantActive = false }
+  }
+  const account = resolveAccount(profile, { tenantActive })
+  if (!account.ok || !profile) return null
+  const name = profile.fullName || profile.name || tokenName || undefined
+  return {
+    id: String(profile.id || profile._id || uid),
+    email: (typeof profile.email === 'string' && profile.email) || fallbackEmail || '',
+    role: account.role,
+    name: name ?? undefined,
+    fullName: name ?? undefined,
+    lastLoginMethod: profile.lastLoginMethod ?? null,
+    lastLoginAt: profile.lastLoginAt ?? null,
+    tenantId: account.tenantId,
+  }
 }
 
-async function getUserProfile(uid: string): Promise<{ role: UserRole; name?: string; fullName?: string; lastLoginMethod?: string | null; lastLoginAt?: Date | null; tenantId?: string | null }> {
+/** Firebase credentials carry no session version — check the revocation stamp instead. */
+async function firebaseCredentialStillValid(uid: string, iat: unknown): Promise<boolean> {
   try {
-    const profile = await getUserById(uid)
-    if (profile) {
-      return {
-        role: profile.role ? normalizeUserRole(profile.role as string) : 'user',
-        name: profile.fullName || profile.name || undefined,
-        fullName: profile.fullName || profile.name || undefined,
-        lastLoginMethod: profile.lastLoginMethod ?? null,
-        lastLoginAt: profile.lastLoginAt ?? null,
-        tenantId: (profile.tenantId as string | null) ?? (profile.organizationId as string | null) ?? null,
-      }
-    }
-  } catch { /* fall through */ }
-  return { role: 'user', tenantId: null }
-}
-
-function fromSessionPayload(p: SessionPayload): APIUser {
-  return { id: p.uid, email: p.email, role: normalizeUserRole(p.role) }
+    const profile = await loadAuthProfile(uid)
+    return issuedAfterRevocation(iat, profile)
+  } catch {
+    return false
+  }
 }
 
 export async function getAPIUser(): Promise<APIUser | null> {
@@ -87,63 +106,37 @@ export async function getAPIUser(): Promise<APIUser | null> {
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
     if (sessionCookie) {
+      // Own session JWT first (every sign-in path now issues one).
+      const payload = await verifySessionToken(sessionCookie)
+      if (payload) return buildAPIUser(payload.uid, payload.email)
+      // Legacy Firebase session cookies (issued before OAuth moved to the JWT).
       if (adminAuth) {
         try {
           const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
-          if (decoded) {
-            const profile = await getUserProfile(decoded.uid)
-            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? profile.name, fullName: decoded.name ?? profile.fullName, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
+          if (decoded && (await firebaseCredentialStillValid(decoded.uid, decoded.iat))) {
+            return buildAPIUser(decoded.uid, decoded.email || '', decoded.name ?? null)
           }
-        } catch { /* fallback */ }
+        } catch { /* invalid */ }
       }
-      const payload = await verifySessionToken(sessionCookie)
-      if (payload) {
-        const profile = await getUserProfile(payload.uid)
-        return {
-          id: payload.uid,
-          email: payload.email,
-          role: profile.role !== 'user' ? profile.role : normalizeUserRole(payload.role),
-          name: profile.fullName || profile.name,
-          fullName: profile.fullName || profile.name,
-          lastLoginMethod: profile.lastLoginMethod,
-          lastLoginAt: profile.lastLoginAt,
-          tenantId: profile.tenantId,
-        }
-      }
+      return null
     }
 
     const headersList = await headers()
     const authHeader = headersList.get('authorization')
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7)
-      // Firebase ID tokens first (when firebase-admin is configured).
-      if (adminAuth) {
-        try {
-          const decoded = await adminAuth.verifyIdToken(token)
-          if (decoded) {
-            const profile = await getUserProfile(decoded.uid)
-            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? undefined, fullName: decoded.name ?? undefined, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
-          }
-        } catch { /* fall through to session-JWT check */ }
-      }
       // ponytail: own session JWTs (mobile-token endpoint, SecureStore-held)
       // must also authenticate API calls — Firebase is optional, this is not.
-      try {
-        const payload = await verifySessionToken(token)
-        if (payload) {
-          const profile = await getUserProfile(payload.uid)
-          return {
-            id: payload.uid,
-            email: payload.email,
-            role: profile.role !== 'user' ? profile.role : normalizeUserRole(payload.role),
-            name: profile.fullName || profile.name,
-            fullName: profile.fullName || profile.name,
-            lastLoginMethod: profile.lastLoginMethod,
-            lastLoginAt: profile.lastLoginAt,
-            tenantId: profile.tenantId,
+      const payload = await verifySessionToken(token)
+      if (payload) return buildAPIUser(payload.uid, payload.email)
+      if (adminAuth) {
+        try {
+          const decoded = await adminAuth.verifyIdToken(token, true)
+          if (decoded && (await firebaseCredentialStillValid(decoded.uid, decoded.iat))) {
+            return buildAPIUser(decoded.uid, decoded.email || '', decoded.name ?? null)
           }
-        }
-      } catch { /* invalid */ }
+        } catch { /* invalid */ }
+      }
     }
     return null
   } catch (error) {
@@ -164,6 +157,12 @@ export async function requireAdmin() {
   if (!user) return { error: 'Unauthorized', status: 401 as const }
   // Role check first — this is the baseline. DB permissions only add finer control.
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+    return { error: 'Forbidden - Admin access required', status: 403 as const }
+  }
+  // Deny by default: buildAPIUser already demotes a tenant-less (or suspended-
+  // tenant) tenant_admin to `user`; this re-check keeps the guard safe even if
+  // a caller hand-builds an APIUser.
+  if (user.role === 'tenant_admin' && !user.tenantId) {
     return { error: 'Forbidden - Admin access required', status: 403 as const }
   }
   return { user }
@@ -225,17 +224,14 @@ export async function requirePlanFeature(feature: string) {
   if (!user) return { error: 'Unauthorized', status: 401 as const }
 
   try {
-    const db = await getMongoDb()
-    const userDoc = await db.collection('users').findOne({ id: user.id })
-    const planId = userDoc?.plan || 'free'
-    const plan = await getPlanForRole(planId)
-
-    if (!plan) return { error: 'No active plan', status: 402 as const }
-    if (!isFeatureEnabled(plan, feature)) {
-      return { error: `Plan upgrade required - feature '${feature}' is not available on your plan`, status: 402 as const }
-    }
-    return { user, plan }
-  } catch {
+    // One resolver (active subscription, then admin override) — lib/entitlements.ts.
+    const { getUserEntitlements, checkFeature } = await import('@/lib/entitlements')
+    const ent = await getUserEntitlements(user.id)
+    const denied = checkFeature(user, ent, feature)
+    if (denied) return { error: denied.error, status: 402 as const }
+    return { user, plan: ent.plan }
+  } catch (e) {
+    console.error('[route-auth] requirePlanFeature:', e)
     return { error: 'Failed to verify plan', status: 500 as const }
   }
 }

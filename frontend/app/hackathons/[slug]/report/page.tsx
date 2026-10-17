@@ -12,7 +12,7 @@ import {
   ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { usePageGuard } from '@/lib/use-page-guard'
+import { useRoleGate } from '@/lib/use-role-gate'
 
 interface Hackathon {
   id: string; name: string; slug: string
@@ -21,7 +21,7 @@ interface Hackathon {
 }
 
 interface Team {
-  id: string; name: string; slug: string; xp: number; level: number
+  id: string; name: string; slug: string; xp: number; level: number; total?: number | null; rank?: number | null
   members: Array<{ name: string; role: string }>
 }
 
@@ -58,7 +58,8 @@ function formatDuration(seconds: number): string {
 
 export default function HackathonReportPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
-  const gate = usePageGuard('user')
+  // Public once results are released; signed-in viewers also get their own activity.
+  const gate = useRoleGate()
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
 
@@ -108,7 +109,8 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
         if (sRes.ok) subList = ((await sRes.json()) as { items: Submission[] }).items || []
       }
 
-      const sorted = [...teamList].sort((a, b) => b.xp - a.xp)
+      // Public results arrive ranked on judged totals; keep that order.
+      const sorted = [...teamList]
       setTeams(sorted)
       setMyTeam(myTeamId ? sorted.find((t) => t.id === myTeamId) || null : null)
       setSubmissions(subList)
@@ -235,7 +237,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Rank', value: medal, icon: <Trophy className="h-4 w-4" /> },
-            { label: 'Total XP', value: myTeam.xp, icon: <Activity className="h-4 w-4" /> },
+            { label: 'Points', value: typeof myTeam.total === 'number' ? myTeam.total : '–', icon: <Activity className="h-4 w-4" /> },
             { label: 'Problems solved', value: teamSubs.length, icon: <CheckCircle className="h-4 w-4" /> },
             { label: 'Team level', value: myTeam.level, icon: <Users className="h-4 w-4" /> },
           ].map(stat => (

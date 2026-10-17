@@ -77,7 +77,11 @@ export async function POST(req: NextRequest) {
   }
 
   const db = await getMongoDb()
-  const other = await db.collection('users').findOne({ 'anon_aadhaar.nullifier': nullifier })
+  // `user` is the user collection; `users` held these docs by mistake (E11) —
+  // still check it so an Aadhaar linked before the fix can't be reused.
+  const other =
+    (await db.collection('user').findOne({ 'anon_aadhaar.nullifier': nullifier })) ||
+    (await db.collection('users').findOne({ 'anon_aadhaar.nullifier': nullifier }))
   if (other) {
     const oid = String((other as { id?: string; _id?: unknown }).id ?? (other as { _id?: unknown })._id)
     if (oid !== user.id) {
@@ -89,7 +93,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString()
-  await db.collection('users').updateOne(
+  await db.collection('user').updateOne(
     userFilter(user.id),
     {
       $set: {
@@ -124,9 +128,9 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getMongoDb()
-  const doc = await db.collection('users').findOne(userFilter(user.id), {
-    projection: { anon_aadhaar: 1 },
-  })
+  const doc =
+    (await db.collection('user').findOne(userFilter(user.id), { projection: { anon_aadhaar: 1 } })) ||
+    (await db.collection('users').findOne(userFilter(user.id), { projection: { anon_aadhaar: 1 } }))
   const aa = (doc as { anon_aadhaar?: Record<string, unknown> } | null)?.anon_aadhaar
   return NextResponse.json({
     verified: Boolean(aa?.verified),

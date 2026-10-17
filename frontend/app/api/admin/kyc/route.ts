@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { auditAdmin } from '@/lib/admin-audit'
+import { notify } from '@/lib/notifications'
 
 export const runtime = 'nodejs'
 
@@ -102,8 +104,59 @@ export async function DELETE(req: Request) {
 
     const db = await getMongoDb()
     await db.collection('kyc_sessions').deleteOne({ id })
+    await auditAdmin(gate.user, 'admin.kyc.delete', 'kyc', `kyc_session/${id}`, undefined, 'warning')
     return NextResponse.json({ success: true })
   } catch (e) {
     return NextResponse.json({ error: 'Failed to delete record' }, { status: 500 })
+  }
+}
+
+/**
+ * PATCH /api/admin/kyc — superadmin decision on a session Didit sent to
+ * manual review (D26). Body: { id, decision: 'approved' | 'rejected', note? }.
+ * Only `manual_review` (or still `pending`) sessions can be decided here.
+ */
+export async function PATCH(req: Request) {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  const body = (await req.json().catch(() => ({}))) as { id?: unknown; decision?: unknown; note?: unknown }
+  const id = typeof body.id === 'string' && /^[A-Za-z0-9-]{8,64}$/.test(body.id) ? body.id : null
+  const decision = body.decision === 'approved' || body.decision === 'rejected' ? body.decision : null
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 500) : ''
+  if (!id || !decision) return NextResponse.json({ error: 'id and decision (approved or rejected) are required' }, { status: 400 })
+
+  try {
+    const db = await getMongoDb()
+    const ts = new Date().toISOString()
+    const session = await db.collection('kyc_sessions').findOneAndUpdate(
+      { id, status: { $in: ['manual_review', 'pending'] } },
+      { $set: { status: decision, reviewed_by: gate.user.id, reviewed_at: ts, review_note: note || null, updated_at: ts } },
+      { returnDocument: 'after', projection: { _id: 0, id: 1, user_id: 1 } },
+    )
+    if (!session) return NextResponse.json({ error: 'This session is not awaiting review.' }, { status: 409 })
+
+    // Keep the user's identity record in step with the decision.
+    await db.collection('identity_verifications').updateMany(
+      { session_id: id },
+      { $set: { status: decision, reviewed_by: gate.user.id, reviewed_at: ts } },
+    )
+    await auditAdmin(gate.user, `admin.kyc.${decision}`, 'kyc', `kyc_session/${id}`, note || undefined)
+    if (session.user_id) {
+      notify({
+        user_id: String(session.user_id),
+        type: 'kyc.reviewed',
+        title: decision === 'approved' ? 'Identity verified' : 'Identity verification not approved',
+        message: decision === 'approved'
+          ? 'Your identity verification was approved.'
+          : 'Your identity verification could not be approved. Please verify again.',
+        icon: decision === 'approved' ? 'shield-check' : 'alert-circle',
+        link: '/dashboard/identity-verify',
+      }).catch(() => {})
+    }
+    return NextResponse.json({ ok: true, status: decision })
+  } catch (e) {
+    console.error('[Admin KYC] PATCH', e)
+    return NextResponse.json({ error: 'Failed to update the review' }, { status: 500 })
   }
 }

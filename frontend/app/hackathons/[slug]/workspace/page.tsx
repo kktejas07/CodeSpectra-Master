@@ -1,4 +1,5 @@
 'use client'
+import { normalizeSubmissionStatus } from '@/lib/hackathons/submission-state'
 import { formatDateTime } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useState, useRef } from 'react'
@@ -79,7 +80,7 @@ interface Team {
 }
 
 interface Submission {
-  id: string; problem_slug: string; status: 'pending' | 'under_review' | 'released'; score: number | null
+  id: string; problem_slug: string; status: string; score: number | null
   max_score: number; submitted_at: string; repo_url?: string; code?: string; commit_sha?: string
   video_url?: string; live_url?: string; comment?: string
 }
@@ -284,12 +285,18 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     if (!hackathon) return
     setClaiming(slug)
     try {
-      await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ problem_slug: slug }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        addToast({ type: 'error', title: data.error || 'Could not claim this problem' })
+      }
       await fetchClaims()
+    } catch {
+      addToast({ type: 'error', title: 'Could not claim this problem' })
     } finally {
       setClaiming(null)
     }
@@ -450,7 +457,14 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       })
       const data = await res.json()
       if (!res.ok) { setSubmitError(data.error || 'Submission failed'); return }
-      addToast({ type: 'success', title: 'Solution submitted!' })
+      const samples = Array.isArray(data.test_results) ? data.test_results as Array<{ passed: boolean }> : []
+      addToast({
+        type: 'success',
+        title: 'Solution submitted',
+        message: samples.length > 0
+          ? `${samples.filter((r) => r.passed).length} of ${samples.length} sample tests passed. Hidden tests count toward the score, shown when results are released.`
+          : 'Your score is shown when results are released.',
+      })
       await refreshSubmissions()
     } catch { setSubmitError('Network error') }
     finally { setSubmitting(false) }
@@ -507,8 +521,12 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const getProblemStatus = (problemSlug: string) => {
     const sub = submissions.find((s) => s.problem_slug === problemSlug)
     if (!sub) return 'pending'
-    if (sub.status === 'released') return 'accepted'
-    return sub.status
+    // Canonical states live in lib/hackathons/submission-state; scores stay hidden until release.
+    const st = normalizeSubmissionStatus(sub.status)
+    if (st === 'released') return 'accepted'
+    if (st === 'rejected') return 'rejected'
+    if (st === 'under_review' || st === 'scored') return 'under_review'
+    return 'pending'
   }
 
   const getPerProblemTimeLeft = (problemSlug: string, task: { time_limit_minutes?: number }) => {

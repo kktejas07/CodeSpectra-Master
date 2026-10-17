@@ -4,6 +4,12 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { users as getUsersCollection } from '@/lib/db/admin'
 import { setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
+import { accountBlockReason } from '@/lib/auth-account'
+import { auditAdmin } from '@/lib/admin-audit'
+
+function cookieStoreHasImpersonation(store: Awaited<ReturnType<typeof cookies>>): boolean {
+  return !!store.get('codespectra_impersonator')?.value
+}
 
 const SESSION_COOKIE = 'codespectra_session'
 const IMPERSONATOR_COOKIE = 'codespectra_impersonator'
@@ -69,6 +75,12 @@ export async function POST(request: NextRequest) {
     if (normalizeUserRole(target.role as string | null | undefined) === 'superadmin') {
       return NextResponse.json({ error: 'Cannot impersonate a superadmin' }, { status: 403 })
     }
+    if (accountBlockReason(target)) {
+      return NextResponse.json({ error: 'This account is deactivated.' }, { status: 409 })
+    }
+    if (cookieStoreHasImpersonation(await cookies())) {
+      return NextResponse.json({ error: 'Stop the current impersonation first.' }, { status: 409 })
+    }
 
     const cookieStore = await cookies()
     const currentSession = cookieStore.get(SESSION_COOKIE)?.value
@@ -85,6 +97,7 @@ export async function POST(request: NextRequest) {
       email: target.email || '',
       role: normalizeUserRole(target.role as string | null | undefined),
     })
+    await auditAdmin(gate.user, 'admin.impersonate.start', 'user', `user/${target.id || String(target._id)}`, `email=${target.email}`, 'critical')
 
     return NextResponse.json({
       ok: true,

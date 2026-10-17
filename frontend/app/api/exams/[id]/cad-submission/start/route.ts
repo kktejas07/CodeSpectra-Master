@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ids'
-import { checkExamEntry } from '@/lib/exam-access'
+import { checkExamEntry, isCadExam } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
@@ -45,7 +45,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const exam = await db.collection('exams').findOne({ id: examId })
     if (!exam || exam.published === false) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
-    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken })
+    if (!isCadExam(exam as Record<string, unknown>)) return NextResponse.json({ error: 'This assessment is not a CAD task.' }, { status: 400 })
+
+    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken }, { claimLinkUse: true })
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const now = nowIso()

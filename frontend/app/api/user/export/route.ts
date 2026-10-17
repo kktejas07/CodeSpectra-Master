@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { privateFieldsProjection } from '@/lib/auth-account'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +15,8 @@ export async function GET() {
     const db = await getMongoDb()
     const user = await db.collection('user').findOne(
       { id: gate.user.id },
-      { projection: { passwordHash: 0, totp_secret: 0, reset_token_hash: 0, reset_token_expires: 0 } },
+      // Secrets (TOTP, reset/verification hashes) and the raw face template never leave the server.
+      { projection: privateFieldsProjection() },
     )
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })

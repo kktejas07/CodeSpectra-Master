@@ -16,6 +16,7 @@ import { completeCheckout } from '@/lib/razorpay-checkout'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useCurrency } from '@/lib/use-currency'
+import { getCurrencySymbol } from '@/lib/currency'
 import {
   CONTACT_SALES_HREF,
   isValidPlanId,
@@ -48,6 +49,8 @@ interface PlanRow {
   features: string[]
   popular?: boolean
   mode: PlanCheckoutMode
+  /** Currency the plan is charged in (from the checkout resolver). */
+  currency: string | null
 }
 
 function PricingContent() {
@@ -107,6 +110,7 @@ function PricingContent() {
             features: Array.isArray(p.features) ? (p.features as unknown[]).map(String) : [],
             popular: Boolean(p.popular),
             mode,
+            currency: typeof p.currency === 'string' && /^[A-Z]{3}$/.test(p.currency) ? p.currency : null,
           }
         })
         setPlans(rows)
@@ -135,7 +139,10 @@ function PricingContent() {
   )
 
   const priceFor = (p: PlanRow) => (interval === 'year' ? p.yearlyPrice : p.price)
-  const money = (n: number) => `${symbol}${Number.isInteger(n) ? n : n.toFixed(2)}`
+  // Charged currency wins over the platform display currency (D12).
+  const planCurrency = plans.find((p) => p.mode === 'checkout' && p.currency)?.currency ?? null
+  const sym = planCurrency ? getCurrencySymbol(planCurrency) : symbol
+  const money = (n: number) => `${sym}${Number.isInteger(n) ? n : n.toFixed(2)}`
 
   const openCheckout = (p: PlanRow) => {
     if (p.mode === 'contact_sales') {
@@ -224,7 +231,7 @@ function PricingContent() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Could not switch plans')
       setFreeOpen(false)
-      addToast({ type: 'success', title: 'Switched to Free', message: 'Your paid plan has been cancelled.' })
+      addToast({ type: 'success', title: 'Plan cancelled', message: 'You keep paid features until the end of the current period, then move to Free.' })
       await loadCurrent()
     } catch (e) {
       addToast({ type: 'error', title: 'Plan change', message: e instanceof Error ? e.message : 'Could not switch plans' })
@@ -441,7 +448,7 @@ function PricingContent() {
               {discountInfo && (
                 <p className={cn('text-sm', discountInfo.valid ? 'text-green-600 dark:text-green-400' : 'text-destructive')}>
                   {discountInfo.valid
-                    ? `Coupon applied: ${discountInfo.type === 'flat' ? `${symbol}${discountInfo.value} off` : `${discountInfo.value}% off`}`
+                    ? `Coupon applied: ${discountInfo.type === 'flat' ? `${sym}${discountInfo.value} off` : `${discountInfo.value}% off`}`
                     : discountInfo.error}
                 </p>
               )}
@@ -463,7 +470,7 @@ function PricingContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Switch to the free plan?</AlertDialogTitle>
             <AlertDialogDescription>
-              This cancels your paid plan now. Paid features stop working and the remaining time isn&apos;t refunded automatically.
+              Your paid plan is cancelled at the end of the current period. You keep paid features until then, and nothing renews.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

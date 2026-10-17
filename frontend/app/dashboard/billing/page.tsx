@@ -37,6 +37,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
+import { useCurrency } from '@/lib/use-currency'
 import { Illustration } from '@/components/illustrations/spot'
 
 type InvoiceRow = {
@@ -74,6 +75,7 @@ type Plan = {
   features: string[]
   popular?: boolean
   checkout_mode?: PlanCheckoutMode
+  currency?: string | null
 }
 
 type PaymentMethod = {
@@ -112,13 +114,11 @@ function BillingContent() {
   const [cancelOpen, setCancelOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
 
-  const [currency, setCurrency] = useState('USD')
-  useEffect(() => {
-    fetch('/api/admin/platform-settings', { credentials: 'include' })
-      .then(r => r.json())
-      .then(d => { if (d?.settings?.platform_currency) setCurrency(d.settings.platform_currency) })
-      .catch(() => {})
-  }, [])
+  // Platform currency from the public settings endpoint (the admin one is
+  // superadmin-only); the subscription's own currency overrides it below.
+  const { currency: platformCurrency } = useCurrency()
+  const [subCurrency, setCurrency] = useState<string | null>(null)
+  const currency = subCurrency || platformCurrency
 
   const [pickPlan, setPickPlan] = useState('pro')
   const [pickInterval, setPickInterval] = useState<'month' | 'year'>('month')
@@ -143,6 +143,7 @@ function BillingContent() {
       const sub = d.subscription as {
         plan_id: string; plan_name?: string; status: string; starts_at?: string; ends_at?: string
         interval?: 'month' | 'year'; amount?: number | null; currency?: string | null
+        cancel_at_period_end?: boolean; cancelled_at?: string | null
       } | null
       const planId = sub?.plan_id || 'free'
       const catalog = planList.find((p) => p.id === planId)
@@ -155,7 +156,7 @@ function BillingContent() {
         billingInterval: iv,
         currentPeriodStart: sub?.starts_at || null,
         currentPeriodEnd: sub?.ends_at || null,
-        canceledAt: null,
+        canceledAt: sub?.cancel_at_period_end ? (sub.cancelled_at || sub.ends_at || null) : null,
         pricePerMonth: catalog?.price ?? 0,
         pricePerYear: catalog?.yearlyPrice ?? 0,
         currentPrice: sub?.amount ?? (iv === 'year' ? catalog?.yearlyPrice : catalog?.price) ?? 0,
@@ -179,7 +180,12 @@ function BillingContent() {
         downloadUrl: v.downloadUrl,
       })))
     }
-    if (pmRes.ok) { const d = await pmRes.json(); setPaymentMethods(Array.isArray(d) ? d : []) }
+    // API returns { methods }; only real saved cards (with last4) are shown.
+    if (pmRes.ok) {
+      const d = await pmRes.json()
+      const list: PaymentMethod[] = Array.isArray(d?.methods) ? d.methods : []
+      setPaymentMethods(list.filter((m) => typeof m.last4 === 'string' && m.last4.length > 0))
+    }
   }, [])
 
   useEffect(() => {
@@ -200,6 +206,19 @@ function BillingContent() {
             await new Promise((r) => setTimeout(r, 1500))
             await load()
           }
+        }
+        // PhonePe return: the server already re-checked the status; poll while pending.
+        const phonepeStatus = searchParams.get('payment') === 'phonepe' ? searchParams.get('status') : null
+        if (!cancelled && phonepeStatus === 'success') {
+          addToast({ type: 'success', title: 'Payment confirmed', message: 'Your plan is updated.' })
+        } else if (!cancelled && phonepeStatus === 'pending') {
+          addToast({ type: 'info', title: 'Payment pending', message: 'PhonePe is still confirming the payment. This page will refresh.', duration: 8000 })
+          for (let i = 0; i < 6 && !cancelled; i++) {
+            await new Promise((r) => setTimeout(r, 2500))
+            await load()
+          }
+        } else if (!cancelled && phonepeStatus === 'failed') {
+          addToast({ type: 'error', title: 'Payment not completed', message: 'No plan change was made. You can try again.' })
         }
         if (!cancelled && searchParams.get('canceled') === '1') {
           addToast({
@@ -313,7 +332,7 @@ function BillingContent() {
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Cancel failed')
       setCancelOpen(false)
-      addToast({ type: 'success', title: 'Subscription canceled', message: 'Access continues until the period end shown below.' })
+      addToast({ type: 'success', title: 'Subscription cancelled', message: 'Access continues until the period end shown below.' })
       await load()
     } catch (e) {
       addToast({
@@ -321,6 +340,21 @@ function BillingContent() {
         title: 'Cancel failed',
         message: e instanceof Error ? e.message : 'Failed',
       })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const resumeSub = async () => {
+    setBusy('resume')
+    try {
+      const res = await csrfFetch('/api/billing/cancel', { method: 'DELETE', credentials: 'include' })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Could not resume')
+      addToast({ type: 'success', title: 'Plan kept', message: 'Your cancellation was undone.' })
+      await load()
+    } catch (e) {
+      addToast({ type: 'error', title: 'Resume failed', message: e instanceof Error ? e.message : 'Failed' })
     } finally {
       setBusy(null)
     }
@@ -355,7 +389,8 @@ function BillingContent() {
     )
   }
 
-  const isCanceled = subscription.status === 'canceled'
+  // Cancelled at period end: still active, access until currentPeriodEnd.
+  const isCanceled = Boolean(subscription.canceledAt)
   const nextBill = subscription.currentPeriodEnd
     ? formatDate(subscription.currentPeriodEnd)
     : '—'
@@ -395,12 +430,12 @@ function BillingContent() {
             </p>
             {subscription.canceledAt ? (
               <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
-                Canceled — access until {nextBill}
+                Cancelled — access until {nextBill}
               </p>
             ) : null}
           </div>
           <Badge className={isCanceled ? 'bg-muted text-muted-foreground' : 'bg-green-500/15 text-green-800 dark:text-green-400'}>
-            {isCanceled ? 'Canceled' : subscription.status}
+            {isCanceled ? 'Cancelling' : subscription.status}
           </Badge>
         </div>
 
@@ -418,7 +453,7 @@ function BillingContent() {
           </div>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="text-muted-foreground">Next renewal</p>
+              <p className="text-muted-foreground">{isCanceled ? 'Access until' : 'Current period ends'}</p>
               <p className="font-medium tabular-nums text-foreground">{nextBill}</p>
             </div>
             <div>
@@ -429,15 +464,22 @@ function BillingContent() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-2" data-tour="billing-actions">
-          <Button onClick={() => setUpgradeOpen(true)} disabled={Boolean(busy) || isCanceled}>
+          <Button onClick={() => setUpgradeOpen(true)} disabled={Boolean(busy)}>
             Upgrade / change plan
           </Button>
           <Button variant="outline" onClick={() => setCycleOpen(true)} disabled={Boolean(busy) || isCanceled || subscription.planId === 'free'}>
             Change billing cycle
           </Button>
-          <Button variant="outline" onClick={() => setCancelOpen(true)} disabled={Boolean(busy) || isCanceled || subscription.planId === 'free'}>
-            Cancel subscription
-          </Button>
+          {isCanceled ? (
+            <Button variant="outline" onClick={() => void resumeSub()} disabled={Boolean(busy)}>
+              {busy === 'resume' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+              Keep my plan
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => setCancelOpen(true)} disabled={Boolean(busy) || subscription.planId === 'free'}>
+              Cancel subscription
+            </Button>
+          )}
         </div>
       </Card>
 
@@ -564,7 +606,7 @@ function BillingContent() {
                         ? `${p.name} — contact sales`
                         : mode === 'free'
                           ? `${p.name} — free`
-                          : `${p.name} — ${getCurrencySymbol(currency)}${p.price}/mo (${getCurrencySymbol(currency)}${p.yearlyPrice}/yr)`}
+                          : `${p.name} — ${getCurrencySymbol(p.currency || currency)}${p.price}/mo (${getCurrencySymbol(p.currency || currency)}${p.yearlyPrice}/yr)`}
                     </option>
                   )
                 })}

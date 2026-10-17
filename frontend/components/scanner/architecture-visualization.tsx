@@ -150,7 +150,7 @@ export function ArchitectureVisualization({
           </div>
           <Button onClick={onAddComponent} className="gap-2 shrink-0">
             <Plus className="w-4 h-4" />
-            Add Component
+            Add component
           </Button>
         </div>
       </div>
@@ -201,13 +201,13 @@ export function ArchitectureVisualization({
           {/* SVG Canvas Card — Circular view */}
           <Card className="relative overflow-hidden backdrop-blur h-[400px]">
             <div className="absolute top-4 left-4 z-10 flex gap-1 bg-background/80 backdrop-blur rounded-md border border-border p-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(50, zoom - 15))}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(50, zoom - 15))} aria-label="Zoom out">
                 <ZoomOut className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetView}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetView} aria-label="Reset view">
                 <Maximize2 className="w-4 h-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.min(200, zoom + 15))}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.min(200, zoom + 15))} aria-label="Zoom in">
                 <ZoomIn className="w-4 h-4" />
               </Button>
             </div>

@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       const doc = normalizeBankQuestion(items[i])
       if (!doc) { skipped++; continue }
       doc.source = source
+      doc.review_status = 'draft' // imported keys are checked before exams can sample them
       const hash = bankContentHash(doc)
       if (seen.has(hash)) { skipped++; continue }
       seen.add(hash)

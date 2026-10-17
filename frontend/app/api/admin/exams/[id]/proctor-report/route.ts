@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { users as usersCol } from '@/lib/db/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -9,7 +10,7 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> }
 ) {
-  const gate = await requireSuperAdmin()
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { id: examId } = await ctx.params
@@ -17,8 +18,10 @@ export async function GET(
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    // Tenant admins may read reports for their own tenant's exams only.
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
+    const exam = owned.doc
 
     // All submissions for this exam
     const submissions = await db.collection('exam_submissions')
@@ -53,7 +56,7 @@ export async function GET(
 
     // Fetch user profiles
     const users = userIds.length > 0
-      ? await db.collection('users').find({ id: { $in: userIds } }).toArray()
+      ? await (await usersCol()).find({ id: { $in: userIds } } as never).toArray()
       : []
     const userMap = new Map(users.map((u: any) => [u.id, u]))
 

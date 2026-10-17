@@ -1,7 +1,9 @@
 import 'server-only'
 import { getMongoDb } from '@/lib/mongodb'
 import { BILLING_PLANS, type BillingPlanId } from '@/lib/billing-catalog'
-import { type MergedBillingPlan } from '@/lib/pricing-catalog'
+import { type MergedBillingPlan, mergedPlanToClientJson } from '@/lib/pricing-catalog'
+import { parsePlanPrice, planCheckoutMode, type PlanCheckoutMode } from '@/lib/billing-plan-mode'
+import { resolveBillingPlan } from '@/lib/billing-plans'
 
 export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
   try {
@@ -12,12 +14,8 @@ export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
         const id = p.plan || p.id || p._id?.toString() || 'free'
         const name = p.name || id
         const description = p.description || ''
-        let monthlyUsd = 0
-        if (typeof p.price === 'number') monthlyUsd = p.price
-        else if (typeof p.price === 'string') {
-          const m = p.price.match(/[\d.]+/)
-          if (m) monthlyUsd = parseFloat(m[0])
-        }
+        // Same parser the checkout uses ("1,499" → 1499, "Contact us" → 0).
+        const monthlyUsd = parsePlanPrice(p.price) ?? 0
         const yearlyUsd = typeof p.yearlyPrice === 'number' ? p.yearlyPrice : Math.round(monthlyUsd * 12 * 0.85)
         let features: string[] = []
         if (Array.isArray(p.features)) {
@@ -62,4 +60,36 @@ export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
 export async function getMergedPlanById(planId: string | BillingPlanId): Promise<MergedBillingPlan> {
   const all = await getMergedBillingPlans()
   return all.find((p) => p.id === planId) ?? all[0]
+}
+
+export type ClientPlanRow = ReturnType<typeof mergedPlanToClientJson> & {
+  currency: string | null
+  checkout_mode: PlanCheckoutMode
+}
+
+/**
+ * Plans for the pricing pages, priced by the same resolver checkout charges
+ * with (amount, interval and currency), so the displayed price is the charged
+ * price (D12) and "Contact us" plans never show as Free (D13).
+ */
+export async function getClientPlans(): Promise<ClientPlanRow[]> {
+  const merged = await getMergedBillingPlans()
+  return Promise.all(
+    merged.map(async (p) => {
+      const id = String(p.id)
+      const [month, year] = await Promise.all([
+        resolveBillingPlan(id, 'month').catch(() => null),
+        resolveBillingPlan(id, 'year').catch(() => null),
+      ])
+      const checkout_mode = month?.mode ?? planCheckoutMode({ id, price: p.monthlyUsd, yearlyPrice: p.yearlyUsd })
+      const base = mergedPlanToClientJson(p)
+      return {
+        ...base,
+        price: checkout_mode === 'checkout' && month ? month.amount_paise / 100 : checkout_mode === 'free' ? 0 : base.price,
+        yearlyPrice: checkout_mode === 'checkout' && year ? year.amount_paise / 100 : checkout_mode === 'free' ? 0 : base.yearlyPrice,
+        currency: month?.currency ?? null,
+        checkout_mode,
+      }
+    }),
+  )
 }

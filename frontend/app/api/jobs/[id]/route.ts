@@ -6,9 +6,18 @@ import type { IdRouteContext } from '@/lib/app-route-context'
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
+    const user = await getAPIUser()
     const col = await jobs()
     const doc = await col.findOne({ id }, { projection: { _id: 0 } })
     if (!doc) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+    const isStaff = user?.role === 'superadmin'
+      || (user?.role === 'tenant_admin' && !!user.tenantId && doc.tenant_id === user.tenantId)
+    // Everyone else only sees active posts, without internal fields.
+    if (!isStaff) {
+      if (!doc.is_active) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+      const { created_by: _c, tenant_id: _t, ...pub } = doc as any
+      return NextResponse.json(pub)
+    }
     return NextResponse.json(doc)
   } catch (error) {
     console.error('[CodeSpectra] jobs GET[id]:', error)

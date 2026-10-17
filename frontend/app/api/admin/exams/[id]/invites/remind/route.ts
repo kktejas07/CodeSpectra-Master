@@ -4,6 +4,8 @@ import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
+import { inviteIsForExam } from '@/lib/exam-access'
+import { sanitizeRegex } from '@/lib/sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,13 +29,22 @@ export async function POST(
     }
     const exam = owned.doc
 
-    const pendingInvites = await db.collection('candidate_invites').find({
-      target_url: { $regex: String(examId) },
+    // Still-valid invites for exactly this exam, from candidates who haven't submitted.
+    const nowIso = new Date().toISOString()
+    const candidates = await db.collection('candidate_invites').find({
+      $or: [{ exam_id: examId }, { target_url: { $regex: `/assessment/${sanitizeRegex(String(examId))}(?:[/?]|$)` } }],
       status: { $in: ['pending', 'active'] },
+      expires_at: { $gt: nowIso },
     }).toArray()
+    const submitted = new Set(
+      (await db.collection('exam_submissions').find({ exam_id: examId }, { projection: { _id: 0, email: 1, user_id: 1 } }).toArray())
+        .flatMap((s) => [String(s.email || '').toLowerCase(), String(s.user_id || '')]).filter(Boolean),
+    )
+    const pendingInvites = candidates.filter((inv) => inviteIsForExam(inv as Record<string, unknown>, examId)
+      && !submitted.has(String(inv.email || '').toLowerCase()) && !(inv.user_id && submitted.has(String(inv.user_id))))
 
     if (pendingInvites.length === 0) {
-      return NextResponse.json({ message: 'No pending invites to remind', sent: 0 })
+      return NextResponse.json({ message: 'No pending invites to remind', sent: 0, total: 0 })
     }
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -67,14 +78,16 @@ export async function POST(
             },
           }
         )
-        sent++
+        if (result.success) sent++
+        else errors.push(`Failed for ${invite.email}`)
       } catch (e) {
-        errors.push(`Failed for ${invite.email}: ${e instanceof Error ? e.message : 'unknown'}`)
+        console.error('[remind] send failed:', e)
+        errors.push(`Failed for ${invite.email}`)
       }
     }
 
     return NextResponse.json({
-      success: true,
+      success: sent > 0,
       sent,
       total: pendingInvites.length,
       errors: errors.length > 0 ? errors : undefined,

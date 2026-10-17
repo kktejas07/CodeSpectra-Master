@@ -3,7 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
-import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
+import { getUserAiCredits, spendAiCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -120,7 +120,6 @@ export async function POST(req: NextRequest) {
   if (balance < 1) {
     return NextResponse.json({ error: 'Insufficient AI credits' }, { status: 402 })
   }
-  await deductUserAiCredits(user.id, 1)
 
   let body: Req
   try {
@@ -191,5 +190,9 @@ Make the questions challenging but fair.`
     return NextResponse.json({ error: 'AI returned an invalid response. Please try again.' }, { status: 502 })
   }
 
-  return NextResponse.json({ questions })
+  // Charge only after a usable result (atomic; fails if the balance ran out meanwhile).
+  const spent = await spendAiCredits(user.id, 1)
+  if (!spent.ok) return NextResponse.json({ error: 'Insufficient AI credits' }, { status: 402 })
+
+  return NextResponse.json({ questions, credits_remaining: spent.balance })
 }

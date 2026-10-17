@@ -1,7 +1,9 @@
 import { formatDate } from '@/lib/format-datetime'
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
+import { hackathons, hackathonTeams, hackathonSubmissions } from '@/lib/db/qr-events'
+import { rankTeams, withFinalPoints } from '@/lib/hackathons/final-scores'
+import { sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 
 export const runtime = 'nodejs'
@@ -105,12 +107,19 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
   if (!hk.results_released) return NextResponse.json({ error: 'results not yet released' }, { status: 400 })
 
+  if (hk.features && hk.features.certificates === false) return NextResponse.json({ error: 'Certificates are off for this event' }, { status: 404 })
+
   const teamsCol = await hackathonTeams()
-  const allTeams = await teamsCol.find({ hackathon_id: hk.id }).sort({ xp: -1 }).toArray()
+  const allTeams = await teamsCol.find({ hackathon_id: hk.id }).toArray()
   const myTeam = allTeams.find((t) => t.members.some((m) => m.user_id === user.id))
   if (!myTeam) return NextResponse.json({ error: 'you did not participate in this event' }, { status: 404 })
 
-  const rank = allTeams.findIndex((t) => t.id === myTeam.id) + 1
+  // Same judged ranking (shared ranks on ties) as the results page.
+  const cfg = sanitizeJudgingConfig(hk.judging_config)
+  const subs = withFinalPoints(await (await hackathonSubmissions()).find({ hackathon_id: hk.id, status: 'released' }).toArray(), cfg)
+  const standing = rankTeams(allTeams.map((t) => t.id), subs, cfg).find((st) => st.team_id === myTeam.id)
+  if (!standing || standing.rank === null) return NextResponse.json({ error: 'Your team was not ranked in this event' }, { status: 404 })
+  const rank = standing.rank
   const settings = await getGeneralSettings()
   const tplKey = template || hk.cert_template || settings.certificate_template || 'classic'
   const render = TEMPLATES[tplKey] || renderClassic

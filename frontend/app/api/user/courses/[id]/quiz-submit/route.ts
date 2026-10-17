@@ -5,13 +5,21 @@
  * Grades a module quiz on the server from the stored answer key (the key is
  * never sent to learners — see publicCourse). Every attempt is kept in
  * `quiz_results`; certificates and module unlocks read passes from there.
- * The response reveals the correct options for this attempt only.
+ * The answer key is revealed only on a pass; after QUIZ_MAX_FAILED_ATTEMPTS
+ * failed attempts on a module the learner waits out QUIZ_COOLDOWN_MS.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
-import { QUIZ_PASS_PERCENT, ensureCourseIndexes, sectionQuizKey } from '../../_lib/course-rules'
+import {
+  QUIZ_COOLDOWN_MS,
+  QUIZ_PASS_PERCENT,
+  ensureCourseIndexes,
+  quizAttemptGate,
+  revealQuizResults,
+  sectionQuizKey,
+} from '../../_lib/course-rules'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,6 +52,28 @@ export async function POST(
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id: courseId })
     if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+
+    const failed = await db
+      .collection('quiz_results')
+      .find(
+        {
+          courseId,
+          userId: user.id,
+          sectionIndex,
+          passed: false,
+          submittedAt: { $gte: new Date(Date.now() - QUIZ_COOLDOWN_MS).toISOString() },
+        },
+        { projection: { submittedAt: 1 } },
+      )
+      .toArray()
+    const gate = quizAttemptGate(failed.map((r) => String(r.submittedAt)), new Date())
+    if (!gate.ok) {
+      const mins = Math.ceil(gate.retryAfterSec / 60)
+      return NextResponse.json(
+        { error: `You've used your attempts for this module. Review the lessons and try again in ${mins} minute${mins === 1 ? '' : 's'}.` },
+        { status: 429, headers: { 'Retry-After': String(gate.retryAfterSec) } },
+      )
+    }
 
     const quiz = sectionQuizKey(course, sectionIndex)
     if (quiz.length === 0) {
@@ -93,7 +123,7 @@ export async function POST(
       total: quiz.length,
       passed,
       passPercent: QUIZ_PASS_PERCENT,
-      results,
+      results: revealQuizResults(results, passed),
     })
   } catch (e) {
     console.error('[quiz-submit] error:', e)

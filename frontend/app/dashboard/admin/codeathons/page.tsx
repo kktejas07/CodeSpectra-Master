@@ -32,6 +32,20 @@ interface TestCase {
   hidden?: boolean
 }
 
+/** Problem-bank / AI tests ({ stdin, expected_stdout, is_sample }) → codeathon tests ({ input, expected, hidden }). */
+function toCodeathonTests(raw: unknown): TestCase[] {
+  if (!Array.isArray(raw)) return []
+  return raw
+    .map((t) => (t && typeof t === 'object' ? (t as Record<string, unknown>) : null))
+    .filter((t): t is Record<string, unknown> => !!t)
+    .map((t) => ({
+      input: String(t.input ?? t.stdin ?? ''),
+      expected: String(t.expected ?? t.expected_stdout ?? ''),
+      hidden: t.hidden === true || t.is_sample === false,
+    }))
+    .filter((t) => t.expected.trim().length > 0)
+}
+
 interface Problem {
   id: string
   title: string
@@ -455,11 +469,17 @@ export default function AdminCodeathonsPage() {
   }, [])
 
   const handleDelete = async (ids: string[]) => {
+    const deleted: string[] = []
     for (const id of ids) {
-      await csrfFetch(`/api/codeathons?id=${id}`, { method: 'DELETE', credentials: 'include' })
+      try {
+        const res = await csrfFetch(`/api/codeathons?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+        if (res.ok) deleted.push(id)
+      } catch { /* counted as failed below */ }
     }
-    addToast({ type: 'success', title: `${ids.length} codeathon${ids.length !== 1 ? 's' : ''} deleted` })
-    setCodeathons((prev) => prev.filter((c) => !ids.includes(c.id)))
+    const failed = ids.length - deleted.length
+    if (deleted.length > 0) addToast({ type: 'success', title: `${deleted.length} codeathon${deleted.length !== 1 ? 's' : ''} deleted` })
+    if (failed > 0) addToast({ type: 'error', title: `${failed} codeathon${failed !== 1 ? 's' : ''} could not be deleted` })
+    setCodeathons((prev) => prev.filter((c) => !deleted.includes(c.id)))
   }
 
   const openEdit = (c: Codeathon) => {
@@ -584,15 +604,22 @@ export default function AdminCodeathonsPage() {
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'Failed to generate problem')
       
+      // The API returns { problem: {...} } with tests as { stdin, expected_stdout, is_sample }.
+      const prob = (j.problem || {}) as Record<string, unknown>
+      const tests = toCodeathonTests(prob.test_cases)
+      if (tests.length === 0) throw new Error('The generated problem has no test cases. Try again.')
+      const sample = tests.find((t) => !t.hidden)
       const newProb: Problem = {
         id: crypto.randomUUID(),
-        title: j.title || `${aiTopic} Challenge`,
+        title: String(prob.title || `${aiTopic} Challenge`),
         difficulty: aiDifficulty,
         points: aiDifficulty === 'Easy' ? 50 : aiDifficulty === 'Hard' ? 200 : 100,
-        description: j.statement_md || j.description || 'Complete the implementation according to the problem requirements.',
-        sample_input: j.sample_input || '',
-        sample_output: j.sample_output || '',
-        test_cases: j.test_cases || [],
+        description: String(prob.statement_md || prob.description || 'Complete the implementation according to the problem requirements.'),
+        input_format: typeof prob.input_format === 'string' ? prob.input_format : undefined,
+        output_format: typeof prob.output_format === 'string' ? prob.output_format : undefined,
+        sample_input: sample?.input || '',
+        sample_output: sample?.expected || '',
+        test_cases: tests,
       }
       targetListSetter((prev) => [...prev, newProb])
       addToast({ type: 'success', title: 'AI problem generated and added to the competition' })
@@ -701,8 +728,22 @@ export default function AdminCodeathonsPage() {
       addToast({ type: 'success', title: 'Problem added to set!' })
     }
 
-    const importFromBank = (p: BankProblemOption) => {
+    const importFromBank = async (p: BankProblemOption) => {
       const diffNormalized = (p.difficulty === 'hard' ? 'Hard' : p.difficulty === 'easy' ? 'Easy' : 'Medium') as 'Easy' | 'Medium' | 'Hard'
+      // The bank list omits tests and statements; load the full problem (all
+      // tests for editors) so the codeathon can actually grade submissions.
+      let full: Record<string, unknown> = {}
+      try {
+        const key = p.slug || p.id || ''
+        const res = await fetch(`/api/problems/${encodeURIComponent(key)}?edit=1`, { cache: 'no-store', credentials: 'include' })
+        if (res.ok) full = await res.json()
+      } catch { /* handled below */ }
+      const tests = toCodeathonTests(full.test_cases)
+      if (tests.length === 0) {
+        addToast({ type: 'error', title: `"${p.title}" has no test cases to grade with` })
+        return
+      }
+      const sample = tests.find((t) => !t.hidden)
       setProblemsList((prev) => [
         ...prev,
         {
@@ -710,10 +751,19 @@ export default function AdminCodeathonsPage() {
           title: p.title,
           difficulty: diffNormalized,
           points: diffNormalized === 'Easy' ? 50 : diffNormalized === 'Hard' ? 200 : 100,
-          description: p.statement_md || p.description || 'Solve the algorithmic challenge according to specification.',
+          description: String(full.statement_md || p.statement_md || p.description || 'Solve the algorithmic challenge according to specification.'),
+          input_format: typeof full.input_format === 'string' ? full.input_format : undefined,
+          output_format: typeof full.output_format === 'string' ? full.output_format : undefined,
+          sample_input: sample?.input || '',
+          sample_output: sample?.expected || '',
+          test_cases: tests,
         }
       ])
-      addToast({ type: 'success', title: `Imported "${p.title}" from Problem Bank` })
+      addToast({
+        type: 'success',
+        title: `Imported "${p.title}" from Problem Bank`,
+        message: full.can_edit ? `${tests.length} test cases` : `${tests.length} sample test cases (hidden tests need owner access)`,
+      })
     }
 
     const removeProblem = (id: string) => {

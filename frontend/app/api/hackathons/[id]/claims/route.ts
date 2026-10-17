@@ -25,9 +25,12 @@ export async function GET(
   if (!team) return NextResponse.json({ items: [] })
 
   const claims = await hackathonClaims()
-  const items = await claims
+  const items = (await claims
     .find({ hackathon_id: hk.id, team_id: team.id }, { projection: { _id: 0 } })
-    .toArray()
+    .toArray())
+    // TTL runs about once a minute; hide anything already past its expiry.
+    .filter((c) => new Date(c.expires_at).getTime() > Date.now())
+    .map((c) => ({ ...c, expires_at: new Date(c.expires_at).toISOString() }))
   return NextResponse.json({ items })
 }
 
@@ -52,8 +55,11 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { problem_slug } = body
+  const problem_slug = typeof body.problem_slug === 'string' ? body.problem_slug.trim() : ''
   if (!problem_slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
+  if (!(hk.tasks || []).some((t) => t.problem_slug === problem_slug)) {
+    return NextResponse.json({ error: 'problem not assigned to this event' }, { status: 400 })
+  }
 
   const now = nowIso()
   const claims = await hackathonClaims()
@@ -66,7 +72,7 @@ export async function POST(
     }
   }
 
-  const expires_at = new Date(Date.now() + CLAIM_TTL_MS).toISOString()
+  const expires_at = new Date(Date.now() + CLAIM_TTL_MS)
   await claims.updateOne(
     { hackathon_id: hk.id, team_id: team.id, problem_slug },
     {
@@ -81,7 +87,11 @@ export async function POST(
       },
     },
     { upsert: true },
-  )
+  ).catch((e: unknown) => {
+    // A teammate claimed it in the same instant.
+    if ((e as { code?: number })?.code === 11000) return null
+    throw e
+  })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, expires_at: expires_at.toISOString() })
 }

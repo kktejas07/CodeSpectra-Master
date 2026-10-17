@@ -22,7 +22,6 @@
  *   - get_leaderboard     (scope) -> top N entries
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { ObjectId } from 'mongodb'
 import { problems } from '@/lib/db/problems'
 import { executeOnce } from '@/lib/piston'
 import { getUserXp } from '@/lib/db/leaderboard'
@@ -150,6 +149,7 @@ async function toolCall(name: string, args: Record<string, unknown>) {
       })
     }
     case 'run_code': {
+      if (String(args.source ?? '').length > 50_000) throw new Error('source too large (50KB max)')
       const result = await executeOnce({
         language: String(args.language),
         source: String(args.source),
@@ -162,20 +162,18 @@ async function toolCall(name: string, args: Record<string, unknown>) {
       })
     }
     case 'get_user_xp': {
-      const slug = String(args.slug || '').trim()
+      // Look up by user id or username only; never by or returning email.
+      const slug = String(args.slug || '').trim().slice(0, 64)
+      if (!slug) throw new Error('user not found')
       const db = await getMongoDb()
-      const orClauses: Record<string, unknown>[] = [
-        { email: { $regex: `^${sanitizeRegex(slug)}@`, $options: 'i' } },
-      ]
-      if (ObjectId.isValid(slug)) orClauses.unshift({ _id: new ObjectId(slug) })
-      const u = (await db.collection('user').findOne({ $or: orClauses })) as
-        | { _id: ObjectId | string; email?: string; name?: string; fullName?: string }
-        | null
-      if (!u) throw new Error('user not found')
-      const userId = typeof u._id === 'string' ? u._id : u._id.toHexString()
-      const xp = await getUserXp(userId)
+      const u = (await db.collection('user').findOne(
+        { $or: [{ id: slug }, { username: slug }] },
+        { projection: { _id: 0, id: 1, username: 1, name: 1, fullName: 1 } },
+      )) as { id?: string; username?: string; name?: string; fullName?: string } | null
+      if (!u?.id) throw new Error('user not found')
+      const xp = await getUserXp(String(u.id))
       return jsonContent({
-        user: { id: userId, email: u.email, name: u.name || u.fullName },
+        user: { id: u.id, username: u.username ?? null, name: u.name || u.fullName || null },
         xp,
         level: xpToLevel(xp),
       })
@@ -200,25 +198,13 @@ async function toolCall(name: string, args: Record<string, unknown>) {
         ])
         .toArray()
       const db = await getMongoDb()
-      const ids = rows.map((r) => r._id as string)
-      const objectIds = ids
-        .filter((id) => ObjectId.isValid(id))
-        .map((id) => new ObjectId(id))
+      const ids = rows.map((r) => String(r._id))
+      // xp_events.user_id is the user's `id` field (not the Mongo _id).
       const users = (await db
         .collection('user')
-        .find({ _id: { $in: objectIds } })
-        .toArray()) as Array<{
-        _id: ObjectId | string
-        name?: string
-        fullName?: string
-        email?: string
-      }>
-      const byId = new Map(
-        users.map((u) => [
-          typeof u._id === 'string' ? u._id : u._id.toHexString(),
-          u,
-        ]),
-      )
+        .find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, name: 1, fullName: 1 } })
+        .toArray()) as unknown as Array<{ id: string; name?: string; fullName?: string }>
+      const byId = new Map(users.map((u) => [String(u.id), u]))
       return jsonContent({
         scope,
         entries: rows.map((r, i) => {
@@ -226,7 +212,7 @@ async function toolCall(name: string, args: Record<string, unknown>) {
           return {
             rank: i + 1,
             userId: r._id,
-            name: u?.name || u?.fullName || u?.email || 'unknown',
+            name: u?.fullName || u?.name || 'Learner',
             xp: r.total,
             level: xpToLevel(r.total as number),
           }

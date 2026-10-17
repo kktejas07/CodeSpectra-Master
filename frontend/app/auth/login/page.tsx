@@ -51,6 +51,8 @@ function loginErrorMessage(code: string | null): string | null {
       return "Your organisation didn’t share a verified email address with us. Ask your admin to check the single sign-on setup.";
     case "sso_domain_mismatch":
       return "That account’s email isn’t on a domain your organisation’s single sign-on covers. Use your work account, or sign in with email.";
+    case "sso_account_disabled":
+      return "This account has been deactivated. Contact your administrator.";
     case "access_denied":
       return "Sign-in was cancelled. Choose a sign-in method to try again.";
     default:
@@ -69,12 +71,21 @@ function LoginInner() {
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(() => loginErrorMessage(searchParams.get("error")));
+  const [error, setError] = useState<string | null>(
+    () => loginErrorMessage(searchParams.get("error")) || (searchParams.get("verify_error") ? "That verification link is invalid or has expired. Sign in and send a new one from Settings." : null),
+  );
+  const notice =
+    searchParams.get("verified") === "true"
+      ? "Your email is verified. Sign in to continue."
+      : searchParams.get("expired") === "1"
+        ? "Your session ended. Sign in again to continue."
+        : null;
   // First factor passed with face or SSO; the server holds a 5-minute pending
   // sign-in until the authenticator code is entered (POST /api/auth/two-factor).
-  const [pendingSecondFactor, setPendingSecondFactor] = useState<"face" | "sso" | null>(
-    searchParams.get("twofactor") === "sso" ? "sso" : null,
-  );
+  const [pendingSecondFactor, setPendingSecondFactor] = useState<"face" | "sso" | "oauth" | null>(() => {
+    const tf = searchParams.get("twofactor");
+    return tf === "sso" || tf === "oauth" ? tf : null;
+  });
   const [lastLogin, setLastLogin] = useState<{ method: string; at: string } | null>(null);
   const [totpRequired, setTotpRequired] = useState(false);
   const [totpCode, setTotpCode] = useState("");
@@ -159,6 +170,11 @@ function LoginInner() {
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
+      if (err && typeof err === "object" && "twoFactorRequired" in err) {
+        setTotpCode("");
+        setPendingSecondFactor("oauth");
+        return;
+      }
       const name = provider === "google" ? "Google" : "GitHub";
       setError(err instanceof Error ? err.message : `${name} sign-in didn’t complete. Try again, or sign in with email.`);
     } finally {
@@ -263,16 +279,26 @@ function LoginInner() {
         ) : mode === "sso" ? (
           "We’ll send you to your organisation’s sign-in page."
         ) : (
-          "Works only if you enrolled your face after signing up."
+          "Works only if you enrolled your face and turned on two-step verification."
         )}
       </AuthHeading>
 
+      {notice && !error && (
+        <p role="status" className="mb-5 rounded-md border border-cs-grid px-4 py-3 text-[15px] text-cs-ink-soft">
+          {notice}
+        </p>
+      )}
       {error && <FormError>{error}</FormError>}
 
       {pendingSecondFactor && (
         <form onSubmit={handleSecondFactor} className="space-y-5">
           <p className="text-cs-ink-soft">
-            {pendingSecondFactor === "face" ? "Face recognised." : "Your organisation signed you in."} Enter the 6-digit code
+            {pendingSecondFactor === "face"
+              ? "Face recognised."
+              : pendingSecondFactor === "oauth"
+                ? "Your Google or GitHub account is confirmed."
+                : "Your organisation signed you in."}{" "}
+            Enter the 6-digit code
             from your authenticator app to finish.
           </p>
           <Field

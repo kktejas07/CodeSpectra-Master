@@ -3,6 +3,22 @@ import { requireAuth } from '@/lib/route-auth'
 import { jobs, jobApplications, newId, nowIso } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 
+// One application per (job, user), enforced by a unique index (created once per process).
+let indexReady: Promise<void> | null = null
+async function ensureIndex() {
+  if (!indexReady) {
+    indexReady = (async () => {
+      try {
+        const col = await jobApplications()
+        await col.createIndex({ job_id: 1, user_id: 1 }, { unique: true, name: 'job_user_unique' })
+      } catch (e: any) {
+        console.warn('[jobs/apply] unique index not created:', e?.message)
+      }
+    })()
+  }
+  return indexReady
+}
+
 export async function POST(request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth()
   if ('error' in gate) {
@@ -12,34 +28,48 @@ export async function POST(request: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const body = (await request.json().catch(() => ({}))) as {
-      resumeId?: string
-      coverLetter?: string
+      resumeId?: unknown
+      coverLetter?: unknown
+    }
+    const resumeId = typeof body.resumeId === 'string' ? body.resumeId.slice(0, 64) : null
+    const coverLetter = typeof body.coverLetter === 'string' ? body.coverLetter.slice(0, 5000) : null
+
+    const jobsCol = await jobs()
+    const job = await jobsCol.findOne({ id }, { projection: { id: 1, is_active: 1 } })
+    if (!job || !job.is_active) {
+      return NextResponse.json({ error: 'This job is no longer open' }, { status: 404 })
     }
 
+    await ensureIndex()
     const appsCol = await jobApplications()
-    const existing = await appsCol.findOne({ job_id: id, user_id: gate.user.id })
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        applicationId: existing.id,
-        jobId: id,
-        appliedAt: existing.applied_at,
-        alreadyApplied: true,
-      })
-    }
-
     const doc = {
       id: newId(),
       job_id: id,
       user_id: gate.user.id,
-      resume_id: body.resumeId ?? null,
-      cover_letter: body.coverLetter ?? null,
+      resume_id: resumeId,
+      cover_letter: coverLetter,
       status: 'submitted' as const,
       applied_at: nowIso(),
     }
-    await appsCol.insertOne(doc)
+    // Atomic: inserts only if this user has not applied yet.
+    const r = await appsCol
+      .updateOne({ job_id: id, user_id: gate.user.id }, { $setOnInsert: doc }, { upsert: true })
+      .catch((e: any) => {
+        if (e?.code === 11000) return null
+        throw e
+      })
 
-    const jobsCol = await jobs()
+    if (!r || r.upsertedCount === 0) {
+      const existing = await appsCol.findOne({ job_id: id, user_id: gate.user.id })
+      return NextResponse.json({
+        success: true,
+        applicationId: existing?.id ?? null,
+        jobId: id,
+        appliedAt: existing?.applied_at ?? null,
+        alreadyApplied: true,
+      })
+    }
+
     await jobsCol.updateOne({ id }, { $inc: { applicants: 1 } })
 
     return NextResponse.json({
@@ -50,6 +80,6 @@ export async function POST(request: Request, { params }: IdRouteContext) {
     })
   } catch (error) {
     console.error('[CodeSpectra] job apply:', error)
-    return NextResponse.json({ error: 'Failed to apply for job' }, { status: 400 })
+    return NextResponse.json({ error: 'Failed to apply for job' }, { status: 500 })
   }
 }

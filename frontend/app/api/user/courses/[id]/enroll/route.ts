@@ -45,26 +45,27 @@ export async function POST(
   try {
     const db = await getMongoDb()
 
-    // Check if already enrolled
-    const existing = await db.collection('course_enrollments').findOne({
-      courseId,
-      userId: user.id,
-    })
+    const course = await db.collection('courses').findOne({ id: courseId }, { projection: { id: 1 } })
+    if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
 
-    if (existing) {
+    // Atomic: only inserts when not enrolled yet, so the count can't double up.
+    const r = await db.collection('course_enrollments').updateOne(
+      { courseId, userId: user.id },
+      {
+        $setOnInsert: {
+          courseId,
+          userId: user.id,
+          email: user.email,
+          enrolledAt: new Date().toISOString(),
+          status: 'active',
+        },
+      },
+      { upsert: true },
+    )
+    if (r.upsertedCount === 0) {
       return NextResponse.json({ success: true, message: 'Already enrolled' })
     }
 
-    // Enroll
-    await db.collection('course_enrollments').insertOne({
-      courseId,
-      userId: user.id,
-      email: user.email,
-      enrolledAt: new Date().toISOString(),
-      status: 'active',
-    })
-
-    // Increment course enrolled count
     await db.collection('courses').updateOne(
       { id: courseId },
       { $inc: { enrolled: 1 } }
@@ -89,16 +90,18 @@ export async function DELETE(
 
   try {
     const db = await getMongoDb()
-    await db.collection('course_enrollments').deleteOne({
+    const del = await db.collection('course_enrollments').deleteOne({
       courseId,
       userId: user.id,
     })
 
-    // Decrement course enrolled count
-    await db.collection('courses').updateOne(
-      { id: courseId },
-      { $inc: { enrolled: -1 } }
-    )
+    // Decrement only when a row was actually removed, and never below zero.
+    if (del.deletedCount > 0) {
+      await db.collection('courses').updateOne(
+        { id: courseId, enrolled: { $gt: 0 } },
+        { $inc: { enrolled: -1 } }
+      )
+    }
 
     return NextResponse.json({ success: true, message: 'Unenrolled' })
   } catch (e) {

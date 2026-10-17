@@ -8,7 +8,7 @@ const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) =>
   ssr: false,
   loading: () => (
     <div className="flex h-[calc(100vh-4rem)] items-center justify-center rounded-lg border border-border/40 bg-card">
-      <div className="text-sm text-muted-foreground">Loading CAD Editor…</div>
+      <div className="text-sm text-muted-foreground">Loading CAD editor…</div>
     </div>
   ),
 });
@@ -19,6 +19,7 @@ export default function CADPage() {
 
   return (
     <div className="h-full">
+      <h1 className="sr-only">CAD editor</h1>
       <CADEditor />
     </div>
   );

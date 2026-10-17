@@ -401,7 +401,7 @@ export default function ExamPage() {
   }
 
   return (
-    <ExtensionGate onVerified={() => setExtVerified(true)}>
+    <ExtensionGate bypass={(exam as { proctoring_mode?: string }).proctoring_mode !== 'strict'} onVerified={() => setExtVerified(true)}>
     <>
       <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       <ProctorMonitor

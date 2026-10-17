@@ -14,7 +14,9 @@ interface Verification {
   event?: string
   team?: string
   members?: string[]
-  xp?: number
+  rank?: number | null
+  tied?: boolean
+  points?: number | null
   released_at?: string
   error?: string
 }
@@ -55,10 +57,14 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
                 <Users aria-hidden className="h-4 w-4" />
                 <span>{data.members?.join(', ') || 'N/A'}</span>
               </div>
-              <div className="flex items-center justify-center gap-2">
-                <Award aria-hidden className="h-4 w-4" />
-                <span className="tabular-nums">{data.xp} XP</span>
-              </div>
+              {typeof data.rank === 'number' && (
+                <div className="flex items-center justify-center gap-2">
+                  <Award aria-hidden className="h-4 w-4" />
+                  <span className="tabular-nums">
+                    Rank #{data.rank}{data.tied ? ' (tied)' : ''}{typeof data.points === 'number' ? ` · ${data.points} points` : ''}
+                  </span>
+                </div>
+              )}
             </div>
             <Badge variant="outline" className="text-green-700 dark:text-green-400 border-green-500/40 bg-green-500/10">
               Verified on CodeSpectra

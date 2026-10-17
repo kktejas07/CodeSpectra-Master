@@ -7,6 +7,7 @@ import {
   nowIso,
 } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
+import { codeathonWindow } from '@/lib/codeathon-run'
 
 export async function POST(request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth()
@@ -17,6 +18,12 @@ export async function POST(request: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const data = (await request.json().catch(() => ({}))) as { teamName?: string }
+
+    // The codeathon must exist, be published, and not be over or full.
+    const codeCol = await codeathons()
+    const codeathon = await codeCol.findOne({ id }) as (Record<string, any> | null)
+    if (!codeathon || codeathon.status === 'draft') return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+    if (codeathonWindow(codeathon).ended) return NextResponse.json({ error: 'This codeathon has ended' }, { status: 409 })
 
     const regCol = await codeathonRegistrations()
     const existing = await regCol.findOne({ codeathon_id: id, user_id: gate.user.id })
@@ -30,24 +37,30 @@ export async function POST(request: Request, { params }: IdRouteContext) {
       })
     }
 
+    // Atomic capacity: only bump the counter while under maxParticipants.
+    const max = Number(codeathon.maxParticipants ?? codeathon.max_participants) || 0
+    const seat = await codeCol.updateOne(
+      max > 0 ? { id, $or: [{ participants: { $lt: max } }, { participants: { $exists: false } }] } as Record<string, unknown> : { id },
+      { $inc: { participants: 1 } },
+    )
+    if (seat.modifiedCount === 0) return NextResponse.json({ error: 'This codeathon is full' }, { status: 409 })
+
     const doc = {
       id: newId(),
       codeathon_id: id,
       user_id: gate.user.id,
-      team_name: data.teamName ?? null,
+      team_name: typeof data.teamName === 'string' ? data.teamName.slice(0, 80) : null,
       registered_at: nowIso(),
     }
     await regCol.insertOne(doc)
 
-    // Increment participant counter.
-    const codeCol = await codeathons()
-    await codeCol.updateOne({ id }, { $inc: { participants: 1 } })
-
     // Attendance XP (idempotent per registration).
+    let xpAmount = 0
     try {
       const { awardXpWithLevelUp } = await import('@/lib/xp-service')
       const { getXpRewards } = await import('@/lib/db/leaderboard')
       const rewards = await getXpRewards()
+      xpAmount = Number(rewards.codeathon) || 0
       await awardXpWithLevelUp({
         userId: gate.user.id,
         amount: rewards.codeathon,
@@ -59,15 +72,14 @@ export async function POST(request: Request, { params }: IdRouteContext) {
       console.error('[CodeSpectra] codeathon XP award failed:', e)
     }
 
-    try {
-      const codeathonDoc = await codeCol.findOne({ id })
-      const hackathonTitle = codeathonDoc?.title || 'the hackathon'
+    if (xpAmount > 0) try {
+      const title = codeathon.title || 'the codeathon'
       const { notify } = await import('@/lib/notifications')
       await notify({
         user_id: gate.user.id,
         type: 'xp.awarded',
-        title: 'Hackathon Participant!',
-        message: `You earned 100 XP for registering for ${hackathonTitle}`,
+        title: 'Registered',
+        message: `You earned ${xpAmount} XP for registering for ${title}`,
         link: `/dashboard/codeathons/${id}`,
         icon: 'star',
       })

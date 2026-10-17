@@ -104,6 +104,36 @@ export default function AdminSSOPage() {
     } finally { setBusy(false) }
   }
 
+  const [rowBusy, setRowBusy] = useState<string | null>(null)
+  const [rowError, setRowError] = useState<string | null>(null)
+
+  const setEnabled = async (p: SSOProvider, enabled: boolean) => {
+    setRowBusy(p.id); setRowError(null)
+    try {
+      const res = await csrfFetch(`/api/admin/sso?id=${encodeURIComponent(p.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      })
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'Could not update the provider.')
+      setProviders((xs) => xs.map((x) => (x.id === p.id ? { ...x, enabled } : x)))
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : 'Could not update the provider.')
+    } finally { setRowBusy(null) }
+  }
+
+  const remove = async (p: SSOProvider) => {
+    if (!window.confirm(`Delete the ${p.name} provider? People who sign in with it will need another way in.`)) return
+    setRowBusy(p.id); setRowError(null)
+    try {
+      const res = await csrfFetch(`/api/admin/sso?id=${encodeURIComponent(p.id)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'Could not delete the provider.')
+      setProviders((xs) => xs.filter((x) => x.id !== p.id))
+    } catch (e) {
+      setRowError(e instanceof Error ? e.message : 'Could not delete the provider.')
+    } finally { setRowBusy(null) }
+  }
+
   if (!gate.ready) return null
 
   return (
@@ -202,6 +232,9 @@ export default function AdminSSOPage() {
         </Panel>
       )}
 
+      {rowError ? (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{rowError}</p>
+      ) : null}
       {/* Provider list */}
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">
@@ -237,6 +270,15 @@ export default function AdminSSOPage() {
                   {tenantName(p.tenant_id || p.org_id) || 'None (regular accounts)'}
                 </span>
               </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button size="sm" variant="outline" disabled={rowBusy === p.id} onClick={() => void setEnabled(p, !p.enabled)}>
+                  {rowBusy === p.id ? <Loader2 className="mr-1 h-3 w-3 animate-spin" aria-hidden /> : null}
+                  {p.enabled ? 'Disable' : 'Enable'}
+                </Button>
+                <Button size="sm" variant="ghost" disabled={rowBusy === p.id} onClick={() => void remove(p)} aria-label={`Delete ${p.name}`}>
+                  <Trash2 className="mr-1 h-3 w-3 text-destructive" aria-hidden /> Delete
+                </Button>
+              </div>
             </Panel>
           ))}
         </div>

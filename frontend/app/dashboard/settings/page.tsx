@@ -8,7 +8,6 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { PageHeader } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
 import {
@@ -51,13 +50,6 @@ const themes = [
   { id: 'system', label: 'System', icon: Palette },
 ] as const
 
-function readLsBool(key: string, fallback: boolean) {
-  if (typeof window === 'undefined') return fallback
-  const v = window.localStorage.getItem(key)
-  if (v === 'true') return true
-  if (v === 'false') return false
-  return fallback
-}
 
 export default function SettingsPage() {
   const confirmDialog = useConfirm()
@@ -68,12 +60,12 @@ export default function SettingsPage() {
   const addToast = useToast()
   const { theme: nextTheme, setTheme } = useTheme()
   const [language, setLanguage] = useState('en')
-  const [emailNotifications, setEmailNotifications] = useState(true)
-  const [pushNotifications, setPushNotifications] = useState(true)
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null)
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
+  const [resendingVerify, setResendingVerify] = useState(false)
   const [hydrated, setHydrated] = useState(false)
   const [themeReady, setThemeReady] = useState(false)
-  const [savingKey, setSavingKey] = useState<'appearance' | 'notifications' | null>(null)
+  const [savingKey, setSavingKey] = useState<'appearance' | null>(null)
 
   const [pwDialogOpen, setPwDialogOpen] = useState(false)
   const [pwCurrent, setPwCurrent] = useState('')
@@ -90,8 +82,6 @@ export default function SettingsPage() {
     try {
       const lang = window.localStorage.getItem(LS.language)
       if (lang) setLanguage(lang)
-      setEmailNotifications(readLsBool(LS.emailNotif, true))
-      setPushNotifications(readLsBool(LS.pushNotif, true))
       /** One-time migration from old appearance key to `next-themes`. */
       const legacy = window.localStorage.getItem('codespectra:user:theme')
       if (legacy === 'auto') {
@@ -150,6 +140,25 @@ export default function SettingsPage() {
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => { if (data?.user) setEmailVerified(data.user.emailVerified !== false) })
+      .catch(() => {})
+  }, [])
+
+  const resendVerification = async () => {
+    setResendingVerify(true)
+    try {
+      const res = await csrfFetch('/api/auth/verify-email', { method: 'POST' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) { addToast({ type: 'error', title: 'Couldn’t send email', message: json.error || 'Try again later.' }); return }
+      if (json.alreadyVerified) { setEmailVerified(true); addToast({ type: 'success', title: 'Email already verified' }); return }
+      addToast({ type: 'success', title: 'Verification email sent', message: 'Open the link in it within 24 hours.' })
+    } catch { addToast({ type: 'error', title: 'Network error', message: 'Could not reach server.' }) }
+    finally { setResendingVerify(false) }
+  }
+
+  useEffect(() => {
     fetch('/api/user/2fa/status')
       .then(r => r.json())
       .then(data => { if (!data.error) setTwoFactorEnabled(data.enabled) })
@@ -174,18 +183,6 @@ export default function SettingsPage() {
     }
   }, [addToast, language, nextTheme, setTheme])
 
-  const saveNotifications = useCallback(() => {
-    setSavingKey('notifications')
-    try {
-      window.localStorage.setItem(LS.emailNotif, String(emailNotifications))
-      window.localStorage.setItem(LS.pushNotif, String(pushNotifications))
-      addToast({ type: 'success', title: 'Notification defaults saved', message: 'Channel rules still live under notification preferences.' })
-    } catch {
-      addToast({ type: 'error', title: 'Could not save', message: 'Local storage may be disabled.' })
-    } finally {
-      setSavingKey(null)
-    }
-  }, [addToast, emailNotifications, pushNotifications])
 
   const handleChangePassword = async () => {
     if (!pwCurrent || !pwNew) { setPwError('Both fields are required'); return }
@@ -224,16 +221,13 @@ export default function SettingsPage() {
   }
 
   const confirmDeleteAccount = async () => {
-    if (!deletePassword) {
-      addToast({ type: 'error', title: 'Password required', message: 'Enter your password to confirm deletion.' })
-      return
-    }
     setDeletingAccount(true)
     try {
       const res = await csrfFetch('/api/user/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: deletePassword }),
+        // The server checks whichever the account has: password, or authenticator code.
+        body: JSON.stringify({ password: deletePassword, code: deletePassword }),
       })
       const json = await res.json()
 
@@ -366,35 +360,15 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold">Notifications</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                High-level toggles; channel rules live under notification preferences.
+                Choose which emails and in-app alerts you get, per channel and topic.
               </p>
             </div>
-            <div className="divide-y divide-border/60 px-6">
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="min-w-0 space-y-0.5">
-                  <p className="font-medium text-foreground">Email</p>
-                  <p className="text-sm text-muted-foreground">Product and account updates by email</p>
-                </div>
-                <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
-              </div>
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="min-w-0 space-y-0.5">
-                  <p className="font-medium text-foreground">Push</p>
-                  <p className="text-sm text-muted-foreground">In-browser alerts when you are online</p>
-                </div>
-                <Switch checked={pushNotifications} onCheckedChange={setPushNotifications} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/20 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="px-6 py-4">
               <Button variant="outline" className="w-full justify-between rounded-lg sm:w-auto" asChild>
                 <Link href="/dashboard/notifications/preferences">
                   Notification preferences
                   <ChevronRight className="h-4 w-4" />
                 </Link>
-              </Button>
-              <Button className="gap-2 rounded-lg sm:min-w-[160px]" onClick={() => void saveNotifications()} disabled={savingKey !== null}>
-                {savingKey === 'notifications' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save notifications
               </Button>
             </div>
           </Card>
@@ -409,6 +383,21 @@ export default function SettingsPage() {
                 Manage your password and two-factor authentication.
               </p>
             </div>
+            {emailVerified === false && (
+              <>
+                <div className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="font-medium text-foreground">Email not verified</p>
+                    <p className="text-sm text-muted-foreground">Confirm your email so you can recover your account.</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => void resendVerification()} disabled={resendingVerify}>
+                    {resendingVerify ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Resend verification email
+                  </Button>
+                </div>
+                <Separator className="mx-6 w-auto" />
+              </>
+            )}
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">
                 <p className="font-medium text-foreground">Two-factor authentication</p>
@@ -537,18 +526,18 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle>Confirm account deletion</DialogTitle>
             <DialogDescription>
-              Are you absolutely sure you want to delete your account? This action cannot be undone. Enter your password to confirm.
+              This permanently deletes your account and signs you out everywhere. Enter your password, or a code from your authenticator app if you sign in with Google or GitHub.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="delete-password">Password</Label>
+              <Label htmlFor="delete-password">Password or authenticator code</Label>
               <Input 
                 id="delete-password"
                 type="password"
                 value={deletePassword} 
                 onChange={e => setDeletePassword(e.target.value)} 
-                placeholder="Enter your password"
+                placeholder="Password or 6-digit code"
                 autoFocus
               />
             </div>

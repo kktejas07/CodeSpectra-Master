@@ -129,7 +129,7 @@ export function CodeDiffViewer({
       {/* Actions */}
       <div className="flex gap-2 pt-4 border-t border-border">
         <Button onClick={onApply} className="flex-1" size="sm">
-          Apply This Fix
+          Apply this fix
         </Button>
         <Button variant="outline" size="sm" onClick={() => setShowDiff((v) => !v)}>
           {showDiff ? 'Hide Diff' : 'Show Diff'}

@@ -1,28 +1,20 @@
 import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { HUNDRED_DAYS } from '@/lib/100-days-data'
+import { completedDaysFrom, difficultyTotals, sprintRun } from '@/lib/hundred-days-progress'
 
 export const runtime = 'nodejs'
 
-interface DayProgress {
-  day: number
-  completed: boolean
-  problemsCompleted: string[]
-  completedAt?: string
-}
+const LANGS = new Set(Object.keys(HUNDRED_DAYS[0]?.problems[0]?.starterCode ?? { python: '' }))
 
-interface User100DaysProgress {
-  userId: string
-  completedDays: number[]
-  dayProgress: Record<number, DayProgress>
-  currentDay: number
-  streak: number
-  totalProblemsSolved: number
-  language: string
-  updatedAt: string
-}
-
-/** GET — Load user's 100-days progress */
+/**
+ * GET — the user's 100-day sprint progress.
+ * Progress comes from problems the server graded as accepted
+ * (`solvedProblems`, written by /api/arena/run). `legacyDays` holds days saved
+ * by older clients before server grading existed; they still count as done so
+ * nobody loses progress, but nothing new is written there.
+ */
 export async function GET() {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -30,25 +22,21 @@ export async function GET() {
   try {
     const db = await getMongoDb()
     const doc = await db.collection('user_100days_progress').findOne({ userId: user.id })
-    
-    if (!doc) {
-      return NextResponse.json({
-        completedDays: [],
-        dayProgress: {},
-        currentDay: 1,
-        streak: 0,
-        totalProblemsSolved: 0,
-        language: 'python',
-      })
-    }
+    const solved: string[] = Array.isArray(doc?.solvedProblems) ? doc!.solvedProblems.filter((x: unknown) => typeof x === 'string') : []
+    const legacy: number[] = Array.isArray(doc?.completedDays)
+      ? doc!.completedDays.filter((n: unknown) => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= 100)
+      : []
+    const completedDays = [...new Set([...completedDaysFrom(solved, HUNDRED_DAYS), ...legacy])].sort((a, b) => a - b)
+    const totals = difficultyTotals(solved, HUNDRED_DAYS)
 
     return NextResponse.json({
-      completedDays: doc.completedDays || [],
-      dayProgress: doc.dayProgress || {},
-      currentDay: doc.currentDay || 1,
-      streak: doc.streak || 0,
-      totalProblemsSolved: doc.totalProblemsSolved || 0,
-      language: doc.language || 'python',
+      completedDays,
+      solvedProblems: solved,
+      currentDay: Math.min(100, sprintRun(completedDays) + 1),
+      streak: sprintRun(completedDays),
+      totalProblemsSolved: totals.all.solved,
+      totals,
+      language: typeof doc?.language === 'string' ? doc.language : 'python',
     })
   } catch (e) {
     console.error('[100-days] Load error:', e)
@@ -56,35 +44,30 @@ export async function GET() {
   }
 }
 
-/** POST — Save user's 100-days progress */
+/** POST — save preferences only (`language`). Progress is recorded by the grader. */
 export async function POST(request: Request) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  let body: Partial<User100DaysProgress>
+  let body: { language?: unknown }
   try {
     body = await request.json()
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
+  const language = typeof body.language === 'string' ? body.language : ''
+  if (!LANGS.has(language)) {
+    return NextResponse.json({ error: 'Unsupported language' }, { status: 400 })
+  }
+
   try {
     const db = await getMongoDb()
-    const update: Record<string, unknown> = { updatedAt: new Date().toISOString() }
-    
-    if (body.completedDays) update.completedDays = body.completedDays
-    if (body.dayProgress) update.dayProgress = body.dayProgress
-    if (body.currentDay) update.currentDay = body.currentDay
-    if (body.streak !== undefined) update.streak = body.streak
-    if (body.totalProblemsSolved !== undefined) update.totalProblemsSolved = body.totalProblemsSolved
-    if (body.language) update.language = body.language
-
     await db.collection('user_100days_progress').updateOne(
       { userId: user.id },
-      { $set: update },
-      { upsert: true }
+      { $set: { language, updatedAt: new Date().toISOString() } },
+      { upsert: true },
     )
-
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[100-days] Save error:', e)

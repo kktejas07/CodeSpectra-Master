@@ -1,15 +1,26 @@
 /**
- * PhonePe server client + helpers.
+ * PhonePe PG v1 (Standard Checkout) client.
  *
- * Credential resolution order (highest priority first):
- *   1. MongoDB `platform_settings.value.{phonepe_merchant_id, phonepe_salt_key, phonepe_salt_index}`
- *      — admin-saved via /dashboard/admin/settings.
- *   2. Environment variables PHONEPE_MERCHANT_ID / PHONEPE_SALT_KEY / PHONEPE_SALT_INDEX.
+ * !! NEEDS A SANDBOX TEST before it is enabled. Written against the public
+ * PG v1 docs; not yet exercised against the PhonePe UAT environment. PhonePe
+ * is never chosen for checkout unless PHONEPE_ENABLED=true is set as well as
+ * the credentials (see isPhonePeConfiguredAsync).
  *
- * PhonePe uses a different auth scheme than Razorpay:
- *   - X-VERIFY header = SHA256(base64(payload) + "/transaction/v1/order" + saltKey) + "###" + saltIndex
- *   - Response contains a shortUrl for payment
- *   - Webhook verification uses X-Verification-Header header
+ * Credentials (read on every call, no process-lifetime cache):
+ *   platform_settings server secrets phonepe_merchant_id / phonepe_salt_key /
+ *   phonepe_salt_index, else env PHONEPE_MERCHANT_ID / PHONEPE_SALT_KEY /
+ *   PHONEPE_SALT_INDEX. PHONEPE_ENVIRONMENT=production selects live hosts.
+ *
+ * Protocol:
+ *   pay     POST {host}/pg/v1/pay   body {request: base64(json)}
+ *           X-VERIFY = sha256(base64 + "/pg/v1/pay" + saltKey) + "###" + saltIndex
+ *           → data.instrumentResponse.redirectInfo.url (hosted pay page)
+ *   status  GET  {host}/pg/v1/status/{merchantId}/{merchantTransactionId}
+ *           X-VERIFY = sha256(path + saltKey) + "###" + saltIndex, X-MERCHANT-ID
+ *   S2S callback  POST callbackUrl body {response: base64(json)}
+ *           X-VERIFY = sha256(response + saltKey) + "###" + saltIndex
+ *   Browser redirect (redirectMode REDIRECT): GET redirectUrl — carries nothing
+ *           trusted; the return route re-checks status server-side.
  */
 import crypto from 'crypto'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
@@ -17,178 +28,161 @@ import { readServerSecrets } from '@/lib/server-secrets-cache'
 interface PhonePeCreds {
   merchantId?: string
   saltKey?: string
-  saltIndex?: string
-  webhookSecret?: string
+  saltIndex: string
 }
 
-let _creds: PhonePeCreds | null = null
-
 async function loadCreds(): Promise<PhonePeCreds> {
-  if (_creds) return _creds
-  const fromDb = await readServerSecrets()
-  _creds = {
+  const fromDb = await readServerSecrets().catch(() => ({} as Record<string, string | undefined>))
+  return {
     merchantId: fromDb.phonepe_merchant_id || process.env.PHONEPE_MERCHANT_ID,
     saltKey: fromDb.phonepe_salt_key || process.env.PHONEPE_SALT_KEY,
     saltIndex: fromDb.phonepe_salt_index || process.env.PHONEPE_SALT_INDEX || '1',
-    webhookSecret: fromDb.phonepe_webhook_secret || process.env.PHONEPE_WEBHOOK_SECRET,
   }
-  return _creds
 }
 
-export function isPhonePeConfigured(): boolean {
-  // Note: caller should use await isPhonePeConfiguredAsync() for async check
-  return Boolean(process.env.PHONEPE_MERCHANT_ID && process.env.PHONEPE_SALT_KEY)
-}
-
+/** Credentials present AND explicitly enabled (kept off until sandbox-tested). */
 export async function isPhonePeConfiguredAsync(): Promise<boolean> {
+  if (process.env.PHONEPE_ENABLED !== 'true') return false
   const c = await loadCreds()
   return Boolean(c.merchantId && c.saltKey)
 }
 
-function getBaseUrl(): string {
-  const env = process.env.PHONEPE_ENVIRONMENT
-  if (env === 'production') {
-    return 'https://api.phonepe.com'
-  }
-  // Default to sandbox/preprod
-  return 'https://api-preprod.phonepe.com'
+function host(): string {
+  return process.env.PHONEPE_ENVIRONMENT === 'production'
+    ? 'https://api.phonepe.com/apis/hermes'
+    : 'https://api-preprod.phonepe.com/apis/pg-sandbox'
 }
 
-function generateXVerify(payload: string, endpoint: string, saltKey: string, saltIndex: string): string {
-  const base64Payload = Buffer.from(payload).toString('base64')
-  const stringToHash = base64Payload + endpoint + saltKey
-  const sha256Hash = crypto.createHash('sha256').update(stringToHash).digest('hex')
-  return `${sha256Hash}###${saltIndex}`
+// ─── Pure helpers (exported for tests) ─────────────────────────────────────
+
+export function sha256Hex(s: string): string {
+  return crypto.createHash('sha256').update(s).digest('hex')
 }
 
-export interface PhonePeOrderResponse {
-  success: boolean
-  code: string
-  message: string
-  data?: {
-    merchantTransactionId: string
-    instrumentResponse?: {
-      type?: string
-      intentUrl?: string
-      /** Present for desktop/web flows — prefer over intentUrl when set. */
-      redirectUrl?: string
-      merchantUrl?: string
-    }
-  }
+/** X-VERIFY for a request: sha256(body64 + path + saltKey)###saltIndex. */
+export function phonePeChecksum(base64OrEmpty: string, path: string, saltKey: string, saltIndex: string): string {
+  return `${sha256Hex(base64OrEmpty + path + saltKey)}###${saltIndex}`
 }
 
-export interface PhonePeOrderRequest {
-  merchantId: string
-  merchantTransactionId: string
-  merchantUserId: string
-  amount: number
-  redirectUrl: string
-  redirectMode: string
-  callbackUrl: string
-  mobileNumber?: string
-  email?: string
-  message?: string
-}
-
-export async function createPhonePeOrder(params: {
-  merchantTransactionId: string
-  amount: number
-  userId: string
-  email: string
-  callbackUrl: string
-  redirectUrl: string
-}): Promise<PhonePeOrderResponse> {
-  const c = await loadCreds()
-  if (!c.merchantId || !c.saltKey) {
-    throw new Error('PhonePe is not configured')
-  }
-
-  const baseUrl = getBaseUrl()
-  const endpoint = '/transaction/v1/order'
-
-  const payload: PhonePeOrderRequest = {
-    merchantId: c.merchantId,
-    merchantTransactionId: params.merchantTransactionId,
-    merchantUserId: params.userId,
-    amount: params.amount,
-    redirectUrl: params.redirectUrl,
-    redirectMode: 'POST',
-    callbackUrl: params.callbackUrl,
-    email: params.email,
-  }
-
-  const payloadString = JSON.stringify(payload)
-  const xVerify = generateXVerify(payloadString, endpoint, c.saltKey, c.saltIndex || '1')
-
-  const response = await fetch(`${baseUrl}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Verify': xVerify,
-      'accept': 'application/json',
-    },
-    body: payloadString,
-  })
-
-  const result = await response.json() as PhonePeOrderResponse
-  return result
-}
-
-export async function verifyPhonePeWebhook(
-  rawBody: string,
-  signature: string,
-): Promise<boolean> {
-  const c = await loadCreds()
-  if (!c.webhookSecret) return false
-
-  const expected = crypto
-    .createHash('sha256')
-    .update(rawBody + c.webhookSecret)
-    .digest('hex')
-
-  const a = Buffer.from(signature || '')
+/** Verify the X-VERIFY header PhonePe sends on the S2S callback. */
+export function verifyCallbackChecksum(response64: string, xVerify: string, saltKey: string, saltIndex: string): boolean {
+  const expected = `${sha256Hex(response64 + saltKey)}###${saltIndex}`
+  const a = Buffer.from(xVerify || '')
   const b = Buffer.from(expected)
   return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
 
-export interface PhonePeStatusResponse {
+/** PhonePe ids: alphanumeric plus _ and -, max 35 (txn) / 36 (user). */
+export function phonePeSafeId(raw: string, max: number): string {
+  return raw.replace(/[^A-Za-z0-9_-]/g, '').slice(0, max) || 'U'
+}
+
+// ─── API ───────────────────────────────────────────────────────────────────
+
+export interface PhonePePayResponse {
   success: boolean
   code: string
   message: string
   data?: {
-    merchantId: string
-    merchantTransactionId: string
-    transactionId: string
-    amount: number
-    state: string
-    userId: string
+    merchantId?: string
+    merchantTransactionId?: string
+    instrumentResponse?: { type?: string; redirectInfo?: { url?: string; method?: string } }
   }
 }
 
-export async function getPhonePeTransactionStatus(
-  merchantTransactionId: string,
-): Promise<PhonePeStatusResponse> {
+export async function createPhonePePayment(params: {
+  merchantTransactionId: string
+  amount: number
+  userId: string
+  redirectUrl: string
+  callbackUrl: string
+}): Promise<{ payUrl: string }> {
   const c = await loadCreds()
-  if (!c.merchantId || !c.saltKey) {
-    throw new Error('PhonePe is not configured')
+  if (!c.merchantId || !c.saltKey) throw new Error('No payment provider configured: PhonePe credentials missing')
+  if (!Number.isInteger(params.amount) || params.amount < 100) throw new Error('PhonePe amount must be at least 100 paise')
+
+  const path = '/pg/v1/pay'
+  const payload = {
+    merchantId: c.merchantId,
+    merchantTransactionId: params.merchantTransactionId,
+    merchantUserId: phonePeSafeId(params.userId, 36),
+    amount: params.amount,
+    redirectUrl: params.redirectUrl,
+    redirectMode: 'REDIRECT',
+    callbackUrl: params.callbackUrl,
+    paymentInstrument: { type: 'PAY_PAGE' },
   }
+  const body64 = Buffer.from(JSON.stringify(payload)).toString('base64')
+  const res = await fetch(`${host()}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+      'X-VERIFY': phonePeChecksum(body64, path, c.saltKey, c.saltIndex),
+    },
+    body: JSON.stringify({ request: body64 }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  const json = (await res.json().catch(() => null)) as PhonePePayResponse | null
+  const url = json?.data?.instrumentResponse?.redirectInfo?.url
+  if (!res.ok || !json?.success || !url) {
+    console.error('[phonepe] pay failed', { status: res.status, code: json?.code })
+    throw new Error('PhonePe order creation failed')
+  }
+  return { payUrl: url }
+}
 
-  const baseUrl = getBaseUrl()
-  const endpoint = `/transaction/v1/status/${c.merchantId}/${merchantTransactionId}`
-  const xVerify = generateXVerify('', endpoint, c.saltKey, c.saltIndex || '1')
+export interface PhonePeStatus {
+  success: boolean
+  code: string
+  message?: string
+  data?: {
+    merchantId?: string
+    merchantTransactionId?: string
+    transactionId?: string
+    amount?: number
+    state?: 'COMPLETED' | 'FAILED' | 'PENDING' | string
+    responseCode?: string
+  }
+}
 
-  const response = await fetch(`${baseUrl}${endpoint}`, {
+export async function getPhonePeTransactionStatus(merchantTransactionId: string): Promise<PhonePeStatus> {
+  const c = await loadCreds()
+  if (!c.merchantId || !c.saltKey) throw new Error('PhonePe is not configured')
+  const txn = phonePeSafeId(merchantTransactionId, 35)
+  const path = `/pg/v1/status/${encodeURIComponent(c.merchantId)}/${txn}`
+  const res = await fetch(`${host()}${path}`, {
     method: 'GET',
     headers: {
-      'X-Verify': xVerify,
-      'accept': 'application/json',
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+      'X-VERIFY': phonePeChecksum('', path, c.saltKey, c.saltIndex),
+      'X-MERCHANT-ID': c.merchantId,
     },
+    signal: AbortSignal.timeout(15_000),
   })
-
-  const result = await response.json() as PhonePeStatusResponse
-  return result
+  const json = (await res.json().catch(() => null)) as PhonePeStatus | null
+  return json ?? { success: false, code: 'BAD_RESPONSE' }
 }
 
-export function getPhonePeMerchantId(): string | null {
-  return process.env.PHONEPE_MERCHANT_ID || null
+/**
+ * Verify and decode an S2S callback body. Returns null when the checksum or
+ * payload is invalid. The decoded state is still re-checked via the status
+ * API before an order is activated.
+ */
+export async function decodePhonePeCallback(rawBody: string, xVerify: string): Promise<PhonePeStatus | null> {
+  const c = await loadCreds()
+  if (!c.saltKey) return null
+  let response64 = ''
+  try {
+    response64 = String((JSON.parse(rawBody) as { response?: unknown }).response || '')
+  } catch {
+    return null
+  }
+  if (!response64 || !verifyCallbackChecksum(response64, xVerify, c.saltKey, c.saltIndex)) return null
+  try {
+    return JSON.parse(Buffer.from(response64, 'base64').toString('utf8')) as PhonePeStatus
+  } catch {
+    return null
+  }
 }

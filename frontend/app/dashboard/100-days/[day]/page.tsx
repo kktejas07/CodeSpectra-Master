@@ -113,7 +113,21 @@ export default function DayPage() {
 
   useEffect(() => {
     setCompletedProblems(getCompletedProblems(day))
-  }, [day])
+    // Merge in what the server recorded (works across devices).
+    if (!dayData) return
+    const ids = new Set(dayData.problems.map(p => p.id))
+    fetch('/api/user/100-days', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (!Array.isArray(data?.solvedProblems)) return
+        setCompletedProblems(prev => {
+          const next = new Set(prev)
+          for (const id of data.solvedProblems as string[]) if (ids.has(id)) next.add(id)
+          return next
+        })
+      })
+      .catch(() => {})
+  }, [day, dayData])
 
   if (!dayData || day < 1 || day > 100) {
     return (
@@ -158,7 +172,8 @@ export default function DayPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({
           source_code: codeRef.current, language,
-          test_cases: problem.examples.map(ex => ({ input: ex.input, expected_output: ex.output })),
+          // The server grades sprint problems on its own copy of the examples.
+          hundred_days_problem_id: problem.id,
           mode: 'submit',
         }),
       })

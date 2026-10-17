@@ -1,7 +1,44 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
-import { problems, nowIso, type TestCase } from '@/lib/db/problems'
+import { requireAuth, getAPIUser, type APIUser } from '@/lib/route-auth'
+import { problems, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
+import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
+import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
+
+/**
+ * Who may edit a problem: superadmin; its creator; or a tenant_admin of the
+ * problem's own tenant. Global problems (no tenant_id) are superadmin/owner
+ * only — a tenant admin editing them would change grading for everyone.
+ */
+function canEditProblem(user: APIUser | null, doc: Pick<ProblemDoc, 'created_by'> & { tenant_id?: string | null }): boolean {
+  if (!user) return false
+  if (user.role === 'superadmin') return true
+  if (doc.created_by && doc.created_by === user.id) return true
+  return user.role === 'tenant_admin' && !!user.tenantId && !!doc.tenant_id && doc.tenant_id === user.tenantId
+}
+
+/**
+ * hackathon_only problems are visible to editors, and to staff, judges and
+ * team members of an event that uses them once it has started; after an
+ * event ends they become readable by anyone (showcase).
+ */
+async function canSeeHackathonProblem(user: APIUser | null, doc: ProblemDoc & { tenant_id?: string | null }): Promise<boolean> {
+  if (canEditProblem(user, doc)) return true
+  const events = await (await hackathons())
+    .find({ 'tasks.problem_slug': doc.slug, status: { $ne: 'draft' } }, { projection: { id: 1, tenant_id: 1, judges: 1, starts_at: 1, ends_at: 1, status: 1 } })
+    .toArray()
+  const now = Date.now()
+  for (const hk of events) {
+    if (new Date(hk.ends_at).getTime() < now) return true
+    if (!user) continue
+    if (isHackathonStaff(user, hk) || isHackathonJudge(user, hk)) return true
+    if (new Date(hk.starts_at).getTime() <= now) {
+      const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id }, { projection: { id: 1 } })
+      if (team) return true
+    }
+  }
+  return false
+}
 
 /**
  * GET /api/problems/[slug]
@@ -12,15 +49,30 @@ import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
  * so the arena UI remains usable in demo mode.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   ctx: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await ctx.params
+  const wantsEdit = new URL(request.url).searchParams.get('edit') === '1'
 
   try {
     const col = await problems()
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
     if (doc) {
+      const needsUser = wantsEdit || doc.visibility === 'hackathon_only' || doc.is_published === false
+      const user = needsUser ? await getAPIUser().catch(() => null) : null
+      // Editors loading the edit form get every test, so a save never drops the hidden ones.
+      if (wantsEdit && canEditProblem(user, doc)) {
+        const { _id, ...rest } = doc
+        void _id
+        return NextResponse.json({ ...rest, can_edit: true })
+      }
+      if (doc.visibility === 'hackathon_only' && !(await canSeeHackathonProblem(user, doc))) {
+        return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+      }
+      if (doc.is_published === false && doc.visibility !== 'hackathon_only' && !canEditProblem(user, doc)) {
+        return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+      }
       return NextResponse.json({
         ...doc,
         test_cases: (doc.test_cases || []).filter((t) => t.is_sample),
@@ -65,10 +117,8 @@ export async function PATCH(
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
     if (!doc) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
 
-    const isOwner = doc.created_by && doc.created_by === gate.user.id
-    const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
-    if (!isOwner && !isAdmin) {
-      return NextResponse.json({ error: 'Forbidden — only the owner or an admin can edit this problem' }, { status: 403 })
+    if (!canEditProblem(gate.user, doc)) {
+      return NextResponse.json({ error: 'Forbidden — only the owner or a platform admin can edit this problem' }, { status: 403 })
     }
 
     const body = (await request.json()) as Record<string, unknown>
@@ -101,7 +151,7 @@ export async function PATCH(
       patch.test_cases = (Array.isArray(body.test_cases) ? body.test_cases : ([] as unknown[])).map((tc, i) => {
         const t = tc as Record<string, unknown>
         return {
-          id: String(t.id) || `tc_${Date.now()}_${i}`,
+          id: t.id ? String(t.id) : `tc_${Date.now()}_${i}`,
           stdin: String(t.stdin ?? ''),
           expected_stdout: String(t.expected_stdout ?? ''),
           is_sample: Boolean(t.is_sample),

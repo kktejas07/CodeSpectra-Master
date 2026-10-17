@@ -70,7 +70,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   useEffect(() => { load() }, [load])
 
   const handleApply = async () => {
-    if (!authUser) { router.push('/login'); return }
+    if (!authUser) { router.push(`/auth/login?redirect=${encodeURIComponent(`/jobs/${id}`)}`); return }
     setApplying(true); setApplyError(null)
     try {
       // csrfFetch attaches (and if needed bootstraps) the CSRF token.
@@ -254,7 +254,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   ) : (
                     <div className="space-y-2 text-center">
                       <p className="text-sm text-cs-ink-soft">Sign in to apply for this position</p>
-                      <Button className="h-11 w-full rounded-full" onClick={() => router.push('/login')}>
+                      <Button className="h-11 w-full rounded-full" onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(`/jobs/${id}`)}`)}>
                         Sign in to apply
                       </Button>
                       <p className="text-xs text-cs-ink-soft">

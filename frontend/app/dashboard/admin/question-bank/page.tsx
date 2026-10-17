@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react'
+import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye, CheckCircle2 } from 'lucide-react'
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 import { metaFor, QUESTION_TYPES } from '@/lib/question-types'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
@@ -56,6 +56,7 @@ interface BankQuestion {
   level?: string
   assessment_category?: string
   source: string
+  review_status?: 'draft' | 'approved'
   tolerance?: number
   pairs?: { left: string; right: string }[]
   matrix?: { rows: string[]; columns: string[] }
@@ -153,9 +154,29 @@ export default function QuestionBankPage() {
   const categoryLabel = (id: string) => ASSESSMENT_CATEGORIES.find(c => c.id === id)?.label || id
 
   const handleDelete = async (q: BankQuestion) => {
-    await csrfFetch(`/api/question-bank?id=${q.id}`, { method: 'DELETE', credentials: 'include' })
+    const res = await csrfFetch(`/api/question-bank?id=${q.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => null)
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({})) as { error?: string } | undefined
+      addToast({ type: 'error', title: 'Failed to delete question', message: err?.error })
+      return
+    }
     addToast({ type: 'success', title: 'Question deleted' })
     fetchRows(); fetchStats()
+  }
+
+  // AI-generated and imported questions stay out of exams until approved.
+  const handleApprove = async (q: BankQuestion) => {
+    const res = await csrfFetch(`/api/question-bank?id=${q.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ ...q, review_status: 'approved' }),
+    }).catch(() => null)
+    if (!res?.ok) {
+      const err = await res?.json().catch(() => ({})) as { error?: string } | undefined
+      addToast({ type: 'error', title: 'Failed to approve question', message: err?.error })
+      return
+    }
+    addToast({ type: 'success', title: 'Question approved', message: 'Exams can now pick it from the bank.' })
+    fetchRows()
   }
 
   const openEdit = (q?: BankQuestion) => {
@@ -210,12 +231,16 @@ export default function QuestionBankPage() {
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `/api/question-bank?id=${editing.id}` : '/api/question-bank'
     try {
-      await csrfFetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) })
+      const res = await csrfFetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(payload) })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error || '')
+      }
       addToast({ type: 'success', title: editing ? 'Question updated' : 'Question added' })
       setEditOpen(false)
       fetchRows(); fetchStats()
-    } catch {
-      addToast({ type: 'error', title: editing ? 'Failed to update question' : 'Failed to add question' })
+    } catch (e) {
+      addToast({ type: 'error', title: editing ? 'Failed to update question' : 'Failed to add question', message: e instanceof Error && e.message ? e.message : undefined })
     }
   }
 
@@ -418,7 +443,10 @@ export default function QuestionBankPage() {
               ) : rows.map(r => (
                 <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">
                   <td className="py-3 px-4 max-w-[320px]">
-                    <p className="font-medium truncate">{r.title}</p>
+                    <p className="font-medium truncate">
+                      {r.review_status === 'draft' && <Badge variant="outline" className="mr-1.5 border-amber-500/40 text-amber-700 dark:text-amber-300 align-middle">Needs review</Badge>}
+                      {r.title}
+                    </p>
                     <p className="text-xs text-muted-foreground truncate">{r.question}</p>
                   </td>
                   <td className="py-3 px-4">{r.branch ? <Badge variant="outline">{branchLabel(r.branch)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
@@ -431,6 +459,9 @@ export default function QuestionBankPage() {
                   <td className="py-3 px-4 text-right">
                     <div className="inline-flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setViewing(r); setViewOpen(true) }} title="View" aria-label="View question"><Eye className="w-3.5 h-3.5" /></Button>
+                      {r.review_status === 'draft' && (
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleApprove(r)} title="Approve for exams" aria-label="Approve question for exams"><CheckCircle2 className="w-3.5 h-3.5" /></Button>
+                      )}
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Edit" aria-label="Edit question"><Pencil className="w-3.5 h-3.5" /></Button>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(r)} title="Delete" aria-label="Delete question"><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>

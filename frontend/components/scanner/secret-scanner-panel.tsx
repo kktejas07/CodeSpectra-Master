@@ -96,7 +96,7 @@ export function SecretScannerPanel() {
               className="flex-1 rounded-md border border-border/40 bg-background px-3 py-2 text-sm outline-none focus:border-primary/60"
             />
             <Button variant="outline" size="sm" onClick={loadDemo}>
-              <Code2 className="h-3.5 w-3.5 mr-1" /> Load Demo
+              <Code2 className="h-3.5 w-3.5 mr-1" /> Load demo
             </Button>
           </div>
 

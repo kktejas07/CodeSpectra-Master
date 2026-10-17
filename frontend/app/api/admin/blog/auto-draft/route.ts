@@ -12,6 +12,7 @@
  * 7. Save as draft
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml, safeHttpUrl } from '@/lib/safe-html'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
 import { performWebSearch } from '@/lib/ai/web-search'
@@ -214,14 +215,16 @@ export async function POST(req: NextRequest) {
       slug,
       title: post.title,
       excerpt: post.excerpt,
-      body: post.body,
+      body: sanitizeArticleHtml(post.body),
       category,
       tags: [],
       author_name: 'CodeSpectra Editorial',
       status: 'draft',
       read_minutes: Math.ceil(post.body.replace(/<[^>]*>/g, '').split(/\s+/).length / 200),
       cover_image: undefined,
-      source_urls: source_urls.length > 0 ? source_urls : undefined,
+      source_urls: source_urls.length > 0
+        ? source_urls.map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
+        : undefined,
       published_at: undefined,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

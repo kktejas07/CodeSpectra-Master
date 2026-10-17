@@ -14,7 +14,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
-import { checkExamEntry, recordExamAttempt } from '@/lib/exam-access'
+import { attemptDeadlineMs, checkExamEntry, isCadExam, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import {
   CAD_DEFAULT_POINTS,
@@ -69,8 +69,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const autoSubmitted = body.auto_submitted === true
   const inviteToken = typeof body.inviteToken === 'string' ? body.inviteToken : null
   const linkToken = typeof body.linkToken === 'string' ? body.linkToken : null
-  const clientStartedAt = typeof body.started_at === 'string' && !Number.isNaN(Date.parse(body.started_at)) ? body.started_at : null
-  const clientTotalTimeMs = Math.max(0, Math.min(Number(body.total_time_ms) || 0, 7 * 24 * 3600 * 1000))
   // Identity capture from the pre-start check (same fields the main submit
   // stores). Only small data:image URLs are kept.
   const photo = (v: unknown): string | null =>
@@ -99,31 +97,41 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const exam = await db.collection('exams').findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
-    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken })
+    // A CAD submission on an ordinary test would burn one of its attempts.
+    if (!isCadExam(exam as Record<string, unknown>)) return NextResponse.json({ error: 'This assessment is not a CAD task.' }, { status: 400 })
+
+    // ignoreWindowClose: the attempt deadline (capped at ends_at) is the limit.
+    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken }, { ignoreWindowClose: true })
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
-    const files = (await db.collection('exam_submission_files')
-      .find({ exam_id: examId, user_id: userId, status: 'staged' }, { projection: META_PROJECTION })
-      .toArray()) as unknown as CadFileMeta[]
-    const hasNative = files.some((f) => f.kind === 'native')
-    const hasStep = files.some((f) => f.kind === 'step')
-    // A timed-out auto-submit takes whatever was uploaded; a manual submit needs both files.
-    if (!autoSubmitted && (!hasNative || !hasStep)) {
-      return NextResponse.json({ error: 'Upload both your native CAD file and the STEP export before submitting.' }, { status: 400 })
-    }
-
-    // Start time recorded by POST ./start for this attempt wins over the
-    // client's value, so reviewers see a server-side timeline.
+    // Start time recorded by POST ./start for this attempt is required; the
+    // deadline (start + duration, capped at ends_at) is enforced here.
     const draft = await db.collection('exam_drafts').findOne(
       { exam_id: examId, user_id: userId },
       { projection: { _id: 0, cad_started_at: 1, cad_started_attempt: 1 } },
     )
     const serverStartedAt = draft?.cad_started_attempt === access.attemptNo && typeof draft.cad_started_at === 'string'
       ? draft.cad_started_at : null
-    const startedAt = serverStartedAt || clientStartedAt
-    const totalTimeMs = serverStartedAt
-      ? Math.max(0, Math.min(Date.now() - Date.parse(serverStartedAt), 7 * 24 * 3600 * 1000))
-      : clientTotalTimeMs
+    if (!serverStartedAt) return NextResponse.json({ error: 'Start the test before submitting.' }, { status: 409 })
+    const deadline = attemptDeadlineMs(exam as Record<string, unknown>, serverStartedAt)
+    const late = deadline !== null && Date.now() > deadline + EXAM_SUBMIT_GRACE_MS
+
+    const allFiles = (await db.collection('exam_submission_files')
+      .find({ exam_id: examId, user_id: userId, status: 'staged' }, { projection: META_PROJECTION })
+      .toArray()) as unknown as CadFileMeta[]
+    // Late: only files uploaded before the deadline count.
+    const files = late && deadline !== null
+      ? allFiles.filter((f) => Date.parse(f.uploaded_at) <= deadline + EXAM_SUBMIT_GRACE_MS)
+      : allFiles
+    const hasNative = files.some((f) => f.kind === 'native')
+    const hasStep = files.some((f) => f.kind === 'step')
+    // A timed-out auto-submit takes whatever was uploaded; a manual submit needs both files.
+    if (!autoSubmitted && !late && (!hasNative || !hasStep)) {
+      return NextResponse.json({ error: 'Upload both your native CAD file and the STEP export before submitting.' }, { status: 400 })
+    }
+
+    const startedAt = serverStartedAt
+    const totalTimeMs = Math.max(0, Math.min(Date.now() - Date.parse(serverStartedAt), 7 * 24 * 3600 * 1000))
 
     // Same extension check as the main submit: logged, not blocking.
     const auditEvents = await db.collection('proctor_events').countDocuments({
@@ -149,11 +157,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       score: 0,
       max_score: points,
       has_pending_review: true,
-      auto_submitted: autoSubmitted,
+      auto_submitted: autoSubmitted || late,
+      late_submit: late,
       extension_detected: extensionDetected,
       id_photo: idPhoto,
       face_photo: facePhoto,
-      start_time_source: serverStartedAt ? 'server' : 'client',
+      start_time_source: 'server',
       details: [{ qId: CAD_TASK_QID, correct: false, points, answer: rationale, pending_review: true }],
       cad,
       device_info: {

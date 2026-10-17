@@ -282,6 +282,8 @@ export function compareObjectiveAnswer(q: QuestionGradingSpec, userAnswer: strin
 export interface SanitizedTestCase {
   input: string
   output: string
+  /** Hidden from candidates (graded only). Absent = a visible sample. */
+  hidden?: true
 }
 const MAX_TEST_CASES = 10
 const MAX_TC_FIELD_CHARS = 2000
@@ -311,7 +313,9 @@ export function sanitizeTestCases(raw: unknown): SanitizedTestCase[] {
     const input = pick(rec.input ?? rec.stdin)
     const output = pick(rec.output ?? rec.expected ?? rec.expected_stdout ?? rec.expected_output)
     if (!input && !output) continue
-    out.push({ input, output })
+    // Only a literal boolean flag marks a case hidden (isSample:false is the older spelling).
+    const hidden = rec.hidden === true || rec.is_hidden === true || rec.isSample === false
+    out.push(hidden ? { input, output, hidden: true } : { input, output })
   }
   return out
 }

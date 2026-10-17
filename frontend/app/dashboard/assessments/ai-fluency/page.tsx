@@ -294,7 +294,7 @@ export default function AiFluencySessionPage() {
                 onClick={handleComplete}
                 disabled={completing}
               >
-                <Flag className="mr-1 h-3 w-3" /> End Early
+                <Flag className="mr-1 h-3 w-3" /> End early
               </Button>
               <Button
                 size="sm"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect, useCallback } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,10 +9,10 @@ import {
   ArrowRight, Loader2, ChevronDown, ChevronUp, Bookmark, Target
 } from 'lucide-react'
 import { HUNDRED_DAYS, type HundredDay } from '@/lib/100-days-data'
+import { difficultyTotals } from '@/lib/hundred-days-progress'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { UserAvatar } from '@/components/ui/user-avatar'
-import { csrfFetch } from '@/lib/csrf-fetch'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonCard, SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
@@ -39,45 +39,26 @@ export default function HundredDaysPage() {
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [userRank, setUserRank] = useState<{points: number, rank: number}>({points: 0, rank: 0})
   
-  // Load progress from server on mount
+  const [solvedProblems, setSolvedProblems] = useState<Set<string>>(new Set())
+
+  // Load progress from the server (it records every accepted sprint submission).
   useEffect(() => {
     if (!gate.ready) return
     setLoadingProgress(true)
     fetch('/api/user/100-days', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
-        if (data.completedDays) {
+        if (Array.isArray(data.completedDays)) {
           const serverCompleted = new Set<number>(data.completedDays as number[])
           setCompleted(serverCompleted)
-          // Sync to localStorage as cache
+          // Cache for the next visit's first paint.
           try { localStorage.setItem('100-days-completed', JSON.stringify([...serverCompleted])) } catch {}
         }
+        if (Array.isArray(data.solvedProblems)) setSolvedProblems(new Set<string>(data.solvedProblems as string[]))
       })
       .catch(() => {})
       .finally(() => setLoadingProgress(false))
   }, [gate.ready])
-
-  // Save progress to server when completed changes
-  const saveProgress = useCallback(async (newCompleted: Set<number>) => {
-    try {
-      await csrfFetch('/api/user/100-days', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          completedDays: [...newCompleted],
-          totalProblemsSolved: newCompleted.size * 3, // avg 3 problems per day
-        }),
-      })
-    } catch { /* fallback to localStorage */ }
-  }, [])
-
-  useEffect(() => {
-    if (!gate.ready || loadingProgress) return
-    // Save to server when completed changes
-    saveProgress(completed)
-    // Also save to localStorage as cache
-    try { localStorage.setItem('100-days-completed', JSON.stringify([...completed])) } catch {}
-  }, [completed, gate.ready, loadingProgress, saveProgress])
 
   useEffect(() => {
     fetch('/api/user/heatmap?weeks=12', { credentials: 'include' })
@@ -93,8 +74,8 @@ export default function HundredDaysPage() {
       .then(r => r.json())
       .then(data => {
         if (data && !data.error) {
-          setLeaderboard(data.leaderboard || [])
-          setUserRank(data.currentUser || {points: 0, rank: 0})
+          setLeaderboard(Array.isArray(data.entries) ? data.entries : [])
+          setUserRank({ points: Number(data.currentUser?.points) || 0, rank: Number(data.currentUser?.rank) || 0 })
         }
       })
       .catch(() => {})
@@ -113,15 +94,14 @@ export default function HundredDaysPage() {
       return s
     })()
     
-    // Real stats from data
-    const easyTotal = 338; const mediumTotal = 572; const hardTotal = 271;
-    const totalQ = easyTotal + mediumTotal + hardTotal
-    
-    // Calculate actual solved from completed days (each day has 3 problems with weighted difficulty)
-    const easySolved = Math.min(easyTotal, done * 1)
-    const mediumSolved = Math.min(mediumTotal, done * 2)
-    const hardSolved = Math.min(hardTotal, Math.floor(done * 0.5))
-    const totalSolved = easySolved + mediumSolved + hardSolved
+    // Counts come from this sprint's own problem list and the problems the server saw solved.
+    const t = difficultyTotals(solvedProblems, HUNDRED_DAYS)
+    const easyTotal = t.easy.total; const mediumTotal = t.medium.total; const hardTotal = t.hard.total
+    const totalQ = t.all.total
+    const easySolved = t.easy.solved
+    const mediumSolved = t.medium.solved
+    const hardSolved = t.hard.solved
+    const totalSolved = t.all.solved
 
     return { 
       total, done, streak, pct: Math.round((done / 100) * 100), 
@@ -129,7 +109,7 @@ export default function HundredDaysPage() {
       easyTotal, mediumTotal, hardTotal, totalQ,
       easySolved, mediumSolved, hardSolved, totalSolved
     }
-  }, [completed])
+  }, [completed, solvedProblems])
 
   const toggleDay = (day: number) => {
     setExpandedDays(prev => {
@@ -354,7 +334,7 @@ export default function HundredDaysPage() {
                       
                       <div className="divide-y divide-border/40">
                         {d.problems.map((prob, pi) => {
-                          const probDone = isCompleted
+                          const probDone = isCompleted || solvedProblems.has(prob.id)
                           return (
                             <div key={pi} className="grid grid-cols-12 items-center p-3 text-sm hover:bg-muted/30 transition-colors group">
                                <div className="col-span-7 flex items-center gap-3 min-w-0">
@@ -403,7 +383,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[1].name} name={leaderboard[1].name} className="h-10 w-10 bg-muted" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1">{leaderboard[1].name}</div>
-                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{leaderboard[1].points.toLocaleString()} pts</div>
+                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{Number(leaderboard[1].xp || 0).toLocaleString()} pts</div>
                    </div>
                    <div className="w-full h-16 bg-primary/10 rounded-t-lg flex items-center justify-center border-t-4 border-primary/40">
                       <span className="text-2xl font-black text-primary/70">2</span>
@@ -418,7 +398,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[0].name} name={leaderboard[0].name} className="h-12 w-12 bg-amber-100 dark:bg-amber-900/40 ring-2 ring-amber-400" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1 text-amber-700 dark:text-amber-400">{leaderboard[0].name}</div>
-                     <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{leaderboard[0].points.toLocaleString()} pts</div>
+                     <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{Number(leaderboard[0].xp || 0).toLocaleString()} pts</div>
                    </div>
                    <div className="w-full h-20 bg-amber-100 dark:bg-amber-900/40 rounded-t-lg flex items-start pt-2 justify-center border-t-4 border-amber-400 shadow-inner">
                       <span className="text-3xl font-black text-amber-600 dark:text-amber-400">1</span>
@@ -432,7 +412,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[2].name} name={leaderboard[2].name} className="h-10 w-10 bg-muted" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1">{leaderboard[2].name}</div>
-                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{leaderboard[2].points.toLocaleString()} pts</div>
+                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{Number(leaderboard[2].xp || 0).toLocaleString()} pts</div>
                    </div>
                    <div className="w-full h-12 bg-orange-100 dark:bg-orange-900/40 rounded-t-lg flex items-center justify-center border-t-4 border-orange-300">
                       <span className="text-2xl font-black text-orange-500 dark:text-orange-300">3</span>

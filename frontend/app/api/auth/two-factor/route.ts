@@ -7,13 +7,14 @@ import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { createUserSession } from '@/lib/db/sessions'
 import { updateUserLastLogin } from '@/lib/db/admin'
+import { accountBlockReason } from '@/lib/auth-account'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/auth/two-factor — second step for sign-ins whose first factor
- * was not a password (face, SSO). Those routes park the user in a 5-minute
+ * was not a password (face, SSO, Google/GitHub). Those routes park the user in a 5-minute
  * signed `codespectra_2fa_pending` cookie instead of issuing a session; this
  * route checks the TOTP code against that pending user and only then sets
  * the real session. Password login keeps its own in-request TOTP step.
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
 
     const db = await getMongoDb()
     const user = await db.collection('user').findOne({ $or: [{ id: pending.uid }, { _id: pending.uid as never }] })
-    if (!user || !user.totp_enabled || !user.totp_secret) {
+    if (!user || accountBlockReason(user) || !user.totp_enabled || !user.totp_secret) {
       await clearPending2faCookie()
       return NextResponse.json({ error: 'Your sign-in couldn’t be completed. Start again.', expired: true }, { status: 401 })
     }

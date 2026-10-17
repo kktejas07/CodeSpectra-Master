@@ -13,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { toLocalDatetimeString } from '@/lib/datetime-local'
+import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   Trash2, HelpCircle, CheckSquare, ListChecks,
@@ -37,13 +38,15 @@ export default function HackathonCreatePage() {
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
 
+  // Dates are entered in the platform timezone, like the edit page and list modal.
+  const tz = usePlatformTimezone()
   const [form, setForm] = useState({
     name: '',
     description: '',
     num_teams: 8,
     max_per_team: 4,
     timeout_minutes: 60,
-    starts_at: toLocalDatetimeString(new Date(Date.now() + 3600000)),
+    starts_at: toZonedDatetimeString(new Date(Date.now() + 3600000), tz),
     tasks: [] as { slug: string; title: string; points: number; difficulty: string; required: boolean }[],
     rules: [
       { type: 'scoring' as const, title: 'Scoring', description: 'Points are awarded based on test cases passed and code quality.' },
@@ -156,10 +159,12 @@ export default function HackathonCreatePage() {
         const j = await res.json()
         if (!res.ok) throw new Error(j.error || 'Generation failed')
         const prob = j.problem as Record<string, unknown>
-        const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
-          ? j.published_problem_slug
-          : (typeof prob.slug === 'string' ? prob.slug
-            : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+        // Only a problem that was actually saved can be a task — a made-up slug
+        // would leave the workspace problem panel empty.
+        if (typeof j.published_problem_slug !== 'string' || !j.published_problem_slug) {
+          throw new Error('The problem was generated but could not be saved. Try again.')
+        }
+        const slug: string = j.published_problem_slug
         const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
           ? prob.difficulty : 'medium') as string
         const title = String(prob.title || slug)
@@ -185,7 +190,7 @@ export default function HackathonCreatePage() {
   async function editProblem(slug: string) {
     setEditLoading(true)
     try {
-      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}?edit=1`, { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
       setOwnForm({
@@ -298,7 +303,7 @@ export default function HackathonCreatePage() {
           name: form.name, description: form.description,
           num_teams: form.num_teams, max_per_team: form.max_per_team,
           timeout_minutes: form.timeout_minutes,
-          starts_at: new Date(form.starts_at).toISOString(),
+          starts_at: fromZonedDatetimeString(form.starts_at, tz),
           tasks: form.tasks.map((t) => ({
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
@@ -418,7 +423,7 @@ export default function HackathonCreatePage() {
                 <Label className="text-sm font-medium">Starts at</Label>
                 <Input type="datetime-local" className="h-10" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
                 <p className="mt-1.5 text-[11px] text-muted-foreground bg-muted/30 p-2 rounded-md border border-border/50 inline-block">
-                  Ends at {formatDateTime(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000)}
+                  Ends at {/T\d{2}:\d{2}/.test(form.starts_at) ? formatDateTime(new Date(fromZonedDatetimeString(form.starts_at, tz)).getTime() + form.timeout_minutes * 60000) : '–'}
                 </p>
               </div>
               <div className="space-y-2.5">

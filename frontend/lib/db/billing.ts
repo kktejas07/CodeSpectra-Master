@@ -66,6 +66,11 @@ export interface BillingSubscriptionDoc {
   last_payment_id?: string
   last_order_id?: string
   trial_ends_at?: string
+  /** Order that funded the trial window; the trial-expiry job only ends that period. */
+  trial_order_id?: string
+  /** User cancelled: access continues until ends_at, then the plan simply lapses. */
+  cancel_at_period_end?: boolean
+  cancelled_at?: string
   created_at: string
   updated_at?: string
 }
@@ -82,7 +87,7 @@ export interface BillingCouponDoc {
   trial_duration_days?: number
   created_at: string
   created_by?: string
-  redemptions?: Array<{ user_id: string; user_name?: string; user_email?: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string }>
+  redemptions?: Array<{ user_id: string; user_name?: string; user_email?: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string; status?: 'reserved' | 'redeemed' }>
 }
 
 export async function billingOrders(): Promise<Collection<BillingOrderDoc>> {
@@ -98,36 +103,89 @@ export async function billingCoupons(): Promise<Collection<BillingCouponDoc>> {
   return (await getMongoDb()).collection<BillingCouponDoc>('billing_coupons')
 }
 
-export async function recordCouponRedemption(
-  couponId: string, userId: string, orderId?: string, planId?: string,
-): Promise<void> {
-  const col = await billingCoupons()
-  const redemption: any = { user_id: userId, redeemed_at: nowIso() }
-
+async function redeemerInfo(userId: string): Promise<{ user_name?: string; user_email?: string }> {
   try {
     const db = await getMongoDb()
     const u = await db.collection('user').findOne(
-      { _id: userId } as any,
+      { $or: [{ id: userId }, { _id: userId }] } as any,
       { projection: { name: 1, fullName: 1, email: 1 } },
     ) as { name?: string; fullName?: string; email?: string } | null
-    if (u) {
-      redemption.user_name = u.fullName || u.name || ''
-      redemption.user_email = u.email || ''
-    }
+    if (u) return { user_name: u.fullName || u.name || '', user_email: u.email || '' }
   } catch { /* best effort */ }
-
-  if (orderId) redemption.order_id = orderId
-  if (planId) redemption.plan_id = planId
-  await col.updateOne(
-    { id: couponId },
-    { $inc: { current_uses: 1 }, $push: { redemptions: redemption } },
-  )
+  return {}
 }
 
+/**
+ * Atomically reserve one use of a coupon for this user at checkout (D20):
+ * counts against max_uses immediately and allows one reservation per user.
+ * A user's own unpaid reservation (abandoned checkout) can be reused.
+ * Returns false when the coupon is used up or the user already redeemed it.
+ */
+export async function reserveCouponUse(couponId: string, userId: string): Promise<boolean> {
+  const col = await billingCoupons()
+  const reservation = { user_id: userId, status: 'reserved', redeemed_at: nowIso(), ...(await redeemerInfo(userId)) }
+  const res = await col.updateOne(
+    {
+      id: couponId,
+      active: true,
+      'redemptions.user_id': { $ne: userId },
+      $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }],
+    } as any,
+    { $inc: { current_uses: 1 }, $push: { redemptions: reservation as any } },
+  )
+  if (res.modifiedCount > 0) return true
+  // Already holds an unpaid reservation (e.g. closed the payment window): reuse it.
+  const doc = await col.findOne(
+    { id: couponId, active: true, redemptions: { $elemMatch: { user_id: userId, status: 'reserved' } } },
+    { projection: { _id: 1 } },
+  )
+  return !!doc
+}
+
+/**
+ * Turn the user's reservation into a redemption for a paid order. Atomic:
+ * returns false if there was no open reservation (already redeemed), so a
+ * zero-amount order can't be activated twice from two parallel requests.
+ * Orders created before reservations existed fall back to push + inc.
+ */
+export async function finalizeCouponRedemption(
+  couponId: string, userId: string, orderId: string, planId?: string,
+): Promise<boolean> {
+  const col = await billingCoupons()
+  const res = await col.updateOne(
+    { id: couponId, redemptions: { $elemMatch: { user_id: userId, status: 'reserved' } } },
+    {
+      $set: {
+        'redemptions.$.status': 'redeemed',
+        'redemptions.$.order_id': orderId,
+        'redemptions.$.plan_id': planId ?? null,
+        'redemptions.$.redeemed_at': nowIso(),
+      },
+    } as any,
+  )
+  if (res.modifiedCount > 0) return true
+  const already = await col.findOne(
+    { id: couponId, redemptions: { $elemMatch: { user_id: userId, order_id: orderId } } },
+    { projection: { _id: 1 } },
+  )
+  if (already) return false
+  const legacyUsed = await hasUserUsedCoupon(couponId, userId)
+  if (legacyUsed) return false
+  await col.updateOne(
+    { id: couponId },
+    {
+      $inc: { current_uses: 1 },
+      $push: { redemptions: { user_id: userId, status: 'redeemed', order_id: orderId, plan_id: planId ?? null, redeemed_at: nowIso(), ...(await redeemerInfo(userId)) } as any },
+    },
+  )
+  return true
+}
+
+/** True once the user has a completed redemption (an open reservation doesn't count). */
 export async function hasUserUsedCoupon(couponId: string, userId: string): Promise<boolean> {
   const col = await billingCoupons()
   const doc = await col.findOne({ id: couponId }, { projection: { redemptions: 1 } })
-  return !!(doc?.redemptions?.some((r) => r.user_id === userId))
+  return !!(doc?.redemptions?.some((r) => r.user_id === userId && r.status !== 'reserved'))
 }
 
 /** Catalog of buyable plans. Amounts in paise. */

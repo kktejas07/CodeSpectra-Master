@@ -7,7 +7,8 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { useCurrency } from '@/lib/use-currency'
 import { PageHero } from '@/components/landing/page-hero'
-import { CONTACT_SALES_HREF, inAppPricingHref, planCheckoutMode } from '@/lib/billing-plan-mode'
+import { CONTACT_SALES_HREF, inAppPricingHref, planCheckoutMode, type PlanCheckoutMode } from '@/lib/billing-plan-mode'
+import { getCurrencySymbol } from '@/lib/currency'
 
 type PublicPlan = {
   id: string
@@ -17,13 +18,15 @@ type PublicPlan = {
   yearlyPrice: number
   features: string[]
   popular?: boolean
+  currency?: string | null
+  checkout_mode?: PlanCheckoutMode
 }
 
 export default function PricingPage() {
   const [annual, setAnnual] = useState(false)
   const [plans, setPlans] = useState<PublicPlan[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const { symbol } = useCurrency()
+  const { symbol: platformSymbol } = useCurrency()
 
   useEffect(() => {
     let cancelled = false
@@ -117,7 +120,9 @@ export default function PricingPage() {
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
           {plans.map((plan) => {
             // Same classification checkout uses: enterprise / custom → contact sales.
-            const mode = planCheckoutMode({ id: plan.id, price: plan.price, yearlyPrice: plan.yearlyPrice })
+            // Server mode (same resolver as checkout) first; local classification as fallback.
+            const mode = plan.checkout_mode ?? planCheckoutMode({ id: plan.id, price: plan.price, yearlyPrice: plan.yearlyPrice })
+            const symbol = plan.currency ? getCurrencySymbol(plan.currency) : platformSymbol
             const isCustom = mode === 'contact_sales'
             const monthlyDisplay = plan.price
             const yearlyDisplay = plan.yearlyPrice

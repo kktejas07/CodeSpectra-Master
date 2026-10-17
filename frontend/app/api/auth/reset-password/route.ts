@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
 import { revokeAllUserSessions } from '@/lib/session'
+import { passwordProblem } from '@/lib/auth-account'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
@@ -32,8 +33,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Code and new password are required' }, { status: 400 })
   }
 
-  if (newPassword.length < 8) {
-    return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 })
+  const pwProblem = passwordProblem(newPassword)
+  if (pwProblem) {
+    return NextResponse.json({ error: pwProblem }, { status: 400 })
   }
 
   const hashedToken = crypto.createHash('sha256').update(code).digest('hex')
@@ -51,13 +53,14 @@ export async function POST(request: Request) {
   const passwordHash = await bcrypt.hash(newPassword, 12)
 
   await db.collection('user').updateOne(
-    { email: user.email },
+    { _id: user._id },
     {
-      $set: { passwordHash: passwordHash, reset_token_used: true, updated_at: new Date().toISOString() },
+      // A reset link proves inbox ownership, so the email counts as verified.
+      $set: { passwordHash: passwordHash, reset_token_used: true, emailVerified: true, updated_at: new Date().toISOString() },
       $unset: { reset_token_hash: '', reset_token_expires: '' },
     },
   )
-  await revokeAllUserSessions(String((user as any).id ?? user._id))
+  await revokeAllUserSessions(String((user as { id?: unknown }).id ?? user._id))
 
   return NextResponse.json({ success: true })
 }

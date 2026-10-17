@@ -11,6 +11,8 @@ import {
 } from '@/lib/db/problems'
 import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS, getXpRewards } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
+import { limitRequest } from '@/lib/rate-limit'
+import { getUserEntitlements, checkLimit, windowStart } from '@/lib/entitlements'
 import type { PistonExecuteResult } from '@/lib/piston'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -82,6 +84,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
+  // Each call runs every test case on the sandbox; cap per user.
+  const limited = await limitRequest(request, 'submissions', gate.user.id, 30, 60_000)
+  if (limited) return limited
+
   let body: SubmitBody
   try {
     body = (await request.json()) as SubmitBody
@@ -106,8 +112,23 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   const pCol = await problems()
   const problem = await pCol.findOne({ slug })
-  if (!problem) {
+  // Practice submit only for published, non-hackathon problems (hackathon problems use their own route).
+  if (!problem || problem.is_published === false || problem.hackathon_id || problem.visibility === 'hackathon_only') {
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+  }
+
+  // Plan limit: distinct problems submitted this month (lib/entitlements.ts).
+  // Re-submitting a problem already attempted this month is always allowed.
+  if (mode === 'submit') {
+    const since = windowStart('month')
+    const sCol = await submissions()
+    const seen = await sCol.findOne({ user_id: gate.user.id, problem_id: problem.id, created_at: { $gte: since } }, { projection: { _id: 1 } })
+    if (!seen) {
+      const attempted = await sCol.distinct('problem_id', { user_id: gate.user.id, created_at: { $gte: since } })
+      const denied = checkLimit(gate.user, await getUserEntitlements(gate.user.id), 'max_challenges', attempted.length, 1,
+        'You have reached this month\'s challenge limit on your plan. Upgrade to keep going.')
+      if (denied) return NextResponse.json(denied, { status: 402 })
+    }
   }
 
   // Pick tests: `run` mode uses only samples, `submit` uses all.

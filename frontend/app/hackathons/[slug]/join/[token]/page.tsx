@@ -36,7 +36,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
         if (data.team) {
           setOtherTeamSlug(data.team)
           setOtherTeamName(data.team_name || data.team)
-          if (data.team === token || data.team === slug) {
+          if (data.already_this_team === true) {
             setErrorMeta('already_this_team')
           } else {
             setErrorMeta('already_other_team')
@@ -74,7 +74,9 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
   }, [authLoading, authUser?.uid, join])
 
   useEffect(() => {
-    if (status === 'success' || (status === 'error' && (errorMeta === 'already_this_team' || errorMeta === 'already_other_team'))) {
+    // Only move on automatically when the user is now (or already was) on this team —
+    // a conflict with another team needs them to read the message and decide.
+    if (status === 'success' || (status === 'error' && errorMeta === 'already_this_team')) {
       const t = setTimeout(() => router.push(`/hackathons/${slug}/workspace`), 2000)
       return () => clearTimeout(t)
     }

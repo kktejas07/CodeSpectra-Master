@@ -73,7 +73,7 @@ function JoinPage() {
     </div>
   )
 
-  if (error) return (
+  if (error && !invite) return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Panel className="max-w-md w-full p-8 text-center">
         <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
@@ -150,7 +150,7 @@ function JoinPage() {
 
         {invite?.eventStatus !== 'closed' ? (
         <div className="space-y-2">
-          <Button onClick={handleJoin} disabled={joining || !user} className="w-full gap-1">
+          <Button onClick={handleJoin} disabled={joining} className="w-full gap-1">
             {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
             {user ? 'Join team' : 'Sign in to join'}
           </Button>

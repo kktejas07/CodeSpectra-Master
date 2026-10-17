@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requirePlanFeature } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { resolveModel } from '@/lib/ai/get-user-model'
 
 export async function GET() {
-  const gate = await requireAuth()
+  // Advanced analytics is a plan feature (lib/entitlements.ts).
+  const gate = await requirePlanFeature('analytics')
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(gate.user.id, 'hints_model')

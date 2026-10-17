@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
-import { attemptSummary } from '@/lib/exam-access'
+import { attemptSummary, PROCTOR_INFO_EVENT_TYPES } from '@/lib/exam-access'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAdmin()
@@ -125,7 +125,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     // Fetch proctor event counts for all users
     const proctorCounts = await db.collection('proctor_events').aggregate([
-      { $match: { session_kind: 'exam', session_id: id } },
+      // Integrity flags = risk events only (see PROCTOR_INFO_EVENT_TYPES).
+      { $match: { session_kind: 'exam', session_id: id, event_type: { $nin: [...PROCTOR_INFO_EVENT_TYPES] } } },
       { $group: { _id: '$user_id', count: { $sum: 1 } } },
     ]).toArray()
     const proctorMap = new Map(proctorCounts.map((p: any) => [p._id, p.count]))

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { billingOrders, billingSubscriptions } from '@/lib/db/billing'
-import { resolveBillingPlan, storedPlanLabel } from '@/lib/billing-plans'
+import { cancelAtPeriodEnd, resolveBillingPlan, storedPlanLabel } from '@/lib/billing-plans'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
@@ -18,7 +18,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const subs = await billingSubscriptions()
-    const active = await subs.findOne({ user_id: user.id, status: 'active' }, { projection: { _id: 0 } })
+    const active = await subs.findOne({ user_id: user.id, status: 'active' }, { projection: { _id: 0 }, sort: { ends_at: -1 } })
     if (!active || new Date(active.ends_at) <= new Date()) {
       return NextResponse.json({ subscription: null, user_email: user.email })
     }
@@ -35,6 +35,8 @@ export async function GET() {
         starts_at: active.started_at,
         ends_at: active.ends_at,
         trial_ends_at: active.trial_ends_at ?? null,
+        cancel_at_period_end: active.cancel_at_period_end === true,
+        cancelled_at: active.cancel_at_period_end ? active.cancelled_at ?? null : null,
         interval: order?.interval ?? resolved?.interval ?? 'month',
         amount: order ? (order.amount_paise || 0) / 100 : resolved ? resolved.amount_paise / 100 : null,
         currency: order?.currency ?? resolved?.currency ?? null,
@@ -57,8 +59,8 @@ export async function PUT(req: NextRequest) {
       return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
     }
 
-    const { plan_id } = (await req.json().catch(() => ({}))) as { plan_id?: string }
-    if (!plan_id) return NextResponse.json({ error: 'plan_id is required' }, { status: 400 })
+    const { plan_id } = (await req.json().catch(() => ({}))) as { plan_id?: unknown }
+    if (typeof plan_id !== 'string' || !plan_id) return NextResponse.json({ error: 'plan_id is required' }, { status: 400 })
 
     // Paid plans (and paid billing-cycle changes) are only granted by a
     // gateway-verified payment: /api/billing/verify, the Razorpay/Stripe
@@ -70,11 +72,10 @@ export async function PUT(req: NextRequest) {
       )
     }
 
-    const subs = await billingSubscriptions()
-    // Downgrade to Free = cancel the active subscription (same as /api/billing/cancel).
-    await subs.updateMany({ user_id: user.id, status: 'active' }, { $set: { status: 'cancelled', updated_at: new Date().toISOString() } })
-
-    return NextResponse.json({ ok: true, plan_id })
+    // Downgrade to Free = cancel at period end (same as /api/billing/cancel):
+    // the prepaid period is kept, then the plan lapses to Free.
+    const res = await cancelAtPeriodEnd(user.id)
+    return NextResponse.json({ ok: true, plan_id, access_until: res?.ends_at ?? null })
   } catch (error) {
     console.error('[billing/subscription] PUT:', error)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })

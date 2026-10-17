@@ -36,6 +36,8 @@ interface Team {
   member_count: number
   members: { user_id: string; role: string; joined_at: string }[]
   created_at: string
+  /** Only present for the viewer's own team (and staff). */
+  join_code?: string
 }
 
 interface Invitation {
@@ -121,6 +123,8 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   const [inviteEmail, setInviteEmail] = useState('')
   const [creatingTeam, setCreatingTeam] = useState(false)
   const [joiningTeam, setJoiningTeam] = useState<string | null>(null)
+  const [joinTarget, setJoinTarget] = useState<Team | null>(null)
+  const [joinCode, setJoinCode] = useState('')
 
   useEffect(() => {
     void fetchData()
@@ -232,15 +236,18 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
     }
   }
 
-  async function handleJoinTeam(teamId: string) {
+  async function handleJoinTeam(teamId: string, code: string) {
     setJoiningTeam(teamId)
     try {
       const res = await csrfFetch(`/api/codeathons/${id}/teams/${teamId}/join`, {
         method: 'POST',
         credentials: 'include',
+        body: JSON.stringify({ join_code: code.trim() }),
       })
       if (res.ok) {
         addToast({ type: 'success', title: 'Joined team!' })
+        setJoinTarget(null)
+        setJoinCode('')
         void fetchData()
       } else {
         const data = await res.json() as { error?: string }
@@ -468,6 +475,11 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
                   <UserMinus className="h-3.5 w-3.5 mr-1" />Leave
                 </Button>
               </div>
+              {myTeam.join_code && (
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Join code: <span className="font-mono font-semibold tabular-nums text-foreground">{myTeam.join_code}</span> — share it with teammates.
+                </p>
+              )}
               <div className="space-y-2">
                 {myTeam.members?.map(m => (
                   <div key={m.user_id} className="flex items-center justify-between text-sm">
@@ -505,7 +517,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
                       <p className="text-xs tabular-nums text-muted-foreground">{team.member_count} members</p>
                     </div>
                     {!myTeam && (
-                      <Button size="sm" variant="outline" onClick={() => handleJoinTeam(team.id)} disabled={joiningTeam === team.id}>
+                      <Button size="sm" variant="outline" onClick={() => { setJoinTarget(team); setJoinCode('') }} disabled={joiningTeam === team.id}>
                         {joiningTeam === team.id ? 'Joining…' : 'Join'}
                       </Button>
                     )}
@@ -566,6 +578,26 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           </Button>
         )}
       </div>
+
+      {/* Join Team Dialog */}
+      <Dialog open={!!joinTarget} onOpenChange={(o) => { if (!o) setJoinTarget(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Join {joinTarget?.name || 'team'}</DialogTitle>
+            <DialogDescription>Ask a member of this team for its join code.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="join-code">Join code</Label>
+            <Input id="join-code" value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="e.g. 3F9A1C2B" autoComplete="off" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setJoinTarget(null)}>Cancel</Button>
+            <Button onClick={() => joinTarget && handleJoinTeam(joinTarget.id, joinCode)} disabled={!joinCode.trim() || !!joiningTeam}>
+              {joiningTeam ? 'Joining…' : 'Join team'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Team Dialog */}
       <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>

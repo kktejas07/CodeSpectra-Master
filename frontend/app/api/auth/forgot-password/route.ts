@@ -44,6 +44,10 @@ export async function POST(request: Request) {
     }
   }
 
+  // Per-email cap so one inbox can't be flooded.
+  const emailCheck = await rateLimitRedis(`forgot-pw:email:${email}`, 3, 3600_000)
+  if (!emailCheck.ok) return NextResponse.json({ success: true })
+
   const db = await getMongoDb()
   const user = await db.collection('user').findOne({ email })
 
@@ -71,7 +75,13 @@ export async function POST(request: Request) {
   const resetLink = `${origin}/auth/reset-password?oobCode=${token}`
 
   const template = emailTemplates.passwordReset(resetLink)
-  await sendEmail(email, template)
+  // Same response whether or not the email exists or the send failed —
+  // a 500 only for real accounts would reveal which emails are registered.
+  try {
+    await sendEmail(email, template)
+  } catch (e) {
+    console.error('[forgot-password] send failed:', e)
+  }
 
   return NextResponse.json({ success: true })
 }

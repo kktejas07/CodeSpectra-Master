@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Trophy, Medal, Award, Loader2, CheckCircle2, HelpCircle, BarChart3, Globe, Users, Beaker, Briefcase, GraduationCap, Puzzle, Tent, Search } from 'lucide-react'
+import { Trophy, Medal, Award, BarChart3, Globe, GraduationCap, Puzzle, Tent, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -16,16 +16,19 @@ import { PageHeader, Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
-type Category = 'Global' | 'Female' | 'Arts & Science' | 'Engineering' | 'Management' | 'Quiz' | 'Hackathon'
+type Category = 'global' | 'practice' | 'hackathon' | 'exams'
+type Period = 'all' | 'month'
 
-const categories: { id: Category; icon: any }[] = [
-  { id: 'Global', icon: Globe },
-  { id: 'Female', icon: Users },
-  { id: 'Arts & Science', icon: Beaker },
-  { id: 'Engineering', icon: GraduationCap },
-  { id: 'Management', icon: Briefcase },
-  { id: 'Quiz', icon: Puzzle },
-  { id: 'Hackathon', icon: Tent },
+// Each category maps to the XP sources counted by /api/leaderboard.
+const categories: { id: Category; label: string; icon: any }[] = [
+  { id: 'global', label: 'Global', icon: Globe },
+  { id: 'practice', label: 'Practice', icon: Puzzle },
+  { id: 'hackathon', label: 'Hackathons', icon: Tent },
+  { id: 'exams', label: 'Exams and certifications', icon: GraduationCap },
+]
+const periods: { id: Period; label: string }[] = [
+  { id: 'all', label: 'All time' },
+  { id: 'month', label: 'This month' },
 ]
 
 export default function LeaderboardPage() {
@@ -33,8 +36,8 @@ export default function LeaderboardPage() {
   const { user } = useAuth()
   const { startTour, setTourSeen } = useTour()
 
-  const [activeTab, setActiveTab] = useState<'Live' | 'Previous'>('Live')
-  const [activeCategory, setActiveCategory] = useState<Category>('Global')
+  const [activeTab, setActiveTab] = useState<Period>('all')
+  const [activeCategory, setActiveCategory] = useState<Category>('global')
   const [entries, setEntries] = useState<LeaderboardEntryDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -46,8 +49,7 @@ export default function LeaderboardPage() {
     setLoading(true)
     setError(null)
     try {
-      // We map 'view' to 'global' for the API for now, since the backend might not support the new categories yet.
-      const res = await fetch(`/api/leaderboard?scope=global&limit=80`, { credentials: 'include' })
+      const res = await fetch(`/api/leaderboard?category=${activeCategory}&period=${activeTab}&limit=80`, { credentials: 'include' })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(json.error || `Request failed (${res.status})`)
@@ -61,7 +63,7 @@ export default function LeaderboardPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeCategory, activeTab])
 
   useEffect(() => {
     void load()
@@ -79,14 +81,14 @@ export default function LeaderboardPage() {
         },
         {
           target: '[data-tour="leaderboard-tabs"]',
-          title: 'Live vs previous',
-          description: 'Toggle between live rankings and past leaderboard results.',
+          title: 'All time or this month',
+          description: 'Switch between all-time points and points earned this month.',
           position: 'bottom',
         },
         {
           target: '[data-tour="leaderboard-categories"]',
           title: 'Categories',
-          description: 'Filter the leaderboard by category: Global, Female, Engineering, and more.',
+          description: 'Rank by all points, or only points from practice, hackathons, or exams and certifications.',
           position: 'right',
         },
         {
@@ -98,7 +100,7 @@ export default function LeaderboardPage() {
         {
           target: '[data-tour="leaderboard-my-rank"]',
           title: 'Your rank',
-          description: 'See your current global rank and points. Keep climbing!',
+          description: 'See your rank and points in the view you picked. Keep climbing!',
           position: 'bottom',
         },
         {
@@ -132,24 +134,24 @@ export default function LeaderboardPage() {
       {/* Left Sidebar */}
       <div className="w-full md:w-64 shrink-0 space-y-6">
         <div className="flex border-b border-border" data-tour="leaderboard-tabs">
-          <button
-            onClick={() => setActiveTab('Live')}
-            className={cn('flex-1 pb-3 text-sm font-semibold transition-all border-b-2', activeTab === 'Live' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
-          >
-            Live
-          </button>
-          <button
-            onClick={() => setActiveTab('Previous')}
-            className={cn('flex-1 pb-3 text-sm font-semibold transition-all border-b-2', activeTab === 'Previous' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
-          >
-            Previous
-          </button>
+          {periods.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              onClick={() => setActiveTab(p.id)}
+              aria-pressed={activeTab === p.id}
+              className={cn('flex-1 pb-3 text-sm font-semibold transition-all border-b-2', activeTab === p.id ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
 
         <div className="flex flex-col gap-1 p-2 bg-muted/40 rounded-2xl" data-tour="leaderboard-categories">
           {categories.map((cat) => (
             <button
               key={cat.id}
+              type="button"
               onClick={() => setActiveCategory(cat.id)}
               aria-pressed={activeCategory === cat.id}
               className={cn(
@@ -158,7 +160,7 @@ export default function LeaderboardPage() {
               )}
             >
               <cat.icon className="w-4 h-4" />
-              {cat.id}
+              {cat.label}
             </button>
           ))}
         </div>
@@ -170,8 +172,8 @@ export default function LeaderboardPage() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             illustration="leaderboard"
-            title={`${activeTab} leaderboard`}
-            description={`${activeCategory} rankings by points earned from practice, quizzes and events.`}
+            title="Leaderboard"
+            description={`${categories.find((c) => c.id === activeCategory)?.label ?? 'Global'} rankings, ${activeTab === 'month' ? 'points earned this month' : 'all-time points'}.`}
             icon={<BarChart3 />}
             className="mb-0"
           />

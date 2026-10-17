@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireAuth } from '@/lib/route-auth'
+import { nativeBadgeVariant } from '@/lib/auth-account'
 import {
   idCardTokens,
   hackathonTeams,
@@ -65,7 +66,10 @@ export async function GET(
 
     const xp = await getUserXp(idRow.user_id)
     const level = xpToLevel(xp)
-    const theme = ROLE_THEME[idRow.role_variant]
+    // Show the holder's CURRENT role at most: a badge minted while they were
+    // an admin (or forged via ?variant=) never outranks their account today.
+    const variant: IdCardRoleVariant = idRow.role_variant === nativeBadgeVariant(u.role ?? null) ? idRow.role_variant : 'user'
+    const theme = ROLE_THEME[variant]
     const solvedAgg = await db
       .collection('submissions')
       .aggregate([
@@ -80,7 +84,7 @@ export async function GET(
 
     return NextResponse.json({
       kind: 'user',
-      role_variant: idRow.role_variant,
+      role_variant: variant,
       theme,
       dashboard_url: theme.dashboard,
       user: {

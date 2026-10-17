@@ -15,9 +15,22 @@ import { CAREER_GOAL_OPTIONS, POPULAR_CAREER_GOALS } from '@/lib/career-goals'
 import { generateUsernameCandidate, isGenericUsername } from '@/lib/username'
 import { ArrowLeft, ArrowRight, Save, CheckCircle2, User, Briefcase, GraduationCap, Code2, Award, Link as LinkIcon, Camera, Sparkles, Plus, Trash2, Eye, Lightbulb, ShieldCheck, X } from 'lucide-react'
 import { FileText, Calendar, MapPin, UploadCloud, FileBadge2, Trophy, UserCircle, Search, MapPinIcon } from 'lucide-react'
-import { AnonAadhaarProfileCard } from '@/components/kyc/AnonAadhaarProfileCard'
+import dynamic from 'next/dynamic'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { PageHeader } from '@/components/app/page-kit'
+
+// Anon Aadhaar pulls in snarkjs / the ZK prover; load it only when its card renders.
+const AnonAadhaarProfileCard = dynamic(
+  () => import('@/components/kyc/AnonAadhaarProfileCard').then((m) => m.AnonAadhaarProfileCard),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-2xl border border-border/70 p-4 text-sm text-muted-foreground" aria-busy="true">
+        Loading Aadhaar verification…
+      </div>
+    ),
+  },
+)
 
 // Wizard Steps Configuration
 const STEPS = [

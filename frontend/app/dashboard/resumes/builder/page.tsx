@@ -84,6 +84,8 @@ export default function ResumeBuilderPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const source = searchParams.get('source')
+  // ?draft=<id> opens a specific saved draft (from the Resumes page).
+  const draftParam = searchParams.get('draft')
   const addToast = useToast()
 
   const [data, setData] = useState<ResumeData>(emptyData)
@@ -105,9 +107,12 @@ export default function ResumeBuilderPage() {
   // or when the device has newer unsynced changes. Skipped when loading from the profile.
   useEffect(() => {
     if (source === 'profile') return
+    // "Start blank" from the Resumes page: no draft loaded; Save draft creates a new one.
+    if (source === 'new' && !draftParam) return
     let cancelled = false
-    const local = readLocalDraft()
-    fetch('/api/resumes/drafts', { credentials: 'include' })
+    const local = draftParam ? null : readLocalDraft()
+    const url = draftParam ? `/api/resumes/drafts?id=${encodeURIComponent(draftParam)}` : '/api/resumes/drafts'
+    fetch(url, { credentials: 'include' })
       .then(async (r) => {
         if (!r.ok) throw new Error(String(r.status))
         return r.json() as Promise<{ draft: (LocalDraft & { id: string; updated_at: string }) | null }>
@@ -134,7 +139,7 @@ export default function ResumeBuilderPage() {
       })
     return () => { cancelled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source])
+  }, [source, draftParam])
 
   const saveDraft = async () => {
     setSavingDraft(true)

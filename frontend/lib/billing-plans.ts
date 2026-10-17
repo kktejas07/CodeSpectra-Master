@@ -24,7 +24,7 @@ import {
   billingSubscriptions,
   newId,
   nowIso,
-  recordCouponRedemption,
+  finalizeCouponRedemption,
   type BillingOrderDoc,
 } from '@/lib/db/billing'
 import {
@@ -34,6 +34,7 @@ import {
   type PlanCheckoutMode,
   type PlanInterval,
 } from '@/lib/billing-plan-mode'
+import { trialDaysForCoupon } from '@/lib/billing-lifecycle'
 
 export interface ResolvedPlan {
   /** Canonical id stored on the order and the subscription. */
@@ -234,6 +235,11 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
 
   let subscription: ActivationResult['subscription'] = null
 
+  // A trial coupon funds only the trial window (lib/billing-lifecycle.ts).
+  const coupon = order.coupon_id ? await (await billingCoupons()).findOne({ id: order.coupon_id }) : null
+  const trialDays = trialDaysForCoupon(coupon)
+  if (kind === 'subscription' && trialDays) durationDays = trialDays
+
   if (kind === 'subscription' && durationDays && durationDays > 0) {
     const subs = await billingSubscriptions()
     const existing = await subs.findOne(
@@ -249,6 +255,9 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
     const endsAt = new Date(start.getTime() + durationDays * DAY_MS).toISOString()
     const ts = nowIso()
 
+    // Paid orders clear any trial marker so the trial-expiry job can never end
+    // a paid period; any order also undoes a pending "cancel at period end".
+    const trialFields = trialDays ? { trial_ends_at: endsAt, trial_order_id: order.id } : {}
     let subId: string
     if (existing) {
       subId = existing.id
@@ -262,9 +271,15 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
             ...(extendsCurrent ? {} : { started_at: ts }),
             ...(paymentDocId ? { last_payment_id: paymentDocId } : {}),
             last_order_id: order.id,
+            ...trialFields,
+            cancel_at_period_end: false,
             updated_at: ts,
           },
-        },
+          $unset: {
+            ...(trialDays ? {} : { trial_ends_at: '', trial_order_id: '' }),
+            cancelled_at: '',
+          },
+        } as never,
       )
     } else {
       subId = newId()
@@ -277,29 +292,32 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
         ends_at: endsAt,
         ...(paymentDocId ? { last_payment_id: paymentDocId } : {}),
         last_order_id: order.id,
+        ...trialFields,
         created_at: ts,
         updated_at: ts,
       })
     }
-    subscription = { id: subId, plan_id: order.plan_id, ends_at: endsAt }
+    subscription = { id: subId, plan_id: order.plan_id, ends_at: endsAt, ...(trialDays ? { trial_ends_at: endsAt } : {}) }
 
     await (await billingOrders()).updateOne(
       { id: order.id },
       { $set: { subscription_id: subId, period_start: start.toISOString(), period_end: endsAt, updated_at: ts } },
     )
 
-    if (order.coupon_id) {
-      const coupon = await (await billingCoupons()).findOne({ id: order.coupon_id })
-      if (coupon?.discount_type === 'trial' && coupon.trial_duration_days) {
-        const trialEnds = new Date(Date.now() + coupon.trial_duration_days * DAY_MS).toISOString()
-        await subs.updateOne({ id: subId }, { $set: { trial_ends_at: trialEnds } })
-        subscription = { ...subscription, trial_ends_at: trialEnds }
-      }
-    }
+  }
+
+  // One-time packs are not subscriptions: record the purchase on the user so
+  // the pack's content can be unlocked from it.
+  if (kind === 'one_time') {
+    const { users } = await import('@/lib/db/admin')
+    const { userIdFilter } = await import('@/lib/entitlements')
+    await (await users()).updateOne(userIdFilter(order.user_id), {
+      $addToSet: { purchased_packs: order.plan_id },
+    } as never)
   }
 
   if (order.coupon_id) {
-    await recordCouponRedemption(order.coupon_id, order.user_id, order.id, order.plan_id).catch((e) =>
+    await finalizeCouponRedemption(order.coupon_id, order.user_id, order.id, order.plan_id).catch((e) =>
       console.error('[billing-plans] coupon redemption record failed:', e),
     )
   }
@@ -365,4 +383,31 @@ export async function markOrderRefunded(
   }
 
   return { ok: true, order, downgraded, shortened }
+}
+
+/**
+ * Cancel at period end (D8): the plan stays active until `ends_at`, then
+ * simply lapses (every reader checks `ends_at`). No gateway call is needed —
+ * periods are prepaid, there is no auto-renewal to stop.
+ */
+export async function cancelAtPeriodEnd(userId: string): Promise<{ ends_at: string } | null> {
+  const subs = await billingSubscriptions()
+  const ts = nowIso()
+  const sub = await subs.findOneAndUpdate(
+    { user_id: userId, status: 'active', ends_at: { $gt: ts } },
+    { $set: { cancel_at_period_end: true, cancelled_at: ts, updated_at: ts } },
+    { returnDocument: 'after', sort: { ends_at: -1 } },
+  )
+  return sub ? { ends_at: sub.ends_at } : null
+}
+
+/** Undo a pending cancel while the period is still running. */
+export async function resumeSubscription(userId: string): Promise<boolean> {
+  const subs = await billingSubscriptions()
+  const ts = nowIso()
+  const res = await subs.updateOne(
+    { user_id: userId, status: 'active', cancel_at_period_end: true, ends_at: { $gt: ts } },
+    { $set: { cancel_at_period_end: false, updated_at: ts }, $unset: { cancelled_at: '' } },
+  )
+  return res.modifiedCount > 0
 }

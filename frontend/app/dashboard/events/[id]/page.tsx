@@ -33,6 +33,7 @@ import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { JUDGING_CRITERION_KEYS, JUDGING_CRITERION_LABELS, sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
 import { average, blendFinal, collectHumanScores, judgeStats } from '@/lib/hackathons/calibration'
+import { normalizeSubmissionStatus, canTransition } from '@/lib/hackathons/submission-state'
 import { buildProjectReport } from '@/lib/hackathons/reporting'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 
@@ -83,16 +84,18 @@ interface Submission {
 const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
   submitted: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Submitted' },
   under_review: { color: 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400', label: 'Under review' },
-  review_completed: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Review complete' },
-  accepted: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Accepted' },
+  pending: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Submitted' },
+  scored: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Scored' },
+  review_completed: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Scored' },
+  accepted: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Scored' },
   rejected: { color: 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400', label: 'Not selected' },
   released: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Score released' },
 }
 
 interface LeaderboardEntry {
-  rank: number; team_id: string; team_name: string
+  rank: number | null; tied?: boolean; team_id: string; team_name: string
   xp: number; level: number; submissions: number
-  total_score: number; members: string[]; achievements: number
+  total_score: number | null; members: string[]; achievements: number
 }
 
 type JudgeSubTab = 'evaluate' | 'board' | 'compare' | 'reports'
@@ -409,7 +412,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error('Failed to submit score')
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Failed to submit score')
+      }
       addToast({ type: 'success', title: 'Score submitted' })
       setSelectedSub(null)
       setScoreForm({ score: 0, feedback: '' })
@@ -452,11 +458,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleReleaseResults = useCallback(async () => {
     if (!event?.id) return
-    if (!window.confirm('Are you sure you want to release the results? Unreviewed submissions will be scored as 0. This cannot be undone.')) return
+    if (!window.confirm('Release the results? Judge scores become public and can no longer change. This cannot be undone.')) return
     setReleasingResults(true)
     try {
-      const res = await csrfFetch(`/api/hackathons/${event.id}/release-results`, { method: 'POST' })
-      if (!res.ok) throw new Error(await res.text())
+      const post = (force: boolean) => csrfFetch(`/api/hackathons/${event.id}/release-results`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force }),
+      })
+      let res = await post(false)
+      let data = await res.json().catch(() => ({}))
+      if (res.status === 409 && data.code === 'confirm_release') {
+        if (!window.confirm(`${data.error || ''} Release anyway?`)) return
+        res = await post(true)
+        data = await res.json().catch(() => ({}))
+      }
+      if (!res.ok) throw new Error(data.error || 'Could not release results')
       addToast({ type: 'success', title: 'Results released!' })
       window.location.reload()
     } catch (err: any) {
@@ -1025,19 +1040,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <EmptyState illustration="leaderboard" variant="default" title="No teams on the leaderboard yet" description="Teams show up here once they start scoring." />
           ) : (
             <>
-              {/* Top 3 Podium */}
-              {leaderboard.length >= 3 && (
+              {/* Top 3 podium — only once results are released (ranks come from judged totals) */}
+              {leaderboard.filter(e => e.rank !== null).length >= 3 && (
                 <div className="mb-4 grid grid-cols-3 gap-3 sm:gap-4">
                   {[1, 0, 2].map(rank => {
                     const entry = leaderboard[rank]
-                    if (!entry) return <div key={rank} />
+                    if (!entry || entry.rank === null) return <div key={rank} />
                     const colors = ['text-amber-500', 'text-slate-400', 'text-orange-600']
                     const icons = [<Star key="1" className="w-5 h-5" />, <Medal key="2" className="w-5 h-5" />, <Award key="3" className="w-5 h-5" />]
                     return (
                       <Card key={entry.team_id} className={`items-center gap-1 rounded-3xl p-5 text-center ${rank === 0 ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
                         <div className={colors[rank]}>{icons[rank]}</div>
                         <p className="mt-1 w-full truncate text-sm font-semibold text-foreground">{entry.team_name}</p>
-                        <p className="text-xs tabular-nums text-muted-foreground">{entry.xp} XP</p>
+                        <p className="text-xs tabular-nums text-muted-foreground">{entry.total_score ?? 0} points</p>
                       </Card>
                     )
                   })}
@@ -1047,13 +1062,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <Card className="gap-0 divide-y divide-border/70 overflow-hidden rounded-3xl py-0">
                 {leaderboard.map(entry => (
                   <div key={entry.team_id} className="flex items-center gap-3 px-5 py-3">
-                    <span className="w-8 text-center font-mono text-sm tabular-nums text-muted-foreground">#{entry.rank}</span>
+                    <span className="w-10 text-center font-mono text-sm tabular-nums text-muted-foreground">{entry.rank !== null ? `#${entry.rank}${entry.tied ? '=' : ''}` : '–'}</span>
                     <div className="flex-1 min-w-0">
                       <span className="block truncate text-sm font-medium text-foreground">{entry.team_name}</span>
                       <span className="text-xs text-muted-foreground">{entry.members.join(', ')}</span>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="block text-sm font-medium tabular-nums">{entry.xp} XP</span>
+                      <span className="block text-sm font-medium tabular-nums">{entry.total_score !== null ? `${entry.total_score} points` : 'Scores after release'}</span>
                       <span className="text-xs tabular-nums text-muted-foreground">{entry.submissions} submissions</span>
                     </div>
                   </div>
@@ -1508,29 +1523,24 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <Badge variant="outline" className={(STATUS_CONFIG[selectedSub.status] || STATUS_CONFIG.submitted).color}>{(STATUS_CONFIG[selectedSub.status] || { label: selectedSub.status }).label}</Badge>
                   </div>
 
-                  {/* Status action buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    {selectedSub.status === 'submitted' && (
-                      <Button size="sm" variant="outline" className="w-full" onClick={() => updateSubmissionStatus(selectedSub.id, 'under_review')}>
-                        <Eye className="w-3.5 h-3.5 mr-1" /> Start review
-                      </Button>
-                    )}
-                    {selectedSub.status === 'under_review' && (
-                      <>
-                        <Button size="sm" variant="outline" className="w-full" onClick={() => updateSubmissionStatus(selectedSub.id, 'review_completed')}>
-                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete
-                        </Button>
-                        <Button size="sm" variant="outline" className="w-full text-green-700 dark:text-green-400" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Accept
-                        </Button>
-                      </>
-                    )}
-                    {selectedSub.status === 'review_completed' && (
-                      <Button size="sm" variant="outline" className="w-full text-green-700 dark:text-green-400" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Accept
-                      </Button>
-                    )}
-                  </div>
+                  {/* Status actions — follow lib/hackathons/submission-state. Scoring below moves it to "scored". */}
+                  {!event.results_released && (() => {
+                    const st = normalizeSubmissionStatus(selectedSub.status)
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {(st === 'submitted' || st === 'scored' || st === 'rejected') && canTransition(st, 'under_review') && (
+                          <Button size="sm" variant="outline" className="flex-1" onClick={() => updateSubmissionStatus(selectedSub.id, 'under_review')}>
+                            <Eye className="w-3.5 h-3.5 mr-1" /> {st === 'submitted' ? 'Start review' : st === 'rejected' ? 'Reinstate for review' : 'Reopen review'}
+                          </Button>
+                        )}
+                        {canTransition(st, 'rejected') && (
+                          <Button size="sm" variant="outline" className="flex-1 text-red-700 dark:text-red-400" onClick={() => setRejectingSub(selectedSub)}>
+                            <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })()}
 
                   {/* Submission Info */}
                   <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm">

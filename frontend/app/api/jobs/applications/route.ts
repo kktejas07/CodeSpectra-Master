@@ -37,6 +37,6 @@ export async function GET() {
     )
   } catch (error) {
     console.error('[CodeSpectra] jobs/applications GET:', error)
-    return NextResponse.json([])
+    return NextResponse.json({ error: 'Failed to load applications' }, { status: 500 })
   }
 }

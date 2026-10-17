@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { updateUserById } from '@/lib/db/admin'
+import { invalidateAuthProfile } from '@/lib/session'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,7 +23,17 @@ export async function POST(req: NextRequest) {
 
   const db = await getMongoDb()
   const row = await db.collection(COL).findOne({ userId: user.id, email })
-  if (!row || String(row.code) !== code) {
+  if (!row) {
+    return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
+  }
+  // 5 tries per code, then it's burned (a 6-digit code is otherwise guessable).
+  if ((Number(row.attempts) || 0) >= 5) {
+    await db.collection(COL).deleteOne({ userId: user.id })
+  invalidateAuthProfile(user.id)
+    return NextResponse.json({ error: 'Too many wrong codes. Request a new one.' }, { status: 429 })
+  }
+  if (String(row.code) !== code) {
+    await db.collection(COL).updateOne({ userId: user.id }, { $inc: { attempts: 1 } })
     return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
   }
   if (row.expiresAt && new Date(row.expiresAt).getTime() < Date.now()) {
@@ -44,6 +55,7 @@ export async function POST(req: NextRequest) {
   } catch { /* optional */ }
 
   await db.collection(COL).deleteOne({ userId: user.id })
+  invalidateAuthProfile(user.id)
 
   return NextResponse.json({ ok: true, email })
 }

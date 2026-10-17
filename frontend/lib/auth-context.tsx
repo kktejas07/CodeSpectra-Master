@@ -56,6 +56,34 @@ function isImpersonating(): boolean {
   return document.cookie.split('; ').some((c) => c.startsWith('codespectra_impersonating=1'))
 }
 
+type OAuthExchange =
+  | { ok: true }
+  | { ignored: true }
+  | { twoFactorRequired: true }
+  | { error: string; code?: string; status: number }
+
+/**
+ * Trade the Firebase ID token for a CodeSpectra session. The server decides:
+ * a valid session already → refresh; 2FA on → pending second factor;
+ * deactivated / unlinkable account → error.
+ */
+async function exchangeOAuthSession(fbUser: { getIdToken: (force?: boolean) => Promise<string> }, loginMethod?: 'google' | 'github', force = false): Promise<OAuthExchange> {
+  const idToken = await fbUser.getIdToken(force)
+  const body: Record<string, string> = { idToken }
+  if (loginMethod) body.loginMethod = loginMethod
+  await withFingerprint(body)
+  const res = await csrfFetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const json = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (json.twoFactorRequired) return { twoFactorRequired: true }
+  if (json.ignored) return { ignored: true }
+  if (!res.ok) return { error: String(json.error || 'Sign-in didn’t complete. Try again.'), code: typeof json.code === 'string' ? json.code : undefined, status: res.status }
+  return { ok: true }
+}
+
 function setLastLogin(method: LastLoginInfo['method']) {
   if (typeof window === 'undefined') return
   localStorage.setItem(LAST_LOGIN_KEY, JSON.stringify({ method, at: new Date().toISOString() }))
@@ -109,7 +137,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
   const [sessionExpired, setSessionExpired] = useState(false)
+  const [pendingOAuth2fa, setPendingOAuth2fa] = useState(false)
   const clearSessionExpired = () => setSessionExpired(false)
+
+  // A dashboard page whose session ended (revoked, expired, deactivated, or a
+  // Google/GitHub sign-in still waiting for its 2FA code) goes to sign-in and
+  // comes back afterwards, instead of failing every API call with 401s.
+  useEffect(() => {
+    if (!sessionExpired && !pendingOAuth2fa) return
+    if (typeof window === 'undefined') return
+    const path = window.location.pathname
+    if (!path.startsWith('/dashboard')) return
+    let cancelled = false
+    // The flag may be stale (e.g. the 2FA step finished on the login page):
+    // only leave when the server really has no session.
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null)
+      .then((data) => {
+        if (cancelled) return
+        if (data?.user) {
+          setSessionExpired(false)
+          setPendingOAuth2fa(false)
+          return
+        }
+        const back = encodeURIComponent(path + window.location.search)
+        window.location.assign(`/auth/login?redirect=${back}&${pendingOAuth2fa ? 'twofactor=oauth' : 'expired=1'}`)
+      })
+    return () => { cancelled = true }
+  }, [sessionExpired, pendingOAuth2fa])
 
   // Immediate session check — don't wait for Firebase
   useEffect(() => {
@@ -171,17 +227,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return
           }
           if (fbUser) {
-            setUser(toAuthUser(fbUser))
             try {
-              const idToken = await fbUser.getIdToken()
-              const body: Record<string, string> = { idToken }
-              await withFingerprint(body)
-              await csrfFetch('/api/auth/session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-              })
-            } catch { /* non-critical */ }
+              const r = await exchangeOAuthSession(fbUser)
+              if ('ok' in r) {
+                setUser(toAuthUser(fbUser))
+                setPendingOAuth2fa(false)
+                setSessionExpired(false)
+              } else if ('ignored' in r) {
+                // Another account holds the session; drop the stale Firebase
+                // login (the listener re-runs with null and reads the cookie).
+                try { await firebaseSignOut(a) } catch {}
+                return
+              } else if ('twoFactorRequired' in r) {
+                // Signed in with Google/GitHub but the authenticator code is
+                // still owed — no session yet.
+                setUser(null)
+                setPendingOAuth2fa(true)
+              } else if (r.status === 401 || r.status === 403 || r.status === 409) {
+                // Revoked, deactivated or unlinkable — stop the Firebase loop.
+                try { await firebaseSignOut(a) } catch {}
+                setUser(null)
+                setSessionExpired(true)
+              }
+            } catch { /* network — keep current state; heartbeat retries */ }
           } else {
             // Firebase not available yet — use session cookie as fallback
             try {
@@ -227,14 +295,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const a = getFirebaseAuth()
         if (!a?.currentUser) return
-        const idToken = await a.currentUser.getIdToken(true)
-        const body: Record<string, string> = { idToken }
-        await withFingerprint(body)
-        await csrfFetch('/api/auth/session', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        })
+        const r = await exchangeOAuthSession(a.currentUser, undefined, true)
+        if (!('ok' in r) && !('ignored' in r)) {
+          if ('twoFactorRequired' in r) setPendingOAuth2fa(true)
+          setUser(null)
+          setSessionExpired(true)
+        }
       } catch { /* heartbeat failed — will retry next interval */ }
     }, 5 * 60 * 1000) // every 5 minutes
     return () => clearInterval(interval)
@@ -279,15 +345,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reportFingerprint(json.user.id)
   }
 
+  const finishOAuthSignIn = async (auth: ReturnType<typeof getAuth>, fbUser: Parameters<typeof toAuthUser>[0] & { getIdToken: (force?: boolean) => Promise<string> }, method: 'google' | 'github') => {
+    setSessionExpired(false)
+    const r = await exchangeOAuthSession(fbUser, method)
+    if ('twoFactorRequired' in r) {
+      setLastLogin(method)
+      throw { twoFactorRequired: true, message: 'Two-factor code required' }
+    }
+    if ('error' in r || 'ignored' in r) {
+      try { await firebaseSignOut(auth) } catch {}
+      setUser(null)
+      throw new Error('error' in r ? r.error : 'Sign-in didn’t complete. Try again.')
+    }
+    setPendingOAuth2fa(false)
+    setLastLogin(method)
+    setUser(toAuthUser(fbUser))
+    await reportFingerprint(fbUser.uid)
+  }
+
   const signInWithGoogleFn = async () => {
     const auth = getAuth()
     const provider = new GoogleAuthProvider()
     provider.addScope('email'); provider.addScope('profile')
     const cred = await signInWithPopup(auth, provider)
-    setLastLogin('google')
-    setUser(toAuthUser(cred.user))
-    await recordLoginMethod(cred.user.uid, 'google')
-    await reportFingerprint(cred.user.uid)
+    await finishOAuthSignIn(auth, cred.user, 'google')
   }
 
   const signInWithGithubFn = async () => {
@@ -295,10 +376,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GithubAuthProvider()
     provider.addScope('user:email')
     const cred = await signInWithPopup(auth, provider)
-    setLastLogin('github')
-    setUser(toAuthUser(cred.user))
-    await recordLoginMethod(cred.user.uid, 'github')
-    await reportFingerprint(cred.user.uid)
+    await finishOAuthSignIn(auth, cred.user, 'github')
   }
 
   const signOutFn = async () => {
@@ -306,6 +384,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await csrfFetch('/api/auth/session', { method: 'DELETE' })
     setUser(null)
     setSessionExpired(false)
+    setPendingOAuth2fa(false)
   }
 
   const sendPasswordResetFn = async (email: string, turnstileToken?: string) => {

@@ -14,6 +14,45 @@ import { fallbackModuleQuiz, normalizeQuizQuestions, type ModuleQuizQuestion } f
 
 export const QUIZ_PASS_PERCENT = 80
 
+/** Failed module-quiz attempts allowed per module within QUIZ_COOLDOWN_MS. */
+export const QUIZ_MAX_FAILED_ATTEMPTS = 3
+export const QUIZ_COOLDOWN_MS = 60 * 60 * 1000
+
+/**
+ * May the learner take this module quiz now? `recentFailedAt` are the ISO
+ * submit times of failed attempts on this module (any age; filtered here).
+ * Returns the wait in seconds when the cap is hit.
+ */
+export function quizAttemptGate(
+  recentFailedAt: string[],
+  now: Date,
+  max = QUIZ_MAX_FAILED_ATTEMPTS,
+  windowMs = QUIZ_COOLDOWN_MS,
+): { ok: true } | { ok: false; retryAfterSec: number } {
+  const since = now.getTime() - windowMs
+  const times = recentFailedAt
+    .map((t) => new Date(t).getTime())
+    .filter((t) => Number.isFinite(t) && t > since)
+    .sort((a, b) => a - b)
+  if (times.length < max) return { ok: true }
+  // Free again once the oldest attempt inside the window ages out.
+  const oldest = times[times.length - max]
+  return { ok: false, retryAfterSec: Math.max(1, Math.ceil((oldest + windowMs - now.getTime()) / 1000)) }
+}
+
+/**
+ * What a graded attempt may reveal: on a pass, the answer key and
+ * explanations; on a fail, only which questions were right, so retakes
+ * can't just copy the key.
+ */
+export function revealQuizResults<T extends { correctAnswer: number; explanation?: string }>(
+  results: T[],
+  passed: boolean,
+): Array<Omit<T, 'correctAnswer' | 'explanation'> & { correctAnswer: number | null; explanation?: string }> {
+  if (passed) return results
+  return results.map(({ correctAnswer: _c, explanation: _e, ...rest }) => ({ ...rest, correctAnswer: null }))
+}
+
 /** Lesson ids are used as Mongo field-path segments; only allow safe ones. */
 export const SAFE_KEY_RE = /^[A-Za-z0-9_-]{1,120}$/
 

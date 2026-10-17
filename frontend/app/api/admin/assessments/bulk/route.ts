@@ -69,7 +69,8 @@ export async function POST(request: Request) {
       seenEmails.add(email)
 
       // Check existing invite for same exam
-      const existing = await inviteCol.findOne({ email, target_url: { $regex: examId } })
+      // Exact match on this exam (the old substring regex matched other exam ids too).
+      const existing = await inviteCol.findOne({ email, $or: [{ exam_id: examId }, { target_url: `/assessment/${examId}` }], status: { $in: ['pending', 'active', 'used'] } } as never)
       if (existing) {
         errors.push({ email, reason: 'Already invited to this assessment' })
         continue
@@ -78,7 +79,8 @@ export async function POST(request: Request) {
       const id = newId()
       const doc = {
         id,
-        token: `${examId}-${Date.now()}-${id.slice(0, 8)}`,
+        // Unguessable: the token is the candidate's key to the test.
+        token: crypto.randomUUID(),
         user_id: '',
         email,
         full_name: c.name || email.split('@')[0],
@@ -101,19 +103,23 @@ export async function POST(request: Request) {
       await inviteCol.insertOne(doc)
       created.push(email)
 
-      // Send email — fire-and-forget per candidate, catch individually
+      // Send email per candidate; record the outcome on the invite.
+      let delivered = false
       try {
-        const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'}/assessment/${examId}?invite=${id}`
+        // The invite landing page (by token) — `?invite=<id>` was never read by the test page.
+        const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'}/assessment/invite/${doc.token}`
         const tpl = emailTemplates.assessmentInvite({
           candidateName: c.name || email.split('@')[0],
           examTitle: exam.title,
           inviteUrl,
           expiresIn: deadline ? formatDate(deadline) : '7 days',
         })
-        await sendEmail(email, tpl)
+        delivered = (await sendEmail(email, tpl)).success
       } catch {
         // Don't fail batch on email error — invite is already saved
       }
+      await inviteCol.updateOne({ id }, { $set: { delivery_status: delivered ? 'sent' : 'failed', delivery_updated_at: nowIso() } }).catch(() => {})
+      if (!delivered) errors.push({ email, reason: 'Invite created but the email could not be sent' })
     }
 
     return NextResponse.json({

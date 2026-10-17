@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { runCodeathonCode } from '@/lib/codeathon-run'
+import { runCodeathonCode, outputsMatch, isCodeathonParticipant, recomputeCodeathonStanding } from '@/lib/codeathon-run'
+import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 
 interface TestCase {
   input: string
@@ -19,7 +20,15 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id: codeathonId, problemId } = await params
-  const body = await request.json() as { code: string; language: string }
+  const rl = rateLimitSlidingWindow(`codeathon-submit:${user.id}`, 10, 60_000)
+  if (!rl.ok) return NextResponse.json({ error: 'Too many submissions. Wait a moment.' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  const raw = (await request.json().catch(() => ({}))) as { code?: unknown; language?: unknown }
+  const body = {
+    code: typeof raw.code === 'string' ? raw.code : '',
+    language: typeof raw.language === 'string' ? raw.language.slice(0, 30) : '',
+  }
+  if (!body.code.trim() || !body.language) return NextResponse.json({ error: 'code and language are required' }, { status: 400 })
+  if (body.code.length > 200_000) return NextResponse.json({ error: 'Code is too long' }, { status: 413 })
 
   try {
     const db = await getMongoDb()
@@ -43,7 +52,21 @@ export async function POST(
     const problem = (codeathon.problems as any[])?.find(p => p.id === problemId)
     if (!problem) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
 
-    const testCases: TestCase[] = problem.test_cases || []
+    // Only registered participants (or team members) may submit.
+    if (!(await isCodeathonParticipant(db, codeathon, user.id))) {
+      return NextResponse.json({ error: 'Register for this codeathon first' }, { status: 403 })
+    }
+
+    let testCases: TestCase[] = Array.isArray(problem.test_cases) ? problem.test_cases : []
+    // Problems added by hand may only carry a sample pair; that is a real test.
+    if (testCases.length === 0 && typeof problem.sample_output === 'string' && problem.sample_output.trim()) {
+      testCases = [{ input: String(problem.sample_input ?? ''), expected: problem.sample_output, hidden: false }]
+    }
+    // No tests means nothing to grade against — never award points for "it ran".
+    if (testCases.length === 0) {
+      return NextResponse.json({ error: 'This problem has no test cases yet. Ask the organiser to add them.' }, { status: 409 })
+    }
+    const points = typeof problem.points === 'number' && Number.isFinite(problem.points) && problem.points > 0 ? problem.points : 100
 
     // For team mode, get team ID
     let teamId = null
@@ -71,34 +94,29 @@ export async function POST(
       status: 'running',
       score: 0,
       test_cases_passed: 0,
-      test_cases_total: testCases.length || 1,
+      test_cases_total: testCases.length,
       created_at: new Date().toISOString(),
     }
     await db.collection('codeathon_submissions').insertOne(submission)
 
-    // Run against test cases
+    // Run against every test (hidden included). Output is only echoed back
+    // for visible tests so hidden expected outputs never leak.
     let passed = 0
     let lastOutput = ''
     let lastError = ''
+    const results: Array<{ passed: boolean; hidden: boolean; output?: string }> = []
 
     for (const tc of testCases) {
       const result = await runCode(body.code, body.language, tc.input)
-      if (result.exitCode === 0 && result.output === tc.expected) {
-        passed++
-      }
-      lastOutput = result.output
-      lastError = result.error
+      const ok = result.exitCode === 0 && outputsMatch(result.output, tc.expected)
+      if (ok) passed++
+      results.push(tc.hidden ? { passed: ok, hidden: true } : { passed: ok, hidden: false, output: result.output })
+      if (!tc.hidden) { lastOutput = result.output; lastError = result.error }
+      else if (result.error && !lastError) lastError = 'A hidden test failed to run'
     }
 
-    if (testCases.length === 0) {
-      const result = await runCode(body.code, body.language, problem.sample_input || '')
-      lastOutput = result.output
-      lastError = result.error
-      passed = result.exitCode === 0 ? 1 : 0
-    }
-
-    const total = testCases.length || 1
-    const score = Math.round((passed / total) * problem.points)
+    const total = testCases.length
+    const score = Math.round((passed / total) * points)
     const status = passed === total ? 'accepted' : 'wrong_answer'
 
     // Update submission
@@ -107,34 +125,14 @@ export async function POST(
       { $set: { status, score, test_cases_passed: passed, output: lastOutput, error: lastError } }
     )
 
-    // Update leaderboard (user level)
-    await db.collection('codeathon_leaderboard').updateOne(
-      { codeathon_id: codeathonId, user_id: user.id },
-      {
-        $inc: { total_score: score, problems_solved: passed === total ? 1 : 0 },
-        $set: { last_submission_at: new Date().toISOString(), user_name: user.fullName || user.email || 'Unknown' },
-        $setOnInsert: { created_at: new Date().toISOString() },
-      },
-      { upsert: true }
-    )
-
-    // For team mode, also update team leaderboard
-    if (teamId) {
-      const team = await db.collection('codeathon_teams').findOne({ id: teamId })
-      await db.collection('codeathon_leaderboard').updateOne(
-        { codeathon_id: codeathonId, team_id: teamId },
-        {
-          $inc: { total_score: score, problems_solved: passed === total ? 1 : 0 },
-          $set: {
-            last_submission_at: new Date().toISOString(),
-            team_name: team?.name || 'Unknown Team',
-            user_name: team?.name || 'Unknown Team',
-          },
-          $setOnInsert: { created_at: new Date().toISOString() },
-        },
-        { upsert: true }
-      )
-    }
+    // Leaderboard = best score per problem, recomputed (never $inc per submit).
+    const team = teamId ? await db.collection('codeathon_teams').findOne({ id: teamId }) : null
+    await recomputeCodeathonStanding(db, codeathonId, {
+      userId: user.id,
+      userName: user.fullName || user.name || 'Participant',
+      teamId,
+      teamName: team?.name || undefined,
+    })
 
     return NextResponse.json({
       id: submissionId,
@@ -144,6 +142,7 @@ export async function POST(
       test_cases_total: total,
       output: lastOutput,
       error: lastError,
+      results,
       created_at: submission.created_at,
     })
   } catch (e) {

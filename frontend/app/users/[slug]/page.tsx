@@ -21,8 +21,6 @@ interface ProfileResponse {
     id: string
     slug: string
     name: string
-    email: string
-    role: string
     preferredLanguage: string
     joinedAt: string | null
   }
@@ -75,7 +73,8 @@ export default function UserProfilePage({
   const [error, setError] = useState<string | null>(null)
   const [heatmap, setHeatmap] = useState<HeatmapState>({ cells: null, tooltipData: {}, totalContributions: 0 })
 
-  const isOwner = authUser && authUser.email && (authUser.email.split('@')[0] === slug || authUser.uid === slug)
+  // Owner check uses the id the API resolved, not the email.
+  const isOwner = Boolean(authUser && data && authUser.uid === data.user.id)
 
   useEffect(() => {
     let cancelled = false
@@ -221,12 +220,12 @@ export default function UserProfilePage({
               
               <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-primary to-[#6E8CF5] p-0.75 shadow-lg">
                 <div className="rounded-full bg-background p-1">
-                  <UserAvatar seed={user.email || user.id} name={user.name} className="h-28 w-28" />
+                  <UserAvatar seed={user.id} name={user.name} className="h-28 w-28" />
                 </div>
               </div>
               
               <h1 className="mt-5 text-2xl font-extrabold text-foreground tracking-tight">{user.name}</h1>
-              <p className="mt-1 text-sm text-muted-foreground font-medium">@{user.email?.split('@')[0] || slug}</p>
+              <p className="mt-1 text-sm text-muted-foreground font-medium">@{user.slug || slug}</p>
               
               <div className="mt-6 flex justify-center gap-6 text-sm">
                 <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-20">

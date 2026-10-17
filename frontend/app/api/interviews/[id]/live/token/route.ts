@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { interviewSessions } from '@/lib/db/interviews'
 import { AccessToken } from 'livekit-server-sdk'
+import { interviewRole } from '@/lib/interview-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,20 +17,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { id } = await ctx.params
-  const body = await req.json().catch(() => ({})) as { identity?: string; name?: string }
-
-  if (!body.identity) {
-    return NextResponse.json({ error: 'identity required' }, { status: 400 })
-  }
+  const body = await req.json().catch(() => ({})) as { name?: string }
 
   const col = await interviewSessions()
   const session = await col.findOne({ id })
   if (!session) return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
 
-  const userId = gate.user.id
-  const role = gate.user.role
-  const isParticipant = session.interviewer_id === userId || session.candidate_id === userId
-  if (!isParticipant && role !== 'superadmin' && role !== 'tenant_admin') {
+  // Participants, superadmin, or a tenant_admin of this session's tenant only.
+  if (!interviewRole(gate.user, session as unknown as Record<string, unknown>)) {
     return NextResponse.json({ error: 'Not authorized to join this interview' }, { status: 403 })
   }
 
@@ -41,9 +36,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const roomName = `interview-${id}`
+  // Identity is the signed-in account, never the request body (no impersonation in the room).
+  const displayName = (gate.user.fullName || gate.user.name || (typeof body.name === 'string' ? body.name : '') || gate.user.email || 'Participant').slice(0, 100)
   const at = new AccessToken(API_KEY, API_SECRET, {
-    identity: body.identity,
-    name: body.name,
+    identity: gate.user.id,
+    name: displayName,
     ttl: 7200,
   })
   at.addGrant({

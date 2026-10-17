@@ -34,11 +34,13 @@ interface Hackathon {
   id: string; name: string; slug: string; description?: string
   num_teams: number; results_released: boolean; released_at?: string
   ends_at: string
+  display_count?: number; advance_top_n?: number; certificates?: boolean
   tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string }[]
 }
 
 interface Team {
-  id: string; name: string; slug: string; qr_token?: string
+  id: string; name: string; slug: string; verify_token?: string
+  total?: number | null; rank?: number | null; tied?: boolean; advancing?: boolean
   xp: number; level: number; submissions: number
   members: Array<{ name: string; role: string }>
   achievements: Array<{ id: string; name: string }>
@@ -51,8 +53,8 @@ interface Submission {
   feedback?: string; submitted_at: string
 }
 
-function getVerifyToken(teamQrToken?: string): string {
-  return teamQrToken || ''
+function getVerifyToken(verifyToken?: string): string {
+  return verifyToken || ''
 }
 
 async function generateQRDataURL(text: string, size: number = 100): Promise<string> {
@@ -161,7 +163,7 @@ function TeamCardExpanded({
   team: Team
   submissions: Submission[]
   tasks: Hackathon['tasks']
-  rank: number
+  rank: number | null
 }) {
   const teamSubs = submissions.filter((s) => s.team_id === team.id && s.status === 'released')
   const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
@@ -259,7 +261,7 @@ function MyTeamResults({
             <div>
               <h2 className="text-lg font-semibold">{myTeam.name}</h2>
               <p className="text-sm text-muted-foreground">
-                Captain: {captain?.name || 'Unknown'} · {myTeam.xp} XP · Level {myTeam.level}
+                Captain: {captain?.name || 'Unknown'} · {typeof myTeam.total === 'number' ? `${myTeam.total} points` : 'Not scored'}
               </p>
             </div>
           </div>
@@ -335,7 +337,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
   const [certificateId, setCertificateId] = useState<string>('')
 
   // Public endpoint: readable signed-out, but only returns teams/scores once
-  // results are released. The viewer's own team (if any) carries qr_token.
+  // results are released. The viewer's own team (if any) carries verify_token.
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/hackathons/${encodeURIComponent(slug)}/public-results`, { cache: 'no-store' })
@@ -347,7 +349,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
         my_team_id: string | null
       }
       setHackathon(j.hackathon)
-      const sorted = [...(j.teams || [])].sort((a, b) => b.xp - a.xp)
+      // Server returns teams already ranked on judged totals.
+      const sorted = [...(j.teams || [])]
       setTeams(sorted)
       setMyTeam(j.my_team_id ? sorted.find((t) => t.id === j.my_team_id) || null : null)
       setSubmissions(j.submissions || [])
@@ -357,8 +360,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
   useEffect(() => { void load() }, [load])
 
-  // Rank comes from XP, not list position: teams with equal XP share a rank.
-  const teamRanks = rankByScore(teams, (t) => t.id, (t) => t.xp)
+  // Ranks come from the server's judged totals; equal totals share a rank.
+  const teamRanks = rankByScore(teams, (t) => t.id, (t) => (typeof t.total === 'number' ? t.total : null))
   const myRankInfo = myTeam ? teamRanks.get(myTeam.id) ?? null : null
   const myRank = myRankInfo?.rank ?? null
 
@@ -407,7 +410,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const token = getVerifyToken(myTeam.qr_token)
+    const token = getVerifyToken(myTeam.verify_token)
     const qrDataUrl = await generateQRDataURL(`${typeof window !== 'undefined' ? window.location.origin : ''}/hackathons/verify/${token}`, 80)
 
     const teamSubs = submissions.filter((s) => s.team_id === myTeam.id && s.status === 'released')
@@ -482,7 +485,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
     ctx.font = '11px sans-serif'
     ctx.fillStyle = 'rgba(255,255,255,0.5)'
-    ctx.fillText('Scan QR or visit /cert/verify to verify', 40, 580)
+    ctx.fillText('Scan the QR code to verify at /hackathons/verify', 40, 580)
 
     setTimeout(() => {
       const link = document.createElement('a')
@@ -563,7 +566,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
             <Button onClick={copyResultsLink} variant="outline">
               <Copy className="h-4 w-4 mr-1" /> {copied ? 'Copied!' : 'Copy results link'}
             </Button>
-            {myTeam && (
+            {myTeam && myRank && hackathon.certificates !== false && (
               <Button onClick={downloadCert} variant="outline">
                 <Download className="h-4 w-4 mr-1" /> Download certificate
               </Button>
@@ -582,7 +585,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
               const teamSubs = submissions.filter((s) => s.team_id === t.id && s.status === 'released')
               const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
               const isExpanded = expandedTeams.has(t.id)
-              const r = teamRanks.get(t.id)?.rank ?? i + 1
+              const r = teamRanks.get(t.id)?.rank ?? null
+              void i
 
               return (
                 <div key={t.id}>
@@ -592,9 +596,9 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                   >
                     <span
                       className={`w-10 text-2xl font-bold tabular-nums text-center ${r === 1 ? 'text-amber-500' : r === 2 ? 'text-foreground/60' : r === 3 ? 'text-amber-700 dark:text-amber-600' : 'text-muted-foreground'}`}
-                      aria-label={`Rank ${r}${teamRanks.get(t.id)?.tied ? ', tied' : ''}`}
+                      aria-label={r === null ? 'Not ranked' : `Rank ${r}${teamRanks.get(t.id)?.tied ? ', tied' : ''}`}
                     >
-                      {r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `#${r}`}
+                      {r === null ? '–' : r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `#${r}`}
                     </span>
                     <div className="flex-1">
                       <p className="font-medium">{t.name}</p>
@@ -614,8 +618,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg tabular-nums">{t.xp} <span className="text-xs font-normal text-muted-foreground">XP</span></p>
-                      <p className="text-xs text-muted-foreground tabular-nums">Level {t.level}</p>
+                      <p className="font-bold text-lg tabular-nums">{typeof t.total === 'number' ? t.total : '–'} <span className="text-xs font-normal text-muted-foreground">points</span></p>
+                      {t.advancing && <p className="text-xs text-primary">Advancing</p>}
                     </div>
                     {t.achievements.length > 0 && (
                       <div className="flex gap-1">
@@ -758,7 +762,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
               <Linkedin className="h-4 w-4 mr-1" /> Share on LinkedIn
             </Button>
           )}
-          {myTeam && (
+          {myTeam && myRank && hackathon.certificates !== false && (
             <Button onClick={downloadCert}>
               <Award className="h-4 w-4 mr-1" /> Download certificate
             </Button>

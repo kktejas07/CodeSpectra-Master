@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isHackathonStaff } from '@/lib/hackathons/access'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, nowIso } from '@/lib/db/qr-events'
 
@@ -18,12 +19,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   // Verify user is on the team or is an admin
   const isMember = team.members.some((m) => m.user_id === user.id)
-  const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes(user.role || '')
-  if (!isMember && !isAdmin) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  // tenant_admin acting as admin can only modify teams in their own tenant's event
-  if (!isMember && user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
+  if (!isMember && !isHackathonStaff(user, hk)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

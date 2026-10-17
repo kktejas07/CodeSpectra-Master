@@ -4,7 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { buildCatalogCourse } from '@/lib/courses/build-course'
 import { courseIdFor, estimateCourse } from '@/lib/courses/syllabus'
 import { findBusyJob } from '@/lib/courses/process-job'
-import { deductUserAiCredits, getUserAiCredits } from '@/lib/user-credits'
+import { spendAiCredits, getUserAiCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
         (n: number, s: any) => n + (s.lessons || []).filter((l: any) => l.videoUrl).length,
         0,
       )
-      // Queue remaining videos if course outline exists but media is incomplete and worker is free.
+      // Queue remaining videos if the outline exists but media is incomplete. The worker
+      // takes pending jobs oldest-first (claimNextPendingJob), so a busy worker just means a wait.
       if (videos < totalLessons) {
-        const busy = await findBusyJob()
-        if (!busy) {
+        {
           const pending = await db.collection('generation_jobs').findOne({
             courseId,
             status: { $in: ['pending', 'running'] },
@@ -102,12 +102,18 @@ export async function POST(request: NextRequest) {
 
     const busy = await findBusyJob()
     const { course, totalLessons, plan } = buildCatalogCourse(techStack, level)
+    // Atomic spend before creating anything (fails if the balance ran out meanwhile).
+    const spent = await spendAiCredits(user.id, CREDIT_COST)
+    if (!spent.ok) {
+      return NextResponse.json({ error: 'Insufficient credits', balance: spent.balance, required: CREDIT_COST }, { status: 403 })
+    }
     await db.collection('courses').insertOne(course)
-    await deductUserAiCredits(user.id, CREDIT_COST)
     await ensureEnrolled(user.id, courseId)
 
+    // Always queue: the worker processes pending jobs oldest-first, so the credits
+    // paid here always correspond to a queued video job.
     let job = null
-    if (!busy) {
+    {
       job = {
         id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         courseId,
@@ -136,9 +142,9 @@ export async function POST(request: NextRequest) {
       existing: false,
       creditsCharged: CREDIT_COST,
       jobQueued: Boolean(job),
-      message: job
-        ? `Created "${course.title}" and queued video generation.`
-        : `Created "${course.title}". Video job will start when the worker is free.`,
+      message: busy
+        ? `Created "${course.title}". Videos are queued and will start after the jobs ahead of it.`
+        : `Created "${course.title}" and queued video generation.`,
     })
   } catch (e) {
     console.error('[user/courses/generate]', e)

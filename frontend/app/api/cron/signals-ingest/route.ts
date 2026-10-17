@@ -6,6 +6,7 @@
  * Cost: HTTP fetch/RSS = free. LLM = existing platform AI keys (usage).
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml, safeHttpUrl, escapeHtml } from '@/lib/safe-html'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { SIGNAL_FEEDS } from '@/lib/signals/feeds'
 import { fetchFeedItems } from '@/lib/signals/rss'
@@ -62,15 +63,18 @@ async function postImpl(req: NextRequest) {
         })
 
         const now = nowIso()
-        const sourceUrls =
-          rewritten?.source_urls?.length ? rewritten.source_urls : [item.link]
+        const sourceUrls = (rewritten?.source_urls?.length ? rewritten.source_urls : [item.link])
+          .map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
         const doc: SignalDraftDoc = {
           id: newSignalId(),
           title: rewritten?.title || item.title,
           excerpt: rewritten?.excerpt || item.summary.slice(0, 220) || item.title,
-          body:
+          // Untrusted (feed + LLM): sanitise on save (E13).
+          body: sanitizeArticleHtml(
             rewritten?.body ||
-            `<p>${item.summary || item.title}</p><p><a href="${item.link}" rel="noopener noreferrer">Source</a></p>`,
+            `<p>${escapeHtml(item.summary || item.title)}</p>` +
+              (safeHttpUrl(item.link) ? `<p><a href="${escapeHtml(safeHttpUrl(item.link)!)}" rel="noopener noreferrer">Source</a></p>` : ''),
+          ),
           category: feed.category,
           source_url: item.link,
           source_title: item.title,

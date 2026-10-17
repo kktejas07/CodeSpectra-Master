@@ -175,13 +175,15 @@ export default function AdminExamsPage() {
   const fetchExams = async () => {
     setLoading(true)
     try {
+      // The organisations list is superadmin-only; tenant admins only ever see their own exams.
+      const isSuper = gate.user?.role === 'superadmin'
       const [examsRes, tenantsRes] = await Promise.all([
         fetch('/api/exams', { credentials: 'include' }),
-        fetch('/api/admin/tenants', { credentials: 'include' }),
+        isSuper ? fetch('/api/admin/tenants', { credentials: 'include' }) : Promise.resolve(null),
       ])
       if (!examsRes.ok) throw new Error(`Failed to load assessments (${examsRes.status})`)
       const examsJson = await examsRes.json()
-      const tenantsJson = await tenantsRes.json().catch(() => ({}))
+      const tenantsJson = tenantsRes && tenantsRes.ok ? await tenantsRes.json().catch(() => ({})) : {}
       setExams(examsJson.data || [])
       setTenants(tenantsJson.data || [])
       setLoadError(false)
@@ -189,7 +191,8 @@ export default function AdminExamsPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchExams() }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (gate.ready) fetchExams() }, [gate.ready])
 
   const handleDelete = async (ids: string[]) => {
     // Only drop rows the server actually deleted.
@@ -312,16 +315,18 @@ export default function AdminExamsPage() {
           credentials: 'include',
           body: JSON.stringify(payload)
         })
-        const newExam = await createRes.json()
+        const newExam = await createRes.json().catch(() => ({})) as { id?: string; error?: string }
+        if (!createRes.ok || !newExam.id) throw new Error(newExam.error || 'Failed to create the assessment')
         // POST builds the doc from known fields only — persist the window
         // via PATCH (pass-through) so create+edit stay in parity.
         if (startsIso || endsIso) {
-          await csrfFetch('/api/exams', {
+          const winRes = await csrfFetch('/api/exams', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ id: newExam.id, starts_at: startsIso, ends_at: endsIso })
           })
+          if (!winRes.ok) addToast({ type: 'warning', title: 'Draft created, but the availability window wasn’t saved', message: 'Set it again in the editor.' })
         }
         addToast({ type: 'success', title: 'Draft generated! Redirecting to review...' })
         setIsModalOpen(false)
@@ -330,8 +335,8 @@ export default function AdminExamsPage() {
       }
       setIsModalOpen(false)
       fetchExams()
-    } catch {
-      addToast({ type: 'error', title: 'Failed to save assessment' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Failed to save assessment', message: e instanceof Error && e.message !== 'update failed' ? e.message : undefined })
     } finally {
       setSaving(false)
     }
@@ -381,8 +386,26 @@ export default function AdminExamsPage() {
     const hasHeader = firstLine.includes('email') || firstLine.includes('name')
     const startIdx = hasHeader ? 1 : 0
     const candidates: { name: string; email: string }[] = []
+    // RFC 4180-ish: quoted fields may contain commas and doubled quotes ("").
+    const splitCsvLine = (line: string): string[] => {
+      const out: string[] = []
+      let cur = ''
+      let quoted = false
+      for (let j = 0; j < line.length; j++) {
+        const ch = line[j]
+        if (quoted) {
+          if (ch === '"' && line[j + 1] === '"') { cur += '"'; j++ }
+          else if (ch === '"') quoted = false
+          else cur += ch
+        } else if (ch === '"') quoted = true
+        else if (ch === ',') { out.push(cur.trim()); cur = '' }
+        else cur += ch
+      }
+      out.push(cur.trim())
+      return out
+    }
     for (let i = startIdx; i < lines.length; i++) {
-      const parts = lines[i].split(',').map(s => s.trim().replace(/^"(.*)"$/, '$1'))
+      const parts = splitCsvLine(lines[i])
       if (parts.length < 2) {
         candidates.push({ name: 'Candidate', email: parts[0] })
       } else {
@@ -532,6 +555,7 @@ export default function AdminExamsPage() {
     { key: 'tenant', header: 'Organization', sortable: true, cell: (r) => {
       if (!r.tenant_id) return <span className="text-muted-foreground">Platform</span>
       const tenant = tenants.find(t => t.id === r.tenant_id)
+      if (!tenant && gate.user?.role !== 'superadmin') return <span>Your organisation</span>
       return tenant?.name || <span className="text-muted-foreground">Unknown</span>
     }},
     { key: 'screening', header: 'Screening', sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
@@ -603,9 +627,11 @@ export default function AdminExamsPage() {
           icon={<BookOpen />}
           actions={
             <>
-              <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
-                <Upload className="w-4 h-4" />Bulk schedule
-              </Button>
+              {gate.user?.role === 'superadmin' && (
+                <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
+                  <Upload className="w-4 h-4" />Bulk schedule
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
                 <LayoutDashboard className="w-4 h-4" />Pipeline
               </Button>

@@ -12,7 +12,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'event not found' }, { status: 404 })
-  if (hk.status === 'closed') return NextResponse.json({ error: 'event closed' }, { status: 409 })
+  if (hk.status === 'closed' || hk.results_released) return NextResponse.json({ error: 'event closed' }, { status: 409 })
+  if ((hk.judges || []).includes(user.id)) return NextResponse.json({ error: 'Judges of this event cannot join a team' }, { status: 409 })
   if (hk.status === 'draft') return NextResponse.json({ error: 'This event isn’t open for registration yet.' }, { status: 409 })
 
   // Only the secret invite token (the team's share link / QR) grants a join.
@@ -33,12 +34,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   })
   if (already) {
     if (already.id === team.id) {
-      return NextResponse.json({ error: `Already a member of this team`, team: already.slug, team_name: already.name }, { status: 409 })
+      return NextResponse.json({ error: `Already a member of this team`, team: already.slug, team_name: already.name, already_this_team: true }, { status: 409 })
     }
     if (already.members.length === 1 && (already.submissions || 0) === 0) {
       await teamsCol.deleteOne({ id: already.id })
     } else {
-      return NextResponse.json({ error: `already on a team in this event`, team: already.slug, team_name: already.name }, { status: 409 })
+      return NextResponse.json({ error: `already on a team in this event`, team: already.slug, team_name: already.name, already_this_team: false }, { status: 409 })
     }
   }
 

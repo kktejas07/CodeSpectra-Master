@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
-import { toLocalDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
@@ -98,7 +98,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
           num_teams: Number(doc.num_teams) || 8,
           max_per_team: Number(doc.max_per_team) || 4,
           timeout_minutes: Number(doc.timeout_minutes) || 60,
-          starts_at: toLocalDatetimeString(startsAt),
+          starts_at: toZonedDatetimeString(startsAt, tz),
           status: (['draft', 'open', 'live', 'closed'].includes(doc.status) ? doc.status : 'open') as 'draft' | 'open' | 'live' | 'closed',
           grace_period_minutes: Number(doc.grace_period_minutes) || 0,
           allow_late_submissions: doc.allow_late_submissions === true,
@@ -222,10 +222,10 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         const j = await res.json()
         if (!res.ok) throw new Error(j.error || 'Generation failed')
         const prob = j.problem as Record<string, unknown>
-        const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
-          ? j.published_problem_slug
-          : (typeof prob.slug === 'string' ? prob.slug
-            : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+        if (typeof j.published_problem_slug !== 'string' || !j.published_problem_slug) {
+          throw new Error('The problem was generated but could not be saved. Try again.')
+        }
+        const slug: string = j.published_problem_slug
         const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
           ? prob.difficulty : 'medium') as string
         const title = String(prob.title || slug)
@@ -251,7 +251,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
   async function editProblem(slug: string) {
     setEditLoading(true)
     try {
-      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}?edit=1`, { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
       setOwnForm({

@@ -60,8 +60,10 @@ export async function POST(req: NextRequest) {
 
   // Generate report even with zero answers (partial session)
   let report
+  let generated = false
   try {
     report = await generateConversationReport(session)
+    generated = true
   } catch (e) {
     console.error('[ai-mock] Report generation error:', e)
     const avgScore = session.scores.length > 0
@@ -78,10 +80,11 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Mark session as completed
+  // Mark session as completed. Only a real report is cached — a fallback
+  // would otherwise be served forever instead of retrying generation.
   await db.collection('ai_mock_sessions').updateOne(
     { id: sessionId, userId: user.id },
-    { $set: { completedAt: Date.now(), status: 'completed', report } },
+    { $set: { completedAt: doc.completedAt || Date.now(), status: 'completed', ...(generated ? { report } : {}) } },
   )
 
   return NextResponse.json({ report, sessionComplete: true })

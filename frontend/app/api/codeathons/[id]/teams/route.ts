@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { randomBytes } from 'node:crypto'
+import { isTenantStaff } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 
@@ -27,11 +29,20 @@ export async function GET(
       .find({ team_id: { $in: teamIds } })
       .toArray()
 
-    const teamsWithMembers = teams.map(team => ({
-      ...team,
-      members: members.filter(m => m.team_id === team.id),
-      member_count: members.filter(m => m.team_id === team.id).length,
-    }))
+    // The join code is the team's secret: only its members (and staff) see it.
+    const codeathon = await db.collection('codeathons').findOne({ id }, { projection: { tenant_id: 1 } })
+    const staff = !!codeathon && isTenantStaff(user, codeathon as unknown as Record<string, unknown>)
+    const teamsWithMembers = teams.map(({ _id, join_code, ...team }) => {
+      void _id
+      const teamMembers = members.filter(m => m.team_id === team.id)
+      const mine = teamMembers.some((m) => m.user_id === user.id)
+      return {
+        ...team,
+        ...(mine || staff ? { join_code } : {}),
+        members: teamMembers.map(({ _id: _m, ...m }) => { void _m; return m }),
+        member_count: teamMembers.length,
+      }
+    })
 
     return NextResponse.json({ teams: teamsWithMembers })
   } catch (e) {
@@ -49,9 +60,8 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id: codeathonId } = await params
-  const body = await request.json() as { name: string }
-
-  if (!body.name?.trim()) {
+  const body = (await request.json().catch(() => ({}))) as { name?: unknown }
+  if (typeof body.name !== 'string' || !body.name.trim()) {
     return NextResponse.json({ error: 'Team name is required' }, { status: 400 })
   }
 
@@ -63,6 +73,9 @@ export async function POST(
     if (!codeathon) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     if (codeathon.event_type !== 'team') {
       return NextResponse.json({ error: 'This codeathon is individual only' }, { status: 400 })
+    }
+    if (codeathon.endDate && new Date(String(codeathon.endDate)).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'This codeathon has ended' }, { status: 409 })
     }
 
     // Check if user already has a team
@@ -77,7 +90,7 @@ export async function POST(
     // Check team name uniqueness
     const existingTeam = await db.collection('codeathon_teams').findOne({
       codeathon_id: codeathonId,
-      name: body.name.trim(),
+      name: (body.name as string).trim(),
     })
     if (existingTeam) {
       return NextResponse.json({ error: 'Team name already taken' }, { status: 400 })
@@ -88,7 +101,9 @@ export async function POST(
     const team = {
       id: teamId,
       codeathon_id: codeathonId,
-      name: body.name.trim(),
+      name: body.name.trim().slice(0, 80),
+      // Share this code with teammates; joining by team id alone is not allowed.
+      join_code: randomBytes(4).toString('hex').toUpperCase(),
       created_by: user.id,
       created_at: new Date().toISOString(),
     }

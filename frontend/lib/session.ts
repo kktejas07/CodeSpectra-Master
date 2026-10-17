@@ -1,6 +1,9 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import { randomUUID } from 'node:crypto'
+import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
+import { accountBlockReason, isSessionVersionCurrent, type AuthProfileLike } from '@/lib/auth-account'
 import {
   generateRuntimeSecret,
   pickRuntimeSecret,
@@ -81,52 +84,162 @@ export interface SessionPayload {
   email: string
   role: string
   ver?: number
+  /** Per-session id, so one sign-out can revoke just this session. */
+  sid?: string
+}
+
+// ─── Auth profile loader (short cache) ──────────────────────────────────────
+// Every authenticated request needs the user's role, status, tenant and
+// session_version. Cache them for a few seconds per process; any change that
+// must bite immediately calls invalidateAuthProfile(). Other instances catch
+// up within AUTH_PROFILE_TTL_MS.
+
+const AUTH_PROFILE_TTL_MS = 10_000
+const AUTH_PROFILE_FIELDS = {
+  _id: 1, id: 1, email: 1, name: 1, fullName: 1, role: 1, status: 1, isActive: 1, deletedAt: 1,
+  tenantId: 1, organizationId: 1, session_version: 1, sessions_revoked_at: 1,
+  lastLoginMethod: 1, lastLoginAt: 1, firebase_uid: 1,
+} as const
+
+export interface AuthProfile extends AuthProfileLike {
+  _id?: unknown
+  id?: string
+  email?: string
+  name?: string | null
+  fullName?: string | null
+  lastLoginMethod?: string | null
+  lastLoginAt?: Date | null
+}
+
+const _profileCache = new Map<string, { at: number; profile: AuthProfile | null }>()
+const _tenantCache = new Map<string, { at: number; active: boolean }>()
+
+function uidFilter(uid: string) {
+  const or: Record<string, unknown>[] = [{ id: uid }, { _id: uid }, { firebase_uid: uid }]
+  if (ObjectId.isValid(uid) && /^[0-9a-f]{24}$/i.test(uid)) or.push({ _id: new ObjectId(uid) })
+  return { $or: or }
+}
+
+/** Load the auth-relevant user fields (cached ~10s). Throws when the DB is unreachable. */
+export async function loadAuthProfile(uid: string): Promise<AuthProfile | null> {
+  const hit = _profileCache.get(uid)
+  if (hit && Date.now() - hit.at < AUTH_PROFILE_TTL_MS) return hit.profile
+  const db = await getMongoDb()
+  const profile = (await db.collection('user').findOne(uidFilter(uid) as never, { projection: AUTH_PROFILE_FIELDS })) as AuthProfile | null
+  _profileCache.set(uid, { at: Date.now(), profile })
+  if (_profileCache.size > 5000) {
+    const first = _profileCache.keys().next().value
+    if (first) _profileCache.delete(first)
+  }
+  return profile
+}
+
+/** Is this tenant present and active? (cached ~10s; null tenant ⇒ true). */
+export async function isTenantActive(tenantId: string | null): Promise<boolean> {
+  if (!tenantId) return true
+  const hit = _tenantCache.get(tenantId)
+  if (hit && Date.now() - hit.at < AUTH_PROFILE_TTL_MS) return hit.active
+  const db = await getMongoDb()
+  const t = await db.collection('tenants').findOne({ id: tenantId }, { projection: { is_active: 1 } })
+  const active = !!t && t.is_active !== false
+  _tenantCache.set(tenantId, { at: Date.now(), active })
+  return active
+}
+
+export function invalidateAuthProfile(uid?: string): void {
+  if (uid) _profileCache.delete(uid)
+  else _profileCache.clear()
+}
+
+export function invalidateTenantCache(tenantId?: string): void {
+  if (tenantId) _tenantCache.delete(tenantId)
+  else _tenantCache.clear()
 }
 
 export async function signSessionToken(payload: SessionPayload, expiresIn: string = '7d'): Promise<string> {
   let ver = payload.ver
   if (ver === undefined) {
     try {
-      const db = await getMongoDb()
-      const user = await db.collection('user').findOne(
-        { $or: [{ id: payload.uid }, { _id: payload.uid as any }] },
-        { projection: { session_version: 1 } },
-      )
+      invalidateAuthProfile(payload.uid)
+      const user = await loadAuthProfile(payload.uid)
       ver = (user?.session_version as number) ?? 1
     } catch {
       ver = 1
     }
   }
-  return new SignJWT({ ...payload, ver })
+  const sid = payload.sid || randomUUID()
+  return new SignJWT({ ...payload, ver, sid })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
     .sign(await getSecret())
 }
 
+const _revokedSidCache = new Map<string, { at: number; revoked: boolean }>()
+
+async function isSessionIdRevoked(sid: string): Promise<boolean> {
+  const hit = _revokedSidCache.get(sid)
+  if (hit && Date.now() - hit.at < AUTH_PROFILE_TTL_MS) return hit.revoked
+  const db = await getMongoDb()
+  const row = await db.collection('revoked_sessions').findOne({ sid }, { projection: { _id: 1 } })
+  _revokedSidCache.set(sid, { at: Date.now(), revoked: !!row })
+  if (_revokedSidCache.size > 5000) {
+    const first = _revokedSidCache.keys().next().value
+    if (first) _revokedSidCache.delete(first)
+  }
+  return !!row
+}
+
+/**
+ * Verify a session JWT: signature, expiry, the account still exists and is
+ * active, the session version is current, and this session wasn't signed
+ * out. Fails closed — if the account can't be checked, the token is refused.
+ */
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
+  let data: SessionPayload & { exp?: number }
   try {
     const { payload } = await jwtVerify(token, await getSecret())
-    const data = payload as unknown as SessionPayload
-    if (!data.uid) return null
-    // Check session version (revocation)
-    try {
-      const db = await getMongoDb()
-      const user = await db.collection('user').findOne(
-        { $or: [{ id: data.uid }, { _id: data.uid as any }] },
-        { projection: { session_version: 1 } },
-      )
-      const currentVer = (user?.session_version as number) ?? 1
-      // Tokens minted before versioning carry no ver — treat them as version 1,
-      // so a password-change bump (currentVer > 1) revokes them too.
-      if ((data.ver ?? 1) !== currentVer) return null
-    } catch {
-      // If DB check fails, allow token (defense-in-depth, not blocking)
-    }
-    return data
+    data = payload as unknown as SessionPayload & { exp?: number }
   } catch {
     return null
   }
+  if (!data.uid || typeof data.uid !== 'string') return null
+  try {
+    const profile = await loadAuthProfile(data.uid)
+    if (accountBlockReason(profile)) return null
+    if (!isSessionVersionCurrent(data.ver, profile)) return null
+    if (data.sid && (await isSessionIdRevoked(data.sid))) return null
+  } catch (e) {
+    console.error('[session] account check failed — refusing token:', e)
+    return null
+  }
+  return data
+}
+
+/** Sign out one session (logout): its id goes on a deny-list until it would have expired. */
+export async function revokeSessionToken(token: string | null | undefined): Promise<void> {
+  if (!token) return
+  try {
+    const { payload } = await jwtVerify(token, await getSecret())
+    const sid = typeof payload.sid === 'string' ? payload.sid : ''
+    if (!sid) return
+    const exp = typeof payload.exp === 'number' ? new Date(payload.exp * 1000) : new Date(Date.now() + 30 * 86400_000)
+    const db = await getMongoDb()
+    const col = db.collection('revoked_sessions')
+    await col.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0, name: 'revoked_sessions_ttl' }).catch(() => {})
+    await col.createIndex({ sid: 1 }, { unique: true, name: 'revoked_sessions_sid' }).catch(() => {})
+    await col.updateOne({ sid }, { $set: { sid, uid: payload.uid ?? null, expires_at: exp, revoked_at: new Date() } }, { upsert: true })
+    _revokedSidCache.set(sid, { at: Date.now(), revoked: true })
+  } catch {
+    // invalid / expired token — nothing to revoke
+  }
+}
+
+/** The session payload of the current request's cookie, if valid. */
+export async function readSessionCookie(): Promise<SessionPayload | null> {
+  const cookieStore = await cookies()
+  const raw = cookieStore.get(SESSION_COOKIE)?.value
+  return raw ? verifySessionToken(raw) : null
 }
 
 export async function setSessionCookie(payload: SessionPayload): Promise<void> {
@@ -182,11 +295,11 @@ export interface Pending2faPayload {
   uid: string
   email: string
   role: string
-  method: 'face' | 'sso'
+  method: 'face' | 'sso' | 'oauth'
   redirect?: string
 }
 
-/** First factor passed (face / SSO); park the user until they enter a TOTP code. */
+/** First factor passed (face / SSO / Google-GitHub); park the user until they enter a TOTP code. */
 export async function setPending2faCookie(p: Pending2faPayload): Promise<void> {
   const token = await signPurposeToken('2fa_pending', { ...p }, '5m')
   const cookieStore = await cookies()
@@ -209,10 +322,30 @@ export async function clearPending2faCookie(): Promise<void> {
   cookieStore.set(PENDING_2FA_COOKIE, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 })
 }
 
+/**
+ * Sign the user out everywhere: bump session_version (kills every session
+ * JWT), stamp sessions_revoked_at (kills Firebase session cookies / ID
+ * tokens issued before now) and revoke Firebase refresh tokens so a still
+ * signed-in Firebase client can't silently mint a new session.
+ */
 export async function revokeAllUserSessions(userId: string): Promise<void> {
   const db = await getMongoDb()
+  const profile = await db.collection('user').findOne(uidFilter(userId) as never, { projection: { _id: 1, id: 1, firebase_uid: 1 } })
+  const filter = profile ? { _id: profile._id } : uidFilter(userId)
   await db.collection('user').updateOne(
-    { $or: [{ id: userId }, { _id: userId as any }] },
-    { $inc: { session_version: 1 } },
+    filter as never,
+    { $inc: { session_version: 1 }, $set: { sessions_revoked_at: new Date() } },
   )
+  invalidateAuthProfile(userId)
+  if (profile?.id) invalidateAuthProfile(String(profile.id))
+  try {
+    const { getAdminAuthInstance } = await import('@/lib/firebase-admin')
+    const auth = await getAdminAuthInstance()
+    if (auth) {
+      const ids = new Set([userId, profile?.id, profile?.firebase_uid].filter((x): x is string => typeof x === 'string' && !!x))
+      for (const id of ids) await auth.revokeRefreshTokens(id).catch(() => {})
+    }
+  } catch {
+    // Firebase optional
+  }
 }

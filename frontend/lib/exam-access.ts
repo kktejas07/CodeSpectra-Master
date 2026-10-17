@@ -86,12 +86,18 @@ export function questionAnswerKey(q: Doc): string | undefined {
 // ponytail: invites that expire mid-attempt still allow the submit for this long.
 const INVITE_SUBMIT_GRACE_MS = 6 * 3600 * 1000
 
+/** True when the invite names this exam (exam_id, its target_url or an assigned step). */
+export function inviteIsForExam(invite: Doc, examId: string): boolean {
+  return inviteCoversExam(invite, examId)
+}
+
 function inviteCoversExam(invite: Doc, examId: string): boolean {
   if (invite.exam_id) return invite.exam_id === examId
   const target = String(invite.target_url || '')
-  const assigned = Array.isArray(invite.assigned_assessments) ? (invite.assigned_assessments as unknown[]).map(String) : []
-  if (!target && assigned.length === 0) return true // generic invite
-  return target.includes(examId) || assigned.includes(examId)
+  const assigned = assignedExamIds(invite.assigned_assessments) ?? []
+  const targetId = examIdFromTargetUrl(target)
+  if (!targetId && assigned.length === 0) return false // names no exam: never a key to one
+  return targetId === examId || assigned.includes(examId)
 }
 
 export type ExamAccessResult =
@@ -275,11 +281,23 @@ export async function recordExamAttempt(
  * (valid invite for this exam and account, or a valid ?link= token), and the
  * attempt limit (`allow_retake` + `max_attempts`, see examAttemptPolicy).
  */
+export interface ExamEntryOptions {
+  /**
+   * Skip the `ends_at` check. Submit and save-draft use this: their limit is
+   * the attempt deadline (already capped at `ends_at`), so an attempt started
+   * before the window closed can still be finalised.
+   */
+  ignoreWindowClose?: boolean
+  /** Count this candidate against the link's `max_uses` (once per account). Used by the start route. */
+  claimLinkUse?: boolean
+}
+
 export async function checkExamEntry(
   db: Db,
   exam: Doc,
   user: Pick<APIUser, 'id' | 'email'>,
   tokens: { inviteToken?: string | null; linkToken?: string | null },
+  opts: ExamEntryOptions = {},
 ): Promise<ExamAccessResult> {
   const examId = String(exam.id)
   const now = Date.now()
@@ -290,7 +308,7 @@ export async function checkExamEntry(
     return { ok: false, error: 'This assessment has not opened yet.', status: 403 }
   }
   const endsAt = exam.ends_at ? new Date(String(exam.ends_at)).getTime() : NaN
-  if (!Number.isNaN(endsAt) && now > endsAt) {
+  if (!opts.ignoreWindowClose && !Number.isNaN(endsAt) && now > endsAt) {
     return { ok: false, error: 'Assessment window has closed', status: 403 }
   }
 
@@ -341,14 +359,214 @@ export async function checkExamEntry(
     if (!Number.isNaN(linkExp) && now > linkExp + INVITE_SUBMIT_GRACE_MS) {
       return { ok: false, error: 'This link has expired.', status: 403 }
     }
-    // max_uses is consumed by the entry GET (links?token=); not re-counted here.
+    // max_uses counts distinct accounts, claimed atomically when the attempt
+    // starts (page loads and refreshes no longer spend uses).
+    const max = Number(link.max_uses)
+    if (Number.isFinite(max) && max > 0) {
+      const usedBy = Array.isArray(link.used_by) ? (link.used_by as unknown[]).map(String) : []
+      if (!usedBy.includes(user.id)) {
+        if (!opts.claimLinkUse) {
+          if (usedBy.length >= max) return { ok: false, error: 'This link has reached its usage limit.', status: 403 }
+        } else {
+          const claimed = await db.collection('assessment_links').updateOne(
+            { id: link.id, used_by: { $ne: user.id }, $expr: { $lt: [{ $size: { $ifNull: ['$used_by', []] } }, max] } },
+            { $addToSet: { used_by: user.id }, $inc: { used_count: 1 } },
+          )
+          if (claimed.modifiedCount !== 1) return { ok: false, error: 'This link has reached its usage limit.', status: 403 }
+        }
+      }
+    }
     return { ok: true, invite: null, source: 'link', ...attempt }
   }
 
   if ((exam.access_type || 'invite_only') !== 'open') {
     return { ok: false, error: INVITE_ONLY_MESSAGE, status: 403 }
   }
+  if (exam.require_token_links === true) {
+    return { ok: false, error: 'This test needs a personal link. Use the link from your invite email, or ask the organiser for one.', status: 403 }
+  }
   return { ok: true, invite: null, source: 'open', ...attempt }
+}
+
+// ─── Proctoring events ───────────────────────────────────────────────────────
+
+/**
+ * Informational proctor events: logged for the timeline but never counted as
+ * integrity flags (an extension heartbeat, a timer warning or a "face
+ * verified" is not a risk signal).
+ */
+export const PROCTOR_INFO_EVENT_TYPES: readonly string[] = [
+  'answer_pattern_score', 'timer_warning_30min', 'hardware_port_audit', 'browser_fingerprint_captured',
+  'keyboard_dynamics_snapshot', 'face_match_restored', 'tab_focus', 'window_focus', 'fullscreen_enter',
+  'viewport_restored', 'screen_share_started', 'eye_blink_detected', 'usb_device_unplugged',
+]
+
+export function isRiskProctorEvent(type: unknown): boolean {
+  return typeof type === 'string' && !PROCTOR_INFO_EVENT_TYPES.includes(type)
+}
+
+/**
+ * Proctor event `meta` as stored: flat primitives only, at most 30 keys,
+ * strings capped at 500 chars — the browser controls it, and reviewers'
+ * reports render it.
+ */
+export function sanitizeProctorMeta(raw: unknown): Record<string, string | number | boolean | null> {
+  const out: Record<string, string | number | boolean | null> = {}
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out
+  for (const [k, v] of Object.entries(raw as Doc).slice(0, 30)) {
+    const key = k.replace(/[^A-Za-z0-9_]/g, '_').slice(0, 64)
+    if (!key) continue
+    if (v === null || typeof v === 'boolean') out[key] = v
+    else if (typeof v === 'number') out[key] = Number.isFinite(v) ? v : null
+    else if (typeof v === 'string') out[key] = v.slice(0, 500)
+    else if (Array.isArray(v)) out[key] = v.slice(0, 20).map((x) => (typeof x === 'object' ? '' : String(x).slice(0, 60))).join(', ').slice(0, 500)
+    else if (typeof v === 'object') out[key] = JSON.stringify(v).slice(0, 500)
+  }
+  return out
+}
+
+// ─── Invite targets (admin invite creation) ──────────────────────────────────
+
+/** Exam id from an invite `target_url` such as `/assessment/<id>`, `/assessment/<id>/cad?x=1` or a full URL. */
+export function examIdFromTargetUrl(targetUrl: unknown): string | null {
+  const raw = String(targetUrl ?? '').trim()
+  if (!raw) return null
+  let path = raw
+  try { path = new URL(raw, 'http://local').pathname } catch { /* keep raw */ }
+  const m = path.match(/^\/(?:assessment|exams|dashboard\/assessments)\/([A-Za-z0-9_-]{1,128})(?:\/|$)/)
+  return m ? m[1] : null
+}
+
+/**
+ * Exam ids named by `assigned_assessments` steps (objects with `exam_id` or a
+ * `target_url`, or plain id strings). Steps that point at no exam (identity,
+ * coding practice, a bare /assessment) are skipped; a step whose target_url
+ * looks like an exam route but has no parseable id returns null (reject).
+ */
+function assignedExamIds(raw: unknown): string[] | null {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const step of raw.slice(0, 50)) {
+    if (typeof step === 'string') { if (step.trim()) out.push(step.trim()); continue }
+    if (!step || typeof step !== 'object') continue
+    const st = step as Doc
+    if (typeof st.exam_id === 'string' && st.exam_id) { out.push(st.exam_id); continue }
+    const id = examIdFromTargetUrl(st.target_url)
+    if (id) out.push(id)
+    else if (/^\/(assessment|exams)\/./.test(String(st.target_url ?? ''))) return null
+  }
+  return out
+}
+
+/**
+ * Who may invite to what: every exam an invite points at (target_url and
+ * assigned_assessments) must exist and belong to the inviter's tenant
+ * (superadmin: any). A target_url that names no exam is rejected unless it is
+ * a same-site path outside the exam routes. Returns the exam id to store on
+ * the invite as `exam_id` (the first target), so entry checks match exactly.
+ */
+export async function checkInviteTargets(
+  db: Db,
+  user: Pick<APIUser, 'role' | 'tenantId'>,
+  input: { target_url?: unknown; assigned_assessments?: unknown },
+): Promise<{ ok: true; examId: string | null } | { ok: false; error: string; status: number }> {
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') return { ok: false, error: 'Forbidden', status: 403 }
+  const target = String(input.target_url ?? '').trim()
+  if (target && !target.startsWith('/')) return { ok: false, error: 'Invite link must be a path on this site.', status: 400 }
+  if (target.startsWith('//')) return { ok: false, error: 'Invite link must be a path on this site.', status: 400 }
+  const fromTarget = examIdFromTargetUrl(target)
+  const assigned = assignedExamIds(input.assigned_assessments)
+  if (assigned === null) return { ok: false, error: 'An assigned step does not point at an assessment.', status: 400 }
+  const ids = [...new Set([...(fromTarget ? [fromTarget] : []), ...assigned])]
+  if (ids.length === 0) {
+    // Generic (no exam) invites are a platform-level thing.
+    return user.role === 'superadmin' ? { ok: true, examId: null } : { ok: false, error: 'Choose an assessment to invite to.', status: 400 }
+  }
+  const found = (await db.collection('exams').find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, tenant_id: 1 } }).toArray()) as Doc[]
+  if (found.length !== ids.length) return { ok: false, error: 'Assessment not found', status: 404 }
+  if (!found.every((e) => isTenantStaff(user, e))) return { ok: false, error: 'Forbidden - resource belongs to another tenant', status: 403 }
+  return { ok: true, examId: ids[0] }
+}
+
+// ─── Server-side attempt timer ───────────────────────────────────────────────
+//
+// POST /api/exams/[id]/start records the attempt start once per attempt in
+// `exam_drafts` (keep-or-set, like the CAD start). The deadline is
+// start + duration, capped at the exam's `ends_at`. Submit and save-draft
+// read it back; the browser only displays the remaining time.
+
+/** Network / auto-submit slack after the deadline before answers stop being accepted. */
+export const EXAM_SUBMIT_GRACE_MS = 2 * 60_000
+
+function msOf(v: unknown): number {
+  if (v === null || v === undefined || v === '') return NaN
+  return new Date(String(v)).getTime()
+}
+
+/** Deadline (epoch ms) for an attempt started at `startedAt`, or null when the exam is untimed and has no end date. */
+export function attemptDeadlineMs(exam: Doc, startedAt: string | number): number | null {
+  const start = typeof startedAt === 'number' ? startedAt : msOf(startedAt)
+  if (Number.isNaN(start)) return null
+  const minutes = Number(exam.duration)
+  const byDuration = Number.isFinite(minutes) && minutes > 0 ? start + minutes * 60_000 : NaN
+  const endsAt = msOf(exam.ends_at)
+  const candidates = [byDuration, endsAt].filter((n) => !Number.isNaN(n))
+  return candidates.length ? Math.min(...candidates) : null
+}
+
+export type AttemptTimeState =
+  | { status: 'not_started' }
+  | { status: 'running'; startedAt: string; deadline: number | null; remainingMs: number | null }
+  | { status: 'expired'; startedAt: string; deadline: number }
+
+/**
+ * Where the candidate's current attempt stands. `draft` is the exam_drafts
+ * doc; it only counts when it belongs to `attemptNo` (an earlier attempt's
+ * start never carries over to a retake). `expired` means past deadline + grace.
+ */
+export function attemptTimeState(
+  exam: Doc,
+  draft: Doc | null | undefined,
+  attemptNo: number,
+  now: number = Date.now(),
+  graceMs: number = EXAM_SUBMIT_GRACE_MS,
+): AttemptTimeState {
+  const startedAt = draft && Number(draft.attempt_no) === attemptNo && typeof draft.attempt_started_at === 'string'
+    ? draft.attempt_started_at : null
+  if (!startedAt || Number.isNaN(msOf(startedAt))) return { status: 'not_started' }
+  const deadline = attemptDeadlineMs(exam, startedAt)
+  if (deadline === null) return { status: 'running', startedAt, deadline: null, remainingMs: null }
+  if (now > deadline + graceMs) return { status: 'expired', startedAt, deadline }
+  return { status: 'running', startedAt, deadline, remainingMs: Math.max(0, deadline - now) }
+}
+
+/**
+ * Record (or resume) the server start of attempt `attemptNo`. Atomic
+ * keep-or-set: concurrent starts and reloads all get the first start time;
+ * a new attempt gets a fresh start and an empty server draft.
+ */
+export async function startExamAttempt(db: Db, examId: string, userId: string, attemptNo: number): Promise<Doc> {
+  const now = new Date().toISOString()
+  const same = { $eq: ['$attempt_no', attemptNo] }
+  const doc = await db.collection('exam_drafts').findOneAndUpdate(
+    { exam_id: examId, user_id: userId },
+    [{
+      $set: {
+        attempt_started_at: { $cond: [same, { $ifNull: ['$attempt_started_at', now] }, now] },
+        answers: { $cond: [same, { $ifNull: ['$answers', { $literal: {} }] }, { $literal: {} }] },
+        submitted_at: { $cond: [same, '$submitted_at', '$$REMOVE'] },
+        attempt_no: attemptNo,
+        updated_at: now,
+        created_at: { $ifNull: ['$created_at', now] },
+      },
+    }],
+    { upsert: true, returnDocument: 'after', projection: { _id: 0 } },
+  )
+  return (doc as Doc | null) ?? { attempt_no: attemptNo, attempt_started_at: now, answers: {} }
+}
+
+export async function getExamDraft(db: Db, examId: string, userId: string): Promise<Doc | null> {
+  return (await db.collection('exam_drafts').findOne({ exam_id: examId, user_id: userId }, { projection: { _id: 0 } })) as Doc | null
 }
 
 // ─── Update allow-list ───────────────────────────────────────────────────────
@@ -359,8 +577,42 @@ export const EXAM_EDITABLE_FIELDS = [
   'starts_at', 'ends_at', 'require_token_links', 'require_id_verification', 'require_face_capture',
   'cert_template', 'degree_type', 'branch', 'screening_type', 'techStack',
   'questions', 'questionList', 'published', 'access_type', 'status', 'allow_retake', 'max_attempts',
-  'issue_certificates',
+  'issue_certificates', 'proctoring_mode', 'kind', 'cad_points',
 ] as const
+
+// ─── Proctoring mode / exam kind ─────────────────────────────────────────────
+
+export type ProctoringMode = 'standard' | 'strict'
+
+/**
+ * `strict` requires the Device Audit browser extension before a candidate can
+ * start. `standard` (the default, and what every exam saved before this
+ * setting existed gets) recommends it but lets candidates without it in —
+ * mobile, Safari, Firefox. Integrity events are logged either way.
+ */
+export function examProctoringMode(exam: Doc): ProctoringMode {
+  return exam.proctoring_mode === 'strict' ? 'strict' : 'standard'
+}
+
+export function extensionRequired(exam: Doc): boolean {
+  return examProctoringMode(exam) === 'strict'
+}
+
+/** `cad` exams are taken at /assessment/[id]/cad (file upload + rationale). */
+export function isCadExam(exam: Doc): boolean {
+  return exam.kind === 'cad'
+}
+
+/** Coerce proctoring / kind settings from an editor body (call after pickFields). */
+export function normalizeProctoringFields(data: Doc): void {
+  if ('proctoring_mode' in data) data.proctoring_mode = data.proctoring_mode === 'strict' ? 'strict' : 'standard'
+  if ('kind' in data) data.kind = data.kind === 'cad' ? 'cad' : 'standard'
+  if ('cad_points' in data) {
+    const n = Math.round(Number(data.cad_points))
+    if (Number.isFinite(n) && n >= 1) data.cad_points = Math.min(1000, n)
+    else delete data.cad_points
+  }
+}
 
 /** Pass mark used when an exam has never stored `passing_score` (matches the release routes). */
 export const DEFAULT_PASS_PERCENT = 40

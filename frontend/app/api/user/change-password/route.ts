@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { requireAuth } from '@/lib/route-auth'
-import { revokeAllUserSessions } from '@/lib/session'
+import { readSessionCookie, revokeAllUserSessions, setSessionCookie } from '@/lib/session'
+import { passwordProblem } from '@/lib/auth-account'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
@@ -26,8 +27,9 @@ export async function POST(request: NextRequest) {
     if (!currentPassword || !newPassword) {
       return NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 })
     }
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'New password must be at least 8 characters' }, { status: 400 })
+    const pwProblem = passwordProblem(newPassword)
+    if (pwProblem) {
+      return NextResponse.json({ error: pwProblem }, { status: 400 })
     }
 
     const db = await getMongoDb()
@@ -46,7 +48,11 @@ export async function POST(request: NextRequest) {
       { id: gate.user.id },
       { $set: { passwordHash, updatedAt: new Date() } },
     )
+    // Sign out every other session, then give this browser a fresh one so
+    // the person who just changed the password stays signed in.
+    const hadCookie = !!(await readSessionCookie())
     await revokeAllUserSessions(gate.user.id)
+    if (hadCookie) await setSessionCookie({ uid: gate.user.id, email: gate.user.email, role: gate.user.role })
 
     return NextResponse.json({ success: true })
   } catch (error) {

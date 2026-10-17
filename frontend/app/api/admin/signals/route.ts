@@ -2,6 +2,7 @@
  * Admin Signals queue — list drafts / approve→publish / reject / run ingest.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml, sourcesListHtml, safeHttpUrl, escapeHtml } from '@/lib/safe-html'
 import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
 import { signalDrafts } from '@/lib/db/signal-drafts'
 import {
@@ -87,12 +88,14 @@ export async function POST(req: NextRequest) {
               }
               
               const now = nowIso()
-              const sourceUrls = rewritten?.source_urls?.length ? rewritten.source_urls : [item.link]
+              const sourceUrls = (rewritten?.source_urls?.length ? rewritten.source_urls : [item.link])
+                .map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
               await drafts.insertOne({
                 id: newSignalId(),
                 title: rewritten?.title || item.title,
                 excerpt: rewritten?.excerpt || item.summary?.slice(0, 220) || item.title,
-                body: rewritten?.body || `<p>${item.summary || item.title}</p><p><a href="${item.link}" rel="noopener noreferrer">Source</a></p>`,
+                // Untrusted (feed + LLM): sanitise on save (E13).
+                body: sanitizeArticleHtml(rewritten?.body || fallbackBody(item.summary || item.title, item.link)),
                 category: feed.category,
                 source_url: item.link,
                 source_title: item.title,
@@ -167,14 +170,14 @@ export async function POST(req: NextRequest) {
     const now = nowIso()
     const user = await getAPIUser()
 
-    const sourceUrls =
-      draft.source_urls?.length ? draft.source_urls : [draft.source_url].filter(Boolean)
+    const sourceUrls = (draft.source_urls?.length ? draft.source_urls : [draft.source_url])
+      .map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
     const post: BlogPostDoc = {
       id: newBlogId(),
       slug,
       title: draft.title,
       excerpt: draft.excerpt,
-      body: draft.body,
+      body: sanitizeArticleHtml(draft.body),
       category: draft.category,
       tags: ['signals', draft.source_feed],
       author_name: 'CodeSpectra Signals',
@@ -204,4 +207,10 @@ export async function POST(req: NextRequest) {
     console.error('[signals] POST:', e)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
+}
+
+/** Plain fallback draft when the AI rewrite fails: escaped text + validated link. */
+function fallbackBody(text: string, link: string): string {
+  const href = safeHttpUrl(link)
+  return `<p>${escapeHtml(text || '')}</p>` + (href ? `<p><a href="${escapeHtml(href)}" rel="noopener noreferrer">Source</a></p>` : '')
 }

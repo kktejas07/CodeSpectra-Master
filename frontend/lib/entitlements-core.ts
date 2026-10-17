@@ -1,0 +1,184 @@
+/**
+ * Pure entitlement rules (no DB, no server-only) so they can be unit tested.
+ * The DB-backed resolver lives in lib/entitlements.ts.
+ *
+ * One rule for "which plan does this user have":
+ *   1. an active, unexpired `billing_subscriptions` row (what the user paid for)
+ *   2. otherwise `user.plan` (admin override / legacy field)
+ *   3. otherwise 'free'
+ * When both exist, the higher tier wins, so an admin override never takes away
+ * a paid plan and a paid plan never hides an enterprise override.
+ */
+import { getDefaultPlans, type PlanDefinition, type PlanFeature } from '@/lib/plans-client'
+
+export type EntitlementSource = 'subscription' | 'override' | 'default'
+
+export interface SubscriptionLike {
+  plan_id?: string | null
+  status?: string | null
+  ends_at?: string | null
+}
+
+/** Count limits enforced by the server (keys on PlanDefinition.features). */
+export const LIMIT_KEYS = [
+  'max_scans_per_day',
+  'max_challenges',
+  'max_seats',
+  'max_assessments_per_month',
+  'ai_credits_per_month',
+] as const
+export type LimitKey = (typeof LIMIT_KEYS)[number]
+
+/** Monthly AI credit allowance when a plan does not set `ai_credits_per_month`. */
+export const DEFAULT_AI_ALLOWANCE: Record<string, number> = {
+  free: 10,
+  pro: 1000,
+  enterprise: 5000,
+}
+
+const TIER_RANK: Record<string, number> = { free: 0, pro: 1, enterprise: 2 }
+
+/**
+ * Map a stored plan id (billing order / subscription / user.plan) to the key
+ * used in the `plans` collection. Legacy checkout ids (pro_monthly,
+ * pro_yearly) map to `pro`. One-time packs are not plans and return null.
+ */
+export function normalizePlanKey(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const id = raw.trim().toLowerCase()
+  if (!id || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(id)) return null
+  if (id === 'problem_pack_50' || id.startsWith('pack_') || id.startsWith('problem_pack')) return null
+  if (id === 'pro_monthly' || id === 'pro_yearly' || id === 'pro_annual') return 'pro'
+  if (id === 'enterprise_monthly' || id === 'enterprise_yearly') return 'enterprise'
+  return id
+}
+
+function rank(key: string): number {
+  // Unknown (admin-created) paid plan keys rank between pro and enterprise:
+  // above free, never above an explicit enterprise grant.
+  return key in TIER_RANK ? TIER_RANK[key] : 1.5
+}
+
+/** Highest tier among plan keys (used for an organisation's plan). */
+export function highestPlanKey(keys: Array<string | null | undefined>): string {
+  let best = 'free'
+  for (const k of keys) {
+    const n = normalizePlanKey(k)
+    if (n && rank(n) > rank(best)) best = n
+  }
+  return best
+}
+
+export function isSubscriptionLive(sub: SubscriptionLike | null | undefined, now: Date = new Date()): boolean {
+  if (!sub || sub.status !== 'active' || !sub.ends_at) return false
+  const end = Date.parse(sub.ends_at)
+  return Number.isFinite(end) && end > now.getTime()
+}
+
+/** Decide the effective plan key from the subscription and the user doc. */
+export function pickEffectivePlanKey(input: {
+  subscription?: SubscriptionLike | null
+  userPlan?: unknown
+  now?: Date
+}): { key: string; source: EntitlementSource } {
+  const now = input.now ?? new Date()
+  const subKey = isSubscriptionLive(input.subscription, now) ? normalizePlanKey(input.subscription!.plan_id) : null
+  const overrideKey = normalizePlanKey(input.userPlan)
+  const usableOverride = overrideKey && overrideKey !== 'free' ? overrideKey : null
+
+  if (subKey && subKey !== 'free') {
+    if (usableOverride && rank(usableOverride) > rank(subKey)) return { key: usableOverride, source: 'override' }
+    return { key: subKey, source: 'subscription' }
+  }
+  if (usableOverride) return { key: usableOverride, source: 'override' }
+  return { key: 'free', source: 'default' }
+}
+
+/**
+ * The plan definition to enforce: the admin's `plans` document when there is
+ * one, with any feature it lacks filled from the built-in default for the same
+ * key (or the free defaults for an unknown key — deny by default).
+ */
+export function mergePlanDefinition(key: string, dbPlan: PlanDefinition | null | undefined): PlanDefinition {
+  const defaults = getDefaultPlans()
+  const base = defaults.find((p) => p.plan === key) ?? defaults.find((p) => p.plan === 'free')!
+  if (!dbPlan) return { ...base, plan: key }
+  const dbFeatures: PlanFeature[] = Array.isArray(dbPlan.features)
+    ? dbPlan.features.filter((f): f is PlanFeature => !!f && typeof f === 'object' && typeof (f as PlanFeature).key === 'string')
+    : []
+  const have = new Set(dbFeatures.map((f) => f.key))
+  return {
+    ...dbPlan,
+    plan: key,
+    features: [...dbFeatures, ...base.features.filter((f) => !have.has(f.key))],
+  }
+}
+
+/**
+ * Numeric limit for a count feature: Infinity = unlimited, 0 = not allowed.
+ * `limit` of -1 (or 0 on an enabled feature) means unlimited, matching
+ * lib/plans-client getFeatureLimit and the admin plan editor.
+ */
+export function limitFor(plan: PlanDefinition, key: string): number {
+  const f = plan.features.find((x) => x.key === key)
+  if (!f) {
+    if (key === 'ai_credits_per_month') return DEFAULT_AI_ALLOWANCE[plan.plan] ?? DEFAULT_AI_ALLOWANCE.free
+    return 0
+  }
+  if (!f.enabled) return 0
+  if (f.limit === -1 || f.limit === 0 || f.limit === undefined || f.limit === null) return Infinity
+  const n = Number(f.limit)
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0
+}
+
+export function featureEnabled(plan: PlanDefinition, key: string): boolean {
+  return plan.features.find((f) => f.key === key)?.enabled === true
+}
+
+/** Monthly AI credits for a plan. Unlimited plans get a high finite cap. */
+export function aiAllowanceFor(plan: PlanDefinition): number {
+  const n = limitFor(plan, 'ai_credits_per_month')
+  if (n === Infinity) return 100_000
+  return n
+}
+
+/** `used + requested <= limit`, with Infinity = unlimited. */
+export function withinLimit(limit: number, used: number, requested = 1): boolean {
+  if (limit === Infinity) return true
+  return used + requested <= limit
+}
+
+export const MAX_CREDIT_SPEND = 100
+
+/** A credit spend must be a positive integer within a sane cap (no minting). */
+export function assertCreditAmount(raw: unknown): number {
+  if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 1 || raw > MAX_CREDIT_SPEND) {
+    throw new RangeError('Credit amount must be an integer between 1 and ' + MAX_CREDIT_SPEND)
+  }
+  return raw
+}
+
+/**
+ * Balance for a user doc at read time: a missing balance, a passed reset date
+ * or a plan change starts a fresh period at the plan's allowance.
+ */
+export function creditPeriod(input: {
+  balance: unknown
+  resetAt: unknown
+  creditsPlan: unknown
+  planKey: string
+  allowance: number
+  now?: Date
+}): { balance: number; reset: boolean } {
+  const now = input.now ?? new Date()
+  const resetAt = input.resetAt instanceof Date ? input.resetAt.getTime() : Date.parse(String(input.resetAt ?? ''))
+  const balance = typeof input.balance === 'number' && Number.isFinite(input.balance) ? input.balance : null
+  const expired = !Number.isFinite(resetAt) || resetAt < now.getTime()
+  // Legacy docs have no creditsPlan: they were sized for the free tier unless
+  // user.plan said otherwise, so a paid plan starts a fresh paid period.
+  const planChanged = typeof input.creditsPlan === 'string'
+    ? input.creditsPlan !== input.planKey
+    : input.planKey !== 'free'
+  if (balance === null || expired || planChanged) return { balance: input.allowance, reset: true }
+  return { balance: Math.max(0, balance), reset: false }
+}

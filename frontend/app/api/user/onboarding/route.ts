@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getMongoDb } from '@/lib/mongodb'
+import { users } from '@/lib/db/admin'
 import { getAPIUser } from '@/lib/route-auth'
-import { ObjectId } from 'mongodb'
 
 export async function POST(req: Request) {
   try {
@@ -10,19 +9,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const body = await req.json()
-    const { onboardingGoal } = body
+    const body = await req.json().catch(() => ({}))
+    const raw = (body as { onboardingGoal?: unknown }).onboardingGoal
+    const onboardingGoal = typeof raw === 'string' ? raw.trim().slice(0, 80) : ''
 
     if (!onboardingGoal) {
       return NextResponse.json({ error: 'onboardingGoal is required' }, { status: 400 })
     }
 
-    const db = await getMongoDb()
-    
-    // Update the user document
-    await db.collection('users').updateOne(
-      { _id: user.id as any },
-      { $set: { onboardingGoal: onboardingGoal } }
+    // The user collection is `user` (lib/db/admin `users()`), not `users`.
+    const col = await users()
+    await col.updateOne(
+      { $or: [{ id: user.id }, { _id: user.id }] } as never,
+      { $set: { onboardingGoal, updatedAt: new Date() } },
     )
 
     return NextResponse.json({ success: true, onboardingGoal })

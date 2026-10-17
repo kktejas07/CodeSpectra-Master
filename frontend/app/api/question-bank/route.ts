@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { requireAuth, requireSuperAdmin } from '@/lib/route-auth'
+import { requireAdmin, requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { normalizeBankQuestion, questionBank, type BankQuestionDoc } from '@/lib/question-bank'
 import { sanitizeRegex } from '@/lib/sanitize'
@@ -8,7 +8,8 @@ import type { Filter } from 'mongodb'
 export const runtime = 'nodejs'
 
 export async function GET(request: NextRequest) {
-  const gate = await requireAuth()
+  // Bank docs carry answer keys and test cases — staff only (exams sample from here).
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const { searchParams } = new URL(request.url)
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
     const doc = normalizeBankQuestion(body || {})
     if (!doc) return NextResponse.json({ error: 'Question prompt is required' }, { status: 400 })
     doc.source = 'manual'
+    doc.review_status = 'approved' // written by a superadmin
     const col = await questionBank()
     await col.insertOne(doc)
     return NextResponse.json(doc, { status: 201 })
@@ -83,10 +85,13 @@ export async function PATCH(request: NextRequest) {
     const normalized = normalizeBankQuestion(body || {})
     if (!normalized) return NextResponse.json({ error: 'Question prompt is required' }, { status: 400 })
     const db = await getMongoDb()
-    await db.collection('question_bank').updateOne(
+    // Never rewrite where the question came from; saving an edit (or Approve) marks it reviewed.
+    const { source: _source, createdAt: _created, ...fields } = normalized
+    const res = await db.collection('question_bank').updateOne(
       { id },
-      { $set: { ...normalized, id, updatedAt: new Date().toISOString() } },
+      { $set: { ...fields, id, updatedAt: new Date().toISOString(), reviewed_by: gate.user.id, reviewed_at: new Date().toISOString() } },
     )
+    if (res.matchedCount === 0) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[question-bank] PATCH error:', e)

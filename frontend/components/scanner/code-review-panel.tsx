@@ -75,12 +75,12 @@ export function CodeReviewPanel({
           <p className="text-sm text-foreground/80 leading-relaxed">{comment.content}</p>
 
           <div className="flex items-center gap-2 pt-1">
-            <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
-              <ThumbsUp className="w-3 h-3" />
+            <button type="button" aria-label="Like comment" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
+              <ThumbsUp className="w-3 h-3" aria-hidden />
               {comment.likes}
             </button>
-            <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
-              <ThumbsDown className="w-3 h-3" />
+            <button type="button" aria-label="Dislike comment" className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
+              <ThumbsDown className="w-3 h-3" aria-hidden />
             </button>
             <button
               onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
@@ -186,7 +186,7 @@ export function CodeReviewPanel({
             className="gap-2"
           >
             <Send className="w-4 h-4" />
-            Post Comment
+            Post comment
           </Button>
         </div>
       </Card>

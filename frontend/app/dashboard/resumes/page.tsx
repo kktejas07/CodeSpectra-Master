@@ -25,8 +25,14 @@ interface Resume {
   file_name: string
   file_size: number
   status: string
-  skills: string[]
-  created_at: string
+  uploaded_at: string
+}
+
+interface DraftSummary {
+  id: string
+  name: string
+  template?: string
+  updated_at: string
 }
 
 export default function MyResumesPage() {
@@ -41,16 +47,34 @@ export default function MyResumesPage() {
 
   const [loadError, setLoadError] = useState(false)
 
+  const [drafts, setDrafts] = useState<DraftSummary[]>([])
+
   const fetchData = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/resumes', { credentials: 'include' })
-      if (!res.ok) throw new Error(`Failed to load resumes (${res.status})`)
+      const [res, dres] = await Promise.all([
+        fetch('/api/resumes', { credentials: 'include' }),
+        fetch('/api/resumes/drafts?list=1', { credentials: 'include' }),
+      ])
+      if (!res.ok || !dres.ok) throw new Error(`Failed to load resumes (${res.status})`)
       const json = await res.json()
-      setResumes(json.data || [])
+      const djson = await dres.json()
+      // /api/resumes returns a plain array.
+      setResumes(Array.isArray(json) ? json : Array.isArray(json?.data) ? json.data : [])
+      setDrafts(Array.isArray(djson?.drafts) ? djson.drafts : [])
       setLoadError(false)
     } catch { setLoadError(true) }
     finally { setLoading(false) }
+  }
+
+  const deleteDraft = async (id: string) => {
+    const res = await csrfFetch(`/api/resumes/drafts?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
+    if (!res.ok) {
+      addToast({ type: 'error', title: 'Could not delete the draft' })
+      return
+    }
+    setDrafts(prev => prev.filter(d => d.id !== id))
+    addToast({ type: 'success', title: 'Draft deleted' })
   }
 
   useEffect(() => { fetchData() }, [])
@@ -112,7 +136,7 @@ export default function MyResumesPage() {
         {r.status || 'pending'}
       </Badge>
     )},
-    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{r.created_at ? formatDate(r.created_at) : '—'}</span> },
+    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{r.uploaded_at ? formatDate(r.uploaded_at) : '—'}</span> },
   ]
 
   const bulkActions: BulkAction[] = [
@@ -272,9 +296,34 @@ export default function MyResumesPage() {
         </div>
       </div>
 
+      {/* Builder drafts saved to the account */}
+      {drafts.length > 0 && (
+        <div className="bg-card rounded-3xl border border-border/70 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none p-6">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Your drafts</h2>
+          <ul className="divide-y divide-border/60">
+            {drafts.map(d => (
+              <li key={d.id} className="flex items-center justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground truncate">{d.name || 'Untitled resume'}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">Saved {d.updated_at ? formatDate(d.updated_at) : '—'}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/resumes/builder?draft=${encodeURIComponent(d.id)}`)}>
+                    Open
+                  </Button>
+                  <Button size="sm" variant="ghost" aria-label={`Delete draft ${d.name || 'Untitled resume'}`} onClick={() => void deleteDraft(d.id)}>
+                    <Trash2 className="h-4 w-4" aria-hidden />
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Bottom Section: My Resumes */}
       <div className="bg-card rounded-3xl border border-border/70 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none p-6 min-h-[400px] flex flex-col" data-tour="resumes-list">
-        <h2 className="text-lg font-semibold text-foreground mb-5">My resumes</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-5">Uploaded files</h2>
         
         {loading ? (
           <div className="flex-1 space-y-3">
@@ -291,8 +340,10 @@ export default function MyResumesPage() {
           />
         ) : resumes.length === 0 ? (
           <EmptyState illustration="resume"
-            title="No resumes yet"
-            description="Create one from a template above — it will show up here."
+            title={drafts.length ? 'No uploaded files' : 'No resumes yet'}
+            description={drafts.length
+              ? 'Your builder drafts are listed above.'
+              : 'Create one from a template above. Drafts you save show up on this page.'}
             className="flex-1 border-0 bg-transparent"
           />
         ) : (

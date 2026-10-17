@@ -30,6 +30,11 @@ export interface BetterAuthUserDoc {
   isActive?: boolean | null
   lastLoginMethod?: 'google' | 'github' | 'email' | 'sso' | null
   lastLoginAt?: Date | null
+  /** 'inactive' = deactivated by an admin (refused at sign-in and on every request). */
+  status?: 'active' | 'inactive' | null
+  /** Firebase uid linked to this account (Google / GitHub sign-in). */
+  firebase_uid?: string | null
+  session_version?: number
 }
 
 export interface OrganizationInvitationDoc {
@@ -69,7 +74,12 @@ export interface AssessmentStep {
 export interface CandidateInviteDoc {
   id: string
   token: string
-  user_id: string
+  /** Account id when the email already had one; null until the candidate signs up. */
+  user_id: string | null
+  /** First exam the invite targets (lib/exam-access checkInviteTargets). */
+  exam_id?: string
+  /** Inviter's tenant. */
+  tenant_id?: string
   email: string
   full_name: string
   target_url: string
@@ -177,7 +187,10 @@ export async function candidateInvites(): Promise<Collection<CandidateInviteDoc>
 export async function listAllUsers(filter: { tenantId?: string } = {}): Promise<BetterAuthUserDoc[]> {
   const col = await users()
   const query: Record<string, unknown> = {}
-  if (filter.tenantId) {
+  // Deny by default: a tenant filter that was asked for but is empty (a
+  // tenant_admin with no tenant) matches nobody — never "every user".
+  if ('tenantId' in filter) {
+    if (!filter.tenantId) return []
     query.$or = [{ tenantId: filter.tenantId }, { organizationId: filter.tenantId }]
   }
   return col.find(query).sort({ createdAt: -1 }).toArray()

@@ -78,6 +78,9 @@ interface ExamInfo {
   require_face_capture?: boolean | null
   submission?: unknown
   attempts?: { used: number; max: number; can_retake: boolean }
+  proctoring_mode?: 'standard' | 'strict'
+  /** Server entry check (same as start/submit): invite, link, window, attempts. */
+  entry?: { ok: boolean; error?: string }
 }
 
 type Phase =
@@ -155,7 +158,10 @@ export function CadAssessmentWorkspace({
     const block = (title: string, message: string) => { if (!cancelled) setPhase({ kind: 'blocked', title, message }) }
     ;(async () => {
       try {
-        const res = await fetch(`/api/exams/${encodeURIComponent(examId)}`, { credentials: 'include' })
+        const q = new URLSearchParams()
+        if (inviteToken) q.set('inviteToken', inviteToken)
+        if (linkToken) q.set('link', linkToken)
+        const res = await fetch(`/api/exams/${encodeURIComponent(examId)}${q.toString() ? `?${q}` : ''}`, { credentials: 'include' })
         if (!res.ok) return block('Test unavailable', 'This test could not be found or is no longer available.')
         const found = (await res.json()) as ExamInfo
         if (cancelled) return
@@ -175,16 +181,13 @@ export function CadAssessmentWorkspace({
             const j = await linkRes.json().catch(() => ({})) as { error?: string }
             return block('Link not valid', j.error || 'This link has expired or been revoked.')
           }
-        } else if (inviteToken) {
-          const invRes = await fetch(`/api/assessment/invite/${encodeURIComponent(inviteToken)}`, { credentials: 'include' })
-          if (!invRes.ok) {
-            const j = await invRes.json().catch(() => ({})) as { error?: string }
-            return block('Invite not valid', j.error || 'This invitation is invalid or has expired.')
-          }
-        } else if ((found.access_type || 'invite_only') !== 'open') {
+        } else if (!inviteToken && (found.access_type || 'invite_only') !== 'open') {
           return block('Invite-only test', INVITE_ONLY_MESSAGE)
-        } else if (found.require_token_links) {
-          return block('Personal link needed', 'This test needs a personal link. Use the link from your invite email, or ask the organiser for one.')
+        }
+        // Invite validity (right account, not revoked, retakes allowed) and the
+        // personal-link rule come from the server entry check.
+        if (found.entry && !found.entry.ok) {
+          return block('Can’t start this test', found.entry.error || 'This invitation is invalid or has expired.')
         }
 
         const stagedRes = await fetch(`/api/exams/${encodeURIComponent(examId)}/cad-submission`, { credentials: 'include' })
@@ -414,7 +417,7 @@ export function CadAssessmentWorkspace({
     const requireFace = exam?.require_face_capture !== false
     const minutes = Number(exam?.duration) || 0
     return (
-      <ExtensionGate>
+      <ExtensionGate bypass={exam?.proctoring_mode !== 'strict'}>
         <div className="flex min-h-[80vh] items-center justify-center bg-background p-4">
           <Card className="w-full max-w-lg space-y-6 rounded-3xl border-border/70 p-8">
             <div className="text-center">
@@ -777,7 +780,7 @@ export function CadAssessmentWorkspace({
   // Same proctoring stack and session id as /assessment/[id], so the CAD
   // attempt lands on the exam's proctoring timeline.
   return (
-    <ExtensionGate>
+    <ExtensionGate bypass={exam?.proctoring_mode !== 'strict'}>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={examId} idPhoto={idPhoto || undefined}>
         <RealTimeProctor sessionKind="exam" sessionId={examId} enabled enforceFullscreen>
           <SessionRecorder sessionKind="exam" sessionId={examId} enabled={recordingConsent} />

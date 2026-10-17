@@ -130,6 +130,7 @@ export async function POST(request: NextRequest) {
       const doc = normalizeBankQuestion({ ...(item as Record<string, unknown>), source: 'ai' })
       if (!doc) { skipped++; continue }
       doc.source = 'ai'
+      doc.review_status = 'draft' // unreviewed AI output never goes straight into exams
       if (isCodingType(doc.type) && !doc.tech_stack?.length) {
         doc.tech_stack = { cse: ['Python', 'Java', 'C++'], it: ['JavaScript', 'SQL'], ai_ds: ['Python', 'SQL'] }[doc.branch || ''] || ['Python']
       }

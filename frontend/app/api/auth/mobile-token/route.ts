@@ -16,6 +16,9 @@ import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { updateUserLastLogin } from '@/lib/db/admin'
+import { accountBlockReason } from '@/lib/auth-account'
+import { checkAuthThrottle, recordAuthFailure, clearAuthFailures } from '@/lib/auth-throttle'
+import { isIpBlocked } from '@/lib/db/security'
 
 export const runtime = 'nodejs'
 
@@ -36,6 +39,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
     const ident = String(email).toLowerCase().trim()
+    if (await isIpBlocked(rawIp)) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+    const throttle = await checkAuthThrottle('login', ident, rawIp)
+    if (!throttle.ok) {
+      return NextResponse.json({ error: `Too many failed attempts. Try again in ${throttle.retryAfterSec}s.` }, { status: 429 })
+    }
 
     const db = await getMongoDb()
     const escaped = ident.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -49,6 +59,7 @@ export async function POST(request: Request) {
       ],
     })
     if (!user || !user.passwordHash) {
+      await recordAuthFailure('login', ident, rawIp)
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
@@ -66,7 +77,12 @@ export async function POST(request: Request) {
           { status: 429 },
         )
       }
+      await recordAuthFailure('login', ident, rawIp)
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+    }
+
+    if (accountBlockReason(user)) {
+      return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.' }, { status: 403 })
     }
 
     const uid = String(user.id || user._id)
@@ -76,11 +92,13 @@ export async function POST(request: Request) {
       if (!totpToken) return NextResponse.json({ twoFactorRequired: true })
       const { checkTotp } = await import('@/lib/totp')
       const isValid = checkTotp(totpToken, user.totp_secret)
+      if (!isValid) await recordAuthFailure('login', ident, rawIp)
       if (!isValid) return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })
     }
 
     // ponytail: 30d matches a mobile session (no cookies to refresh); logout
     // and password-change still revoke via session_version like web.
+    await clearAuthFailures('login', ident, rawIp)
     const token = await signSessionToken({ uid, email: user.email, role }, '30d')
     await updateUserLastLogin(uid, 'email').catch(() => {})
     await writeAuditLog({

@@ -16,7 +16,7 @@ import {
   Copy, Timer, LogIn, Send, Pencil,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { usePageGuard } from '@/lib/use-page-guard'
+import { useRoleGate } from '@/lib/use-role-gate'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -52,7 +52,8 @@ interface Team {
 export default function HackathonPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const router = useRouter()
-  const gate = usePageGuard('user')
+  // Public page: anyone can view a published event; signing in is only needed to join.
+  const gate = useRoleGate()
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
   const addToast = useToast()
@@ -177,30 +178,6 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       <SkeletonCard />
     </div>
   )
-  if (!gate.allowed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Panel className="max-w-sm w-full p-8 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
-            <Trophy className="h-6 w-6 text-primary" />
-          </div>
-          <h1 className="text-xl font-semibold text-foreground mb-2">Sign in required</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Please sign in to view and join hackathon events.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Button className="w-full gap-2" asChild>
-              <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
-            </Button>
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/auth/signup">Create account</Link>
-            </Button>
-          </div>
-        </Panel>
-      </div>
-    )
-  }
-
   if (loading && !hackathon) return (
     <div className="min-h-screen space-y-6 p-6">
       <SkeletonText lines={2} />

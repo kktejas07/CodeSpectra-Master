@@ -171,6 +171,8 @@ export interface HackathonDoc {
   /** Certificate template */
   cert_template?: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
   tenant_id?: string | null
+  /** Judging configuration (lib/hackathons/judge-config). */
+  judging_config?: unknown
   created_by: string
   created_at: string
   updated_at: string
@@ -226,7 +228,18 @@ export interface HackathonSubmissionDoc {
   comment?: string
   score: number | null
   max_score: number
-  status: 'submitted' | 'under_review' | 'review_completed' | 'accepted' | 'rejected' | 'released'
+  /** Canonical: submitted → under_review → scored → released / rejected (lib/hackathons/submission-state). Legacy docs may hold pending / review_completed / accepted. */
+  status: 'submitted' | 'under_review' | 'scored' | 'rejected' | 'released' | 'pending' | 'review_completed' | 'accepted'
+  /** Auto-grade (all tests, hidden included) in task points. */
+  auto_graded?: boolean
+  auto_score?: number | null
+  language?: string
+  /** Set at release: blended judged score (0–100) and that scaled to task points. */
+  final_score?: number | null
+  final_points?: number | null
+  human_avg?: number | null
+  xp_awarded?: boolean
+  updated_at?: string
   feedback?: string
   /** Rejection details */
   rejection_reason?: string
@@ -260,24 +273,36 @@ export async function hackathonSubmissions(): Promise<Collection<HackathonSubmis
 
 export interface HackathonClaimDoc {
   hackathon_id: string
+  /** Claims are team-scoped: a teammate locks a problem so others on the team don't duplicate work. */
+  team_id: string
   problem_slug: string
   user_id: string
   user_name: string
   claimed_at: string
-  expires_at: string
+  /** BSON Date so the TTL index actually expires it (older docs hold an ISO string). */
+  expires_at: Date | string
 }
+
+let claimIndexesReady = false
 
 export async function hackathonClaims(): Promise<Collection<HackathonClaimDoc>> {
   const col = (await db()).collection<HackathonClaimDoc>('hackathon_claims')
+  if (claimIndexesReady) return col
   try {
+    // The old unique index was event-wide (hackathon, problem) while claims
+    // are upserted per team, so a second team's claim hit E11000. Replace it.
+    const existing = await col.indexes().catch(() => [])
+    const old = existing.find((i) => i.name === 'hackathon_claims_unique')
+    if (old && !(old.key && 'team_id' in old.key)) await col.dropIndex('hackathon_claims_unique').catch(() => {})
     await col.createIndex(
-      { hackathon_id: 1, problem_slug: 1 },
+      { hackathon_id: 1, team_id: 1, problem_slug: 1 },
       { unique: true, name: 'hackathon_claims_unique' },
     )
     await col.createIndex(
       { expires_at: 1 },
       { expireAfterSeconds: 0, name: 'hackathon_claims_ttl' },
     )
+    claimIndexesReady = true
   } catch { /* index may already exist */ }
   return col
 }

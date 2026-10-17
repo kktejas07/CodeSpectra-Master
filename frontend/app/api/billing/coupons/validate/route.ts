@@ -17,12 +17,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
     }
 
-    const { code } = await req.json()
-    if (!code) {
+    const { code } = (await req.json().catch(() => ({}))) as { code?: unknown }
+    if (typeof code !== 'string' || !code.trim() || code.length > 64) {
       return NextResponse.json({ error: 'No coupon code provided' }, { status: 400 })
     }
 
-    const result = await validateCoupon(code)
+    const result = await validateCoupon(code.trim())
     if (!result.valid) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
@@ -31,9 +31,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You have already used this coupon code.' }, { status: 400 })
     }
 
+    // Whitelist: never return redemptions (other users' names/emails), usage
+    // counts or admin fields (D2).
+    const c = result.coupon!
     return NextResponse.json({ coupon: {
-      ...result.coupon,
-      trial_duration_days: result.coupon?.trial_duration_days,
+      code: c.code,
+      discount_type: c.discount_type,
+      discount_value: c.discount_value,
+      trial_duration_days: c.trial_duration_days ?? null,
+      valid_until: c.valid_until ?? null,
     } })
   } catch (error) {
     console.error('[billing/coupons/validate]', error)

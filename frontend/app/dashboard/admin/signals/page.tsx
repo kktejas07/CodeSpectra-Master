@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { sanitizeArticleHtml } from '@/lib/safe-html'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -281,7 +282,7 @@ export default function AdminSignalsPage() {
             {previewDraft?.body ? (
               <div
                 className="prose prose-sm dark:prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ __html: previewDraft.body }}
+                dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(previewDraft.body) }}
               />
             ) : (
               <p className="text-muted-foreground italic">No body content generated.</p>

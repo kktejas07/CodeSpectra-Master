@@ -41,8 +41,8 @@ interface Question {
   options?: string[]
   answer?: string
   score: number
-  /** Coding only: stdin → expected stdout pairs the grader executes. */
-  test_cases?: { input: string; output: string }[]
+  /** Coding only: stdin → expected stdout pairs the grader executes. Hidden ones are graded but never shown to candidates. */
+  test_cases?: { input: string; output: string; hidden?: boolean }[]
   /** Numeric: accepted absolute tolerance. */
   tolerance?: number
   /** Matching / labeling left→right pairs. */
@@ -113,7 +113,7 @@ interface BankQuestionRow {
   industry?: string
   tags?: string[]
   source: string
-  test_cases?: { input: string; output: string }[]
+  test_cases?: { input: string; output: string; hidden?: boolean }[]
   tolerance?: number
   pairs?: { left: string; right: string }[]
   matrix?: { rows: string[]; columns: string[] }
@@ -148,6 +148,11 @@ interface Exam {
   degree_type?: string
   branch?: string
   screening_type?: string
+  /** strict = the Device Audit extension is required to start; standard = recommended only. */
+  proctoring_mode?: 'standard' | 'strict'
+  /** cad = file-upload CAD task at /assessment/[id]/cad. */
+  kind?: 'standard' | 'cad'
+  cad_points?: number
 }
 
 /** Map one imported JSON item into the exam's Question shape. */
@@ -336,15 +341,18 @@ export default function ExamReviewPage() {
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
   const [metaScreeningType, setMetaScreeningType] = useState('mixed')
+  const [metaProctoringMode, setMetaProctoringMode] = useState<'standard' | 'strict'>('standard')
+  const [metaKind, setMetaKind] = useState<'standard' | 'cad'>('standard')
+  const [metaCadPoints, setMetaCadPoints] = useState(100)
   const [savingMeta, setSavingMeta] = useState(false)
 
   const fetchExam = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/exams', { credentials: 'include' })
-      const json = await res.json()
-      const found = json.data?.find((e: Exam) => e.id === params.id)
-      if (found) {
+      // Staff get the full document (answer keys, hidden tests) from the single-exam route.
+      const res = await fetch(`/api/exams/${encodeURIComponent(String(params.id))}`, { credentials: 'include' })
+      const found = res.ok ? await res.json() as Exam & Record<string, any> : null
+      if (found && found.id) {
         found.questionList = found.questionList || []
         setExam(found)
         setMetaTitle(found.title || '')
@@ -367,6 +375,9 @@ export default function ExamReviewPage() {
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
         setMetaScreeningType(found.screening_type || 'mixed')
+        setMetaProctoringMode(found.proctoring_mode === 'strict' ? 'strict' : 'standard')
+        setMetaKind(found.kind === 'cad' ? 'cad' : 'standard')
+        setMetaCadPoints(Number(found.cad_points) >= 1 ? Number(found.cad_points) : 100)
       } else {
         addToast({ type: 'error', title: 'Assessment not found' })
         router.push('/dashboard/admin/assessments')
@@ -382,17 +393,29 @@ export default function ExamReviewPage() {
     if (params.id) fetchExam()
   }, [params.id])
 
-  const saveExam = async (updatedList: Question[]) => {
-    if (!exam) return
+  /**
+   * Persist the question list. On any failure (403/500/network) the local
+   * list is rolled back to `previous` and false is returned, so callers never
+   * show a success toast for a change that wasn't saved.
+   */
+  const saveExam = async (updatedList: Question[], previous?: Question[]): Promise<boolean> => {
+    if (!exam) return false
     try {
-      await csrfFetch('/api/exams', {
+      const res = await csrfFetch('/api/exams', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ id: exam.id, questionList: updatedList, questions: updatedList.length, title: exam.title, subject: exam.subject, level: exam.level, duration: exam.duration })
       })
-    } catch {
-      addToast({ type: 'error', title: 'Failed to save exam' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error || '')
+      }
+      return true
+    } catch (e) {
+      if (previous) setExam((cur) => (cur ? { ...cur, questionList: previous } : cur))
+      addToast({ type: 'error', title: 'Failed to save the assessment', message: e instanceof Error && e.message ? e.message : 'Your change was not saved.' })
+      return false
     }
   }
 
@@ -431,10 +454,13 @@ export default function ExamReviewPage() {
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
+          proctoring_mode: metaProctoringMode,
+          kind: metaKind,
+          ...(metaKind === 'cad' ? { cad_points: metaCadPoints } : {}),
         })
       })
       if (!metaRes.ok) throw new Error('update failed')
-      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
+      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType, proctoring_mode: metaProctoringMode, kind: metaKind, cad_points: metaCadPoints })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -446,10 +472,10 @@ export default function ExamReviewPage() {
 
   const handleDeleteQuestion = async (qId: string) => {
     if (!exam) return
-    const newQuestions = exam.questionList.filter(q => q.id !== qId)
+    const previous = exam.questionList
+    const newQuestions = previous.filter(q => q.id !== qId)
     setExam({ ...exam, questionList: newQuestions })
-    await saveExam(newQuestions)
-    addToast({ type: 'success', title: 'Question removed' })
+    if (await saveExam(newQuestions, previous)) addToast({ type: 'success', title: 'Question removed' })
   }
 
   const handleRegenerateQuestion = async (qId: string) => {
@@ -467,10 +493,21 @@ export default function ExamReviewPage() {
           language_hint: (exam.techStack || [])[0]?.toLowerCase() || 'python',
         }),
       })
-      const data = await res.json()
-      const newQuestions = exam.questionList.map(q => {
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.problem) throw new Error(data.error || '')
+      const p = data.problem as Record<string, unknown>
+      const lang = ((exam.techStack || [])[0]?.toLowerCase() || 'python')
+      const starters = p.starter_code && typeof p.starter_code === 'object' ? p.starter_code as Record<string, unknown> : {}
+      const starter = String(starters[lang] ?? Object.values(starters)[0] ?? '')
+      // Keep the generated tests so the question stays auto-gradable;
+      // non-sample cases are hidden from candidates.
+      const cases = (Array.isArray(p.test_cases) ? p.test_cases : [])
+        .map((tc) => tc as Record<string, unknown>)
+        .map((tc) => ({ input: String(tc.stdin ?? tc.input ?? ''), output: String(tc.expected_stdout ?? tc.output ?? ''), ...(tc.is_sample === true ? {} : { hidden: true }) }))
+        .filter((tc) => tc.input || tc.output)
+      const previous = exam.questionList
+      const newQuestions = previous.map(q => {
         if (q.id === qId) {
-          const p = data.problem || {}
           return {
             ...q,
             title: String(p.title || q.title),
@@ -478,14 +515,16 @@ export default function ExamReviewPage() {
             type: 'coding' as const,
             options: undefined,
             answer: undefined,
-            score: 10,
+            score: q.score || 10,
+            language: lang,
+            ...(starter ? { starter_code: starter } : {}),
+            test_cases: cases.length ? cases : q.test_cases,
           }
         }
         return q
       })
       setExam({ ...exam, questionList: newQuestions })
-      await saveExam(newQuestions)
-      addToast({ type: 'success', title: 'Question regenerated!' })
+      if (await saveExam(newQuestions, previous)) addToast({ type: 'success', title: 'Question regenerated' })
     } catch {
       addToast({ type: 'error', title: 'AI regeneration failed' })
     } finally {
@@ -562,15 +601,16 @@ export default function ExamReviewPage() {
       addToast({ type: 'error', title: 'All selected questions are already in this exam' })
       return
     }
-    const updated = [...exam.questionList, ...newQuestions]
+    const previous = exam.questionList
+    const updated = [...previous, ...newQuestions]
     setExam({ ...exam, questionList: updated })
-    await saveExam(updated)
+    if (!(await saveExam(updated, previous))) return
     setBankSelected(new Set())
     setBankModal(false)
     addToast({ type: 'success', title: `Added ${newQuestions.length} question${newQuestions.length !== 1 ? 's' : ''} from bank` })
   }
 
-  const saveQuestion = () => {
+  const saveQuestion = async () => {
     if (!editingQuestion || !exam) return
     if (!editingQuestion.title || !editingQuestion.prompt) {
       addToast({ type: 'error', title: 'Title and prompt are required' })
@@ -591,12 +631,14 @@ export default function ExamReviewPage() {
     if (editingQuestion.type === 'ordering' || editingQuestion.type === 'ranking') {
       editingQuestion.answer = (editingQuestion.options || []).map(o => o.trim()).filter(Boolean).join(', ')
     }
-    const exists = exam.questionList.find(q => q.id === editingQuestion.id)
+    const previous = exam.questionList
+    const exists = previous.find(q => q.id === editingQuestion.id)
     const newQuestions = exists
-      ? exam.questionList.map(q => q.id === editingQuestion.id ? editingQuestion : q)
-      : [...exam.questionList, editingQuestion]
+      ? previous.map(q => q.id === editingQuestion.id ? editingQuestion : q)
+      : [...previous, editingQuestion]
     setExam({ ...exam, questionList: newQuestions })
-    saveExam(newQuestions)
+    // Keep the dialog open on failure so the edit isn't lost.
+    if (!(await saveExam(newQuestions, previous))) return
     setQuestionModal(false)
     addToast({ type: 'success', title: exists ? 'Question updated' : 'Question added' })
   }
@@ -605,7 +647,7 @@ export default function ExamReviewPage() {
     if (!exam) return
     setPublishing(true)
     try {
-      await csrfFetch('/api/exams', {
+      const res = await csrfFetch('/api/exams', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -620,10 +662,14 @@ export default function ExamReviewPage() {
           published: true 
         })
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(err.error || '')
+      }
       addToast({ type: 'success', title: 'Assessment published' })
       router.push('/dashboard/admin/assessments')
-    } catch {
-      addToast({ type: 'error', title: 'Failed to publish assessment' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Failed to publish assessment', message: e instanceof Error && e.message ? e.message : undefined })
     } finally {
       setPublishing(false)
     }
@@ -765,6 +811,38 @@ export default function ExamReviewPage() {
                   />
                   <span className="text-muted-foreground whitespace-nowrap">Allow retakes</span>
                 </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Strict = candidates must install the Device Audit Chrome extension before starting (blocks mobile, Safari and Firefox). Off = recommended only; integrity events are logged either way.">
+                  <input
+                    type="checkbox"
+                    checked={metaProctoringMode === 'strict'}
+                    onChange={(e) => setMetaProctoringMode(e.target.checked ? 'strict' : 'standard')}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Strict proctoring (extension required)</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="CAD task: candidates upload a native CAD file and a STEP export with a design rationale instead of answering questions">
+                  <input
+                    type="checkbox"
+                    checked={metaKind === 'cad'}
+                    onChange={(e) => setMetaKind(e.target.checked ? 'cad' : 'standard')}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">CAD task</span>
+                </label>
+                {metaKind === 'cad' && (
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="meta-cad-points" className="text-xs text-muted-foreground whitespace-nowrap">CAD points:</Label>
+                    <Input
+                      id="meta-cad-points"
+                      type="number"
+                      min={1}
+                      max={1000}
+                      value={metaCadPoints}
+                      onChange={(e) => setMetaCadPoints(Math.min(1000, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="h-8 w-20 text-sm"
+                    />
+                  </div>
+                )}
                 {metaAllowRetake && (
                   <div className="flex items-center gap-1.5">
                     <Label htmlFor="meta-max-attempts" className="text-xs text-muted-foreground whitespace-nowrap">Max attempts:</Label>
@@ -1535,7 +1613,7 @@ export default function ExamReviewPage() {
                     <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Hidden test cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
+                    <Label>Test cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, all run for scoring)</span></Label>
                     {(editingQuestion.test_cases || []).map((tc, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <Input
@@ -1550,17 +1628,26 @@ export default function ExamReviewPage() {
                           placeholder={`expected stdout ${i + 1}`}
                           className="font-mono text-xs"
                         />
+                        <label className="flex h-9 shrink-0 items-center gap-1.5 text-xs text-muted-foreground cursor-pointer" title="Hidden cases are graded but never shown to candidates. Visible ones appear as examples.">
+                          <input
+                            type="checkbox"
+                            checked={tc.hidden === true}
+                            onChange={(e) => { const next = [...(editingQuestion.test_cases || [])]; next[i] = { ...next[i], hidden: e.target.checked || undefined }; setQ({ test_cases: next }) }}
+                            className="h-4 w-4 rounded border-input accent-primary"
+                          />
+                          Hidden
+                        </label>
                         <Button aria-label="Remove test case" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove test case" onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
                     ))}
                     {(editingQuestion.test_cases || []).length < 10 && (
-                      <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '' }] })}>
+                      <Button variant="outline" size="sm" className="w-fit gap-1" onClick={() => setQ({ test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '', hidden: true }] })}>
                         <Plus className="h-3.5 w-3.5" /> Add test case
                       </Button>
                     )}
-                    <p className="text-xs text-muted-foreground">Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total).</p>
+                    <p className="text-xs text-muted-foreground">Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total, hidden cases included). Candidates only see the cases that aren&apos;t hidden.</p>
                   </div>
                 </>
               )}

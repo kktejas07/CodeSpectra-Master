@@ -92,7 +92,20 @@ interface Exam {
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
   questionList: Question[]
+  /** Number of questions (the list itself only arrives from POST ./start). */
+  question_count?: number
+  proctoring_mode?: 'standard' | 'strict'
+  kind?: 'standard' | 'cad'
   attempts?: AttemptInfo
+}
+
+/** Server entry check result from GET /api/exams/[id] (same checks as start/submit). */
+interface EntryInfo {
+  ok: boolean
+  error?: string
+  status?: number
+  attempt_no?: number
+  attempt?: { status: 'not_started' | 'running' | 'expired'; started_at?: string; deadline?: string | null }
 }
 
 interface AttemptInfo {
@@ -124,6 +137,13 @@ export default function CandidateAssessmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
+  /** Attempt state from the server: resume an attempt in progress, or finalise one whose time ran out. */
+  const [entryAttempt, setEntryAttempt] = useState<EntryInfo['attempt'] | null>(null)
+  const [attemptNo, setAttemptNo] = useState(1)
+  const [timeUp, setTimeUp] = useState(false)
+  const [starting, setStarting] = useState(false)
+  /** Local-clock deadline (server deadline shifted by the server/client clock offset). */
+  const deadlineLocalRef = useRef<number | null>(null)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [currentQIndex, setCurrentQIndex] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
@@ -209,13 +229,18 @@ export default function CandidateAssessmentPage() {
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        const res = await fetch(`/api/exams/${params.id}`, { credentials: 'include' })
+        const linkToken = searchParams.get('link')
+        const inviteToken = searchParams.get('inviteToken')
+        const qs = new URLSearchParams()
+        if (inviteToken) qs.set('inviteToken', inviteToken)
+        if (linkToken) qs.set('link', linkToken)
+        const res = await fetch(`/api/exams/${params.id}${qs.toString() ? `?${qs}` : ''}`, { credentials: 'include' })
         if (!res.ok) {
           addToast({ type: 'error', title: 'Assessment unavailable or invalid.' })
           router.push('/')
           return
         }
-        const found = await res.json()
+        const found = await res.json() as Exam & { published?: boolean; submission?: unknown; entry?: EntryInfo; require_token_links?: boolean }
 
         if (!found || !found.published) {
           addToast({ type: 'error', title: 'Assessment unavailable or invalid.' })
@@ -223,7 +248,13 @@ export default function CandidateAssessmentPage() {
           return
         }
 
-        // Attempt limit (enforced by the submit route too): show the submitted
+        // CAD tasks have their own runner (file upload + design rationale).
+        if (found.kind === 'cad') {
+          router.replace(`/assessment/${params.id}/cad${searchParams.toString() ? `?${searchParams}` : ''}`)
+          return
+        }
+
+        // Attempt limit (enforced by the server too): show the submitted
         // screen unless this exam allows another attempt.
         if (found.attempts) setAttemptInfo(found.attempts)
         if (found.submission && !found.attempts?.can_retake) {
@@ -233,12 +264,13 @@ export default function CandidateAssessmentPage() {
           return
         }
 
-        // Availability-window entry gate (displayed before any access logic;
-        // hard enforcement happens server-side in the submit route).
+        // Availability-window display (the server enforces it on start/submit).
+        // An attempt already running keeps going until its own deadline.
+        const running = found.entry?.ok && found.entry.attempt && found.entry.attempt.status !== 'not_started'
         const nowMs = Date.now()
         const startsMs = found.starts_at ? new Date(found.starts_at).getTime() : NaN
         const endsMs = found.ends_at ? new Date(found.ends_at).getTime() : NaN
-        if (!Number.isNaN(endsMs) && nowMs > endsMs) {
+        if (!running && !Number.isNaN(endsMs) && nowMs > endsMs) {
           setExam(found)
           setWindowState('closed')
           setLoading(false)
@@ -252,10 +284,15 @@ export default function CandidateAssessmentPage() {
         }
         setWindowState('open')
 
-        // Server-checked share-link validation (?link=TOKEN records live in
-        // assessment_links; revoked/expired/over-limit links are rejected
-        // here with no questions ever shown).
-        const linkToken = searchParams.get('link')
+        // All assessments require login — anonymous users see a login prompt
+        // and can never start (regardless of share / invite / open access).
+        if (!user) {
+          setExam(found)
+          setLoading(false)
+          return
+        }
+
+        // DB-backed share link (?link=TOKEN): logs the visit for the organiser.
         if (linkToken) {
           try {
             const linkRes = await fetch(`/api/exams/${params.id}/links?token=${encodeURIComponent(linkToken)}`)
@@ -272,95 +309,28 @@ export default function CandidateAssessmentPage() {
           }
         }
 
-        const accType = found.access_type || 'invite_only'
-        const inviteToken = searchParams.get('inviteToken')
-        const inviteEmail = searchParams.get('inviteEmail')
-
-        // All assessments require login — anonymous users see a login prompt
-        // and can never start (regardless of share / invite / open access).
-        if (!user) {
-          setExam(found)
+        // Old ?share=true links only work on open tests (decision: no bypass).
+        if (isShareLink && !linkToken && !inviteToken && (found.access_type || 'invite_only') !== 'open') {
+          setAccessError(INVITE_ONLY_MESSAGE)
           setLoading(false)
           return
         }
 
-        // Share link: skip invite-only check. Track public link view.
-        // Hard guarantee: exams with require_token_links reject bare
-        // ?share=true — a validated ?link= token (above) or invite is mandatory.
-        if (isShareLink && !linkToken) {
-          // The submit route only accepts a bare ?share=true link on open
-          // assessments; invite-only ones need an invite or a ?link= token.
-          // Old ?share=true links stay blocked on invite-only tests (decision:
-          // no bypass) — just tell the candidate where the right link is.
-          if (accType !== 'open') {
-            setAccessError(INVITE_ONLY_MESSAGE)
-            setLoading(false)
-            return
-          }
-          if ((found as { require_token_links?: boolean }).require_token_links === true) {
-            setAccessError('This test needs a personal link. Use the link from your invite email, or ask the organiser for one.')
-            setLoading(false)
-            return
-          }
+        // Server entry check: invite (right account, not revoked, retakes
+        // allowed), link, window, attempts, personal-link requirement.
+        if (!found.entry?.ok) {
+          setAccessError(found.entry?.error || 'You can’t start this assessment.')
+          setLoading(false)
+          return
+        }
+        if (isShareLink) {
           csrfFetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
-        } else if (isShareLink) {
-          csrfFetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
-        } else if (accType === 'invite_only') {
-          if (!inviteToken) {
-            setAccessError(INVITE_ONLY_MESSAGE)
-            setLoading(false)
-            return
-          }
-          const verifyRes = await fetch(`/api/assessment/invite/${inviteToken}`, { credentials: 'include' })
-          if (!verifyRes.ok) {
-            const verifyErr = await verifyRes.json().catch(() => ({ error: 'Invalid or expired invitation' }))
-            setAccessError(verifyErr.error || 'Invalid or expired invitation link')
-            setLoading(false)
-            return
-          }
-          const verifyJson = await verifyRes.json()
-          if (verifyJson.email && verifyJson.email.toLowerCase() !== (user.email || '').toLowerCase()) {
-            setAccessError('This invitation belongs to a different account. Sign in with the invited email address to continue.')
-            setLoading(false)
-            return
-          }
-          if (inviteEmail && verifyJson.email?.toLowerCase() !== inviteEmail.toLowerCase()) {
-            setAccessError('Email mismatch — this invitation belongs to a different candidate.')
-            setLoading(false)
-            return
-          }
         }
 
-        // ponytail: per-candidate question shuffle, stable across refresh via
-        // an email+exam seed. Answers/drafts/timings are all keyed by question
-        // id, so order is cosmetic — grading is unaffected, same as the
-        // existing per-question option shuffle.
-        if (Array.isArray(found.questionList) && found.questionList.length > 1 && user) {
-          const seedStr = `${user.email || user.uid}:${found.id}`
-          let seed = 0
-          for (const ch of seedStr) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0
-          setExam({ ...found, questionList: shuffleArray(found.questionList, seed) })
-        } else {
-          setExam(found)
-        }
-        if (typeof window !== 'undefined') {
-          try {
-            const draft = localStorage.getItem(`codespectra_exam_draft_${params.id}`)
-            if (draft) {
-              const parsed = JSON.parse(draft)
-              if (found.questionList) {
-                for (const q of found.questionList) {
-                  if (q.type === 'multiple_response' && typeof parsed[q.id] === 'string') {
-                    parsed[q.id] = parsed[q.id].split(',').map((s: string) => s.trim()).filter(Boolean)
-                  }
-                }
-              }
-              setAnswers(parsed)
-            }
-          } catch (e) {
-            console.error('Failed to load draft:', e)
-          }
-        }
+        setAttemptNo(found.entry.attempt_no || 1)
+        setEntryAttempt(found.entry.attempt || null)
+        if (found.entry.attempt?.status === 'expired') setTimeUp(true)
+        setExam(found)
       } catch {
         addToast({ type: 'error', title: 'Failed to load assessment' })
       } finally {
@@ -373,7 +343,11 @@ export default function CandidateAssessmentPage() {
   // Timer Logic
   useEffect(() => {
     if (hasStarted && timeLeft !== null && timeLeft > 0 && !isSubmitted && !isSubmitting) {
-      timerRef.current = setTimeout(() => setTimeLeft(prev => (prev !== null ? prev - 1 : 0)), 1000)
+      // Recomputed from the server deadline each tick, so sleep/throttling can't stretch it.
+      timerRef.current = setTimeout(() => {
+        const dl = deadlineLocalRef.current
+        setTimeLeft(dl !== null ? Math.max(0, Math.round((dl - Date.now()) / 1000)) : null)
+      }, 1000)
     } else if (hasStarted && timeLeft === 0 && !isSubmitted && !isSubmitting && !autoSubmitAttemptedRef.current) {
       autoSubmitAttemptedRef.current = true
       handleAutoSubmit()
@@ -386,7 +360,8 @@ export default function CandidateAssessmentPage() {
   // 30-minute warning
   const hasWarned30Min = useRef(false)
   useEffect(() => {
-    if (timeLeft === 1800 && !isSubmitted && !isSubmitting && !hasWarned30Min.current) {
+    // <= not ===: the deadline-based countdown can skip a second.
+    if (hasStarted && timeLeft !== null && timeLeft <= 1800 && timeLeft > 0 && (exam?.duration ?? 0) * 60 > 1800 && !isSubmitted && !isSubmitting && !hasWarned30Min.current) {
       hasWarned30Min.current = true
       addToast({ type: 'warning', title: '30 minutes remaining!' })
       csrfFetch('/api/proctor/events', {
@@ -400,36 +375,96 @@ export default function CandidateAssessmentPage() {
         }),
       }).catch(() => {})
     }
-  }, [timeLeft, isSubmitted, isSubmitting, params.id, addToast])
+  }, [timeLeft, hasStarted, exam, isSubmitted, isSubmitting, params.id, addToast])
 
+  const localDraftKey = exam ? `codespectra_exam_draft_${exam.id}_${attemptNo}` : null
   useEffect(() => {
-    if (exam && Object.keys(answers).length > 0) {
-      localStorage.setItem(`codespectra_exam_draft_${exam.id}`, JSON.stringify(answers))
+    if (localDraftKey && hasStarted && Object.keys(answers).length > 0) {
+      try { localStorage.setItem(localDraftKey, JSON.stringify(answers)) } catch { /* storage unavailable */ }
     }
-  }, [answers, exam])
+  }, [answers, localDraftKey, hasStarted])
 
-  // Auto-save to server every 30 seconds (debounced)
+  // Server autosave, throttled (not debounced): at most every 15 s while
+  // answers keep changing, so a candidate who never stops typing still saves.
+  const answersRef = useRef(answers)
+  answersRef.current = answers
+  const lastSavedRef = useRef<string>('')
   useEffect(() => {
-    if (!exam || !hasStarted || Object.keys(answers).length === 0) return
-    const timer = setTimeout(async () => {
+    if (!exam || !hasStarted || isSubmitted) return
+    const save = async () => {
+      const snapshot = JSON.stringify(answersRef.current)
+      if (snapshot === lastSavedRef.current || snapshot === '{}') return
       try {
-        await csrfFetch(`/api/exams/${exam.id}/save-draft`, {
+        const res = await csrfFetch(`/api/exams/${exam.id}/save-draft`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers }),
+          body: JSON.stringify({ answers: answersRef.current }),
         })
-      } catch { /* fire-and-forget */ }
-    }, 30000)
-    return () => clearTimeout(timer)
-  }, [answers, exam, hasStarted])
+        if (res.ok) lastSavedRef.current = snapshot
+      } catch { /* retried on the next tick */ }
+    }
+    const timer = setInterval(save, 15000)
+    return () => clearInterval(timer)
+  }, [exam, hasStarted, isSubmitted])
 
-  const handleStart = () => {
-    if (!exam) return
-    setHasStarted(true)
-    startedAtRef.current = Date.now()
-    // Convert duration (minutes) to seconds
-    setTimeLeft(exam.duration * 60)
+  const handleStart = async () => {
+    if (!exam || starting) return
+    setStarting(true)
+    try {
+      const res = await csrfFetch(`/api/exams/${exam.id}/start`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteToken: searchParams.get('inviteToken'), linkToken: searchParams.get('link') }),
+      })
+      const j = await res.json().catch(() => ({})) as {
+        error?: string; expired?: boolean; questionList?: Question[]; started_at?: string; deadline?: string | null
+        server_now?: string; answers?: Record<string, string | string[]>; attempt_no?: number
+      }
+      if (res.status === 410 && j.expired) { setTimeUp(true); return }
+      if (!res.ok || !Array.isArray(j.questionList) || !j.started_at) throw new Error(j.error || 'Could not start the assessment')
+
+      const serverNow = j.server_now ? Date.parse(j.server_now) : Date.now()
+      const offset = Date.now() - serverNow
+      startedAtRef.current = Date.parse(j.started_at) + offset
+      deadlineLocalRef.current = j.deadline ? Date.parse(j.deadline) + offset : null
+      const no = j.attempt_no || attemptNo
+      setAttemptNo(no)
+
+      // ponytail: per-candidate question shuffle, stable across refresh via an
+      // email+exam seed. Answers/drafts/timings are keyed by question id, so
+      // order is cosmetic — grading is unaffected.
+      let list = j.questionList
+      if (list.length > 1 && user) {
+        const seedStr = `${user.email || user.uid}:${exam.id}`
+        let seed = 0
+        for (const ch of seedStr) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0
+        list = shuffleArray(list, seed)
+      }
+
+      // Resume: the server draft (any device) merged with this device's newer local copy.
+      let local: Record<string, string | string[]> = {}
+      try {
+        const raw = localStorage.getItem(`codespectra_exam_draft_${exam.id}_${no}`)
+        if (raw) local = JSON.parse(raw)
+      } catch { /* storage unavailable */ }
+      const merged: Record<string, string | string[]> = { ...(j.answers || {}), ...local }
+      for (const q of list) {
+        if (q.type === 'multiple_response' && typeof merged[q.id] === 'string') {
+          merged[q.id] = (merged[q.id] as string).split(',').map((x) => x.trim()).filter(Boolean)
+        }
+      }
+      lastSavedRef.current = JSON.stringify(j.answers || {})
+      setAnswers(merged)
+      setExam({ ...exam, questionList: list })
+      setTimeLeft(deadlineLocalRef.current !== null ? Math.max(0, Math.round((deadlineLocalRef.current - Date.now()) / 1000)) : null)
+      setHasStarted(true)
+    } catch (e) {
+      addToast({ type: 'error', title: 'Couldn’t start the assessment', message: e instanceof Error ? e.message : undefined })
+    } finally {
+      setStarting(false)
+    }
   }
 
   const handleAutoSubmit = async () => {
@@ -459,10 +494,8 @@ export default function CandidateAssessmentPage() {
           facePhoto,
           inviteToken: searchParams.get('inviteToken'),
           linkToken: searchParams.get('link'),
-          // Timing data
+          // Start time and total time come from the server's attempt record.
           question_timings: questionTimingsRef.current,
-          total_time_ms: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
-          started_at: startedAtRef.current ? new Date(startedAtRef.current).toISOString() : null,
         }),
         credentials: 'include',
       })
@@ -477,9 +510,8 @@ export default function CandidateAssessmentPage() {
         setAttemptInfo((prev) => ({ used, max, can_retake: used < max, best: prev?.best ?? null }))
       }
       setIsSubmitted(true)
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem(`codespectra_exam_draft_${exam.id}`)
-      }
+      setTimeUp(false)
+      try { localStorage.removeItem(`codespectra_exam_draft_${exam.id}_${attemptNo}`) } catch { /* storage unavailable */ }
 
       // Send answer pattern scoring
       try {
@@ -604,6 +636,32 @@ export default function CandidateAssessmentPage() {
     )
   }
 
+  // Time ran out while the candidate was away: finalise from the server draft.
+  if (timeUp && !hasStarted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 mx-auto text-amber-700 dark:text-amber-300">
+            <Clock className="h-7 w-7" />
+          </div>
+          <h1 className="text-xl font-bold">Time is up</h1>
+          <p className="text-sm text-muted-foreground">
+            The time for this attempt has run out. The answers saved before the deadline will be submitted for review.
+          </p>
+          <Button className="w-full gap-2" onClick={() => submitAssessment(true)} disabled={isSubmitting}>
+            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Submit saved answers
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
+  const questionCount = exam.question_count ?? exam.questionList.length
+  const resuming = entryAttempt?.status === 'running'
+  // Extension required only when the organiser chose strict proctoring.
+  const extensionBypass = exam.proctoring_mode !== 'strict'
+
   // Pre-Start Screen
   if (!hasStarted) {
     // Any assessment type requires login to start — anonymous users (with or
@@ -621,7 +679,7 @@ export default function CandidateAssessmentPage() {
             </div>
             <div className="bg-muted/40 border border-border rounded-2xl p-4 text-sm text-left space-y-2">
               <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-medium tabular-nums">{exam.duration} min</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Questions</span><span className="font-medium tabular-nums">{exam.questionList.length}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Questions</span><span className="font-medium tabular-nums">{questionCount}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Level</span><span className="font-medium capitalize">{exam.level}</span></div>
             </div>
             <div className="space-y-2">
@@ -638,7 +696,7 @@ export default function CandidateAssessmentPage() {
     }
 
     return (
-      <ExtensionGate>
+      <ExtensionGate bypass={extensionBypass}>
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-lg w-full rounded-3xl p-8 border-border/70 space-y-6">
           <div className="text-center">
@@ -655,11 +713,11 @@ export default function CandidateAssessmentPage() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Questions</span>
-              <span className="font-semibold tabular-nums">{exam.questionList.length}</span>
+              <span className="font-semibold tabular-nums">{questionCount}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Format</span>
-              <span className="font-semibold">Timed, submits automatically at zero</span>
+              <span className="font-semibold">{exam.duration > 0 ? 'Timed, submits automatically at zero' : 'No time limit'}</span>
             </div>
             {attemptInfo && attemptInfo.max > 1 && (
               <div className="flex items-center justify-between">
@@ -699,8 +757,15 @@ export default function CandidateAssessmentPage() {
               Identity check for this assessment: {exam.require_id_verification === false && exam.require_face_capture === false ? 'consent only — no ID or face capture required' : exam.require_id_verification === false ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
             </div>
           )}
-          <Button onClick={() => setShowVerification(true)} className="w-full text-base font-semibold h-12 rounded-xl">
-            Start assessment
+          {resuming && (
+            <div className="bg-primary/10 border border-primary/20 text-foreground p-3 rounded-xl text-xs flex items-center gap-2">
+              <Clock className="h-4 w-4 shrink-0 text-primary" />
+              <span>You already started this attempt. The timer kept running; your saved answers will be restored.</span>
+            </div>
+          )}
+          <Button onClick={() => setShowVerification(true)} disabled={starting} className="w-full text-base font-semibold h-12 rounded-xl gap-2">
+            {starting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {resuming ? 'Resume assessment' : 'Start assessment'}
           </Button>
         </Card>
 
@@ -714,7 +779,7 @@ export default function CandidateAssessmentPage() {
               setIdPhoto(data.idPhoto)
               setFacePhoto(data.facePhoto)
               setShowVerification(false)
-              handleStart()
+              void handleStart()
             }}
           />
         )}
@@ -727,7 +792,7 @@ export default function CandidateAssessmentPage() {
   const currentQ = exam.questionList[currentQIndex]
 
   return (
-    <ExtensionGate>
+    <ExtensionGate bypass={extensionBypass}>
     <>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined}>
       <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted} enforceFullscreen={hasStarted}>
@@ -750,11 +815,12 @@ export default function CandidateAssessmentPage() {
             </div>
           )}
           <div role="timer" aria-label="Time remaining" className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold tabular-nums transition-colors duration-300 ${
-            (timeLeft || 0) < 300 ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
-            (timeLeft || 0) <= 1800 ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300' : 'bg-primary/5 border-primary/20 text-foreground'
+            timeLeft === null ? 'bg-primary/5 border-primary/20 text-foreground' :
+            timeLeft < 300 ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
+            timeLeft <= 1800 ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300' : 'bg-primary/5 border-primary/20 text-foreground'
           }`}>
             <Clock className="h-4 w-4" />
-            {formatTime(timeLeft || 0)}<span className="hidden sm:inline font-sans font-medium text-xs opacity-80">left</span>
+            {timeLeft === null ? 'No time limit' : <>{formatTime(timeLeft)}<span className="hidden sm:inline font-sans font-medium text-xs opacity-80">left</span></>}
           </div>
           <Button onClick={handleManualSubmit} disabled={isSubmitting} variant="destructive" size="sm" className="gap-2">
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

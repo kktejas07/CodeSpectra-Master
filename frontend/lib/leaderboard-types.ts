@@ -5,10 +5,9 @@ export type LeaderboardEntryDTO = {
   title: string
   level: number
   xp: number
-  language: string
-  languageClass: string
   avatar: string
-  lastSubmission: string | null
-  streak: number
+  /** ISO time of the user's latest XP-earning activity in this view. */
+  lastActivity: string | null
+  /** Problems solved (first accepted submission) in this view. */
   challengesSolved: number
 }

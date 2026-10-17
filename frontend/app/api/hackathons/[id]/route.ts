@@ -9,18 +9,20 @@ import { getAPIUser } from '@/lib/api-auth'
 import {
   hackathons,
   hackathonTeams,
+  hackathonSubmissions,
+  hackathonClaims,
+  hackathonInvites,
+  hackathonActivity,
   nowIso,
   type HackathonDoc,
   type HackathonFeatures,
   DEFAULT_FEATURES,
 } from '@/lib/db/qr-events'
 import { sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
+import { isHackathonStaff } from '@/lib/hackathons/access'
+import { requireAdmin } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
-
-function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
-}
 
 function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
   if (currentStatus === 'draft') return 'draft'
@@ -45,13 +47,15 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Public read: logged-out visitors can view any non-draft event (sign-in is
+  // only needed to register). Drafts are visible to the event's own staff.
+  const user = await getAPIUser().catch(() => null)
   const { id } = await ctx.params
   const by = (new URL(req.url).searchParams.get('by') === 'slug' ? 'slug' : 'id') as 'id' | 'slug'
   const doc = await resolve(id, by)
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  if (doc.status === 'draft' && !isAdmin(user.role)) {
+  const staff = isHackathonStaff(user, doc)
+  if (doc.status === 'draft' && !staff) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
   // ponytail: auto-compute status only for auto-transitions (open→live when time hits,
@@ -61,18 +65,22 @@ export async function GET(
     await (await hackathons()).updateOne({ id: doc.id }, { $set: { status: autoStatus, updated_at: nowIso() } })
     doc.status = autoStatus
   }
-  return NextResponse.json(doc)
+  if (!user) {
+    // Anonymous view: no judge ids or creator id.
+    const { judges, created_by, ...pub } = doc
+    void judges; void created_by
+    return NextResponse.json({ ...pub, is_judge: false })
+  }
+  return NextResponse.json({ ...doc, is_judge: (doc.judges || []).includes(user.id) })
 }
 
 export async function PATCH(
   req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const gate = await requireAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const user = gate.user
   const { id } = await ctx.params
   let body: Partial<HackathonDoc> = {}
   try {
@@ -88,13 +96,15 @@ export async function PATCH(
   const cur = await col.findOne({ id })
   if (!cur) return NextResponse.json({ error: 'not found' }, { status: 404 })
   
-  // tenant_admin can only mutate their own tenant's hackathons
-  if (user.role === 'tenant_admin' && (!user.tenantId || cur.tenant_id !== user.tenantId)) {
+  // Superadmin, or this event's own tenant admin (deny by default).
+  if (!isHackathonStaff(user, cur)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  
-  // Status changes with validation
-  if (body.status && typeof body.status === 'string') {
+
+  // Status changes with validation. The edit form always sends the current
+  // status, so an unchanged status is a no-op rather than a 409.
+  const statusChanged = typeof body.status === 'string' && body.status !== cur.status
+  if (statusChanged && typeof body.status === 'string') {
     const validStatuses = ['draft', 'open', 'live', 'closed']
     if (!validStatuses.includes(body.status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
@@ -108,14 +118,43 @@ export async function PATCH(
     if (!validTransitions[cur.status]?.includes(body.status)) {
       return NextResponse.json({ error: `Cannot change status from ${cur.status} to ${body.status}` }, { status: 409 })
     }
+    if (cur.results_released && body.status !== 'closed') {
+      return NextResponse.json({ error: 'Results are released; the event stays closed' }, { status: 409 })
+    }
     $set.status = body.status
   }
 
-  for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'event_type', 'per_problem_time_minutes', 'cert_template', 'solve_limit', 'grace_period_minutes', 'allow_late_submissions'] as const) {
-    if (k in body) $set[k] = body[k]
+  const clampInt = (v: unknown, lo: number, hi: number): number | null => {
+    const n = Math.round(Number(v))
+    return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : null
   }
+  if ('name' in body) {
+    const name = typeof body.name === 'string' ? body.name.trim().slice(0, 120) : ''
+    if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 })
+    $set.name = name
+  }
+  if ('description' in body) $set.description = typeof body.description === 'string' ? body.description.slice(0, 20000) : ''
+  if ('num_teams' in body) {
+    const n = clampInt(body.num_teams, 1, 10000)
+    if (n === null) return NextResponse.json({ error: 'num_teams must be a number' }, { status: 400 })
+    $set.num_teams = n
+  }
+  if ('max_per_team' in body) {
+    const n = clampInt(body.max_per_team, 1, 50)
+    if (n === null) return NextResponse.json({ error: 'max_per_team must be a number' }, { status: 400 })
+    $set.max_per_team = n
+  }
+  if ('event_type' in body) $set.event_type = body.event_type === 'speed_contest' ? 'speed_contest' : 'hackathon'
+  if ('per_problem_time_minutes' in body) $set.per_problem_time_minutes = clampInt(body.per_problem_time_minutes, 1, 1440) ?? 30
+  if ('cert_template' in body && typeof body.cert_template === 'string') $set.cert_template = body.cert_template.slice(0, 30)
+  if ('solve_limit' in body) $set.solve_limit = body.solve_limit == null ? undefined : clampInt(body.solve_limit, 0, 1000) ?? undefined
+  if ('grace_period_minutes' in body) $set.grace_period_minutes = clampInt(body.grace_period_minutes, 0, 1440) ?? 0
+  if ('allow_late_submissions' in body) $set.allow_late_submissions = body.allow_late_submissions === true
   if (Array.isArray(body.judges)) {
-    $set.judges = body.judges
+    $set.judges = [...new Set(body.judges.filter((j): j is string => typeof j === 'string' && j.trim().length > 0).map((j) => j.trim()))].slice(0, 100)
+  }
+  if (body.timeout_minutes != null && clampInt(body.timeout_minutes, 1, 60 * 24 * 60) === null) {
+    return NextResponse.json({ error: 'timeout_minutes must be a number' }, { status: 400 })
   }
   // J3/J4 judging config (validated; published to all viewers via GET).
   if ('judging_config' in body) {
@@ -163,7 +202,7 @@ export async function PATCH(
     }
   }
   // Recompute ends_at if timeout or starts_at changed.
-  const newTimeout = body.timeout_minutes ?? cur.timeout_minutes
+  const newTimeout = body.timeout_minutes != null ? (clampInt(body.timeout_minutes, 1, 60 * 24 * 60) as number) : cur.timeout_minutes
   const newStart = body.starts_at ? new Date(body.starts_at) : new Date(cur.starts_at)
   if (body.timeout_minutes != null || body.starts_at != null) {
     if (Number.isNaN(newStart.getTime())) {
@@ -175,9 +214,9 @@ export async function PATCH(
   }
 
   await col.updateOne({ id }, { $set })
-  // Recalculate status from new dates
+  // Recalculate status from new dates — unless the organiser just set one by hand.
   const after = await col.findOne({ id }, { projection: { _id: 0 } })
-  if (after) {
+  if (after && !statusChanged) {
     const computed = computeStatus(after.starts_at, after.ends_at, after.status)
     if (computed !== after.status) {
       await col.updateOne({ id }, { $set: { status: computed, updated_at: nowIso() } })
@@ -191,17 +230,13 @@ export async function DELETE(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string }> },
 ) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const gate = await requireAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await ctx.params
   const col = await hackathons()
   const doc = await col.findOne({ id }, { projection: { _id: 0 } })
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  // tenant_admin can only delete their own tenant's hackathons
-  if (user.role === 'tenant_admin' && (!user.tenantId || doc.tenant_id !== user.tenantId)) {
+  if (!isHackathonStaff(gate.user, doc)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const teams = await (await hackathonTeams()).countDocuments({ hackathon_id: id })
@@ -211,6 +246,14 @@ export async function DELETE(
       { status: 409 },
     )
   }
+  // Cascade so a closed event leaves no orphaned teams, submissions, claims or invites.
+  await Promise.all([
+    (await hackathonTeams()).deleteMany({ hackathon_id: id }),
+    (await hackathonSubmissions()).deleteMany({ hackathon_id: id }),
+    (await hackathonClaims()).deleteMany({ hackathon_id: id }),
+    (await hackathonInvites()).deleteMany({ hackathon_id: id }),
+    (await hackathonActivity()).deleteMany({ hackathon_id: id }),
+  ])
   await (await hackathons()).deleteOne({ id })
   return NextResponse.json({ ok: true })
 }

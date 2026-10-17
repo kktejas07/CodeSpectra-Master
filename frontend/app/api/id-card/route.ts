@@ -22,11 +22,11 @@ import type { IdCardRoleVariant } from '@/lib/db/qr-events'
 import {
   getOrCreateIdCardToken,
   idCardTokens,
-  roleToVariant,
   xpToLevel,
 } from '@/lib/db/qr-events'
 import { getUserXp } from '@/lib/db/leaderboard'
 import { generateQrSvg } from '@/lib/qr'
+import { allowedBadgeVariant } from '@/lib/auth-account'
 
 export const runtime = 'nodejs'
 
@@ -46,11 +46,9 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
-  const requestedVariant = url.searchParams.get('variant') || ''
-  const variant =
-    (['user', 'admin', 'tenant'] as IdCardRoleVariant[]).includes(requestedVariant)
-      ? (requestedVariant as IdCardRoleVariant)
-      : roleToVariant(user.role)
+  // Only the holder's own role badge, or the plain member badge — never a
+  // higher one (?variant=admin used to mint a "Superadmin" badge).
+  const variant: IdCardRoleVariant = allowedBadgeVariant(user.role, url.searchParams.get('variant'))
 
   const snapshot = { name: user.fullName || user.name || '', email: user.email, role: user.role }
   const tokenDoc = await getOrCreateIdCardToken(user.id, variant, snapshot)
@@ -120,11 +118,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'unknown action' }, { status: 400 })
   }
 
-  const requestedVariant = url.searchParams.get('variant') || ''
-  const variant =
-    (['user', 'admin', 'tenant'] as IdCardRoleVariant[]).includes(requestedVariant)
-      ? (requestedVariant as IdCardRoleVariant)
-      : roleToVariant(user.role)
+  // Only the holder's own role badge, or the plain member badge — never a
+  // higher one (?variant=admin used to mint a "Superadmin" badge).
+  const variant: IdCardRoleVariant = allowedBadgeVariant(user.role, url.searchParams.get('variant'))
 
   const col = await idCardTokens()
   const existing = await col.findOne({ user_id: user.id, role_variant: variant })

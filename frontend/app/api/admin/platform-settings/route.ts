@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auditAdmin } from '@/lib/admin-audit'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import {
   mergeGeneralPlatformSettings,
@@ -84,6 +85,9 @@ export async function PATCH(request: Request) {
   }
 
   const section = (body.section as string) || 'general'
+  // Audit trail (D22): which section/keys changed, never the values.
+  await auditAdmin(gate.user, 'admin.settings.update', 'platform_settings', `section/${String(section).slice(0, 40)}`,
+    Object.keys(body).filter((k) => k !== 'section').slice(0, 40).join(','))
 
   if (section === 'gamification') {
     try {

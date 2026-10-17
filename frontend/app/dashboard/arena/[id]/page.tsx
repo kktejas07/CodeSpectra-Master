@@ -186,6 +186,7 @@ function ArenaChallengeInner() {
             expected_output: ex.output,
           })),
           mode: 'submit',
+          challenge_id: id,
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
@@ -206,7 +207,7 @@ function ArenaChallengeInner() {
     } finally {
       setSubmitted(false)
     }
-  }, [challenge, language, nextId, router])
+  }, [challenge, language, nextId, router, id])
 
   if (!challenge) {
     return (

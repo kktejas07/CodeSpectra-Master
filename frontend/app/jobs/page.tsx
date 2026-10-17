@@ -66,13 +66,18 @@ export default function JobsPage() {
   const [showFilters, setShowFilters] = useState(false)
   const [applied, setApplied] = useState<Set<string>>(new Set())
 
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/jobs')
-      .then(r => r.json())
-      .then(json => { if (json.data) setJobs(json.data) })
-      .catch(() => {})
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
+      .then(json => { setJobs(Array.isArray(json.data) ? json.data : []) })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   const filtered = jobs.filter(job => {
     const q = search.toLowerCase()
@@ -164,6 +169,14 @@ export default function JobsPage() {
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-cs-ink-soft motion-reduce:animate-none" aria-label="Loading jobs" />
           </div>
+        ) : loadError ? (
+          <EmptyState
+            illustration="jobs"
+            title="We couldn't load jobs"
+            description="Something went wrong on our side. Try again in a moment."
+            actionLabel="Try again"
+            onAction={() => setReloadKey(k => k + 1)}
+          />
         ) : filtered.length === 0 ? (
           (search || filterType || filterLevel || filterLocation) ? (
             <EmptyState

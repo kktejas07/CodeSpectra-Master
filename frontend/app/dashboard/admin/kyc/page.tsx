@@ -117,6 +117,25 @@ export default function AdminKycPage() {
     } catch { /* ignore */ }
   }
 
+  // Decide a session Didit sent to manual review (PATCH /api/admin/kyc).
+  const handleReview = async (r: KycRecord, decision: 'approved' | 'rejected') => {
+    if (!window.confirm(decision === 'approved' ? 'Approve this identity check?' : 'Reject this identity check?')) return
+    try {
+      const res = await csrfFetch('/api/admin/kyc', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: r.id, decision }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) throw new Error(data.error || 'Request failed')
+      setRecords((rs) => rs.map((x) => (x.id === r.id ? { ...x, status: decision } : x)))
+      setStats((st) => ({ ...st, manual_review: Math.max(0, st.manual_review - 1), [decision]: st[decision] + 1 }))
+      addToast({ type: 'success', title: decision === 'approved' ? 'Identity check approved' : 'Identity check rejected' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Could not save the decision', message: e instanceof Error ? e.message : 'Failed' })
+    }
+  }
+
   const handleKycMail = async (r: KycRecord, type: 'reminder' | 'reverify') => {
     try {
       const res = await csrfFetch('/api/admin/kyc/remind', {
@@ -149,6 +168,16 @@ export default function AdminKycPage() {
         <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View details" aria-label="View details">
           <Eye className="h-4 w-4" />
         </Button>
+        {r.status === 'manual_review' ? (
+          <>
+            <Button size="sm" variant="ghost" onClick={() => void handleReview(r, 'approved')} title="Approve" aria-label="Approve identity check">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => void handleReview(r, 'rejected')} title="Reject" aria-label="Reject identity check">
+              <XCircle className="h-4 w-4 text-destructive" />
+            </Button>
+          </>
+        ) : null}
         <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reminder')} title="Send reminder" aria-label="Send reminder email">
           <Mail className="h-4 w-4 text-primary" />
         </Button>

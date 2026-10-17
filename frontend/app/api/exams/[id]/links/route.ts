@@ -17,6 +17,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { getAppOrigin } from '@/lib/app-origin'
 import type { IdRouteContext } from '@/lib/app-route-context'
+import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -29,6 +30,8 @@ export interface AssessmentLinkDoc {
   expires_at: string | null
   max_uses: number | null
   used_count: number
+  /** Accounts that started an attempt through this link (max_uses counts these). */
+  used_by?: string[]
   revoked: boolean
   created_by: string | null
   created_at: string
@@ -208,6 +211,8 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
   // Public validate path — the entry gate calls this; the token IS the
   // secret, so no session is required. Logs usage with IP/device/timestamp.
   if (token) {
+    const rl = rateLimitSlidingWindow(`link-check:${getClientIp(req) || 'unknown'}`, 60, 10 * 60_000)
+    if (!rl.ok) return NextResponse.json({ valid: false, error: 'Too many requests. Please try again shortly.' }, { status: 429 })
     const col = await linksCol()
     const link = await col.findOne({ exam_id: examId, token })
     if (!link || link.revoked) {
@@ -216,10 +221,12 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
     if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
       return NextResponse.json({ valid: false, error: 'This link has expired.' }, { status: 410 })
     }
-    if (link.max_uses != null && link.used_count >= link.max_uses) {
+    // Uses are counted per account when an attempt starts (lib/exam-access
+    // checkExamEntry claimLinkUse), not per page load.
+    const usedBy = Array.isArray(link.used_by) ? link.used_by.length : 0
+    if (link.max_uses != null && usedBy >= link.max_uses) {
       return NextResponse.json({ valid: false, error: 'This link has reached its usage limit.' }, { status: 410 })
     }
-    await col.updateOne({ id: link.id }, { $inc: { used_count: 1 } }).catch(() => {})
 
     // Log detailed usage (best-effort, non-blocking)
     let userId: string | null = null
@@ -245,6 +252,12 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    const db = await getMongoDb()
+    const exam = await db.collection('exams').findOne({ id: examId })
+    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const usageCol = await linkUsageCol()
@@ -306,7 +319,8 @@ export async function DELETE(req: NextRequest, ctx: IdRouteContext) {
   if (link.type === 'invited') {
     await db.collection('candidate_invites').updateOne(
       { token: link.token },
-      { $set: { status: 'expired', expires_at: nowIso() } },
+      // 'revoked' is never renewable by the candidate (see invite renew).
+      { $set: { status: 'revoked', expires_at: nowIso(), updated_at: nowIso() } },
     ).catch(() => {})
   }
   return NextResponse.json({ ok: true })

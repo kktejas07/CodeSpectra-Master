@@ -117,3 +117,75 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to create team' }, { status: 500 })
   }
 }
+
+/** Team the caller may manage: superadmin any, tenant_admin only their own organisation's. */
+async function manageableTeam(db: Awaited<ReturnType<typeof getMongoDb>>, id: string, user: { role: string; tenantId?: string | null }) {
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return null
+  const team = await db.collection('teams').findOne({ id })
+  if (!team) return null
+  if (user.role !== 'superadmin' && (!user.tenantId || (team.tenant_id ?? team.tenantId) !== user.tenantId)) return null
+  return team
+}
+
+/**
+ * PATCH /api/admin/teams?id= — rename, add or remove a member (D23).
+ * Body: { name? , addMemberEmail?, removeMemberId? }. Members must belong to
+ * the team's organisation; the team admin can't be removed.
+ */
+export async function PATCH(request: NextRequest) {
+  const gate = await requireAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const id = request.nextUrl.searchParams.get('id') || ''
+  const body = (await request.json().catch(() => ({}))) as { name?: unknown; addMemberEmail?: unknown; removeMemberId?: unknown }
+  try {
+    const db = await getMongoDb()
+    const team = await manageableTeam(db, id, gate.user)
+    if (!team) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const tenantId = String(team.tenant_id ?? team.tenantId)
+    const now = nowIso()
+
+    if (typeof body.name === 'string') {
+      const name = body.name.trim().replace(/\s+/g, ' ')
+      if (name.length < 2 || name.length > 80) return NextResponse.json({ error: 'Team name must be 2 to 80 characters.' }, { status: 400 })
+      const nameKey = `${tenantId}:${name.toLowerCase()}`
+      const clash = await db.collection('teams').findOne({ name_key: nameKey, id: { $ne: id } }, { projection: { _id: 1 } })
+      if (clash) return NextResponse.json({ error: 'A team with that name already exists in this organisation.' }, { status: 409 })
+      await db.collection('teams').updateOne({ id }, { $set: { name, name_key: nameKey, updated_at: now } })
+    }
+    if (typeof body.addMemberEmail === 'string') {
+      const email = body.addMemberEmail.trim().toLowerCase()
+      if (!EMAIL_RE.test(email)) return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 })
+      const u = await db.collection('user').findOne({ email }, { projection: { id: 1, _id: 1, tenantId: 1, organizationId: 1 } })
+      const uTenant = (u?.tenantId as string | null) ?? (u?.organizationId as string | null) ?? null
+      if (!u || uTenant !== tenantId) return NextResponse.json({ error: 'No member with that email in this organisation.' }, { status: 400 })
+      const uid = String(u.id ?? u._id)
+      await db.collection('teams').updateOne({ id, member_ids: { $ne: uid } }, { $push: { member_ids: uid } as never, $inc: { members: 1 }, $set: { updated_at: now } })
+    }
+    if (typeof body.removeMemberId === 'string') {
+      if (body.removeMemberId === team.admin_user_id) return NextResponse.json({ error: "The team admin can't be removed." }, { status: 400 })
+      await db.collection('teams').updateOne({ id, member_ids: body.removeMemberId }, { $pull: { member_ids: body.removeMemberId } as never, $inc: { members: -1 }, $set: { updated_at: now } })
+    }
+    const data = await db.collection('teams').findOne({ id }, { projection: { _id: 0, name_key: 0 } })
+    return NextResponse.json({ data })
+  } catch (e) {
+    console.error('[CodeSpectra] admin/teams PATCH:', e)
+    return NextResponse.json({ error: 'Failed to update team' }, { status: 500 })
+  }
+}
+
+/** DELETE /api/admin/teams?id= — delete a team (members keep their accounts). */
+export async function DELETE(request: NextRequest) {
+  const gate = await requireAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  try {
+    const db = await getMongoDb()
+    const id = request.nextUrl.searchParams.get('id') || ''
+    const team = await manageableTeam(db, id, gate.user)
+    if (!team) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await db.collection('teams').deleteOne({ id })
+    return NextResponse.json({ ok: true })
+  } catch (e) {
+    console.error('[CodeSpectra] admin/teams DELETE:', e)
+    return NextResponse.json({ error: 'Failed to delete team' }, { status: 500 })
+  }
+}

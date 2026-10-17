@@ -4,13 +4,20 @@
  */
 import Stripe from 'stripe'
 import { billingOrders, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
-import { orderPlanSnapshot } from '@/lib/billing-plans'
+import { cancelAtPeriodEnd, orderPlanSnapshot } from '@/lib/billing-plans'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 import type { PaymentGatewayAdapter, CheckoutResult, SubscriptionResult, PaymentMethod } from './payment-service'
 import type { CheckoutPlan } from './payment-service'
 
-function getClient(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY
-  if (!key) throw new Error('STRIPE_SECRET_KEY not configured')
+/** Admin-saved key (server secrets) first, then env (D17). */
+export async function getStripeSecretKey(): Promise<string | null> {
+  const fromDb = await readServerSecrets().catch(() => ({} as { stripe_secret_key?: string }))
+  return fromDb.stripe_secret_key || process.env.STRIPE_SECRET_KEY || null
+}
+
+async function getClient(): Promise<Stripe> {
+  const key = await getStripeSecretKey()
+  if (!key) throw new Error('No payment provider configured: Stripe key missing')
   return new Stripe(key)
 }
 
@@ -31,7 +38,7 @@ export class StripeAdapter implements PaymentGatewayAdapter {
    * activation, which this app doesn't implement.
    */
   async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string): Promise<CheckoutResult> {
-    const stripe = getClient()
+    const stripe = await getClient()
     const currency = (plan.currency || 'usd').toLowerCase()
     const orderId = newId()
     const orders = await billingOrders()
@@ -67,8 +74,8 @@ export class StripeAdapter implements PaymentGatewayAdapter {
         }],
         metadata: { order_id: orderId, user_id: userId, plan_id: planId },
         payment_intent_data: { metadata: { order_id: orderId, user_id: userId, plan_id: planId } },
-        success_url: `${baseUrl}/dashboard/billing?success=true`,
-        cancel_url: `${baseUrl}/dashboard/billing?canceled=true`,
+        success_url: `${baseUrl}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${baseUrl}/dashboard/billing?canceled=1`,
       })
     } catch (e) {
       await orders.updateOne({ id: orderId, status: 'created' }, { $set: { status: 'failed', updated_at: nowIso() } }).catch(() => {})
@@ -99,12 +106,11 @@ export class StripeAdapter implements PaymentGatewayAdapter {
   }
 
   async cancelSubscription(userId: string): Promise<void> {
-    const subs = await billingSubscriptions()
-    await subs.updateOne({ user_id: userId, status: 'active' }, { $set: { status: 'cancelled' } })
+    await cancelAtPeriodEnd(userId)
   }
 
   async listPaymentMethods(userId: string, email: string): Promise<PaymentMethod[]> {
-    const stripe = getClient()
+    const stripe = await getClient()
     const customers = await stripe.customers.list({ email, limit: 1 })
     const customer = customers.data[0]
     if (!customer) return []
@@ -120,7 +126,7 @@ export class StripeAdapter implements PaymentGatewayAdapter {
   }
 
   async detachPaymentMethod(userId: string, email: string, methodId: string): Promise<void> {
-    const stripe = getClient()
+    const stripe = await getClient()
     // Ownership check: the method must belong to THIS user's Stripe customer.
     const customers = await stripe.customers.list({ email, limit: 1 })
     const customer = customers.data[0]

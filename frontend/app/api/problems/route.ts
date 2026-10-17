@@ -53,10 +53,10 @@ export async function GET(request: NextRequest) {
     const filter: Record<string, unknown> = { is_published: true }
 
     if (!isAdmin) {
+      // hackathon_only problems never list publicly (GET [slug] gates them per event).
       filter.$or = [
         { visibility: { $exists: false } },
         { visibility: 'public' },
-        { hackathon_id: null },
       ]
     }
 
@@ -146,6 +146,8 @@ export async function POST(request: NextRequest) {
       is_published: body.is_published !== false,
       visibility: body.visibility || 'public',
       hackathon_id: body.hackathon_id || null,
+      // Owner tenant: a tenant admin's problems stay editable by that tenant only.
+      ...(gate.user.role === 'tenant_admin' && gate.user.tenantId ? { tenant_id: gate.user.tenantId } : {}),
       created_by: gate.user.id,
       created_at: now,
       updated_at: now,

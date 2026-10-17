@@ -7,6 +7,7 @@ import { setPending2faCookie, setSessionCookie, verifyPurposeToken } from '@/lib
 import { safeRedirect } from '@/lib/safe-redirect'
 import { normalizeUserRole } from '@/lib/rbac'
 import { updateUserLastLogin } from '@/lib/db/admin'
+import { accountBlockReason } from '@/lib/auth-account'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -201,6 +202,7 @@ export async function GET(req: NextRequest) {
       }
     }
     if (!user) return fail('unexpected')
+    if (accountBlockReason(user)) return fail('account_disabled')
 
     const uid = String(user.id || user._id)
     const role = normalizeUserRole(user.role as string | undefined)

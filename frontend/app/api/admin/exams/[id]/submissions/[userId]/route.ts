@@ -129,8 +129,14 @@ export async function PATCH(
 
     const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId }, { sort: { created_at: -1 } })
     if (!submission) return NextResponse.json({ error: 'No submission found' }, { status: 404 })
+    // Released scores already reached the candidate (pass/fail, certificate);
+    // changing them silently would make those stale.
+    if (submission.score_released === true || submission.released_at) {
+      return NextResponse.json({ error: 'Results for this candidate are already released, so grades can’t be changed.' }, { status: 409 })
+    }
 
-    const details = (submission.details || []) as Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number }>
+    const details = (submission.details || []) as Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; requires_human_review?: boolean }>
+    const reviewedAt = new Date().toISOString()
 
     let newScore = 0
     let stillPending = false
@@ -138,11 +144,15 @@ export async function PATCH(
       if (body.grades![d.qId] !== undefined) {
         const awarded = Math.max(0, Math.min(d.points, Number(body.grades![d.qId]) || 0))
         const remark = body.remarks?.[d.qId]
+        // A human grade settles it: out of the SME queue too.
         const base = {
           ...d,
           awarded,
           correct: awarded > 0,
           pending_review: false,
+          requires_human_review: false,
+          reviewed_by: gate.user.id,
+          reviewed_at: reviewedAt,
         }
         // Persist AI/admin feedback so it is shown to the candidate on release
         if (remark != null && String(remark).trim() !== '') {

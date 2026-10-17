@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { recomputeCodeathonStanding } from '@/lib/codeathon-run'
 
 export async function POST(
   request: NextRequest,
@@ -33,14 +34,18 @@ export async function POST(
     }
 
     const previousScore = Number(submission.score) || 0
-    const newScore = body.score !== undefined ? Number(body.score) : previousScore
+    const newScore = body.score !== undefined ? Math.max(0, Math.round(Number(body.score) || 0)) : previousScore
     const scoreDiff = newScore - previousScore
+    const allowedStatus = ['accepted', 'wrong_answer', 'rejected', 'under_review']
+    if (body.status && !allowedStatus.includes(body.status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
 
     const updateDoc: Record<string, any> = {
       reviewed_by: gate.user.id,
       reviewer_name: gate.user.fullName || gate.user.email || 'Judge',
       reviewed_at: new Date().toISOString(),
-      review_notes: body.review_notes || '',
+      review_notes: typeof body.review_notes === 'string' ? body.review_notes.slice(0, 5000) : '',
       is_reviewed: true,
     }
 
@@ -56,19 +61,9 @@ export async function POST(
       { $set: updateDoc }
     )
 
-    // Adjust leaderboard total score if score changed
-    if (scoreDiff !== 0 && submission.user_id) {
-      await db.collection('codeathon_leaderboard').updateOne(
-        { codeathon_id: codeathonId, user_id: submission.user_id },
-        { $inc: { total_score: scoreDiff } }
-      )
-
-      if (submission.team_id) {
-        await db.collection('codeathon_leaderboard').updateOne(
-          { codeathon_id: codeathonId, team_id: submission.team_id },
-          { $inc: { total_score: scoreDiff } }
-        )
-      }
+    // Rebuild the standing from best-per-problem scores.
+    if ((scoreDiff !== 0 || body.status) && submission.user_id) {
+      await recomputeCodeathonStanding(db, codeathonId, { userId: submission.user_id, teamId: submission.team_id || null })
     }
 
     return NextResponse.json({

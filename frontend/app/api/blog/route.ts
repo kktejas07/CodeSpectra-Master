@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml, safeHttpUrl } from '@/lib/safe-html'
 import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
 import {
   BLOG_CATEGORIES,
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
     if (!title) return NextResponse.json({ error: 'title required' }, { status: 400 })
 
     const category = isBlogCategory(String(body.category || '')) ? body.category! : 'product'
-    const html = String(body.body || '')
+    const html = sanitizeArticleHtml(String(body.body || ''))
     const now = nowIso()
     const publish = body.publish === true || body.status === 'published'
     let slug = slugifyTitle(String(body.slug || title))
@@ -92,7 +93,9 @@ export async function POST(req: NextRequest) {
       author_name: String(body.author_name || user?.name || 'CodeSpectra').trim(),
       author_role: String(body.author_role || '').trim() || undefined,
       status: publish ? 'published' : 'draft',
-      source_urls: Array.isArray(body.source_urls) ? body.source_urls.map(String) : undefined,
+      source_urls: Array.isArray(body.source_urls)
+        ? body.source_urls.map((u) => safeHttpUrl(u)).filter((u): u is string => !!u && /^https?:/i.test(u))
+        : undefined,
       source_note: body.source_note ? String(body.source_note) : undefined,
       newsletter_campaign_id: body.newsletter_campaign_id
         ? String(body.newsletter_campaign_id)

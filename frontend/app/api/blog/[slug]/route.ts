@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml } from '@/lib/safe-html'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import {
   blogPosts,
@@ -66,7 +67,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     if (typeof body.title === 'string' && body.title.trim()) patch.title = body.title.trim()
     if (typeof body.excerpt === 'string') patch.excerpt = body.excerpt.trim().slice(0, 400)
     if (typeof body.body === 'string') {
-      patch.body = body.body
+      patch.body = sanitizeArticleHtml(body.body)
       patch.read_minutes = estimateReadMinutes(body.body)
     }
     if (typeof body.cover_image === 'string') patch.cover_image = body.cover_image || undefined

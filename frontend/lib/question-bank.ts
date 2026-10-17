@@ -17,6 +17,7 @@ export type BankQuestionType = QuestionType
 export interface BankTestCase {
   input: string
   output: string
+  hidden?: true
 }
 
 export interface BankQuestionDoc {
@@ -61,6 +62,12 @@ export interface BankQuestionDoc {
   language?: string
   starter_code?: string
   source: 'seed' | 'ai' | 'import' | 'manual'
+  /**
+   * AI-generated and imported questions start as `draft` and are never
+   * sampled into exams until a reviewer approves them (editing = reviewing).
+   * Docs from before this field existed count as approved.
+   */
+  review_status?: 'draft' | 'approved'
   is_active: boolean
   createdAt: string
   updatedAt: string
@@ -213,6 +220,7 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     language: typeof sf.language === 'string' ? sf.language : undefined,
     starter_code: typeof sf.starter_code === 'string' ? sf.starter_code : undefined,
     source: sourceRaw === 'ai' || sourceRaw === 'seed' || sourceRaw === 'import' ? (sourceRaw as BankQuestionDoc['source']) : 'manual',
+    review_status: raw.review_status === 'draft' ? 'draft' : 'approved',
     is_active: raw.is_active !== false,
     createdAt: normString(raw.createdAt, 40) || nowIso(),
     updatedAt: nowIso(),
@@ -278,7 +286,7 @@ export async function sampleFromBank(params: {
   const split = params.difficultySplit || { Easy: Math.ceil(params.count / 3), Medium: Math.ceil(params.count / 3), Hard: params.count - 2 * Math.ceil(params.count / 3) }
 
   const baseMatch = (difficulty: string): Record<string, unknown> => {
-    const match: Record<string, unknown> = { is_active: true, difficulty }
+    const match: Record<string, unknown> = { is_active: true, review_status: { $ne: 'draft' }, difficulty }
     if (params.branch) match.branch = params.branch
     if (params.degree_type) match.degree_type = params.degree_type
     if (params.types?.length) match.type = { $in: params.types }
@@ -303,7 +311,7 @@ export async function sampleFromBank(params: {
   // Top up any shortfall with unrestricted picks.
   if (picked.length < params.count) {
     const want = params.count - picked.length
-    const match: Record<string, unknown> = { is_active: true }
+    const match: Record<string, unknown> = { is_active: true, review_status: { $ne: 'draft' } }
     if (params.branch) match.branch = params.branch
     if (params.degree_type) match.degree_type = params.degree_type
     if (params.types?.length) match.type = { $in: params.types }

@@ -158,7 +158,9 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <X className="h-4 w-4" />

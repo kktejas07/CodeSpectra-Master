@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
+import { passwordProblem } from '@/lib/auth-account'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
@@ -84,12 +85,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
     }
 
-    const { email, password, name, visitorId, mobile, userType, domain, experience, classGrade, currentJobRole, organisationName, organisationType, turnstileToken } = await request.json()
+    const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    // Whitelisted, size-capped profile fields only.
+    const str = (v: unknown, max = 200) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
+    const email = typeof raw.email === 'string' ? raw.email : ''
+    const password = typeof raw.password === 'string' ? raw.password : ''
+    const name = str(raw.name, 120)
+    const visitorId = str(raw.visitorId, 200)
+    const mobile = str(raw.mobile, 32)
+    const userType = str(raw.userType, 40)
+    const domain = str(raw.domain, 120)
+    const experience = str(raw.experience, 40)
+    const classGrade = str(raw.classGrade, 40)
+    const currentJobRole = str(raw.currentJobRole, 120)
+    const organisationName = str(raw.organisationName, 160)
+    const organisationType = str(raw.organisationType, 60)
+    const gradYearNum = Number(raw.graduationYear)
+    const graduationYear = Number.isInteger(gradYearNum) && gradYearNum >= 1950 && gradYearNum <= 2100 ? gradYearNum : null
+    const turnstileToken = typeof raw.turnstileToken === 'string' ? raw.turnstileToken : ''
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
+    }
+    const pwProblem = passwordProblem(password)
+    if (pwProblem) {
+      return NextResponse.json({ error: pwProblem }, { status: 400 })
     }
 
     // Cloudflare Turnstile verification (fail-closed when configured)
@@ -138,6 +160,7 @@ export async function POST(request: Request) {
       currentJobRole: currentJobRole || null,
       organisationName: organisationName || null,
       organisationType: organisationType || null,
+      graduationYear,
       passwordHash,
       role: 'user',
       emailVerified: false,
@@ -147,6 +170,12 @@ export async function POST(request: Request) {
       createdAt: now,
       updatedAt: now,
     } as any)
+
+    // Invites sent before this account existed carry no user_id — attach them.
+    await db.collection('candidate_invites').updateMany(
+      { email: normalizedEmail, $or: [{ user_id: null }, { user_id: '' }, { user_id: { $exists: false } }] },
+      { $set: { user_id: uid } },
+    ).catch(() => {})
 
     const role = normalizeUserRole('user')
     await setSessionCookie({ uid, email: normalizedEmail, role })

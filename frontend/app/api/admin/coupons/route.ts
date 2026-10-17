@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin } from '@/lib/route-auth'
 import { billingCoupons, newId, nowIso } from '@/lib/db/billing'
+import { validateCouponInput } from '@/lib/billing-lifecycle'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest) {
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/
+
+export async function GET() {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
-    const user = await getAPIUser()
-    if (!user || user.role !== 'superadmin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const couponsCol = await billingCoupons()
-    const coupons = await couponsCol.find({}).sort({ created_at: -1 }).toArray()
-
+    const coupons = await (await billingCoupons()).find({}, { projection: { _id: 0 } }).sort({ created_at: -1 }).toArray()
     return NextResponse.json({ coupons })
   } catch (error) {
     console.error('[admin/coupons]', error)
@@ -23,41 +22,32 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
-    const user = await getAPIUser()
-    if (!user || user.role !== 'superadmin') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const body = await req.json()
-    const { code, discount_type, discount_value, max_uses, valid_until, trial_duration_days } = body
-
-    if (!code || !discount_type || (discount_type !== 'trial' && discount_value === undefined)) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
-    }
+    const parsed = validateCouponInput(await req.json().catch(() => null), false)
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+    const v = parsed.value
 
     const couponsCol = await billingCoupons()
-    const existing = await couponsCol.findOne({ code: code.toUpperCase() })
-    if (existing) {
+    if (await couponsCol.findOne({ code: v.code! })) {
       return NextResponse.json({ error: 'Coupon code already exists' }, { status: 400 })
     }
-
     const coupon = {
       id: newId(),
-      code: code.toUpperCase(),
-      discount_type,
-      discount_value: discount_type === 'trial' ? 100 : Number(discount_value),
-      max_uses: Number(max_uses) || 0,
+      code: v.code!,
+      discount_type: v.discount_type!,
+      discount_value: v.discount_value!,
+      max_uses: v.max_uses ?? 0,
       current_uses: 0,
-      valid_until: valid_until ? new Date(valid_until).toISOString() : undefined,
+      valid_until: v.valid_until || undefined,
       active: true,
-      trial_duration_days: trial_duration_days ? Number(trial_duration_days) : undefined,
-      created_by: user.id,
+      trial_duration_days: v.trial_duration_days ?? undefined,
+      created_by: gate.user.id,
       created_at: nowIso(),
     }
-
     await couponsCol.insertOne(coupon)
-
+    await auditAdmin(gate.user, 'admin.coupon.create', 'coupon', `coupon/${coupon.id}`, `${coupon.code} ${coupon.discount_type} ${coupon.discount_value}`)
     return NextResponse.json({ coupon })
   } catch (error) {
     console.error('[admin/coupons]', error)
@@ -66,23 +56,25 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
-    const user = await getAPIUser()
-    if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { searchParams } = new URL(req.url)
-    const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-    const body = await req.json()
-    const $set: Record<string, any> = {}
-    if (body.active !== undefined) $set.active = body.active
-    if (body.discount_value !== undefined) $set.discount_value = Number(body.discount_value)
-    if (body.max_uses !== undefined) $set.max_uses = Number(body.max_uses)
-    if (body.valid_until !== undefined) $set.valid_until = body.valid_until || null
-    if (body.trial_duration_days !== undefined) $set.trial_duration_days = Number(body.trial_duration_days)
-    if (body.discount_type) $set.discount_type = body.discount_type
-    if (Object.keys($set).length === 0) return NextResponse.json({ error: 'nothing to update' }, { status: 400 })
+    const id = new URL(req.url).searchParams.get('id') || ''
+    if (!ID_RE.test(id)) return NextResponse.json({ error: 'id required' }, { status: 400 })
     const couponsCol = await billingCoupons()
+    const existing = await couponsCol.findOne({ id })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+    const raw = ((await req.json().catch(() => ({}))) || {}) as Record<string, unknown>
+    // Code is immutable; validate the rest against the effective type.
+    delete raw.code
+    if (raw.discount_type === undefined && raw.discount_value !== undefined) raw.discount_type = existing.discount_type
+    const parsed = validateCouponInput(raw, true)
+    if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
+    const $set = parsed.value as Record<string, unknown>
+    if (Object.keys($set).length === 0) return NextResponse.json({ error: 'nothing to update' }, { status: 400 })
     await couponsCol.updateOne({ id }, { $set })
+    await auditAdmin(gate.user, 'admin.coupon.update', 'coupon', `coupon/${id}`, JSON.stringify($set))
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[admin/coupons]', error)
@@ -91,14 +83,13 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
-    const user = await getAPIUser()
-    if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const { searchParams } = new URL(req.url)
-    const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
-    const couponsCol = await billingCoupons()
-    await couponsCol.deleteOne({ id })
+    const id = new URL(req.url).searchParams.get('id') || ''
+    if (!ID_RE.test(id)) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    await (await billingCoupons()).deleteOne({ id })
+    await auditAdmin(gate.user, 'admin.coupon.delete', 'coupon', `coupon/${id}`, undefined, 'warning')
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[admin/coupons]', error)

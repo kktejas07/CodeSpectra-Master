@@ -6,6 +6,8 @@ import { safeRedirect } from "@/lib/safe-redirect";
 import Link from "next/link";
 import { FaceCamera } from "@/components/auth/face-camera";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
@@ -21,32 +23,42 @@ function EnrollFaceInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameraKey, setCameraKey] = useState(0);
+  // Replacing an existing face scan needs a re-auth (password or authenticator code).
+  const [reauth, setReauth] = useState<{ password: boolean; totp: boolean } | null>(null);
+  const [reauthSecret, setReauthSecret] = useState("");
+  const [pendingDescriptor, setPendingDescriptor] = useState<number[] | null>(null);
   const { user } = useAuth();
 
   const isMandatory = user?.createdAt 
     ? new Date().getTime() - new Date(user.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000 
     : false;
 
-  const handleCapture = useCallback(async (descriptor: Float32Array | null, imageBase64: string) => {
+  const submit = useCallback(async (descriptor: number[], secret?: string) => {
     setLoading(true);
     setError(null);
-    if (!descriptor) {
-      setError("Face detection failed — please retry.");
-      setLoading(false);
-      return;
-    }
     try {
+      const extra: Record<string, string> = {};
+      if (secret) {
+        if (/^\d{6}$/.test(secret) && reauth?.totp) extra.code = secret;
+        else extra.password = secret;
+      }
       const res = await csrfFetch("/api/auth/face-enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          descriptor: Array.from(descriptor)
-        })
+        body: JSON.stringify({ descriptor, ...extra }),
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({} as { error?: string }))
-        throw new Error(data.error || `Failed to save biometric template (${res.status}).`)
+        const data = await res.json().catch(() => ({} as { error?: string; reauthRequired?: boolean; methods?: { password: boolean; totp: boolean } }));
+        if (data.reauthRequired) {
+          setPendingDescriptor(descriptor);
+          setReauth(data.methods || { password: false, totp: false });
+          setReauthSecret("");
+          setError(data.error || "Confirm it’s you to replace your face scan.");
+          setLoading(false);
+          return;
+        }
+        throw new Error(data.error || `Your face scan couldn’t be saved (${res.status}).`);
       }
 
       router.push(redirectTo);
@@ -54,9 +66,19 @@ function EnrollFaceInner() {
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+      setPendingDescriptor(null);
+      setReauth(null);
       setCameraKey((k) => k + 1);
     }
-  }, [router, redirectTo]);
+  }, [router, redirectTo, reauth]);
+
+  const handleCapture = useCallback(async (descriptor: Float32Array | null) => {
+    if (!descriptor) {
+      setError("Your face wasn’t detected. Try again in good light.");
+      return;
+    }
+    await submit(Array.from(descriptor));
+  }, [submit]);
 
   const handleError = useCallback((err: Error) => setError(err.message), []);
 
@@ -76,7 +98,7 @@ function EnrollFaceInner() {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Secure your account</h2>
             <p className="text-sm text-muted-foreground mt-2">
-              Enroll your face for passwordless login and secure identity verification during assessments.
+              Enroll your face to verify your identity during assessments. Face sign-in also needs two-step verification.
             </p>
             {isMandatory && (
               <div className="mt-4 flex items-center gap-2 bg-yellow-500/10 text-yellow-600 text-sm rounded-lg p-3">
@@ -94,7 +116,30 @@ function EnrollFaceInner() {
           </div>
         )}
 
-        <div className="py-4">
+        {reauth && pendingDescriptor && (reauth.password || reauth.totp) && (
+          <form
+            className="space-y-3"
+            onSubmit={(e) => { e.preventDefault(); if (reauthSecret) void submit(pendingDescriptor, reauthSecret); }}
+          >
+            <Label htmlFor="reauth-secret">
+              {reauth.password && reauth.totp ? "Password or authenticator code" : reauth.password ? "Password" : "Authenticator code"}
+            </Label>
+            <Input
+              id="reauth-secret"
+              type={reauth.password ? "password" : "text"}
+              inputMode={reauth.password ? undefined : "numeric"}
+              autoComplete={reauth.password ? "current-password" : "one-time-code"}
+              value={reauthSecret}
+              onChange={(e) => setReauthSecret(e.target.value)}
+              autoFocus
+            />
+            <Button type="submit" className="w-full" disabled={loading || !reauthSecret}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm and save"}
+            </Button>
+          </form>
+        )}
+
+        <div className={reauth && pendingDescriptor ? "hidden" : "py-4"}>
           <FaceCamera
             key={cameraKey}
             mode="enroll"

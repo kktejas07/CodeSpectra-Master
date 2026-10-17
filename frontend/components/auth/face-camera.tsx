@@ -445,7 +445,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
               Analyzing...
             </Button>
             <Button variant="ghost" size="sm" onClick={resetCapture}>
-              Restart Analysis
+              Restart analysis
             </Button>
           </div>
         )}
@@ -453,7 +453,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         {status === 'error' && (
           <Button onClick={retryInit} className="w-full gap-2">
             <RefreshCw className="h-4 w-4" />
-            Retry Capture
+            Retry capture
           </Button>
         )}
       </div>

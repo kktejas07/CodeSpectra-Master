@@ -55,7 +55,8 @@ export async function POST(
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
 
-    const submissionQuery: Record<string, unknown> = { exam_id: examId }
+    // Released results are final for the candidate (score, pass, certificate) — never regraded here.
+    const submissionQuery: Record<string, unknown> = { exam_id: examId, score_released: { $ne: true }, released_at: { $exists: false } }
     if (userIds) submissionQuery.user_id = { $in: userIds }
     const submissions = await db.collection('exam_submissions').find(submissionQuery).toArray()
     if (submissions.length === 0) {
@@ -101,7 +102,10 @@ export async function POST(
 
       for (let i = 0; i < details.length; i++) {
         const d = details[i]
-        const isPending = d.pending_review === true
+        // AI already graded it and flagged it for a human: leave it for the
+        // reviewer instead of re-grading it on every round (LLM cost).
+        const awaitingHuman = d.pending_review === true && d.requires_human_review === true && d.awarded !== undefined
+        const isPending = d.pending_review === true && !awaitingHuman
         const needsGrade = isPending || (d.awarded === undefined && !d.correct && (body.includeAnswered ? !!answers[d.qId] : false))
         const q = questions.find((x: any) => x.id === d.qId)
         const answer = String(answers[d.qId] || '').trim()

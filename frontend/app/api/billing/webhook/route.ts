@@ -3,11 +3,10 @@ import { verifyWebhookSignature } from '@/lib/razorpay-server'
 import {
   billingOrders,
   billingPayments,
-  billingSubscriptions,
   newId,
   nowIso,
 } from '@/lib/db/billing'
-import { activatePaidOrder, ensureBillingIndexes } from '@/lib/billing-plans'
+import { activatePaidOrder, ensureBillingIndexes, markOrderRefunded } from '@/lib/billing-plans'
 import { notify } from '@/lib/notifications'
 import { getCurrencySymbol } from '@/lib/currency'
 import { getPlatformCurrency } from '@/lib/server-currency'
@@ -24,8 +23,7 @@ export const runtime = 'nodejs'
  * Supported events:
  *   - payment.captured       → mark order paid + insert payment + (re)issue subscription
  *   - payment.failed         → mark order failed + insert failed payment
- *   - refund.created         → mark payment refunded
- *   - subscription.cancelled → mark subscription cancelled
+ *   - refund.created/processed → full refund: markOrderRefunded (order, invoice, plan)
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const signature = req.headers.get('x-razorpay-signature') || ''
@@ -107,8 +105,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         } catch (e) {
           if ((e as { code?: number })?.code !== 11000) throw e
         }
-        const sym = getCurrencySymbol(await getPlatformCurrency())
-        notify({
+        // Notify only for an event that actually changed the order (D35): a
+        // short payment or a lost claim must not say "Payment successful".
+        const sym = getCurrencySymbol(order.currency || (await getPlatformCurrency()))
+        if (claimed) notify({
           user_id: order.user_id,
           type: status === 'captured' ? 'billing.payment_success' : 'billing.payment_failed',
           title: status === 'captured' ? 'Payment successful' : 'Payment failed',
@@ -122,26 +122,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Only the claimer applies the order's effects.
         if (status === 'captured' && claimed) {
           // Activate exactly the plan snapshotted on the order (static or admin-created).
-          await activatePaidOrder({ ...order, status: 'paid' }, paymentRowId)
+          // Read back the row id: an earlier verify call may own the payment row.
+          const row = await paymentsCol.findOne({ razorpay_payment_id: payment_id }, { projection: { id: 1 } })
+          await activatePaidOrder({ ...order, status: 'paid' }, row?.id ?? paymentRowId)
         }
       }
-    } else if (event === 'refund.created') {
+    } else if (event === 'refund.created' || event === 'refund.processed') {
+      // A full refund issued in the Razorpay dashboard: same effect as the
+      // admin "Mark refunded" (order, invoice and plan), once (D18).
       const refund = (entities.refund?.entity || {}) as Record<string, unknown>
       const payment_id = String(refund.payment_id || '')
+      const refundAmount = Number(refund.amount || 0)
       const paymentsCol = await billingPayments()
-      await paymentsCol.updateOne(
-        { razorpay_payment_id: payment_id },
-        { $set: { status: 'refunded' } },
-      )
-    } else if (event === 'subscription.cancelled') {
-      const sub = (entities.subscription?.entity || {}) as Record<string, unknown>
-      const planId = String(sub.plan_id || '')
-      const subs = await billingSubscriptions()
-      await subs.updateMany(
-        { plan_id: planId, status: 'active' },
-        { $set: { status: 'cancelled' } },
-      )
+      const payment = payment_id ? await paymentsCol.findOne({ razorpay_payment_id: payment_id }) : null
+      if (payment) {
+        if (refundAmount >= payment.amount_paise) {
+          await markOrderRefunded(payment.order_id, { id: 'system:razorpay', email: 'razorpay-webhook' }, `Razorpay refund ${String(refund.id || '')}`.trim())
+        } else {
+          // Partial refund: record it on the payment only; access is unchanged.
+          await paymentsCol.updateOne({ id: payment.id }, { $set: { partial_refund_paise: refundAmount } as never })
+        }
+      }
     }
+    // subscription.* events are ignored: plans are prepaid one-off orders, and
+    // Razorpay plan ids are not our plan ids (the old handler cancelled every
+    // subscription on a plan).
   } catch (e) {
     console.error('[billing/webhook] error:', e)
     return NextResponse.json({ error: 'processing_failed' }, { status: 500 })

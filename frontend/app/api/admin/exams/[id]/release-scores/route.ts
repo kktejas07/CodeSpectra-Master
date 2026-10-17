@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
-import { notify } from '@/lib/notifications'
+import { notifyResultsReleased } from '@/lib/exam-release-notify'
 import { deliverExamCertificate, issueExamCertificate } from '@/lib/db/certifications'
 import { examPassPercent } from '@/lib/exam-access'
 
@@ -70,8 +70,6 @@ export async function POST(
       )
     }
 
-    // Notify candidates (in-app + WhatsApp via the shared notify helper)
-    const examTitle = exam?.title || 'Assessment'
 
     // Verifiable certificates for every released attempt at or above the pass mark
     // (one per candidate per exam; re-releases and retakes never duplicate).
@@ -92,23 +90,9 @@ export async function POST(
       }
     }
 
+    // Same channels as the single release (in-app + WhatsApp + email).
     for (const sub of releasable) {
-      if (!sub.user_id || sub.user_id.startsWith('candidate_')) continue
-      const scoreText = sub.max_score > 0
-        ? `${Math.round((sub.score / sub.max_score) * 100)}%`
-        : `${sub.score}`
-      try {
-        await notify({
-          user_id: sub.user_id,
-          type: 'assessment.results_released',
-          title: `Your results for "${examTitle}" are ready`,
-          message: `Score: ${scoreText}. Check your dashboard for details.`,
-          link: `/dashboard/assessments/${examId}`,
-          send_whatsapp: true,
-        })
-      } catch {
-        // Best-effort notification — don't fail the release
-      }
+      await notifyResultsReleased(db, exam as Record<string, unknown>, sub as Record<string, unknown>)
     }
 
     return NextResponse.json({ released: releasable.length, passed, failed, skipped_pending: skippedPending, cutoff, certificates_issued: certificatesIssued })

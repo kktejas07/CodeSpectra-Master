@@ -10,7 +10,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
-import { Trophy, BarChart3, CheckCircle, XCircle, FileText, BrainCircuit } from 'lucide-react'
+import { Trophy, BarChart3, CheckCircle, XCircle, FileText, BrainCircuit, Clock } from 'lucide-react'
 import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -23,7 +23,9 @@ interface Attempt {
   score: number | null
   total_questions: number
   answered: number
-  passed: boolean
+  /** null until the organiser releases scores. */
+  passed: boolean | null
+  score_released?: boolean
   status: string
   submitted_at: string
   certificate_url?: string
@@ -120,9 +122,11 @@ export default function MyAssessmentsPage() {
   }
 
   const totalAttempts = attempts.length
-  const passedCount = attempts.filter(a => a.passed).length
-  const avgScore = totalAttempts > 0
-    ? Math.round(attempts.reduce((sum, a) => sum + (a.score ?? 0), 0) / totalAttempts)
+  // Only released results count (unreleased rows carry no score).
+  const releasedRows = attempts.filter(a => a.score != null)
+  const passedCount = releasedRows.filter(a => a.passed === true).length
+  const avgScore = releasedRows.length > 0
+    ? Math.round(releasedRows.reduce((sum, a) => sum + (a.score ?? 0), 0) / releasedRows.length)
     : 0
 
   const columns: DataTableColumn<Attempt>[] = [
@@ -158,7 +162,12 @@ export default function MyAssessmentsPage() {
     {
       key: 'passed',
       header: 'Status',
-      cell: (row) => (
+      cell: (row) => row.passed === null || row.passed === undefined ? (
+        <Badge variant="outline" className="text-xs gap-1 text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          Awaiting results
+        </Badge>
+      ) : (
         <Badge variant="outline" className={`text-xs gap-1 ${
           row.passed ? 'text-green-600 border-green-500/30' : 'text-red-600 border-red-500/30'
         }`}>

@@ -6,10 +6,26 @@ import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
-import { checkExamEntry, recordExamAttempt } from '@/lib/exam-access'
+import { attemptTimeState, checkExamEntry, extensionRequired, getExamDraft, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+/** Identity captures: only small data:image URLs are kept (they are rendered in reviewer reports). */
+function photo(v: unknown): string | null {
+  return typeof v === 'string' && /^data:image\/(png|jpe?g|webp);base64,[A-Za-z0-9+/=]+$/.test(v) && v.length <= 2_000_000 ? v : null
+}
+
+/** Per-question time spent (ms): numbers only, bounded keys. */
+function timings(v: unknown): Record<string, number> {
+  const out: Record<string, number> = {}
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return out
+  for (const [k, n] of Object.entries(v as Record<string, unknown>).slice(0, 500)) {
+    const ms = Number(n)
+    if (Number.isFinite(ms) && ms >= 0) out[k.slice(0, 128).replace(/[.$]/g, '_')] = Math.min(ms, 7 * 24 * 3600 * 1000)
+  }
+  return out
+}
 
 export async function POST(
   req: NextRequest,
@@ -74,9 +90,21 @@ export async function POST(
     // Server-side entry gate (the page's checks are UX only): published,
     // starts_at/ends_at window, invite-only (valid invite for this exam + account,
     // or a valid ?link= token), and no retake. See lib/exam-access.ts.
-    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken })
+    // ignoreWindowClose: the attempt deadline below (capped at ends_at) is the limit here.
+    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken }, { ignoreWindowClose: true })
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
     const inviteDoc = access.invite
+
+    // Server-side timer: the attempt must have been started (POST ./start,
+    // which is the only place questions are handed out). Past the deadline +
+    // grace the browser's answers are ignored and the attempt is finalised
+    // from the draft the server saved before the deadline.
+    const draft = await getExamDraft(db, examId, userId)
+    const timeState = attemptTimeState(exam as Record<string, unknown>, draft, access.attemptNo)
+    if (timeState.status === 'not_started') {
+      return NextResponse.json({ error: 'Start the assessment before submitting.' }, { status: 409 })
+    }
+    const late = timeState.status === 'expired'
 
     // Extension check: log if no hardware_port_audit event exists, but
     // don't block submission — the extension is a proctoring aid, not a
@@ -88,12 +116,15 @@ export async function POST(
       created_at: { $gte: new Date(Date.now() - 24 * 3600 * 1000).toISOString() },
     })
     const extensionDetected = auditEvents > 0
-    if (!extensionDetected) {
-      console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: no hardware_port_audit event — extension not detected`)
+    if (!extensionDetected && extensionRequired(exam as Record<string, unknown>)) {
+      // ponytail: strict mode gates the start page; the event itself is
+      // browser-reported, so it's a flag for reviewers, not a hard block.
+      console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: strict proctoring but no hardware_port_audit event`)
     }
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
-    const rawAnswers = body.answers || {}
+    const draftAnswers = draft && draft.answers && typeof draft.answers === 'object' ? draft.answers as Record<string, unknown> : {}
+    const rawAnswers = late ? draftAnswers : (body.answers && typeof body.answers === 'object' ? body.answers : {})
     // Injection/DoS guard: answers are stored verbatim in MongoDB, so cap
     // per-answer and total size (16MB doc limit). Content stays untouched —
     // it is inert text, never eval'd; code runs only in the Piston sandbox.
@@ -101,8 +132,11 @@ export async function POST(
     const MAX_TOTAL_ANSWER_CHARS = 1000000
     let totalChars = 0
     const answers: Record<string, string> = {}
+    // Only answers to this exam's questions are kept (no stray / operator keys).
+    const questionIds = new Set(questions.map((q: { id?: unknown }) => String(q.id)))
     for (const [k, v] of Object.entries(rawAnswers)) {
-      const s = String(v ?? '')
+      if (!questionIds.has(k)) continue
+      const s = Array.isArray(v) ? v.map((x) => String(x ?? '')).join(', ') : String(v ?? '')
       if (s.length > MAX_ANSWER_CHARS) {
         return NextResponse.json({ error: `Answer too large (max ${MAX_ANSWER_CHARS} characters per question)` }, { status: 400 })
       }
@@ -166,9 +200,11 @@ export async function POST(
       score: totalScore,
       max_score: maxScore,
       has_pending_review: hasPendingReview,
-      auto_submitted: body.auto_submitted || false,
-      id_photo: body.idPhoto || null,
-      face_photo: body.facePhoto || null,
+      auto_submitted: late || body.auto_submitted === true,
+      // Past deadline + grace: answers are the server draft saved before the deadline.
+      late_submit: late,
+      id_photo: photo(body.idPhoto),
+      face_photo: photo(body.facePhoto),
       details,
       device_info: { 
         ua: req.headers.get('user-agent') || '', 
@@ -177,9 +213,14 @@ export async function POST(
         geo: req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || null
       },
       // Timing data
-      question_timings: body.question_timings || {},
-      total_time_ms: body.total_time_ms || 0,
-      started_at: body.started_at || null,
+      question_timings: timings(body.question_timings),
+      // From the server start, never the client clock.
+      total_time_ms: Math.max(0, Math.min(
+        Date.now(),
+        timeState.deadline !== null ? timeState.deadline + EXAM_SUBMIT_GRACE_MS : Date.now(),
+      ) - Date.parse(timeState.startedAt)),
+      started_at: timeState.startedAt,
+      deadline: timeState.deadline !== null ? new Date(timeState.deadline).toISOString() : null,
       submitted_at: nowIso(),
       created_at: nowIso(),
     }
@@ -189,6 +230,12 @@ export async function POST(
     if (!stored.ok) {
       return NextResponse.json({ error: 'This attempt was already submitted.' }, { status: 409 })
     }
+    // The draft's answers belong to the attempt just stored; clear them so a
+    // retake starts empty (start also resets them for a new attempt_no).
+    await db.collection('exam_drafts').updateOne(
+      { exam_id: examId, user_id: userId, attempt_no: access.attemptNo },
+      { $set: { answers: {}, submitted_at: nowIso() } },
+    ).catch(() => {})
 
     // Mark the invite used only now that the submission is safely stored,
     // and link it to the submitting account so the results page can join
@@ -231,6 +278,7 @@ export async function POST(
       released: false,
       attempt_no: access.attemptNo,
       max_attempts: access.maxAttempts,
+      late_submit: late,
     })
   } catch (e: unknown) {
     const msg = 'Submit failed'

@@ -1,7 +1,16 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { inviteIsForExam } from '@/lib/exam-access'
 
+/**
+ * DELETE — withdraw a candidate's invite for this exam.
+ *
+ * Never deletes results: when the candidate has a submission, their invites
+ * are revoked (the link stops working, the row and the graded work stay).
+ * With no submission, every invite doc for that email + exam is removed, so
+ * an older one can't resurface as the row on reload.
+ */
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string; inviteId: string }> }
@@ -20,31 +29,41 @@ export async function DELETE(
       return NextResponse.json({ error: owned.error }, { status: owned.status })
     }
 
-    // Find the invite first to get user_id/email for deleting matching submissions
     const invite = await db.collection('candidate_invites').findOne({ id: inviteId })
-    
-    const result = await db.collection('candidate_invites').deleteOne({ id: inviteId })
-    if (result.deletedCount === 0) {
-      // If invite wasn't found, maybe it's a submission-only row. Let's try to delete submission directly by id
-      const subResult = await db.collection('exam_submissions').deleteOne({ id: inviteId, exam_id: id })
-      if (subResult.deletedCount === 0) {
-        return NextResponse.json({ error: 'Invite or submission not found' }, { status: 404 })
+    if (!invite || !inviteIsForExam(invite as Record<string, unknown>, id)) {
+      // Submission-only rows (share-link candidates) have no invite to withdraw.
+      const sub = await db.collection('exam_submissions').findOne({ id: inviteId, exam_id: id }, { projection: { _id: 1 } })
+      if (sub) {
+        return NextResponse.json({ error: 'This candidate has no invite to withdraw. Their submitted results are kept.' }, { status: 409 })
       }
-      return NextResponse.json({ success: true })
+      return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
     }
 
-    // Delete associated exam submission if user_id exists
-    if (invite && invite.user_id) {
-      await db.collection('exam_submissions').deleteOne({
-        exam_id: id,
-        user_id: invite.user_id
-      })
+    const email = String(invite.email || '').toLowerCase()
+    const sameCandidate = {
+      $or: [
+        ...(email ? [{ email }] : []),
+        ...(invite.user_id ? [{ user_id: invite.user_id }] : []),
+      ],
     }
-    
-    return NextResponse.json({ success: true })
+    const hasSubmission = !!(await db.collection('exam_submissions').findOne({ exam_id: id, ...sameCandidate }, { projection: { _id: 1 } }))
+
+    const related = (await db.collection('candidate_invites').find(sameCandidate).toArray())
+      .filter((inv) => inviteIsForExam(inv as Record<string, unknown>, id))
+      .map((inv) => inv.id)
+
+    if (hasSubmission) {
+      await db.collection('candidate_invites').updateMany(
+        { id: { $in: related } },
+        { $set: { status: 'revoked', updated_at: new Date().toISOString() } },
+      )
+      return NextResponse.json({ success: true, revoked: true, deleted: false })
+    }
+
+    await db.collection('candidate_invites').deleteMany({ id: { $in: related } })
+    return NextResponse.json({ success: true, revoked: false, deleted: true })
   } catch (e: unknown) {
-    const msg = 'Failed to delete invite'
     console.error('[CodeSpectra] admin/exams/[id]/invites/[inviteId] DELETE:', e)
-    return NextResponse.json({ error: msg }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to withdraw invite' }, { status: 500 })
   }
 }

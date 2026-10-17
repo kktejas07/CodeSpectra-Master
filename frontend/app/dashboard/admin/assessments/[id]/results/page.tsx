@@ -806,11 +806,17 @@ export default function ExamResultsPage() {
         method: 'DELETE',
         credentials: 'include',
       })
-      if (!res.ok) throw new Error('Failed to delete')
-      addToast({ type: 'success', title: `Invite deleted for ${name}` })
-      setResults(prev => prev.filter(r => r.inviteId !== inviteId))
-    } catch {
-      addToast({ type: 'error', title: `Failed to delete invite for ${name}` })
+      const j = await res.json().catch(() => ({})) as { error?: string; deleted?: boolean; revoked?: boolean }
+      if (!res.ok) throw new Error(j.error || '')
+      if (j.deleted) {
+        addToast({ type: 'success', title: `Invite deleted for ${name}` })
+        setResults(prev => prev.filter(r => r.inviteId !== inviteId))
+      } else {
+        // The candidate already submitted: the link is withdrawn, results stay.
+        addToast({ type: 'success', title: `Invite withdrawn for ${name}`, message: 'Their submitted results are kept.' })
+      }
+    } catch (e) {
+      addToast({ type: 'error', title: `Failed to withdraw invite for ${name}`, message: e instanceof Error && e.message ? e.message : undefined })
     } finally {
       setDeletingId(null)
     }
@@ -901,10 +907,17 @@ export default function ExamResultsPage() {
       const examData = json.exam
       const candidates = json.candidates || []
 
-      const formatEvtType = (t: string) => PROCTOR_LABELS[t] || t.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+      // Everything below is candidate-controlled (names, photos, event meta):
+      // escape every interpolation and only allow image data URLs / https.
+      const esc = (v: unknown) => String(v ?? '').replace(/[&<>"'`]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[ch] as string))
+      const safeImg = (v: unknown) => {
+        const s = String(v ?? '')
+        return /^data:image\/(png|jpe?g|webp);base64,[a-z0-9+/=\s]+$/i.test(s) || /^https:\/\/[^\s"'<>]+$/i.test(s) ? s : ''
+      }
+      const formatEvtType = (t: string) => esc(PROCTOR_LABELS[t] || String(t).replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()))
 
       let html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Proctor Report — ${examData.title}</title>
+<html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: https:; style-src 'unsafe-inline'"><title>Proctor Report — ${esc(examData.title)}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; color: #1a1a1a; font-size: 13px; }
   h1 { font-size: 20px; margin-bottom: 4px; } h2 { font-size: 16px; margin: 24px 0 8px; border-bottom: 2px solid #e5e7eb; padding-bottom: 4px; }
@@ -920,15 +933,15 @@ export default function ExamResultsPage() {
   .meta { color: #6b7280; font-size: 11px; } .summary-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 8px 0; }
   @media print { body { padding: 0; } .no-print { display: none; } }
 </style></head><body>
-<div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#fff">Print / Save PDF</button></div>
-<h1>Proctor Report: ${examData.title}</h1>
-<p class="meta">Level: ${examData.level} | Duration: ${examData.duration} min | Generated: ${fmtDateTime(new Date())}</p>
-<p class="meta">Total Candidates: ${json.total_candidates} | Total Proctor Events: ${json.total_events}</p>
+<div class="no-print" style="text-align:right;margin-bottom:12px"><button id="print-report" type="button" style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#fff">Print / Save PDF</button></div>
+<h1>Proctor Report: ${esc(examData.title)}</h1>
+<p class="meta">Level: ${esc(examData.level)} | Duration: ${esc(examData.duration)} min | Generated: ${fmtDateTime(new Date())}</p>
+<p class="meta">Total Candidates: ${esc(json.total_candidates)} | Total Proctor Events: ${esc(json.total_events)}</p>
 <h2>Event type summary</h2>
 <div class="summary-box"><table><tr><th>Event type</th><th>Count</th></tr>`
 
       for (const [type, count] of Object.entries(json.event_type_summary || {})) {
-        html += `<tr><td>${formatEvtType(type)}</td><td>${count}</td></tr>`
+        html += `<tr><td>${formatEvtType(type)}</td><td>${esc(count)}</td></tr>`
       }
       html += `</table></div>`
 
@@ -937,17 +950,19 @@ export default function ExamResultsPage() {
         const passed = pct !== null && pct >= 50
         const rating = (c.event_count || 0) === 0 ? 'Clean' : (c.event_count || 0) < 5 ? 'Low risk' : (c.event_count || 0) < 15 ? 'Medium risk' : 'High risk'
 
-        html += `<h2>${c.name || 'Unknown'} <span class="meta">(${c.email || 'N/A'})</span></h2>`
+        html += `<h2>${esc(c.name || 'Unknown')} <span class="meta">(${esc(c.email || 'N/A')})</span></h2>`
         html += `<div class="summary-box">`
         html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity events</th><th>Rating</th></tr>`
         html += `<tr><td>${pct !== null ? pct + '%' : '--'}</td><td class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</td>`
         html += `<td>${c.submitted_at ? fmtDateTime(c.submitted_at) : '--'}</td>`
-        html += `<td>${c.event_count || 0}</td><td><strong>${rating}</strong></td></tr></table>`
+        html += `<td>${esc(Number(c.event_count) || 0)}</td><td><strong>${rating}</strong></td></tr></table>`
 
-        if (c.id_photo || c.face_photo) {
+        const idImg = safeImg(c.id_photo)
+        const faceImg = safeImg(c.face_photo)
+        if (idImg || faceImg) {
           html += `<div style="margin-top:8px">`
-          if (c.id_photo) html += `<div style="display:inline-block;margin-right:12px"><div class="meta">ID photo</div><img src="${c.id_photo}" alt="ID document photo" /></div>`
-          if (c.face_photo) html += `<div style="display:inline-block"><div class="meta">Face photo</div><img src="${c.face_photo}" alt="Candidate face photo" /></div>`
+          if (idImg) html += `<div style="display:inline-block;margin-right:12px"><div class="meta">ID photo</div><img src="${esc(idImg)}" alt="ID document photo" /></div>`
+          if (faceImg) html += `<div style="display:inline-block"><div class="meta">Face photo</div><img src="${esc(faceImg)}" alt="Candidate face photo" /></div>`
           html += `</div>`
         }
 
@@ -966,7 +981,7 @@ export default function ExamResultsPage() {
         if (answerEvts.length > 0) {
           const lastAnswerEvt = answerEvts[answerEvts.length - 1]
           const score = (lastAnswerEvt.meta as any)?.score
-          html += ` | Answer Pattern Score: ${score !== undefined ? score : 'N/A'}`
+          html += ` | Answer Pattern Score: ${score !== undefined ? esc(score) : 'N/A'}`
         }
         html += `</div></div>`
 
@@ -978,9 +993,9 @@ export default function ExamResultsPage() {
             const meta = evt.meta || {}
             const details = Object.entries(meta)
               .filter(([k]) => !['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source', 'ip', 'browser', 'os', 'device'].includes(k))
-              .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+              .map(([k, v]) => `${esc(k.replace(/_/g, ' '))}: ${esc(typeof v === 'object' ? JSON.stringify(v) : String(v))}`)
               .join('; ')
-            html += `<tr><td>${evtType}</td><td class="meta">${time}</td><td class="meta">${details}</td></tr>`
+            html += `<tr><td>${evtType}</td><td class="meta">${esc(time)}</td><td class="meta">${details}</td></tr>`
           }
           html += `</table>`
         }
@@ -990,8 +1005,10 @@ export default function ExamResultsPage() {
 
       const win = window.open('', '_blank')
       if (win) {
+        win.opener = null
         win.document.write(html)
         win.document.close()
+        win.document.getElementById('print-report')?.addEventListener('click', () => win.print())
       }
       addToast({ type: 'success', title: 'Proctor report generated' })
     } catch (e: any) {
@@ -1130,10 +1147,14 @@ export default function ExamResultsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Advance failed')
+      const notSent = Math.max(0, (json.advanced || 0) - (json.emailed || 0))
       addToast({
-        type: 'success',
+        type: notSent > 0 ? 'warning' : 'success',
         title: `${json.advanced} candidate(s) advanced to ${json.target?.title || 'next round'}`,
-        message: json.skipped > 0 ? `${json.skipped} skipped (already invited or missing email).` : undefined,
+        message: [
+          notSent > 0 ? `${notSent} invite email(s) could not be sent — use resend on the next round's results page.` : '',
+          json.skipped > 0 ? `${json.skipped} skipped (already invited or missing email).` : '',
+        ].filter(Boolean).join(' ') || undefined,
       })
     } catch (e: unknown) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Advance failed' })
@@ -2305,9 +2326,9 @@ export default function ExamResultsPage() {
       <AlertDialog open={!!confirmDeleteInvite} onOpenChange={(open) => !open && setConfirmDeleteInvite(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete invite?</AlertDialogTitle>
+            <AlertDialogTitle>Withdraw invite?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the invite for {confirmDeleteInvite?.name}? This action cannot be undone.
+              {confirmDeleteInvite?.name}&apos;s invite link will stop working. If they haven&apos;t started, the invite is deleted. If they already submitted, their results are kept.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2322,7 +2343,7 @@ export default function ExamResultsPage() {
                 }
               }}
             >
-              Delete
+              Withdraw
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

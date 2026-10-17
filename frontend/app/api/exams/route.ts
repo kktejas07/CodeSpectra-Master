@@ -6,7 +6,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
-import { isExamStaff, pickFields, normalizeRetakeFields, normalizeCertificateFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP, NEW_EXAM_PASS_PERCENT } from '@/lib/exam-access'
+import { isExamStaff, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP, NEW_EXAM_PASS_PERCENT } from '@/lib/exam-access'
 import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 
@@ -199,7 +199,20 @@ export async function POST(request: Request) {
     const body = await request.json()
     const db = await getMongoDb()
     const now = new Date().toISOString()
-    const numQuestions = body.questions || 5
+    // Plan limit: assessments per month for the organisation (lib/entitlements.ts).
+    if (user.role === 'tenant_admin') {
+      if (!user.tenantId) return NextResponse.json({ error: 'You must belong to an organization to create assessments.' }, { status: 403 })
+      const { getTenantEntitlements, checkLimit, windowStart } = await import('@/lib/entitlements')
+      const used = await db.collection('exams').countDocuments({ tenant_id: user.tenantId, createdAt: { $gte: windowStart('month') } })
+      const denied = checkLimit(user, await getTenantEntitlements(user.tenantId), 'max_assessments_per_month', used, 1,
+        'Your organisation has reached its assessments limit for this month. Upgrade your plan to create more.')
+      if (denied) return NextResponse.json(denied, { status: 402 })
+    }
+    // 0 is a valid choice (build the test by hand); only a missing value defaults to 5.
+    const rawCount = Number(body.questions)
+    const numQuestions = body.questions === undefined || body.questions === null || body.questions === '' || !Number.isFinite(rawCount)
+      ? 5
+      : Math.max(0, Math.min(100, Math.floor(rawCount)))
     const stacks = body.techStack || ['General']
     const degreeType = String(body.degree_type || '').toLowerCase() || undefined
     const branch = String(body.branch || '').toLowerCase() || undefined
@@ -301,6 +314,10 @@ export async function POST(request: Request) {
         ? Math.max(0, Math.min(100, Math.round(Number(body.passing_score))))
         : NEW_EXAM_PASS_PERCENT,
       issue_certificates: body.issue_certificates !== false,
+      // Extension required only when the organiser picks strict (see lib/exam-access examProctoringMode).
+      proctoring_mode: body.proctoring_mode === 'strict' ? 'strict' : 'standard',
+      kind: body.kind === 'cad' ? 'cad' : 'standard',
+      ...(body.kind === 'cad' && Number(body.cad_points) >= 1 ? { cad_points: Math.min(1000, Math.round(Number(body.cad_points))) } : {}),
       questions: numQuestions,
       questionList,
       access_type: body.access_type || 'invite_only',
@@ -309,7 +326,10 @@ export async function POST(request: Request) {
       attempts: 0,
       avgScore: 0,
       created_by: user.id,
-      tenant_id: user.tenantId || null,
+      // Superadmins may create an exam for an organisation; tenant admins always get their own.
+      tenant_id: user.role === 'superadmin'
+        ? (typeof body.tenant_id === 'string' && body.tenant_id ? body.tenant_id : null)
+        : user.tenantId || null,
       createdAt: now,
       updatedAt: now,
     }
@@ -336,6 +356,7 @@ export async function PATCH(request: Request) {
     const updates = pickFields(body, EXAM_EDITABLE_FIELDS)
     normalizeRetakeFields(updates)
     normalizeCertificateFields(updates)
+    normalizeProctoringFields(updates)
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id })
     if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })

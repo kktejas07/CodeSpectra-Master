@@ -129,8 +129,8 @@ export const emailTemplates: { [key: string]: (...args: any[]) => { subject: str
             ${statRow('Time', time, true)}
           </table>
         `)}
-        ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">If this wasn't you, <a href="${base}/dashboard/settings/security" style="color:${BRAND.green};font-weight:600">secure your account</a> immediately.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
-        ${baseStyles.button(`${base}/dashboard/settings/security`, 'Review Account Security', 'outline')}
+        ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">If this wasn't you, <a href="${base}/dashboard/settings" style="color:${BRAND.green};font-weight:600">secure your account</a> immediately.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
+        ${baseStyles.button(`${base}/dashboard/settings`, 'Review account security', 'outline')}
       ${baseStyles.footer}`,
     }
   },
@@ -157,7 +157,7 @@ export const emailTemplates: { [key: string]: (...args: any[]) => { subject: str
               ${step}
             </div>`).join('')}
         </div>
-        ${baseStyles.button(`${base}/dashboard/applications`, 'Track Application')}
+        ${baseStyles.button(`${base}/dashboard/jobs`, 'Track application')}
       ${baseStyles.footer}`,
     }
   },

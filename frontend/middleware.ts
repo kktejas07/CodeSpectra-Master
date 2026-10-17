@@ -47,9 +47,8 @@ export default function proxy(request: NextRequest) {
     '/api/proctor/events',
     '/api/daily-login',
     '/api/kyc/didit/webhook',
-    '/api/auth/login-method',
     '/api/security/track',
-    '/api/auth/face-enroll',
+    // Face sign-in starts a sign-in (no session yet), like /api/auth/login.
     '/api/auth/face-verify',
     // Login/token endpoints ESTABLISH the session, so there is no session to
     // forge — and cookie-less native clients cannot obtain a CSRF token

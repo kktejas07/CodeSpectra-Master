@@ -9,20 +9,20 @@ import { Trophy, Users, Clock, CalendarDays, ArrowRight, Code, Timer } from 'luc
 import { PageHero } from '@/components/landing/page-hero'
 import { DeviceShowcase } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { listPublicEvents } from '@/lib/hackathons/public-events'
 
 export const metadata: Metadata = {
   title: 'Events — CodeSpectra',
   description: 'Browse hackathons, codeathons, and coding competitions on CodeSpectra.',
 }
 
+// Read the DB directly — a relative fetch to our own API throws on the server.
+// Rendered per request so the build never needs a DB connection.
+export const dynamic = 'force-dynamic'
+
 async function getEvents() {
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/public/events`, {
-      next: { revalidate: 60 },
-    })
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.items || []
+    return await listPublicEvents()
   } catch {
     return []
   }

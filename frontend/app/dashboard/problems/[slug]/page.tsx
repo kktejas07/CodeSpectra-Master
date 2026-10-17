@@ -545,7 +545,7 @@ export default function ProblemDetailPage() {
           <button onClick={() => router.push('/dashboard/problems')} aria-label="Back to problems" className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground">
              <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="font-bold text-foreground">{problem.title}</div>
+          <h1 className="font-bold text-foreground text-base">{problem.title}</h1>
           <button aria-label="Toggle bookmark"
             type="button"
             className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"

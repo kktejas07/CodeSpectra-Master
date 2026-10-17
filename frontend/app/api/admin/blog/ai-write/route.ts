@@ -10,6 +10,7 @@
  * 5) Source attribution — Footer with linked sources
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { sanitizeArticleHtml, sourcesListHtml } from '@/lib/safe-html'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
 import { performWebSearch } from '@/lib/ai/web-search'
@@ -260,16 +261,9 @@ Return JSON: {"title":"...","excerpt":"...","body":"..."}`
 function ensureSourcesFooter(body: string, sourceUrls: string[]): string {
   if (/<h2[^>]*>\s*Sources\s*<\/h2>/i.test(body)) return body
   if (!sourceUrls.length) return body
-  const lis = sourceUrls
-    .map((u) => {
-      let label = u
-      try {
-        label = new URL(u).hostname.replace(/^www\./, '')
-      } catch {}
-      return `<li><a href="${u}" rel="noopener noreferrer" target="_blank">${label}</a></li>`
-    })
-    .join('')
-  return `${body}\n<h2>Sources</h2>\n<ul>${lis}</ul>`
+  // Validated http(s) hrefs, escaped labels (E13).
+  const list = sourcesListHtml(sourceUrls)
+  return sanitizeArticleHtml(list ? `${body}\n${list}` : body)
 }
 
 export async function POST(req: NextRequest) {

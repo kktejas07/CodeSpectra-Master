@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { Loader2, Crown, CheckCircle2, XCircle, Save, RefreshCw, HelpCircle } from 'lucide-react'
+import { Loader2, Crown, CheckCircle2, XCircle, Save, RefreshCw, HelpCircle, Plus, Trash2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
@@ -16,6 +17,7 @@ import { PageHeader, Panel } from '@/components/app/page-kit'
 interface PlanDef {
   _id?: string; plan: string; name: string; description: string
   price?: string; features: any[]; isDefault?: boolean
+  yearlyPrice?: number; contactSales?: boolean; currency?: string; popular?: boolean
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -81,10 +83,64 @@ export default function PlansPage() {
     setPlans(plans.map(p => p.plan === selectedPlan ? updated : p))
   }
 
-  const updatePrice = (price: string) => {
+  const updatePrice = (price: string) => patchPlan({ price })
+
+  const patchPlan = (patch: Partial<PlanDef>) => {
     if (!currentPlan) return
-    const updated = { ...currentPlan, price }
+    const updated = { ...currentPlan, ...patch }
     setPlans(plans.map(p => p.plan === selectedPlan ? updated : p))
+  }
+
+  const [newOpen, setNewOpen] = useState(false)
+  const [newId, setNewId] = useState('')
+  const [newName, setNewName] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  // New plans start from the Pro features so every enforced limit is present.
+  const createPlan = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const id = newId.trim().toLowerCase()
+    if (!/^[a-z0-9][a-z0-9_-]{0,63}$/.test(id)) {
+      addToast({ type: 'error', title: 'Invalid plan ID', message: 'Use lowercase letters, numbers, _ or -' })
+      return
+    }
+    if (plans.some((p) => p.plan === id)) {
+      addToast({ type: 'error', title: 'Plan exists', message: 'Pick another plan ID.' })
+      return
+    }
+    const base = plans.find((p) => p.plan === 'pro') || plans[0]
+    setSaving(true)
+    try {
+      const res = await csrfFetch('/api/admin/plans', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: id, name: newName.trim() || id, description: '', price: '', features: base?.features || [] }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'Could not create the plan')
+      setNewOpen(false); setNewId(''); setNewName('')
+      await fetchPlans()
+      setSelectedPlan(id)
+      addToast({ type: 'success', title: 'Plan created', message: 'Set its price and limits, then save.' })
+    } catch (err) {
+      addToast({ type: 'error', title: 'Failed', message: err instanceof Error ? err.message : 'Failed' })
+    } finally { setSaving(false) }
+  }
+
+  const deletePlan = async () => {
+    if (!currentPlan || currentPlan.plan === 'free') return
+    if (!window.confirm(`Delete the ${currentPlan.name} plan? This can't be undone.`)) return
+    setDeleting(true)
+    try {
+      const res = await csrfFetch(`/api/admin/plans?plan=${encodeURIComponent(currentPlan.plan)}`, { method: 'DELETE', credentials: 'include' })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'Could not delete the plan')
+      addToast({ type: 'success', title: 'Plan deleted' })
+      setSelectedPlan('free')
+      await fetchPlans()
+    } catch (err) {
+      addToast({ type: 'error', title: 'Delete failed', message: err instanceof Error ? err.message : 'Failed' })
+    } finally { setDeleting(false) }
   }
 
   const savePlan = async () => {
@@ -136,7 +192,12 @@ export default function PlansPage() {
         }
         description="Set the price, features and usage limits for each subscription plan."
         icon={<Crown />}
-        actions={<Button onClick={fetchPlans} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button onClick={fetchPlans} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
+            <Button onClick={() => setNewOpen(true)} size="sm"><Plus className="h-4 w-4 mr-1" />New plan</Button>
+          </div>
+        }
       />
 
       {/* Plan selector */}
@@ -153,7 +214,7 @@ export default function PlansPage() {
                 : 'border border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
             }`}
           >
-            {p.name} {p.price ? <span className="ml-1 text-xs tabular-nums opacity-80">{CURRENCY_SYMBOLS[currency] || ''}{p.price.replace(/[^0-9.]/g, '')}/mo</span> : null}
+            {p.name} {p.price ? <span className="ml-1 text-xs tabular-nums opacity-80">{CURRENCY_SYMBOLS[p.currency || currency] || ''}{String(p.price).replace(/[^0-9.,]/g, '')}/mo</span> : null}
           </button>
         ))}
       </div>
@@ -170,9 +231,16 @@ export default function PlansPage() {
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">{currentPlan.description}</p>
               </div>
-              <Button onClick={savePlan} disabled={saving} size="sm" className="gap-2">
-                {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Save
-              </Button>
+              <div className="flex gap-2">
+                {currentPlan.plan !== 'free' ? (
+                  <Button onClick={() => void deletePlan()} disabled={deleting || saving} size="sm" variant="outline" className="gap-2">
+                    {deleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />} Delete
+                  </Button>
+                ) : null}
+                <Button onClick={savePlan} disabled={saving} size="sm" className="gap-2">
+                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Save
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -194,6 +262,41 @@ export default function PlansPage() {
                     />
                   </div>
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="plan-yearly" className="text-xs font-medium text-muted-foreground">Yearly price (optional)</label>
+                  <Input
+                    id="plan-yearly"
+                    type="number"
+                    min={0}
+                    value={currentPlan.yearlyPrice ?? ''}
+                    onChange={e => patchPlan({ yearlyPrice: e.target.value === '' ? undefined : Number(e.target.value) })}
+                    className="mt-1 h-8 text-xs tabular-nums"
+                    placeholder="Monthly × 12 − 15%"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="plan-currency" className="text-xs font-medium text-muted-foreground">Currency (optional)</label>
+                  <Input
+                    id="plan-currency"
+                    value={currentPlan.currency ?? ''}
+                    onChange={e => patchPlan({ currency: e.target.value.toUpperCase().slice(0, 3) || undefined })}
+                    className="mt-1 h-8 text-xs font-mono"
+                    placeholder={currency}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between rounded-xl border border-border/70 p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">Contact sales</p>
+                  <p className="text-xs text-muted-foreground">Show “Contact sales” instead of checkout.</p>
+                </div>
+                <Switch
+                  checked={currentPlan.contactSales === true}
+                  onCheckedChange={v => patchPlan({ contactSales: v })}
+                  aria-label="Contact sales"
+                />
               </div>
             </div>
           </Panel>
@@ -235,6 +338,31 @@ export default function PlansPage() {
           </Panel>
         </div>
       )}
+
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={createPlan}>
+            <DialogHeader>
+              <DialogTitle>New plan</DialogTitle>
+              <DialogDescription>Starts with the Pro features and limits. You can change them before saving.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3 py-4">
+              <div>
+                <label htmlFor="new-plan-id" className="text-xs font-medium text-muted-foreground">Plan ID</label>
+                <Input id="new-plan-id" value={newId} onChange={e => setNewId(e.target.value)} className="mt-1 font-mono" placeholder="team" required />
+              </div>
+              <div>
+                <label htmlFor="new-plan-name" className="text-xs font-medium text-muted-foreground">Name</label>
+                <Input id="new-plan-name" value={newName} onChange={e => setNewName(e.target.value)} className="mt-1" placeholder="Team" />
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button type="button" variant="outline" onClick={() => setNewOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saving || !newId.trim()}>{saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}Create plan</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

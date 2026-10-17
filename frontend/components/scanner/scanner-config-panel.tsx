@@ -242,7 +242,7 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
           className="flex-1 gap-2"
         >
           <Save className="w-4 h-4" />
-          Save Changes
+          Save changes
         </Button>
         <Button
           variant="outline"

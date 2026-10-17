@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { z } from 'zod'
-import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
+import { getUserAiCredits, spendAiCredits } from '@/lib/user-credits'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
@@ -216,7 +216,8 @@ DO NOT wrap the response in markdown code blocks, just raw JSON.`
       // Abandoned while generating (e.g. "Start a new test" in another tab).
       return NextResponse.json({ error: 'This test was replaced by a newer one. Refresh the page.' }, { status: 409 })
     }
-    await deductUserAiCredits(userId)
+    // Charged after the questions are stored (atomic; never below zero).
+    await spendAiCredits(userId, 1)
 
     return NextResponse.json({
       session_id: sessionId,

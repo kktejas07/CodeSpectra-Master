@@ -81,11 +81,15 @@ export async function GET() {
     const candidates = [...candidateMap.values()].sort((a, b) => b.avgScore - a.avgScore)
 
     // Proctor violation summary
-    const recentProctorEvents = await proctorCol
-      .find({ session_kind: 'interview' })
-      .sort({ created_at: -1 })
-      .limit(500)
-      .toArray()
+    // Scoped to the interviews above (a tenant_admin never sees other tenants' events).
+    const sessionIds = allInterviews.map((i) => i.id)
+    const recentProctorEvents = sessionIds.length
+      ? await proctorCol
+        .find({ session_kind: 'interview', session_id: { $in: sessionIds } })
+        .sort({ created_at: -1 })
+        .limit(500)
+        .toArray()
+      : []
 
     const violationTypes = recentProctorEvents.reduce<Record<string, number>>((acc, e) => {
       acc[e.event_type] = (acc[e.event_type] || 0) + 1

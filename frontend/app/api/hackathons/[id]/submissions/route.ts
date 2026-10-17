@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { hackathons, hackathonTeams, hackathonSubmissions, newId, nowIso, xpToLevel } from '@/lib/db/qr-events'
-import { problems } from '@/lib/db/problems'
-import { executeOnce } from '@/lib/piston'
-import { awardXp } from '@/lib/db/leaderboard'
+import { hackathons, hackathonTeams, hackathonSubmissions, newId, nowIso } from '@/lib/db/qr-events'
+import { gradeCode } from '@/lib/hackathons/grade'
+import { isHackathonStaff } from '@/lib/hackathons/access'
+import type { SubmissionStatus } from '@/lib/hackathons/submission-state'
 import { parseUserAgent } from '@/lib/db/sessions'
 
 export const runtime = 'nodejs'
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const withinTime = Number.isNaN(ends) || now <= ends + (hk.allow_late_submissions ? gracePeriod : 0)
   const canSubmit = (hk.status === 'live' && withinTime) || (hk.status === 'closed' && hk.allow_late_submissions && now <= ends + gracePeriod)
   
-  if (!canSubmit) {
+  if (!canSubmit || hk.results_released) {
     return NextResponse.json({ error: 'submissions are closed' }, { status: 409 })
   }
 
@@ -45,7 +45,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   if (!body.problem_slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
-  if (!body.repo_url || !body.repo_url.trim()) return NextResponse.json({ error: 'GitHub repo URL is required' }, { status: 400 })
+  // A code problem submitted from the editor needs no repo; a project needs one.
+  const repoUrl = typeof body.repo_url === 'string' ? body.repo_url.trim().slice(0, 500) : ''
+  const hasCode = typeof body.code === 'string' && body.code.trim().length > 0
+  if (!repoUrl && !hasCode) return NextResponse.json({ error: 'Add a GitHub repo URL or submit code' }, { status: 400 })
+  if (repoUrl && !/^https?:\/\//i.test(repoUrl)) return NextResponse.json({ error: 'Repo URL must start with http(s)://' }, { status: 400 })
   const task = (hk.tasks || []).find((t) => t.problem_slug === body.problem_slug)
   if (!task) return NextResponse.json({ error: 'problem not assigned to this event' }, { status: 400 })
 
@@ -83,109 +87,69 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
   }
 
-  const shouldAutoGrade = (hk.scoring as any)?.auto_grade !== false && body.code?.trim()
-  let score: number | null = null
-  let status = 'pending'
-  let testResults: any[] | undefined = undefined
+  const code = typeof body.code === 'string' ? body.code.trim().slice(0, 200_000) : ''
+  const shouldAutoGrade = (hk.scoring as any)?.auto_grade !== false && !!code
+  let autoScore: number | null = null
+  let status: SubmissionStatus = 'submitted'
+  let sampleResults: any[] | undefined = undefined
+  let gradedCount = 0
 
   if (shouldAutoGrade) {
-    const lang = (body.language || 'python').toLowerCase()
     try {
-      const pCol = await problems()
-      const problem = await pCol.findOne({ slug: body.problem_slug })
-      const tests = (problem?.test_cases || []).filter((t: any) => t.is_sample)
-
-      if (tests.length > 0) {
-        let passed = 0
-        const results: any[] = []
-        for (const tc of tests) {
-          try {
-            const piston = await executeOnce({
-              language: lang,
-              source: body.code!,
-              stdin: tc.stdin,
-              timeoutMs: 10000,
-            })
-            const actual = (piston.run.stdout || '').trim()
-            const expected = (tc.expected_stdout || '').trim()
-            const ok = actual === expected
-            if (ok) passed++
-            results.push({ passed: ok, input: tc.stdin, expected: tc.expected_stdout, stdout: piston.run.stdout || '' })
-          } catch { results.push({ passed: false, input: tc.stdin, expected: tc.expected_stdout, error: 'execution failed' }) }
-        }
-        score = tests.length > 0 ? Math.round((passed / tests.length) * task.points) : null
-        status = score !== null && score >= task.points * 0.5 ? 'released' : 'under_review'
-        testResults = results
+      const g = await gradeCode(body.problem_slug, code, body.language || 'python', task.points)
+      if (g) {
+        autoScore = g.autoScore
+        gradedCount = g.testsRun
+        sampleResults = g.sampleResults
+        status = 'scored'
       }
     } catch { /* auto-grading failed, fall back to manual review */ }
   }
 
+  const at = nowIso()
   const subDoc: any = {
     id: newId(),
     hackathon_id: hk.id,
     team_id: team.id,
     problem_slug: body.problem_slug,
-    repo_url: body.repo_url?.trim(),
-    commit_sha: body.commit_sha?.trim(),
-    code: body.code?.trim(),
-    video_url: body.video_url?.trim(),
-    live_url: body.live_url?.trim(),
-    comment: body.comment?.trim(),
-    score,
+    repo_url: repoUrl || undefined,
+    commit_sha: typeof body.commit_sha === 'string' ? body.commit_sha.trim().slice(0, 80) : undefined,
+    code: code || undefined,
+    language: code ? (body.language || 'python').toLowerCase().slice(0, 30) : undefined,
+    video_url: typeof body.video_url === 'string' ? body.video_url.trim().slice(0, 500) : undefined,
+    live_url: typeof body.live_url === 'string' ? body.live_url.trim().slice(0, 500) : undefined,
+    comment: typeof body.comment === 'string' ? body.comment.trim().slice(0, 5000) : undefined,
+    // `score` is the judged/auto score shown after release; judges overwrite it
+    // with their average. The raw auto-grade is kept separately.
+    score: autoScore,
+    auto_graded: autoScore !== null,
+    auto_score: autoScore,
     max_score: task.points,
     status,
-    submitted_at: nowIso(),
-    created_at: nowIso(),
+    status_history: [{ status, changed_by: user.id, changed_at: at }],
+    submitted_at: at,
+    created_at: at,
     device_info: { ua: req.headers.get('user-agent') || '', ...parseUserAgent(req.headers.get('user-agent') || ''), ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '' },
   }
 
   await (await hackathonSubmissions()).insertOne(subDoc)
   const teamsCol = await hackathonTeams()
   await teamsCol.updateOne({ id: team.id }, { $inc: { submissions: 1 } })
-
-  // If auto-graded and scored, grant XP once per problem
-  if (score && score > 0) {
-    try {
-      const subsCol = await hackathonSubmissions()
-      const prior = await subsCol.findOne({
-        team_id: team.id,
-        problem_slug: body.problem_slug,
-        score: { $gt: 0 },
-        _id: { $ne: subDoc._id },
-      } as any)
-      if (!prior) {
-        const xpEarned = score
-        const teamDoc = await teamsCol.findOne({ id: team.id })
-        if (teamDoc) {
-          const newXp = teamDoc.xp + xpEarned
-          await teamsCol.updateOne(
-            { id: team.id },
-            { $set: { xp: newXp, updated_at: nowIso() } },
-          )
-        }
-        // Award individual XP to each team member for the global leaderboard
-        for (const m of team.members || []) {
-          await awardXp({
-            userId: m.user_id,
-            amount: xpEarned,
-            reason: 'hackathon_score',
-            problemId: body.problem_slug,
-            submissionId: subDoc.id,
-            metadata: { hackathon_id: hk.id, team_id: team.id },
-          }).catch(() => {})
-        }
-      }
-    } catch { /* XP best-effort */ }
-  }
+  // ponytail: XP is granted once, at release, from the final judged score
+  // (release-results) — never here, so nothing leaks or double-counts.
 
   return NextResponse.json({
     ok: true,
+    id: subDoc.id,
     status,
-    score,
+    // Scores stay hidden until results are released; sample results are the
+    // only test output a team sees.
+    score: null,
     max_score: task.points,
-    test_results: testResults,
-    auto_graded: shouldAutoGrade && testResults ? true : false,
-    grading_error: shouldAutoGrade && !testResults ? 'No sample test cases available for auto-grading' : null,
+    test_results: sampleResults,
+    tests_run: gradedCount,
+    auto_graded: autoScore !== null,
+    grading_error: shouldAutoGrade && autoScore === null ? 'Auto-grading is unavailable for this problem; a judge will review it' : null,
   }, { status: 201 })
 }
 
@@ -197,30 +161,36 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'event not found' }, { status: 404 })
 
-  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  // Staff = superadmin or this event's own tenant admin (E9).
+  const isStaff = isHackathonStaff(user, hk)
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
 
-  if (!isAdmin && !team) {
+  if (!isStaff && !team) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   const queryTeamId = req.nextUrl.searchParams.get('team_id')
-  const teamId = isAdmin ? (queryTeamId || team?.id) : team!.id
+  const teamId = isStaff ? (queryTeamId || team?.id) : team!.id
 
   const filter: Record<string, unknown> = { hackathon_id: hk.id }
   if (teamId) filter.team_id = teamId
 
   const items = await (await hackathonSubmissions())
-    .find(filter)
+    .find(filter, { projection: { _id: 0 } })
     .sort({ submitted_at: -1 })
     .toArray()
 
   const result = items.map((s) => {
-    const masked = { ...s, score: null as number | null }
-    if (isAdmin || hk.results_released) {
-      masked.score = s.score
+    if (isStaff) return s
+    // Team view: no judge records, device info or unreleased scores.
+    const { device_info, scores, rubric_scores, auto_score, final_score, final_points, human_avg, ...rest } = s as any
+    void device_info; void scores; void rubric_scores; void auto_score; void final_score; void final_points; void human_avg
+    const released = !!hk.results_released
+    return {
+      ...rest,
+      score: released ? (s as any).final_points ?? s.score : null,
+      feedback: released ? s.feedback : undefined,
     }
-    return masked
   })
 
   return NextResponse.json({ items: result })

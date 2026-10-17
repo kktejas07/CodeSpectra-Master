@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
-
-import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { notifyResultsReleased } from '@/lib/exam-release-notify'
 import { deliverExamCertificate, issueExamCertificate } from '@/lib/db/certifications'
 import { examPassPercent } from '@/lib/exam-access'
 
@@ -75,31 +73,8 @@ export async function PATCH(
       }
     }
 
-    // Determine candidate name
-    let candidateName = submission.email ? submission.email.split('@')[0] : 'Candidate'
-    const userDoc = await db.collection('user').findOne({ $or: [{ _id: userId as any }, { id: userId }] })
-    if (userDoc) {
-      candidateName = userDoc.fullName || userDoc.name || candidateName
-    } else {
-      const invite = await db.collection('candidate_invites').findOne({ user_id: userId })
-      if (invite?.full_name) candidateName = invite.full_name
-    }
-
-    // Send email notification
-    if (submission.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      const resultsUrl = `${appUrl}/dashboard/assessments`
-      const template = emailTemplates.assessmentScoreReleased({
-        candidateName,
-        examTitle,
-        score: Math.round(submission.score || 0),
-        maxScore: Math.round(submission.max_score || 100),
-        resultsUrl,
-      })
-      await sendEmail(submission.email, template).catch(err => {
-        console.error('[CodeSpectra] Failed to send release email:', err)
-      })
-    }
+    // Same channels as the bulk release (in-app + WhatsApp + email).
+    await notifyResultsReleased(db, { ...(exam || {}), id: examId, title: examTitle } as Record<string, unknown>, submission as Record<string, unknown>)
 
     return NextResponse.json({ success: true, released_at: nowIso(), certificate_url: certificateUrl })
   } catch (e: unknown) {

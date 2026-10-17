@@ -1,5 +1,15 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+// The repo root also has a package.json + yarn.lock (Remotion helpers), so Next
+// would otherwise guess the repo root as the workspace root. The app, its
+// lockfile (frontend/yarn.lock, used by CI and the Dockerfile) and every
+// traced file live in this folder.
+const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: projectRoot,
   async headers() {
     return [
       {

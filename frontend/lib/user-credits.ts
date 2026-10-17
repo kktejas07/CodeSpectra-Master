@@ -1,51 +1,83 @@
-import { getMongoDb } from '@/lib/mongodb'
-import { getAPIUser } from '@/lib/route-auth'
+/**
+ * AI credits. The monthly allowance comes from the effective plan
+ * (lib/entitlements.ts — the active subscription, not `user.plan`).
+ *
+ * Credits are only ever spent server-side, inside the AI route that does the
+ * work, with an atomic conditional `$inc` (never below zero, never negative
+ * amounts). Charge after the AI call succeeds, or refund on failure.
+ */
+import 'server-only'
+import { users } from '@/lib/db/admin'
+import { getUserEntitlements, userIdFilter } from '@/lib/entitlements'
+import { aiAllowanceFor, assertCreditAmount, creditPeriod, DEFAULT_AI_ALLOWANCE } from '@/lib/entitlements-core'
 
-export const FREE_AI_CREDITS = 10
-export const PRO_AI_CREDITS = 1000
-export const ENTERPRISE_AI_CREDITS = 5000
+export const FREE_AI_CREDITS = DEFAULT_AI_ALLOWANCE.free
+export const PRO_AI_CREDITS = DEFAULT_AI_ALLOWANCE.pro
+export const ENTERPRISE_AI_CREDITS = DEFAULT_AI_ALLOWANCE.enterprise
 
-export async function getUserAiCredits(userId: string) {
-  const db = await getMongoDb()
-  const user = await db.collection('user').findOne({ id: userId })
-  
-  if (!user) return { balance: 0, plan: 'free' }
-  
-  // If no aiCredits field exists, initialize based on plan
-  let balance = user.aiCredits
-  const plan = user.plan || 'free'
-  
-  if (balance === undefined) {
-    if (plan.startsWith('pro')) balance = PRO_AI_CREDITS
-    else if (plan === 'enterprise' || plan === 'problem_pack_50') balance = ENTERPRISE_AI_CREDITS
-    else balance = FREE_AI_CREDITS
-  }
-
-  // Handle monthly reset if needed (if creditsResetAt is past)
-  let needsReset = false
-  if (!user.creditsResetAt || new Date(user.creditsResetAt) < new Date()) {
-    needsReset = true
-    if (plan.startsWith('pro')) balance = PRO_AI_CREDITS
-    else if (plan === 'enterprise' || plan === 'problem_pack_50') balance = ENTERPRISE_AI_CREDITS
-    else balance = FREE_AI_CREDITS
-  }
-
-  if (needsReset) {
-    const nextMonth = new Date()
-    nextMonth.setMonth(nextMonth.getMonth() + 1)
-    await db.collection('user').updateOne(
-      { id: userId },
-      { $set: { aiCredits: balance, creditsResetAt: nextMonth } }
-    )
-  }
-
-  return { balance, plan }
+function nextReset(now = new Date()): Date {
+  const d = new Date(now)
+  d.setMonth(d.getMonth() + 1)
+  return d
 }
 
-export async function deductUserAiCredits(userId: string, amount: number = 1) {
-  const db = await getMongoDb()
-  await db.collection('user').updateOne(
-    { id: userId },
-    { $inc: { aiCredits: -amount } }
+/** Current balance (starting a new period when due or when the plan changed). */
+export async function getUserAiCredits(userId: string): Promise<{ balance: number; plan: string; allowance: number; resets_at: string | null }> {
+  const col = await users()
+  const user = (await col.findOne(userIdFilter(userId), {
+    projection: { aiCredits: 1, creditsResetAt: 1, creditsPlan: 1 },
+  })) as { aiCredits?: unknown; creditsResetAt?: unknown; creditsPlan?: unknown } | null
+  if (!user) return { balance: 0, plan: 'free', allowance: 0, resets_at: null }
+
+  const ent = await getUserEntitlements(userId)
+  const allowance = aiAllowanceFor(ent.plan)
+  const period = creditPeriod({
+    balance: user.aiCredits,
+    resetAt: user.creditsResetAt,
+    creditsPlan: user.creditsPlan,
+    planKey: ent.planKey,
+    allowance,
+  })
+  let resetsAt = user.creditsResetAt instanceof Date
+    ? user.creditsResetAt
+    : user.creditsResetAt ? new Date(String(user.creditsResetAt)) : null
+  if (period.reset) {
+    resetsAt = nextReset()
+    await col.updateOne(userIdFilter(userId), {
+      $set: { aiCredits: period.balance, creditsResetAt: resetsAt, creditsPlan: ent.planKey },
+    })
+  }
+  return {
+    balance: period.balance,
+    plan: ent.planKey,
+    allowance,
+    resets_at: resetsAt && Number.isFinite(resetsAt.getTime()) ? resetsAt.toISOString() : null,
+  }
+}
+
+export type SpendResult = { ok: true; balance: number } | { ok: false; balance: number }
+
+/**
+ * Atomically take `amount` credits. Fails (ok: false) when the balance is too
+ * low; throws RangeError for a non-positive / non-integer amount.
+ */
+export async function spendAiCredits(userId: string, amount = 1): Promise<SpendResult> {
+  const n = assertCreditAmount(amount)
+  const { balance } = await getUserAiCredits(userId) // starts the period if due
+  if (balance < n) return { ok: false, balance }
+  const col = await users()
+  const res = await col.findOneAndUpdate(
+    { $and: [userIdFilter(userId), { aiCredits: { $gte: n } }] } as never,
+    { $inc: { aiCredits: -n } } as never,
+    { returnDocument: 'after', projection: { aiCredits: 1 } },
   )
+  const after = res as unknown as { aiCredits?: number } | null
+  if (!after) return { ok: false, balance }
+  return { ok: true, balance: Number(after.aiCredits ?? 0) }
+}
+
+/** Give back credits taken by spendAiCredits when the AI call failed. */
+export async function refundAiCredits(userId: string, amount = 1): Promise<void> {
+  const n = assertCreditAmount(amount)
+  await (await users()).updateOne(userIdFilter(userId), { $inc: { aiCredits: n } } as never)
 }

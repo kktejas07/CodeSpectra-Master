@@ -3,6 +3,7 @@ import { randomInt } from 'node:crypto'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Enter a different valid email' }, { status: 400 })
   }
 
+  const limit = await rateLimitRedis(`email-change:${user.id}`, 5, 3600_000)
+  if (!limit.ok) {
+    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.` }, { status: 429 })
+  }
+
   const db = await getMongoDb()
   const taken = await db.collection('user').findOne({ email })
   if (taken) {
@@ -36,6 +42,7 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         email,
         code,
+        attempts: 0,
         expiresAt: new Date(now + TTL_MS),
         createdAt: new Date(now),
       },

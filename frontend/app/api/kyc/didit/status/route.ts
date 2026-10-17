@@ -16,7 +16,9 @@ export async function GET(): Promise<NextResponse> {
       .findOne({ user_id: user.id }, { sort: { created_at: -1 } })
 
     // Check for Anon Aadhaar in user document
-    const dbUser = await db.collection('users').findOne({ id: user.id })
+    const dbUser =
+      (await db.collection('user').findOne({ $or: [{ id: user.id }, { _id: user.id as never }] }, { projection: { anon_aadhaar: 1 } })) ||
+      (await db.collection('users').findOne({ id: user.id }, { projection: { anon_aadhaar: 1 } }))
     const hasAnonAadhaar = !!dbUser?.anon_aadhaar
 
     if (!session) {

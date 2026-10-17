@@ -18,6 +18,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { SkeletonButton, SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { sanitizeArticleHtml } from '@/lib/safe-html'
 
 interface Announcement {
   id: string; title: string; message: string; link?: string; image?: string
@@ -219,7 +220,7 @@ export default function AnnouncementsPage() {
                   <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center shrink-0"><Megaphone className="h-4 w-4 text-primary" /></div>
                   <div>
                     <p className="font-semibold text-sm">{form.title || '(no title)'}</p>
-                    <div className="text-xs text-muted-foreground mt-1 prose prose-xs max-w-none" dangerouslySetInnerHTML={{ __html: form.message || '<p>(no message)</p>' }} />
+                    <div className="text-xs text-muted-foreground mt-1 prose prose-xs max-w-none" dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(form.message) || '<p>(no message)</p>' }} />
                     {form.link && <p className="text-xs text-primary mt-1">{form.link}</p>}
                   </div>
                 </div>
@@ -249,7 +250,7 @@ export default function AnnouncementsPage() {
                     {ann.image && <img src={ann.image} alt="" className="w-16 h-16 object-cover rounded shrink-0" />}
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm">{ann.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: ann.message }} />
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2" dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(ann.message) }} />
                       {ann.link && <a href={ann.link} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline mt-1 inline-block">{ann.link}</a>}
                       <div className="flex items-center gap-3 mt-2 text-[10px] text-muted-foreground">
                         <span>{formatDate(ann.created_at)}</span>

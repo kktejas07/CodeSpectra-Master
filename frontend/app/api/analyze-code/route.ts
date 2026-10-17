@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { toClientAnalysisPayload, type ClientAnalysisPayload } from '@/lib/scanner-analysis-mapper'
 import { analyzeCodeLocally } from '@/lib/local-code-analyzer'
-import { insertScan, insertMetrics } from '@/lib/db/scans'
+import { insertScan, insertMetrics, codeScans } from '@/lib/db/scans'
+import { getUserEntitlements, checkLimit, windowStart } from '@/lib/entitlements'
 import { executeOnce } from '@/lib/piston'
 
 interface AnalysisRequest {
@@ -73,6 +74,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         { status: 400 },
       )
     }
+
+    // Plan limit: scans per day (lib/entitlements.ts).
+    const ent = await getUserEntitlements(user.id)
+    const usedToday = await (await codeScans()).countDocuments({ user_id: user.id, created_at: { $gte: windowStart('day') } })
+    const denied = checkLimit(user, ent, 'max_scans_per_day', usedToday, 1, 'You have used all your code scans for today. Upgrade your plan for more.')
+    if (denied) return NextResponse.json(denied, { status: 402 })
 
     const raw = analyzeCodeLocally(code, language || 'typescript')
     let payload = toClientAnalysisPayload(raw)

@@ -66,7 +66,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   if (!result) {
-    return NextResponse.json({ error: `AI generation failed for all providers. Last error: ${lastError}` }, { status: 502 })
+    // Provider errors stay in the server log (they can carry upstream details).
+    return NextResponse.json({ error: 'AI generation failed. Please try again.' }, { status: 502 })
   }
 
   const gens = await aiGeneratedProblems()

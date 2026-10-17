@@ -21,7 +21,7 @@ export type QuizGradeResult = {
   score: number
   total: number
   passed: boolean
-  results: Array<{ questionIndex: number; userAnswer: number | null; correctAnswer: number; isCorrect: boolean; explanation?: string }>
+  results: Array<{ questionIndex: number; userAnswer: number | null; correctAnswer: number | null; isCorrect: boolean; explanation?: string }>
 }
 
 export type QuizBookmarkContext = {
@@ -234,23 +234,23 @@ export function QuizComponent({
   if (completed) {
     const keyFor = (i: number) => {
       const r = graderResult?.results.find((x) => x.questionIndex === i)
+      // The server only sends the key after a pass (correctAnswer is null otherwise).
       return r
-        ? { correct: r.correctAnswer, explanation: r.explanation || questions[i]?.explanation || '' }
-        : { correct: questions[i]?.correct, explanation: questions[i]?.explanation || '' }
+        ? { correct: r.correctAnswer ?? undefined, explanation: r.explanation || '', isCorrect: r.isCorrect }
+        : { correct: questions[i]?.correct, explanation: questions[i]?.explanation || '', isCorrect: answers[i] === questions[i]?.correct }
     }
     const finalScore = graderResult ? graderResult.results.filter((x) => x.isCorrect).length : score
     const percentage = graderResult ? graderResult.score : Math.round((score / questions.length) * 100)
     const passed = graderResult ? graderResult.passed : percentage >= passPercent
     const missed = questions
       .map((q, i) => ({ q, i, picked: answers[i], key: keyFor(i) }))
-      .filter(({ picked, key }) => picked !== key.correct)
+      .filter(({ key }) => !key.isCorrect)
 
     return (
       <div className="p-6 space-y-5">
         <div className="text-center space-y-2">
           <div
-            className="text-4xl font-bold"
-            style={{ color: passed ? '#22c55e' : percentage >= 50 ? '#f59e0b' : '#ef4444' }}
+            className={`text-4xl font-bold ${passed ? 'text-green-600 dark:text-green-400' : percentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}
           >
             {passed ? 'Passed' : 'Not yet'}
           </div>
@@ -260,7 +260,7 @@ export function QuizComponent({
           <p className="text-muted-foreground text-sm">
             {passed
               ? 'Nice work — you can continue to the next module.'
-              : `You need ${passPercent}% to pass. Review the concepts below, then retry.`}
+              : `You need ${passPercent}% to pass. Review the questions you missed, then retry. Answers are shown once you pass.`}
           </p>
         </div>
 
@@ -291,9 +291,11 @@ export function QuizComponent({
                 <p className="text-red-600 dark:text-red-400 mt-1">
                   Your answer: {typeof picked === 'number' ? q.options[picked] : '—'}
                 </p>
-                <p className="text-green-700 dark:text-green-400 mt-0.5">
-                  Correct: {typeof key.correct === 'number' ? q.options[key.correct] : '—'}
-                </p>
+                {typeof key.correct === 'number' ? (
+                  <p className="text-green-700 dark:text-green-400 mt-0.5">
+                    Correct: {q.options[key.correct]}
+                  </p>
+                ) : null}
                 {key.explanation ? <p className="text-muted-foreground mt-1">{key.explanation}</p> : null}
               </div>
             ))}

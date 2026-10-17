@@ -12,7 +12,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { rateLimitAIRedis, rateLimitRedis } from '@/lib/upstash-rate-limit'
-import { deductUserAiCredits, getUserAiCredits } from '@/lib/user-credits'
+import { spendAiCredits, getUserAiCredits } from '@/lib/user-credits'
 import { sanitizeBuilderData, type ResumeBuilderData } from '../_lib/builder-data'
 
 export const runtime = 'nodejs'
@@ -128,8 +128,9 @@ export async function POST(request: Request) {
     }
 
     // Charge only now that there is a usable result.
-    await deductUserAiCredits(user.id, CREDIT_COST)
-    return NextResponse.json({ ...payload, creditsCharged: CREDIT_COST, balance: Math.max(0, balance - CREDIT_COST) })
+    const spent = await spendAiCredits(user.id, CREDIT_COST)
+    if (!spent.ok) return NextResponse.json({ error: 'You are out of AI credits', balance: spent.balance, required: CREDIT_COST }, { status: 402 })
+    return NextResponse.json({ ...payload, creditsCharged: CREDIT_COST, balance: spent.balance })
   } catch (e) {
     console.error('[resume ai-summary] error', e)
     return NextResponse.json({ error: 'AI writing is unavailable right now. You were not charged.' }, { status: 502 })

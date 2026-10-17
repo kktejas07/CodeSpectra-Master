@@ -96,6 +96,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     ) {
       return NextResponse.json({ error: 'payment_mismatch' }, { status: 400 })
     }
+    // Manual-capture accounts: an authorized payment is not money yet (it is
+    // auto-refunded if never captured), so capture it before activating (D34).
+    if (String(pay.status) === 'authorized') {
+      const captured = await rp.payments.capture(body.razorpay_payment_id, order.amount_paise, order.currency)
+      if (String(captured?.status) !== 'captured') {
+        return NextResponse.json({ error: 'Payment is not captured yet. Try again shortly.' }, { status: 502 })
+      }
+    }
   } catch (e) {
     console.error('[billing/verify] payment fetch failed:', e)
     return NextResponse.json({ error: 'Could not confirm payment with the gateway. Try again shortly.' }, { status: 502 })
@@ -132,13 +140,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if ((e as { code?: number })?.code !== 11000) throw e
   }
 
+  // The webhook may have inserted the row first: use the stored row's id (D35).
+  const storedPayment = await paymentsCol.findOne({ razorpay_payment_id: body.razorpay_payment_id }, { projection: { id: 1 } })
+  const paymentRowId = storedPayment?.id ?? paymentDoc.id
+
   // Activate exactly the plan snapshotted on the order (static or admin-created).
-  const { subscription } = await activatePaidOrder({ ...order, status: 'paid' }, paymentDoc.id)
+  const { subscription } = await activatePaidOrder({ ...order, status: 'paid' }, paymentRowId)
 
   return NextResponse.json({
     ok: true,
     order_id: order.id,
-    payment_id: paymentDoc.id,
+    payment_id: paymentRowId,
     plan_id: order.plan_id,
     subscription,
   })

@@ -53,7 +53,7 @@ function slugify(s: string): string {
 }
 
 function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
+  return ['superadmin', 'tenant_admin'].includes((role || '').toLowerCase())
 }
 
 function mergeFeatures(defaults: HackathonFeatures, overrides?: Partial<HackathonFeatures>): HackathonFeatures {
@@ -89,7 +89,9 @@ export async function GET(req: NextRequest) {
   const updates: Promise<void>[] = []
   for (const h of items) {
     const computed = computeStatus(h.starts_at, h.ends_at, h.status)
-    if (computed !== h.status) {
+    // Same rule as GET /api/hackathons/[id]: only time-driven moves (open→live,
+    // anything→closed at the end) — never undo a status an organiser set by hand.
+    if (computed !== h.status && (computed === 'closed' || (computed === 'live' && h.status === 'open'))) {
       updates.push(
         col.updateOne({ id: h.id }, { $set: { status: computed, updated_at: nowIso() } }).then(() => {})
       )
@@ -105,6 +107,10 @@ export async function POST(req: NextRequest) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!isAdmin(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  // A tenant admin without a tenant would create an unowned (global) event.
+  if (user.role === 'tenant_admin' && !user.tenantId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

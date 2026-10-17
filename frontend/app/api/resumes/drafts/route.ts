@@ -1,6 +1,7 @@
 /**
  * /api/resumes/drafts — résumé builder drafts saved to the account.
  *   GET            -> { draft } the latest draft (or `?id=` a specific one), null if none
+ *   GET ?list=1    -> { drafts: [{ id, name, template, created_at, updated_at }] } newest first
  *   POST           -> { id?, name, template, data } create, or update your own draft by id
  *   DELETE ?id=    -> remove one of your drafts
  * Owner-scoped; body is whitelisted by sanitizeBuilderData.
@@ -27,7 +28,16 @@ export async function GET(request: Request) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const col = await resumeDrafts()
-    const wanted = new URL(request.url).searchParams.get('id')
+    const sp = new URL(request.url).searchParams
+    if (sp.get('list') === '1') {
+      const rows = await col
+        .find({ user_id: gate.user.id }, { projection: { _id: 0, id: 1, name: 1, template: 1, created_at: 1, updated_at: 1 } })
+        .sort({ updated_at: -1 })
+        .limit(MAX_DRAFTS)
+        .toArray()
+      return NextResponse.json({ drafts: rows })
+    }
+    const wanted = sp.get('id')
     const filter = wanted && ID_RE.test(wanted) ? { id: wanted, user_id: gate.user.id } : { user_id: gate.user.id }
     const [draft] = await col.find(filter, { projection: { _id: 0 } }).sort({ updated_at: -1 }).limit(1).toArray()
     return NextResponse.json({ draft: draft ? shape(draft) : null })

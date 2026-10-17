@@ -1,27 +1,26 @@
 /**
  * GET /api/users/[slug]
  *
- * Profile endpoint. `slug` can be either the user `id` or the email
- * local-part (text before `@`). Returns profile + XP + recent solves.
- * Requires login — anonymous callers must not enumerate users or read
- * profiles/emails.
+ * Public profile (for signed-in viewers). `slug` is the user's `username`
+ * or their user `id` — never an email. The response carries no email or
+ * role. Solved counts cover all accepted submissions, not just recent ones.
  */
 import { NextResponse } from 'next/server'
-import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { getUserXp } from '@/lib/db/leaderboard'
 import { requireAuth } from '@/lib/route-auth'
+import { sanitizeRegex } from '@/lib/sanitize'
 
 export const runtime = 'nodejs'
 
 interface UserDoc {
-  _id: ObjectId | string
-  email?: string
+  id?: string
+  username?: string
   name?: string
   fullName?: string
-  role?: string
   preferredLanguage?: string
-  createdAt?: string
+  createdAt?: string | Date
+  created_at?: string | Date
 }
 
 interface SubmissionRow {
@@ -40,6 +39,8 @@ interface ProblemRow {
   difficulty: string
 }
 
+const SLUG_RE = /^[A-Za-z0-9._-]{1,64}$/
+
 export async function GET(
   _req: Request,
   ctx: { params: Promise<{ slug: string }> },
@@ -50,44 +51,41 @@ export async function GET(
   }
   const { slug } = await ctx.params
   const decoded = decodeURIComponent(slug || '').trim()
-  if (!decoded) {
-    return NextResponse.json({ error: 'slug required' }, { status: 400 })
+  if (!decoded || !SLUG_RE.test(decoded)) {
+    return NextResponse.json({ error: 'user not found' }, { status: 404 })
   }
 
-  const escaped = decoded.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const db = await getMongoDb()
-  const users = db.collection('user')
+  const users = db.collection<UserDoc>('user')
+  const projection = { _id: 0, id: 1, username: 1, name: 1, fullName: 1, preferredLanguage: 1, createdAt: 1, created_at: 1 }
 
-  // Try id, email-localpart prefix, then exact email match.
-  const user = ((await (ObjectId.isValid(decoded)
-    ? users.findOne({ _id: new ObjectId(decoded) })
-    : Promise.resolve(null))) ||
-    (await users.findOne({ email: { $regex: `^${escaped}@`, $options: 'i' } })) ||
-    (await users.findOne({ email: decoded.toLowerCase() }))) as UserDoc | null
+  const user =
+    (await users.findOne({ id: decoded }, { projection })) ||
+    (await users.findOne({ username: decoded }, { projection })) ||
+    (await users.findOne({ username: { $regex: `^${sanitizeRegex(decoded)}$`, $options: 'i' } }, { projection }))
 
-  if (!user) return NextResponse.json({ error: 'user not found' }, { status: 404 })
+  if (!user?.id) return NextResponse.json({ error: 'user not found' }, { status: 404 })
 
-  const userId =
-    typeof user._id === 'string' ? user._id : user._id.toHexString()
-  const xp = await getUserXp(userId)
-
+  const userId = String(user.id)
   const submissions = db.collection<SubmissionRow>('submissions')
-  const recent = await submissions
-    .find({ user_id: userId }, { projection: { _id: 0 } })
-    .sort({ created_at: -1 })
-    .limit(20)
-    .toArray()
+  const [xp, recent, totalSubmissions, solvedProblemIds] = await Promise.all([
+    getUserXp(userId),
+    submissions
+      .find({ user_id: userId }, { projection: { _id: 0, source_code: 0, results: 0, stderr_excerpt: 0 } })
+      .sort({ created_at: -1 })
+      .limit(20)
+      .toArray(),
+    submissions.countDocuments({ user_id: userId }),
+    submissions.distinct('problem_id', { user_id: userId, status: 'accepted' }) as Promise<string[]>,
+  ])
 
-  const problemIds = [...new Set(recent.map((s) => s.problem_id))]
+  const problemIds = [...new Set([...recent.map((s) => s.problem_id), ...solvedProblemIds])]
   const problems = db.collection<ProblemRow>('problems')
   const probDocs = problemIds.length
-    ? await problems.find({ id: { $in: problemIds } }).toArray()
+    ? await problems.find({ id: { $in: problemIds } }, { projection: { _id: 0, id: 1, slug: 1, title: 1, difficulty: 1 } }).toArray()
     : []
   const probById = new Map(probDocs.map((p) => [p.id, p]))
 
-  // Aggregate: total accepted, per-difficulty counts.
-  const acceptedRows = recent.filter((s) => s.status === 'accepted')
-  const solvedProblemIds = [...new Set(acceptedRows.map((s) => s.problem_id))]
   const byDifficulty = { easy: 0, medium: 0, hard: 0 }
   for (const pid of solvedProblemIds) {
     const p = probById.get(pid)
@@ -96,23 +94,20 @@ export async function GET(
     }
   }
 
-  const email = user.email || ''
-  const displayName = (user.fullName || user.name || '').trim() ||
-    (email ? email.split('@')[0] : 'Developer')
+  const handle = user.username || userId
+  const joined = user.createdAt || user.created_at
 
   return NextResponse.json({
     user: {
       id: userId,
-      slug: email ? email.split('@')[0] : userId,
-      name: displayName,
-      email,
-      role: user.role || 'user',
+      slug: handle,
+      name: (user.fullName || user.name || '').trim() || 'Developer',
       preferredLanguage: user.preferredLanguage || 'javascript',
-      joinedAt: user.createdAt || null,
+      joinedAt: joined ? new Date(joined).toISOString() : null,
     },
     stats: {
       xp,
-      totalSubmissions: recent.length,
+      totalSubmissions,
       solved: solvedProblemIds.length,
       byDifficulty,
     },

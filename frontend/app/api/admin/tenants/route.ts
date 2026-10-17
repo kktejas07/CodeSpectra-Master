@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/api-auth'
 import { tenants, newId, nowIso } from '@/lib/db/admin'
 import { getMongoDb } from '@/lib/mongodb'
-import { getAdminAuthInstance } from '@/lib/firebase-admin'
+import { normalizeUserRole } from '@/lib/rbac'
+import { passwordProblem } from '@/lib/auth-account'
+import { revokeAllUserSessions } from '@/lib/session'
+import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link'
+import { auditAdmin } from '@/lib/admin-audit'
 import bcrypt from 'bcryptjs'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
@@ -20,7 +24,7 @@ export async function GET() {
     const db = await getMongoDb()
     const userCol = db.collection('user')
     const rows = await Promise.all(list.map(async (t) => {
-      const memberCount = await userCol.countDocuments({ tenantId: t.id })
+      const memberCount = await userCol.countDocuments({ $or: [{ tenantId: t.id }, { organizationId: t.id }] })
       return { ...t, member_count: memberCount }
     }))
 
@@ -56,8 +60,9 @@ export async function POST(request: Request) {
   if (adminEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) {
     return NextResponse.json({ error: 'Valid admin email is required' }, { status: 400 })
   }
-  if (adminEmail && adminPassword && adminPassword.length < 8) {
-    return NextResponse.json({ error: 'Admin password must be at least 8 characters' }, { status: 400 })
+  if (adminEmail && adminPassword) {
+    const problem = passwordProblem(adminPassword)
+    if (problem) return NextResponse.json({ error: `Admin ${problem.charAt(0).toLowerCase()}${problem.slice(1)}` }, { status: 400 })
   }
 
   try {
@@ -79,78 +84,79 @@ export async function POST(request: Request) {
     await col.insertOne(doc)
 
     // Optional: provision the org admin user in the same step.
-    let admin: { id: string; email: string; role: string } | null = null
+    let admin: { id: string; email: string; role: string; email_failed?: boolean } | null = null
     if (adminEmail) {
       const db = await getMongoDb()
       const userCol = db.collection('user')
-      const existingUser = await userCol.findOne({ email: adminEmail })
+      const escaped = adminEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const existingUser = await userCol.findOne({ $or: [{ email: adminEmail }, { email: { $regex: `^${escaped}$`, $options: 'i' } }] })
+      const displayName = adminName || adminEmail.split('@')[0] || 'User'
 
       let adminId: string
+      let emailSent = false
       if (existingUser) {
+        // Never repurpose a superadmin, or pull an admin out of another org.
+        const existingRole = normalizeUserRole(existingUser.role as string | undefined)
+        const existingTenant = (existingUser.tenantId as string | null) ?? (existingUser.organizationId as string | null) ?? null
+        if (existingRole === 'superadmin' || (existingTenant && existingTenant !== doc.id)) {
+          await col.deleteOne({ id: doc.id })
+          return NextResponse.json(
+            { error: existingRole === 'superadmin' ? 'That email belongs to a superadmin. Use a different admin email.' : 'That email already belongs to another organization.' },
+            { status: 409 },
+          )
+        }
         adminId = existingUser.id || String(existingUser._id)
-        // Attach the existing user to the new tenant and promote to org admin.
         await userCol.updateOne(
           { _id: existingUser._id },
           { $set: { tenantId: doc.id, role: 'tenant_admin', updatedAt: new Date() } },
         )
-      } else {
-        const adminAuth = await getAdminAuthInstance()
-        const displayName = adminName || adminEmail.split('@')[0] || 'User'
-        if (adminAuth) {
-          const rec = await adminAuth.createUser({
-            email: adminEmail,
-            password: adminPassword && adminPassword.length >= 8 ? adminPassword : `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`,
-            displayName,
-          })
-          adminId = rec.uid
-        } else {
-          adminId = `local-${crypto.randomUUID()}`
+        // Role changed — old sessions must pick up the new role/tenant.
+        await revokeAllUserSessions(adminId).catch(() => {})
+        try {
+          const r = await sendEmail(adminEmail, emailTemplates.accountCredentials({ name: displayName, email: adminEmail, orgName: name, role: 'Organization Admin' }))
+          emailSent = !!r?.success
+        } catch (e) {
+          console.error(`[Tenants] Welcome email to ${adminEmail} failed:`, e)
         }
-
-        const passwordHash = await bcrypt.hash(
-          adminPassword && adminPassword.length >= 8 ? adminPassword : `temp-${Math.random().toString(36).slice(2)}A1!`,
-          10,
-        )
-        await userCol.updateOne(
-          { email: adminEmail },
-          {
-            $set: {
-              id: adminId,
-              email: adminEmail,
-              name: displayName,
-              fullName: displayName,
-              passwordHash,
-              role: 'tenant_admin',
-              tenantId: doc.id,
-              updatedAt: new Date(),
-            },
-            $setOnInsert: { _id: adminId, createdAt: new Date() },
-          },
-          { upsert: true },
-        )
+      } else {
+        // Sign-in is local (bcrypt), so no Firebase user is needed. Without an
+        // admin-chosen password the admin gets a set-password link — never a
+        // random password nobody knows.
+        adminId = crypto.randomUUID()
+        const now = new Date()
+        await userCol.insertOne({
+          _id: adminId as never,
+          id: adminId,
+          email: adminEmail,
+          name: displayName,
+          fullName: displayName,
+          ...(adminPassword ? { passwordHash: await bcrypt.hash(adminPassword, 12) } : {}),
+          role: 'tenant_admin',
+          tenantId: doc.id,
+          emailVerified: false,
+          session_version: 1,
+          createdAt: now,
+          updatedAt: now,
+        })
+        try {
+          if (adminPassword) {
+            const r = await sendEmail(adminEmail, emailTemplates.accountCredentials({ name: displayName, email: adminEmail, orgName: name, role: 'Organization Admin' }))
+            emailSent = !!r?.success
+          } else {
+            const hours = 72
+            const setupUrl = await issuePasswordSetupLink(adminId, hours)
+            const r = await sendEmail(adminEmail, accountSetupEmail({ name: displayName, orgName: name, role: 'Organization Admin', setupUrl, validHours: hours }))
+            emailSent = !!r?.success
+          }
+        } catch (e) {
+          console.error(`[Tenants] Welcome email to ${adminEmail} failed:`, e)
+        }
       }
 
-      admin = { id: adminId, email: adminEmail, role: 'tenant_admin' }
-
-      // Send welcome email with credentials
-      const displayName = adminName || adminEmail.split('@')[0] || 'User'
-      const actualPassword = adminPassword && adminPassword.length >= 8 ? adminPassword : null
-      try {
-        const emailResult = await sendEmail(
-          adminEmail,
-          emailTemplates.accountCredentials({
-            name: displayName,
-            email: adminEmail,
-            orgName: name,
-            role: 'Organization Admin',
-          }),
-        )
-
-      } catch (e) {
-        console.error(`[Tenants] Welcome email to ${adminEmail} failed:`, e)
-      }
+      admin = { id: adminId, email: adminEmail, role: 'tenant_admin', ...(emailSent ? {} : { email_failed: true }) }
     }
 
+    await auditAdmin(gate.user, 'admin.tenant.create', 'tenant', `tenant/${doc.id}`, `name=${name}${admin ? ` admin=${admin.email}` : ''}`, 'warning')
     return NextResponse.json({ data: { ...doc, member_count: admin ? 1 : 0 }, admin }, { status: 201 })
   } catch (e: unknown) {
     const msg = 'Failed to create tenant'

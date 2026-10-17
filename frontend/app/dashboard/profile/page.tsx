@@ -212,6 +212,8 @@ export default function ProfilePage() {
   const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
 
+  // Public profile handle (/users/<handle>); falls back to the user id.
+  const [publicHandle, setPublicHandle] = useState<string | null>(null)
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)
   const [kycStatus, setKycStatus] = useState<{ verified?: boolean; status?: string } | null>(null)
   const [stats, setStats] = useState<Record<string, number | string> | null>(null)
@@ -288,6 +290,8 @@ export default function ProfilePage() {
       
       const ext = extRes?.data
       if (ext) {
+        const handle = String(ext.basic?.username || ext.username || '').trim()
+        if (handle) setPublicHandle(handle)
         if (typeof ext.about === 'string') setAboutBio(ext.about)
         if (ext.links && typeof ext.links === 'object') setSocialLinks(ext.links)
         // Prefer server profile for completion score when present
@@ -432,7 +436,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <h1 className="mt-5 text-2xl font-extrabold text-foreground tracking-tight">{displayName}</h1>
-            <p className="mt-1 text-sm text-muted-foreground font-medium">@{user?.email?.split('@')[0]}</p>
+            <p className="mt-1 text-sm text-muted-foreground font-medium">@{publicHandle || user?.id}</p>
             
             <div className="mt-4 flex items-center justify-center gap-2">
               <Button
@@ -442,7 +446,9 @@ export default function ProfilePage() {
                 title="Copy profile link"
                 aria-label="Share profile link"
                 onClick={async () => {
-                  const url = typeof window !== 'undefined' ? window.location.href : ''
+                  const handle = publicHandle || user?.id
+                  const url = typeof window !== 'undefined' && handle ? `${window.location.origin}/users/${encodeURIComponent(handle)}` : ''
+                  if (!url) return
                   try {
                     if (navigator.share) {
                       await navigator.share({ title: displayName, url })
@@ -455,7 +461,7 @@ export default function ProfilePage() {
                 <Share2 className="h-4 w-4" />
               </Button>
               <Button size="icon" variant="outline" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground" aria-label="Preview public profile" title="Preview public profile" asChild>
-                <Link href={`/users/${user?.email?.split('@')[0] || user?.id || 'preview'}?preview=true`}>
+                <Link href={`/users/${encodeURIComponent(publicHandle || user?.id || '')}?preview=true`}>
                   <Eye className="h-4 w-4" />
                 </Link>
               </Button>

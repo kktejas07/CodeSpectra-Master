@@ -12,6 +12,8 @@ import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { updateUserLastLogin } from '@/lib/db/admin'
 import { createUserSession } from '@/lib/db/sessions'
+import { accountBlockReason } from '@/lib/auth-account'
+import { checkAuthThrottle, recordAuthFailure, clearAuthFailures } from '@/lib/auth-throttle'
 import { isIpBlocked, blockIp, trackDeviceFingerprint, detectImpossibleTravel, recordSecurityEvent, isIpOutsideWhitelist, securityPolicy } from '@/lib/db/security'
 
 export const runtime = 'nodejs'
@@ -85,6 +87,15 @@ export async function POST(request: Request) {
         detail: 'turnstile passed', user_id: ident,
       })
     }
+    // Per account+IP back-off (one user's typos never lock out a shared IP).
+    const throttle = await checkAuthThrottle('login', ident, rawIp)
+    if (!throttle.ok) {
+      return NextResponse.json(
+        { error: `Too many failed attempts. Try again in ${throttle.retryAfterSec}s, or reset your password.` },
+        { status: 429 },
+      )
+    }
+
     const db = await getMongoDb()
     const escaped = ident.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const user = await db.collection('user').findOne({
@@ -99,6 +110,7 @@ export async function POST(request: Request) {
     const normalizedEmail = String(user?.email || ident).toLowerCase().trim()
     if (!user) {
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'warning', detail: 'user not found', user_id: normalizedEmail })
+      await recordAuthFailure('login', ident, rawIp)
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
@@ -126,11 +138,13 @@ export async function POST(request: Request) {
         )
       }
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'info', detail: 'wrong password', user_id: normalizedEmail })
+      await recordAuthFailure('login', ident, rawIp)
 
-      // Brute-force escalation: 3+ distinct failed attempts from one IP in 10 min → block the IP.
-      const failWindow = await rateLimitRedis(`login:fail:${rawIp}`, 3, 600_000)
+      // Brute-force escalation for spraying many accounts from one IP. The
+      // threshold is high on purpose: campuses and offices share one NAT IP.
+      const failWindow = await rateLimitRedis(`login:fail:${rawIp}`, 50, 600_000)
       if (!failWindow.ok) {
-        await blockIp({ ip: rawIp, reason: 'Brute-force: 3+ failed logins in 10 minutes', actor: 'system' })
+        await blockIp({ ip: rawIp, reason: 'Brute-force: 50+ failed logins in 10 minutes', actor: 'system', expiresAt: new Date(Date.now() + 60 * 60_000).toISOString() })
         await recordSecurityEvent({
           type: 'auth.rate_limited',
           severity: 'critical',
@@ -144,6 +158,12 @@ export async function POST(request: Request) {
     const uid = String(user.id || user._id)
     const role = normalizeUserRole(user.role as string | undefined | null)
 
+    // Deactivated accounts can't sign in (told only after a correct password).
+    if (accountBlockReason(user)) {
+      await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'account deactivated', user_id: uid })
+      return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.' }, { status: 403 })
+    }
+
     if (user.totp_enabled) {
       if (!totpToken) {
         return NextResponse.json({ twoFactorRequired: true })
@@ -152,10 +172,12 @@ export async function POST(request: Request) {
       const isValid = checkTotp(totpToken, user.totp_secret)
       if (!isValid) {
         await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: uid })
+        await recordAuthFailure('login', ident, rawIp)
         return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })
       }
     }
 
+    await clearAuthFailures('login', ident, rawIp)
     await setSessionCookie({ uid, email: user.email, role })
     await updateUserLastLogin(uid, 'email').catch((e) => console.error('[Login] updateUserLastLogin failed:', e))
 
