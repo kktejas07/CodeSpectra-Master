@@ -30,10 +30,10 @@ interface ContributionGraphProps {
 
 const LEVEL_COLORS = [
   'bg-muted/30', // Level 0
-  'bg-[#9be9a8]', // Level 1
-  'bg-[#40c463]', // Level 2
-  'bg-[#30a14e]', // Level 3
-  'bg-[#216e39]', // Level 4
+  'bg-[#c5d4ff] dark:bg-[#213781]', // Level 1
+  'bg-[#7090fb] dark:bg-[#2448c9]', // Level 2
+  'bg-[#2f5be7] dark:bg-[#4a6ef3]', // Level 3
+  'bg-[#213ca3] dark:bg-[#9fb6ff]', // Level 4
 ]
 
 function formatDate(dateStr: string): string {
