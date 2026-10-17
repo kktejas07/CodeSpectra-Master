@@ -135,13 +135,13 @@ export function ContributionGraph({
   return (
     <div className="w-full">
       {!hasData ? (
-        <div className="py-6 text-center border rounded-xl bg-card border-border/60">
+        <div className="rounded-3xl border border-border/70 bg-card py-8 text-center">
           <EmptyActivityIllustration />
-          <p className="text-sm font-medium text-slate-300 mt-2">
-            No activity recorded yet
+          <p className="mt-3 text-base font-semibold text-foreground">
+            No activity yet
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Run a code scan or solve your first challenge to generate telemetry
+          <p className="mt-1 text-sm text-muted-foreground">
+            Solve a problem or run a scan, and your activity will show up here
           </p>
         </div>
       ) : (

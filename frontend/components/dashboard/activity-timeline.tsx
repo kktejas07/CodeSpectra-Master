@@ -85,7 +85,7 @@ export function ActivityTimeline({
       {displayActivities.length === 0 ? (
         <div className="py-4 text-center">
           <EmptyTimelineIllustration />
-          <p className="text-xs font-medium text-slate-400 mt-1">
+          <p className="mt-1 text-sm font-medium text-muted-foreground">
             No recent activity recorded
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">

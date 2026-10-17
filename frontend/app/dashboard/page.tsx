@@ -24,6 +24,16 @@ import {
   IsometricFixEngine,
 } from '@/components/dashboard/dashboard-vectors'
 
+// Quick actions — each tile links to the page it names (Assessments/Arena were swapped before).
+const QUICK_ACTIONS = [
+  { href: '/dashboard/assessments', label: 'Assessments', hint: 'Tests you’re invited to', icon: FileText, tour: 'assessments' },
+  { href: '/dashboard/problems', label: 'Problems', hint: 'Coding practice', icon: Code, tour: undefined },
+  { href: '/dashboard/arena', label: 'Arena', hint: 'Live 1-v-1 matches', icon: Target, tour: 'practice-arena' },
+  { href: '/dashboard/scanner?mode=manual', label: 'Run a scan', hint: 'Check your own code', icon: Activity, tour: 'scanner-tool' },
+  { href: '/dashboard/tracks', label: 'Tracks', hint: 'Structured courses', icon: Layers, tour: undefined },
+  { href: '/dashboard/achievements', label: 'Achievements', hint: 'Badges you’ve earned', icon: Star, tour: undefined },
+] as const
+
 interface ActivityItem {
   ts: string
   type: string
@@ -148,33 +158,33 @@ export default function DashboardPage() {
         stats={stats}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="dashboard-overview">
-        <Card className="border-border/60 p-4 hover:border-emerald-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-emerald-950/20">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [&:not(:has(>[data-hint=daily-challenge]>*))]:xl:grid-cols-3" data-tour="dashboard-overview">
+        <Card className="group rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
           <div className="flex items-center gap-4">
             <IsometricScanChip />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground font-mono">Code Scans</p>
-              <p className="text-2xl font-black text-foreground tracking-tight">{stats.scans}</p>
+              <p className="text-sm font-medium text-muted-foreground">Code scans</p>
+              <p className="text-3xl font-bold tabular-nums text-foreground tracking-tight">{stats.scans}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="border-border/60 p-4 hover:border-emerald-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-emerald-950/20">
+        <Card className="group rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
           <div className="flex items-center gap-4">
             <IsometricProblemCube />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground font-mono">Challenges</p>
-              <p className="text-2xl font-black text-foreground tracking-tight">{stats.challenges}</p>
+              <p className="text-sm font-medium text-muted-foreground">Challenges</p>
+              <p className="text-3xl font-bold tabular-nums text-foreground tracking-tight">{stats.challenges}</p>
             </div>
           </div>
         </Card>
 
-        <Card className="border-border/60 p-4 hover:border-cyan-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-cyan-950/20">
+        <Card className="group rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
           <div className="flex items-center gap-4">
             <IsometricFixEngine />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground font-mono">Fixes Applied</p>
-              <p className="text-2xl font-black text-foreground tracking-tight">{stats.fixes}</p>
+              <p className="text-sm font-medium text-muted-foreground">Fixes applied</p>
+              <p className="text-3xl font-bold tabular-nums text-foreground tracking-tight">{stats.fixes}</p>
             </div>
           </div>
         </Card>
@@ -196,7 +206,7 @@ export default function DashboardPage() {
       </div>
 
       {myTeams.length > 0 && (
-        <Card className="border-border/60 p-6">
+        <Card className="rounded-3xl border-border/70 p-6">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
@@ -242,72 +252,27 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/60 p-5" data-tour="quick-actions">
+          <Card className="rounded-3xl border-border/70 p-6" data-tour="quick-actions">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary" /> Quick actions
+              <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+                <BookOpen className="h-4 w-4 text-primary" aria-hidden /> Quick actions
               </h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Link href="/dashboard/arena" className="group" data-tour="practice-arena">
-                <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:shadow-md group-hover:shadow-emerald-950/40 group-hover:-translate-y-0.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
-                    <FileText className="h-4.5 w-4.5 text-emerald-400" />
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-foreground">Assessments</p>
-                  <p className="text-[10px] text-muted-foreground">Test skills</p>
-                </div>
-              </Link>
-
-              <Link href="/dashboard/problems" className="group">
-                <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:shadow-md group-hover:shadow-emerald-950/40 group-hover:-translate-y-0.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
-                    <Code className="h-4.5 w-4.5 text-emerald-400" />
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-foreground">Problems</p>
-                  <p className="text-[10px] text-muted-foreground">Algorithm lab</p>
-                </div>
-              </Link>
-
-              <Link href="/dashboard/assessments" className="group" data-tour="assessments">
-                <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-red-500/50 group-hover:shadow-md group-hover:shadow-red-950/40 group-hover:-translate-y-0.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
-                    <Target className="h-4.5 w-4.5 text-red-400" />
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-foreground">Arena</p>
-                  <p className="text-[10px] text-muted-foreground">Live 1v1</p>
-                </div>
-              </Link>
-
-              <Link href="/dashboard/scanner?mode=manual" className="group" data-tour="scanner-tool">
-                <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-cyan-500/50 group-hover:shadow-md group-hover:shadow-cyan-950/40 group-hover:-translate-y-0.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
-                    <Activity className="h-4.5 w-4.5 text-cyan-400" />
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-foreground">Run Scan</p>
-                  <p className="text-[10px] text-muted-foreground">AST Engine</p>
-                </div>
-              </Link>
-
-              <Link href="/dashboard/tracks" className="group">
-                <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-cyan-500/50 group-hover:shadow-md group-hover:shadow-cyan-950/40 group-hover:-translate-y-0.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
-                    <Layers className="h-4.5 w-4.5 text-cyan-400" />
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-foreground">Tracks</p>
-                  <p className="text-[10px] text-muted-foreground">Curriculums</p>
-                </div>
-              </Link>
-
-              <Link href="/dashboard/achievements" className="group">
-                <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-amber-500/50 group-hover:shadow-md group-hover:shadow-amber-950/40 group-hover:-translate-y-0.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
-                    <Star className="h-4.5 w-4.5 text-amber-400" />
-                  </div>
-                  <p className="mt-2 text-xs font-semibold text-foreground">Achievements</p>
-                  <p className="text-[10px] text-muted-foreground">Trophies</p>
-                </div>
-              </Link>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {QUICK_ACTIONS.map(({ href, label, hint, icon: Icon, tour }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  data-tour={tour}
+                  className="group rounded-2xl border border-border/70 bg-card p-4 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_14px_30px_-18px_rgba(47,91,231,0.45)] focus-visible:outline-2 focus-visible:outline-primary motion-reduce:hover:translate-y-0"
+                >
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <Icon className="h-5 w-5" aria-hidden />
+                  </span>
+                  <p className="mt-3 text-sm font-semibold text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground">{hint}</p>
+                </Link>
+              ))}
             </div>
           </Card>
         </div>
@@ -321,7 +286,7 @@ export default function DashboardPage() {
             subtitle="Your latest contributions"
           />
 
-          <Card className="border-border/60 p-5 space-y-3">
+          <Card className="space-y-3 rounded-3xl border-border/70 p-6">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-semibold text-foreground">Learning progress</h2>

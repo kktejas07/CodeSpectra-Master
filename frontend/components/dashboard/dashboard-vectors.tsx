@@ -73,61 +73,50 @@ export function DeveloperRankBanner({
   const progressPercent = Math.min(100, Math.round((currentLevelXP / 1000) * 100))
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-linear-to-r from-[#081512] via-[#09131c] to-[#070b14] p-6 shadow-xl shadow-black/40">
-      {/* Background Matrix & Circuit Accents */}
-      <div className="absolute top-0 right-0 w-96 h-full opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-400 via-transparent to-transparent" />
-      <div className="absolute -bottom-6 -right-6 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] p-6 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)] sm:p-7">
+      {/* soft dot field + glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-30 [mask-image:radial-gradient(70%_90%_at_85%_20%,#000_20%,transparent_75%)]"
+        style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
+      />
+      <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-[#38bdf8]/30 blur-3xl" />
 
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        {/* Left Side: Avatar / Level Badge & Greeting */}
+      <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
         <div className="flex items-center gap-4">
-          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-[#06241a] to-[#0a3525] border-2 border-emerald-500/40 shadow-lg shadow-emerald-950/40">
-            <Sparkles className="h-7 w-7 text-emerald-400 animate-pulse" />
-            <div className="absolute -bottom-1 -right-1 bg-linear-to-r from-mint-pulse to-[#06b6d4] text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-xs">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-white/30 bg-white/15 backdrop-blur">
+            <Sparkles className="h-7 w-7 text-white" aria-hidden />
+            <span className="absolute -bottom-1.5 -right-1.5 rounded-full bg-white px-1.5 py-0.5 text-[11px] font-bold text-[#2448c9] shadow-sm">
               L{level}
-            </div>
+            </span>
           </div>
-
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                {name ? `Welcome, ${name}` : 'Developer Terminal'}
-              </h2>
-              <span className="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-300 border border-emerald-800/60 px-2 py-0.5 rounded-full text-[11px] font-mono font-semibold">
-                <Shield className="w-3 h-3 text-emerald-400" />
-                {role ? role.toUpperCase() : 'BUILDER'}
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{name ? `Welcome back, ${name}` : 'Welcome back'}</h2>
+              {role && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-white/30 bg-white/10 px-2 py-0.5 text-xs font-semibold capitalize">
+                  <Shield className="h-3 w-3" aria-hidden />
+                  {role.replace(/_/g, ' ')}
+                </span>
+              )}
             </div>
-            <p className="text-xs sm:text-sm text-slate-400 mt-1">
-              Prisma TypeScript Engine • Multi-tenant Workspace active
-            </p>
+            <p className="mt-1 text-sm text-white/80">Your practice, assessments and certificates in one place.</p>
           </div>
         </div>
 
-        {/* Right Side: XP Progress Bar & Quick Stats */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 lg:gap-6 min-w-[280px] lg:min-w-[340px]">
+        <div className="flex min-w-[260px] flex-col gap-4 sm:flex-row sm:items-center lg:min-w-[340px] lg:gap-6">
           <div className="flex-1 space-y-1.5">
-            <div className="flex items-center justify-between text-xs font-mono">
-              <span className="text-slate-400">Level {level} Progress</span>
-              <span className="font-bold text-emerald-400">{currentLevelXP} / 1000 XP</span>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-white/80">Level {level}</span>
+              <span className="font-semibold tabular-nums">{currentLevelXP} / 1000 XP</span>
             </div>
-            {/* Dual Gradient Progress Bar */}
-            <div className="h-2 w-full rounded-full bg-slate-900 border border-slate-800 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-linear-to-r from-mint-pulse via-[#10b981] to-[#06b6d4] transition-all duration-700 shadow-sm shadow-emerald-500/50"
-                style={{ width: `${Math.max(8, progressPercent)}%` }}
-              />
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/20" role="progressbar" aria-valuemin={0} aria-valuemax={1000} aria-valuenow={currentLevelXP} aria-label={`Level ${level} progress`}>
+              <div className="h-full rounded-full bg-white transition-all duration-700" style={{ width: `${Math.max(4, progressPercent)}%` }} />
             </div>
           </div>
-
-          <div className="flex items-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 sm:border-l border-slate-800/80 sm:pl-4">
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-xs font-mono font-bold text-orange-400">
-                <Flame className="w-3.5 h-3.5" />
-                <span>{stats?.streak || 0}d</span>
-              </div>
-              <p className="text-[10px] text-slate-500 uppercase tracking-wider">Streak</p>
-            </div>
+          <div className="flex shrink-0 items-center gap-2 border-t border-white/20 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+            <Flame className="h-4 w-4 text-amber-300" aria-hidden />
+            <span className="text-sm font-semibold tabular-nums">{stats?.streak || 0}-day streak</span>
           </div>
         </div>
       </div>
