@@ -944,3 +944,21 @@
 @media (prefers-reduced-motion: reduce) {
   .cs-mark-row::before { animation: none; }
 }
+
+/* Hero is white + mint in both themes */
+.cs-light {
+  --cs-paper: #fbfdfc;
+  --cs-sheet: #ffffff;
+  --cs-ink: #0f1729;
+  --cs-ink-soft: #475569;
+  --cs-accent-text: #047857;
+  --cs-grid: #e2e8f0;
+  color-scheme: light;
+}
+@keyframes cs-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cs-progress { animation: cs-progress linear forwards; }
+@keyframes cs-float { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
+.cs-float { animation: cs-float 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .cs-float { animation: none; }
+}

@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 import { ResultsSheet } from '@/components/landing/results-sheet'
+import { HeroShowcase } from '@/components/landing/hero-showcase'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { cn } from '@/lib/utils'
 
@@ -85,44 +86,24 @@ export default function Home() {
 
   return (
     <PublicPageWrapper>
-      {/* Hero — headline, then the product's real output: a ranked shortlist */}
+      <HeroShowcase
+        primaryHref="/contact"
+        secondaryHref={hasSession ? DASHBOARD_HREF : '/auth/signup'}
+        secondaryLabel={hasSession ? 'Go to dashboard' : 'Create a free account'}
+      />
+
+      {/* Sample report — the interactive results sheet */}
       <section className="cs-graph relative border-b border-cs-grid">
-        {/* fade the grid out behind the headline so type stays crisp */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[70%] bg-linear-to-b from-cs-paper via-cs-paper/90 to-cs-paper/0" />
-        <div className="relative mx-auto max-w-[1200px] px-4 pt-16 pb-16 sm:px-6 sm:pt-20 lg:px-8 lg:pb-24">
-          <div className="grid items-center gap-10 lg:grid-cols-[1.3fr_0.7fr] lg:gap-12">
-            <h1 className="cs-display max-w-[19ch] text-[2.9rem] sm:text-7xl lg:text-[5rem]">
-              Assess 100 applicants. Interview the 20 who can do the job.
-            </h1>
-            <ThemeIllustration
-              name="hero-funnel"
-              alt="100 applicants pass through a proctored assessment and the top 20 come out ranked"
-              width={480}
-              height={420}
-              priority
-              className="mx-auto w-full max-w-[420px]"
-            />
-          </div>
-
-          <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
-            <p className="max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">
-              Code Spectra runs proctored skills assessments for software, CAD and mechanical design, QA and
-              aptitude roles. Every candidate is scored the same way and ranked, so your team spends interview
-              time only on the strongest.
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-linear-to-b from-cs-paper to-cs-paper/0" />
+        <div className="relative mx-auto max-w-[1200px] px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
+          <div className="mb-10 grid items-end gap-6 lg:grid-cols-[1.2fr_1fr] lg:gap-16">
+            <h2 className="cs-heading text-4xl sm:text-5xl">Every screening ends in a ranked report</h2>
+            <p className="max-w-[52ch] text-lg leading-relaxed text-cs-ink-soft">
+              Switch roles to see the same ranking applied to design and QA hiring. Shortlisted candidates are
+              marked, and any integrity flag sits next to the score.
             </p>
-            <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
-              <Link href="/contact" className={btnPrimary}>
-                Book a pilot
-              </Link>
-              <Link href={hasSession ? DASHBOARD_HREF : '/auth/signup'} className={btnSecondary}>
-                {hasSession ? 'Go to dashboard' : 'Create a free account'}
-              </Link>
-            </div>
           </div>
-
-          <div className="mt-14 lg:mt-16">
-            <ResultsSheet />
-          </div>
+          <ResultsSheet />
         </div>
       </section>
 

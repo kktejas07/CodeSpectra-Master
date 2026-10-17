@@ -47,9 +47,8 @@ export function PublicPageWrapper({
       <header
         className={cn(
           'fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200',
-          isScrolled || mobileMenuOpen
-            ? 'border-cs-grid bg-cs-paper/95 backdrop-blur-md'
-            : 'border-transparent bg-cs-paper/0',
+          // solid at all times: the hero below is white in both themes
+          isScrolled || mobileMenuOpen ? 'border-cs-grid bg-cs-paper/95 backdrop-blur-md' : 'border-cs-grid/60 bg-cs-paper',
         )}
       >
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">

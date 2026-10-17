@@ -450,3 +450,198 @@ def auth_signup():
 for fn in [scoring_mix, hero, step_build, step_invite, step_proctor, step_review, domain_code, domain_cad, domain_qa, domain_aptitude, integrity, hackathon, auth_login, auth_signup]:
     fn()
 print("wrote", sorted(p.name for p in OUT.glob("*.svg")))
+
+
+# ── 7. Hero product screens (white + mint, single light file) ─────────────
+INK, SLATE, LINEL, BG = "#0f1729", "#64748b", "#e2e8f0", "#f8fafc"
+FONT = "ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif"
+MONO = "ui-monospace,SFMono-Regular,Menlo,monospace"
+
+SCREEN_CSS = """
+  @media (prefers-reduced-motion: reduce){*{animation:none!important}.in,.toast,.badge,.row{opacity:1!important;transform:none!important}.gauge{stroke-dashoffset:40!important}}
+"""
+
+
+def screen(name, inner, css, title, url):
+    w, h = 560, 400
+    doc = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -6 {w+24} {h+40}" fill="none" role="img"><title>{title}</title>'
+        f'<defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="{TEAL}"/><stop offset="1" stop-color="{MINT2}"/></linearGradient>'
+        f'<linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset=".5" stop-color="{MINT}"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>'
+        f'<filter id="sh" x="-8%" y="-8%" width="116%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0f1729" flood-opacity=".12"/></filter></defs>'
+        f"<style>{css}{SCREEN_CSS}</style>"
+        # window frame
+        f'<rect x="8" y="8" width="544" height="384" rx="14" fill="#ffffff" stroke="{LINEL}" filter="url(#sh)"/>'
+        f'<path d="M8 22a14 14 0 0 1 14-14h516a14 14 0 0 1 14 14v22H8z" fill="{BG}"/>'
+        f'<line x1="8" y1="44" x2="552" y2="44" stroke="{LINEL}"/>'
+        f'<circle cx="28" cy="26" r="5" fill="#fca5a5"/><circle cx="44" cy="26" r="5" fill="#fcd34d"/><circle cx="60" cy="26" r="5" fill="#86efac"/>'
+        f'<rect x="170" y="16" width="220" height="20" rx="10" fill="#ffffff" stroke="{LINEL}"/>'
+        f'<text x="280" y="30" text-anchor="middle" font-family="{FONT}" font-size="11" fill="{SLATE}">{url}</text>'
+        f"{inner}</svg>"
+    )
+    (OUT / f"{name}.svg").write_text(doc)
+
+
+def t(x, y, s, size=12, fill=INK, weight=400, anchor="start", family=FONT, cls=""):
+    c = f' class="{cls}"' if cls else ""
+    return f'<text{c} x="{x}" y="{y}" text-anchor="{anchor}" font-family="{family}" font-size="{size}" font-weight="{weight}" fill="{fill}">{s}</text>'
+
+
+def hero_build():
+    css = f"""
+  .in{{opacity:0;animation:in 8s ease infinite}}
+  @keyframes in{{0%{{opacity:0;transform:translateY(8px)}}8%,92%{{opacity:1;transform:none}}100%{{opacity:0}}}}
+  .cnt{{animation:none}}
+  .btn{{animation:pulse 2s ease-in-out infinite}}
+  @keyframes pulse{{50%{{opacity:.75}}}}
+"""
+    side = (
+        f'<rect x="24" y="60" width="168" height="316" rx="10" fill="{BG}" stroke="{LINEL}"/>'
+        + t(40, 86, "New assessment", 14, INK, 700)
+        + t(40, 114, "Role", 11, SLATE) + f'<rect x="40" y="120" width="136" height="30" rx="7" fill="#fff" stroke="{LINEL}"/>' + t(52, 140, "Design engineer", 12)
+        + t(40, 172, "Experience", 11, SLATE) + f'<rect x="40" y="178" width="136" height="30" rx="7" fill="#fff" stroke="{LINEL}"/>' + t(52, 198, "1–3 years", 12)
+        + t(40, 230, "Sections", 11, SLATE)
+        + "".join(f'<rect x="40" y="{236+i*26}" width="136" height="20" rx="10" fill="{c}" fill-opacity=".14"/>' + t(52, 250 + i * 26, lab, 11, INK, 500)
+                  for i, (lab, c) in enumerate([("CAD design task", MINT), ("Drawing review", TEAL), ("Aptitude MCQ", CYAN)]))
+        + f'<rect class="btn" x="40" y="330" width="136" height="32" rx="8" fill="{MINT}"/>' + t(108, 350, "Publish", 13, "#020617", 700, "middle")
+    )
+    qs = [("Model a gate-valve body to spec", "Hard", 5, CYAN), ("Identify GD&amp;T errors in drawing", "Medium", 4, TEAL),
+          ("Choose the correct pump curve", "Easy", 3, MINT2), ("Wall thickness for 16 bar PN rating", "Medium", 4, TEAL),
+          ("Section view of flange assembly", "Hard", 5, CYAN)]
+    rows = []
+    for i, (q, lvl, pts, col) in enumerate(qs):
+        y = 92 + i * 50
+        rows.append(
+            f'<g class="in" style="animation-delay:{0.35*i:.2f}s"><rect x="210" y="{y}" width="326" height="40" rx="9" fill="#fff" stroke="{LINEL}"/>'
+            + t(224, y + 25, q, 12, INK, 500)
+            + f'<rect x="452" y="{y+10}" width="52" height="20" rx="10" fill="{col}" fill-opacity=".18"/>' + t(478, y + 24, lvl, 10, INK, 600, "middle")
+            + f'<rect x="508" y="{y+10}" width="20" height="20" rx="6" fill="{col}"/>' + t(518, y + 24, str(pts), 11, "#020617", 700, "middle", MONO)
+            + "</g>"
+        )
+    head = t(210, 76, "Questions", 14, INK, 700) + t(536, 76, "21 points", 12, MINT, 700, "end", MONO)
+    foot = f'<rect x="210" y="346" width="326" height="30" rx="8" fill="{MINT}" fill-opacity=".08" stroke="{MINT}" stroke-opacity=".35" stroke-dasharray="4 4"/>' + t(373, 365, "+ Add from question bank", 12, "#047857", 600, "middle")
+    screen("hero-screen-build", side + head + "".join(rows) + foot, css, "Building an assessment for a design engineer role, with questions weighted by difficulty", "codespectra.ai/assessments/new")
+
+
+def hero_proctor():
+    css = f"""
+  .ty{{transform-box:fill-box;transform-origin:0 50%;animation:ty 7s steps(16) infinite}}
+  @keyframes ty{{0%{{transform:scaleX(0)}}30%,92%{{transform:scaleX(1)}}100%{{transform:scaleX(0)}}}}
+  .scan{{animation:scan 2.4s ease-in-out infinite alternate}}
+  @keyframes scan{{from{{transform:translateY(0)}}to{{transform:translateY(96px)}}}}
+  .rec{{animation:blink 1.2s steps(2,start) infinite}}@keyframes blink{{to{{visibility:hidden}}}}
+  .toast{{opacity:0;animation:toast 7s ease infinite}}
+  .t2{{animation-delay:2.3s}}
+  @keyframes toast{{0%,20%{{opacity:0;transform:translateX(20px)}}28%,55%{{opacity:1;transform:none}}63%,100%{{opacity:0;transform:translateX(20px)}}}}
+  .hand{{transform-origin:478px 82px;animation:spin 60s linear infinite}}@keyframes spin{{to{{transform:rotate(360deg)}}}}
+"""
+    code = [(48, 120, "#7c3aed"), (64, 170, CYAN), (64, 140, TEAL), (80, 190, SLATE), (80, 120, MINT), (64, 90, SLATE), (48, 40, "#7c3aed"),
+            (48, 150, CYAN), (64, 200, TEAL), (64, 110, SLATE)]
+    lines = "".join(
+        t(34, 120 + i * 22, str(i + 1), 10, "#94a3b8", 400, "end", MONO)
+        + f'<rect class="ty" style="animation-delay:{0.3*i:.1f}s" x="{x}" y="{112+i*22}" width="{w}" height="8" rx="4" fill="{c}" opacity=".75"/>'
+        for i, (x, w, c) in enumerate(code)
+    )
+    editor = (
+        f'<rect x="24" y="60" width="356" height="316" rx="10" fill="{BG}" stroke="{LINEL}"/>'
+        + t(40, 86, "Q3 · Find duplicate shipments", 13, INK, 700) + t(366, 86, "Java", 11, SLATE, 500, "end")
+        + f'<line x1="24" y1="98" x2="380" y2="98" stroke="{LINEL}"/>' + lines
+        + f'<rect x="40" y="336" width="110" height="28" rx="7" fill="#fff" stroke="{LINEL}"/>' + t(95, 354, "Run tests", 12, INK, 600, "middle")
+        + f'<rect x="160" y="336" width="90" height="28" rx="7" fill="{MINT}"/>' + t(205, 354, "Submit", 12, "#020617", 700, "middle")
+        + t(366, 354, "7 / 8 passing", 11, "#047857", 600, "end", MONO)
+    )
+    cam = (
+        f'<rect x="396" y="60" width="140" height="112" rx="10" fill="#0f1729"/>'
+        + '<circle cx="466" cy="104" r="18" stroke="#94a3b8" stroke-width="2"/><path d="M436 162c5-18 17-26 30-26s25 8 30 26" stroke="#94a3b8" stroke-width="2"/>'
+        + f'<path d="M412 72h-8v8M520 72h8v8M412 160h-8v-8M520 160h8v-8" stroke="{MINT}" stroke-width="2.5" stroke-linecap="round"/>'
+        + '<clipPath id="cam"><rect x="396" y="60" width="140" height="112" rx="10"/></clipPath>'
+        + f'<g clip-path="url(#cam)"><rect class="scan" x="396" y="68" width="140" height="2" fill="{MINT}" opacity=".8"/></g>'
+        + f'<circle class="rec" cx="410" cy="186" r="4" fill="#ef4444"/>' + t(420, 190, "Proctoring on", 11, SLATE)
+    )
+    timer = (
+        f'<rect x="396" y="204" width="140" height="56" rx="10" fill="#fff" stroke="{LINEL}"/>'
+        + t(410, 226, "Time left", 11, SLATE) + t(410, 248, "42:10", 18, INK, 700, "start", MONO)
+        + f'<circle cx="510" cy="232" r="14" stroke="{LINEL}" stroke-width="3"/><circle cx="510" cy="232" r="14" stroke="{MINT}" stroke-width="3" stroke-dasharray="88" stroke-dashoffset="30" transform="rotate(-90 510 232)"/>'
+    )
+    toasts = (
+        f'<g class="toast"><rect x="396" y="276" width="140" height="40" rx="9" fill="#fff7ed" stroke="#fdba74"/>'
+        + '<circle cx="412" cy="296" r="4" fill="#f59e0b"/>' + t(422, 293, "Tab switch logged", 11, INK, 600) + t(422, 307, "at 14:22", 10, SLATE) + "</g>"
+        + f'<g class="toast t2"><rect x="396" y="324" width="140" height="40" rx="9" fill="#ecfdf5" stroke="#6ee7b7"/>'
+        + f'<circle cx="412" cy="344" r="4" fill="{MINT}"/>' + t(422, 341, "Face matched to ID", 11, INK, 600) + t(422, 355, "snapshot 6 of 12", 10, SLATE) + "</g>"
+    )
+    screen("hero-screen-proctor", editor + cam + timer + toasts, css, "A candidate taking a proctored coding test with webcam face matching and event logging", "codespectra.ai/assessment/java-mid")
+
+
+def hero_results():
+    css = f"""
+  .bar{{transform-box:fill-box;transform-origin:0 50%;animation:grow 7s cubic-bezier(.2,.7,.2,1) infinite}}
+  @keyframes grow{{0%,5%{{transform:scaleX(0)}}30%,92%{{transform:scaleX(1)}}100%{{transform:scaleX(0)}}}}
+  .row{{opacity:0;animation:row 7s ease infinite}}
+  @keyframes row{{0%{{opacity:0}}6%,92%{{opacity:1}}100%{{opacity:0}}}}
+  .cut{{stroke-dasharray:6 5;animation:dash 1.2s linear infinite}}@keyframes dash{{to{{stroke-dashoffset:-11}}}}
+"""
+    data = [("Ananya Rao", 112, None), ("Kiran Patel", 108, None), ("Marcus Thompson", 104, "1 flag"), ("Meera Joshi", 101, None),
+            ("Arjun Menon", 97, None), ("Rohit Verma", 78, None), ("Sofia Martins", 74, None)]
+    rows = []
+    for i, (n, pts, flag) in enumerate(data):
+        y = 118 + i * 34 + (24 if i >= 5 else 0)
+        short = i < 5
+        rows.append(
+            f'<g class="row" style="animation-delay:{0.15*i:.2f}s">'
+            + (f'<rect x="28" y="{y-18}" width="504" height="28" rx="6" fill="{MINT}" fill-opacity=".08"/>' if short else "")
+            + t(44, y, str(i + 1 if i < 5 else i + 16), 12, SLATE, 500, "start", MONO)
+            + t(74, y, n, 12, INK if short else SLATE, 600 if short else 400)
+            + f'<rect x="210" y="{y-9}" width="220" height="10" rx="5" fill="{LINEL}"/>'
+            + f'<rect class="bar" style="animation-delay:{0.15*i:.2f}s" x="210" y="{y-9}" width="{220*pts/120:.0f}" height="10" rx="5" fill="{"url(#mint)" if short else "#cbd5e1"}"/>'
+            + t(470, y, str(pts), 12, INK if short else SLATE, 700 if short else 400, "end", MONO)
+            + (t(522, y, flag, 10, "#dc2626", 600, "end") if flag else t(522, y, "clean", 10, SLATE, 400, "end"))
+            + "</g>"
+        )
+    head = (
+        t(28, 76, "Java developer · 100 applicants", 14, INK, 700)
+        + f'<rect x="420" y="62" width="112" height="22" rx="11" fill="{MINT}"/>' + t(476, 77, "Shortlist: top 20", 11, "#020617", 700, "middle")
+        + t(44, 98, "Rank", 10, SLATE, 500) + t(74, 98, "Candidate", 10, SLATE, 500) + t(210, 98, "Score / 120", 10, SLATE, 500) + t(522, 98, "Integrity", 10, SLATE, 500, "end")
+    )
+    cy = 118 + 5 * 34 + 2
+    cutoff = f'<line class="cut" x1="28" y1="{cy}" x2="470" y2="{cy}" stroke="{MINT}" stroke-width="2"/>' + t(532, cy + 4, "cutoff", 10, "#047857", 700, "end")
+    gap = t(74, 118 + 4 * 34 + 24, "ranks 6–20 also shortlisted", 10, SLATE)
+    foot = f'<rect x="28" y="356" width="120" height="26" rx="7" fill="#fff" stroke="{LINEL}"/>' + t(88, 373, "Export CSV", 11, INK, 600, "middle") + f'<rect x="156" y="356" width="132" height="26" rx="7" fill="{INK}"/>' + t(222, 373, "Release results", 11, "#fff", 600, "middle")
+    screen("hero-screen-results", head + "".join(rows) + cutoff + gap + foot, css, "Ranked screening results with a top-20 shortlist cutoff", "codespectra.ai/exams/java-mid/results")
+
+
+def hero_hackathon():
+    css = f"""
+  .seg{{transform-box:fill-box;transform-origin:0 50%;animation:grow 7s cubic-bezier(.2,.7,.2,1) infinite}}
+  @keyframes grow{{0%,8%{{transform:scaleX(0)}}35%,92%{{transform:scaleX(1)}}100%{{transform:scaleX(0)}}}}
+  .badge{{opacity:0;transform-origin:470px 76px;animation:pop 7s cubic-bezier(.3,1.5,.5,1) infinite}}
+  @keyframes pop{{0%,45%{{opacity:0;transform:scale(.6)}}55%,92%{{opacity:1;transform:none}}100%{{opacity:0}}}}
+  .in{{opacity:0;animation:in 7s ease infinite}}@keyframes in{{0%{{opacity:0}}8%,92%{{opacity:1}}100%{{opacity:0}}}}
+"""
+    teams = [("Null Pointers", 91, [38, 18, 17, 9, 9]), ("Byte Club", 86, [36, 17, 16, 8, 9]), ("Stack Smash", 79, [33, 16, 15, 7, 8]), ("Git Gud", 72, [30, 15, 13, 7, 7])]
+    cols = [INK, MINT, TEAL, CYAN, "#94a3b8"]
+    rows = []
+    for i, (name, total, parts) in enumerate(teams):
+        y = 120 + i * 50
+        x = 186
+        segs = ""
+        for j, p in enumerate(parts):
+            w = p * 2.6
+            segs += f'<rect class="seg" style="animation-delay:{0.2*i+0.12*j:.2f}s" x="{x:.1f}" y="{y-12}" width="{w-2:.1f}" height="18" rx="3" fill="{cols[j]}"/>'
+            x += w
+        rows.append(
+            f'<g class="in" style="animation-delay:{0.2*i:.2f}s"><rect x="28" y="{y-28}" width="504" height="42" rx="9" fill="#fff" stroke="{LINEL}"/>'
+            + t(44, y, str(i + 1), 13, MINT if i == 0 else SLATE, 700, "start", MONO)
+            + t(66, y - 4, name, 12, INK, 600) + t(66, y + 9, "5 members", 10, SLATE)
+            + segs + t(518, y + 2, f"{total}", 15, INK, 700, "end", MONO) + "</g>"
+        )
+    legend = "".join(f'<rect x="{28+i*104}" y="336" width="10" height="10" rx="2" fill="{cols[i]}"/>' + t(44 + i * 104, 345, f"{lab} {w}", 10, SLATE)
+                     for i, (lab, w) in enumerate([("Correctness", 40), ("Quality", 20), ("Efficiency", 20), ("Docs", 10), ("Edge cases", 10)]))
+    head = (t(28, 76, "Campus Hackathon · Judge dashboard", 14, INK, 700)
+            + f'<g class="badge"><rect x="414" y="62" width="118" height="24" rx="12" fill="{MINT}"/>' + t(473, 78, "Results released", 11, "#020617", 700, "middle") + "</g>")
+    screen("hero-screen-hackathon", head + "".join(rows) + legend + t(28, 372, "Scored out of 100 on one rubric", 11, SLATE), css,
+           "Hackathon judge dashboard with team scores on a shared rubric", "codespectra.ai/hackathons/campus/judge")
+
+
+for fn in [hero_build, hero_proctor, hero_results, hero_hackathon]:
+    fn()
+print("hero screens written")
