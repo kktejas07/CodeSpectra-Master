@@ -146,7 +146,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
           <FileText className="w-5 h-5" />
           Generate Report
         </h3>
-        <p className="text-sm text-foreground/60">
+        <p className="text-sm text-muted-foreground">
           Export comprehensive code quality reports in multiple formats
         </p>
       </div>
@@ -155,10 +155,10 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
         <div className="space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-foreground/60 mb-1">Overall Quality</p>
+              <p className="text-sm text-muted-foreground mb-1">Overall quality</p>
               <div className="flex items-baseline gap-2">
                 <span className={`text-5xl font-bold ${qualityColor.text}`}>{defaultData.quality}</span>
-                <span className="text-lg text-foreground/60">/100</span>
+                <span className="text-lg text-muted-foreground">/100</span>
               </div>
             </div>
             <Badge className={`${qualityColor.bg} ${qualityColor.text} border ${qualityColor.border}`}>
@@ -168,15 +168,15 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
 
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-foreground/10">
             <div>
-              <p className="text-xs text-foreground/60">Repository</p>
+              <p className="text-xs text-muted-foreground">Repository</p>
               <p className="text-sm font-medium text-foreground">{defaultData.repository}</p>
             </div>
             <div>
-              <p className="text-xs text-foreground/60">Branch</p>
+              <p className="text-xs text-muted-foreground">Branch</p>
               <p className="text-sm font-medium text-foreground">{defaultData.branch}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-xs text-foreground/60">Generated</p>
+              <p className="text-xs text-muted-foreground">Generated</p>
               <p className="text-sm font-medium text-foreground">
                 {formatDateTime(defaultData.timestamp)}
               </p>
@@ -186,34 +186,34 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
       </Card>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-        <Card className="bg-card/30 border border-border p-4">
-          <p className="text-xs text-foreground/60 mb-1">Bugs</p>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground mb-1">Bugs</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.bugs}</p>
         </Card>
-        <Card className="bg-card/30 border border-border p-4">
-          <p className="text-xs text-foreground/60 mb-1">Vulnerabilities</p>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground mb-1">Vulnerabilities</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.vulnerabilities}</p>
         </Card>
-        <Card className="bg-card/30 border border-border p-4">
-          <p className="text-xs text-foreground/60 mb-1">Code Smells</p>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground mb-1">Code smells</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.codeSmells}</p>
         </Card>
-        <Card className="bg-card/30 border border-border p-4">
-          <p className="text-xs text-foreground/60 mb-1">Test Coverage</p>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground mb-1">Test coverage</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.testCoverage}%</p>
         </Card>
-        <Card className="bg-card/30 border border-border p-4">
-          <p className="text-xs text-foreground/60 mb-1">Complexity</p>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground mb-1">Complexity</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.complexity}</p>
         </Card>
-        <Card className="bg-card/30 border border-border p-4">
-          <p className="text-xs text-foreground/60 mb-1">Fixes Applied</p>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground mb-1">Fixes applied</p>
           <p className="text-2xl font-bold text-green-500">{defaultData.appliedFixes ?? 0}</p>
         </Card>
       </div>
 
       <div className="space-y-4">
-        <h4 className="font-semibold text-foreground text-sm">Export Format</h4>
+        <h4 className="font-semibold text-foreground text-sm">Export format</h4>
 
         <div className="grid grid-cols-3 gap-3">
           {(['json', 'csv'] as const).map((format) => (
@@ -227,7 +227,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
               }`}
             >
               <div className="text-sm font-medium text-foreground uppercase">{format}</div>
-              <div className="text-xs text-foreground/60 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 {format === 'json' ? 'JSON format' : 'Spreadsheet'}
               </div>
             </button>
@@ -265,7 +265,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
       </div>
 
       {showEmailForm && (
-        <Card className="bg-card/30 border border-border p-4 space-y-3">
+        <Card className="p-4 space-y-3">
           <label className="text-sm font-medium text-foreground block">Email Recipients</label>
           <input
             type="text"
@@ -285,12 +285,12 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
         </Card>
       )}
 
-      <Card className="bg-card/30 border border-border p-4 space-y-3">
+      <Card className="p-4 space-y-3">
         <h4 className="font-semibold text-foreground flex items-center gap-2">
           <Calendar className="w-4 h-4" />
           Scheduled Reports
         </h4>
-        <p className="text-sm text-foreground/60">
+        <p className="text-sm text-muted-foreground">
           Set up automatic weekly or monthly reports to be delivered via email
         </p>
         <Button

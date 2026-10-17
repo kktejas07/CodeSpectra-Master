@@ -136,24 +136,24 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-xl border border-border/60 bg-card shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200 motion-reduce:animate-none">
+      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col rounded-3xl border border-border/70 bg-card shadow-2xl overflow-hidden">
         
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/40 px-6 py-4 bg-muted/20">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
-              <Sparkles className="h-5 w-5 animate-pulse" />
+              <Sparkles className="h-5 w-5" aria-hidden />
             </div>
             <div>
               <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                AI Text-to-CAD Generator
-                <span className="rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-medium px-2 py-0.5 border border-emerald-500/20">
-                  Parametric Engine
+                Text to CAD
+                <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                  Parametric
                 </span>
               </h2>
               <p className="text-xs text-muted-foreground">
-                Synthesize CAD briefs, geometric constraints, and Python parametric models from text prompts.
+                Describe a part in plain words and get a CAD brief, constraints and a parametric Python model.
               </p>
             </div>
           </div>
@@ -299,7 +299,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    <FileText className="h-3.5 w-3.5 text-blue-400" />
+                    <FileText className="h-3.5 w-3.5 text-primary" />
                     CAD Brief
                   </button>
 
@@ -312,7 +312,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    <Ruler className="h-3.5 w-3.5 text-emerald-400" />
+                    <Ruler className="h-3.5 w-3.5 text-primary" />
                     Geometric Constraints ({generatedPayload.constraints.length})
                   </button>
 
@@ -325,7 +325,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    <Code2 className="h-3.5 w-3.5 text-purple-400" />
+                    <Code2 className="h-3.5 w-3.5 text-primary" />
                     Parametric Code
                   </button>
                 </div>
@@ -337,7 +337,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                   >
                     {savedSuccess ? (
                       <>
-                        <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                         Saved to Bank!
                       </>
                     ) : (
@@ -398,7 +398,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
 
                 {activeTab === 'code' && (
                   <div>
-                    <pre className="font-mono text-[11px] text-emerald-400 bg-black/80 p-3 rounded-lg overflow-x-auto border border-emerald-500/20 max-h-60">
+                    <pre className="max-h-60 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-3 font-mono text-[11px] text-slate-100">
                       <code>{generatedPayload.parametric_code || '# No parametric code available'}</code>
                     </pre>
                   </div>

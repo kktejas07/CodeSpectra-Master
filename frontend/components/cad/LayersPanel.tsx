@@ -60,7 +60,7 @@ export function LayersPanel() {
   return (
     <div className="flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase text-muted-foreground">Layers</span>
+        <span className="text-xs font-semibold text-muted-foreground">Layers</span>
         <button
           type="button"
           onClick={() => addLayer(`Layer ${layers.length + 1}`)}

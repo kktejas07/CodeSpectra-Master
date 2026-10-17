@@ -50,7 +50,7 @@ export function AnalysisPanel({ analysis, loading, hasSubmitted }: AnalysisPanel
             <span className="text-lg font-bold text-primary">{score}</span>
           </div>
           <div>
-            <p className="font-medium text-foreground">Overall Score</p>
+            <p className="font-medium text-foreground">Overall score</p>
             <p className="text-xs text-muted-foreground">Based on efficiency, readability, and correctness</p>
           </div>
         </div>
@@ -58,17 +58,17 @@ export function AnalysisPanel({ analysis, loading, hasSubmitted }: AnalysisPanel
 
       {complexity && (
         <div className="p-3 rounded-lg bg-muted/20 border border-border/40">
-          <p className="text-xs font-medium text-muted-foreground mb-1">Time Complexity</p>
+          <p className="text-xs font-medium text-muted-foreground mb-1">Time complexity</p>
           <p className="font-mono text-sm text-foreground">{complexity}</p>
         </div>
       )}
 
       {strengths && strengths.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Strengths</p>
+          <p className="text-xs font-medium text-green-700 dark:text-green-400">Strengths</p>
           {strengths.map((s, i) => (
             <div key={i} className="flex items-start gap-2 text-xs text-muted-foreground">
-              <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-500" />
+              <CheckCircle2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-green-600 dark:text-green-400" />
               <span>{s}</span>
             </div>
           ))}

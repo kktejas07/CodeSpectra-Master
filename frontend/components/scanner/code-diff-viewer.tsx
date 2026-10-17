@@ -46,12 +46,12 @@ export function CodeDiffViewer({
   }
 
   return (
-    <Card className="bg-card/30 border border-border p-6 space-y-4">
+    <Card className="rounded-3xl p-6 space-y-4">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h3 className="font-semibold text-foreground">{title}</h3>
-          {description && <p className="text-sm text-foreground/60">{description}</p>}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
         <div className={`px-3 py-1 rounded border text-sm font-medium ${getConfidenceColor(confidence)}`}>
           {Math.round(confidence * 100)}% confident
@@ -73,10 +73,10 @@ export function CodeDiffViewer({
           {/* Original Code */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-foreground/60 uppercase">Original</p>
+              <p className="text-xs font-semibold text-muted-foreground">Original</p>
               <button
                 onClick={() => copyCode(originalCode, setCopiedOriginal)}
-                className="p-1 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
+                className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
               >
                 {copiedOriginal ? (
                   <Check className="w-4 h-4 text-green-500" />
@@ -95,10 +95,10 @@ export function CodeDiffViewer({
           {/* Suggested Code */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-semibold text-foreground/60 uppercase">Suggested</p>
+              <p className="text-xs font-semibold text-muted-foreground">Suggested</p>
               <button
                 onClick={() => copyCode(suggestedCode, setSuggestedCopied)}
-                className="p-1 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
+                className="p-1 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
               >
                 {copiedSuggested ? (
                   <Check className="w-4 h-4 text-green-500" />
@@ -117,7 +117,7 @@ export function CodeDiffViewer({
       ) : (
         /* Unified Code View */
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-foreground/60 uppercase">Updated Code</p>
+          <p className="text-xs font-semibold text-muted-foreground">Updated code</p>
           <div className="bg-card border border-border rounded p-3 font-mono text-xs overflow-x-auto">
             <pre className="text-foreground/80 whitespace-pre-wrap wrap-break-word">
               {suggestedCode}

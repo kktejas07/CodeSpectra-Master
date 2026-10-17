@@ -168,13 +168,13 @@ export function AskCodeSpectra() {
       >
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
               <Sparkles className="h-3.5 w-3.5" />
             </div>
             <div className="leading-tight">
               <div className="text-sm font-semibold">Ask CodeSpectra</div>
-              <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                AI Code Assistant · RAG over your scans
+              <div className="text-xs font-medium text-muted-foreground">
+                AI code assistant · answers from your scans
               </div>
             </div>
           </div>

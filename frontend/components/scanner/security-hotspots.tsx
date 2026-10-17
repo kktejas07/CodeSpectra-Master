@@ -63,31 +63,28 @@ export function SecurityHotspots({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-          <Shield className="w-8 h-8 text-primary" />
-          Security Hotspots
-        </h1>
-        <p className="text-foreground/60">
+        <h2 className="sr-only">Security hotspots</h2>
+        <p className="text-sm text-muted-foreground">
           Review security-sensitive code that requires attention. {hotspots.length} total hotspots
         </p>
       </div>
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">To Review</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">To review</p>
           <p className="text-3xl font-bold text-yellow-500">{stats.toReview}</p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Fixed</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">Fixed</p>
           <p className="text-3xl font-bold text-green-500">{stats.fixed}</p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Safe</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">Safe</p>
           <p className="text-3xl font-bold text-blue-500">{stats.safe}</p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Reviewed</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">Reviewed</p>
           <p className="text-3xl font-bold">{stats.fixed + stats.safe}</p>
         </Card>
       </div>
@@ -101,7 +98,7 @@ export function SecurityHotspots({
             className={`px-4 py-3 font-medium border-b-2 transition-colors ${
               filter === status
                 ? 'border-primary text-primary'
-                : 'border-transparent text-foreground/60 hover:text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
             {status === 'all' && `All (${hotspots.length})`}
@@ -115,9 +112,9 @@ export function SecurityHotspots({
       {/* Hotspots List */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <Card className="p-8 text-center bg-card/30 border border-dashed border-border">
-            <Shield className="w-12 h-12 text-foreground/40 mx-auto mb-3" />
-            <p className="text-foreground/60">No security hotspots {filter !== 'all' ? `with status "${filter}"` : ''}</p>
+          <Card className="rounded-3xl p-8 text-center border border-dashed">
+            <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No security hotspots {filter !== 'all' ? `with status "${filter}"` : ''}</p>
           </Card>
         ) : (
           filtered.map((hotspot) => (
@@ -134,7 +131,7 @@ export function SecurityHotspots({
                   {getStatusIcon(hotspot.status)}
                   <div className="flex-1">
                     <h3 className="font-semibold text-foreground">{hotspot.rule}</h3>
-                    <p className="text-sm text-foreground/60 mt-1">{hotspot.message}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{hotspot.message}</p>
                     <div className="flex gap-2 mt-2">
                       <Badge variant="outline">{hotspot.file}</Badge>
                       <Badge variant="outline">Line {hotspot.line}</Badge>

@@ -56,12 +56,12 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Activity Timeline</h1>
-        <p className="text-foreground/60">View all code analysis and quality gate events</p>
+        <h2 className="sr-only">Activity timeline</h2>
+        <p className="text-sm text-muted-foreground">View all code analysis and quality gate events</p>
       </div>
 
       {/* Filters */}
-      <Card className="p-4 bg-card/30">
+      <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1">
             <label className="text-sm font-medium block mb-2">Event Type</label>
@@ -118,13 +118,13 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
       {/* Timeline */}
       <div className="space-y-2">
         {loading ? (
-          <Card className="p-8 text-center">
-            <p className="text-foreground/60">Loading activities...</p>
+          <Card className="rounded-3xl p-8 text-center">
+            <p className="text-muted-foreground">Loading activities...</p>
           </Card>
         ) : filteredActivities.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
+          <Card className="rounded-3xl p-8 text-center border-dashed">
             <Calendar className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
-            <p className="text-foreground/60">No activities found</p>
+            <p className="text-muted-foreground">No activities found</p>
           </Card>
         ) : (
           filteredActivities.map((activity, idx) => (
@@ -133,7 +133,7 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
                 <div className="absolute left-6 top-12 bottom-0 w-0.5 bg-border" />
               )}
 
-              <Card className="p-4 bg-card/30 border border-border hover:shadow-md transition-shadow">
+              <Card className="p-4 hover:shadow-md transition-shadow">
                 <div className="flex gap-4">
                   {/* Timeline dot */}
                   <div className={`mt-1 w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${getEventColor(activity.eventType)}`}>
@@ -145,14 +145,14 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <h3 className="font-semibold text-foreground">{activity.description}</h3>
-                        <p className="text-sm text-foreground/60">by {activity.user}</p>
+                        <p className="text-sm text-muted-foreground">by {activity.user}</p>
                       </div>
                       <Badge variant="outline" className={getEventColor(activity.eventType)}>
                         {activity.eventType.replace(/_/g, ' ')}
                       </Badge>
                     </div>
 
-                    <p className="text-xs text-foreground/50 mt-2">
+                    <p className="text-xs text-muted-foreground mt-2">
                       {formatDateTime(activity.timestamp)}
                     </p>
 

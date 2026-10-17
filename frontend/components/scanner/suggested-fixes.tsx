@@ -80,12 +80,12 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
 
   if (issues.length === 0) {
     return (
-      <Card className="bg-linear-to-r from-green-500/10 to-green-500/5 border border-green-500/30 p-6 text-center">
+      <Card className="rounded-3xl bg-linear-to-r from-green-500/10 to-green-500/5 border border-green-500/30 p-6 text-center">
         <div className="flex flex-col items-center gap-3">
           <Check className="w-8 h-8 text-green-500" />
           <div>
-            <p className="font-semibold text-foreground">No Issues Found!</p>
-            <p className="text-sm text-foreground/60">Your code looks great. Keep up the good work!</p>
+            <p className="font-semibold text-foreground">No issues found</p>
+            <p className="text-sm text-muted-foreground">Nothing to fix in this scan.</p>
           </div>
         </div>
       </Card>
@@ -126,14 +126,14 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                     </div>
                     <p className="text-sm text-foreground/70">{issue.message}</p>
                     {issue.line && (
-                      <p className="text-xs text-foreground/50 mt-1">Line {issue.line}</p>
+                      <p className="text-xs text-muted-foreground mt-1">Line {issue.line}</p>
                     )}
                   </div>
                 </div>
                 {isExpanded ? (
-                  <ChevronUp className="w-5 h-5 text-foreground/50 shrink-0" />
+                  <ChevronUp className="w-5 h-5 text-muted-foreground shrink-0" />
                 ) : (
-                  <ChevronDown className="w-5 h-5 text-foreground/50 shrink-0" />
+                  <ChevronDown className="w-5 h-5 text-muted-foreground shrink-0" />
                 )}
               </button>
 
@@ -143,9 +143,9 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                   <div className="grid md:grid-cols-2 gap-3">
                     {/* Original Code */}
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-foreground/70">Current Code</p>
+                      <p className="text-xs font-medium text-foreground/70">Current code</p>
                       <div className="bg-background/50 border border-border rounded p-3">
-                        <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
+                        <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
                           {issue.message.slice(0, 120)}
                         </pre>
                         <Button
@@ -171,9 +171,9 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
 
                     {/* Suggested Code */}
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-foreground/70">Suggested Fix</p>
+                      <p className="text-xs font-medium text-foreground/70">Suggested fix</p>
                       <div className="bg-green-500/5 border border-green-500/20 rounded p-3">
-                        <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
+                        <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
                           {issue.type === 'bug'
                             ? '// Fix null safety issue\nconst result = data?.value ?? null;'
                             : issue.type === 'vulnerability'
@@ -219,7 +219,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                       <p className="text-xs font-medium text-foreground mb-2">
                         Why: {issue.message.slice(0, 80)}{issue.message.length > 80 ? '...' : ''}
                       </p>
-                      <p className="text-xs text-foreground/60">
+                      <p className="text-xs text-muted-foreground">
                         Estimated fix effort: ~{issue.effortMinutes} minute{issue.effortMinutes !== 1 ? 's' : ''}
                       </p>
                     </div>

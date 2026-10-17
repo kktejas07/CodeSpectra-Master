@@ -53,16 +53,16 @@ export function AdvancedMetrics({
     color?: string
     secondaryValue?: string
   }) => (
-    <Card className="bg-card/30 border border-border p-4">
+    <Card className="p-4">
       <div className="flex items-start justify-between mb-2">
         <Icon className={`w-5 h-5 ${color}`} />
-        <p className="text-xs text-foreground/60">{label}</p>
+        <p className="text-xs text-muted-foreground">{label}</p>
       </div>
       <div className="flex items-baseline gap-1">
         <span className={`text-2xl font-bold ${color}`}>{value}</span>
-        {unit && <span className="text-xs text-foreground/50">{unit}</span>}
+        {unit && <span className="text-xs text-muted-foreground">{unit}</span>}
       </div>
-      {secondaryValue && <p className="text-xs text-foreground/50 mt-1">{secondaryValue}</p>}
+      {secondaryValue && <p className="text-xs text-muted-foreground mt-1">{secondaryValue}</p>}
     </Card>
   )
 
@@ -72,10 +72,10 @@ export function AdvancedMetrics({
       <div className="relative overflow-hidden rounded-lg bg-linear-to-r from-primary/20 to-primary/10 border border-primary/30 p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-foreground/70 mb-2">Overall Code Quality</p>
+            <p className="text-sm text-foreground/70 mb-2">Overall code quality</p>
             <div className="flex items-baseline gap-3">
               <span className="text-5xl font-bold text-primary">{quality}</span>
-              <span className="text-lg text-foreground/60">/100</span>
+              <span className="text-lg text-muted-foreground">/100</span>
             </div>
           </div>
           <div className={`px-4 py-2 rounded-lg border ${getQualityBadgeColor(quality)}`}>
@@ -157,7 +157,7 @@ export function AdvancedMetrics({
       </div>
 
       {/* Metrics Information */}
-      <Card className="bg-card/30 border border-border p-4">
+      <Card className="p-4">
         <h4 className="text-sm font-semibold text-foreground mb-3">Understanding the Metrics</h4>
         <div className="space-y-2 text-xs text-foreground/70">
           <p>

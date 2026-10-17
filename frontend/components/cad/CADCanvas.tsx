@@ -13,7 +13,7 @@ import { collectSnapPoints, snapToNearest, getSnapIndicatorColor } from '@/lib/c
 import { DEFAULT_STYLES, LINE_DASH_MAP } from '@/types/cad';
 import type { CADShape, TextShape, DimensionShape } from '@/types/cad';
 
-const SELECTION_COLOR = '#3b82f6';
+const SELECTION_COLOR = '#2F5BE7'; // brand royal blue
 
 interface ShapeComponentProps {
   shape: CADShape;

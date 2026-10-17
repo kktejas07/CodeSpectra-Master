@@ -186,29 +186,24 @@ export default function AgentPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-5rem)] flex flex-col overflow-hidden rounded-xl border border-border bg-card/40 backdrop-blur-md shadow-xl">
+    <div className="h-[calc(100vh-5rem)] flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none">
       {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card/60 backdrop-blur" data-tour="agent-header">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-card px-5 py-4" data-tour="agent-header">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-primary via-emerald-500 to-teal-600 shadow-md text-primary-foreground">
-            <Bot className="h-5 w-5" />
-          </div>
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <Bot className="h-5 w-5" aria-hidden />
+          </span>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base font-bold tracking-tight">AI Agent Workspace</h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Active Loop
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">Autonomous multi-step code planning & refactoring agent</p>
+            <h1 className="text-xl font-bold tracking-tight text-foreground">AI agent workspace</h1>
+            <p className="text-sm text-muted-foreground">Give the agent a goal — it plans the steps and rewrites the code in the editor.</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="h-8 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground cursor-pointer hover:border-primary/40 transition-colors"
+            aria-label="Language"
+            className="h-9 cursor-pointer rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-primary"
             data-testid="agent-lang"
           >
             {LANGS.map((l) => (
@@ -218,11 +213,12 @@ export default function AgentPage() {
           <select
             value={maxSteps}
             onChange={(e) => setMaxSteps(Number(e.target.value))}
-            className="h-8 rounded-md border border-border bg-background px-2.5 text-xs font-medium text-foreground cursor-pointer hover:border-primary/40 transition-colors"
+            aria-label="Maximum steps"
+            className="h-9 cursor-pointer rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-primary"
             data-testid="agent-steps"
           >
             {STEP_OPTIONS.map((s) => (
-              <option key={s} value={s} className="bg-popover text-popover-foreground">{s} {s === 1 ? 'Step' : 'Steps'}</option>
+              <option key={s} value={s} className="bg-popover text-popover-foreground">{s} {s === 1 ? 'step' : 'steps'}</option>
             ))}
           </select>
           <ModelSelector feature="chat_model" />
@@ -231,16 +227,16 @@ export default function AgentPage() {
 
       <div className="flex-1 flex min-h-0">
         {/* LEFT — chat & prompts */}
-        <section className="w-full lg:w-[44%] xl:w-[40%] flex flex-col border-r border-border bg-card/20">
+        <section className="w-full lg:w-[44%] xl:w-[40%] flex flex-col border-r border-border/70 bg-muted/20">
           <div ref={logRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             {turns.length === 0 && (
-              <div className="rounded-xl border border-border/70 bg-card/60 p-4 space-y-3">
+              <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Sparkles className="h-4 w-4 text-emerald-400" />
+                  <Sparkles className="h-4 w-4 text-primary" aria-hidden />
                   What would you like the agent to do?
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Provide a high-level goal or click one of the preset prompts below. The agent will analyze, plan, and autonomously rewrite your code in the workspace editor.
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Describe a goal or pick a suggestion below. The agent reads your code, plans the steps and rewrites it in the editor on the right.
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {SUGGESTED_PROMPTS.map((p) => (
@@ -249,9 +245,9 @@ export default function AgentPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => void runAgent(p)}
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-muted/60 hover:bg-primary/15 hover:text-primary border border-border/70 hover:border-primary/40 transition-all text-left"
+                      className="rounded-full border border-border/70 bg-muted/60 px-3 py-1.5 text-left text-xs font-medium text-foreground transition-colors duration-200 hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-50"
                     >
-                      ✨ {p}
+                      {p}
                     </button>
                   ))}
                 </div>
@@ -261,9 +257,9 @@ export default function AgentPage() {
               <AgentBubble key={t.id} turn={t} />
             ))}
             {busy && (
-              <div className="flex items-center gap-2 rounded-lg bg-primary/10 border border-primary/20 px-3 py-2 text-xs font-medium text-primary animate-pulse">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Executing {maxSteps}-step autonomous reasoning plan...
+              <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-medium text-primary" role="status">
+                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                Working through up to {maxSteps} steps…
               </div>
             )}
           </div>
@@ -275,9 +271,9 @@ export default function AgentPage() {
               e.preventDefault()
               void runAgent()
             }}
-            className="border-t border-border p-3 bg-card/40"
+            className="border-t border-border/70 bg-card p-3"
           >
-            <div className="flex items-end gap-2 rounded-xl border border-border/80 bg-background/90 px-3 py-2 focus-within:border-primary/50 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+            <div className="flex items-end gap-2 rounded-2xl border border-border bg-background px-3 py-2 transition-[border-color,box-shadow] duration-200 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/20">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -289,7 +285,8 @@ export default function AgentPage() {
                 }}
                 rows={2}
                 placeholder="Describe your goal — e.g. 'Refactor to O(n) iterative and add comprehensive test suite'"
-                className="flex-1 resize-none bg-transparent text-xs sm:text-sm font-mono focus:outline-none placeholder:text-muted-foreground/60"
+                aria-label="Goal for the agent"
+                className="flex-1 resize-none bg-transparent text-sm text-foreground focus:outline-none placeholder:text-muted-foreground"
                 data-testid="agent-input"
                 disabled={busy}
               />
@@ -297,7 +294,8 @@ export default function AgentPage() {
                 type="submit"
                 size="icon"
                 disabled={busy || !input.trim()}
-                className="h-8 w-8 rounded-lg bg-primary text-primary-foreground shadow-sm hover:scale-105 transition-transform"
+                aria-label="Run agent"
+                className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-sm"
                 data-testid="agent-run"
               >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
@@ -305,8 +303,8 @@ export default function AgentPage() {
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-2 px-1">
               <span>Press <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">⌘ + Enter</kbd> to run</span>
-              <span className="flex items-center gap-1 font-medium text-emerald-400">
-                <Cpu className="h-3.5 w-3.5" /> Agent Planner Active
+              <span className="flex items-center gap-1 font-medium tabular-nums text-muted-foreground">
+                <Cpu className="h-3.5 w-3.5 text-primary" aria-hidden /> Up to {maxSteps} {maxSteps === 1 ? 'step' : 'steps'}
               </span>
             </div>
           </form>
@@ -314,7 +312,7 @@ export default function AgentPage() {
 
         {/* RIGHT — workspace */}
         <section className="flex-1 flex flex-col min-w-0" data-tour="agent-workspace">
-          <div className="flex items-center gap-1 border-b border-border bg-card/30 px-3">
+          <div className="flex flex-wrap items-center gap-1 border-b border-border/70 bg-card px-3">
             <TabButton
               active={activeTab === 'code'}
               onClick={() => setActiveTab('code')}
@@ -342,10 +340,12 @@ export default function AgentPage() {
                 className={cn(
                   'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors',
                   diffView
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                    ? 'bg-primary/10 text-primary border-primary/40'
                     : 'text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 border-border/50'
                 )}
-                title="Toggle Diff against original code"
+                title="Compare with the original code"
+                aria-pressed={diffView}
+                aria-label="Toggle diff view"
               >
                 <GitCompare className="h-3 w-3" />
                 <span className="hidden md:inline">Diff</span>
@@ -358,8 +358,8 @@ export default function AgentPage() {
               >
                 {copied ? (
                   <>
-                    <Check className="h-3 w-3 text-emerald-400" />
-                    <span className="text-emerald-400">Copied</span>
+                    <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                    <span className="text-green-700 dark:text-green-400">Copied</span>
                   </>
                 ) : (
                   <>
@@ -373,6 +373,7 @@ export default function AgentPage() {
                 onClick={handleReset}
                 className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 rounded-md border border-border/50 transition-colors"
                 title="Reset starter template"
+                aria-label="Reset starter template"
               >
                 <RotateCcw className="h-3 w-3" />
               </button>
@@ -381,7 +382,7 @@ export default function AgentPage() {
                 size="sm"
                 onClick={handleRunCode}
                 disabled={runningCode}
-                className="h-7 px-2.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs gap-1.5"
+                className="h-8 gap-1.5 px-3 text-xs font-semibold"
                 title="Run code in sandbox"
               >
                 {runningCode ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
@@ -429,30 +430,31 @@ export default function AgentPage() {
 
               {/* Console Output Drawer */}
               {showConsole && (
-                <div className="h-44 border-t border-border/80 bg-black/90 backdrop-blur-md flex flex-col font-mono text-xs shadow-2xl z-10">
-                  <div className="flex items-center justify-between px-3 py-1.5 border-b border-border/60 bg-muted/20">
-                    <div className="flex items-center gap-2 text-muted-foreground font-semibold text-[11px]">
-                      <SquareTerminal className="h-3.5 w-3.5 text-emerald-400" />
-                      <span>TERMINAL CONSOLE</span>
+                <div className="z-10 flex h-44 flex-col border-t border-slate-800 bg-slate-950 font-mono text-xs text-slate-300">
+                  <div className="flex items-center justify-between border-b border-slate-800 px-3 py-1.5">
+                    <div className="flex items-center gap-2 font-sans text-[11px] font-semibold text-slate-400">
+                      <SquareTerminal className="h-3.5 w-3.5 text-sky-400" aria-hidden />
+                      <span>Console</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowConsole(false)}
-                      className="text-muted-foreground hover:text-foreground p-0.5 rounded"
+                      className="rounded p-0.5 text-slate-400 hover:text-white focus-visible:outline-2 focus-visible:outline-sky-400"
                       title="Close console"
+                      aria-label="Close console"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
                   <div className="flex-1 p-3 overflow-y-auto space-y-1">
                     {runningCode && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin text-emerald-400" />
-                        <span>Executing in sandbox runtime...</span>
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Loader2 className="h-3 w-3 animate-spin text-sky-400 motion-reduce:animate-none" />
+                        <span>Running in the sandbox…</span>
                       </div>
                     )}
                     {consoleOutput?.stdout && (
-                      <pre className="text-emerald-400 whitespace-pre-wrap">{consoleOutput.stdout}</pre>
+                      <pre className="whitespace-pre-wrap text-slate-100">{consoleOutput.stdout}</pre>
                     )}
                     {consoleOutput?.stderr && (
                       <pre className="text-rose-400 whitespace-pre-wrap">{consoleOutput.stderr}</pre>
@@ -461,17 +463,17 @@ export default function AgentPage() {
                       <pre className="text-rose-400 whitespace-pre-wrap">{consoleOutput.error}</pre>
                     )}
                     {!runningCode && !consoleOutput?.stdout && !consoleOutput?.stderr && !consoleOutput?.error && (
-                      <span className="text-muted-foreground">Program executed with return code 0.</span>
+                      <span className="text-slate-400">Finished with no output.</span>
                     )}
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-card/10">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-muted/20">
               {turns.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  Step-by-step thoughts will appear here once you run the agent.
+                <p className="text-sm text-muted-foreground">
+                  The agent's steps will appear here once you run it.
                 </p>
               ) : (
                 turns
@@ -481,10 +483,10 @@ export default function AgentPage() {
                       {t.steps!.map((s) => (
                         <div
                           key={s.step}
-                          className="rounded-md border border-border bg-card/40 p-3 text-xs"
+                          className="rounded-2xl border border-border/70 bg-card p-4 text-xs"
                           data-testid={`step-${s.step}`}
                         >
-                          <div className="flex items-center gap-2 mb-1 text-primary text-[10px] uppercase tracking-wide">
+                          <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-primary">
                             <CheckCircle2 className="h-3 w-3" /> Step {s.step}
                           </div>
                           <div className="text-foreground/90 font-mono whitespace-pre-wrap">
@@ -528,7 +530,7 @@ function TabButton({
       onClick={onClick}
       data-testid={testid}
       className={cn(
-        'flex items-center gap-1.5 px-3 py-2 text-xs border-b-2 transition',
+        'flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-primary',
         active
           ? 'border-primary text-foreground'
           : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -545,21 +547,21 @@ function AgentBubble({ turn }: { turn: AgentTurn }) {
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[92%] rounded-xl px-3 py-2 text-sm whitespace-pre-wrap',
+          'max-w-[92%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap',
           isUser
             ? 'bg-primary text-primary-foreground'
-            : 'bg-muted/50 border border-border/60 text-foreground',
+            : 'bg-card border border-border/70 text-foreground',
         )}
         data-testid={isUser ? 'agent-msg-user' : 'agent-msg-bot'}
       >
         {!isUser && (
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-primary mb-1">
+          <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-primary">
             <Bot className="h-3 w-3" /> Agent
           </div>
         )}
         {turn.content}
         {turn.steps && turn.steps.length > 0 && (
-          <div className="mt-2 text-[10px] text-muted-foreground flex items-center gap-1">
+          <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
             <Play className="h-3 w-3" /> {turn.steps.length} step(s) executed — switch to the
             Steps tab on the right to inspect.
           </div>

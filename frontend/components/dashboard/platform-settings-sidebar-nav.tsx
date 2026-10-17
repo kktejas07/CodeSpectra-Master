@@ -82,7 +82,7 @@ export function PlatformSettingsSidebarNav({
         </Link>
         <p
           className={cn(
-            'mt-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80',
+            'mt-1 px-2 text-xs font-semibold text-muted-foreground',
             collapsed && 'lg:sr-only'
           )}
         >
@@ -105,7 +105,7 @@ export function PlatformSettingsSidebarNav({
             >
               <div
                 className={cn(
-                  'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+                  'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-200',
                   collapsed && 'lg:justify-center lg:px-2',
                   active
                     ? 'bg-primary/10 font-medium text-primary'

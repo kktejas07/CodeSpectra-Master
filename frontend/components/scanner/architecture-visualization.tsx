@@ -126,8 +126,8 @@ export function ArchitectureVisualization({
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold mb-2">Architecture Map</h1>
-          <p className="text-foreground/60">Visualize, interact with, and analyze project component relationships.</p>
+          <h2 className="sr-only">Architecture map</h2>
+          <p className="text-sm text-muted-foreground">Visualize, interact with, and analyze project component relationships.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 bg-muted/50 rounded-md border border-border p-1">
@@ -199,7 +199,7 @@ export function ArchitectureVisualization({
       ) : (
         <>
           {/* SVG Canvas Card — Circular view */}
-          <Card className="relative overflow-hidden bg-card/50 backdrop-blur border border-border/80 h-[400px]">
+          <Card className="relative overflow-hidden backdrop-blur h-[400px]">
             <div className="absolute top-4 left-4 z-10 flex gap-1 bg-background/80 backdrop-blur rounded-md border border-border p-1">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(50, zoom - 15))}>
                 <ZoomOut className="w-4 h-4" />
@@ -297,8 +297,8 @@ export function ArchitectureVisualization({
             <div className="lg:col-span-2 space-y-4">
               <h2 className="text-xl font-bold">Components</h2>
               {components.length === 0 ? (
-                <Card className="p-8 text-center border-dashed">
-                  <p className="text-foreground/60">No components yet. Add your first component to get started.</p>
+                <Card className="rounded-3xl p-8 text-center border-dashed">
+                  <p className="text-muted-foreground">No components yet. Add your first component to get started.</p>
                 </Card>
               ) : (
                 <div className="grid gap-3">
@@ -313,7 +313,7 @@ export function ArchitectureVisualization({
                           <span className="text-2xl">{getComponentIcon(comp.type)}</span>
                           <div className="flex-1">
                             <h3 className="font-semibold text-foreground">{comp.name}</h3>
-                            <p className="text-xs text-foreground/60 mt-1">
+                            <p className="text-xs text-muted-foreground mt-1">
                               {comp.files} files • {comp.linesOfCode.toLocaleString()} LOC
                             </p>
                           </div>
@@ -339,8 +339,8 @@ export function ArchitectureVisualization({
               {selectedComponent ? (
                 <div className="space-y-3">
                   {getRelatedDependencies(selectedComponent).length === 0 ? (
-                    <Card className="p-4 text-center bg-card/30 border-dashed">
-                      <p className="text-sm text-foreground/60">No dependencies</p>
+                    <Card className="p-4 text-center border-dashed">
+                      <p className="text-sm text-muted-foreground">No dependencies</p>
                     </Card>
                   ) : (
                     getRelatedDependencies(selectedComponent).map((dep, idx) => (
@@ -348,7 +348,7 @@ export function ArchitectureVisualization({
                         <div className="text-xs space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-foreground">{dep.from}</span>
-                            <span className="text-foreground/40">→</span>
+                            <span className="text-muted-foreground">→</span>
                             <span className="font-medium text-foreground">{dep.to}</span>
                           </div>
                           <div className="flex justify-between">
@@ -363,8 +363,8 @@ export function ArchitectureVisualization({
                   )}
                 </div>
               ) : (
-                <Card className="p-4 text-center bg-card/30 border-dashed">
-                  <p className="text-sm text-foreground/60">Select a component node in the map to view dependencies</p>
+                <Card className="p-4 text-center border-dashed">
+                  <p className="text-sm text-muted-foreground">Select a component node in the map to view dependencies</p>
                 </Card>
               )}
             </div>
@@ -373,40 +373,40 @@ export function ArchitectureVisualization({
       )}
 
       <div className="grid md:grid-cols-5 gap-4">
-        <Card className="p-5 bg-linear-to-r from-primary/10 to-primary/5 border-primary/20">
-          <p className="text-xs text-foreground/60 mb-1">Overall Grade</p>
+        <Card className="rounded-3xl p-5 bg-linear-to-r from-primary/10 to-primary/5 border-primary/20">
+          <p className="text-xs text-muted-foreground mb-1">Overall grade</p>
           <p className="text-3xl font-bold" style={{ color: HEALTH_GRADE_COLORS[healthSummary.overallGrade] }}>
             {healthSummary.overallGrade}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">{HEALTH_GRADE_LABELS[healthSummary.overallGrade]}</p>
         </Card>
-        <Card className="p-5">
-          <h3 className="font-semibold text-foreground mb-4">Architecture Overview</h3>
+        <Card className="rounded-3xl p-5">
+          <h3 className="font-semibold text-foreground mb-4">Architecture overview</h3>
           <div className="grid grid-cols-2 gap-3">
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">{components.length}</p>
-              <p className="text-xs text-foreground/60">Total Components</p>
+              <p className="text-xs text-muted-foreground">Total components</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">{dependencies.length}</p>
-              <p className="text-xs text-foreground/60">Dependencies</p>
+              <p className="text-xs text-muted-foreground">Dependencies</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">
                 {components.reduce((sum, c) => sum + c.linesOfCode, 0).toLocaleString()}
               </p>
-              <p className="text-xs text-foreground/60">Total LOC</p>
+              <p className="text-xs text-muted-foreground">Total LOC</p>
             </div>
             <div className="text-center">
               <p className="text-2xl font-bold text-primary">
                 {Math.round((components.filter((c) => c.health === 'healthy').length / components.length) * 100 || 0)}%
               </p>
-              <p className="text-xs text-foreground/60">Healthy</p>
+              <p className="text-xs text-muted-foreground">Healthy</p>
             </div>
           </div>
         </Card>
-        <Card className="p-5 col-span-3">
-          <h3 className="font-semibold text-foreground mb-3">Health Grade Distribution</h3>
+        <Card className="rounded-3xl p-5 col-span-3">
+          <h3 className="font-semibold text-foreground mb-3">Health grade distribution</h3>
           <div className="flex items-end gap-2 h-16">
             {(['A','B','C','D','F'] as const).map(grade => {
               const count = healthSummary.gradeDistribution[grade]

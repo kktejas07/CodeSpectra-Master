@@ -58,7 +58,7 @@ interface HealthRow {
 }
 
 const HEALTH_META: Record<HealthRow['status'], { label: string; dot: string; pill: string; hint: string }> = {
-  ok: { label: 'Working', dot: 'bg-emerald-500', pill: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', hint: 'Live probe succeeded' },
+  ok: { label: 'Working', dot: 'bg-green-500', pill: 'bg-green-500/10 text-green-700 border-green-500/20 dark:text-green-400', hint: 'Live probe succeeded' },
   rate_limited: { label: 'Rate limited', dot: 'bg-amber-500', pill: 'bg-amber-500/10 text-amber-600 border-amber-500/20', hint: 'Out of credits / throttled — waits out, then retries automatically' },
   bad_key: { label: 'Bad key', dot: 'bg-red-500', pill: 'bg-red-500/10 text-red-600 border-red-500/20', hint: 'Key rejected (401/403) — replace it in the API Keys tab' },
   dead_model: { label: 'Dead model', dot: 'bg-red-500', pill: 'bg-red-500/10 text-red-600 border-red-500/20', hint: 'Model retired/unknown — update the fallback chain model ID' },
@@ -491,7 +491,7 @@ export function LlmSettingsTabs() {
                             {saved?.has && (
                               <Badge
                                 variant="outline"
-                                className="text-[9px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                className="text-[9px] bg-green-500/10 text-green-700 border-green-500/20 dark:text-green-400"
                                 title={saved.masked ? `${saved.count || 1} key(s) stored: ${saved.masked}` : 'Stored in database'}
                               >
                                 Saved{saved.count > 1 ? ` · ${saved.count} keys` : ''}
@@ -510,7 +510,7 @@ export function LlmSettingsTabs() {
                       {isExpanded && (
                         <div className="mt-4 pt-4 border-t border-border/50 space-y-3" onClick={(e) => e.stopPropagation()}>
                           {saved?.has && (
-                            <div className="flex items-center gap-2 p-2 rounded-md bg-emerald-500/5 border border-emerald-500/20">
+                            <div className="flex items-center gap-2 p-2 rounded-md bg-green-500/5 border border-green-500/20">
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-mono truncate">{saved.masked || '••••••••'}</p>
                                 <p className="text-[10px] text-muted-foreground">Saved in database — used by AI features</p>
@@ -655,7 +655,7 @@ export function LlmSettingsTabs() {
       <TabsContent value="usage" className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h4 className="text-sm font-semibold">Model Usage Statistics</h4>
+            <h4 className="text-sm font-semibold">Model usage statistics</h4>
             <p className="text-xs text-muted-foreground">Auto-refreshes every 60 seconds</p>
           </div>
           <Button variant="outline" size="sm" onClick={loadUsage}><RefreshCw className="h-4 w-4 mr-1" /> Refresh</Button>
@@ -682,10 +682,10 @@ export function LlmSettingsTabs() {
                       <td className="p-3"><Badge variant="outline" className="text-[9px]">{s.provider}</Badge></td>
                       <td className="p-3 text-right font-medium">{s.requests.toLocaleString()}</td>
                       <td className="p-3 text-right">{s.tokens.toLocaleString()}</td>
-                      <td className="p-3 text-right font-mono text-emerald-500">${s.cost.toFixed(4)}</td>
+                      <td className="p-3 text-right font-mono tabular-nums text-foreground">${s.cost.toFixed(4)}</td>
                       <td className="p-3 text-right">{s.avgLatency}ms</td>
                       <td className="p-3 text-right">
-                        <span className={s.successRate >= 95 ? 'text-emerald-500 font-medium' : s.successRate >= 80 ? 'text-amber-500 font-medium' : 'text-red-500 font-medium'}>
+                        <span className={s.successRate >= 95 ? 'text-green-600 dark:text-green-400 font-medium' : s.successRate >= 80 ? 'text-amber-500 font-medium' : 'text-red-500 font-medium'}>
                           {s.successRate}%
                         </span>
                       </td>
@@ -710,7 +710,7 @@ export function LlmSettingsTabs() {
         <Card className="p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <h4 className="text-sm font-semibold">Provider Fallback Chain</h4>
+            <h4 className="text-sm font-semibold">Provider fallback chain</h4>
           </div>
           <p className="text-xs text-muted-foreground">When a provider fails or hits rate limits, the system automatically tries the next provider.</p>
           <div className="flex flex-wrap items-center gap-2">
@@ -722,7 +722,7 @@ export function LlmSettingsTabs() {
                     : "bg-muted border-border text-muted-foreground"
                 )}>
                   <span className="font-bold">{i + 1}</span> {p}
-                  {getKeyCount(PROVIDERS.find(pr => pr.label.includes(p))?.key || '') > 0 && <CheckCircle className="h-3 w-3 text-emerald-500" />}
+                  {getKeyCount(PROVIDERS.find(pr => pr.label.includes(p))?.key || '') > 0 && <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" />}
                 </div>
                 {i < 6 && <span className="text-muted-foreground">→</span>}
               </div>
@@ -757,7 +757,7 @@ export function LlmSettingsTabs() {
         <Card className="p-5 space-y-3">
           <div className="flex items-center gap-2">
             <Info className="h-5 w-5 text-primary" />
-            <h4 className="text-sm font-semibold">How Routing Works</h4>
+            <h4 className="text-sm font-semibold">How routing works</h4>
           </div>
           <div className="text-xs text-muted-foreground space-y-2">
             <p><strong>1. Round-Robin:</strong> Requests cycle through configured keys evenly.</p>
@@ -776,7 +776,7 @@ export function LlmSettingsTabs() {
           <div className="flex items-center gap-2 min-w-0">
             <span className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${
               health.results.length === 0 ? 'bg-muted-foreground'
-              : health.results.every(r => r.status === 'ok') ? 'bg-emerald-500'
+              : health.results.every(r => r.status === 'ok') ? 'bg-green-500'
               : health.results.some(r => r.status === 'ok') ? 'bg-amber-500' : 'bg-red-500'
             }`} />
             <div className="min-w-0">

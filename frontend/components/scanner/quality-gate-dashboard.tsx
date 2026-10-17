@@ -70,8 +70,8 @@ export function QualityGateDashboard({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Quality Gates</h1>
-        <p className="text-foreground/60">
+        <h2 className="sr-only">Quality gates</h2>
+        <p className="text-sm text-muted-foreground">
           Define pass/fail criteria for code quality. Projects must satisfy all conditions to pass.
         </p>
       </div>
@@ -86,8 +86,8 @@ export function QualityGateDashboard({
 
       {/* Form */}
       {showForm && (
-        <Card className="p-6 border-2 border-primary/50 bg-primary/5">
-          <h2 className="text-xl font-bold mb-4">Create Quality Gate</h2>
+        <Card className="rounded-3xl p-6 border-2 border-primary/50 bg-primary/5">
+          <h2 className="text-xl font-bold mb-4">Create quality gate</h2>
 
           <div className="space-y-4">
             <div>
@@ -224,10 +224,10 @@ export function QualityGateDashboard({
       {/* Gates Grid */}
       <div className="grid gap-4">
         {gates.length === 0 ? (
-          <Card className="p-12 text-center bg-card/30 border border-dashed border-border">
-            <BarChart3 className="w-12 h-12 text-foreground/40 mx-auto mb-3" />
-            <p className="text-foreground/60">No quality gates configured</p>
-            <p className="text-sm text-foreground/50 mt-1">Create one to enforce code quality standards</p>
+          <Card className="rounded-3xl p-12 text-center border border-dashed">
+            <BarChart3 className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <p className="text-muted-foreground">No quality gates configured</p>
+            <p className="text-sm text-muted-foreground mt-1">Create one to enforce code quality standards</p>
           </Card>
         ) : (
           gates.map((gate) => (
@@ -281,35 +281,35 @@ export function QualityGateDashboard({
               {/* Conditions */}
               <div className="grid md:grid-cols-5 gap-3">
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                  <p className="text-xs font-medium text-foreground/60 mb-1">Security</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Security</p>
                   <p className="text-2xl font-bold text-foreground">{gate.conditions.securityIssues}</p>
-                  <p className="text-xs text-foreground/50">max issues</p>
+                  <p className="text-xs text-muted-foreground">max issues</p>
                 </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                  <p className="text-xs font-medium text-foreground/60 mb-1">Reliability</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Reliability</p>
                   <p className="text-2xl font-bold text-foreground">{gate.conditions.reliabilityIssues}</p>
-                  <p className="text-xs text-foreground/50">max issues</p>
+                  <p className="text-xs text-muted-foreground">max issues</p>
                 </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                  <p className="text-xs font-medium text-foreground/60 mb-1">Maintainability</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Maintainability</p>
                   <p className="text-2xl font-bold text-foreground">
                     {gate.conditions.maintainabilityIssues}
                   </p>
-                  <p className="text-xs text-foreground/50">max issues</p>
+                  <p className="text-xs text-muted-foreground">max issues</p>
                 </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                  <p className="text-xs font-medium text-foreground/60 mb-1">Coverage</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Coverage</p>
                   <p className="text-2xl font-bold text-foreground">{gate.conditions.coverage}%</p>
-                  <p className="text-xs text-foreground/50">minimum</p>
+                  <p className="text-xs text-muted-foreground">minimum</p>
                 </div>
 
                 <div className="bg-muted/50 p-4 rounded-lg border border-border">
-                  <p className="text-xs font-medium text-foreground/60 mb-1">Duplication</p>
+                  <p className="text-xs font-medium text-muted-foreground mb-1">Duplication</p>
                   <p className="text-2xl font-bold text-foreground">{gate.conditions.duplications}%</p>
-                  <p className="text-xs text-foreground/50">maximum</p>
+                  <p className="text-xs text-muted-foreground">maximum</p>
                 </div>
               </div>
             </Card>

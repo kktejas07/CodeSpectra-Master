@@ -4,8 +4,8 @@ import { formatDate } from '@/lib/format-datetime'
 import { useEffect, useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
@@ -51,7 +51,9 @@ interface AnalyticsData {
   recentInterviews: InterviewRow[]
 }
 
-const COLORS = ['#22c55e', '#3b82f6', '#eab308', '#ef4444', '#8b5cf6']
+// Primary (royal blue) leads; the rest stay distinguishable from it and from each other.
+const COLORS = ['var(--color-primary)', '#F59E0B', '#06B6D4', '#EC4899', '#8B5CF6']
+const TOOLTIP_STYLE = { backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '12px', color: 'var(--color-card-foreground)' }
 
 export default function RecruiterAnalyticsPage() {
   const gate = usePageGuard('tenant_admin')
@@ -125,14 +127,18 @@ export default function RecruiterAnalyticsPage() {
   if (!data) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Recruiter Analytics</h1>
-          <p className="text-muted-foreground mt-1">Candidate performance and interview insights</p>
-        </div>
-        <Card className="border-border/60 p-10 text-center">
-          <Users className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No interview data available yet. Create interviews to see analytics.</p>
-        </Card>
+        <PageHeader
+          title="Recruiter analytics"
+          description="Candidate performance and interview insights."
+          icon={<TrendingUp />}
+        />
+        <Panel className="flex flex-col items-center p-10 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Users className="h-6 w-6" aria-hidden />
+          </span>
+          <p className="mt-3 font-semibold text-foreground">No interview data yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">Create interviews and invite candidates — results will show up here.</p>
+        </Panel>
       </div>
     )
   }
@@ -146,64 +152,44 @@ export default function RecruiterAnalyticsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between" data-tour="recruiter-analytics-header">
-        <div>
-          <h1 className="text-3xl font-bold">Recruiter Analytics</h1>
-          <p className="text-muted-foreground mt-1">Candidate performance and interview insights for hiring managers</p>
-        </div>
-        {data && data.candidates.length > 0 && (
-          <button
-            onClick={exportCsv}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-card hover:bg-accent text-sm font-medium transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </button>
-        )}
+      <div data-tour="recruiter-analytics-header">
+        <PageHeader
+          className="mb-0"
+          title="Recruiter analytics"
+          description="Candidate performance and interview insights for hiring managers."
+          icon={<TrendingUp />}
+          actions={data && data.candidates.length > 0 ? (
+            <button
+              onClick={exportCsv}
+              className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors duration-200 hover:border-primary/40 hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </button>
+          ) : undefined}
+        />
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4" data-tour="recruiter-analytics-kpis">
-        <Card className="p-4 border-border/40">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-4 h-4 text-primary" />
-            <p className="text-sm text-muted-foreground">Total Interviews</p>
-          </div>
-          <p className="text-3xl font-bold">{data.totalInterviews}</p>
-          <p className="text-xs text-muted-foreground mt-1">{data.completedInterviews} completed</p>
-        </Card>
-        <Card className="p-4 border-border/40">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-green-500" />
-            <p className="text-sm text-muted-foreground">Avg. Score</p>
-          </div>
-          <p className="text-3xl font-bold">{data.avgScore}%</p>
-          <p className="text-xs text-muted-foreground mt-1">Across all interviews</p>
-        </Card>
-        <Card className="p-4 border-border/40">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="w-4 h-4 text-blue-500" />
-            <p className="text-sm text-muted-foreground">Candidates</p>
-          </div>
-          <p className="text-3xl font-bold">{data.candidates.length}</p>
-          <p className="text-xs text-muted-foreground mt-1">Unique candidates assessed</p>
-        </Card>
-        <Card className="p-4 border-border/40">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="w-4 h-4 text-red-500" />
-            <p className="text-sm text-muted-foreground">Flagged Sessions</p>
-          </div>
-          <p className="text-3xl font-bold">{data.flaggedSessions}</p>
-          <p className="text-xs text-muted-foreground mt-1">Proctor violations detected</p>
-        </Card>
+      <div className="cs-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5" data-tour="recruiter-analytics-kpis">
+        <StatCard icon={<Users />} label="Total interviews" value={data.totalInterviews} hint={`${data.completedInterviews} completed`} />
+        <StatCard icon={<TrendingUp />} label="Average score" value={`${data.avgScore}%`} hint="Across all interviews" />
+        <StatCard icon={<Target />} label="Candidates" value={data.candidates.length} hint="Unique candidates assessed" />
+        <StatCard
+          icon={<AlertTriangle />}
+          label="Flagged sessions"
+          value={data.flaggedSessions}
+          hint="Sessions with proctoring flags"
+          className={data.flaggedSessions > 0 ? '[&>span:first-child]:border-red-500/20 [&>span:first-child]:bg-red-500/10 [&>span:first-child]:text-red-600 dark:[&>span:first-child]:text-red-400' : undefined}
+        />
       </div>
 
       {/* Interview Volume Trends */}
       {data.recentInterviews.length > 2 && (
-        <Card className="p-6 border-border/40">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5" />
-            Interview Volume (Last 20)
+        <Panel>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Scores and flags (latest 20 interviews)
           </h2>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -212,39 +198,40 @@ export default function RecruiterAnalyticsPage() {
                 score: interview.overall_score ?? 0,
                 flags: interview.proctorFlags,
               }))}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="index" stroke="var(--muted-foreground)" fontSize={11} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                <Line type="monotone" dataKey="score" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Score %" />
-                <Line type="monotone" dataKey="flags" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Proctor Flags" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="index" stroke="var(--color-muted-foreground)" fontSize={11} />
+                <YAxis stroke="var(--color-muted-foreground)" fontSize={11} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Line type="monotone" dataKey="score" stroke="var(--color-primary)" strokeWidth={2} dot={{ r: 3 }} name="Score %" />
+                <Line type="monotone" dataKey="flags" stroke="#EF4444" strokeWidth={2} strokeDasharray="4 3" dot={{ r: 3 }} name="Proctor flags" />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Charts Row */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Score Distribution */}
-        <Card className="lg:col-span-2 p-6 border-border/40">
-          <h2 className="text-lg font-semibold mb-4">Score Distribution</h2>
+        <Panel className="lg:col-span-2">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Score distribution</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.scoreDistribution}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="range" stroke="var(--muted-foreground)" fontSize={12} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={12} />
-                <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} name="Candidates" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                <XAxis dataKey="range" stroke="var(--color-muted-foreground)" fontSize={12} />
+                <YAxis stroke="var(--color-muted-foreground)" fontSize={12} />
+                <Tooltip contentStyle={TOOLTIP_STYLE} />
+                <Bar dataKey="count" fill="var(--color-primary)" radius={[6, 6, 0, 0]} name="Candidates" />
               </BarChart>
             </ResponsiveContainer>
           </div>
-        </Card>
+        </Panel>
 
         {/* Role Breakdown */}
-        <Card className="p-6 border-border/40">
-          <h2 className="text-lg font-semibold mb-4">By Role</h2>
+        <Panel>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">By role</h2>
           {rolePieData.length > 0 ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -254,42 +241,42 @@ export default function RecruiterAnalyticsPage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground py-10 text-center">No data</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">No data yet</p>
           )}
-        </Card>
+        </Panel>
       </div>
 
       {/* Proctor Violations & Interview Type */}
       <div className="grid lg:grid-cols-2 gap-6">
-        <Card className="p-6 border-border/40">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-red-500" />
-            Proctor Violations
+        <Panel>
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Shield className="h-5 w-5 text-red-500" />
+            Proctoring flags by type
           </h2>
           {violationBarData.length > 0 ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={violationBarData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} />
-                  <YAxis type="category" dataKey="name" stroke="var(--muted-foreground)" fontSize={11} width={120} />
-                  <Tooltip contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                  <Bar dataKey="count" fill="#ef4444" radius={[0, 4, 4, 0]} name="Events" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
+                  <XAxis type="number" stroke="var(--color-muted-foreground)" fontSize={12} />
+                  <YAxis type="category" dataKey="name" stroke="var(--color-muted-foreground)" fontSize={11} width={120} />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
+                  <Bar dataKey="count" fill="#EF4444" radius={[0, 6, 6, 0]} name="Events" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground py-10 text-center">No violations recorded</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">No proctoring flags recorded</p>
           )}
-        </Card>
+        </Panel>
 
-        <Card className="p-6 border-border/40">
-          <h2 className="text-lg font-semibold mb-4">By Interview Type</h2>
+        <Panel>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">By interview type</h2>
           {typePieData.length > 0 ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -299,21 +286,21 @@ export default function RecruiterAnalyticsPage() {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground py-10 text-center">No data</p>
+            <p className="py-10 text-center text-sm text-muted-foreground">No data yet</p>
           )}
-        </Card>
+        </Panel>
       </div>
 
       {/* Candidate Comparison Table with Ranking */}
-      <Card className="p-6 border-border/40" data-tour="recruiter-analytics-ranking">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <ArrowUpDown className="w-5 h-5" />
-          Candidate Ranking
+      <Panel data-tour="recruiter-analytics-ranking">
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+          <ArrowUpDown className="h-5 w-5 text-primary" />
+          Candidate ranking
         </h2>
         {data.candidates.length > 0 ? (
           <div className="overflow-x-auto">
@@ -323,7 +310,7 @@ export default function RecruiterAnalyticsPage() {
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground w-12">#</th>
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">Candidate</th>
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">Interviews</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Avg Score</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Avg score</th>
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">Roles</th>
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">Latest</th>
                 </tr>
@@ -333,27 +320,27 @@ export default function RecruiterAnalyticsPage() {
                   <tr key={i} className="border-b border-border/40 hover:bg-muted/30">
                     <td className="py-3 px-3">
                       <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${
-                        i === 0 ? 'bg-yellow-500/20 text-yellow-600' :
-                        i === 1 ? 'bg-gray-300/20 text-gray-500' :
-                        i === 2 ? 'bg-orange-500/20 text-orange-600' :
+                        i === 0 ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' :
+                        i === 1 ? 'bg-slate-400/15 text-slate-600 dark:text-slate-300' :
+                        i === 2 ? 'bg-orange-500/15 text-orange-700 dark:text-orange-400' :
                         'bg-muted text-muted-foreground'
                       }`}>
                         {i + 1}
                       </span>
                     </td>
-                    <td className="py-3 px-3 font-mono text-xs">{c.candidate_id.slice(0, 8)}...</td>
-                    <td className="py-3 px-3">{c.interviews}</td>
+                    <td className="py-3 px-3 font-mono text-xs">{c.candidate_id.slice(0, 8)}…</td>
+                    <td className="py-3 px-3 tabular-nums">{c.interviews}</td>
                     <td className="py-3 px-3">
                       <div className="flex items-center gap-2">
                         <div className="h-2 w-16 rounded-full bg-muted">
                           <div
                             className={`h-2 rounded-full ${
-                              c.avgScore >= 70 ? 'bg-green-500' : c.avgScore >= 40 ? 'bg-yellow-500' : 'bg-red-500'
+                              c.avgScore >= 70 ? 'bg-green-500' : c.avgScore >= 40 ? 'bg-amber-500' : 'bg-red-500'
                             }`}
                             style={{ width: `${c.avgScore}%` }}
                           />
                         </div>
-                        <span className="text-xs font-medium">{Math.round(c.avgScore)}%</span>
+                        <span className="text-xs font-medium tabular-nums">{Math.round(c.avgScore)}%</span>
                       </div>
                     </td>
                     <td className="py-3 px-3">
@@ -372,13 +359,13 @@ export default function RecruiterAnalyticsPage() {
         ) : (
           <p className="text-sm text-muted-foreground py-6 text-center">No candidates yet</p>
         )}
-      </Card>
+      </Panel>
 
       {/* Recent Interviews */}
-      <Card className="p-6 border-border/40">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Clock className="w-5 h-5" />
-          Recent Interviews
+      <Panel>
+        <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Clock className="h-5 w-5 text-primary" />
+          Recent interviews
         </h2>
         {data.recentInterviews.length > 0 ? (
           <div className="overflow-x-auto">
@@ -405,14 +392,14 @@ export default function RecruiterAnalyticsPage() {
                         interview.status === 'completed' ? 'default' :
                         interview.status === 'in_progress' ? 'outline' : 'secondary'
                       }>
-                        {interview.status}
+                        {interview.status.replace(/_/g, ' ')}
                       </Badge>
                     </td>
                     <td className="py-3 px-3">
                       {typeof interview.overall_score === 'number' ? (
                         <span className={`font-medium ${
-                          interview.overall_score >= 70 ? 'text-green-500' :
-                          interview.overall_score >= 40 ? 'text-yellow-500' : 'text-red-500'
+                          interview.overall_score >= 70 ? 'text-green-600 dark:text-green-400' :
+                          interview.overall_score >= 40 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
                         }`}>
                           {Math.round(interview.overall_score)}%
                         </span>
@@ -422,7 +409,7 @@ export default function RecruiterAnalyticsPage() {
                     </td>
                     <td className="py-3 px-3">
                       {interview.proctorFlags > 0 ? (
-                        <span className="flex items-center gap-1 text-red-500 text-xs">
+                        <span className="flex items-center gap-1 text-xs tabular-nums text-red-600 dark:text-red-400">
                           <AlertTriangle className="h-3 w-3" />
                           {interview.proctorFlags}
                         </span>
@@ -441,7 +428,7 @@ export default function RecruiterAnalyticsPage() {
         ) : (
           <p className="text-sm text-muted-foreground py-6 text-center">No interviews yet</p>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }

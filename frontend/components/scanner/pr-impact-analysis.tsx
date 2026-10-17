@@ -125,7 +125,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
 
   return (
     <div className="space-y-6">
-      <Card className="p-5 bg-card/30 border-dashed">
+      <Card className="rounded-3xl p-5 border-dashed">
         <div className="flex items-center gap-2 mb-4">
           <GitPullRequest className="w-5 h-5 text-primary" />
           <h3 className="font-semibold text-foreground">GitHub PR Impact Analysis</h3>
@@ -146,7 +146,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
           </Button>
         </div>
         {error && (
-          <p className="mt-2 text-xs text-red-400 flex items-center gap-1">
+          <p className="mt-2 text-xs text-red-700 dark:text-red-400 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" /> {error}
           </p>
         )}
@@ -154,12 +154,12 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
 
       {prDetails && (
         <>
-          <Card className="p-5 bg-linear-to-r from-primary/5 to-primary/10 border-primary/20">
+          <Card className="rounded-3xl p-5 bg-linear-to-r from-primary/5 to-primary/10 border-primary/20">
             <div className="flex items-start justify-between mb-3">
               <div>
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-semibold text-foreground">#{prDetails.number} {prDetails.title}</h3>
-                  <Badge variant="outline" className={prDetails.state === 'open' ? 'border-green-500/30 text-green-400' : 'border-foreground/30 text-muted-foreground'}>
+                  <Badge variant="outline" className={prDetails.state === 'open' ? 'border-green-500/30 text-green-700 dark:text-green-400' : 'border-foreground/30 text-muted-foreground'}>
                     {prDetails.state}
                   </Badge>
                 </div>
@@ -207,8 +207,8 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
                       <Badge
                         variant="outline"
                         className={`shrink-0 text-xs ${
-                          f.status === 'added' ? 'border-green-500/30 text-green-400' :
-                          f.status === 'deleted' ? 'border-red-500/30 text-red-400' :
+                          f.status === 'added' ? 'border-green-500/30 text-green-700 dark:text-green-400' :
+                          f.status === 'deleted' ? 'border-red-500/30 text-red-700 dark:text-red-400' :
                           'border-border'
                         }`}
                       >
@@ -262,9 +262,9 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
                       <Badge
                         variant="outline"
                         className={
-                          component.health === 'critical' ? 'border-red-500/30 text-red-400' :
-                          component.health === 'warning' ? 'border-yellow-500/30 text-yellow-400' :
-                          'border-green-500/30 text-green-400'
+                          component.health === 'critical' ? 'border-red-500/30 text-red-700 dark:text-red-400' :
+                          component.health === 'warning' ? 'border-yellow-500/30 text-amber-700 dark:text-amber-400' :
+                          'border-green-500/30 text-green-700 dark:text-green-400'
                         }
                       >
                         {component.health}
@@ -287,8 +287,8 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
           {unmatchedFiles.length > 0 && (
             <Card className="p-4 bg-orange-500/5 border-orange-500/20">
               <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4 text-orange-400" />
-                <h4 className="text-sm font-semibold text-orange-300">
+                <AlertTriangle className="w-4 h-4 text-orange-700 dark:text-orange-400" />
+                <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-400">
                   Unmatched files ({unmatchedFiles.length}) — no matching architecture component
                 </h4>
               </div>

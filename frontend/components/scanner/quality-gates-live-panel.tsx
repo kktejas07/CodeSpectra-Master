@@ -282,18 +282,18 @@ export function QualityGatesLivePanel() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="mb-2 text-3xl font-bold">Quality gates</h1>
-        <p className="text-foreground/60">
+        <h2 className="sr-only">Quality gates</h2>
+        <p className="text-sm text-muted-foreground">
           Gates are stored per account and used with <code className="rounded bg-muted px-1 text-sm">POST /api/check-quality-gate</code>.
         </p>
       </div>
 
-      <Card className="border border-border bg-card/40 p-4">
+      <Card className="p-4">
         <div className="mb-3 flex items-center gap-2">
           <Shield className="h-4 w-4 text-primary" />
           <h2 className="text-sm font-semibold text-foreground">Compliance presets</h2>
         </div>
-        <p className="mb-3 text-xs text-foreground/60">
+        <p className="mb-3 text-xs text-muted-foreground">
           Applies suggested thresholds and <code className="rounded bg-muted px-0.5">standards</code> to the form below — adjust and save.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -326,7 +326,7 @@ export function QualityGatesLivePanel() {
       </div>
 
       {showForm && (
-        <Card className="space-y-4 border-2 border-primary/40 bg-primary/5 p-6">
+        <Card className="rounded-3xl space-y-4 border-2 border-primary/40 bg-primary/5 p-6">
           <h2 className="text-lg font-semibold">{editingId ? 'Edit gate' : 'Create gate'}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             <label className="space-y-1 text-sm md:col-span-2">
@@ -415,7 +415,7 @@ export function QualityGatesLivePanel() {
         </Card>
       )}
 
-      <Card className="border border-border p-6">
+      <Card className="rounded-3xl p-6">
         <h2 className="mb-4 text-lg font-semibold">Your gates</h2>
         {loading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -423,7 +423,7 @@ export function QualityGatesLivePanel() {
             Loading…
           </p>
         ) : gates.length === 0 ? (
-          <p className="text-sm text-foreground/60">No gates yet — create one or apply a preset.</p>
+          <p className="text-sm text-muted-foreground">No gates yet — create one or apply a preset.</p>
         ) : (
           <ul className="space-y-3">
             {gates.map((g) => (
@@ -476,7 +476,7 @@ export function QualityGatesLivePanel() {
                   </div>
                 </div>
                 {g.description ? <p className="mt-2 text-foreground/70">{g.description}</p> : null}
-                <p className="mt-2 text-xs text-foreground/50">
+                <p className="mt-2 text-xs text-muted-foreground">
                   Quality ≥ {g.min_quality_score} · bugs ≤ {g.max_bugs_count} · vulns ≤ {g.max_vulnerabilities_count} ·
                   smells ≤ {g.max_code_smells_count}
                 </p>

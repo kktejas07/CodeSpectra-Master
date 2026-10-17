@@ -46,12 +46,12 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
 
   if (scans.length === 0) {
     return (
-      <Card className="bg-card/30 border border-border p-8 text-center">
+      <Card className="rounded-3xl p-8 text-center">
         <div className="flex flex-col items-center gap-3">
-          <Clock className="w-8 h-8 text-foreground/40" />
+          <Clock className="w-8 h-8 text-muted-foreground" />
           <div>
             <p className="font-medium text-foreground">No scans yet</p>
-            <p className="text-sm text-foreground/60">Your scan history will appear here</p>
+            <p className="text-sm text-muted-foreground">Your scan history will appear here</p>
           </div>
         </div>
       </Card>
@@ -85,7 +85,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                     </Badge>
                   )}
                 </div>
-                <p className="text-xs text-foreground/60">
+                <p className="text-xs text-muted-foreground">
                   {formatDistanceToNow(scan.timestamp, { addSuffix: true })} • {scan.duration}ms
                 </p>
               </div>
@@ -98,13 +98,13 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                   >
                     {scan.quality}/100
                   </Badge>
-                  <p className="text-xs text-foreground/60">{getQualityLabel(scan.quality)}</p>
+                  <p className="text-xs text-muted-foreground">{getQualityLabel(scan.quality)}</p>
                 </div>
 
                 <div className="flex gap-2">
                   <button
                     onClick={() => onSelectScan?.(scan)}
-                    className="p-2 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
+                    className="p-2 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
                     title="View full report"
                   >
                     <Eye className="w-4 h-4" />
@@ -112,7 +112,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
 
                   <button
                     onClick={() => onEdit?.(scan)}
-                    className="p-2 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
+                    className="p-2 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
                     title="Edit previous scan"
                   >
                     <Pencil className="w-4 h-4" />
@@ -120,7 +120,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
 
                   <button
                     onClick={() => onDelete?.(scan.id)}
-                    className="p-2 hover:bg-red-500/10 rounded text-foreground/60 hover:text-red-600 transition"
+                    className="p-2 hover:bg-red-500/10 rounded text-muted-foreground hover:text-red-600 transition"
                     title="Delete"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -154,7 +154,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-foreground/50">
+          <p className="text-xs text-muted-foreground">
             Page {page} of {totalPages}
           </p>
           <div className="flex gap-2">

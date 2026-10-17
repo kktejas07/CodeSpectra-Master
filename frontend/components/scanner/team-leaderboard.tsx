@@ -52,7 +52,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
     if (position === 0) return 'text-yellow-500'
     if (position === 1) return 'text-gray-400'
     if (position === 2) return 'text-orange-600'
-    return 'text-foreground/40'
+    return 'text-muted-foreground'
   }
 
   const getQualityBadge = (score: number) => {
@@ -84,7 +84,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
           <Trophy className="w-5 h-5" />
           Team Leaderboard
         </h3>
-        <p className="text-sm text-foreground/60">
+        <p className="text-sm text-muted-foreground">
           {sorted.length > 0
             ? `${sorted.length} team members ranked by contribution`
             : 'No team members found — connect GitHub to see team activity'}
@@ -92,7 +92,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
       </div>
 
       {sorted.length === 0 ? (
-        <Card className="bg-card/30 border border-border p-8 text-center">
+        <Card className="rounded-3xl p-8 text-center">
           <Trophy className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
           <p className="text-muted-foreground">No team data available.</p>
           <p className="text-xs text-muted-foreground/60 mt-1">
@@ -128,28 +128,28 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
 
                     <div className="min-w-0">
                       <p className="font-semibold text-foreground truncate">{member.name}</p>
-                      <p className="text-xs text-foreground/50 truncate">{member.email}</p>
+                      <p className="text-xs text-muted-foreground truncate">{member.email}</p>
                     </div>
                   </div>
 
                   <div className="hidden md:flex items-center gap-6">
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Scans</p>
+                      <p className="text-xs text-muted-foreground">Scans</p>
                       <p className="text-lg font-bold text-foreground">{member.scans}</p>
                     </div>
 
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Reviews</p>
+                      <p className="text-xs text-muted-foreground">Reviews</p>
                       <p className="text-lg font-bold text-foreground">{member.reviews}</p>
                     </div>
 
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Fixes</p>
+                      <p className="text-xs text-muted-foreground">Fixes</p>
                       <p className="text-lg font-bold text-green-500">{member.fixes}</p>
                     </div>
 
                     <div className="text-center">
-                      <p className="text-xs text-foreground/60">Total</p>
+                      <p className="text-xs text-muted-foreground">Total</p>
                       <Badge className={`${qualityColor.bg} ${qualityColor.text} border-0`}>
                         {member.total}
                       </Badge>
@@ -158,7 +158,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
 
                   <div className="md:hidden text-right">
                     <p className="text-sm font-bold text-foreground">{member.total}</p>
-                    <p className="text-xs text-foreground/50">contributions</p>
+                    <p className="text-xs text-muted-foreground">contributions</p>
                   </div>
                 </div>
               </Card>
@@ -168,55 +168,55 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
       )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card className="bg-card/30 border border-border p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-500 flex justify-center gap-1">
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-amber-500 flex justify-center gap-1">
             <Trophy className="w-6 h-6" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Team Leader</p>
+          <p className="text-xs text-muted-foreground mt-2">Team leader</p>
           <p className="text-sm font-bold text-foreground truncate">{sorted[0]?.name || '—'}</p>
         </Card>
 
-        <Card className="bg-card/30 border border-border p-4 text-center">
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-foreground flex justify-center">
-            <Target className="w-6 h-6 text-blue-500" />
+            <Target className="w-6 h-6 text-primary" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Avg Team Quality</p>
+          <p className="text-xs text-muted-foreground mt-2">Avg team quality</p>
           <p className="text-sm font-bold text-foreground">{teamAvgQuality}%</p>
         </Card>
 
-        <Card className="bg-card/30 border border-border p-4 text-center">
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-green-500 flex justify-center">
             <Star className="w-6 h-6" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Total Bugs Fixed</p>
+          <p className="text-xs text-muted-foreground mt-2">Total bugs fixed</p>
           <p className="text-sm font-bold text-foreground">{totalBugsFixed}</p>
         </Card>
 
-        <Card className="bg-card/30 border border-border p-4 text-center">
+        <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-orange-500 flex justify-center">
             <Flame className="w-6 h-6" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Top Contributor</p>
+          <p className="text-xs text-muted-foreground mt-2">Top contributor</p>
           <p className="text-sm font-bold text-foreground">{sorted[0]?.total || 0} pts</p>
         </Card>
       </div>
 
-      <Card className="border border-purple-500/30 bg-linear-to-r from-purple-500/10 to-pink-500/10 p-4 space-y-3">
-        <h4 className="font-semibold text-foreground">Team Achievements</h4>
+      <Card className="space-y-3 border-primary/25 bg-primary/5 p-4">
+        <h4 className="font-semibold text-foreground">Team achievements</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
+          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
             <Crosshair className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <span className="text-foreground">Quality goal</span>
           </div>
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Bug className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
+          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
+            <Bug className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
             <span className="text-foreground">Bug hunters</span>
           </div>
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
+          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
             <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="text-foreground">Security first</span>
           </div>
-          <div className="flex items-center gap-2 rounded bg-background/50 p-2">
+          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
             <Zap className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
             <span className="text-foreground">Quick fixers</span>
           </div>

@@ -65,9 +65,9 @@ export function CodeReviewPanel({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <p className="font-medium text-sm text-foreground">{comment.author.name}</p>
-              <p className="text-xs text-foreground/60">{formatDistanceToNow(comment.timestamp, { addSuffix: true })}</p>
+              <p className="text-xs text-muted-foreground">{formatDistanceToNow(comment.timestamp, { addSuffix: true })}</p>
             </div>
-            <button className="p-1 hover:bg-background rounded text-foreground/60 hover:text-red-600 transition" title="Delete">
+            <button className="p-1 hover:bg-background rounded text-muted-foreground hover:text-red-600 transition" title="Delete">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -75,16 +75,16 @@ export function CodeReviewPanel({
           <p className="text-sm text-foreground/80 leading-relaxed">{comment.content}</p>
 
           <div className="flex items-center gap-2 pt-1">
-            <button className="flex items-center gap-1 text-xs text-foreground/60 hover:text-foreground transition">
+            <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
               <ThumbsUp className="w-3 h-3" />
               {comment.likes}
             </button>
-            <button className="flex items-center gap-1 text-xs text-foreground/60 hover:text-foreground transition">
+            <button className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition">
               <ThumbsDown className="w-3 h-3" />
             </button>
             <button
               onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-              className="flex items-center gap-1 text-xs text-foreground/60 hover:text-foreground transition"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition"
             >
               <Reply className="w-3 h-3" />
               Reply
@@ -109,7 +109,7 @@ export function CodeReviewPanel({
               />
               <button
                 onClick={() => handleSubmitReply(comment.id)}
-                className="p-2 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
+                className="p-2 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
               >
                 <Send className="w-4 h-4" />
               </button>
@@ -149,12 +149,12 @@ export function CodeReviewPanel({
       {/* Comments */}
       <div className="space-y-4">
         {comments.length === 0 ? (
-          <Card className="bg-card/30 border border-border p-6 text-center">
-            <MessageSquare className="w-8 h-8 text-foreground/40 mx-auto mb-2" />
-            <p className="text-sm text-foreground/60">No comments yet. Be the first to review!</p>
+          <Card className="rounded-3xl p-6 text-center">
+            <MessageSquare className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No comments yet. Be the first to review!</p>
           </Card>
         ) : (
-          <Card className="bg-card/30 border border-border p-4 space-y-4">
+          <Card className="p-4 space-y-4">
             {comments.map((comment) => (
               <CommentThread key={comment.id} comment={comment} />
             ))}
@@ -163,7 +163,7 @@ export function CodeReviewPanel({
       </div>
 
       {/* New Comment Form */}
-      <Card className="bg-card/30 border border-border p-4 space-y-3">
+      <Card className="p-4 space-y-3">
         <label className="text-sm font-medium text-foreground">Add Comment</label>
         <textarea
           value={newComment}

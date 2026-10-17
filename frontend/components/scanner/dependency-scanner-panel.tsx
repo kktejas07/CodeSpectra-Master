@@ -124,7 +124,7 @@ export function DependencyScannerPanel() {
       {manifests.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Manifests Scanned</CardTitle>
+            <CardTitle className="text-sm">Manifests scanned</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-2">
@@ -208,7 +208,7 @@ export function DependencyScannerPanel() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fileContent">File Content</Label>
+              <Label htmlFor="fileContent">File content</Label>
               <Textarea
                 id="fileContent"
                 value={newFileContent}

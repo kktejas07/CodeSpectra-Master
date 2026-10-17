@@ -281,7 +281,7 @@ const link = g.append('g').attr('class', 'links')
 
   if (components.length === 0) {
     return (
-      <Card className="flex items-center justify-center h-[420px] border-dashed bg-card/30">
+      <Card className="flex items-center justify-center h-[420px] border-dashed">
         <div className="text-center text-muted-foreground">
           <Move3D className="w-10 h-10 mx-auto mb-3 opacity-40" />
           <p className="text-sm">No components to visualize. Add components to see the force graph.</p>
@@ -317,7 +317,7 @@ const link = g.append('g').attr('class', 'links')
         </div>
       </div>
 
-      <Card className="relative overflow-hidden bg-card/50 backdrop-blur border border-border" style={{ height: 420 }}>
+      <Card className="relative overflow-hidden backdrop-blur" style={{ height: 420 }}>
         <svg
           ref={svgRef}
           className="w-full h-full"
@@ -326,7 +326,7 @@ const link = g.append('g').attr('class', 'links')
       </Card>
 
       {legendExpanded && (
-        <Card className="p-4 bg-card/50 border border-border/50">
+        <Card className="p-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
             <div>
               <p className="font-semibold mb-2 text-foreground">Node health</p>

@@ -65,7 +65,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Keyboard Shortcuts</h2>
+          <h2 className="text-sm font-semibold">Keyboard shortcuts</h2>
           <button
             type="button"
             onClick={onClose}
@@ -79,7 +79,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {shortcuts.map((group) => (
             <div key={group.category}>
-              <h3 className="mb-2 text-[10px] font-medium uppercase text-muted-foreground">
+              <h3 className="mb-2 text-xs font-semibold text-muted-foreground">
                 {group.category}
               </h3>
               <div className="flex flex-col gap-1">

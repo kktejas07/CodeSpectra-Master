@@ -16,6 +16,7 @@ import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -123,35 +124,37 @@ export default function UserHackathonsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3" data-tour="hackathons-header">
-        <Trophy className="h-7 w-7 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">Hackathons</h1>
-          <p className="text-sm text-muted-foreground">Join a team and compete in live coding events.</p>
-        </div>
+      <div data-tour="hackathons-header">
+        <PageHeader
+          className="mb-0"
+          title="Hackathons"
+          description="Join a team and compete in live coding events."
+          icon={<Trophy />}
+        />
       </div>
 
       {!hasSession && (
-        <Card className="rounded-xl border-primary/20 bg-primary/5 p-4">
-          <p className="text-sm">Sign in to join hackathon teams and compete.</p>
+        <Panel className="border-primary/20 bg-primary/5 p-5">
+          <p className="text-sm text-foreground">Sign in to join hackathon teams and compete.</p>
           <Link href={`/auth/login?redirect=${encodeURIComponent('/dashboard/hackathons')}`}>
-            <Button className="mt-2 gap-1.5" size="sm"><LogIn className="h-3.5 w-3.5" /> Sign in</Button>
+            <Button className="mt-3 gap-1.5" size="sm"><LogIn className="h-3.5 w-3.5" /> Sign in</Button>
           </Link>
-        </Card>
+        </Panel>
       )}
 
       {liveHackathons.length === 0 && upcomingHackathons.length === 0 && (
-        <Card className="p-8 text-center text-sm text-muted-foreground">
-          No hackathons available right now. Check back soon!
-        </Card>
+        <Panel className="p-10 text-center">
+          <p className="font-semibold text-foreground">No hackathons open right now</p>
+          <p className="mt-1 text-sm text-muted-foreground">New events will appear here as soon as they&apos;re announced.</p>
+        </Panel>
       )}
 
       {liveHackathons.length > 0 && (
         <section data-tour="hackathons-live">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" /> Live Now
+          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" aria-hidden /> Live now
           </h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:gap-5">
             {liveHackathons.map((hk) => (
               <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
@@ -161,10 +164,10 @@ export default function UserHackathonsPage() {
 
       {upcomingHackathons.length > 0 && (
         <section data-tour="hackathons-upcoming">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          <h2 className="mb-3 text-lg font-semibold text-foreground">
             Upcoming
           </h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:gap-5">
             {upcomingHackathons.map((hk) => (
               <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
@@ -174,10 +177,10 @@ export default function UserHackathonsPage() {
 
       {closedHackathons.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Closed Events
+          <h2 className="mb-3 text-lg font-semibold text-foreground">
+            Closed events
           </h2>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:gap-5">
             {closedHackathons.slice(0, 6).map((hk) => (
               <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
@@ -197,32 +200,32 @@ function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon
   const locked = isClosed && !isSuperAdmin
 
   return (
-    <Card className="overflow-hidden rounded-xl border-border/60">
-      <div className="p-5 space-y-3">
+    <Card className="gap-0 overflow-hidden rounded-3xl py-0 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
+      <div className="space-y-3 p-6">
         <div className="flex items-start justify-between gap-2">
-          <Link href={`/hackathons/${hk.slug}`} className="text-lg font-semibold hover:underline">
+          <Link href={`/hackathons/${hk.slug}`} className="rounded text-lg font-semibold text-foreground hover:text-primary focus-visible:outline-2 focus-visible:outline-primary">
             {hk.name}
           </Link>
-          <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase shrink-0">
+          <Badge variant={isLive ? 'default' : isClosed ? 'outline' : 'secondary'} className="shrink-0">
             {isLive ? 'Live' : isClosed ? 'Closed' : 'Upcoming'}
           </Badge>
         </div>
 
         {hk.description && <p className="text-xs text-muted-foreground line-clamp-2">{hk.description}</p>}
 
-        <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums text-muted-foreground">
           <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" /> {formatDate(starts)}</span>
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {hk.timeout_minutes} min</span>
           <span className="flex items-center gap-1"><ListChecks className="h-3 w-3" /> {hk.tasks?.length || 0} problems</span>
           <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {hk.num_teams} teams</span>
           {!isClosed && !isLive && (
-            <span className="flex items-center gap-1 text-yellow-500">
+            <span className="flex items-center gap-1 font-medium text-primary">
               <Timer className="h-3 w-3" /> Starts <Countdown targetIso={hk.starts_at} />
             </span>
           )}
         </div>
 
-        <div className="flex gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1">
           {locked ? (
             <Button size="sm" variant="outline" disabled>
               View details <ArrowRight className="ml-1 h-3 w-3" />

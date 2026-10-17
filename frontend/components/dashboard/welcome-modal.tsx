@@ -20,10 +20,10 @@ export function WelcomeModal() {
   }, [user])
 
   const goals = [
-    { id: 'find-job', title: 'To find a Job', icon: Briefcase, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { id: 'compete-upskill', title: 'Compete & Upskill', icon: Brain, color: 'text-pink-500', bg: 'bg-pink-50' },
-    { id: 'host-event', title: 'To Host an Event', icon: Tent, color: 'text-red-500', bg: 'bg-red-50' },
-    { id: 'be-mentor', title: 'To be a Mentor', icon: UserCircle, color: 'text-indigo-500', bg: 'bg-indigo-50' },
+    { id: 'find-job', title: 'Find a job', icon: Briefcase, color: 'text-primary', bg: 'bg-primary/10' },
+    { id: 'compete-upskill', title: 'Compete & upskill', icon: Brain, color: 'text-primary', bg: 'bg-primary/10' },
+    { id: 'host-event', title: 'Host an event', icon: Tent, color: 'text-primary', bg: 'bg-primary/10' },
+    { id: 'be-mentor', title: 'Be a mentor', icon: UserCircle, color: 'text-primary', bg: 'bg-primary/10' },
   ]
 
   const handleSubmit = async () => {
@@ -64,9 +64,9 @@ export function WelcomeModal() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent showCloseButton={false} className="sm:max-w-150 text-center p-0 overflow-hidden">
-        <div className="bg-linear-to-b from-blue-50 to-background p-8 flex flex-col items-center border-b border-border">
-          <div className="h-16 w-16 bg-white rounded-full shadow-md flex items-center justify-center mb-4 ring-4 ring-white">
-             <Rocket className="h-8 w-8 text-blue-600" />
+        <div className="flex flex-col items-center border-b border-border bg-linear-to-b from-primary/10 to-background p-8">
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/20 bg-card text-primary shadow-sm">
+             <Rocket className="h-8 w-8" aria-hidden />
           </div>
           <p className="text-sm font-medium text-muted-foreground mb-1">Your account has been created!</p>
           <DialogTitle className="text-2xl font-bold">What brings you to CodeSpectra?</DialogTitle>
@@ -82,7 +82,8 @@ export function WelcomeModal() {
                 <button
                   key={goal.id}
                   onClick={() => setSelectedGoal(goal.id)}
-                  className={`flex flex-col items-center p-4 rounded-xl border-2 transition-all duration-200 ${
+                  aria-pressed={isSelected}
+                  className={`flex flex-col items-center rounded-2xl border-2 p-4 transition-[border-color,background-color,transform] duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary motion-reduce:transform-none ${
                     isSelected 
                       ? 'border-primary bg-primary/5 shadow-sm scale-[1.02]' 
                       : 'border-border hover:border-primary/50 hover:bg-accent'
@@ -91,7 +92,7 @@ export function WelcomeModal() {
                   <div className={`p-3 rounded-full mb-3 ${goal.bg}`}>
                     <Icon className={`h-6 w-6 ${goal.color}`} />
                   </div>
-                  <span className="text-sm font-medium leading-tight">{goal.title}</span>
+                  <span className="text-sm font-medium leading-tight text-foreground">{goal.title}</span>
                 </button>
               )
             })}
@@ -103,7 +104,7 @@ export function WelcomeModal() {
             className="w-full sm:w-auto px-12 rounded-full font-semibold"
             size="lg"
           >
-            {loading ? 'Saving...' : 'Explore CodeSpectra'}
+            {loading ? 'Saving…' : 'Explore CodeSpectra'}
           </Button>
         </div>
       </DialogContent>

@@ -192,11 +192,11 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
         )}
       </Button>
       {SCAN_ROW_UUID.test(analysis.id) ? (
-        <p className="text-xs text-foreground/50">
+        <p className="text-xs text-muted-foreground">
           Fixes are saved to this scan so you can mark them applied from the dashboard.
         </p>
       ) : (
-        <p className="text-xs text-foreground/50">
+        <p className="text-xs text-muted-foreground">
           Sign in and run a saved scan to persist fixes; otherwise suggestions stay in the browser only.
         </p>
       )}
@@ -208,7 +208,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
         </p>
       )}
       {aiGeneratedFixes && aiGeneratedFixes.length > 0 && (
-        <Card className="mt-2 border border-border bg-card/40 p-4">
+        <Card className="mt-2 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h4 className="text-sm font-semibold text-foreground">AI-generated patches</h4>
             {pendingDbIds.length > 1 && hasUnapplied ? (

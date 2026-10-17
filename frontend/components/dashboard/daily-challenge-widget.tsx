@@ -36,8 +36,8 @@ export function DailyChallengeWidget() {
 
   if (loading) {
     return (
-      <Card className="p-4 flex items-center gap-2 text-sm text-muted-foreground" data-testid="daily-widget-loading">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading daily challenge…
+      <Card className="h-full flex-row items-center gap-2 rounded-3xl p-5 text-sm text-muted-foreground" data-testid="daily-widget-loading">
+        <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" /> Loading daily challenge…
       </Card>
     )
   }
@@ -46,35 +46,35 @@ export function DailyChallengeWidget() {
 
   return (
     <Card
-      className="p-5 border-primary/30 bg-linear-to-br from-primary/8 via-card to-card"
+      className="h-full gap-0 rounded-3xl border-primary/30 bg-linear-to-br from-primary/8 via-card to-card p-5"
       data-testid="daily-widget"
     >
       <div className="flex items-start gap-4">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/15 text-primary shrink-0">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
           <Calendar className="h-5 w-5" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-[10px] uppercase tracking-wide text-primary">
-              Daily challenge · {data.today}
+            <span className="text-xs font-medium text-primary">
+              Daily challenge · <span className="tabular-nums">{data.today}</span>
             </span>
             {data.solved_today && (
-              <span className="rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 uppercase tracking-wide">
+              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
                 ✓ Solved today
               </span>
             )}
             <span
               className={cn(
-                'rounded-full text-[10px] px-2 py-0.5 uppercase tracking-wide',
-                data.problem.difficulty === 'easy' && 'bg-emerald-500/15 text-emerald-300',
-                data.problem.difficulty === 'medium' && 'bg-amber-500/15 text-amber-300',
-                data.problem.difficulty === 'hard' && 'bg-rose-500/15 text-rose-300',
+                'rounded-full px-2 py-0.5 text-[11px] font-medium capitalize',
+                data.problem.difficulty === 'easy' && 'bg-green-500/15 text-green-700 dark:text-green-400',
+                data.problem.difficulty === 'medium' && 'bg-amber-500/15 text-amber-700 dark:text-amber-400',
+                data.problem.difficulty === 'hard' && 'bg-red-500/15 text-red-700 dark:text-red-400',
               )}
             >
               {data.problem.difficulty}
             </span>
             <span
-              className="ml-auto inline-flex items-center gap-1 text-amber-400 text-xs"
+              className="ml-auto inline-flex items-center gap-1 text-xs font-medium tabular-nums text-amber-700 dark:text-amber-400"
               data-testid="streak-counter"
               title="Consecutive days with at least one accepted submission"
             >
@@ -82,13 +82,13 @@ export function DailyChallengeWidget() {
               {data.streak}-day streak
             </span>
           </div>
-          <h3 className="text-lg font-semibold mb-1">{data.problem.title}</h3>
+          <h3 className="mb-1 text-lg font-semibold text-foreground">{data.problem.title}</h3>
           {data.problem.topics?.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-3">
               {data.problem.topics?.slice(0, 4).map((t) => (
                 <span
                   key={t}
-                  className="rounded border border-border/60 bg-background/40 text-[10px] px-1.5 py-0.5"
+                  className="rounded-full border border-border/70 bg-background px-2 py-0.5 text-[11px] text-muted-foreground"
                 >
                   {t}
                 </span>
@@ -97,7 +97,7 @@ export function DailyChallengeWidget() {
           )}
           <Link
             href={`/dashboard/problems/${data.problem.slug}`}
-            className="inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90"
+            className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             data-testid="daily-cta"
           >
             <Sparkles className="h-3 w-3" /> Solve now <ArrowRight className="h-3 w-3" />

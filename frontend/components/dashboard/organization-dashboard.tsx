@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   LayoutDashboard,
 } from 'lucide-react'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 interface OrgOverview {
   org: { id: string; name: string; slug: string; plan: string } | null
@@ -67,59 +68,62 @@ export function OrganizationDashboard() {
 
   if (error && !data?.org) {
     return (
-      <Card className="border-border/60 p-8 max-w-lg mx-auto mt-8">
+      <Panel className="mx-auto mt-8 max-w-lg p-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <AlertTriangle className="h-8 w-8 text-amber-500" />
-          <h2 className="text-lg font-semibold">Organization not linked</h2>
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="h-6 w-6" aria-hidden />
+          </span>
+          <h2 className="text-lg font-semibold text-foreground">Organization not linked</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Link href="/dashboard/support">
             <Button variant="outline" size="sm" className="mt-2">Contact support</Button>
           </Link>
         </div>
-      </Card>
+      </Panel>
     )
   }
 
   const stats = [
-    { label: 'Assessments', value: data?.assessments.total ?? 0, icon: FileText, href: '/dashboard/admin/assessments', color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
-    { label: 'Candidates', value: data?.candidates.total ?? 0, icon: UserPlus, href: '/dashboard/admin/assessments', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { label: 'Team members', value: data?.members.total ?? 0, icon: Users, href: '/dashboard/admin/team', color: 'text-sky-500', bg: 'bg-sky-500/10' },
-    { label: 'Avg score', value: data?.assessments.avgScore ?? 0, suffix: '%', icon: TrendingUp, href: '/dashboard/recruiter-analytics', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+    { label: 'Assessments', value: data?.assessments.total ?? 0, icon: FileText, href: '/dashboard/admin/assessments' },
+    { label: 'Candidates', value: data?.candidates.total ?? 0, icon: UserPlus, href: '/dashboard/admin/assessments' },
+    { label: 'Team members', value: data?.members.total ?? 0, icon: Users, href: '/dashboard/admin/team' },
+    { label: 'Average score', value: data?.assessments.avgScore ?? 0, suffix: '%', icon: TrendingUp, href: '/dashboard/recruiter-analytics' },
   ]
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{data?.org?.name || 'Organization'}</h1>
-            <p className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <LayoutDashboard className="h-3.5 w-3.5" />
-              Organization overview
-            </p>
-          </div>
-        </div>
-        {data?.org?.plan && (
-          <Badge variant="outline" className="gap-1.5 px-3 py-1.5 capitalize">
+      <PageHeader
+        className="mb-0"
+        icon={<Building2 />}
+        title={data?.org?.name || 'Organization'}
+        description={
+          <span className="inline-flex items-center gap-1.5">
+            <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+            Your organization at a glance — assessments, candidates and team.
+          </span>
+        }
+        actions={data?.org?.plan ? (
+          <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1.5 capitalize">
             {data.org.plan} plan
           </Badge>
-        )}
-      </div>
+        ) : undefined}
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(({ label, value, suffix, icon: Icon, href, color, bg }) => (
-          <Link key={label} href={href}>
-            <Card className="border-border/60 p-4 hover:border-primary/30 transition-colors">
+      <div className="cs-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map(({ label, value, suffix, icon: Icon, href }) => (
+          <Link
+            key={label}
+            href={href}
+            className="group rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            <Card className="h-full rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
               <div className="flex items-center gap-4">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${bg}`}>
-                  <Icon className={`h-6 w-6 ${color}`} />
-                </div>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-                  <p className="text-2xl font-bold text-foreground">{value}{suffix || ''}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{label}</p>
+                  <p className="text-3xl font-bold tabular-nums tracking-tight text-foreground">{value}{suffix || ''}</p>
                 </div>
               </div>
             </Card>
@@ -129,32 +133,35 @@ export function OrganizationDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/60 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-primary" /> Recent assessments
+          <Card className="rounded-3xl border-border/70 p-6">
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                <ClipboardList className="h-5 w-5 text-primary" aria-hidden /> Recent assessments
               </h2>
               <Link href="/dashboard/admin/assessments">
-                <Badge variant="outline" className="text-xs font-normal gap-1 cursor-pointer">
+                <Button variant="ghost" size="sm" className="gap-1 text-sm">
                   Manage all <ArrowRight className="h-3 w-3" />
-                </Badge>
+                </Button>
               </Link>
             </div>
             {(data?.recent?.length ?? 0) === 0 ? (
-              <div className="py-8 text-center">
-                <FileText className="mx-auto h-8 w-8 text-muted-foreground/40 mb-3" />
-                <p className="text-sm text-muted-foreground">No assessments yet. Create your first one to start screening candidates.</p>
+              <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-10 text-center">
+                <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                  <FileText className="h-6 w-6" aria-hidden />
+                </span>
+                <p className="font-medium text-foreground">No assessments yet</p>
+                <p className="mt-1 text-sm text-muted-foreground">Create your first one to start screening candidates.</p>
                 <Link href="/dashboard/admin/assessments">
                   <Button size="sm" className="mt-4 gap-1.5">
-                    <Plus className="h-4 w-4" /> Add Assessment
+                    <Plus className="h-4 w-4" /> Add assessment
                   </Button>
                 </Link>
               </div>
             ) : (
-              <div className="divide-y divide-border/60">
+              <div className="divide-y divide-border/70">
                 {data!.recent.map((e) => (
                   <Link key={e.id} href={`/dashboard/admin/assessments/${e.id}/edit`}>
-                    <div className="flex items-center justify-between py-3 transition-colors hover:bg-muted/20 rounded-md px-2 -mx-2">
+                    <div className="-mx-2 flex items-center justify-between rounded-xl px-2 py-3 transition-colors duration-200 hover:bg-primary/5">
                       <div className="min-w-0">
                         <p className="font-medium text-foreground text-sm truncate">{e.title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
@@ -162,7 +169,7 @@ export function OrganizationDashboard() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs text-muted-foreground">{e.attempts} attempts</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{e.attempts} attempts</span>
                         <Badge variant={e.published ? 'default' : 'secondary'} className="text-[10px]">
                           {e.published ? 'Published' : 'Draft'}
                         </Badge>
@@ -176,12 +183,12 @@ export function OrganizationDashboard() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-border/60 p-5 space-y-3">
+          <Card className="space-y-3 rounded-3xl border-border/70 p-6">
             <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
+              <Users className="h-4 w-4 text-primary" aria-hidden />
               <h2 className="text-sm font-semibold text-foreground">Team</h2>
             </div>
-            <p className="text-xs text-muted-foreground">Manage your organization&apos;s members and roles.</p>
+            <p className="text-sm text-muted-foreground">Manage your organization&apos;s members and roles.</p>
             <Link href="/dashboard/admin/team">
               <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
                 <Users className="h-3.5 w-3.5" /> Manage team
@@ -189,12 +196,12 @@ export function OrganizationDashboard() {
             </Link>
           </Card>
 
-          <Card className="border-border/60 p-5 space-y-3">
+          <Card className="space-y-3 rounded-3xl border-border/70 p-6">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-primary" />
+              <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
               <h2 className="text-sm font-semibold text-foreground">Hiring insights</h2>
             </div>
-            <p className="text-xs text-muted-foreground">Track candidate performance and screening effectiveness.</p>
+            <p className="text-sm text-muted-foreground">Track candidate performance and screening effectiveness.</p>
             <Link href="/dashboard/recruiter-analytics">
               <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
                 <TrendingUp className="h-3.5 w-3.5" /> Recruiter analytics

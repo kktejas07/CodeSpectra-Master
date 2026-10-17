@@ -67,8 +67,8 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Branch Analytics</h1>
-        <p className="text-foreground/60">Track quality metrics across all branches</p>
+        <h2 className="sr-only">Branch analytics</h2>
+        <p className="text-sm text-muted-foreground">Track quality metrics across all branches</p>
       </div>
 
       {/* Controls */}
@@ -91,9 +91,9 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
       {/* Branch List */}
       <div className="space-y-4">
         {branches.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
+          <Card className="rounded-3xl p-8 text-center border-dashed">
             <GitBranch className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
-            <p className="text-foreground/60">No branches found</p>
+            <p className="text-muted-foreground">No branches found</p>
           </Card>
         ) : (
           sortedBranches.map((branch) => {
@@ -115,7 +115,7 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
                           {branch.type}
                         </Badge>
                       </div>
-                      <p className="text-sm text-foreground/60 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {getBranchTypeLabel(branch.type)}
                       </p>
                     </div>
@@ -132,26 +132,26 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
                     <p className="text-2xl font-bold text-foreground">
                       {(branch.linesOfCode / 1000).toFixed(1)}k
                     </p>
-                    <p className="text-xs text-foreground/60">Lines of Code</p>
+                    <p className="text-xs text-muted-foreground">Lines of Code</p>
                   </div>
 
                   <div className="text-center">
                     <p className={`text-2xl font-bold ${branch.issues > 10 ? 'text-red-600' : branch.issues > 5 ? 'text-yellow-600' : 'text-green-600'}`}>
                       {branch.issues}
                     </p>
-                    <p className="text-xs text-foreground/60">Open Issues</p>
+                    <p className="text-xs text-muted-foreground">Open issues</p>
                   </div>
 
                   <div className="text-center">
                     <p className={`text-2xl font-bold ${branch.coverage < 60 ? 'text-red-600' : branch.coverage < 80 ? 'text-yellow-600' : 'text-green-600'}`}>
                       {branch.coverage}%
                     </p>
-                    <p className="text-xs text-foreground/60">Coverage</p>
+                    <p className="text-xs text-muted-foreground">Coverage</p>
                   </div>
 
                   <div className="text-center">
                     <p className="text-2xl font-bold text-foreground">{branch.commits}</p>
-                    <p className="text-xs text-foreground/60">Commits</p>
+                    <p className="text-xs text-muted-foreground">Commits</p>
                   </div>
 
                   <div className="text-center">
@@ -159,12 +159,12 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
                       <Users className="w-4 h-4" />
                       {branch.contributors}
                     </p>
-                    <p className="text-xs text-foreground/60">Contributors</p>
+                    <p className="text-xs text-muted-foreground">Contributors</p>
                   </div>
                 </div>
 
                 {/* Activity Info */}
-                <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-4 text-sm text-foreground/60">
+                <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
                     <span>Last commit: {formatDate(branch.lastCommit)}</span>

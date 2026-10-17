@@ -68,14 +68,14 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
             <Settings className="w-5 h-5" />
             Scanner Configuration
           </h3>
-          <p className="text-sm text-foreground/60">Customize code scanning behavior and thresholds</p>
+          <p className="text-sm text-muted-foreground">Customize code scanning behavior and thresholds</p>
         </div>
       </div>
 
       {/* Configuration Sections */}
       <div className="space-y-4">
         {/* Automation Settings */}
-        <Card className="bg-card/30 border border-border p-6 space-y-4">
+        <Card className="rounded-3xl p-6 space-y-4">
           <div className="flex items-center gap-2 pb-3 border-b border-border">
             <Code className="w-5 h-5 text-primary" />
             <h4 className="font-semibold text-foreground">Automation</h4>
@@ -90,8 +90,8 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
                 className="w-4 h-4 rounded border border-border bg-background cursor-pointer"
               />
               <div>
-                <p className="font-medium text-foreground text-sm">Auto Scan Enabled</p>
-                <p className="text-xs text-foreground/60">Automatically scan code uploads</p>
+                <p className="font-medium text-foreground text-sm">Auto scan enabled</p>
+                <p className="text-xs text-muted-foreground">Automatically scan code uploads</p>
               </div>
             </label>
 
@@ -104,7 +104,7 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
               />
               <div>
                 <p className="font-medium text-foreground text-sm">Scan on Push</p>
-                <p className="text-xs text-foreground/60">Scan GitHub repositories on every push</p>
+                <p className="text-xs text-muted-foreground">Scan GitHub repositories on every push</p>
               </div>
             </label>
 
@@ -117,14 +117,14 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
               />
               <div>
                 <p className="font-medium text-foreground text-sm">Fail on Critical Issues</p>
-                <p className="text-xs text-foreground/60">Block deployments if critical issues are found</p>
+                <p className="text-xs text-muted-foreground">Block deployments if critical issues are found</p>
               </div>
             </label>
           </div>
         </Card>
 
         {/* Quality Thresholds */}
-        <Card className="bg-card/30 border border-border p-6 space-y-4">
+        <Card className="rounded-3xl p-6 space-y-4">
           <h4 className="font-semibold text-foreground border-b border-border pb-3 flex items-center gap-2">
             <Lock className="w-5 h-5 text-primary" />
             Quality Thresholds
@@ -144,7 +144,7 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
                 onChange={(e) => updateConfig('minQualityThreshold', parseInt(e.target.value))}
                 className="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer accent-primary"
               />
-              <p className="text-xs text-foreground/60 mt-1">Code below this score will be flagged</p>
+              <p className="text-xs text-muted-foreground mt-1">Code below this score will be flagged</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -178,7 +178,7 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
         </Card>
 
         {/* Notifications */}
-        <Card className="bg-card/30 border border-border p-6 space-y-4">
+        <Card className="rounded-3xl p-6 space-y-4">
           <h4 className="font-semibold text-foreground border-b border-border pb-3 flex items-center gap-2">
             <Bell className="w-5 h-5 text-primary" />
             Notifications
@@ -192,8 +192,8 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
               className="w-4 h-4 rounded border border-border bg-background cursor-pointer"
             />
             <div>
-              <p className="font-medium text-foreground text-sm">Email Notifications</p>
-              <p className="text-xs text-foreground/60">Get notified when critical issues are detected</p>
+              <p className="font-medium text-foreground text-sm">Email notifications</p>
+              <p className="text-xs text-muted-foreground">Get notified when critical issues are detected</p>
             </div>
           </label>
 
@@ -203,7 +203,7 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
         </Card>
 
         {/* Advanced Options */}
-        <Card className="bg-card/30 border border-border p-6 space-y-4">
+        <Card className="rounded-3xl p-6 space-y-4">
           <h4 className="font-semibold text-foreground border-b border-border pb-3 flex items-center gap-2">
             <Settings className="w-5 h-5 text-primary" />
             Advanced Options
@@ -217,8 +217,8 @@ export function ScannerConfigPanel({ onSave }: ScannerConfigPanelProps) {
               className="w-4 h-4 rounded border border-border bg-background cursor-pointer"
             />
             <div>
-              <p className="font-medium text-foreground text-sm">Custom Rules</p>
-              <p className="text-xs text-foreground/60">Define custom linting and analysis rules</p>
+              <p className="font-medium text-foreground text-sm">Custom rules</p>
+              <p className="text-xs text-muted-foreground">Define custom linting and analysis rules</p>
             </div>
           </label>
 

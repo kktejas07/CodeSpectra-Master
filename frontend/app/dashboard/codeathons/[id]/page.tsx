@@ -20,6 +20,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 
 interface Problem {
   id: string
@@ -89,7 +90,7 @@ function CountdownTimer({ target }: { target: string }) {
   if (time.days === 0 && time.hours === 0 && time.minutes === 0 && time.seconds === 0) return null
 
   return (
-    <div className="flex items-center gap-1.5 text-xs">
+    <div className="flex items-center gap-1.5 text-base tabular-nums text-foreground">
       {time.days > 0 && <span className="font-mono font-semibold">{time.days}d</span>}
       <span className="font-mono font-semibold">{String(time.hours).padStart(2, '0')}</span>
       <span className="text-muted-foreground">:</span>
@@ -335,51 +336,60 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
     </div>
   )
 
-  if (!codeathon) return <div className="text-center py-20 text-muted-foreground">Codeathon not found</div>
+  if (!codeathon) return (
+    <Panel className="mx-auto max-w-md p-10 text-center">
+      <p className="font-semibold text-foreground">Codeathon not found</p>
+      <p className="mt-1 text-sm text-muted-foreground">It may have been removed. Go back to the list to pick another one.</p>
+      <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push('/dashboard/codeathons')}>All codeathons</Button>
+    </Panel>
+  )
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4" data-tour="codeathon-detail-header">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>
-            <ChevronRight className="h-4 w-4 rotate-180" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold">{codeathon.title}</h1>
-              <Badge variant="outline" className={
-                codeathon.status === 'active' ? 'border-green-400 text-green-600' :
-                codeathon.status === 'upcoming' ? 'border-blue-400 text-blue-600' :
-                'border-gray-400 text-gray-600'
-              }>
-                {codeathon.status}
-              </Badge>
-              <Badge variant="outline">{isTeamMode ? 'Team Event' : 'Individual'}</Badge>
-            </div>
-            {codeathon.description && (
-              <p className="text-sm text-muted-foreground mt-1">{codeathon.description}</p>
-            )}
-          </div>
-        </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={copyEventLink}
-          className="gap-1.5 self-start sm:self-auto border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-400 text-xs font-semibold"
-        >
-          {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Share2 className="h-3.5 w-3.5" />}
-          {copied ? 'Link Copied!' : 'Share Event'}
+      <div data-tour="codeathon-detail-header">
+        <Button variant="ghost" size="sm" className="-ml-2 mb-3 gap-1 text-muted-foreground" onClick={() => router.push('/dashboard/codeathons')}>
+          <ChevronRight className="h-4 w-4 rotate-180" aria-hidden /> All codeathons
         </Button>
+        <PageHeader
+          className="mb-0"
+          icon={<Trophy />}
+          title={codeathon.title}
+          description={
+            <span className="flex flex-col gap-2">
+              <span className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className={`capitalize ${
+                  codeathon.status === 'active' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' :
+                  codeathon.status === 'upcoming' ? 'border-primary/30 bg-primary/10 text-primary' :
+                  'border-border bg-muted text-muted-foreground'
+                }`}>
+                  {codeathon.status}
+                </Badge>
+                <Badge variant="outline">{isTeamMode ? 'Team event' : 'Individual'}</Badge>
+              </span>
+              {codeathon.description && <span>{codeathon.description}</span>}
+            </span>
+          }
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyEventLink}
+              className="gap-1.5 text-xs font-semibold"
+            >
+              {copied ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Share2 className="h-3.5 w-3.5" />}
+              {copied ? 'Link copied' : 'Share event'}
+            </Button>
+          }
+        />
       </div>
 
       {/* Invitations Banner */}
       {invitations.length > 0 && (
-        <Card className="p-4 border-blue-500/20 bg-blue-500/5">
-          <h3 className="text-sm font-semibold mb-2">Team Invitations</h3>
+        <Panel className="border-primary/20 bg-primary/5 p-5">
+          <h3 className="mb-2 text-sm font-semibold text-foreground">Team invitations</h3>
           {invitations.map(inv => (
-            <div key={inv.id} className="flex items-center justify-between py-2 border-b border-blue-500/10 last:border-0">
+            <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 py-2 last:border-0">
               <div>
                 <p className="text-sm font-medium">{inv.team_name}</p>
                 <p className="text-xs text-muted-foreground">Invited by {inv.inviter_name}</p>
@@ -390,7 +400,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
               </div>
             </div>
           ))}
-        </Card>
+        </Panel>
       )}
 
       {/* Main content */}
@@ -403,47 +413,39 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
 
         <TabsContent value="overview" className="space-y-4">
           {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="codeathon-detail-overview">
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground">Participants</p>
-              <p className="text-2xl font-bold">{codeathon.participants || 0}</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground">Prize Pool</p>
-              <p className="text-2xl font-bold">{codeathon.prizePool || '—'}</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground">Difficulty</p>
-              <p className="text-2xl font-bold">{codeathon.difficulty || 'Medium'}</p>
-            </Card>
-            <Card className="p-4">
-              <p className="text-xs text-muted-foreground">Starts</p>
-              {codeathon.startDate ? (
+          <div className="cs-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-tour="codeathon-detail-overview">
+            <StatCard label="Participants" value={codeathon.participants || 0} icon={<Users />} />
+            <StatCard label="Prize pool" value={codeathon.prizePool || '—'} icon={<Trophy />} />
+            <StatCard label="Difficulty" value={codeathon.difficulty || 'Medium'} icon={<Target />} />
+            <StatCard
+              label="Starts in"
+              icon={<Clock />}
+              value={codeathon.startDate ? (
                 <CountdownTimer target={codeathon.startDate} />
               ) : (
-                <p className="text-sm">TBA</p>
+                <span className="text-sm font-medium">TBA</span>
               )}
-            </Card>
+            />
           </div>
 
           {/* Topics */}
           {codeathon.topics && codeathon.topics.length > 0 && (
-            <Card className="p-4">
-              <h3 className="text-sm font-semibold mb-2">Topics</h3>
+            <Panel className="p-5">
+              <h3 className="mb-2 text-sm font-semibold text-foreground">Topics</h3>
               <div className="flex flex-wrap gap-1.5">
                 {codeathon.topics.map(t => <Badge key={t} variant="secondary">{t}</Badge>)}
               </div>
-            </Card>
+            </Panel>
           )}
 
           {/* Team info */}
           {isTeamMode && (
-            <Card className="p-4">
-              <h3 className="text-sm font-semibold mb-2">Team Format</h3>
-              <p className="text-sm text-muted-foreground">
-                Team size: {codeathon.team_size_min || 2} - {codeathon.team_size_max || 4} members
+            <Panel className="p-5">
+              <h3 className="mb-2 text-sm font-semibold text-foreground">Team format</h3>
+              <p className="text-sm tabular-nums text-muted-foreground">
+                Team size: {codeathon.team_size_min || 2}–{codeathon.team_size_max || 4} members
               </p>
-            </Card>
+            </Panel>
           )}
         </TabsContent>
 
@@ -451,16 +453,16 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           {!myTeam && (
             <div className="flex gap-2">
               <Button onClick={() => setCreateTeamOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" />Create Team
+                <Plus className="h-4 w-4 mr-1" />Create team
               </Button>
             </div>
           )}
 
           {myTeam && (
-            <Card className="p-4 border-primary/20">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Shield className="h-4 w-4" />Your Team: {myTeam.name}
+            <Panel className="border-primary/20 p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Shield className="h-4 w-4 text-primary" />Your team: {myTeam.name}
                 </h3>
                 <Button size="sm" variant="outline" onClick={handleLeaveTeam}>
                   <UserMinus className="h-3.5 w-3.5 mr-1" />Leave
@@ -469,7 +471,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
               <div className="space-y-2">
                 {myTeam.members?.map(m => (
                   <div key={m.user_id} className="flex items-center justify-between text-sm">
-                    <span>{m.user_id.slice(0, 8)}...</span>
+                    <span className="font-mono text-xs text-muted-foreground">{m.user_id.slice(0, 8)}…</span>
                     <Badge variant="outline" className="text-xs">{m.role}</Badge>
                   </div>
                 ))}
@@ -477,6 +479,8 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
               <div className="mt-3 flex gap-2">
                 <Input
                   placeholder="Email to invite"
+                  aria-label="Email to invite"
+                  type="email"
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
                   className="flex-1"
@@ -485,24 +489,24 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
                   <Mail className="h-3.5 w-3.5 mr-1" />Invite
                 </Button>
               </div>
-            </Card>
+            </Panel>
           )}
 
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold">All Teams</h3>
+            <h3 className="text-sm font-semibold text-foreground">All teams</h3>
             {teams.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No teams created yet</p>
+              <p className="text-sm text-muted-foreground">No teams yet. Create one to get started.</p>
             ) : (
               teams.map(team => (
-                <Card key={team.id} className="p-3">
+                <Card key={team.id} className="gap-0 rounded-2xl p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{team.name}</p>
-                      <p className="text-xs text-muted-foreground">{team.member_count} members</p>
+                      <p className="text-xs tabular-nums text-muted-foreground">{team.member_count} members</p>
                     </div>
                     {!myTeam && (
                       <Button size="sm" variant="outline" onClick={() => handleJoinTeam(team.id)} disabled={joiningTeam === team.id}>
-                        {joiningTeam === team.id ? 'Joining...' : 'Join'}
+                        {joiningTeam === team.id ? 'Joining…' : 'Join'}
                       </Button>
                     )}
                   </div>
@@ -514,30 +518,30 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
 
         <TabsContent value="problems" className="space-y-4">
           {!problemsVisible ? (
-            <Card className="p-8 text-center">
-              <Target className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <p className="text-muted-foreground">Problems will be visible when the contest starts</p>
-              <p className="text-xs text-muted-foreground mt-1">Start time: {codeathon.startDate ? formatDateTime(codeathon.startDate) : 'TBA'}</p>
-            </Card>
+            <Panel className="flex flex-col items-center p-10 text-center">
+              <Target className="mb-3 h-10 w-10 text-primary/50" aria-hidden />
+              <p className="font-semibold text-foreground">Problems unlock when the contest starts</p>
+              <p className="mt-1 text-sm tabular-nums text-muted-foreground">Start time: {codeathon.startDate ? formatDateTime(codeathon.startDate) : 'TBA'}</p>
+            </Panel>
           ) : (
             <div className="space-y-2">
               {codeathon.problems?.map((p, i) => (
-                <Card key={p.id} className="p-4 hover:border-primary/30 transition-colors cursor-pointer"
+                <Card key={p.id} className="cursor-pointer gap-0 rounded-2xl p-4 hover:border-primary/40"
                   onClick={() => router.push(`/dashboard/codeathons/${id}/problems/${p.id}`)}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-mono text-muted-foreground">#{i + 1}</span>
+                      <span className="text-sm font-mono tabular-nums text-muted-foreground">#{i + 1}</span>
                       <div>
-                        <p className="font-medium">{p.title}</p>
+                        <p className="font-medium text-foreground">{p.title}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="outline" className={
-                            p.difficulty === 'Hard' ? 'border-red-400 text-red-600' :
-                            p.difficulty === 'Easy' ? 'border-green-400 text-green-600' :
-                            'border-yellow-400 text-yellow-600'
+                            p.difficulty === 'Hard' ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400' :
+                            p.difficulty === 'Easy' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' :
+                            'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
                           }>
                             {p.difficulty}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">{p.points} pts</span>
+                          <span className="text-xs tabular-nums text-muted-foreground">{p.points} pts</span>
                         </div>
                       </div>
                     </div>
@@ -554,7 +558,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       <div className="flex gap-2" data-tour="codeathon-detail-register">
         {!codeathon.registered ? (
           <Button onClick={handleRegister} disabled={registering} size="lg">
-            {registering ? 'Registering...' : 'Register for Codeathon'}
+            {registering ? 'Registering…' : 'Register for this codeathon'}
           </Button>
         ) : (
           <Button variant="outline" size="lg" disabled>
@@ -567,19 +571,19 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create Team</DialogTitle>
+            <DialogTitle>Create a team</DialogTitle>
             <DialogDescription>Create a team for this codeathon</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Team Name</Label>
-              <Input value={newTeamName} onChange={e => setNewTeamName(e.target.value)} placeholder="Enter team name" />
+              <Label htmlFor="new-team-name">Team name</Label>
+              <Input id="new-team-name" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} placeholder="Enter team name" />
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateTeamOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateTeam} disabled={creatingTeam || !newTeamName.trim()}>
-              {creatingTeam ? 'Creating...' : 'Create Team'}
+              {creatingTeam ? 'Creating…' : 'Create team'}
             </Button>
           </DialogFooter>
         </DialogContent>

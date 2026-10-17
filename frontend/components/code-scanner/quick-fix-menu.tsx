@@ -123,7 +123,7 @@ function QuickFixCard({
         : 'text-orange-600'
 
   return (
-    <Card className="p-3 bg-card border-border hover:border-primary/30 transition-colors cursor-pointer">
+    <Card className="p-3 hover:border-primary/30 transition-colors cursor-pointer">
       <button
         onClick={onToggle}
         className="w-full text-left flex items-start justify-between gap-2"
@@ -163,7 +163,7 @@ function QuickFixCard({
                 <Copy className="w-3 h-3" />
               </Button>
             </div>
-            <pre className="text-xs bg-black/20 p-2 rounded overflow-x-auto text-foreground">
+            <pre className="text-xs bg-muted p-2 rounded overflow-x-auto text-foreground">
               <code>{fix.code}</code>
             </pre>
           </div>

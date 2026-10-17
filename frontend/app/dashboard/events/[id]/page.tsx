@@ -33,6 +33,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { JUDGING_CRITERION_KEYS, JUDGING_CRITERION_LABELS, sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
 import { average, blendFinal, collectHumanScores, judgeStats } from '@/lib/hackathons/calibration'
 import { buildProjectReport } from '@/lib/hackathons/reporting'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -79,12 +80,12 @@ interface Submission {
 }
 
 const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  submitted: { color: 'bg-blue-500/10 text-blue-600 border-blue-500/30', label: 'Submitted' },
-  under_review: { color: 'bg-amber-500/10 text-amber-600 border-amber-500/30', label: 'Under Review' },
-  review_completed: { color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30', label: 'Review Complete' },
-  accepted: { color: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30', label: 'Accepted' },
-  rejected: { color: 'bg-rose-500/10 text-rose-600 border-rose-500/30', label: 'Not Selected' },
-  released: { color: 'bg-blue-500/10 text-blue-600 border-blue-500/30', label: 'Score Released' },
+  submitted: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Submitted' },
+  under_review: { color: 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400', label: 'Under review' },
+  review_completed: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Review complete' },
+  accepted: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Accepted' },
+  rejected: { color: 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400', label: 'Not selected' },
+  released: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Score released' },
 }
 
 interface LeaderboardEntry {
@@ -395,7 +396,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     try {
       const body: any = {}
       if (event.features?.judging_rubrics && scoreForm.rubric_scores) {
-        body.rubric_scores = scoreForm.rubric_scores
+        // Feedback lives on scoreForm; keep it in sync with the rubric payload
+        // (it was only captured when a slider moved, so later edits were lost).
+        body.rubric_scores = { ...scoreForm.rubric_scores, feedback: scoreForm.feedback }
       } else {
         body.score = scoreForm.score
         body.feedback = scoreForm.feedback
@@ -605,11 +608,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       key: 'score',
       header: 'Score',
       sortable: true,
-      cell: (row: any) => row.score !== null ? <span className="text-sm font-medium">{row.score}/100</span> : <span className="text-sm text-muted-foreground">-</span>
+      cell: (row: any) => row.score !== null ? <span className="font-mono text-sm font-medium tabular-nums">{row.score}/100</span> : <span className="text-sm text-muted-foreground">-</span>
     },
     {
       key: 'submitted_at',
-      header: 'Latest Submission',
+      header: 'Latest submission',
       sortable: true,
       cell: (row: any) => <span className="text-xs text-muted-foreground">{formatDateTime(row.submitted_at)}</span>
     },
@@ -627,7 +630,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return (
           <div className="flex flex-col gap-1.5 max-w-[220px]">
             {rowErrors && typeof rowErrors[row.id] === 'string' && rowErrors[row.id] && (
-              <p className="text-[11px] leading-snug text-rose-600">{rowErrors[row.id]}</p>
+              <p className="text-[11px] leading-snug text-red-600 dark:text-red-400">{rowErrors[row.id]}</p>
             )}
             {!a ? (
               <span className="text-xs text-muted-foreground">Not audited</span>
@@ -638,12 +641,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <Badge variant="outline" className="text-[10px]" title={a.freshness?.reason || ''}>{pct}% in-event</Badge>
                   )}
                   {a.freshness?.likelyPreexisting === true && (
-                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30" title={a.freshness?.reason || 'Commits look pre-existing'}>pre-existing?</Badge>
+                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400" title={a.freshness?.reason || 'Commits look pre-existing'}>pre-existing?</Badge>
                   )}
                   {secretsTotal !== null && (
                     <Badge
                       variant="outline"
-                      className={`text-[10px] ${secretsTotal > 0 ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}
+                      className={`text-[10px] ${secretsTotal > 0 ? 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400' : ''}`}
                       title={a.secrets ? `critical ${a.secrets.critical ?? 0} · high ${a.secrets.high ?? 0} · medium ${a.secrets.medium ?? 0}` : 'Secrets scan'}
                     >
                       <Shield className="w-3 h-3 mr-0.5" />{secretsTotal}
@@ -652,10 +655,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {a.docs && (
                     <>
                       <Badge variant="outline" className="text-[10px]" title={a.docs.tests ? 'Test files detected' : 'No test files detected'}>
-                        {a.docs.tests ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-emerald-600" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}tests
+                        {a.docs.tests ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-green-600 dark:text-green-400" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}tests
                       </Badge>
                       <Badge variant="outline" className="text-[10px]" title={a.docs.readme ? 'README/docs detected' : 'No README/docs detected'}>
-                        {a.docs.readme ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-emerald-600" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}docs
+                        {a.docs.readme ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-green-600 dark:text-green-400" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}docs
                       </Badge>
                     </>
                   )}
@@ -665,7 +668,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {screening && typeof screening.total === 'number' && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] bg-violet-500/10 text-violet-600 border-violet-500/30"
+                      className="text-[10px] bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-400"
                       title={screening.notes || 'AI screening total'}
                     >
                       AI {screening.total}/{screening.maxTotal ?? '?'}
@@ -674,7 +677,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <details className="text-xs">
                   <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Full evidence</summary>
-                  <dl className="mt-1 space-y-1 rounded-md border bg-muted/20 p-2">
+                  <dl className="mt-1 space-y-1 rounded-lg border border-border/70 bg-muted/30 p-2">
                     <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Repo</dt><dd className="font-mono text-right">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
                     <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Commits</dt><dd className="font-mono text-right">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
                     <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Contributors</dt><dd className="font-mono text-right">{a.effort?.contributors ?? 'n/a'}</dd></div>
@@ -740,7 +743,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <Button size="sm" className="h-7 text-xs" onClick={openEvaluate}>Score</Button>
             ) : (
               <div className="flex items-center gap-1.5">
-                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">{row.score ?? '?'}/100</Badge>
+                <Badge variant="outline" className="font-mono text-xs tabular-nums bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">{row.score ?? '?'}/100</Badge>
                 <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={openEvaluate}>Re-score</Button>
               </div>
             )}
@@ -806,10 +809,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   if (!event) {
-    return <div className="p-10 text-center">
-      <p className="text-sm text-destructive">Event not found</p>
-      <Link href="/dashboard/events" className="mt-3 inline-block text-sm text-primary hover:underline">← Back to Events</Link>
-    </div>
+    return <Panel className="mx-auto max-w-md p-10 text-center">
+      <p className="font-semibold text-foreground">Event not found</p>
+      <p className="mt-1 text-sm text-muted-foreground">It may have been removed, or you may not have access to it.</p>
+      <Link href="/dashboard/events" className="mt-4 inline-block text-sm font-medium text-primary hover:underline">← Back to events</Link>
+    </Panel>
   }
 
   const now = Date.now()
@@ -820,47 +824,55 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const isUpcoming = now < starts
   const canSubmit = isLive && myTeam && event.status !== 'closed'
 
-  const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+  const statusColor = isLive ? 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400'
     : isClosed ? 'bg-muted text-muted-foreground'
-    : 'bg-blue-500/10 text-blue-600 border-blue-500/30'
+    : 'bg-primary/10 text-primary border-primary/30'
   const statusLabel = isLive ? 'Live' : isClosed ? 'Ended' : 'Upcoming'
 
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm" onClick={() => router.push('/dashboard/events')}>
-            <ArrowLeft className="h-4 w-4" /> Back to Events
-          </div>
-          <h1 className="text-2xl font-bold flex items-center gap-2 truncate">
-            <Trophy className="h-6 w-6 text-primary shrink-0" /> {event.name}
-          </h1>
-          <div className="flex flex-wrap items-center gap-2 mt-1">
-            <Badge variant="outline" className={statusColor}>{statusLabel}</Badge>
-            <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" /> {event.timeout_minutes} min</Badge>
-            <Badge variant="secondary"><Users className="w-3 h-3 mr-1" /> {teams.length} teams</Badge>
-            {event.features?.team_formation && <Badge variant="secondary">Team Event</Badge>}
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {isLive && !isClosed && (
-            <span className="text-xs text-emerald-600 flex items-center gap-1">
-              <Timer className="w-3 h-3" /> Ends in <Countdown targetIso={event.ends_at} />
+      <div>
+        <button
+          type="button"
+          className="mb-3 inline-flex items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
+          onClick={() => router.push('/dashboard/events')}
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden /> Back to events
+        </button>
+        <PageHeader
+          className="mb-0"
+          icon={<Trophy />}
+          title={event.name}
+          description={
+            <span className="mt-1 flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className={statusColor}>{statusLabel}</Badge>
+              <Badge variant="secondary" className="tabular-nums"><Clock className="w-3 h-3 mr-1" /> {event.timeout_minutes} min</Badge>
+              <Badge variant="secondary" className="tabular-nums"><Users className="w-3 h-3 mr-1" /> {teams.length} teams</Badge>
+              {event.features?.team_formation && <Badge variant="secondary">Team event</Badge>}
             </span>
-          )}
-          {isUpcoming && (
-            <span className="text-xs text-blue-600 flex items-center gap-1">
-              <Timer className="w-3 h-3" /> Starts in <Countdown targetIso={event.starts_at} />
-            </span>
-          )}
-        </div>
+          }
+          actions={(isLive && !isClosed) || isUpcoming ? (
+            <>
+              {isLive && !isClosed && (
+                <span className="flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium tabular-nums text-green-700 dark:text-green-400">
+                  <Timer className="w-3.5 h-3.5" aria-hidden /> Ends in <Countdown targetIso={event.ends_at} />
+                </span>
+              )}
+              {isUpcoming && (
+                <span className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium tabular-nums text-primary">
+                  <Timer className="w-3.5 h-3.5" aria-hidden /> Starts in <Countdown targetIso={event.starts_at} />
+                </span>
+              )}
+            </>
+          ) : undefined}
+        />
       </div>
 
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="flex-wrap">
+        <TabsList className="flex h-auto flex-wrap justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="problems">Problems ({event.tasks?.length || 0})</TabsTrigger>
           {myTeam && <TabsTrigger value="submissions">Submissions</TabsTrigger>}
@@ -874,50 +886,38 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="mt-4 space-y-4">
-          <Card className="p-5 space-y-4">
-            {event.description && <p className="text-sm text-muted-foreground">{event.description}</p>}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground text-xs block">Starts</span>
-                <span className="font-medium">{formatDateTime(event.starts_at)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground text-xs block">Ends</span>
-                <span className="font-medium">{formatDateTime(event.ends_at)}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground text-xs block">Teams</span>
-                <span className="font-medium">{teams.length} / {event.num_teams}</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground text-xs block">Problems</span>
-                <span className="font-medium">{event.tasks?.length || 0}</span>
-              </div>
-            </div>
+          <div className="cs-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard icon={<CalendarDays />} label="Starts" value={<span className="text-base">{formatDateTime(event.starts_at)}</span>} />
+            <StatCard icon={<Clock />} label="Ends" value={<span className="text-base">{formatDateTime(event.ends_at)}</span>} />
+            <StatCard icon={<Users />} label="Teams" value={`${teams.length} / ${event.num_teams}`} />
+            <StatCard icon={<ListChecks />} label="Problems" value={event.tasks?.length || 0} />
+          </div>
+          <Panel className="space-y-4">
+            {event.description ? <p className="text-sm text-muted-foreground">{event.description}</p> : <p className="text-sm text-muted-foreground">No description for this event yet.</p>}
 
             {event.rules && event.rules.length > 0 && (
-              <div className="space-y-2 pt-2 border-t">
-                <h4 className="text-sm font-semibold">Rules</h4>
+              <div className="space-y-2 pt-4 border-t border-border/70">
+                <h4 className="text-sm font-semibold text-foreground">Rules</h4>
                 {event.rules.map((r, i) => (
-                  <div key={i} className="text-xs">
-                    <span className="font-medium">{r.title}:</span>{' '}
+                  <div key={i} className="text-sm">
+                    <span className="font-medium text-foreground">{r.title}:</span>{' '}
                     <span className="text-muted-foreground">{r.description}</span>
                   </div>
                 ))}
               </div>
             )}
-          </Card>
+          </Panel>
 
           {/* Team Section */}
           {event.features?.team_formation && (
-            <Card className="p-5">
-              <h4 className="text-sm font-semibold mb-3">Team</h4>
+            <Panel>
+              <h4 className="mb-3 text-sm font-semibold text-foreground">Your team</h4>
               {myTeam ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-emerald-500" />
-                    <span className="font-medium">{myTeam.name}</span>
-                    <Badge variant="outline" className="text-xs">{myTeam.members.length}/{event.max_per_team}</Badge>
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    <span className="font-medium text-foreground">{myTeam.name}</span>
+                    <Badge variant="outline" className="text-xs tabular-nums">{myTeam.members.length}/{event.max_per_team}</Badge>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {myTeam.members.map(m => (
@@ -930,55 +930,55 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               ) : (
                 <p className="text-xs text-muted-foreground">
                   {event.status === 'open' || event.status === 'live'
-                    ? 'Join this event to form or join a team'
+                    ? 'Join this event to form a team or join one.'
                     : 'Registration is closed'}
                 </p>
               )}
-            </Card>
+            </Panel>
           )}
 
           {/* Features */}
           {event.features && (
-            <Card className="p-5">
-              <h4 className="text-sm font-semibold mb-3">Event Features</h4>
+            <Panel>
+              <h4 className="mb-3 text-sm font-semibold text-foreground">What this event includes</h4>
               <div className="flex flex-wrap gap-2">
-                {event.features.judging_rubrics && <Badge variant="secondary">Rubric Judging</Badge>}
+                {event.features.judging_rubrics && <Badge variant="secondary">Rubric judging</Badge>}
                 {event.features.proctoring && <Badge variant="secondary">Proctored</Badge>}
                 {event.features.forum && <Badge variant="secondary">Forum</Badge>}
                 {event.features.project_showcase && <Badge variant="secondary">Showcase</Badge>}
                 {event.features.certificates && <Badge variant="secondary">Certificates</Badge>}
-                {event.features.demo_video === 'required' && <Badge variant="secondary">Demo Required</Badge>}
+                {event.features.demo_video === 'required' && <Badge variant="secondary">Demo required</Badge>}
                 {event.features.sponsor_tracks?.length > 0 && (
-                  <Badge variant="secondary">{event.features.sponsor_tracks.length} Sponsor Tracks</Badge>
+                  <Badge variant="secondary">{event.features.sponsor_tracks.length} sponsor tracks</Badge>
                 )}
               </div>
-            </Card>
+            </Panel>
           )}
         </TabsContent>
 
         {/* Problems Tab */}
         <TabsContent value="problems" className="mt-4 space-y-3">
           {(!event.tasks || event.tasks.length === 0) ? (
-            <Card className="p-8 text-center">
-              <Target className="h-8 w-8 mb-2 text-muted-foreground" />
+            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+              <Target className="h-8 w-8 text-primary/60" aria-hidden />
               <p className="text-sm text-muted-foreground">No problems added yet</p>
             </Card>
           ) : (
             event.tasks.sort((a, b) => (a.order || 0) - (b.order || 0)).map((task, i) => (
-              <Card key={task.problem_slug} className="p-4">
+              <Card key={task.problem_slug} className="gap-0 rounded-2xl p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Q{i + 1}</span>
-                      <span className="font-medium text-sm truncate">{task.problem_title}</span>
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">Q{i + 1}</span>
+                      <span className="truncate text-sm font-medium text-foreground">{task.problem_title}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline" className={`text-[10px] ${
-                        task.difficulty === 'hard' ? 'text-rose-500 border-rose-500/30' :
-                        task.difficulty === 'medium' ? 'text-amber-500 border-amber-500/30' :
-                        'text-emerald-500 border-emerald-500/30'
+                        task.difficulty === 'hard' ? 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400' :
+                        task.difficulty === 'medium' ? 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400' :
+                        'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400'
                       }`}>{task.difficulty}</Badge>
-                      <span className="text-xs text-muted-foreground">{task.points} pts</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{task.points} pts</span>
                       {task.required && <Badge variant="secondary" className="text-[10px]">Required</Badge>}
                     </div>
                   </div>
@@ -991,30 +991,30 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Submissions Tab */}
         <TabsContent value="submissions" className="mt-4 space-y-3">
           {!myTeam ? (
-            <Card className="p-8 text-center">
-              <Send className="h-8 w-8 mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Join a team to see submissions</p>
+            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+              <Send className="h-8 w-8 text-primary/60" aria-hidden />
+              <p className="text-sm text-muted-foreground">Join a team to see your submissions here.</p>
             </Card>
           ) : submissions.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Send className="h-8 w-8 mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No submissions yet</p>
+            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+              <Send className="h-8 w-8 text-primary/60" aria-hidden />
+              <p className="text-sm text-muted-foreground">No submissions yet. Your team&apos;s entries will appear here.</p>
             </Card>
           ) : (
             submissions.map(sub => {
               const statusConfig = STATUS_CONFIG[sub.status] || STATUS_CONFIG.submitted
               return (
-                <Card key={sub.id} className="p-4">
+                <Card key={sub.id} className="gap-0 rounded-2xl p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm">{sub.problem_slug}</span>
+                      <span className="text-sm font-medium text-foreground">{sub.problem_slug}</span>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className={`text-xs ${statusConfig.color}`}>{statusConfig.label}</Badge>
-                        {sub.score !== null && <span className="text-xs font-medium">{sub.score}/{sub.max_score}</span>}
+                        {sub.score !== null && <span className="font-mono text-xs font-medium tabular-nums">{sub.score}/{sub.max_score}</span>}
                         <span className="text-xs text-muted-foreground">{formatDateTime(sub.submitted_at)}</span>
                       </div>
                       {sub.rejection_reason && (
-                        <p className="text-xs text-rose-500 mt-1">Reason: {sub.rejection_reason}</p>
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">Reason: {sub.rejection_reason}</p>
                       )}
                     </div>
                   </div>
@@ -1027,42 +1027,42 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Leaderboard Tab */}
         <TabsContent value="leaderboard" className="mt-4 space-y-3">
           {leaderboard.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Trophy className="h-8 w-8 mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No teams yet</p>
+            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+              <Trophy className="h-8 w-8 text-primary/60" aria-hidden />
+              <p className="text-sm text-muted-foreground">No teams on the leaderboard yet.</p>
             </Card>
           ) : (
             <>
               {/* Top 3 Podium */}
               {leaderboard.length >= 3 && (
-                <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="mb-4 grid grid-cols-3 gap-3 sm:gap-4">
                   {[1, 0, 2].map(rank => {
                     const entry = leaderboard[rank]
                     if (!entry) return <div key={rank} />
-                    const colors = ['text-yellow-500', 'text-gray-400', 'text-amber-600']
+                    const colors = ['text-amber-500', 'text-slate-400', 'text-orange-600']
                     const icons = [<Star key="1" className="w-5 h-5" />, <Medal key="2" className="w-5 h-5" />, <Award key="3" className="w-5 h-5" />]
                     return (
-                      <Card key={entry.team_id} className={`p-4 text-center ${rank === 0 ? 'border-yellow-500/40' : ''}`}>
+                      <Card key={entry.team_id} className={`items-center gap-1 rounded-3xl p-5 text-center ${rank === 0 ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
                         <div className={colors[rank]}>{icons[rank]}</div>
-                        <p className="font-semibold text-sm mt-1 truncate">{entry.team_name}</p>
-                        <p className="text-xs text-muted-foreground">{entry.xp} XP</p>
+                        <p className="mt-1 w-full truncate text-sm font-semibold text-foreground">{entry.team_name}</p>
+                        <p className="text-xs tabular-nums text-muted-foreground">{entry.xp} XP</p>
                       </Card>
                     )
                   })}
                 </div>
               )}
               {/* Full Rankings */}
-              <Card className="divide-y">
+              <Card className="gap-0 divide-y divide-border/70 overflow-hidden rounded-3xl py-0">
                 {leaderboard.map(entry => (
-                  <div key={entry.team_id} className="flex items-center gap-3 p-3">
-                    <span className="w-8 text-center font-mono text-sm text-muted-foreground">#{entry.rank}</span>
+                  <div key={entry.team_id} className="flex items-center gap-3 px-5 py-3">
+                    <span className="w-8 text-center font-mono text-sm tabular-nums text-muted-foreground">#{entry.rank}</span>
                     <div className="flex-1 min-w-0">
-                      <span className="font-medium text-sm truncate block">{entry.team_name}</span>
+                      <span className="block truncate text-sm font-medium text-foreground">{entry.team_name}</span>
                       <span className="text-xs text-muted-foreground">{entry.members.join(', ')}</span>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="text-sm font-medium block">{entry.xp} XP</span>
-                      <span className="text-xs text-muted-foreground">{entry.submissions} subs</span>
+                      <span className="block text-sm font-medium tabular-nums">{entry.xp} XP</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{entry.submissions} submissions</span>
                     </div>
                   </div>
                 ))}
@@ -1074,14 +1074,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Judge Tab */}
         <TabsContent value="judge" className="mt-4 space-y-4">
           {judgeLoading ? (
-            <Card className="p-8 text-center">
-              <Loader2 className="h-6 w-6 animate-spin mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Loading submissions...</p>
+            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+              <Loader2 className="h-6 w-6 animate-spin text-primary motion-reduce:animate-none" />
+              <p className="text-sm text-muted-foreground">Loading submissions…</p>
             </Card>
           ) : judgeSubmissions.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Shield className="h-8 w-8 mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No submissions to review</p>
+            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+              <Shield className="h-8 w-8 text-primary/60" aria-hidden />
+              <p className="text-sm text-muted-foreground">No submissions to review yet. They&apos;ll appear here as teams submit.</p>
             </Card>
           ) : (
             <div className="space-y-4">
@@ -1093,17 +1093,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <button
                       key={s.key}
                       onClick={() => gotoJudgeStep(s.tab, s.anchor)}
-                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${s.done ? 'border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10' : isCurrent ? 'border-primary/50 bg-primary/5 hover:bg-primary/10' : 'border-border bg-muted/20 opacity-70 hover:opacity-100'}`}
+                      aria-current={isCurrent ? 'step' : undefined}
+                      className={`flex items-center gap-2 rounded-2xl border px-3 py-2.5 text-left transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-primary ${s.done ? 'border-green-500/40 bg-green-500/5 hover:bg-green-500/10' : isCurrent ? 'border-primary/50 bg-primary/5 hover:bg-primary/10' : 'border-border bg-muted/30 hover:bg-muted/60'}`}
                     >
-                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.done ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.done ? 'bg-green-600 text-white' : isCurrent ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                         {s.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : s.n}
                       </span>
                       <span className="min-w-0">
-                        <span className="block truncate text-xs font-semibold">
+                        <span className="block truncate text-xs font-semibold text-foreground">
                           <span className="sm:hidden">{s.short}</span>
                           <span className="hidden sm:inline">{s.label}</span>
                         </span>
-                        <span className="block truncate text-[11px] text-muted-foreground">{s.count}</span>
+                        <span className="block truncate text-[11px] tabular-nums text-muted-foreground">{s.count}</span>
                       </span>
                     </button>
                   )
@@ -1128,13 +1129,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'evaluate' && (
                 <div id="judge-evaluate" className="space-y-4 scroll-mt-4">
                   <div>
-                    <h3 className="font-semibold text-sm">Steps 1–3 — Evaluate submissions</h3>
-                    <p className="text-xs text-muted-foreground">Work each row left to right: audit the repo, run AI screening, then record a human score.</p>
+                    <h3 className="text-base font-semibold text-foreground">Steps 1–3 — Evaluate submissions</h3>
+                    <p className="text-sm text-muted-foreground">Work each row left to right: audit the repo, run AI screening, then record a human score.</p>
                   </div>
                   {(Object.keys(audits || {}).length === 0 && (screenBoard || []).length === 0 && (humanScores || []).length === 0) ? (
-                    <Card className="p-5 space-y-3 border-amber-500/20 bg-amber-500/5">
+                    <Card className="space-y-3 rounded-3xl border-primary/20 bg-primary/5 p-5">
                       <div>
-                        <h3 className="font-semibold text-sm">Get judging started</h3>
+                        <h3 className="text-sm font-semibold text-foreground">Get judging started</h3>
                         <p className="text-xs text-muted-foreground">No repo audits, AI scores, or judge scores yet — work the list top to bottom.</p>
                       </div>
                       <ol className="space-y-2 text-sm">
@@ -1161,9 +1162,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </ol>
                     </Card>
                   ) : (
-                    <div id="judge-eval-bulk" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-muted/20 px-3 py-2.5 scroll-mt-4">
-                      <span className="text-sm font-semibold">Bulk actions</span>
-                      <span className="text-xs text-muted-foreground">{totalJudgeSubs} submissions · {auditedJudgeCount} audited · {screenedJudgeCount} screened · {scoredJudgeCount} scored</span>
+                    <div id="judge-eval-bulk" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 scroll-mt-4">
+                      <span className="text-sm font-semibold text-foreground">Bulk actions</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{totalJudgeSubs} submissions · {auditedJudgeCount} audited · {screenedJudgeCount} screened · {scoredJudgeCount} scored</span>
                       <span className="ml-auto flex flex-wrap gap-2">
                         <Button size="sm" variant="outline" onClick={() => { void runAuditAll() }} disabled={auditingAll} className="h-8">
                           {auditingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
@@ -1180,7 +1181,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <DataTable
                       columns={columns}
                       data={groupedSubmissions}
-                      searchPlaceholder="Search by team or problem..."
+                      searchPlaceholder="Search by team or problem…"
                       searchKeys={['team_name', 'problem_slug']}
                     />
                   </div>
@@ -1190,22 +1191,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'board' && (
                 <div id="judge-board" className="space-y-4 scroll-mt-4">
                   <div>
-                    <h3 className="font-semibold text-sm">Step 4 — Review & publish</h3>
-                    <p className="text-xs text-muted-foreground">Blended AI + human board with calibration — advisory until results are released.</p>
+                    <h3 className="text-base font-semibold text-foreground">Step 4 — Review & publish</h3>
+                    <p className="text-sm text-muted-foreground">Blended AI + human board with calibration — advisory until results are released.</p>
                   </div>
                   {/* J3/J4 (a): judging config summary — published rubric, read-only */}
-                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
-                    <span className="font-semibold text-sm mr-1">Judging rubric</span>
+                  <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs">
+                    <span className="mr-1 text-sm font-semibold text-foreground">Judging rubric</span>
                     <Badge variant="secondary">{judgingCfg.criteria.length} criteria</Badge>
                     <Badge variant="outline">
                       AI {Math.round(judgingCfg.aiWeight * 100)}% / human {Math.round((1 - judgingCfg.aiWeight) * 100)}%
                     </Badge>
                     <Badge variant="outline">Top {judgingCfg.advanceTopN} advance</Badge>
                     <Badge variant="outline">Top {judgingCfg.displayCount} published</Badge>
-                    {judgingCfg.blindMode && <Badge variant="outline" className="bg-slate-500/10">Blind mode</Badge>}
-                    {judgingCfg.dropHighLow && <Badge variant="outline" className="bg-slate-500/10">Drop high/low</Badge>}
+                    {judgingCfg.blindMode && <Badge variant="outline" className="bg-muted">Blind mode</Badge>}
+                    {judgingCfg.dropHighLow && <Badge variant="outline" className="bg-muted">Drop high/low</Badge>}
                     <details className="text-xs">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">weights</summary>
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Weights</summary>
                       <span className="text-muted-foreground">
                         {(judgingCfg.criteria || []).map((c) => `${c.label} ×${c.weight}`).join(' · ')}
                       </span>
@@ -1213,8 +1214,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
                   {/* J3/J4 (b): calibration — per-judge means, |z|>1.5 flagged */}
                   {calibStats.length > 0 && (
-                    <details className="rounded-lg border px-3 py-2">
-                      <summary className="cursor-pointer text-sm font-semibold">
+                    <details className="rounded-2xl border border-border/70 bg-card px-4 py-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-foreground">
                         Calibration <span className="font-normal text-muted-foreground">· {calibStats.length} judge{calibStats.length === 1 ? '' : 's'} — outliers flagged</span>
                       </summary>
                       <p className="mt-1 text-xs text-muted-foreground">Per-judge scoring means. Judges whose mean is more than 1.5σ from the panel are flagged.</p>
@@ -1224,7 +1225,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             key={st.judgeId}
                             variant="outline"
                             title={`z = ${st.z}`}
-                            className={`text-[11px] font-mono ${st.outlier ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}
+                            className={`text-[11px] font-mono ${st.outlier ? 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400' : ''}`}
                           >
                             {(st.judgeId || '').slice(0, 8)} μ={st.mean} σ={st.std} n={st.count}{st.outlier ? ' · outlier' : ''}
                           </Badge>
@@ -1234,10 +1235,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                   {/* J3/J4 (e): final ranked board — AI + human blended via config */}
                   {rankedBoard.length > 0 && (
-                    <Card className="p-5 space-y-3 border-emerald-500/20">
+                    <Card className="space-y-3 rounded-3xl p-5">
                       <div>
-                        <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                          <Trophy className="w-4 h-4" /> Final board
+                        <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                          <Trophy className="w-4 h-4 text-primary" /> Final board
                         </h3>
                         <p className="text-xs text-muted-foreground">
                           AI {Math.round(judgingCfg.aiWeight * 100)}% + human blended
@@ -1250,21 +1251,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             ? `Entry ${i + 1}`
                             : String(r.sub.team_name || r.sub.team_id || r.sub.id || 'Unknown')
                           return (
-                            <div key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3">
+                            <div key={String(r.sub.id || i)} className="rounded-2xl border border-border/70 bg-background p-3">
                               <div className="flex items-center gap-2">
-                                <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
-                                <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
+                                <span className="w-6 text-center font-mono text-xs tabular-nums text-muted-foreground">#{i + 1}</span>
+                                <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{name}</span>
                                 {i < judgingCfg.advanceTopN && (
-                                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">advances</Badge>
+                                  <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">Advances</Badge>
                                 )}
                                 {i < judgingCfg.displayCount && (
-                                  <Badge variant="outline" className="text-[10px]">published</Badge>
+                                  <Badge variant="outline" className="text-[10px]">Published</Badge>
                                 )}
-                                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                                <Badge variant="outline" className="font-mono text-xs tabular-nums bg-primary/10 text-primary border-primary/30">
                                   {r.final !== null && r.final !== undefined ? r.final : '?'}
                                 </Badge>
                               </div>
-                              <p className="mt-1 text-[11px] text-muted-foreground font-mono">
+                              <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">
                                 AI {r.aiTotal ?? '?'}{r.aiMax !== null && r.aiMax !== undefined ? `/${r.aiMax}` : ''} · human {r.humanAvg ?? '?'} ({r.humanCount} judge{r.humanCount === 1 ? '' : 's'})
                               </p>
                             </div>
@@ -1273,9 +1274,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </div>
                     </Card>
                   )}
-                  <Card id="judge-publish" className="p-5 space-y-3 border-blue-500/20 bg-blue-500/5 scroll-mt-4">
+                  <Card id="judge-publish" className="space-y-3 rounded-3xl border-primary/25 bg-primary/5 p-5 scroll-mt-4">
                     <div>
-                      <h3 className="font-semibold text-sm text-blue-500">Step 4 — Publish results</h3>
+                      <h3 className="text-sm font-semibold text-primary">Step 4 — Publish results</h3>
                       <p className="text-xs text-muted-foreground">
                         {event.results_released
                           ? `Results released${event.released_at ? ` on ${formatDateTime(event.released_at)}` : ''}.`
@@ -1284,13 +1285,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="mr-2 text-right">
-                        <p className="text-2xl font-bold font-mono">{groupedSubmissions.length}</p>
+                        <p className="text-2xl font-bold tabular-nums text-foreground">{groupedSubmissions.length}</p>
                         <p className="text-xs text-muted-foreground">Submissions</p>
                       </div>
                       {isAdmin && !event?.results_released && (
                         <Button size="sm" variant="default" onClick={handleReleaseResults} disabled={releasingResults} className="h-9">
                           {releasingResults ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Award className="w-4 h-4 mr-2" />}
-                          Release Scores
+                          Release scores
                         </Button>
                       )}
                       <Button size="sm" variant="outline" onClick={exportResults} className="h-9">
@@ -1304,20 +1305,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'compare' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="font-semibold text-sm">Tie-break comparisons</h3>
-                    <p className="text-xs text-muted-foreground">Head-to-head AI comparisons for close calls — ties allowed.</p>
+                    <h3 className="text-base font-semibold text-foreground">Tie-break comparisons</h3>
+                    <p className="text-sm text-muted-foreground">Head-to-head AI comparisons for close calls — ties allowed.</p>
                   </div>
                   {/* J3/J4 (c): head-to-head tie-break */}
-                  <Card className="p-5 space-y-3">
+                  <Card className="space-y-3 rounded-3xl p-5">
                     <div>
-                      <h3 className="font-semibold text-sm">Head-to-head tie-break</h3>
+                      <h3 className="text-sm font-semibold text-foreground">Head-to-head tie-break</h3>
                       <p className="text-xs text-muted-foreground">One AI comparison on a single criterion, citing evidence. Ties allowed.</p>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
                       <select
                         value={cmpA}
                         onChange={(e) => setCmpA(e.target.value)}
-                        className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                        aria-label="Submission A"
+                        className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                       >
                         <option value="">Submission A…</option>
                         {groupedSubmissions.map((s: any, i: number) => (
@@ -1329,7 +1331,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <select
                         value={cmpB}
                         onChange={(e) => setCmpB(e.target.value)}
-                        className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                        aria-label="Submission B"
+                        className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                       >
                         <option value="">Submission B…</option>
                         {groupedSubmissions.map((s: any, i: number) => (
@@ -1343,7 +1346,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <select
                         value={cmpCrit}
                         onChange={(e) => setCmpCrit(e.target.value)}
-                        className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                        aria-label="Criterion"
+                        className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                       >
                         {JUDGING_CRITERION_KEYS.map((k) => (
                           <option key={k} value={k}>{JUDGING_CRITERION_LABELS[k] || k}</option>
@@ -1355,8 +1359,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       </Button>
                     </div>
                     {cmpResult && (
-                      <div className="rounded-lg border p-3 text-sm">
-                        <span className="font-semibold">
+                      <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm" role="status">
+                        <span className="font-semibold text-foreground">
                           {cmpResult.winner === 'tie'
                             ? 'Tie'
                             : `Winner: ${groupedSubmissions.find((s: any) => s && String(s.id) === (cmpResult.winner === 'A' ? cmpA : cmpB))?.team_name || (cmpResult.winner === 'A' ? cmpA : cmpB)} (${cmpResult.winner})`}
@@ -1371,20 +1375,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'reports' && (
                 <div id="judge-reports" className="space-y-4 scroll-mt-4">
                   <div>
-                    <h3 className="font-semibold text-sm">Screening & project reports</h3>
-                    <p className="text-xs text-muted-foreground">AI screening leaderboard and per-project summaries built from stored scores + evidence.</p>
+                    <h3 className="text-base font-semibold text-foreground">Screening & project reports</h3>
+                    <p className="text-sm text-muted-foreground">AI screening leaderboard and per-project summaries built from stored scores + evidence.</p>
                   </div>
                   {screenBoard.length === 0 && rankedBoard.length === 0 && (
-                    <Card className="p-8 text-center">
-                      <Sparkles className="h-8 w-8 mb-2 text-muted-foreground" />
+                    <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+                      <Sparkles className="h-8 w-8 text-primary/60" aria-hidden />
                       <p className="text-sm text-muted-foreground">No screening results or reports yet — run audits and screening in Evaluate.</p>
                     </Card>
                   )}
                   {screenBoard.length > 0 && (
-                    <Card id="judge-screen-board" className="p-5 space-y-3 border-violet-500/20 bg-violet-500/5 scroll-mt-4">
-                      <div className="flex items-center justify-between gap-3">
+                    <Card id="judge-screen-board" className="space-y-3 rounded-3xl border-violet-500/20 bg-violet-500/5 p-5 scroll-mt-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <h3 className="font-semibold text-sm text-violet-600 flex items-center gap-1.5">
+                          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-violet-700 dark:text-violet-400">
                             <Sparkles className="w-4 h-4" /> Screening leaderboard
                           </h3>
                           <p className="text-xs text-muted-foreground">AI scores over repo evidence — advisory only, human judges decide. {screenedJudgeCount} of {totalJudgeSubs} screened.</p>
@@ -1398,11 +1402,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           const name = (judgeSubmissions.find((s: any) => s && s.id === r.submissionId)?.team_name || r.teamId || r.submissionId || 'Unknown')
                           const crits = Array.isArray(r.scores) ? r.scores : []
                           return (
-                            <div key={r.submissionId || i} className="rounded-lg border bg-background/60 p-3">
+                            <div key={r.submissionId || i} className="rounded-2xl border border-border/70 bg-background p-3">
                               <div className="flex items-center gap-2">
-                                <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
-                                <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
-                                <Badge variant="outline" className="text-xs bg-violet-500/10 text-violet-600 border-violet-500/30">
+                                <span className="w-6 text-center font-mono text-xs tabular-nums text-muted-foreground">#{i + 1}</span>
+                                <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{name}</span>
+                                <Badge variant="outline" className="font-mono text-xs tabular-nums bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-400">
                                   AI {r.total ?? '?'}/{r.maxTotal ?? '?'}
                                 </Badge>
                               </div>
@@ -1413,11 +1417,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   </summary>
                                   <ul className="mt-1 space-y-1">
                                     {crits.map((c: any, j: number) => (
-                                      <li key={c?.key || j} className="rounded border bg-muted/20 px-2 py-1">
+                                      <li key={c?.key || j} className="rounded-lg border border-border/70 bg-muted/30 px-2 py-1">
                                         <span className="font-medium">{c?.key || '?'}</span>
                                         <span className="font-mono"> {c?.score ?? '?'}/5</span>
                                         <span className="text-muted-foreground"> — {c?.citation || 'no citation'}</span>
-                                        {c?.missing && <span className="text-amber-600"> (missing: {c.missing})</span>}
+                                        {c?.missing && <span className="text-amber-700 dark:text-amber-400"> (missing: {c.missing})</span>}
                                       </li>
                                     ))}
                                   </ul>
@@ -1431,9 +1435,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                   {/* J3/J4 (d): per-project reports — deterministic, auditable */}
                   {rankedBoard.length > 0 && (
-                    <Card className="p-5 space-y-3">
+                    <Card className="space-y-3 rounded-3xl p-5">
                       <div>
-                        <h3 className="font-semibold text-sm">Project reports</h3>
+                        <h3 className="text-sm font-semibold text-foreground">Project reports</h3>
                         <p className="text-xs text-muted-foreground">Built from stored scores + evidence — no new AI calls.</p>
                       </div>
                       <div className="space-y-2">
@@ -1468,8 +1472,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             totalTeams: rankedBoard.length,
                           })
                           return (
-                            <details key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3 text-xs">
-                              <summary className="cursor-pointer text-sm font-medium">
+                            <details key={String(r.sub.id || i)} className="rounded-2xl border border-border/70 bg-background p-3 text-xs">
+                              <summary className="cursor-pointer text-sm font-medium text-foreground">
                                 Report — {judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || r.sub.id || 'Unknown')} (#{i + 1})
                                 <span className="ml-2 text-muted-foreground font-normal">strongest: {report.strongestDimension}</span>
                               </summary>
@@ -1482,9 +1486,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                 ))}
                                 {(r.sub.repo_url || r.sub.live_url || r.sub.video_url) && (
                                   <div className="flex flex-wrap gap-2 pt-1">
-                                    {r.sub.repo_url && <a href={String(r.sub.repo_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Repo</a>}
-                                    {r.sub.live_url && <a href={String(r.sub.live_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Live</a>}
-                                    {r.sub.video_url && <a href={String(r.sub.video_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Video</a>}
+                                    {r.sub.repo_url && <a href={String(r.sub.repo_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Repo</a>}
+                                    {r.sub.live_url && <a href={String(r.sub.live_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Live</a>}
+                                    {r.sub.video_url && <a href={String(r.sub.video_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Video</a>}
                                   </div>
                                 )}
                               </div>
@@ -1502,24 +1506,24 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           {/* Evaluate Submission Sheet */}
           <Sheet open={isJudgeSheetOpen} onOpenChange={setIsJudgeSheetOpen}>
             <SheetContent side="right" className="w-full sm:max-w-[540px] overflow-y-auto p-0">
-              <SheetHeader className="p-6 pb-4 border-b">
-                <SheetTitle>Evaluate Submission</SheetTitle>
+              <SheetHeader className="p-6 pb-4 border-b border-border/70">
+                <SheetTitle>Evaluate submission</SheetTitle>
               </SheetHeader>
               {selectedSub && (
                 <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-sm">{selectedSub.team_name}</h3>
+                      <h3 className="text-sm font-semibold text-foreground">{selectedSub.team_name}</h3>
                       <p className="text-xs text-muted-foreground">{selectedSub.problem_slug}</p>
                     </div>
-                    <Badge variant={selectedSub.status === 'released' ? 'default' : 'outline'}>{selectedSub.status}</Badge>
+                    <Badge variant="outline" className={(STATUS_CONFIG[selectedSub.status] || STATUS_CONFIG.submitted).color}>{(STATUS_CONFIG[selectedSub.status] || { label: selectedSub.status }).label}</Badge>
                   </div>
 
                   {/* Status action buttons */}
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {selectedSub.status === 'submitted' && (
                       <Button size="sm" variant="outline" className="w-full" onClick={() => updateSubmissionStatus(selectedSub.id, 'under_review')}>
-                        <Eye className="w-3.5 h-3.5 mr-1" /> Start Review
+                        <Eye className="w-3.5 h-3.5 mr-1" /> Start review
                       </Button>
                     )}
                     {selectedSub.status === 'under_review' && (
@@ -1527,27 +1531,27 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <Button size="sm" variant="outline" className="w-full" onClick={() => updateSubmissionStatus(selectedSub.id, 'review_completed')}>
                           <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete
                         </Button>
-                        <Button size="sm" variant="outline" className="w-full text-emerald-600" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
+                        <Button size="sm" variant="outline" className="w-full text-green-700 dark:text-green-400" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Accept
                         </Button>
                       </>
                     )}
                     {selectedSub.status === 'review_completed' && (
-                      <Button size="sm" variant="outline" className="w-full text-emerald-600" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
+                      <Button size="sm" variant="outline" className="w-full text-green-700 dark:text-green-400" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
                         <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Accept
                       </Button>
                     )}
                   </div>
 
                   {/* Submission Info */}
-                  <div className="grid grid-cols-2 gap-4 text-sm p-4 rounded-xl border bg-muted/20">
+                  <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm">
                     <div>
                       <span className="text-muted-foreground text-xs font-medium block mb-1">Submitted</span>
-                      <span className="font-semibold">{formatDateTime(selectedSub.submitted_at)}</span>
+                      <span className="font-semibold tabular-nums text-foreground">{formatDateTime(selectedSub.submitted_at)}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground text-xs font-medium block mb-1">Current Score</span>
-                      <span className="font-semibold text-primary">{selectedSub.score ?? 'Not scored'}</span>
+                      <span className="text-muted-foreground text-xs font-medium block mb-1">Current score</span>
+                      <span className="font-semibold tabular-nums text-primary">{selectedSub.score ?? 'Not scored'}</span>
                     </div>
                   </div>
 
@@ -1555,12 +1559,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="flex flex-wrap gap-2">
                     {selectedSub.repo_url && (
                       <a href={selectedSub.repo_url} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="outline" className="gap-1.5"><Code className="w-3.5 h-3.5" /> GitHub Repo</Button>
+                        <Button size="sm" variant="outline" className="gap-1.5"><Code className="w-3.5 h-3.5" /> GitHub repo</Button>
                       </a>
                     )}
                     {selectedSub.video_url && (
                       <a href={selectedSub.video_url} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="outline" className="gap-1.5"><Eye className="w-3.5 h-3.5" /> Video Demo</Button>
+                        <Button size="sm" variant="outline" className="gap-1.5"><Eye className="w-3.5 h-3.5" /> Video demo</Button>
                       </a>
                     )}
                     {selectedSub.live_url && (
@@ -1571,44 +1575,44 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
 
                   {selectedSub.comment && (
-                    <div className="p-4 rounded-xl border bg-muted/20 text-sm">
-                      <span className="text-muted-foreground text-xs font-medium block mb-2">Team Comment</span>
+                    <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm">
+                      <span className="text-muted-foreground text-xs font-medium block mb-2">Team comment</span>
                       <p className="text-foreground leading-relaxed">{selectedSub.comment}</p>
                     </div>
                   )}
 
                   {selectedSub.code && (
                     <div className="space-y-1">
-                      <Label className="text-xs">Submitted Code</Label>
-                      <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto max-h-60 overflow-y-auto border">{selectedSub.code}</pre>
+                      <Label className="text-xs">Submitted code</Label>
+                      <pre className="max-h-60 overflow-x-auto overflow-y-auto rounded-xl border border-border/70 bg-muted p-3 font-mono text-xs text-foreground">{selectedSub.code}</pre>
                     </div>
                   )}
 
                   {/* Scoring Form */}
                   {selectedSub.score !== null && !isEditingScore ? (
-                    <div className="border-t pt-6 space-y-4">
+                    <div className="border-t border-border/70 pt-6 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-base font-semibold">Score Summary</h4>
+                        <h4 className="text-base font-semibold text-foreground">Score summary</h4>
                         <Button size="sm" variant="outline" onClick={() => setIsEditingScore(true)}>
-                          Edit Score
+                          Edit score
                         </Button>
                       </div>
-                      <div className="p-4 rounded-xl border bg-primary/5 space-y-2">
+                      <div className="space-y-2 rounded-2xl border border-primary/20 bg-primary/5 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">Total Score</span>
-                          <span className="text-lg font-bold text-primary">{selectedSub.score} <span className="text-sm text-muted-foreground font-normal">/ {selectedSub.max_score}</span></span>
+                          <span className="text-sm font-medium text-foreground">Total score</span>
+                          <span className="text-lg font-bold tabular-nums text-primary">{selectedSub.score} <span className="text-sm text-muted-foreground font-normal">/ {selectedSub.max_score}</span></span>
                         </div>
                         {selectedSub.feedback && (
                           <div className="pt-2 border-t border-primary/10">
-                            <span className="text-xs text-muted-foreground block mb-1">Feedback Provided</span>
-                            <p className="text-sm">{selectedSub.feedback}</p>
+                            <span className="text-xs text-muted-foreground block mb-1">Feedback given</span>
+                            <p className="text-sm text-foreground">{selectedSub.feedback}</p>
                           </div>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="border-t pt-6 space-y-5">
-                      <h4 className="text-base font-semibold">Score Submission</h4>
+                    <div className="border-t border-border/70 pt-6 space-y-5">
+                      <h4 className="text-base font-semibold text-foreground">Score this submission</h4>
 
                       {event.features?.judging_rubrics ? (
                         /* Rubric-based scoring */
@@ -1616,12 +1620,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           {event.features.rubric_criteria.map((c, i) => (
                             <div key={i} className="space-y-2">
                               <div className="flex items-center justify-between">
-                                <Label className="text-sm font-medium">{c.name} <span className="text-muted-foreground font-normal">({c.weight}%)</span></Label>
-                                <span className="text-sm font-semibold text-primary">
+                                <Label htmlFor={`rubric-${i}`} className="text-sm font-medium">{c.name} <span className="text-muted-foreground font-normal tabular-nums">({c.weight}%)</span></Label>
+                                <span className="font-mono text-sm font-semibold tabular-nums text-primary">
                                   {scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0} <span className="text-muted-foreground font-normal">/ {c.weight}</span>
                                 </span>
                               </div>
                               <input
+                                id={`rubric-${i}`}
                                 type="range"
                                 min={0}
                                 max={c.weight}
@@ -1635,20 +1640,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                     rubric_scores: { criteria: newCriteria, total_score: total, feedback: f.feedback }
                                   }))
                                 }}
-                                className="w-full accent-primary"
+                                className="w-full cursor-pointer accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                               />
                             </div>
                           ))}
-                          <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10 mt-2">
-                            <span className="text-sm font-medium text-primary">Total Score</span>
-                            <span className="text-xl font-bold text-primary">{scoreForm.rubric_scores?.total_score ?? 0} <span className="text-sm text-muted-foreground font-normal">/ 100</span></span>
+                          <div className="mt-2 flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 p-4" aria-live="polite">
+                            <span className="text-sm font-medium text-primary">Total score</span>
+                            <span className="font-mono text-xl font-bold tabular-nums text-primary">{scoreForm.rubric_scores?.total_score ?? 0} <span className="text-sm text-muted-foreground font-normal">/ 100</span></span>
                           </div>
                         </div>
                       ) : (
                         /* Simple 0-100 scoring */
                         <div className="space-y-2">
-                          <Label>Score (0-100)</Label>
+                          <Label htmlFor="judge-score">Score (0–100)</Label>
                           <Input
+                            id="judge-score"
                             type="number"
                             min={0}
                             max={100}
@@ -1660,12 +1666,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       )}
 
                       <div className="space-y-2">
-                        <Label>Feedback</Label>
+                        <Label htmlFor="judge-feedback">Feedback</Label>
                         <Textarea
+                          id="judge-feedback"
                           rows={4}
                           value={scoreForm.feedback}
                           onChange={(e) => setScoreForm(f => ({ ...f, feedback: e.target.value }))}
-                          placeholder="Provide constructive feedback for the team..."
+                          placeholder="Give the team constructive feedback…"
                           className="resize-none"
                         />
                       </div>
@@ -1677,7 +1684,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           setIsJudgeSheetOpen(false)
                         }} disabled={scoring}>
                           {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                          Submit Score
+                          Submit score
                         </Button>
                       </div>
                     </div>
@@ -1685,10 +1692,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                   {/* Revision History */}
                   {selectedSub.history && selectedSub.history.length > 1 && (
-                    <div className="border-t pt-6 space-y-4">
-                      <h4 className="text-base font-semibold flex items-center justify-between">
-                        Revision History
-                        <Badge variant="secondary" className="font-normal">{selectedSub.history.length} Total</Badge>
+                    <div className="border-t border-border/70 pt-6 space-y-4">
+                      <h4 className="flex items-center justify-between text-base font-semibold text-foreground">
+                        Revision history
+                        <Badge variant="secondary" className="font-normal tabular-nums">{selectedSub.history.length} total</Badge>
                       </h4>
                       <div className="space-y-3">
                         {selectedSub.history.map((rev: any, idx: number) => {
@@ -1696,10 +1703,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           return (
                             <div 
                               key={rev.id} 
-                              className={`text-sm border p-4 rounded-xl space-y-3 transition-colors ${
+                              className={`space-y-3 rounded-2xl border p-4 text-sm transition-colors duration-200 ${
                                 isCurrent 
                                   ? 'bg-primary/10 border-primary/20' 
-                                  : 'bg-muted/5 hover:bg-muted/10 cursor-pointer'
+                                  : 'border-border/70 bg-card hover:bg-muted/50 cursor-pointer'
                               }`}
                               onClick={() => {
                                 if (!isCurrent) {
@@ -1716,31 +1723,31 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               <div className="flex justify-between items-start">
                                 <div>
                                   <span className="font-semibold text-foreground block">
-                                    Revision {selectedSub.history.length - idx} {isCurrent && <span className="text-[10px] text-primary ml-2 uppercase">(Viewing)</span>}
+                                    Revision {selectedSub.history.length - idx} {isCurrent && <span className="ml-2 text-xs font-medium text-primary">(viewing)</span>}
                                   </span>
                                   <span className="text-muted-foreground text-xs">{formatDateTime(rev.submitted_at)}</span>
                                 </div>
                                 <div className="text-right">
                                   <Badge variant="outline" className="text-[10px]">{rev.status}</Badge>
-                                  {rev.score !== null && <span className="block mt-1 text-xs font-medium text-primary">Score: {rev.score}</span>}
+                                  {rev.score !== null && <span className="mt-1 block text-xs font-medium tabular-nums text-primary">Score: {rev.score}</span>}
                                 </div>
                               </div>
                               {(rev.repo_url || rev.live_url) && (
                                 <div className="flex flex-wrap gap-2">
                                   {rev.repo_url && (
-                                    <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
+                                    <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-medium text-primary hover:underline">
                                       <Code className="w-3 h-3 mr-1" /> Repo
                                     </a>
                                   )}
                                   {rev.live_url && (
-                                    <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
+                                    <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-medium text-primary hover:underline">
                                       <ExternalLink className="w-3 h-3 mr-1" /> Live
                                     </a>
                                   )}
                                 </div>
                               )}
                               {rev.comment && (
-                                <div className="text-muted-foreground text-xs bg-background/50 p-2 rounded border mt-2">
+                                <div className="mt-2 rounded-lg border border-border/70 bg-background p-2 text-xs text-muted-foreground">
                                   "{rev.comment}"
                                 </div>
                               )}
@@ -1758,39 +1765,39 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
         {/* Results Tab */}
         <TabsContent value="results" className="mt-4">
-          <Card className="p-8 text-center">
-            <Trophy className="h-8 w-8 mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Results have been released</p>
+          <Card className="items-center gap-2 rounded-3xl p-10 text-center">
+            <Trophy className="h-8 w-8 text-primary/60" aria-hidden />
+            <p className="text-sm text-muted-foreground">Results for this event have been released.</p>
           </Card>
         </TabsContent>
 
         {/* Settings Tab */}
         <TabsContent value="settings" className="mt-4">
-          <Card className="p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold">Event Settings</h4>
+          <Card className="space-y-4 rounded-3xl p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-foreground">Event settings</h4>
               <Link href={`/dashboard/admin/hackathons/edit/${event.id}`}>
                 <Button size="sm" variant="outline" className="gap-1.5">
-                  <Settings className="w-3.5 h-3.5" /> Edit Event
+                  <Settings className="w-3.5 h-3.5" /> Edit event
                 </Button>
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground text-xs block">Status</span>
-                <span className="font-medium">{event.status}</span>
+                <span className="font-medium capitalize text-foreground">{event.status}</span>
               </div>
               <div>
-                <span className="text-muted-foreground text-xs block">Event Type</span>
-                <span className="font-medium">{event.event_type || 'hackathon'}</span>
+                <span className="text-muted-foreground text-xs block">Event type</span>
+                <span className="font-medium capitalize text-foreground">{event.event_type || 'hackathon'}</span>
               </div>
               <div>
                 <span className="text-muted-foreground text-xs block">Auto-grade</span>
-                <span className="font-medium">{event.scoring?.auto_grade ? 'Yes' : 'No'}</span>
+                <span className="font-medium text-foreground">{event.scoring?.auto_grade ? 'Yes' : 'No'}</span>
               </div>
               <div>
-                <span className="text-muted-foreground text-xs block">Results Released</span>
-                <span className="font-medium">{event.results_released ? 'Yes' : 'No'}</span>
+                <span className="text-muted-foreground text-xs block">Results released</span>
+                <span className="font-medium text-foreground">{event.results_released ? 'Yes' : 'No'}</span>
               </div>
             </div>
           </Card>
@@ -1801,18 +1808,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <Dialog open={!!rejectingSub} onOpenChange={() => setRejectingSub(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Reject Submission</DialogTitle>
+            <DialogTitle>Reject submission</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
               Rejecting submission for <strong>{rejectingSub?.team_name}</strong> — {rejectingSub?.problem_slug}
             </p>
             <div className="space-y-2">
-              <Label>Rejection Reason <span className="text-destructive">*</span></Label>
+              <Label htmlFor="reject-reason">Rejection reason <span className="text-destructive">*</span></Label>
               <Textarea
+                id="reject-reason"
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Provide a reason for rejection (required)..."
+                placeholder="Explain why (required)…"
                 rows={3}
               />
             </div>
@@ -1820,7 +1828,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectingSub(null)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmReject} disabled={!rejectionReason.trim()}>
-              Reject Submission
+              Reject submission
             </Button>
           </DialogFooter>
         </DialogContent>

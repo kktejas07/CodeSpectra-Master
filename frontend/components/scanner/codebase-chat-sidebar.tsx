@@ -88,12 +88,12 @@ export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarP
   }
 
   return (
-    <Card className="flex flex-col h-[calc(100dvh-12rem)] max-h-[550px] min-h-[320px] sm:min-h-[400px] border border-border bg-card/60 backdrop-blur overflow-hidden">
+    <Card className="flex flex-col h-[calc(100dvh-12rem)] max-h-[550px] min-h-[320px] sm:min-h-[400px] backdrop-blur overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-muted/20">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">Codebase Assistant</h3>
+          <h3 className="font-semibold text-foreground">Codebase assistant</h3>
         </div>
         <Badge variant="outline" className="text-xs gap-1 border-primary/20 text-primary">
           <Sparkles className="w-3 h-3" />

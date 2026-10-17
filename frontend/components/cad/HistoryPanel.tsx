@@ -15,7 +15,7 @@ export function HistoryPanel() {
   return (
     <div className="flex flex-col gap-2 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase text-muted-foreground">History</span>
+        <span className="text-xs font-semibold text-muted-foreground">History</span>
         <div className="flex items-center gap-0.5">
           <button
             type="button"

@@ -67,7 +67,7 @@ export function GitHubIntegration() {
 
   return (
     <div className="space-y-4">
-      <Card className="border-border/60 bg-card/50 p-6">
+      <Card className="rounded-3xl p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -127,7 +127,7 @@ export function GitHubIntegration() {
           </div>
 
           {repos.length === 0 ? (
-            <Card className="border-border/60 bg-card/30 p-4 text-center">
+            <Card className="p-4 text-center">
               <p className="text-sm text-muted-foreground">No repositories returned. Connect GitHub or check server logs.</p>
             </Card>
           ) : (

@@ -70,7 +70,7 @@ function NavLink({
     <Link href={href} title={item.label} onClick={onPick}>
       <div
         className={cn(
-          'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+          'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-200',
           collapsed && 'lg:justify-center lg:px-2',
           active
             ? 'bg-primary/10 font-medium text-primary'
@@ -119,7 +119,7 @@ export function ScannerSidebarNav({
         </Link>
         <p
           className={cn(
-            'mt-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80',
+            'mt-1 px-2 text-xs font-semibold text-muted-foreground',
             collapsed && 'lg:sr-only'
           )}
         >
@@ -141,7 +141,7 @@ export function ScannerSidebarNav({
         <div className={cn('my-2 border-t border-border/40 pt-2', collapsed && 'lg:mx-0')}>
           <p
             className={cn(
-              'mb-1 px-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70',
+              'mb-1 px-2 text-xs font-semibold text-muted-foreground',
               collapsed && 'lg:sr-only'
             )}
           >

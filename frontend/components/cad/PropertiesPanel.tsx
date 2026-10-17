@@ -21,7 +21,7 @@ function FieldGroup({ label, icon: Icon, children }: { label: string; icon: Reac
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5">
         <Icon className="h-3 w-3 text-muted-foreground/60" />
-        <Label className="text-[10px] font-medium uppercase text-muted-foreground">{label}</Label>
+        <Label className="text-[11px] font-medium text-muted-foreground">{label}</Label>
       </div>
       {children}
     </div>
@@ -59,7 +59,7 @@ export function PropertiesPanel() {
   return (
     <div className="flex flex-col gap-3 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase text-muted-foreground">Properties</span>
+        <span className="text-xs font-semibold text-muted-foreground">Properties</span>
         <span className="text-[9px] font-mono text-muted-foreground/40">{selected.id.slice(0, 12)}</span>
       </div>
 
@@ -360,7 +360,7 @@ export function PropertiesPanel() {
       <div className="flex flex-col gap-1 border-t border-border/40 pt-2">
         <div className="flex items-center gap-1.5">
           <Layers className="h-3 w-3 text-muted-foreground/60" />
-          <Label className="text-[9px] font-medium uppercase text-muted-foreground">Layer</Label>
+          <Label className="text-[11px] font-medium text-muted-foreground">Layer</Label>
         </div>
         <select
           value={selected.layerId}

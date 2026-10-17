@@ -85,10 +85,10 @@ function computeBlastRadius(
 
 function HealthBadge({ health }: { health: D3Component['health'] }) {
   const cls = health === 'critical'
-    ? 'bg-red-500/20 text-red-400 border-red-500/30'
+    ? 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30'
     : health === 'warning'
-    ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30'
-    : 'bg-green-500/20 text-green-400 border-green-500/30'
+    ? 'bg-yellow-500/20 text-amber-700 dark:text-amber-400 border-yellow-500/30'
+    : 'bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/30'
   return <Badge variant="outline" className={`text-xs ${cls}`}>{health}</Badge>
 }
 
@@ -105,7 +105,7 @@ export function BlastRadiusAnalysis({
 
   if (!selectedId) {
     return (
-      <Card className="p-6 border-dashed bg-card/30 text-center">
+      <Card className="rounded-3xl p-6 border-dashed text-center">
         <Target className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
         <p className="text-sm text-muted-foreground">Select a node in the force graph to analyze its blast radius.</p>
       </Card>
@@ -114,7 +114,7 @@ export function BlastRadiusAnalysis({
 
   if (!result || result.affected.length === 0) {
     return (
-      <Card className="p-6 bg-card/30">
+      <Card className="rounded-3xl p-6">
         <div className="flex items-center gap-2 mb-3">
           <Zap className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-foreground">Blast Radius — {components.find(c => c.id === selectedId)?.name}</h3>
@@ -132,7 +132,7 @@ export function BlastRadiusAnalysis({
 
   return (
     <div className="space-y-4">
-      <Card className="p-5 bg-linear-to-r from-primary/5 to-primary/10 border-primary/20">
+      <Card className="rounded-3xl p-5 bg-linear-to-r from-primary/5 to-primary/10 border-primary/20">
         <div className="flex items-center gap-2 mb-3">
           <AlertTriangle className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-foreground">Blast Radius — {components.find(c => c.id === selectedId)?.name}</h3>

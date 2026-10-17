@@ -373,7 +373,7 @@ export function ProctorMonitor({
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90">
         <div className="text-center space-y-4 p-8">
           <ShieldOff className="h-16 w-16 mx-auto text-red-500" />
-          <h2 className="text-2xl font-bold text-white">Session Terminated</h2>
+          <h2 className="text-2xl font-bold text-white">Session terminated</h2>
           <p className="text-white/70 max-w-md">
             You have been removed from this session due to proctoring violations.
             Your progress has been saved and reported to the administrator.
@@ -401,9 +401,9 @@ export function ProctorMonitor({
       )}
 
       {!isMobile && (
-      <div className="fixed top-3 right-3 z-30 flex items-center gap-2 rounded-md border border-border bg-card/90 backdrop-blur px-2 py-1 text-[10px] uppercase tracking-wide shadow-sm">
+      <div className="fixed top-3 right-3 z-30 flex items-center gap-2 rounded-full border border-border bg-card/90 backdrop-blur px-3 py-1 text-[11px] font-medium tabular-nums text-foreground shadow-sm">
         <span className="flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" aria-hidden />
           Proctored
         </span>
         <span title="Tab blur">T:{counts.blur}</span>
@@ -416,7 +416,7 @@ export function ProctorMonitor({
             : <Eye className="h-3 w-3 text-green-500" />
         )}
         {captureInterval > 0 && cameraSnapshot && <Camera className="h-3 w-3 text-green-500" />}
-        {enforceFullscreen && <Fullscreen className="h-3 w-3 text-blue-500" />}
+        {enforceFullscreen && <Fullscreen className="h-3 w-3 text-primary" />}
       </div>
       )}
 

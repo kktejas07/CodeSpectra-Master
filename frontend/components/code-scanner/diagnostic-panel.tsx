@@ -225,7 +225,7 @@ function DiagnosticItem({
               <p className="text-sm font-medium text-foreground line-clamp-2">
                 {diagnostic.message}
               </p>
-              <span className="text-xs px-2 py-1 bg-black/10 rounded shrink-0">
+              <span className="text-xs px-2 py-1 bg-muted rounded shrink-0">
                 L{diagnostic.line}:C{diagnostic.column}
               </span>
             </div>
@@ -246,7 +246,7 @@ function DiagnosticItem({
       {isExpanded && diagnostic.fix && (
         <div className="mt-3 pt-3 border-t border-current/20 space-y-2">
           <p className="text-xs font-semibold text-foreground">Suggested Fix:</p>
-          <pre className="text-xs bg-black/20 p-2 rounded overflow-x-auto text-foreground">
+          <pre className="text-xs bg-muted p-2 rounded overflow-x-auto text-foreground">
             {diagnostic.fix}
           </pre>
         </div>

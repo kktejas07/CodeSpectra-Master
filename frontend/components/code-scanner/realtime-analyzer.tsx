@@ -92,10 +92,10 @@ export function RealtimeAnalyzer({
     <div className="space-y-4">
       {/* Quality Score Banner */}
       {analysisMetadata && (
-        <Card className="p-4 bg-card border-border">
+        <Card className="p-4">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Code Quality Score</p>
+              <p className="text-sm text-muted-foreground">Code quality score</p>
               <div className="flex items-center gap-3">
                 <div className={`text-4xl font-bold ${getQualityColor()}`}>
                   {Math.round(qualityScore)}
@@ -132,7 +132,7 @@ export function RealtimeAnalyzer({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Code Editor - Takes 2 columns on large screens */}
         <div className="lg:col-span-2 space-y-2">
-          <p className="text-sm font-semibold text-foreground">Code Editor</p>
+          <p className="text-sm font-semibold text-foreground">Code editor</p>
           <CodeEditor
             value={code}
             onChange={handleCodeChange}
@@ -203,7 +203,7 @@ export function RealtimeAnalyzer({
 
       {/* Bottom Info Panel */}
       {analysisMetadata && (
-        <Card className="p-3 bg-secondary/30 border-border text-xs text-muted-foreground">
+        <Card className="p-3 bg-secondary/30 text-xs text-muted-foreground">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <p className="font-semibold text-foreground">Complexity</p>
@@ -214,11 +214,11 @@ export function RealtimeAnalyzer({
               <p>{analysisMetadata.maintainabilityIndex?.toFixed(0) || 'N/A'}</p>
             </div>
             <div>
-              <p className="font-semibold text-foreground">Test Coverage</p>
+              <p className="font-semibold text-foreground">Test coverage</p>
               <p>{analysisMetadata.testCoveragePercentage?.toFixed(0) || 0}%</p>
             </div>
             <div>
-              <p className="font-semibold text-foreground">Analysis Time</p>
+              <p className="font-semibold text-foreground">Analysis time</p>
               <p>{analysisMetadata.timeMs?.toFixed(0) || 0}ms</p>
             </div>
           </div>

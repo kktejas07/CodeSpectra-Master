@@ -14,6 +14,7 @@ import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skel
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 interface Problem {
   id: string
@@ -189,40 +190,46 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
 
   if (!problem) {
     return (
-      <div className="text-center py-20 text-muted-foreground">
-        Problem not found
-      </div>
+      <Panel className="mx-auto max-w-md p-10 text-center">
+        <p className="font-semibold text-foreground">Problem not found</p>
+        <p className="mt-1 text-sm text-muted-foreground">It may have been removed from this codeathon.</p>
+        <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push(`/dashboard/codeathons/${id}`)}>Back to codeathon</Button>
+      </Panel>
     )
   }
 
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/codeathons/${id}`)}>
-          <ArrowLeft className="h-4 w-4" />
+      <div>
+        <Button variant="ghost" size="sm" className="-ml-2 mb-3 gap-1 text-muted-foreground" onClick={() => router.push(`/dashboard/codeathons/${id}`)}>
+          <ArrowLeft className="h-4 w-4" aria-hidden /> Back to codeathon
         </Button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">{problem.title}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="outline" className={
-              problem.difficulty === 'Hard' ? 'border-red-400 text-red-600' :
-              problem.difficulty === 'Easy' ? 'border-green-400 text-green-600' :
-              'border-yellow-400 text-yellow-600'
-            }>
-              {problem.difficulty}
-            </Badge>
-            <span className="text-sm text-muted-foreground">{problem.points} points</span>
-          </div>
-        </div>
+        <PageHeader
+          className="mb-0"
+          icon={<Code2 />}
+          title={problem.title}
+          description={
+            <span className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className={
+                problem.difficulty === 'Hard' ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400' :
+                problem.difficulty === 'Easy' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' :
+                'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
+              }>
+                {problem.difficulty}
+              </Badge>
+              <span className="text-sm tabular-nums text-muted-foreground">{problem.points} points</span>
+            </span>
+          }
+        />
       </div>
 
       {/* Main content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left: Problem description */}
-        <Card className="p-4 overflow-y-auto max-h-[70vh]">
+        <Card className="max-h-[70vh] gap-0 overflow-y-auto rounded-3xl p-5">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="w-full">
+            <TabsList className="flex h-auto w-full flex-wrap">
               <TabsTrigger value="description" className="flex-1"><FileText className="h-4 w-4 mr-1" />Description</TabsTrigger>
               <TabsTrigger value="submissions" className="flex-1"><Code2 className="h-4 w-4 mr-1" />Submissions ({submissions.length})</TabsTrigger>
               <TabsTrigger value="forum" className="flex-1"><MessageSquare className="h-4 w-4 mr-1" />Discussion</TabsTrigger>
@@ -231,26 +238,26 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
 
             <TabsContent value="description" className="space-y-4 mt-4">
               <div className="prose prose-sm max-w-none">
-                <p className="whitespace-pre-wrap text-sm">{problem.description}</p>
+                <p className="whitespace-pre-wrap text-sm text-foreground">{problem.description}</p>
               </div>
 
               {problem.input_format && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-1">Input Format</h3>
+                  <h3 className="mb-1 text-sm font-semibold text-foreground">Input format</h3>
                   <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.input_format}</pre>
                 </div>
               )}
 
               {problem.output_format && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-1">Output Format</h3>
+                  <h3 className="mb-1 text-sm font-semibold text-foreground">Output format</h3>
                   <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.output_format}</pre>
                 </div>
               )}
 
               {problem.constraints && problem.constraints.length > 0 && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-1">Constraints</h3>
+                  <h3 className="mb-1 text-sm font-semibold text-foreground">Constraints</h3>
                   <ul className="list-disc pl-4 text-xs space-y-1">
                     {problem.constraints.map((c, i) => <li key={i}>{c}</li>)}
                   </ul>
@@ -259,14 +266,14 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
 
               {problem.sample_input && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-1">Sample Input</h3>
+                  <h3 className="mb-1 text-sm font-semibold text-foreground">Sample input</h3>
                   <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.sample_input}</pre>
                 </div>
               )}
 
               {problem.sample_output && (
                 <div>
-                  <h3 className="text-sm font-semibold mb-1">Sample Output</h3>
+                  <h3 className="mb-1 text-sm font-semibold text-foreground">Sample output</h3>
                   <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.sample_output}</pre>
                 </div>
               )}
@@ -274,21 +281,21 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
 
             <TabsContent value="submissions" className="space-y-3 mt-4">
               {submissions.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">No submissions yet</p>
+                <p className="py-4 text-center text-sm text-muted-foreground">No submissions yet. Write your solution and press Submit.</p>
               ) : (
                 submissions.map(sub => (
-                  <div key={sub.id} className="flex items-center justify-between p-2 rounded border border-border/60">
+                  <div key={sub.id} className="flex items-center justify-between rounded-xl border border-border/70 p-3">
                     <div className="flex items-center gap-2">
                       {sub.status === 'accepted' ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
                       ) : sub.status === 'pending' || sub.status === 'running' ? (
-                        <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" />
                       ) : (
                         <XCircle className="h-4 w-4 text-destructive" />
                       )}
                       <span className="text-xs capitalize">{sub.status.replace('_', ' ')}</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{sub.test_cases_passed}/{sub.test_cases_total}</span>
+                    <span className="font-mono text-xs tabular-nums text-muted-foreground">{sub.test_cases_passed}/{sub.test_cases_total}</span>
                   </div>
                 ))
               )}
@@ -306,9 +313,9 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
 
         {/* Right: Code editor */}
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select value={language} onValueChange={handleLanguageChange}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-40" aria-label="Language">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -324,7 +331,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
             </Button>
           </div>
 
-          <div className="border border-border rounded-lg overflow-hidden" style={{ height: '50vh' }}>
+          <div className="overflow-hidden rounded-2xl border border-border" style={{ height: '50vh' }}>
             <Editor
               language={language}
               value={code}
@@ -398,12 +405,12 @@ function LeaderboardSection({ codeathonId }: { codeathonId: string }) {
     <div className="space-y-2">
       <p className="text-xs text-muted-foreground text-center">{eventType === 'team' ? 'Overall team standings' : 'Overall standings'}</p>
       {entries.map((e, i) => (
-        <div key={e.user_id || e.team_id || i} className="flex items-center justify-between p-2 rounded border border-border/60">
+        <div key={e.user_id || e.team_id || i} className="flex items-center justify-between rounded-xl border border-border/70 p-3">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold w-6 text-muted-foreground">#{i + 1}</span>
+            <span className="w-6 text-xs font-bold tabular-nums text-muted-foreground">#{i + 1}</span>
             <span className="text-xs font-medium">{(e.team_name || e.user_name || 'Unknown')}</span>
           </div>
-          <span className="text-xs text-muted-foreground">{e.total_score ?? 0} pts · {e.problems_solved ?? 0} solved</span>
+          <span className="text-xs tabular-nums text-muted-foreground">{e.total_score ?? 0} pts · {e.problems_solved ?? 0} solved</span>
         </div>
       ))}
     </div>
@@ -479,8 +486,8 @@ function ForumSection({ codeathonId, problemId }: { codeathonId: string; problem
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
-        <Input value={newPost} onChange={e => setNewPost(e.target.value)} placeholder="Ask a question or share a hint..." className="flex-1" />
-        <Button size="sm" onClick={handlePost} disabled={posting || !newPost.trim()}>
+        <Input value={newPost} onChange={e => setNewPost(e.target.value)} placeholder="Ask a question or share a hint…" aria-label="New discussion post" className="flex-1" />
+        <Button size="sm" onClick={handlePost} disabled={posting || !newPost.trim()} aria-label="Post">
           {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>
@@ -490,12 +497,12 @@ function ForumSection({ codeathonId, problemId }: { codeathonId: string; problem
       ) : (
         <div className="space-y-3">
           {posts.map(post => (
-            <div key={post.id} className="p-3 rounded border border-border/60 space-y-2">
+            <div key={post.id} className="space-y-2 rounded-xl border border-border/70 p-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium">{post.user_name}</span>
                 <span className="text-xs text-muted-foreground">{formatDateTime(post.created_at)}</span>
               </div>
-              <p className="text-sm">{post.content}</p>
+              <p className="text-sm text-foreground">{post.content}</p>
               <div className="flex items-center gap-2">
                 <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setReplyTo(replyTo === post.id ? null : post.id)}>
                   Reply ({post.reply_count || 0})
@@ -503,7 +510,7 @@ function ForumSection({ codeathonId, problemId }: { codeathonId: string; problem
               </div>
               {replyTo === post.id && (
                 <div className="flex gap-2 mt-2">
-                  <Input value={replyContent} onChange={e => setReplyContent(e.target.value)} placeholder="Write a reply..." className="flex-1" />
+                  <Input value={replyContent} onChange={e => setReplyContent(e.target.value)} placeholder="Write a reply…" aria-label="Reply" className="flex-1" />
                   <Button size="sm" onClick={() => handleReply(post.id)}>Send</Button>
                 </div>
               )}

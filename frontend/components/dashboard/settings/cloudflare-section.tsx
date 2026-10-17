@@ -106,11 +106,11 @@ export function CloudflareSettingsSection() {
           </div>
         </div>
         {savedZoneId && hasSavedToken ? (
-          <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">
+          <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-400 px-2.5 py-0.5 text-xs font-medium">
             ✓ Active
           </span>
         ) : (
-          <span className="rounded-full bg-amber-500/15 text-amber-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">
+          <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 text-xs font-medium">
             Not configured
           </span>
         )}
@@ -324,9 +324,9 @@ function ObjectStorageCard() {
           </p>
         </div>
         {ready ? (
-          <span className="shrink-0 rounded-full bg-emerald-500/15 text-emerald-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">✓ Ready</span>
+          <span className="shrink-0 rounded-full bg-green-500/15 text-green-700 dark:text-green-400 px-2.5 py-0.5 text-xs font-medium">✓ Ready</span>
         ) : (
-          <span className="shrink-0 rounded-full bg-amber-500/15 text-amber-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">Not configured</span>
+          <span className="shrink-0 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 text-xs font-medium">Not configured</span>
         )}
       </div>
       {message && (
@@ -377,7 +377,7 @@ function ObjectStorageCard() {
           <input id="s3_access_key_id" value={accessKeyId} onChange={(e) => setAccessKeyId(e.target.value)} className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm" placeholder="Access key" />
         </div>
         <div className="space-y-1.5 md:col-span-2">
-          <Label htmlFor="s3_secret">Secret Access Key</Label>
+          <Label htmlFor="s3_secret">Secret access key</Label>
           <div className="relative">
             <input
               id="s3_secret"

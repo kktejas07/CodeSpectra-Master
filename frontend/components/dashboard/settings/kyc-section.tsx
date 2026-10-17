@@ -121,7 +121,7 @@ export function KycSettingsSection() {
           <Shield className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-foreground">KYC Provider Settings</h1>
+          <h1 className="text-3xl font-bold text-foreground">KYC provider settings</h1>
           <p className="text-muted-foreground text-sm">Configure identity verification providers</p>
         </div>
       </div>
@@ -210,7 +210,7 @@ export function KycSettingsSection() {
                 <Badge variant="outline" className="text-xs">500 free/month</Badge>
               </div>
               <div className="flex items-center gap-2">
-                {testStatus.didit === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+                {testStatus.didit === 'success' && <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />}
                 {testStatus.didit === 'error' && <AlertTriangle className="h-4 w-4 text-destructive" />}
                 <Button size="sm" variant="outline" onClick={() => testConnection('didit')} disabled={testStatus.didit === 'testing'}>
                   {testStatus.didit === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test Connection'}
@@ -231,7 +231,7 @@ export function KycSettingsSection() {
                 <p className="text-xs text-muted-foreground">Sandbox sessions don't count toward free quota</p>
               </div>
               <div className="space-y-2">
-                <Label>Webhook Secret</Label>
+                <Label>Webhook secret</Label>
                 <PasswordInput value={settings.didit_webhook_secret} onChange={e => setSettings({...settings, didit_webhook_secret: e.target.value})} placeholder="MK46N..." />
               </div>
               <div className="space-y-2">
@@ -258,7 +258,7 @@ export function KycSettingsSection() {
                 <Badge variant="outline" className="text-xs">Free (Gov India)</Badge>
               </div>
               <div className="flex items-center gap-2">
-                {testStatus.digilocker === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+                {testStatus.digilocker === 'success' && <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />}
                 {testStatus.digilocker === 'error' && <AlertTriangle className="h-4 w-4 text-destructive" />}
                 <Button size="sm" variant="outline" onClick={() => testConnection('digilocker')} disabled={testStatus.digilocker === 'testing'}>
                   {testStatus.digilocker === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test Connection'}
@@ -274,7 +274,7 @@ export function KycSettingsSection() {
                 <PasswordInput value={settings.digilocker_client_id} onChange={e => setSettings({...settings, digilocker_client_id: e.target.value})} placeholder="Your client ID" />
               </div>
               <div className="space-y-2">
-                <Label>Client Secret</Label>
+                <Label>Client secret</Label>
                 <PasswordInput value={settings.digilocker_client_secret} onChange={e => setSettings({...settings, digilocker_client_secret: e.target.value})} placeholder="Your client secret" />
               </div>
             </div>
@@ -293,7 +293,7 @@ export function KycSettingsSection() {
                 <Badge variant="outline" className="text-xs">Free (Gov India)</Badge>
               </div>
               <div className="flex items-center gap-2">
-                {testStatus.apisetu === 'success' && <CheckCircle2 className="h-4 w-4 text-emerald-400" />}
+                {testStatus.apisetu === 'success' && <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />}
                 {testStatus.apisetu === 'error' && <AlertTriangle className="h-4 w-4 text-destructive" />}
                 <Button size="sm" variant="outline" onClick={() => testConnection('apisetu')} disabled={testStatus.apisetu === 'testing'}>
                   {testStatus.apisetu === 'testing' ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test Connection'}
@@ -309,7 +309,7 @@ export function KycSettingsSection() {
                 <PasswordInput value={settings.apisetu_client_id} onChange={e => setSettings({...settings, apisetu_client_id: e.target.value})} placeholder="Your client ID" />
               </div>
               <div className="space-y-2">
-                <Label>Client Secret</Label>
+                <Label>Client secret</Label>
                 <PasswordInput value={settings.apisetu_client_secret} onChange={e => setSettings({...settings, apisetu_client_secret: e.target.value})} placeholder="Your client secret" />
               </div>
             </div>

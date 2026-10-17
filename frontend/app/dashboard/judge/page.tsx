@@ -13,6 +13,7 @@ import {
   Gavel, Trophy, Users, Clock, ArrowRight, Inbox,
 } from 'lucide-react'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -96,42 +97,45 @@ export default function JudgeDashboardPage() {
   return (
     <div className="space-y-6">
       <div data-tour="judge-header">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Gavel className="h-6 w-6 text-primary" /> Judge Desk
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Hackathons assigned to you for submission review
-        </p>
+        <PageHeader
+          className="mb-0"
+          title="Judge desk"
+          description="Hackathons assigned to you. Open one to score the submissions waiting for review."
+          icon={<Gavel />}
+        />
       </div>
 
       <div data-tour="judge-list">
       {hackathons.length === 0 ? (
-        <Card className="p-10 flex flex-col items-center justify-center text-center gap-3">
-          <Inbox className="h-10 w-10 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No hackathons assigned to you yet. An admin assigns judges on the event's Judges tab.
+        <Panel className="flex flex-col items-center justify-center gap-3 p-10 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Inbox className="h-6 w-6" aria-hidden />
+          </span>
+          <p className="font-semibold text-foreground">No hackathons assigned to you yet</p>
+          <p className="max-w-md text-sm text-muted-foreground">
+            An admin adds judges on the event&apos;s Judges tab. Events you&apos;re assigned to will show up here.
           </p>
-        </Card>
+        </Panel>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
           {hackathons.map((h) => {
             const isLive = Date.now() >= new Date(h.starts_at).getTime() && Date.now() <= new Date(h.ends_at).getTime()
             return (
-              <Card key={h.id} className="p-4 space-y-3 hover:border-primary/40 transition-colors">
+              <Card key={h.id} className="gap-3 rounded-3xl p-5 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="text-[10px]">
                       <Trophy className="w-2.5 h-2.5 mr-1" /> Hackathon
                     </Badge>
-                    {isLive && <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Live</Badge>}
+                    {isLive && <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">Live</Badge>}
                     <Badge variant="secondary" className="text-[10px]">{STATUS_LABEL[h.status] || h.status}</Badge>
                   </div>
                 </div>
-                <h3 className="font-semibold text-sm truncate">{h.name}</h3>
+                <h3 className="truncate text-base font-semibold text-foreground">{h.name}</h3>
                 {(h.description || '') && (
                   <p className="text-xs text-muted-foreground line-clamp-2">{h.description}</p>
                 )}
-                <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {formatDate(h.starts_at)}
                   </span>
@@ -140,18 +144,18 @@ export default function JudgeDashboardPage() {
                   </span>
                 </div>
                 {isLive && (
-                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                  <div className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-green-700 dark:text-green-400">
                     Ends in <Countdown targetIso={h.ends_at} />
                   </div>
                 )}
                 {h.awaiting > 0 && (
-                  <div className="text-xs font-medium text-amber-600">
+                  <div className="text-xs font-medium tabular-nums text-amber-700 dark:text-amber-400">
                     {h.awaiting} submission{h.awaiting === 1 ? '' : 's'} awaiting review
                   </div>
                 )}
                 <Link href={`/dashboard/events/${h.id}?tab=judge`}>
                   <Button size="sm" className="w-full gap-1.5 text-xs" variant={h.awaiting > 0 ? 'default' : 'outline'}>
-                    Review Submissions <ArrowRight className="w-3 h-3" />
+                    Review submissions <ArrowRight className="w-3 h-3" />
                   </Button>
                 </Link>
               </Card>

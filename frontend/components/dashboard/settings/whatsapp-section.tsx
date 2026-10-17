@@ -184,7 +184,7 @@ export function WhatsAppSettingsSection() {
         </div>
         <div className="grid grid-cols-3 gap-4">
           <div className="grid gap-2">
-            <Label>Default Country Code</Label>
+            <Label>Default country code</Label>
             <Input
               value={config.openwa_default_country_code}
               onChange={e => setConfig(c => ({ ...c, openwa_default_country_code: e.target.value }))}
@@ -193,7 +193,7 @@ export function WhatsAppSettingsSection() {
             <p className="text-xs text-muted-foreground">e.g. 91 for India</p>
           </div>
           <div className="grid gap-2">
-            <Label>Max Concurrency</Label>
+            <Label>Max concurrency</Label>
             <Input
               value={config.openwa_max_concurrency}
               onChange={e => setConfig(c => ({ ...c, openwa_max_concurrency: e.target.value }))}

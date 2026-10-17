@@ -140,11 +140,11 @@ export function RedisSettingsSection() {
           </div>
         </div>
         {savedUpstashUrl && hasSavedToken ? (
-          <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">
+          <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-400 px-2.5 py-0.5 text-xs font-medium">
             � ✓ Active
           </span>
         ) : (
-          <span className="rounded-full bg-amber-500/15 text-amber-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">
+          <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 px-2.5 py-0.5 text-xs font-medium">
             Not configured
           </span>
         )}

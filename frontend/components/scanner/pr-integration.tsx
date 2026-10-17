@@ -62,8 +62,8 @@ export function PRIntegration({ prs = [], loading = false }: PRIntegrationProps)
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Pull Request Analysis</h1>
-        <p className="text-foreground/60">Automatic quality checks on every pull request</p>
+        <h2 className="sr-only">Pull request analysis</h2>
+        <p className="text-sm text-muted-foreground">Automatic quality checks on every pull request</p>
       </div>
 
       {/* Status Filter */}
@@ -86,13 +86,13 @@ export function PRIntegration({ prs = [], loading = false }: PRIntegrationProps)
       {/* PR List */}
       <div className="space-y-4">
         {loading ? (
-          <Card className="p-8 text-center">
-            <p className="text-foreground/60">Loading pull requests...</p>
+          <Card className="rounded-3xl p-8 text-center">
+            <p className="text-muted-foreground">Loading pull requests...</p>
           </Card>
         ) : filteredPRs.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
+          <Card className="rounded-3xl p-8 text-center border-dashed">
             <Github className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
-            <p className="text-foreground/60">No pull requests found</p>
+            <p className="text-muted-foreground">No pull requests found</p>
           </Card>
         ) : (
           filteredPRs.map((pr) => (
@@ -108,7 +108,7 @@ export function PRIntegration({ prs = [], loading = false }: PRIntegrationProps)
                         {pr.gateStatus === 'PASSED' ? '✓ Passed' : pr.gateStatus === 'FAILED' ? '✗ Failed' : '⏳ Pending'}
                       </Badge>
                     </div>
-                    <p className="text-sm text-foreground/60 mt-1">
+                    <p className="text-sm text-muted-foreground mt-1">
                       #{pr.prNumber} • by {pr.author} • on branch <code className="bg-muted px-2 py-1 rounded text-xs inline-block">{pr.branch}</code>
                     </p>
                   </div>
@@ -124,29 +124,29 @@ export function PRIntegration({ prs = [], loading = false }: PRIntegrationProps)
               <div className="grid md:grid-cols-5 gap-3 mt-4 pt-4 border-t border-border">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-foreground">{pr.newIssues}</p>
-                  <p className="text-xs text-foreground/60">New Issues</p>
+                  <p className="text-xs text-muted-foreground">New issues</p>
                 </div>
 
                 <div className="text-center">
                   <p className="text-2xl font-bold text-green-600">{pr.fixedIssues}</p>
-                  <p className="text-xs text-foreground/60">Fixed Issues</p>
+                  <p className="text-xs text-muted-foreground">Fixed issues</p>
                 </div>
 
                 <div className="text-center">
                   <p className="text-2xl font-bold text-foreground">{pr.coverage}%</p>
-                  <p className="text-xs text-foreground/60">Coverage</p>
+                  <p className="text-xs text-muted-foreground">Coverage</p>
                 </div>
 
                 <div className="text-center">
                   <p className="text-2xl font-bold text-foreground">{pr.duplications}%</p>
-                  <p className="text-xs text-foreground/60">Duplication</p>
+                  <p className="text-xs text-muted-foreground">Duplication</p>
                 </div>
 
                 <div className="text-center">
-                  <p className="text-xs text-foreground/50">
+                  <p className="text-xs text-muted-foreground">
                     {formatDate(pr.createdAt)}
                   </p>
-                  <p className="text-xs text-foreground/60">Created</p>
+                  <p className="text-xs text-muted-foreground">Created</p>
                 </div>
               </div>
 

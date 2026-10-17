@@ -18,6 +18,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { isAdmin, type UserRole } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/app/page-kit'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -71,9 +72,9 @@ function EventCard({ event }: { event: EventItem }) {
   const isClosed = now > ends || event.status === 'closed' || event.status === 'completed'
   const isUpcoming = now < starts
 
-  const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+  const statusColor = isLive ? 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400'
     : isClosed ? 'bg-muted text-muted-foreground'
-    : 'bg-blue-500/10 text-blue-600 border-blue-500/30'
+    : 'bg-primary/10 text-primary border-primary/30'
 
   const statusLabel = isLive ? 'Live' : isClosed ? 'Ended' : 'Upcoming'
 
@@ -83,16 +84,16 @@ function EventCard({ event }: { event: EventItem }) {
       : `/dashboard/codeathons/${event.id}`)
 
   return (
-    <Card className="overflow-hidden hover:border-primary/40 transition-colors group">
+    <Card className="group gap-0 overflow-hidden rounded-3xl py-0 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
       {event.banner_url && (
         <div className="h-32 w-full overflow-hidden bg-muted">
-          <img src={event.banner_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+          <img src={event.banner_url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:group-hover:scale-100" />
         </div>
       )}
-      <div className="p-4 space-y-3">
+      <div className="space-y-3 p-5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
               <Badge variant="outline" className={`text-[10px] ${statusColor}`}>{statusLabel}</Badge>
               <Badge variant="secondary" className="text-[10px]">
                 {event.type === 'hackathon' ? <Trophy className="w-2.5 h-2.5 mr-1" /> : <Code className="w-2.5 h-2.5 mr-1" />}
@@ -104,14 +105,14 @@ function EventCard({ event }: { event: EventItem }) {
                 </Badge>
               )}
             </div>
-            <h3 className="font-semibold text-sm truncate">{event.title}</h3>
+            <h3 className="truncate text-base font-semibold text-foreground">{event.title}</h3>
             {event.description && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
             )}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs tabular-nums text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <CalendarDays className="w-3 h-3" />
             {formatDate(event.starts_at)}
@@ -135,12 +136,12 @@ function EventCard({ event }: { event: EventItem }) {
         </div>
 
         {isLive && !isClosed && (
-          <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+          <div className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-green-600 dark:text-green-400">
             <Timer className="w-3 h-3" /> Ends in <Countdown targetIso={event.ends_at} />
           </div>
         )}
         {isUpcoming && (
-          <div className="flex items-center gap-1.5 text-xs text-blue-600 font-medium">
+          <div className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-primary">
             <Timer className="w-3 h-3" /> Starts in <Countdown targetIso={event.starts_at} />
           </div>
         )}
@@ -296,19 +297,17 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between" data-tour="events-header">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Zap className="h-6 w-6 text-primary" /> Events
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Hackathons, codeathons, and coding competitions
-          </p>
-        </div>
+      <div data-tour="events-header">
+        <PageHeader
+          className="mb-0"
+          title="Events"
+          description="Hackathons, codeathons and coding competitions you can join or follow."
+          icon={<Zap />}
+        />
       </div>
 
       <Tabs value={tab} onValueChange={setTab} data-tour="events-tabs">
-        <TabsList>
+        <TabsList className="flex h-auto flex-wrap justify-start">
           <TabsTrigger value="all">All ({events.length})</TabsTrigger>
           <TabsTrigger value="my">My Events ({myEvents.length})</TabsTrigger>
           <TabsTrigger value="live">Live ({liveEvents.length})</TabsTrigger>
@@ -320,12 +319,12 @@ export default function EventsPage() {
           {filtered.length === 0 ? (
             <EmptyState 
               title={tab === 'my' ? 'No events joined' : 'No events found'} 
-              description={tab === 'my' ? "You haven't joined any events yet. Explore upcoming hackathons and codeathons to participate!" : "There are currently no events matching this category."}
+              description={tab === 'my' ? "You haven't joined any events yet. Browse upcoming hackathons and codeathons to take part." : 'Nothing here right now. Check the other tabs or come back later.'}
               actionLabel={tab === 'my' ? 'Explore Events' : undefined}
               onAction={tab === 'my' ? () => setTab('all') : undefined}
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="events-grid">
+            <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5" data-tour="events-grid">
               {filtered.map((event) => (
                 <EventCard key={`${event.type}-${event.id}`} event={event} />
               ))}

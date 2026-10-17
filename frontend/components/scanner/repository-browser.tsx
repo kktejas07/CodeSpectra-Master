@@ -218,7 +218,7 @@ export function RepositoryBrowser({
             <Code2 className="h-5 w-5" />
             Select repository
           </h3>
-          <p className="text-sm text-foreground/60">
+          <p className="text-sm text-muted-foreground">
             Pick a repo, then open a file to scan it. Scans are saved when you are signed in (same history as manual
             mode).
           </p>
@@ -251,14 +251,14 @@ export function RepositoryBrowser({
       )}
 
       {selectedRepo && (
-        <Card className="space-y-4 border border-border bg-card/30 p-4">
+        <Card className="space-y-4 p-4">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4 text-primary" />
                 <h4 className="font-semibold text-foreground">{selectedRepo.name}</h4>
               </div>
-              <p className="text-xs text-foreground/60">{selectedRepo.full_name}</p>
+              <p className="text-xs text-muted-foreground">{selectedRepo.full_name}</p>
             </div>
             <Button
               variant="outline"
@@ -289,7 +289,7 @@ export function RepositoryBrowser({
               {fileTree.length > 0 ? (
                 fileTree.map((file) => <FileTreeItem key={file.path} file={file} />)
               ) : (
-                <p className="py-4 text-sm text-foreground/60">No files found</p>
+                <p className="py-4 text-sm text-muted-foreground">No files found</p>
               )}
             </div>
           )}

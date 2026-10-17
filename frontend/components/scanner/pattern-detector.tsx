@@ -242,9 +242,9 @@ const CATEGORY_LABELS: Record<PatternResult['category'], string> = {
 }
 
 const SEVERITY_COLOR: Record<PatternResult['severity'], string> = {
-  info: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  warning: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  error: 'bg-red-500/20 text-red-400 border-red-500/30',
+  info: 'bg-blue-500/20 text-primary border-blue-500/30',
+  warning: 'bg-yellow-500/20 text-amber-700 dark:text-amber-400 border-yellow-500/30',
+  error: 'bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/30',
 }
 
 const CATEGORY_ICONS: Record<PatternResult['category'], React.ReactNode> = {
@@ -338,7 +338,7 @@ export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps)
       </div>
 
       {patterns.length === 0 ? (
-        <Card className="p-6 border-dashed bg-card/30 text-center">
+        <Card className="rounded-3xl p-6 border-dashed text-center">
           <CheckCircle2 className="w-8 h-8 text-green-400/60 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             {files.length === 0
@@ -347,7 +347,7 @@ export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps)
           </p>
         </Card>
       ) : filtered.length === 0 ? (
-        <Card className="p-6 border-dashed bg-card/30 text-center">
+        <Card className="rounded-3xl p-6 border-dashed text-center">
           <p className="text-sm text-muted-foreground">No patterns match the current filter.</p>
         </Card>
       ) : (

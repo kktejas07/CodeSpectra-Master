@@ -52,12 +52,12 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold mb-2">Code Metrics</h1>
-        <p className="text-foreground/60">File-level analysis of code quality across your codebase</p>
+        <h2 className="sr-only">Code metrics</h2>
+        <p className="text-sm text-muted-foreground">File-level analysis of code quality across your codebase</p>
       </div>
 
       {/* Filters */}
-      <Card className="p-4 bg-card/30 border border-border">
+      <Card className="p-4">
         <div className="flex flex-wrap gap-4 items-center">
           <div>
             <label className="text-sm font-medium block mb-2">Language</label>
@@ -91,7 +91,7 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
       </Card>
 
       {/* Files Table */}
-      <Card className="overflow-hidden border border-border">
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted border-b border-border">
@@ -109,7 +109,7 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
             <tbody>
               {sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-foreground/60">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     No files to display
                   </td>
                 </tr>
@@ -121,10 +121,10 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
                     className="border-t border-border hover:bg-muted/50 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3 flex items-center gap-2">
-                      <FileCode className="w-4 h-4 text-foreground/60" />
+                      <FileCode className="w-4 h-4 text-muted-foreground" />
                       <div>
                         <p className="font-medium text-foreground text-sm">{(file.path || '').split('/').pop()}</p>
-                        <p className="text-xs text-foreground/50">{file.path || 'Unknown'}</p>
+                        <p className="text-xs text-muted-foreground">{file.path || 'Unknown'}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-medium">{file.loc}</td>
@@ -156,24 +156,24 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
 
       {/* Summary Stats */}
       <div className="grid md:grid-cols-4 gap-4">
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Total Files</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">Total files</p>
           <p className="text-3xl font-bold">{filtered.length}</p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Total Issues</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">Total issues</p>
           <p className="text-3xl font-bold">
             {filtered.reduce((sum, f) => sum + f.bugs + f.vulnerabilities + f.codeSmells, 0)}
           </p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Avg Coverage</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">Avg coverage</p>
           <p className="text-3xl font-bold">
             {filtered.length > 0 ? (filtered.reduce((sum, f) => sum + f.coverage, 0) / filtered.length).toFixed(1) : 0}%
           </p>
         </Card>
-        <Card className="p-4 bg-card/30 border border-border">
-          <p className="text-sm text-foreground/60 mb-2">Total LOC</p>
+        <Card className="p-4">
+          <p className="text-sm text-muted-foreground mb-2">Total LOC</p>
           <p className="text-3xl font-bold">{filtered.reduce((sum, f) => sum + f.loc, 0)}</p>
         </Card>
       </div>
