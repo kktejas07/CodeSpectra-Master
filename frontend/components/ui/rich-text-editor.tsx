@@ -103,13 +103,13 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
     { icon: Heading1, command: 'formatBlock', value: '<h1>', tooltip: 'Heading 1' },
     { icon: Heading2, command: 'formatBlock', value: '<h2>', tooltip: 'Heading 2' },
     { divider: true },
-    { icon: List, command: 'insertUnorderedList', tooltip: 'Bullet List' },
-    { icon: ListOrdered, command: 'insertOrderedList', tooltip: 'Numbered List' },
+    { icon: List, command: 'insertUnorderedList', tooltip: 'Bullet list' },
+    { icon: ListOrdered, command: 'insertOrderedList', tooltip: 'Numbered list' },
     { icon: Quote, command: 'formatBlock', value: '<blockquote>', tooltip: 'Quote' },
-    { icon: Code, command: 'formatBlock', value: '<pre>', tooltip: 'Code Block' },
+    { icon: Code, command: 'formatBlock', value: '<pre>', tooltip: 'Code block' },
     { divider: true },
     { icon: Minus, command: 'insertHorizontalRule', tooltip: 'Divider' },
-    { icon: RemoveFormatting, command: 'removeFormat', tooltip: 'Clear Formatting' },
+    { icon: RemoveFormatting, command: 'removeFormat', tooltip: 'Clear formatting' },
   ]
 
   return (
@@ -129,6 +129,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
               size="sm"
               className="h-7 w-7 p-0"
               title={btn.tooltip}
+              aria-label={btn.tooltip}
               onMouseDown={e => {
                 e.preventDefault() // Prevent editor losing focus
                 execCommand(btn.command!, btn.value)
@@ -144,7 +145,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Insert Link"
+          title="Insert link"
+          aria-label="Insert link"
           onMouseDown={e => e.preventDefault()}
           onClick={() => setShowLinkInput(!showLinkInput)}
         >
@@ -155,7 +157,8 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           variant="ghost"
           size="sm"
           className="h-7 w-7 p-0"
-          title="Insert Image"
+          title="Insert image"
+          aria-label="Insert image"
           onMouseDown={e => e.preventDefault()}
           onClick={insertImage}
         >
@@ -168,6 +171,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           size="sm"
           className="h-7 w-7 p-0"
           title="Undo"
+          aria-label="Undo"
           onMouseDown={e => { e.preventDefault(); execCommand('undo') }}
         >
           <Undo2 className="h-3.5 w-3.5" />
@@ -178,6 +182,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
           size="sm"
           className="h-7 w-7 p-0"
           title="Redo"
+          aria-label="Redo"
           onMouseDown={e => { e.preventDefault(); execCommand('redo') }}
         >
           <Redo2 className="h-3.5 w-3.5" />
@@ -192,6 +197,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
             value={linkUrl}
             onChange={e => setLinkUrl(e.target.value)}
             placeholder="https://example.com"
+            aria-label="Link URL"
             className="flex-1 text-sm px-2 py-1 rounded border border-border/60 bg-background"
             onKeyDown={e => e.key === 'Enter' && insertLink()}
           />
@@ -205,6 +211,9 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
         ref={editorRef}
         contentEditable
         suppressContentEditableWarning
+        role="textbox"
+        aria-multiline="true"
+        aria-label={placeholder}
         className="rich-text-editor"
         style={{ minHeight: `${minHeight}px` }}
         onInput={syncContent}

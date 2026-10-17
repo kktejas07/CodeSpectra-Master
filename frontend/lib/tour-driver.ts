@@ -189,21 +189,21 @@ export function resolveTourId(pathname: string): string | null {
 export const WELCOME_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="dashboard-overview"]',
-    title: 'Your Developer Home',
+    title: 'Your developer home',
     description:
       'Your command center: track XP and streaks here, then jump into practice, scans, or events below.',
     position: 'bottom',
   },
   {
     target: '[data-tour="practice-arena"]',
-    title: 'Practice Arena',
+    title: 'Practice arena',
     description:
       'Challenge yourself with coding problems and interview questions. Track your progress and compete with peers.',
     position: 'bottom',
   },
   {
     target: '[data-tour="scanner-tool"]',
-    title: 'Code Scanner',
+    title: 'Code scanner',
     description:
       'AI-powered code analysis that identifies issues, suggests improvements, and provides security insights.',
     position: 'bottom',

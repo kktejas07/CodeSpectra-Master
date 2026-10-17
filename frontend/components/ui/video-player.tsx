@@ -317,7 +317,7 @@ export function VideoPlayer({
 
   const finalAutoplay = autoplay ?? settings.video_player_autoplay === true
   const finalMuted = muted ?? settings.video_player_muted === true
-  const finalColor = primaryColor ?? settings.video_player_primary_color ?? '#34d399'
+  const finalColor = primaryColor ?? settings.video_player_primary_color ?? '#2F5BE7'
   const finalLogoUrl = logoUrl ?? settings.video_player_logo_url ?? ''
   const finalLogoLinkUrl = logoLinkUrl ?? settings.video_player_logo_link_url ?? ''
   const finalCaptionsDefault = settings.video_player_captions_default === true
@@ -396,6 +396,7 @@ export function VideoPlayer({
               <p className="text-xs text-zinc-400">Continuing in 3 seconds</p>
             </div>
             <button
+              type="button"
               onClick={cancelUpNext}
               className="rounded-md border border-white/20 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/10"
             >
@@ -407,18 +408,20 @@ export function VideoPlayer({
       {entries.length > 0 && transcriptMode !== 'off' ? (
         <div className="border-t border-border/40 bg-background">
           <button
+            type="button"
             onClick={() => setTranscriptToggled((v) => !(v ?? transcriptMode === 'open'))}
             className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm font-medium hover:bg-muted/40"
             aria-expanded={transcriptOpen}
           >
             <span>Transcript <span className="ml-1 font-normal text-muted-foreground">({entries.length} parts)</span></span>
-            <span className="text-muted-foreground">{transcriptOpen ? '▾' : '▸'}</span>
+            <span aria-hidden className="text-muted-foreground">{transcriptOpen ? '▾' : '▸'}</span>
           </button>
           {transcriptOpen ? (
             <ol className="max-h-64 space-y-0.5 overflow-y-auto px-2 pb-3">
               {entries.map((e, i) => (
                 <li key={i}>
                   <button
+                    type="button"
                     onClick={() => seekTo(e.start)}
                     className={`flex w-full items-start gap-3 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60 ${
                       i === activeIdx ? 'bg-primary/10 text-foreground' : 'text-muted-foreground'

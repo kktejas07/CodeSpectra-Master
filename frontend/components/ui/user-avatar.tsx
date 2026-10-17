@@ -26,7 +26,7 @@ interface UserAvatarProps {
 export function UserAvatar({ src, seed, name, className, imageClassName, fallbackClassName }: UserAvatarProps) {
   const label = (name || '').trim()
   return (
-    <Avatar className={cn('bg-slate-200', className)}>
+    <Avatar className={cn('bg-muted text-muted-foreground', className)}>
       <AvatarImage src={src || dicebearUrl(seed || label)} alt={label || 'User'} className={imageClassName} />
       <AvatarFallback className={fallbackClassName}>{initialsFor(label || seed)}</AvatarFallback>
     </Avatar>

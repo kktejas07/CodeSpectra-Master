@@ -24,6 +24,8 @@ type EmptyStateProps = {
   actionHref?: string
   onAction?: () => void
   variant?: EmptyStateVariant
+  /** Smaller padding, art and title — for use inside tables and panels. */
+  compact?: boolean
   className?: string
 }
 
@@ -34,26 +36,30 @@ export function EmptyState({
   actionHref,
   onAction,
   variant = 'default',
+  compact = false,
   className,
 }: EmptyStateProps) {
   return (
     <div
       className={cn(
-        'flex w-full flex-col items-center justify-center rounded-3xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center md:py-16',
+        'flex w-full flex-col items-center justify-center text-center',
+        compact
+          ? 'px-4 py-8'
+          : 'rounded-3xl border border-dashed border-border bg-muted/20 px-6 py-12 md:py-16',
         className,
       )}
       role="status"
       aria-live="polite"
     >
-      <EmptyArt variant={variant} className="mb-6" />
+      <EmptyArt variant={variant} className={compact ? '-my-4 mb-0 scale-[0.65]' : 'mb-6'} />
 
-      <h3 className="text-xl font-semibold tracking-tight text-foreground">{title}</h3>
+      <h3 className={cn('font-semibold tracking-tight text-foreground', compact ? 'text-base' : 'text-xl')}>{title}</h3>
       {description ? (
         <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">{description}</p>
       ) : null}
 
       {actionLabel ? (
-        <div className="mt-6">
+        <div className={compact ? 'mt-4' : 'mt-6'}>
           {actionHref ? (
             <Button asChild variant="default" className="rounded-full px-6">
               <Link href={actionHref}>{actionLabel}</Link>

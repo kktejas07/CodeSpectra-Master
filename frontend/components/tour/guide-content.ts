@@ -38,7 +38,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
         text: 'Your XP, streak, heatmap, and recent activity, all updating as you solve, scan, and complete lessons.',
       },
       {
-        title: 'My Events',
+        title: 'My events',
         text: 'Hackathons and codeathons you joined, with dates and entry points when your teams are involved.',
       },
     ],
@@ -57,19 +57,19 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
         text: 'Write two lines on your skills and goals so recruiters understand you in seconds.',
       },
       {
-        title: 'Digital ID Card',
+        title: 'Digital ID card',
         text: 'A shareable snapshot of your identity, level, and verified signals.',
       },
       {
-        title: 'AI Skill Recommendations',
+        title: 'AI skill recommendations',
         text: 'Skill suggestions generated from your actual activity and submissions.',
       },
       {
-        title: 'Social Links',
+        title: 'Social links',
         text: 'Link GitHub, LinkedIn, and portfolio sites so people can find your work.',
       },
       {
-        title: 'Edit Profile',
+        title: 'Edit profile',
         text: 'Update bio, links, and experience any time from the edit page.',
       },
     ],
@@ -103,7 +103,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   'notification-preferences': {
-    title: 'Notification Preferences',
+    title: 'Notification preferences',
     about: 'Fine-grained control over which channels (email, push, in-app) each notification type uses.',
     features: [
       {
@@ -118,7 +118,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Keep result notifications on every channel — you do not want to miss scores.'],
   },
   jobs: {
-    title: 'My Applications',
+    title: 'My applications',
     about: 'Every job you applied to, with live status from submitted to accepted or rejected.',
     features: [
       {
@@ -158,7 +158,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   'mock-tests': {
-    title: 'AI-Powered Mock Tests',
+    title: 'AI-powered mock tests',
     about: 'Full-length AI-generated role tests for top companies, built for interview practice.',
     features: [
       {
@@ -176,7 +176,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   'mock-test-detail': {
-    title: 'Configure Your Test',
+    title: 'Configure your test',
     about: 'Tune a mock test before you start — difficulty, count, and format.',
     features: [
       {
@@ -229,7 +229,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Schedule mock interviews here a week ahead so prep time is protected.'],
   },
   'course-detail': {
-    title: 'Course Details',
+    title: 'Course details',
     about: 'Everything about one course — syllabus, instructor signals, skills taught, and enrollment.',
     features: [
       {
@@ -241,7 +241,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
         text: 'The exact skill tags this course feeds into your analytics.',
       },
       {
-        title: 'Enroll / Continue',
+        title: 'Enroll / continue',
         text: 'One click enrolls you; returning learners resume at the last lesson.',
       },
       {
@@ -252,7 +252,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Finish lessons in order; quizzes unlock as you complete videos.'],
   },
   'my-courses': {
-    title: 'My Courses',
+    title: 'My courses',
     about: 'Every course you enrolled in, with resume points so learning continues fast.',
     features: [
       {
@@ -282,7 +282,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Enroll the moment you have study time — saved courses do not progress.'],
   },
   'course-generate': {
-    title: 'AI Video Course Generator',
+    title: 'AI video course generator',
     about: 'Describe any topic and AI builds a full video course — script, voiceover, and MP4 lessons.',
     features: [
       {
@@ -300,7 +300,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   'problem-detail': {
-    title: 'Problem Solver',
+    title: 'Problem solver',
     about: 'One coding problem, full IDE: statement, samples, editor, and judging.',
     features: [
       {
@@ -322,7 +322,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   problems: {
-    title: 'Practice Problems',
+    title: 'Practice problems',
     about: 'The coding library for placements and interviews — filterable by topic and difficulty.',
     features: [
       {
@@ -344,7 +344,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   'codeathon-detail': {
-    title: 'Codeathon Details',
+    title: 'Codeathon details',
     about: 'One competition: rules, timeline, prizes, teams, and problems.',
     features: [
       {
@@ -393,7 +393,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Schedule mocks for the exact role you are targeting.'],
   },
   'interview-detail': {
-    title: 'Interview Session',
+    title: 'Interview session',
     about: 'One interview end to end: questions, answers, AI feedback, and a shared editor.',
     features: [
       {
@@ -423,7 +423,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   'interview-schedule': {
-    title: 'Schedule Interview',
+    title: 'Schedule interview',
     about: 'Book a mock interview with role, type, and timing of your choice.',
     features: [
       {
@@ -438,7 +438,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Double-check the role — questions are generated for it.'],
   },
   'interview-setup': {
-    title: 'Interview Setup',
+    title: 'Interview setup',
     about: 'Configure a practice session: pick a role, then tune resume and settings.',
     features: [
       {
@@ -453,7 +453,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Upload your real resume for questions that mirror real interviews.'],
   },
   'ai-mock-setup': {
-    title: 'AI Mock Interview Setup',
+    title: 'AI mock interview setup',
     about: 'Configure an AI interviewer matched to your goal role.',
     features: [
       {
@@ -468,7 +468,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Match settings to your target job description for best transfer.'],
   },
   assessments: {
-    title: 'My Assessments',
+    title: 'My assessments',
     about: 'Proctored tests assigned to you plus your full attempt history and certificates.',
     features: [
       {
@@ -494,7 +494,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
   },
   'assessment-detail': {
-    title: 'Assessment Runner',
+    title: 'Assessment runner',
     about: 'The timed test interface: questions, navigation, and submit.',
     features: [
       {
@@ -502,7 +502,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
         text: 'One question at a time with options or code editor as applicable.',
       },
       {
-        title: 'Prev / Next / Submit',
+        title: 'Prev / next / submit',
         text: 'Move freely between questions; submit ends the attempt.',
       },
       {
@@ -551,7 +551,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Yearly billing saves two months versus monthly on most plans.'],
   },
   support: {
-    title: 'Support Tickets',
+    title: 'Support tickets',
     about: 'Raise help requests and track team replies until resolution.',
     features: [
       {
@@ -566,7 +566,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Include steps to reproduce — it halves resolution time.'],
   },
   'judge-desk': {
-    title: 'Judge Desk',
+    title: 'Judge desk',
     about: 'Hackathons assigned to you for submission review and scoring.',
     features: [
       {
@@ -581,7 +581,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Score against the rubric, not personal taste — it keeps results fair.'],
   },
   sessions: {
-    title: 'My Sessions',
+    title: 'My sessions',
     about: 'Interview and mock sessions linked to your account.',
     features: [
       {
@@ -596,7 +596,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Join live rooms 5 minutes early to test mic and camera.'],
   },
   bookmarks: {
-    title: 'Bookmarked Questions',
+    title: 'Bookmarked questions',
     about: 'Problems and lesson quiz questions you saved for revision.',
     features: [
       {
@@ -641,7 +641,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Vendor exams are paid — the prep here is free, the exam is not.'],
   },
   'skill-analytics': {
-    title: 'Skill Analytics',
+    title: 'Skill analytics',
     about: 'Your problem-solving fingerprint, built from every submission.',
     features: [
       {
@@ -675,7 +675,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Pair one book with one course for depth plus structure.'],
   },
   'resource-reader': {
-    title: 'Ebook Reader',
+    title: 'Ebook reader',
     about: 'Read any resource book cover to cover without leaving the app.',
     features: [
       {
@@ -683,14 +683,14 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
         text: 'Paginated reading with progress memory across sessions.',
       },
       {
-        title: 'Back to Resources',
+        title: 'Back to resources',
         text: 'Return to the library any time — your place is saved.',
       },
     ],
     tips: ['Finish one chapter per sitting to keep momentum.'],
   },
   'interview-prep': {
-    title: 'Interview Prep',
+    title: 'Interview prep',
     about: 'Role-based prep tracks: questions, quizzes, and company patterns.',
     features: [
       {
@@ -705,7 +705,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Do the quiz mode the week before interviews, browse mode earlier.'],
   },
   agent: {
-    title: 'AI Agent Workspace',
+    title: 'AI agent workspace',
     about: 'Describe a coding goal and the agent plans, writes, and iterates on code with you.',
     features: [
       {
@@ -720,7 +720,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Be specific about constraints — vague goals produce vague code.'],
   },
   '100-days': {
-    title: '100-Day Coding Sprint',
+    title: '100-day coding sprint',
     about: 'One hundred days of structured problems from Day 1 to Day 100.',
     features: [
       {
@@ -735,7 +735,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Never miss twice — one rest day is fine, two breaks the habit.'],
   },
   'identity-verify': {
-    title: 'Identity Verification',
+    title: 'Identity verification',
     about: 'Verify who you are so proctored assessments and certificates trust your account.',
     features: [
       {
@@ -750,7 +750,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Verify once, well before your first proctored slot — reviews take time.'],
   },
   'arena-detail': {
-    title: 'Challenge Solver',
+    title: 'Challenge solver',
     about: 'One arena challenge with the full solving IDE.',
     features: [
       {
@@ -769,7 +769,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Run samples first — a failed submit costs streak momentum.'],
   },
   arena: {
-    title: 'Coding Arena',
+    title: 'Coding arena',
     about: 'Head-to-head style coding challenges with points and rankings.',
     features: [
       {
@@ -788,7 +788,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Enter rated arenas even unprepared — rated practice beats solo drills.'],
   },
   'ai-settings': {
-    title: 'AI Model Preferences',
+    title: 'AI model preferences',
     about: 'Choose which AI models power chat, agents, and assistance across the app.',
     features: [
       {
@@ -803,7 +803,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Bigger models reason better; smaller ones answer faster — split by task.'],
   },
   'recruiter-analytics': {
-    title: 'Recruiter Analytics',
+    title: 'Recruiter analytics',
     about: 'Hiring insights across every role: volume, scores, and candidate ranking.',
     features: [
       {
@@ -822,7 +822,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Export the shortlist right after a hiring round while context is fresh.'],
   },
   pricing: {
-    title: 'Plans & Pricing',
+    title: 'Plans & pricing',
     about: 'Free to start; upgrade only when you need more power.',
     features: [
       {
@@ -864,7 +864,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Consistent daily XP climbs faster than occasional marathons.'],
   },
   achievements: {
-    title: 'Achievements & Badges',
+    title: 'Achievements & badges',
     about: 'Your trophy shelf: levels, XP milestones, and skill badges earned on platform.',
     features: [
       {
@@ -887,7 +887,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Chase the next tier, not every badge — depth beats collection.'],
   },
   recent: {
-    title: 'Recently Viewed',
+    title: 'Recently viewed',
     about: 'Everything you opened — courses, lessons, problems — ready to resume.',
     features: [
       {
@@ -906,7 +906,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Resume from here instead of searching — it drops you at your last position.'],
   },
   scanner: {
-    title: 'Code Scanner',
+    title: 'Code scanner',
     about: 'Paste code, get instant AI review: bugs, security issues, and fixes.',
     features: [
       {
@@ -948,7 +948,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Enable 2FA now if you take proctored assessments — it is required there.'],
   },
   tracks: {
-    title: 'Tech-Stack Tracks',
+    title: 'Tech-stack tracks',
     about: 'Curated problem paths per stack — pick one and grind in order.',
     features: [
       {
@@ -963,7 +963,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Finish one track before starting another — half-tracks compound nothing.'],
   },
   articles: {
-    title: 'Articles & Newsroom',
+    title: 'Articles & newsroom',
     about: 'Expert insights, product updates, and career signals from CodeSpectra.',
     features: [
       {
@@ -1008,7 +1008,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Form teams early — the best teammates commit weeks ahead.'],
   },
   courses: {
-    title: 'Course Catalog',
+    title: 'Course catalog',
     about: 'The full learning library — video courses across stacks and levels.',
     features: [
       {
@@ -1027,7 +1027,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Finish enrolled courses before collecting new ones.'],
   },
   'admin-system': {
-    title: 'Operations Overview',
+    title: 'Operations overview',
     about: 'Live platform health for superadmins: servers, metrics, and audit access.',
     features: [
       {
@@ -1050,7 +1050,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Check Redis latency first when the app feels slow — it is usually the queue.'],
   },
   cad: {
-    title: 'CAD Editor',
+    title: 'CAD editor',
     about: 'A full-screen 2D drawing workspace for diagrams and CAD-style sketches.',
     features: [
       {
@@ -1065,7 +1065,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Give the editor a moment to load — it initializes client-side.'],
   },
   'challenge-detail': {
-    title: 'Challenge Solver',
+    title: 'Challenge solver',
     about:
       'One challenge in a full-screen editor: statement, samples, constraints, and starter code.',
     features: [
@@ -1081,7 +1081,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Read the constraints before coding — they hint the intended approach.'],
   },
   admin: {
-    title: 'Admin Console',
+    title: 'Admin console',
     about:
       'Superadmin operations for this section: review rows, update status, and act in bulk.',
     features: [
@@ -1101,7 +1101,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Bulk actions beat row-by-row work once the list grows past a screen.'],
   },
   feedback: {
-    title: 'Feedback & Reports',
+    title: 'Feedback & reports',
     about:
       'Every user report and complaint in one queue — read, reply, resolve, or delete.',
     features: [
@@ -1129,7 +1129,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Reply before resolving — the reporter gets notified of your response.'],
   },
   'team-invite': {
-    title: 'Team Invitation',
+    title: 'Team invitation',
     about: 'You were invited to join an organization team — review and accept in one tap.',
     features: [
       {
@@ -1144,7 +1144,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Only accept invites you recognize — team membership grants data access.'],
   },
   'admin-ai-inventory': {
-    title: 'AI Inventory & Control Plane',
+    title: 'AI inventory & control plane',
     about: 'Every AI dependency in one place, with vulnerability and audit findings.',
     features: [
       {
@@ -1197,7 +1197,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Schedule maintenance notices at least a day ahead of the window.'],
   },
   'admin-assessments': {
-    title: 'Assessment Management',
+    title: 'Assessment management',
     about: 'Create, publish, invite, and grade proctored assessments.',
     features: [
       {
@@ -1216,7 +1216,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Publish only after previewing every question — edits mid-window confuse candidates.'],
   },
   'admin-assessments-edit': {
-    title: 'Edit Assessment',
+    title: 'Edit assessment',
     about: 'Edit one assessment: metadata, questions, and bank imports.',
     features: [
       {
@@ -1235,7 +1235,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Import from the bank instead of retyping — it preserves answer keys.'],
   },
   'admin-assessment-results': {
-    title: 'Assessment Results',
+    title: 'Assessment results',
     about: 'Scores, proctor report, and per-candidate breakdown for one assessment.',
     features: [
       {
@@ -1254,7 +1254,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Review flagged sessions before releasing scores to candidates.'],
   },
   'admin-assessments-bulk': {
-    title: 'Bulk Schedule Assessments',
+    title: 'Bulk schedule assessments',
     about: 'Invite hundreds of candidates at once from a CSV upload.',
     features: [
       {
@@ -1273,7 +1273,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Preview catches malformed rows before invites go out — never skip it.'],
   },
   'admin-assessments-pipeline': {
-    title: 'Candidate Pipeline',
+    title: 'Candidate pipeline',
     about: 'Every candidate across assessments on a stage board: invited to hired.',
     features: [
       {
@@ -1288,7 +1288,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Stale cards in early stages usually mean invites never arrived — check email logs.'],
   },
   'admin-billing': {
-    title: 'Billing Analytics',
+    title: 'Billing analytics',
     about: 'Revenue, orders, and subscription health for the last 30 days.',
     features: [
       {
@@ -1322,7 +1322,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Publish release notes alongside every deploy train.'],
   },
   'admin-cdn': {
-    title: 'CDN & Edge Operations',
+    title: 'CDN & edge operations',
     about: 'Cache, edge performance, and delivery health for static assets.',
     features: [
       {
@@ -1352,7 +1352,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Revoke rather than delete — the audit trail stays intact.'],
   },
   'admin-codeathons': {
-    title: 'Codeathon & Hackathon Management',
+    title: 'Codeathon & hackathon management',
     about: 'Create and operate coding competitions end to end.',
     features: [
       {
@@ -1367,7 +1367,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Lock problems before opening registration to avoid mid-event edits.'],
   },
   'admin-content-studio': {
-    title: 'Content Studio',
+    title: 'Content studio',
     about: 'Newsroom articles and automated Signals drafts in one pipeline.',
     features: [
       {
@@ -1397,7 +1397,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Cap redemptions on public codes — uncapped codes leak to deal sites.'],
   },
   'admin-courses': {
-    title: 'Course Management',
+    title: 'Course management',
     about: 'Publish, edit, and retire learning courses and their lessons.',
     features: [
       {
@@ -1412,7 +1412,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Unpublish instead of deleting — enrolled learners keep access to history.'],
   },
   'admin-course-detail': {
-    title: 'Edit Course',
+    title: 'Edit course',
     about: 'Modules, lessons, and media generation for one course.',
     features: [
       {
@@ -1427,7 +1427,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Regenerate single lessons instead of the whole course when fixing narration.'],
   },
   'admin-cron-jobs': {
-    title: 'Cron Jobs',
+    title: 'Cron jobs',
     about: 'Built-in loops, HTTP cron endpoints, and scheduled workflows.',
     features: [
       {
@@ -1446,7 +1446,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Trigger manually once after any schedule change to catch config errors early.'],
   },
   'admin-hackathons': {
-    title: 'Hackathon Events',
+    title: 'Hackathon events',
     about: 'Create events, manage teams, assign judges, and publish results.',
     features: [
       {
@@ -1461,7 +1461,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Assign judges before teams submit — late assignments delay scoring.'],
   },
   'admin-hackathon-detail': {
-    title: 'Hackathon Detail',
+    title: 'Hackathon detail',
     about: 'One event: teams, members, judges, and judging controls.',
     features: [
       {
@@ -1480,7 +1480,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Freeze teams before judging starts to keep scores comparable.'],
   },
   'admin-hackathon-report': {
-    title: 'Judge Report',
+    title: 'Judge report',
     about: 'Final scoring breakdown: team totals and the proctor event log.',
     features: [
       {
@@ -1495,7 +1495,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Cross-check outliers against the proctor log before publishing winners.'],
   },
   'admin-hackathon-create': {
-    title: 'New Hackathon Event',
+    title: 'New hackathon event',
     about: 'Step-by-step event builder: details, problems, rules.',
     features: [
       {
@@ -1514,7 +1514,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Complete all three steps — drafts do not accept registrations.'],
   },
   'admin-hackathon-edit': {
-    title: 'Edit Hackathon Event',
+    title: 'Edit hackathon event',
     about: 'Modify a live or draft event across details, problems, and rules.',
     features: [
       {
@@ -1533,7 +1533,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Announce rule changes to registered teams — silent edits erode trust.'],
   },
   'admin-help': {
-    title: 'Admin Help',
+    title: 'Admin help',
     about: 'Operator documentation for admin workflows, section by section.',
     features: [
       {
@@ -1544,7 +1544,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Check here before pinging engineering — most flows are documented.'],
   },
   'admin-hiring-report': {
-    title: 'Hiring Manager Report',
+    title: 'Hiring manager report',
     about: 'Candidate outcomes formatted for hiring managers and clients.',
     features: [
       {
@@ -1574,7 +1574,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Rotate integration secrets on staff changes, not just on incidents.'],
   },
   'admin-jobs': {
-    title: 'Job Postings',
+    title: 'Job postings',
     about: 'Publish and edit the roles candidates apply to.',
     features: [
       {
@@ -1589,7 +1589,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Close filled roles the day offers are signed — stale posts attract noise.'],
   },
   'admin-kyc': {
-    title: 'KYC Verification',
+    title: 'KYC verification',
     about: 'Review identity verification submissions and clear or reject them.',
     features: [
       {
@@ -1604,7 +1604,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Reject with a reason — applicants cannot fix what they cannot see.'],
   },
   'admin-newsletter': {
-    title: 'Newsletter Composer',
+    title: 'Newsletter composer',
     about: 'Draft and send platform newsletters with templates and previews.',
     features: [
       {
@@ -1638,7 +1638,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Remove departed admins the day access should end.'],
   },
   'admin-permissions': {
-    title: 'Role & Permission Manager',
+    title: 'Role & permission manager',
     about: 'Which roles can see and do what across every dashboard page.',
     features: [
       {
@@ -1653,7 +1653,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Deny-by-default for new pages, then open up deliberately.'],
   },
   'admin-plans': {
-    title: 'Plans & Pricing Management',
+    title: 'Plans & pricing management',
     about: 'Subscription tiers, feature lists, and current plan state.',
     features: [
       {
@@ -1668,7 +1668,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Mirror plan changes in the public pricing page the same day.'],
   },
   'admin-predictive': {
-    title: 'Predictive Validity & Adverse Impact',
+    title: 'Predictive validity & adverse impact',
     about: 'Statistical checks that assessments predict performance fairly.',
     features: [
       {
@@ -1687,7 +1687,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Re-run after every hiring round — drift hides in stale numbers.'],
   },
   'admin-proctor': {
-    title: 'Proctor Dashboard',
+    title: 'Proctor dashboard',
     about: 'Live and historical proctoring events across assessments.',
     features: [
       {
@@ -1702,7 +1702,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['One flag is noise; patterns across a session are signal.'],
   },
   'admin-question-bank': {
-    title: 'Engineering Question Bank',
+    title: 'Engineering question bank',
     about: 'The shared pool of vetted questions feeding assessments and interviews.',
     features: [
       {
@@ -1721,7 +1721,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Approve AI drafts only after checking the answer key by hand.'],
   },
   'admin-question-generator': {
-    title: 'AI Question Generator',
+    title: 'AI question generator',
     about: 'Generate assessment questions from a topic and spec.',
     features: [
       {
@@ -1736,7 +1736,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Generate in small batches — review quality drops in bulk.'],
   },
   'admin-rag': {
-    title: 'RAG & Embeddings',
+    title: 'RAG & embeddings',
     about: 'The retrieval layer behind AI answers: index health and live search tests.',
     features: [
       {
@@ -1751,7 +1751,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Test-search after every reindex — empty results mean a broken pipeline.'],
   },
   'admin-resources': {
-    title: 'Resources / Ebooks',
+    title: 'Resources / ebooks',
     about: 'Publish learning ebooks and resource packs for the library.',
     features: [
       {
@@ -1766,7 +1766,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Read generated ebooks end to end before publishing — AI filler is obvious.'],
   },
   'admin-resumes': {
-    title: 'Resume Analysis',
+    title: 'Resume analysis',
     about: 'AI review of candidate resumes: parsing, scoring, and red flags.',
     features: [
       {
@@ -1796,7 +1796,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Grant superadmin to as few people as possible — it bypasses everything.'],
   },
   'admin-security': {
-    title: 'Security & Audit',
+    title: 'Security & audit',
     about: 'Sessions, audit trail, and security posture in one place.',
     features: [
       {
@@ -1815,7 +1815,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Revoke unknown sessions first, ask questions later.'],
   },
   'admin-email-monitoring': {
-    title: 'Email Monitoring',
+    title: 'Email monitoring',
     about: 'Outbound mail health: delivery, bounces, and skips.',
     features: [
       {
@@ -1830,7 +1830,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['A bounce spike usually means a stale mailing list, not a broken sender.'],
   },
   'admin-settings': {
-    title: 'Platform Settings',
+    title: 'Platform settings',
     about: 'Every platform knob: branding, mail, billing, AI keys, KYC, and more.',
     features: [
       {
@@ -1860,7 +1860,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Check the source link before approving — drafts inherit source errors.'],
   },
   'admin-sme-review': {
-    title: 'SME Review & Grading',
+    title: 'SME review & grading',
     about: 'Subject-matter-expert grading queue for open-ended answers.',
     features: [
       {
@@ -1875,7 +1875,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Grade against the rubric text, not gut feel — candidates appeal on rubrics.'],
   },
   'admin-speed-insights': {
-    title: 'Speed Insights',
+    title: 'Speed insights',
     about: 'Real-user frontend performance: loads, paints, and slow routes.',
     features: [
       {
@@ -1886,7 +1886,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Fix the slowest route first — averages hide the worst experience.'],
   },
   'admin-sso': {
-    title: 'SSO / Enterprise Auth',
+    title: 'SSO / enterprise auth',
     about: 'Single sign-on providers for organization logins.',
     features: [
       {
@@ -1916,7 +1916,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Assign the least privilege that still lets people do their jobs.'],
   },
   'admin-team-activity': {
-    title: 'Team Activity',
+    title: 'Team activity',
     about: 'What your team actually did: top contributors and recent events.',
     features: [
       {
@@ -1931,7 +1931,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Praise in public from this feed — recognition compounds.'],
   },
   'admin-teams': {
-    title: 'Tenant Teams',
+    title: 'Tenant teams',
     about: 'All teams across tenants with stats and management.',
     features: [
       {
@@ -1946,7 +1946,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Empty teams older than a quarter are usually abandoned — archive them.'],
   },
   'admin-users': {
-    title: 'Users Management',
+    title: 'Users management',
     about: 'Every account: search, inspect, change roles, and deactivate.',
     features: [
       {
@@ -1961,7 +1961,7 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     tips: ['Deactivate instead of deleting — history matters for audits.'],
   },
   'admin-workflows': {
-    title: 'Workflow Automation',
+    title: 'Workflow automation',
     about: 'Zapier-style automations: triggers, steps, and run history.',
     features: [
       {

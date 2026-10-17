@@ -69,8 +69,8 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
               <BookOpenText className="h-4.5 w-4.5 text-primary" />
             </span>
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Explanation &amp; Tips
+              <p className="text-sm font-medium text-muted-foreground">
+                Explanation &amp; tips
               </p>
               <h2 className="text-lg font-bold leading-tight text-foreground">{title}</h2>
             </div>
@@ -82,7 +82,7 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
             aria-label="Close guide"
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
-            <X className="h-4 w-4" />
+            <X aria-hidden className="h-4 w-4" />
           </button>
         </div>
 
@@ -91,15 +91,15 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
           {content ? (
             <>
               <section>
-                <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  What is this page
+                <h3 className="mb-1.5 text-sm font-medium text-muted-foreground">
+                  What this page is for
                 </h3>
                 <p className="text-sm leading-relaxed text-foreground">{content.about}</p>
               </section>
 
               {content.features.length > 0 && (
                 <section>
-                  <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h3 className="mb-2.5 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <Sparkles className="h-3.5 w-3.5" /> Features on this page
                   </h3>
                   <ul className="space-y-3">
@@ -117,7 +117,7 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
 
               {content.tips.length > 0 && (
                 <section>
-                  <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h3 className="mb-2.5 flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                     <Lightbulb className="h-3.5 w-3.5" /> Tips
                   </h3>
                   <ul className="space-y-2">

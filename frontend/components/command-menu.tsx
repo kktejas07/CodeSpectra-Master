@@ -252,13 +252,14 @@ export function CommandMenu({
       <button
         type="button"
         onClick={() => setOpen(true)}
+        aria-label="Search (Ctrl or Command + K)"
         className={cn(
           'inline-flex items-center gap-2 text-sm rounded-lg border border-border/40 bg-background/90 hover:bg-muted/80 transition-colors group text-muted-foreground',
           fullWidth ? 'w-full justify-between px-3 py-2.5' : 'px-3 py-2',
           compact && 'lg:px-2 lg:py-2.5 lg:justify-center'
         )}
       >
-        <Search className="w-4 h-4 shrink-0 opacity-80" />
+        <Search aria-hidden className="w-4 h-4 shrink-0 opacity-80" />
         <span
           className={cn(
             'truncate text-left text-muted-foreground',

@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { isValidElement, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { EmptyState, type EmptyStateVariant } from '@/components/ui/empty-state'
 import { Search, CheckSquare, Square, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   Select,
@@ -36,6 +36,15 @@ export interface FilterOption {
   value: string
 }
 
+export interface DataTableEmptyState {
+  title?: string
+  description?: string
+  actionLabel?: string
+  actionHref?: string
+  onAction?: () => void
+  variant?: EmptyStateVariant
+}
+
 interface DataTableProps<T extends { id: string }> {
   columns: DataTableColumn<T>[]
   data: T[]
@@ -53,6 +62,14 @@ interface DataTableProps<T extends { id: string }> {
   pageSize?: number
   loading?: boolean
   emptyMessage?: string
+  /**
+   * Optional empty state. Pass `true` to render a compact EmptyState titled with
+   * `emptyMessage`, an object to customise it, or a node to render as-is.
+   * Omitted: the plain `emptyMessage` text row (previous behaviour).
+   */
+  emptyState?: boolean | React.ReactElement | DataTableEmptyState
+  /** Accessible label for the search input. Defaults to the placeholder. */
+  searchLabel?: string
 }
 
 export function DataTable<T extends { id: string }>({
@@ -66,6 +83,8 @@ export function DataTable<T extends { id: string }>({
   pageSize = 20,
   loading = false,
   emptyMessage = 'No records found',
+  emptyState,
+  searchLabel,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('')
   const [filterValues, setFilterValues] = useState<Record<string, string>>(() => {
@@ -147,9 +166,10 @@ export function DataTable<T extends { id: string }>({
         <div className="flex flex-wrap items-center gap-3">
           {searchKeys?.length ? (
             <div className="relative flex-1 min-w-50 max-w-sm">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search aria-hidden className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
+                aria-label={searchLabel || searchPlaceholder}
                 className="pl-8 h-9 text-sm"
                 value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
@@ -206,7 +226,10 @@ export function DataTable<T extends { id: string }>({
                 {bulkActions?.length ? (
                   <th className="w-10 py-3 px-4">
                     <button
+                      type="button"
                       onClick={toggleSelectAll}
+                      aria-label={allSelected ? 'Deselect all rows on this page' : 'Select all rows on this page'}
+                      aria-pressed={allSelected}
                       className="text-muted-foreground hover:text-foreground"
                     >
                       {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
@@ -217,7 +240,9 @@ export function DataTable<T extends { id: string }>({
                   <th key={col.key} className={`text-left py-3 px-4 font-semibold text-xs ${col.className || ''}`}>
                     {col.sortable ? (
                       <button
+                        type="button"
                         onClick={() => handleSort(col.key)}
+                        aria-label={`Sort by ${col.header}${sortConfig?.key === col.key ? (sortConfig.direction === 'asc' ? ', sorted ascending' : ', sorted descending') : ''}`}
                         className="flex items-center gap-1 hover:text-foreground transition-colors group"
                       >
                         {col.header}
@@ -238,14 +263,26 @@ export function DataTable<T extends { id: string }>({
               {loading ? (
                 <tr>
                   <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">
-                    Loading...
+                    Loading…
                   </td>
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">
-                    {emptyMessage}
-                  </td>
+                  {emptyState ? (
+                    <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)}>
+                      {emptyState === true ? (
+                        <EmptyState compact title={emptyMessage} />
+                      ) : isValidElement(emptyState) ? (
+                        emptyState
+                      ) : (
+                        <EmptyState compact {...emptyState} title={emptyState.title || emptyMessage} />
+                      )}
+                    </td>
+                  ) : (
+                    <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">
+                      {emptyMessage}
+                    </td>
+                  )}
                 </tr>
               ) : (
                 paginated.map(row => (
@@ -253,7 +290,10 @@ export function DataTable<T extends { id: string }>({
                     {bulkActions?.length ? (
                       <td className="py-3 px-4">
                         <button
+                          type="button"
                           onClick={() => toggleRow(row.id)}
+                          aria-label={selected.has(row.id) ? 'Deselect row' : 'Select row'}
+                          aria-pressed={selected.has(row.id)}
                           className="text-muted-foreground hover:text-foreground"
                         >
                           {selected.has(row.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
