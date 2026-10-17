@@ -31,13 +31,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const db = await getMongoDb()
   const target = await db.collection('user').findOne(
     { $or: [{ id: userId }, { _id: userId as any }] },
-    { projection: { id: 1, email: 1, fullName: 1, name: 1 } },
-  ) as { id?: string; email?: string; fullName?: string; name?: string } | null
+    { projection: { id: 1, email: 1, fullName: 1, name: 1, tenantId: 1, organizationId: 1, tenant_id: 1 } },
+  ) as { id?: string; email?: string; fullName?: string; name?: string; tenantId?: string; organizationId?: string; tenant_id?: string } | null
   if (!target?.email) {
     return NextResponse.json({ error: 'User not found or has no email' }, { status: 404 })
   }
+  // tenant_admin may only email users in their own tenant (a missing tenantId never matches).
+  if (gate.user.role !== 'superadmin') {
+    const targetTenant = target.tenantId ?? target.organizationId ?? target.tenant_id ?? null
+    if (!gate.user.tenantId || targetTenant !== gate.user.tenantId) {
+      return NextResponse.json({ error: 'User not found or has no email' }, { status: 404 })
+    }
+  }
 
-  const name = target.fullName || target.name || 'there'
+  const name = String(target.fullName || target.name || 'there').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
   const subject =
     type === 'reminder'
       ? 'Reminder: complete your KYC verification'
@@ -49,7 +56,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const result = await sendEmail(target.email, { subject, html }, undefined, { category: 'transactional' })
   if (!result.success) {
-    return NextResponse.json({ error: result.error || 'Failed to send email' }, { status: 502 })
+    console.error('[admin/kyc/remind] send failed:', result.error)
+    return NextResponse.json({ error: 'Failed to send email' }, { status: 502 })
   }
 
   const fwd = req.headers.get('x-forwarded-for') || ''

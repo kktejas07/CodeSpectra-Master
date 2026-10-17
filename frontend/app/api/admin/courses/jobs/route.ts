@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ jobs: normalized })
   } catch (e) {
     console.error('[jobs] GET error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, job })
   } catch (e) {
     console.error('[jobs] POST error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -156,7 +156,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('[jobs] DELETE error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -195,6 +195,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('[jobs] PATCH error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

@@ -17,7 +17,7 @@ export async function GET() {
     return NextResponse.json({ subscription })
   } catch (error) {
     console.error('[billing/subscription] GET:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -51,6 +51,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, plan_id })
   } catch (error) {
     console.error('[billing/subscription] PUT:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

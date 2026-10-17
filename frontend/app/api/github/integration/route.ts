@@ -31,7 +31,7 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     console.error('[CodeSpectra] GitHub integration error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get integration' },
+      { error: 'Failed to get integration' },
       { status: 500 },
     )
   }

@@ -3,7 +3,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { writeAuditLog } from '@/lib/db/misc'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
-import { setSessionCookie } from '@/lib/session'
+import { setPending2faCookie, setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
 import { createUserSession } from '@/lib/db/sessions'
 import { isIpBlocked, isIpOutsideWhitelist } from '@/lib/db/security'
@@ -66,16 +66,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Face does not match the enrolled template.' }, { status: 401 })
     }
 
-    // Login successful
+    // Face matched. Same uid shape as password login (lib/session + route-auth key on `id`).
+    const uid = String(user.id || user._id)
     const role = normalizeUserRole(user.role)
-    await setSessionCookie({ uid: user._id.toString(), email: normalizedEmail, role })
-    await writeAuditLog({ action: 'auth.biometric_login', outcome: 'success', actor: normalizedEmail, actorIp: rawIp, resource: 'user/' + user._id.toString(), resourceType: 'auth', severity: 'info', user_id: user._id.toString() })
+
+    // 2FA users must still pass their second factor — park them in a short
+    // pending cookie and finish via POST /api/auth/two-factor.
+    if (user.totp_enabled) {
+      await setPending2faCookie({ uid, email: normalizedEmail, role, method: 'face' })
+      await writeAuditLog({ action: 'auth.biometric_login', outcome: 'success', actor: normalizedEmail, actorIp: rawIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid, detail: 'face matched; awaiting 2FA code' })
+      return NextResponse.json({ twoFactorRequired: true })
+    }
+
+    await setSessionCookie({ uid, email: normalizedEmail, role })
+    await writeAuditLog({ action: 'auth.biometric_login', outcome: 'success', actor: normalizedEmail, actorIp: rawIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
     
     const userAgent = request.headers.get('user-agent') || 'Unknown device'
-    createUserSession({ user_id: user._id.toString(), email: normalizedEmail, ip: rawIp, user_agent: userAgent }).catch(() => {})
+    createUserSession({ user_id: uid, email: normalizedEmail, ip: rawIp, user_agent: userAgent }).catch(() => {})
 
     return NextResponse.json({ 
-      user: { id: user._id.toString(), email: normalizedEmail, role, name: user.name } 
+      user: { id: uid, email: normalizedEmail, role, name: user.name } 
     })
 
   } catch (error) {

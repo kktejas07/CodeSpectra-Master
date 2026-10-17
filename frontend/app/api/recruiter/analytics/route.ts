@@ -132,7 +132,7 @@ export async function GET() {
       })),
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Recruiter analytics failed'
+    const msg = 'Recruiter analytics failed'
     console.error('[CodeSpectra] recruiter/analytics:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

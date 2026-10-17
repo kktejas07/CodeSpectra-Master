@@ -196,7 +196,9 @@ export async function requireTenantEntity(
   if (!id) return { error: 'id required', status: 400 as const }
   const doc = await db.collection(collection).findOne({ [idField]: id })
   if (!doc) return { error: 'Not found', status: 404 as const }
-  if (user.role === 'tenant_admin' && user.tenantId && doc.tenant_id !== user.tenantId) {
+  // A tenant_admin with no tenant owns nothing — never let a missing tenantId
+  // fall through as "allowed" (it used to skip the check entirely).
+  if (user.role === 'tenant_admin' && (!user.tenantId || doc.tenant_id !== user.tenantId)) {
     return { error: 'Forbidden - resource belongs to another tenant', status: 403 as const }
   }
   return { doc }

@@ -89,7 +89,7 @@ export async function PATCH(
   if (!cur) return NextResponse.json({ error: 'not found' }, { status: 404 })
   
   // tenant_admin can only mutate their own tenant's hackathons
-  if (user.role === 'tenant_admin' && user.tenantId && cur.tenant_id !== user.tenantId) {
+  if (user.role === 'tenant_admin' && (!user.tenantId || cur.tenant_id !== user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   
@@ -201,7 +201,7 @@ export async function DELETE(
   const doc = await col.findOne({ id }, { projection: { _id: 0 } })
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
   // tenant_admin can only delete their own tenant's hackathons
-  if (user.role === 'tenant_admin' && user.tenantId && doc.tenant_id !== user.tenantId) {
+  if (user.role === 'tenant_admin' && (!user.tenantId || doc.tenant_id !== user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const teams = await (await hackathonTeams()).countDocuments({ hackathon_id: id })

@@ -177,11 +177,20 @@ export default function AdminExamsPage() {
   useEffect(() => { fetchExams() }, [])
 
   const handleDelete = async (ids: string[]) => {
+    // Only drop rows the server actually deleted.
+    const deleted: string[] = []
     for (const id of ids) {
-      await csrfFetch(`/api/exams?id=${id}`, { method: 'DELETE', credentials: 'include' })
+      const res = await csrfFetch(`/api/exams?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' }).catch(() => null)
+      if (res?.ok) deleted.push(id)
     }
-        addToast({ type: 'success', title: `${ids.length} assessment${ids.length !== 1 ? 's' : ''} deleted` })
-    setExams(prev => prev.filter(e => !ids.includes(e.id)))
+    const failed = ids.length - deleted.length
+    if (deleted.length > 0) {
+      addToast({ type: 'success', title: `${deleted.length} assessment${deleted.length !== 1 ? 's' : ''} deleted` })
+      setExams(prev => prev.filter(e => !deleted.includes(e.id)))
+    }
+    if (failed > 0) {
+      addToast({ type: 'error', title: `${failed} assessment${failed !== 1 ? 's' : ''} couldn't be deleted` })
+    }
   }
 
   const openAddModal = () => {
@@ -325,7 +334,8 @@ export default function AdminExamsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to trigger candidate invitation link')
-      setGeneratedLink(json.invite_url || `${window.location.origin}/assessment/invite/${invitingExam.id}-${Date.now()}`)
+      if (!json.invite_url) throw new Error('The invite was created but no link came back. Use resend from the results page.')
+      setGeneratedLink(json.invite_url)
     } catch (err: any) {
       addToast({ type: 'error', title: err.message || 'Error creating candidate invite link' })
     } finally {

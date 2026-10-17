@@ -41,6 +41,7 @@ export async function GET() {
 
     return NextResponse.json({ readable, denied })
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error('[user/my-permissions]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

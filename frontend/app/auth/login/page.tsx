@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ShieldCheck, ScanFace } from "lucide-react";
 import { safeRedirect } from "@/lib/safe-redirect";
+import { csrfFetch } from "@/lib/csrf-fetch";
 import { Github } from "@/components/ui/brand-icons";
 import { useAuth, getLastLogin } from "@/lib/auth-context";
 import { FaceCamera } from "@/components/auth/face-camera";
@@ -26,6 +27,39 @@ import {
 
 type Mode = "password" | "sso" | "face";
 
+/** Plain-language text for the `?error=` codes the SSO / OAuth callbacks send back. */
+function loginErrorMessage(code: string | null): string | null {
+  if (!code) return null;
+  switch (code) {
+    case "sso_idp_error":
+      return "Your organisation’s sign-in page reported a problem. Try again, or ask your admin.";
+    case "sso_missing_code":
+    case "sso_invalid_state":
+      return "Your single sign-on attempt expired or was started in another tab. Start again from this page.";
+    case "sso_provider_not_found":
+    case "sso_unsupported_provider_type":
+      return "Single sign-on isn’t available for your organisation right now. Sign in with email, or ask your admin.";
+    case "sso_discovery_failed":
+    case "sso_bad_discovery":
+    case "sso_token_exchange_failed":
+    case "sso_token_exchange_error":
+    case "sso_userinfo_failed":
+    case "sso_userinfo_error":
+      return "We couldn’t reach your organisation’s sign-in service. Try again in a few minutes.";
+    case "sso_no_email":
+    case "sso_email_unverified":
+      return "Your organisation didn’t share a verified email address with us. Ask your admin to check the single sign-on setup.";
+    case "sso_domain_mismatch":
+      return "That account’s email isn’t on a domain your organisation’s single sign-on covers. Use your work account, or sign in with email.";
+    case "access_denied":
+      return "Sign-in was cancelled. Choose a sign-in method to try again.";
+    default:
+      return code.startsWith("sso_")
+        ? "Single sign-on didn’t complete. Try again, or sign in with email."
+        : "Sign-in didn’t complete. Try again, or use another sign-in method.";
+  }
+}
+
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -35,7 +69,12 @@ function LoginInner() {
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => loginErrorMessage(searchParams.get("error")));
+  // First factor passed with face or SSO; the server holds a 5-minute pending
+  // sign-in until the authenticator code is entered (POST /api/auth/two-factor).
+  const [pendingSecondFactor, setPendingSecondFactor] = useState<"face" | "sso" | null>(
+    searchParams.get("twofactor") === "sso" ? "sso" : null,
+  );
   const [lastLogin, setLastLogin] = useState<{ method: string; at: string } | null>(null);
   const [totpRequired, setTotpRequired] = useState(false);
   const [totpCode, setTotpCode] = useState("");
@@ -58,8 +97,36 @@ function LoginInner() {
 
   const goTo = (m: Mode) => {
     setError(null);
+    setPendingSecondFactor(null);
+    setTotpCode("");
     setMode(m);
   };
+
+  async function handleSecondFactor(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await csrfFetch("/api/auth/two-factor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ totpToken: totpCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.expired) {
+          setPendingSecondFactor(null);
+          setTotpCode("");
+        }
+        throw new Error(data.error || "That code didn’t work. Try again.");
+      }
+      router.push(safeRedirect(data.redirect || redirectTo));
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "That code didn’t work. Try again.");
+      setLoading(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,10 +171,10 @@ function LoginInner() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/sso", {
+      const res = await csrfFetch("/api/auth/sso", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), redirect: redirectTo }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "SSO isn’t set up for this email domain. Ask your admin, or sign in with email.");
@@ -137,6 +204,12 @@ function LoginInner() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Face sign-in failed. Use your password instead.");
+      if (data.twoFactorRequired) {
+        setTotpCode("");
+        setPendingSecondFactor("face");
+        setLoading(false);
+        return;
+      }
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
@@ -196,7 +269,32 @@ function LoginInner() {
 
       {error && <FormError>{error}</FormError>}
 
-      {mode === "password" && (
+      {pendingSecondFactor && (
+        <form onSubmit={handleSecondFactor} className="space-y-5">
+          <p className="text-cs-ink-soft">
+            {pendingSecondFactor === "face" ? "Face recognised." : "Your organisation signed you in."} Enter the 6-digit code
+            from your authenticator app to finish.
+          </p>
+          <Field
+            id="pending-totp-code"
+            label="Authenticator code"
+            inputMode="numeric"
+            maxLength={6}
+            value={totpCode}
+            onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            autoComplete="one-time-code"
+            autoFocus
+            required
+            className="text-center text-xl tracking-[0.4em] tabular-nums"
+          />
+          <PrimaryButton type="submit" loading={loading} disabled={totpCode.length !== 6}>
+            Verify and sign in
+          </PrimaryButton>
+        </form>
+      )}
+
+      {!pendingSecondFactor && mode === "password" && (
         <>
           <form onSubmit={onSubmit} className="space-y-5" noValidate={false}>
             {emailField}
@@ -265,7 +363,7 @@ function LoginInner() {
         </>
       )}
 
-      {mode === "sso" && (
+      {!pendingSecondFactor && mode === "sso" && (
         <form onSubmit={handleSso} className="space-y-5">
           {emailField}
           <PrimaryButton type="submit" loading={loading}>
@@ -274,7 +372,7 @@ function LoginInner() {
         </form>
       )}
 
-      {mode === "face" && (
+      {!pendingSecondFactor && mode === "face" && (
         <div className="space-y-5">
           {emailField}
           {email ? (
@@ -287,7 +385,7 @@ function LoginInner() {
         </div>
       )}
 
-      {mode !== "password" && (
+      {(mode !== "password" || pendingSecondFactor) && (
         <button type="button" onClick={() => goTo("password")} className="mt-6 text-[15px] font-semibold text-cs-accent-text hover:underline">
           Sign in with a password instead
         </button>

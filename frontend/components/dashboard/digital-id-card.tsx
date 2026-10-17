@@ -27,7 +27,8 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
   const [qrDataUrl, setQrDataUrl] = useState('')
 
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) || 'CS'
-  const idNumber = id ? `CS-${id.slice(0, 8).toUpperCase()}` : `CS-${Math.random().toString(36).slice(2, 10).toUpperCase()}`
+  // No id yet: show a placeholder rather than a random, fake ID number.
+  const idNumber = id ? `CS-${id.slice(0, 8).toUpperCase()}` : "CS-—"
   const now = formatDate(issuedAt)
   const exp = expiresAt ? formatDate(expiresAt) : formatDate(new Date(Date.now() + 365 * 86400000).toISOString())
 

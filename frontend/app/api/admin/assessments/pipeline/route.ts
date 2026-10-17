@@ -207,7 +207,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(response)
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to fetch pipeline'
+    const msg = 'Failed to fetch pipeline'
     console.error('[Pipeline] GET error:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

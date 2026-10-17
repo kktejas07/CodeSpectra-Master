@@ -58,7 +58,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ ok: true, id: msg.id })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Signal send failed'
+    const msg = 'Signal send failed'
+    console.error('[webrtc/signal]', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
@@ -99,7 +100,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
     return NextResponse.json({ messages })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Signal fetch failed'
+    const msg = 'Signal fetch failed'
+    console.error('[webrtc/signal]', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

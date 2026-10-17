@@ -1,21 +1,24 @@
 'use client'
 import { formatDateTime } from '@/lib/format-datetime'
 import { useToast } from '@/lib/toast-context'
+import { EmptyState } from '@/components/ui/empty-state'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Download, Mail, Share2, Calendar, Zap, Loader2 } from 'lucide-react'
+import { FileText, Download, Loader2 } from 'lucide-react'
 
 interface ReportData {
-  quality: number
+  /** null = not measured (never shown as a made-up default). */
+  quality: number | null
   bugs: number
   vulnerabilities: number
   codeSmells: number
-  testCoverage: number
-  complexity: number
-  timestamp: string
+  testCoverage: number | null
+  complexity: number | null
+  timestamp?: string
+  generatedAt?: string
   repository?: string
   branch?: string
   author?: string
@@ -24,21 +27,19 @@ interface ReportData {
   pendingFixes?: number
 }
 
+// Email, share links and scheduled reports were removed: nothing on the
+// server sends or hosts reports. Export downloads real data from
+// /api/reports/generate.
 interface ReportGeneratorProps {
   data?: ReportData
-  onExport?: (format: 'pdf' | 'json' | 'csv') => void
-  onEmail?: (recipients: string[]) => void
-  onShare?: (link: string) => void
 }
 
 type ReportFormat = 'pdf' | 'json' | 'csv'
 
-export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGeneratorProps) {
+export function ReportGenerator({ data }: ReportGeneratorProps) {
   const addToast = useToast()
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(!data)
-  const [showEmailForm, setShowEmailForm] = useState(false)
-  const [emailRecipients, setEmailRecipients] = useState('')
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat>('json')
   const [isExporting, setIsExporting] = useState(false)
 
@@ -51,8 +52,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
     fetch('/api/reports/generate?format=json', { credentials: 'include' })
       .then((r) => r.json())
       .then((json) => {
-        if (json.data) setReportData(json.data)
-        else if (!json.error) setReportData(json)
+        if (json?.data) setReportData(json.data)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -61,26 +61,23 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
   const handleExport = async (format: ReportFormat) => {
     setIsExporting(true)
     try {
-      if (format === 'json' && onExport) {
-        onExport(format)
-        return
-      }
-
       if (format === 'csv') {
         const res = await fetch('/api/reports/generate?format=csv', { credentials: 'include' })
-        if (res.ok) {
+        if (!res.ok) throw new Error(`CSV export failed (${res.status})`)
+        {
           const blob = await res.blob()
           const url = URL.createObjectURL(blob)
           const a = document.createElement('a')
           a.href = url
           a.download = `codespectra-report-${new Date().toISOString().slice(0, 10)}.csv`
           a.click()
-          URL.revokeObjectURL(url)
+          setTimeout(() => URL.revokeObjectURL(url), 1000)
         }
         return
       }
 
       const res = await fetch('/api/reports/generate?format=json', { credentials: 'include' })
+      if (!res.ok) throw new Error(`JSON export failed (${res.status})`)
       const json = await res.json()
       const blob = new Blob([JSON.stringify(json.data || json, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -88,45 +85,37 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
       a.href = url
       a.download = `codespectra-report-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (e) {
       console.error('[CodeSpectra] Export failed:', e)
+      addToast({ type: 'error', title: 'Export failed', message: 'Try again in a moment.' })
     } finally {
       setIsExporting(false)
     }
   }
 
-  const handleEmailReport = () => {
-    if (!emailRecipients.trim()) return
-    const recipients = emailRecipients.split(',').map((e) => e.trim()).filter(Boolean)
-    onEmail?.(recipients)
-    setEmailRecipients('')
-    setShowEmailForm(false)
+  if (!loading && !reportData) {
+    return (
+      <EmptyState
+        title="No report yet"
+        description="Run a scan first. Your report will use the results from your scans."
+        actionLabel="Run a scan"
+        actionHref="/dashboard/scanner"
+      />
+    )
   }
 
-  const handleShareReport = () => {
-    const shareLink = `${window.location.origin}/reports/${Math.random().toString(36).substr(2, 9)}`
-    onShare?.(shareLink)
-    navigator.clipboard.writeText(shareLink)
+  const defaultData: ReportData = reportData ?? {
+    quality: null, bugs: 0, vulnerabilities: 0, codeSmells: 0, testCoverage: null, complexity: null,
   }
-
-  const defaultData: ReportData = reportData || {
-    quality: 75,
-    bugs: 0,
-    vulnerabilities: 0,
-    codeSmells: 0,
-    testCoverage: 75,
-    complexity: 30,
-    timestamp: new Date().toISOString(),
-    repository: '—',
-    branch: '—',
-    author: 'Unknown',
-  }
+  const q = defaultData.quality
 
   const qualityColor =
-    defaultData.quality >= 80
+    q == null
+      ? { bg: 'bg-muted/40', text: 'text-muted-foreground', border: 'border-border' }
+      : q >= 80
       ? { bg: 'bg-green-500/20', text: 'text-green-600', border: 'border-green-500/30' }
-      : defaultData.quality >= 60
+      : q >= 60
       ? { bg: 'bg-yellow-500/20', text: 'text-yellow-600', border: 'border-yellow-500/30' }
       : { bg: 'bg-red-500/20', text: 'text-red-600', border: 'border-red-500/30' }
 
@@ -144,7 +133,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
       <div className="space-y-2">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <FileText className="w-5 h-5" />
-          Generate Report
+          Generate report
         </h3>
         <p className="text-sm text-muted-foreground">
           Export comprehensive code quality reports in multiple formats
@@ -157,28 +146,28 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
             <div>
               <p className="text-sm text-muted-foreground mb-1">Overall quality</p>
               <div className="flex items-baseline gap-2">
-                <span className={`text-5xl font-bold ${qualityColor.text}`}>{defaultData.quality}</span>
+                <span className={`text-5xl font-bold tabular-nums ${qualityColor.text}`}>{q ?? '—'}</span>
                 <span className="text-lg text-muted-foreground">/100</span>
               </div>
             </div>
             <Badge className={`${qualityColor.bg} ${qualityColor.text} border ${qualityColor.border}`}>
-              {defaultData.quality >= 80 ? 'Excellent' : defaultData.quality >= 60 ? 'Good' : 'Needs Improvement'}
+              {q == null ? 'Not measured' : q >= 80 ? 'Excellent' : q >= 60 ? 'Good' : 'Needs improvement'}
             </Badge>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-foreground/10">
             <div>
               <p className="text-xs text-muted-foreground">Repository</p>
-              <p className="text-sm font-medium text-foreground">{defaultData.repository}</p>
+              <p className="text-sm font-medium text-foreground">{defaultData.repository || '—'}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Branch</p>
-              <p className="text-sm font-medium text-foreground">{defaultData.branch}</p>
+              <p className="text-sm font-medium text-foreground">{defaultData.branch || '—'}</p>
             </div>
             <div className="col-span-2">
               <p className="text-xs text-muted-foreground">Generated</p>
               <p className="text-sm font-medium text-foreground">
-                {formatDateTime(defaultData.timestamp)}
+                {formatDateTime(defaultData.generatedAt || defaultData.timestamp || new Date().toISOString())}
               </p>
             </div>
           </div>
@@ -200,11 +189,11 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground mb-1">Test coverage</p>
-          <p className="text-2xl font-bold text-foreground">{defaultData.testCoverage}%</p>
+          <p className="text-2xl font-bold text-foreground">{defaultData.testCoverage != null ? `${defaultData.testCoverage}%` : '—'}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground mb-1">Complexity</p>
-          <p className="text-2xl font-bold text-foreground">{defaultData.complexity}</p>
+          <p className="text-2xl font-bold text-foreground">{defaultData.complexity ?? '—'}</p>
         </Card>
         <Card className="p-4">
           <p className="text-xs text-muted-foreground mb-1">Fixes applied</p>
@@ -235,74 +224,14 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Button
-          onClick={() => void handleExport(selectedFormat)}
-          disabled={isExporting}
-          className="gap-2 w-full"
-        >
-          {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="w-4 h-4" />}
-          {isExporting ? 'Exporting…' : `Export as ${selectedFormat.toUpperCase()}`}
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={() => setShowEmailForm(!showEmailForm)}
-          className="gap-2 w-full"
-        >
-          <Mail className="w-4 h-4" />
-          Email Report
-        </Button>
-
-        <Button
-          variant="outline"
-          onClick={() => void handleShareReport()}
-          className="gap-2 w-full"
-        >
-          <Share2 className="w-4 h-4" />
-          Share Link
-        </Button>
-      </div>
-
-      {showEmailForm && (
-        <Card className="p-4 space-y-3">
-          <label className="text-sm font-medium text-foreground block">Email Recipients</label>
-          <input
-            type="text"
-            value={emailRecipients}
-            onChange={(e) => setEmailRecipients(e.target.value)}
-            placeholder="Enter email addresses separated by commas"
-            className="w-full px-3 py-2 bg-background border border-border rounded text-sm text-foreground placeholder-foreground/40"
-          />
-          <div className="flex gap-2">
-            <Button onClick={() => void handleEmailReport()} disabled={!emailRecipients.trim()} className="flex-1" size="sm">
-              Send Report
-            </Button>
-            <Button variant="outline" onClick={() => setShowEmailForm(false)} size="sm">
-              Cancel
-            </Button>
-          </div>
-        </Card>
-      )}
-
-      <Card className="p-4 space-y-3">
-        <h4 className="font-semibold text-foreground flex items-center gap-2">
-          <Calendar className="w-4 h-4" />
-          Scheduled Reports
-        </h4>
-        <p className="text-sm text-muted-foreground">
-          Set up automatic weekly or monthly reports to be delivered via email
-        </p>
-        <Button
-          variant="outline"
-          className="w-full"
-          size="sm"
-          onClick={() => addToast({ type: 'info', title: 'Notification', message: 'Scheduled reports coming soon!' })}
-        >
-          <Zap className="w-4 h-4 mr-2" />
-          Configure Schedules
-        </Button>
-      </Card>
+      <Button
+        onClick={() => void handleExport(selectedFormat)}
+        disabled={isExporting}
+        className="gap-2 w-full sm:w-auto"
+      >
+        {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="w-4 h-4" />}
+        {isExporting ? 'Exporting…' : `Export as ${selectedFormat.toUpperCase()}`}
+      </Button>
     </div>
   )
 }

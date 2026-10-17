@@ -43,7 +43,7 @@ export async function DELETE(
     
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to delete invite'
+    const msg = 'Failed to delete invite'
     console.error('[CodeSpectra] admin/exams/[id]/invites/[inviteId] DELETE:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

@@ -117,7 +117,8 @@ export async function PATCH(
     await col.updateOne({ _id: doc._id }, { $set: patch })
     return NextResponse.json({ ...doc, ...patch })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[problems/[slug]]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -145,6 +146,7 @@ export async function DELETE(
     await col.deleteOne({ _id: doc._id })
     return NextResponse.json({ success: true, deletedId: doc.slug ?? doc.id })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[problems/[slug]]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

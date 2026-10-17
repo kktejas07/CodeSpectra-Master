@@ -95,9 +95,15 @@ const DEFAULT_LINKS: Record<string, string> = {
   'interview.completed': '/dashboard/interviews',
   'certification.earned': '/dashboard/certifications',
   'certificate.issued': '/dashboard/certifications',
-  'scan.completed': '/dashboard/projects',
-  'team.invite': '/dashboard/team',
-  'team.joined': '/dashboard/team',
+  'scan.completed': '/dashboard/scanner',
+  'team.invite': '/dashboard/notifications',
+  'team.joined': '/dashboard',
+}
+
+// Links stored on older notifications that point at pages that no longer exist.
+const STALE_LINKS: Record<string, string> = {
+  '/dashboard/projects': '/dashboard/scanner',
+  '/dashboard/team': '/dashboard',
 }
 
 function isNewsletter(n: Notification): boolean {
@@ -117,7 +123,12 @@ function newsletterApiId(n: Notification): string {
 
 function resolveNotificationLink(n: Notification): string {
   const raw = (n.link || '').trim()
-  if (raw && raw !== '/dashboard' && !isNewsletter(n)) return raw
+  if (raw && raw !== '/dashboard' && !isNewsletter(n)) {
+    const path = raw.split(/[?#]/)[0]
+    if (STALE_LINKS[path]) return STALE_LINKS[path]
+    if (/^\/courses\/[^/]+$/.test(path)) return `/dashboard/courses/${path.split('/')[2]}`
+    return raw
+  }
   return DEFAULT_LINKS[n.type] || '/dashboard'
 }
 

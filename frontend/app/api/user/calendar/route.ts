@@ -24,7 +24,8 @@ export async function GET() {
       items: items.map(({ _id, ...rest }) => rest),
     })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[user/calendar]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -61,7 +62,8 @@ export async function POST(req: NextRequest) {
     await db.collection(COL).insertMany(docs as any[])
     return NextResponse.json({ ok: true, items: docs })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[user/calendar]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -76,6 +78,7 @@ export async function DELETE(req: NextRequest) {
     await db.collection(COL).deleteOne({ userId: user.id, id })
     return NextResponse.json({ ok: true })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[user/calendar]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

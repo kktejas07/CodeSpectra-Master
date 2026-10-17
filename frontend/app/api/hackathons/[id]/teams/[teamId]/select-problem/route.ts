@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   // tenant_admin acting as admin can only modify teams in their own tenant's event
-  if (!isMember && user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+  if (!isMember && user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

@@ -83,11 +83,10 @@ interface WebVital {
   samples: number
 }
 
+// Only page views are tracked per path today; visitors, time on page,
+// entry/exit and bounce aren't recorded, so they aren't shown.
 interface PagesData {
-  topPages: { path: string; views: number; uniqueVisitors: number; avgTime: number }[]
-  entryPages: { path: string; views: number }[]
-  exitPages: { path: string; views: number }[]
-  bounceRate: { path: string; rate: number }[]
+  topPages: { path: string; views: number }[]
 }
 
 interface EventsData {
@@ -278,17 +277,12 @@ export default function AnalyticsPage() {
     try {
       const res = await fetch(`/api/admin/analytics/overview?range=${range}`, { credentials: 'include' })
       const json = await res.json()
-      if (res.ok && overview) {
-        setPagesData({
-          topPages: overview.topPages.map(p => ({ ...p, uniqueVisitors: Math.round(p.views * 0.7), avgTime: Math.round(Math.random() * 180000 + 30000) })),
-          entryPages: overview.topPages.slice(0, 10),
-          exitPages: [...overview.topPages].reverse().slice(0, 10),
-          bounceRate: overview.topPages.map(p => ({ path: p.path, rate: Math.round(Math.random() * 60 + 20) })),
-        })
+      if (res.ok) {
+        setPagesData({ topPages: Array.isArray(json?.topPages) ? json.topPages : [] })
       }
     } catch { /* ignore */ }
     finally { setPagesLoading(false) }
-  }, [gate.ready, range, overview])
+  }, [gate.ready, range])
 
   const loadEvents = useCallback(async () => {
     if (!gate.ready) return
@@ -995,9 +989,7 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
               <tr className="border-b text-muted-foreground">
                 <th className="px-6 py-3 text-left font-medium">Page</th>
                 <th className="px-6 py-3 text-right font-medium">Views</th>
-                <th className="px-6 py-3 text-right font-medium">Unique visitors</th>
-                <th className="px-6 py-3 text-right font-medium">Avg. time</th>
-                <th className="px-6 py-3 text-left font-medium w-40">Views</th>
+                <th className="px-6 py-3 text-left font-medium w-40"><span className="sr-only">Share of views</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/40">
@@ -1005,8 +997,6 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
                 <tr key={p.path} className="hover:bg-muted/30">
                   <td className="px-6 py-3 font-mono text-xs truncate max-w-xs" title={p.path}>{p.path}</td>
                   <td className="px-6 py-3 text-right tabular-nums font-medium">{p.views.toLocaleString()}</td>
-                  <td className="px-6 py-3 text-right tabular-nums">{p.uniqueVisitors.toLocaleString()}</td>
-                  <td className="px-6 py-3 text-right tabular-nums">{fmtDuration(p.avgTime)}</td>
                   <td className="px-6 py-3">
                     <div className="h-3 rounded-full bg-muted/50 overflow-hidden">
                       <div className="h-full rounded-full bg-primary/40" style={{ width: `${(p.views / maxViews) * 100}%` }} />
@@ -1015,67 +1005,12 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
                 </tr>
               ))}
               {(!data?.topPages || data.topPages.length === 0) && (
-                <tr><td colSpan={5} className="p-4"><ChartEmpty title="No page data yet" description="Pages appear here once visitors load them." /></td></tr>
+                <tr><td colSpan={3} className="p-4"><ChartEmpty title="No page data yet" description="Pages appear here once visitors load them." /></td></tr>
               )}
             </tbody>
           </table>
         </div>
       </Panel>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Entry Pages */}
-        <Panel>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Entry pages</h2>
-          <div className="space-y-2">
-            {(data?.entryPages || []).map((p, i) => (
-              <div key={p.path} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-5">{i + 1}.</span>
-                <span className="flex-1 text-sm font-mono truncate" title={p.path}>{p.path}</span>
-                <span className="text-sm font-medium tabular-nums">{p.views.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-
-        {/* Exit Pages */}
-        <Panel>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Exit pages</h2>
-          <div className="space-y-2">
-            {(data?.exitPages || []).map((p, i) => (
-              <div key={p.path} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-5">{i + 1}.</span>
-                <span className="flex-1 text-sm font-mono truncate" title={p.path}>{p.path}</span>
-                <span className="text-sm font-medium tabular-nums">{p.views.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-        </Panel>
-      </div>
-
-      {/* Bounce Rate */}
-      {data?.bounceRate && data.bounceRate.length > 0 && (
-        <Panel>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Bounce rate by page</h2>
-          <div className="h-[200px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.bounceRate.slice(0, 10)}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="path" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" interval={0} angle={-20} textAnchor="end" height={60} />
-                <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" domain={[0, 100]} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                  formatter={(val: any) => [`${val}%`, 'Bounce Rate']}
-                />
-                <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
-                  {data.bounceRate.slice(0, 10).map((entry, i) => (
-                    <Cell key={i} fill={entry.rate > 60 ? '#ef4444' : entry.rate > 40 ? '#f59e0b' : '#10b981'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Panel>
-      )}
 
       {/* Top Pages Bar Chart */}
       {data?.topPages && data.topPages.length > 0 && (

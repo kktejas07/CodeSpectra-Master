@@ -26,7 +26,7 @@ export async function GET(
     })
   } catch (e) {
     console.error('[completions] GET error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -71,6 +71,6 @@ export async function POST(
     return NextResponse.json({ success: true, message: 'Lesson completed' })
   } catch (e) {
     console.error('[completions] POST error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

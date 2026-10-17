@@ -62,7 +62,7 @@ function readLsBool(key: string, fallback: boolean) {
 export default function SettingsPage() {
   const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
   const { startTour, setTourSeen } = useTour()
 
   const addToast = useToast()
@@ -239,7 +239,9 @@ export default function SettingsPage() {
 
       if (!res.ok) { addToast({ type: 'error', title: 'Delete failed', message: json.error || 'Failed' }); setDeletingAccount(false); return }
       addToast({ type: 'success', title: 'Account deleted', message: 'We are sorry to see you go.' })
-      window.location.href = '/auth/logout'
+      // /auth/logout isn't a page; clear the session, then leave the dashboard.
+      await signOut().catch(() => {})
+      window.location.href = '/'
     } catch { 
       addToast({ type: 'error', title: 'Network error', message: 'Could not reach server.' }) 
       setDeletingAccount(false)

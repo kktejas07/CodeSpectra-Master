@@ -315,6 +315,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: enriched })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[courses]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

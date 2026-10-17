@@ -14,7 +14,22 @@ export async function GET(req: NextRequest) {
     const weeks = Math.min(parseInt(searchParams.get('weeks') || '8'), 26)
     const now = new Date()
 
-    const teamMembers = await db.collection('team_members').find({}).toArray()
+    const allMembers = await db.collection('team_members').find({}).toArray()
+    let teamMembers = allMembers
+    // tenant_admin: only members whose user record belongs to the caller's
+    // tenant (team_members carries no tenant_id). No tenantId → nobody.
+    if (gate.user.role !== 'superadmin') {
+      const tenantId = gate.user.tenantId
+      const ids = allMembers.map((m: any) => m.user_id || m.userId || m.id).filter(Boolean)
+      const inTenant = tenantId && ids.length
+        ? await db.collection('user').find(
+            { id: { $in: ids }, $or: [{ tenantId }, { organizationId: tenantId }, { tenant_id: tenantId }] },
+            { projection: { id: 1 } },
+          ).toArray()
+        : []
+      const allowed = new Set(inTenant.map((u) => String(u.id)))
+      teamMembers = allMembers.filter((m: any) => allowed.has(String(m.user_id || m.userId || m.id)))
+    }
     const userIds = teamMembers.map((m: any) => m.user_id || m.userId || m.id).filter(Boolean)
 
     if (userIds.length === 0) {

@@ -16,7 +16,8 @@ export async function GET() {
     const rows = await db.collection(COL).find({ userId: user.id }).project({ courseId: 1 }).toArray()
     return NextResponse.json({ data: rows.map(r => String(r.courseId)) })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[user/course-wishlist]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -46,6 +47,7 @@ export async function POST(request: NextRequest) {
     )
     return NextResponse.json({ saved: true })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[user/course-wishlist]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

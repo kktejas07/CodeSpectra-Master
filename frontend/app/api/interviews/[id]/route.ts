@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
   // tenant_admin can only edit interviews in their own tenant
-  if (!isParticipant && role === 'tenant_admin' && gate.user.tenantId && session.tenant_id !== gate.user.tenantId) {
+  if (!isParticipant && role === 'tenant_admin' && (!gate.user.tenantId || session.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
@@ -74,7 +74,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   const session = await col.findOne({ id })
   if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
   // tenant_admin can only delete interviews in their own tenant
-  if (gate.user.role === 'tenant_admin' && gate.user.tenantId && session.tenant_id !== gate.user.tenantId) {
+  if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || session.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
   await (await interviewSessions()).deleteOne({ id })

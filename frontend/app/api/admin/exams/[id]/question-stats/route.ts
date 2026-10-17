@@ -65,7 +65,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     return NextResponse.json({ data: stats, submissions: submissions.length })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to load question stats'
+    const msg = 'Failed to load question stats'
     console.error('[CodeSpectra] question-stats GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

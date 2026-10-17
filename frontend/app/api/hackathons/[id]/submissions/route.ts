@@ -21,7 +21,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const now = Date.now()
   const ends = new Date(hk.ends_at).getTime()
   const gracePeriod = (hk.grace_period_minutes || 0) * 60000
-  const canSubmit = hk.status === 'live' || (hk.status === 'closed' && hk.allow_late_submissions && now <= ends + gracePeriod)
+  // A 'live' status alone isn't enough: status only flips to closed when the
+  // event is read or an admin closes it, so also enforce the clock.
+  const withinTime = Number.isNaN(ends) || now <= ends + (hk.allow_late_submissions ? gracePeriod : 0)
+  const canSubmit = (hk.status === 'live' && withinTime) || (hk.status === 'closed' && hk.allow_late_submissions && now <= ends + gracePeriod)
   
   if (!canSubmit) {
     return NextResponse.json({ error: 'submissions are closed' }, { status: 409 })

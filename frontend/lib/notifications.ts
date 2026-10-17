@@ -52,22 +52,23 @@ export const NOTIFICATION_TYPES = {
   'interview.feedback_ready': { category: 'interview', icon: 'bar-chart', default_title: 'Feedback Ready', default_link: '/dashboard/interviews' },
 
   // Code Quality
-  'scan.completed': { category: 'code', icon: 'search', default_title: 'Scan Complete', default_link: '/dashboard/projects' },
-  'scan.critical_issue': { category: 'code', icon: 'alert-triangle', default_title: 'Critical Issue Found', default_link: '/dashboard/projects' },
-  'scan.quality_gate_passed': { category: 'code', icon: 'check-circle', default_title: 'Quality Gate Passed', default_link: '/dashboard/projects' },
-  'scan.quality_gate_failed': { category: 'code', icon: 'x-circle', default_title: 'Quality Gate Failed', default_link: '/dashboard/projects' },
-  'scan.dependency_vuln': { category: 'code', icon: 'shield', default_title: 'Vulnerability Found', default_link: '/dashboard/projects' },
-  'scan.secret_detected': { category: 'code', icon: 'key', default_title: 'Secret Detected', default_link: '/dashboard/projects' },
+  'scan.completed': { category: 'code', icon: 'search', default_title: 'Scan Complete', default_link: '/dashboard/scanner' },
+  'scan.critical_issue': { category: 'code', icon: 'alert-triangle', default_title: 'Critical Issue Found', default_link: '/dashboard/scanner' },
+  'scan.quality_gate_passed': { category: 'code', icon: 'check-circle', default_title: 'Quality Gate Passed', default_link: '/dashboard/scanner' },
+  'scan.quality_gate_failed': { category: 'code', icon: 'x-circle', default_title: 'Quality Gate Failed', default_link: '/dashboard/scanner' },
+  'scan.dependency_vuln': { category: 'code', icon: 'shield', default_title: 'Vulnerability Found', default_link: '/dashboard/scanner' },
+  'scan.secret_detected': { category: 'code', icon: 'key', default_title: 'Secret Detected', default_link: '/dashboard/scanner' },
 
   // Reviews
-  'review.requested': { category: 'code', icon: 'message-square', default_title: 'Review Requested', default_link: '/dashboard/projects' },
-  'review.completed': { category: 'code', icon: 'check-circle', default_title: 'Review Completed', default_link: '/dashboard/projects' },
-  'review.comment_added': { category: 'code', icon: 'message-circle', default_title: 'New Comment', default_link: '/dashboard/projects' },
+  'review.requested': { category: 'code', icon: 'message-square', default_title: 'Review Requested', default_link: '/dashboard/scanner' },
+  'review.completed': { category: 'code', icon: 'check-circle', default_title: 'Review Completed', default_link: '/dashboard/scanner' },
+  'review.comment_added': { category: 'code', icon: 'message-circle', default_title: 'New Comment', default_link: '/dashboard/scanner' },
 
-  // Team & Organization
-  'team.invite': { category: 'team', icon: 'user-plus', default_title: 'Team Invitation', default_link: '/dashboard/team' },
-  'team.joined': { category: 'team', icon: 'users', default_title: 'Joined Team', default_link: '/dashboard/team' },
-  'org.invite': { category: 'team', icon: 'building', default_title: 'Organization Invitation', default_link: '/dashboard/team' },
+  // Team & Organization — there is no member-facing /dashboard/team page; invite
+  // senders should pass the /dashboard/team/invites/[token] link explicitly.
+  'team.invite': { category: 'team', icon: 'user-plus', default_title: 'Team Invitation', default_link: '/dashboard/notifications' },
+  'team.joined': { category: 'team', icon: 'users', default_title: 'Joined Team', default_link: '/dashboard' },
+  'org.invite': { category: 'team', icon: 'building', default_title: 'Organization Invitation', default_link: '/dashboard/notifications' },
 
   // Certifications
   'certification.earned': { category: 'learning', icon: 'award', default_title: 'Certification Earned', default_link: '/dashboard/certifications' },

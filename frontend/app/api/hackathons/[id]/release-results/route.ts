@@ -22,7 +22,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
   // tenant_admin can only release results for their own tenant's hackathon
-  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+  if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

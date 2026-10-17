@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
     await db.collection('challenges').insertOne(doc)
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[challenges]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

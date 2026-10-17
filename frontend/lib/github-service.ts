@@ -205,13 +205,11 @@ export async function applySuggestedFixBatch(
 }
 
 export async function unapplySuggestedFix(fixId: string): Promise<{ success: boolean; error?: string }> {
-  const res = await csrfFetch('/api/ai/unapply-fix', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fix_id: fixId }),
-  })
-  if (!res.ok) return { success: false, error: 'Request failed' }
-  return res.json()
+  // Real route is /api/ai/fixes/[id]/unapply (there is no /api/ai/unapply-fix).
+  const res = await csrfFetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/unapply`, { method: 'POST' })
+  const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: string }
+  if (!res.ok || json.success === false) return { success: false, error: json.error || 'Could not undo apply' }
+  return { success: true }
 }
 
 export async function linkGitHubRepository(repoId: number, repoName: string, repoUrl: string): Promise<{ success: boolean; error?: string }> {

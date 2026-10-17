@@ -184,10 +184,14 @@ export default function PricingPage() {
                     href={
                       isCustom
                         ? '/contact?topic=sales'
-                        : `/auth/signup?plan=${encodeURIComponent(plan.id)}`
+                        : plan.price <= 0
+                          ? '/auth/signup'
+                          // Signup ignores ?plan, but honours ?redirect: land on the
+                          // in-app pricing page after signup to pick the plan. No trial exists.
+                          : `/auth/signup?redirect=${encodeURIComponent(`/dashboard/pricing?plan=${plan.id}`)}`
                     }
                   >
-                    {isCustom ? 'Contact sales' : plan.price <= 0 ? 'Start free' : 'Start trial'}
+                    {isCustom ? 'Contact sales' : plan.price <= 0 ? 'Start free' : 'Get started'}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>

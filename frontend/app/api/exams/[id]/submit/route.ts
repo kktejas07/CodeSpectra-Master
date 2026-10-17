@@ -225,7 +225,7 @@ export async function POST(
       released: false,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Submit failed'
+    const msg = 'Submit failed'
     console.error('[CodeSpectra] exam-submit:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

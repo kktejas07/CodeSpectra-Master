@@ -17,7 +17,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
     return NextResponse.json({ data: course })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[admin/courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -48,7 +49,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const updatedCourse = await db.collection('courses').findOne({ id })
     return NextResponse.json({ data: updatedCourse })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[admin/courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -78,6 +80,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     
     return NextResponse.json({ success: true })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[admin/courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

@@ -14,11 +14,9 @@ import { SuggestedFixes } from '@/components/scanner/suggested-fixes'
 import { GitHubIntegration } from '@/components/scanner/github-integration'
 import { RepositoryBrowser } from '@/components/scanner/repository-browser'
 import { ScanHistory } from '@/components/scanner/scan-history'
-import { MetricsTrendChart } from '@/components/scanner/metrics-trend-chart'
 import { CodeDiffViewer } from '@/components/scanner/code-diff-viewer'
 import { QualityGatesLivePanel } from '@/components/scanner/quality-gates-live-panel'
-import { CodeReviewPanel } from '@/components/scanner/code-review-panel'
-import { ScannerConfigPanel } from '@/components/scanner/scanner-config-panel'
+import { EmptyState } from '@/components/ui/empty-state'
 import { ReportGenerator } from '@/components/scanner/report-generator'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { InsightsDashboard } from '@/components/scanner/insights-dashboard'
@@ -857,29 +855,14 @@ function CodeScannerPageInner() {
         </div>
       )}
 
-      {/* Metrics Trend Mode */}
+      {/* Metrics Trend Mode — no per-scan history is stored yet, so no chart. */}
       {mode === 'trends' && !isModeLocked('trends') && (
-        <div className="space-y-6">
-          <Panel>
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-semibold text-foreground">Code quality trends</h3>
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">Sample data</span>
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              See how your quality metrics change over time. The chart below shows example figures, not your scans.
-            </p>
-          </Panel>
-          <MetricsTrendChart
-            data={[
-              { date: '2024-01-01', quality: 72, bugs: 8, vulnerabilities: 2, codeSmells: 15, complexity: 45, coverage: 65 },
-              { date: '2024-01-08', quality: 75, bugs: 6, vulnerabilities: 2, codeSmells: 12, complexity: 42, coverage: 68 },
-              { date: '2024-01-15', quality: 78, bugs: 4, vulnerabilities: 1, codeSmells: 10, complexity: 40, coverage: 72 },
-              { date: '2024-01-22', quality: 82, bugs: 2, vulnerabilities: 1, codeSmells: 7, complexity: 38, coverage: 76 },
-              { date: '2024-01-29', quality: 85, bugs: 1, vulnerabilities: 0, codeSmells: 5, complexity: 36, coverage: 81 },
-            ]}
-            metric="quality"
-          />
-        </div>
+        <EmptyState
+          title="Quality trends aren't available yet"
+          description="We don't keep a history of scan scores yet, so there's nothing to chart. Run scans from Manual analysis or GitHub repos to see each result."
+          actionLabel="Run a scan"
+          actionHref="/dashboard/scanner"
+        />
       )}
 
       {/* Quality Gates Mode */}
@@ -887,29 +870,27 @@ function CodeScannerPageInner() {
 
       {/* Code Review Mode */}
       {mode === 'review' && !isModeLocked('review') && (
-        <CodeReviewPanel
-          issueId="issue-1"
-          comments={[]}
-          onAddComment={(text) => console.log('Added comment:', text)}
-          onReply={(commentId, text) => console.log('Replied to', commentId, ':', text)}
-          onResolve={(issueId) => console.log('Resolved:', issueId)}
+        <EmptyState
+          title="Code review isn't available yet"
+          description="Comments and approvals on scan issues aren't saved yet. Use AI review on a scan result in Manual analysis for now."
+          actionLabel="Go to manual analysis"
+          actionHref="/dashboard/scanner"
         />
       )}
 
       {/* Configuration Mode */}
       {mode === 'config' && !isModeLocked('config') && (
-        <ScannerConfigPanel
-          onSave={(config) => console.log('Config saved:', config)}
+        <EmptyState
+          title="Scanner settings aren't available yet"
+          description="Custom thresholds and scan rules can't be saved yet. Scans use the default rules."
+          actionLabel="Go to manual analysis"
+          actionHref="/dashboard/scanner"
         />
       )}
 
       {/* Reports Mode */}
       {mode === 'reports' && !isModeLocked('reports') && (
-        <ReportGenerator
-          onExport={(format) => console.log('Exporting as:', format)}
-          onEmail={(recipients) => console.log('Emailing to:', recipients)}
-          onShare={(link) => console.log('Share link:', link)}
-        />
+        <ReportGenerator />
       )}
 
       {/* Insights Mode */}

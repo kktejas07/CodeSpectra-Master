@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Dialog,
@@ -95,7 +94,6 @@ function BillingContent() {
   const [reloadKey, setReloadKey] = useState(0)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [cycleOpen, setCycleOpen] = useState(false)
-  const [cardOpen, setCardOpen] = useState(false)
   const [invoiceView, setInvoiceView] = useState<InvoiceRow | null>(null)
   const [invoiceDetail, setInvoiceDetail] = useState<{
     id: string
@@ -119,10 +117,6 @@ function BillingContent() {
 
   const [pickPlan, setPickPlan] = useState('pro')
   const [pickInterval, setPickInterval] = useState<'month' | 'year'>('month')
-  const [cardBrand, setCardBrand] = useState('Visa')
-  const [cardLast4, setCardLast4] = useState('4242')
-  const [cardExpM, setCardExpM] = useState(12)
-  const [cardExpY, setCardExpY] = useState(2030)
 
   const load = useCallback(async () => {
     const [subRes, invRes, planRes, pmRes] = await Promise.all([
@@ -148,7 +142,20 @@ function BillingContent() {
         pricePerYear: plan.yearlyUsd,
       })
     }
-    if (invRes.ok) { const d = await invRes.json(); setInvoices(Array.isArray(d) ? d : []) }
+    if (invRes.ok) {
+      // API returns { invoices: InvoiceView[] } (see lib/billing/invoice.ts).
+      const d = await invRes.json()
+      const list = Array.isArray(d?.invoices) ? d.invoices : []
+      setInvoices(list.map((v: { id: string; createdAt: string; amount: number; currency: string; status: string; description: string | null; downloadUrl: string }) => ({
+        id: v.id,
+        date: formatDate(v.createdAt),
+        amount: v.amount,
+        currency: v.currency,
+        status: v.status,
+        description: v.description,
+        downloadUrl: v.downloadUrl,
+      })))
+    }
     if (planRes.ok) { const d = await planRes.json(); setPlans(Array.isArray(d) ? d : []) }
     if (pmRes.ok) { const d = await pmRes.json(); setPaymentMethods(Array.isArray(d) ? d : []) }
   }, [])
@@ -284,46 +291,6 @@ function BillingContent() {
       setBusy(null)
     }
   }
-
-  const saveCard = async () => {
-    if (!defaultPm) return
-    setBusy('card')
-    try {
-      const res = await csrfFetch(`/api/billing/payment-methods/${defaultPm.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          brand: cardBrand,
-          last4: cardLast4,
-          expMonth: cardExpM,
-          expYear: cardExpY,
-          isDefault: true,
-        }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Update failed')
-      setCardOpen(false)
-      addToast({ type: 'success', title: 'Payment method updated' })
-      await load()
-    } catch (e) {
-      addToast({
-        type: 'error',
-        title: 'Could not save card',
-        message: e instanceof Error ? e.message : 'Failed',
-      })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  useEffect(() => {
-    if (!defaultPm) return
-    setCardBrand(defaultPm.brand || 'Card')
-    setCardLast4(defaultPm.last4)
-    setCardExpM(defaultPm.exp_month || 12)
-    setCardExpY(defaultPm.exp_year || 2030)
-  }, [defaultPm?.id])
 
   if (!loading && (loadError || !subscription)) {
     return (
@@ -499,9 +466,8 @@ function BillingContent() {
             <h3 className="text-lg font-semibold text-foreground">Payment method</h3>
             <p className="text-sm text-muted-foreground mt-1">The card used for your subscription renewals.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setCardOpen(true)} disabled={!defaultPm || Boolean(busy)}>
-            Edit card
-          </Button>
+          {/* Cards are managed by the payment gateway at checkout; there's no
+              server route to edit one here, so no edit button. */}
         </div>
         {defaultPm ? (
           <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
@@ -519,7 +485,7 @@ function BillingContent() {
             </div>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-muted-foreground">No card on file.</p>
+          <p className="mt-4 text-sm text-muted-foreground">No card on file. Your card is saved by the payment provider when you pay for a plan.</p>
         )}
       </Card>
 
@@ -592,45 +558,6 @@ function BillingContent() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCycleOpen(false)}>
               Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Card edit */}
-      <Dialog open={cardOpen} onOpenChange={setCardOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit payment method</DialogTitle>
-            <DialogDescription>Demo only — does not charge a real card.</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="space-y-2">
-              <Label htmlFor="brand">Brand</Label>
-              <Input id="brand" value={cardBrand} onChange={(e) => setCardBrand(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="last4">Last 4 digits</Label>
-              <Input id="last4" value={cardLast4} onChange={(e) => setCardLast4(e.target.value.replace(/\D/g, '').slice(0, 4))} maxLength={4} />
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-2">
-                <Label htmlFor="em">Exp. month</Label>
-                <Input id="em" type="number" min={1} max={12} value={cardExpM} onChange={(e) => setCardExpM(Number(e.target.value))} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ey">Exp. year</Label>
-                <Input id="ey" type="number" value={cardExpY} onChange={(e) => setCardExpY(Number(e.target.value))} />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCardOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => void saveCard()} disabled={Boolean(busy)}>
-              {busy === 'card' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Save
             </Button>
           </DialogFooter>
         </DialogContent>

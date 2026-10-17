@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { TOTP } from 'otplib'
+import { checkTotp } from '@/lib/totp'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
@@ -27,19 +27,23 @@ export async function POST(req: NextRequest) {
     const db = await getMongoDb()
     const user = await db.collection('user').findOne({ id: gate.user.id })
 
-    if (!user?.totp_secret) {
+    // Enrolment secret from /setup; fall back to a legacy un-verified totp_secret.
+    const secret = user?.totp_pending_secret || (!user?.totp_enabled ? user?.totp_secret : null)
+    if (!secret) {
       return NextResponse.json({ error: '2FA not set up. Call setup first.' }, { status: 400 })
     }
 
-    const totp = new TOTP()
-    const isValid = totp.verify({ token, secret: user.totp_secret } as unknown as string)
+    const isValid = checkTotp(token, secret)
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
     }
 
     await db.collection('user').updateOne(
       { id: gate.user.id },
-      { $set: { totp_enabled: true, totp_verified_at: new Date().toISOString() } }
+      {
+        $set: { totp_secret: secret, totp_enabled: true, totp_verified_at: new Date().toISOString() },
+        $unset: { totp_pending_secret: '' },
+      }
     )
 
     return NextResponse.json({ success: true })

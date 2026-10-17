@@ -87,7 +87,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, released_at: nowIso() })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to release score'
+    const msg = 'Failed to release score'
     console.error('[CodeSpectra] release score PATCH:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

@@ -100,7 +100,7 @@ export async function POST(
       errors: errors.slice(0, 10),
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Advance failed'
+    const msg = 'Advance failed'
     console.error('[CodeSpectra] advance POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

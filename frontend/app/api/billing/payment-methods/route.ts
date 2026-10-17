@@ -19,7 +19,7 @@ export async function GET() {
       return NextResponse.json({ error: msg }, { status: 503 })
     }
     console.error('[payment-methods]', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
     if (msg.includes('No payment provider configured')) {
       return NextResponse.json({ error: msg }, { status: 503 })
     }
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[billing/payment-methods]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

@@ -28,7 +28,7 @@ export async function GET(
     })
   } catch (e) {
     console.error('[enrollment] GET error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -73,7 +73,7 @@ export async function POST(
     return NextResponse.json({ success: true, message: 'Enrolled successfully' })
   } catch (e) {
     console.error('[enrollment] POST error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -103,6 +103,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: 'Unenrolled' })
   } catch (e) {
     console.error('[enrollment] DELETE error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

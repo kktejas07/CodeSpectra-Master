@@ -29,7 +29,10 @@ const STATUS_LABEL: Record<string, string> = {
 }
 
 export default function JudgeDashboardPage() {
-  const gate = usePageGuard('judge')
+  // Per-event judges can be any user (assigned on the event's Judges tab), so
+  // the page only needs a session; /api/hackathons?judge=1 returns just the
+  // events this user judges (empty list otherwise).
+  const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
   const [hackathons, setHackathons] = useState<(Hackathon & { awaiting: number })[]>([])

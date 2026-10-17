@@ -148,9 +148,8 @@ export async function POST(request: Request) {
       if (!totpToken) {
         return NextResponse.json({ twoFactorRequired: true })
       }
-      const { TOTP } = await import('otplib')
-      const totp = new TOTP()
-      const isValid = totp.verify({ token: totpToken, secret: user.totp_secret } as unknown as string)
+      const { checkTotp } = await import('@/lib/totp')
+      const isValid = checkTotp(totpToken, user.totp_secret)
       if (!isValid) {
         await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: uid })
         return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })

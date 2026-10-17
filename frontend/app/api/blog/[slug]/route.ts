@@ -47,7 +47,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ post, related })
   } catch (e) {
     console.error('[blog] GET slug:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -92,7 +92,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ post: await col.findOne({ id: existing.id }) })
   } catch (e) {
     console.error('[blog] PATCH:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -106,6 +106,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[blog] DELETE:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

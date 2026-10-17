@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/route-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 export async function POST(
@@ -18,6 +18,10 @@ export async function POST(
 
   try {
     const db = await getMongoDb()
+
+    // tenant_admin may only grade submissions of their own tenant's codeathon.
+    const owned = await requireTenantEntity(db, 'codeathons', codeathonId, gate.user)
+    if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
 
     const submission = await db.collection('codeathon_submissions').findOne({
       id: submissionId,

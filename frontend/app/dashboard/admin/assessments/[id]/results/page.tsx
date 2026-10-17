@@ -52,6 +52,7 @@ interface CandidateResult {
   maxScore: number | null
   submittedAt: string | null
   invitedAt: string | null
+  inviteToken?: string | null
   proctoringFlags: number
   idPhoto?: string | null
   facePhoto?: string | null
@@ -793,82 +794,17 @@ export default function ExamResultsPage() {
     }
   }
 
-  const exportCsv = () => {
-    try {
-      if (!results) {
-        addToast({ type: 'error', title: 'No results available to export' })
-        return
-      }
-
-      const headers = [
-        'Candidate Name',
-        'Email',
-        'Status',
-        'Delivery Status',
-        'Proctoring Flags',
-        'Score (%)',
-        'Submitted At',
-        'Score Released',
-      ]
-
-      const candidateRows = results.map(r => [
-        r.name || '',
-        r.email || '',
-        r.status || '',
-        r.deliveryStatus || '',
-        r.proctoringFlags ?? 0,
-        r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
-        r.submittedAt ? fmtDateTime(r.submittedAt) : '--',
-        r.released ? 'Yes' : 'No',
-      ])
-
-      const csvRows = [headers, ...candidateRows]
-      const csvString = csvRows
-        .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-        .join('\r\n')
-
-      const csvContent = '\uFEFF' + csvString
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-
-      const sanitizeTitle = (exam?.title || 'exam_results')
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '_')
-        .replace(/_+/g, '_')
-      const filename = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
-
-      if (typeof window !== 'undefined' && (window.navigator as any).msSaveOrOpenBlob) {
-        ;(window.navigator as any).msSaveOrOpenBlob(blob, filename)
-        addToast({ type: 'success', title: 'Exported CSV successfully' })
-        return
-      }
-
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-
-      setTimeout(() => {
-        if (document.body.contains(link)) {
-          document.body.removeChild(link)
-        }
-        URL.revokeObjectURL(url)
-      }, 1000)
-
-      addToast({ type: 'success', title: 'Exported CSV successfully' })
-    } catch (err) {
-      console.error('[CodeSpectra] CSV Export Error:', err)
-      addToast({ type: 'error', title: 'Failed to export CSV file' })
-    }
-  }
-
   const copyInviteLink = (row: CandidateResult) => {
-    const link = `${window.location.origin}/assessment/invite/${row.id}`
-    navigator.clipboard.writeText(link).then(() => {
-      addToast({ type: 'success', title: `Invite link copied for ${row.name}` })
-    })
+    // The invite route looks up by token, not by the invite doc id.
+    if (!row.inviteToken) {
+      addToast({ type: 'error', title: 'No invite link for this candidate', message: 'Use resend invite to send a fresh link.' })
+      return
+    }
+    const link = `${window.location.origin}/assessment/invite/${encodeURIComponent(row.inviteToken)}`
+    navigator.clipboard.writeText(link).then(
+      () => addToast({ type: 'success', title: `Invite link copied for ${row.name}` }),
+      () => addToast({ type: 'error', title: 'Could not copy the link' }),
+    )
   }
 
   const downloadReviewPdf = () => {
@@ -892,15 +828,25 @@ export default function ExamResultsPage() {
       r.graded ? 'Yes' : 'No',
       r.released ? 'Yes' : 'No',
     ])
+    // Candidate-controlled text (names) must not run as a spreadsheet formula.
+    const cell = (c: unknown) => {
+      let v = String(c ?? '')
+      if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`
+      return `"${v.replace(/"/g, '""')}"`
+    }
     const csv = [headers, ...rows]
-      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
+      .map((r) => r.map(cell).join(','))
+      .join('\r\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
+    a.href = url
     a.download = `${(exam?.title || 'exam').replace(/[^a-z0-9]+/gi, '_')}_results_${new Date().toISOString().slice(0, 10)}.csv`
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(a.href)
+    a.remove()
+    // Revoking right after click() can cancel the download in Safari/Firefox.
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
@@ -1376,16 +1322,18 @@ export default function ExamResultsPage() {
               {row.status !== 'completed' && (
                 <>
                   <DropdownMenuItem onClick={() => resendInvite(row.inviteId, row.name)} className="gap-2">
-                    <Mail className="h-4 w-4" /> Resend Invite
+                    <Mail className="h-4 w-4" /> Resend invite
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => sendReminder(row.inviteId, row.name)} className="gap-2">
                     <Bell className="h-4 w-4" /> Send reminder
                   </DropdownMenuItem>
                 </>
               )}
-              <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
-                <Link className="h-4 w-4" /> Copy Link
-              </DropdownMenuItem>
+              {row.inviteToken && (
+                <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
+                  <Link className="h-4 w-4" /> Copy invite link
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => setConfirmDeleteInvite({ id: row.inviteId, name: row.name })} className="gap-2 text-destructive focus:text-destructive">
                 <Trash2 className="h-4 w-4" /> Delete
               </DropdownMenuItem>

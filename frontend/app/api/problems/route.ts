@@ -153,6 +153,7 @@ export async function POST(request: NextRequest) {
     await col.insertOne(doc)
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {
-    return NextResponse.json({ error: String(error) }, { status: 400 })
+    console.error('[problems]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

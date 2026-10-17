@@ -87,8 +87,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, result })
   } catch (error: any) {
+    console.error('[execute-code]', error)
     return NextResponse.json(
-      { success: false, error: error?.message || 'Execution failed' },
+      { success: false, error: 'Execution failed' },
       { status: 500 }
     )
   }

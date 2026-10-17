@@ -18,7 +18,7 @@ export async function GET(
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   // tenant_admin can only judge submissions for their own tenant's hackathon
-  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+  if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

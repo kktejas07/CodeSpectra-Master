@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       expired,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to load invitation'
+    const msg = 'Failed to load invitation'
     console.error('[CodeSpectra] team/invitations/accept GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, tenant_id: tenant.id, tenant_name: tenant.name })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to accept invitation'
+    const msg = 'Failed to accept invitation'
     console.error('[CodeSpectra] team/invitations/accept POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

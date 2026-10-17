@@ -173,7 +173,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   } catch (e) {
     console.error('[billing/webhook] error:', e)
-    return NextResponse.json({ error: 'processing_failed', detail: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'processing_failed' }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })

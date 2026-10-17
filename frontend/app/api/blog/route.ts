@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items: list, categories: BLOG_CATEGORIES, total: list.length })
   } catch (e) {
     console.error('[blog] GET list:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -120,6 +120,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ post: doc }, { status: 201 })
   } catch (e) {
     console.error('[blog] POST:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

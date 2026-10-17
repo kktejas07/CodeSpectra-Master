@@ -34,7 +34,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Course deleted' })
   } catch (e) {
     console.error('[generate-curriculum] DELETE error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -94,6 +94,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (e) {
     console.error('[generate-curriculum] error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

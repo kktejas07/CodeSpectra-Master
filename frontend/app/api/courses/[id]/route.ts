@@ -24,7 +24,8 @@ export async function GET(
 
     return NextResponse.json({ data: { ...course, _id: undefined, enrolled, userEnrolled } })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -51,7 +52,8 @@ export async function POST(
     const enrolled = await db.collection('course_enrollments').countDocuments({ courseId: id })
     return NextResponse.json({ ok: true, enrolled })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -69,6 +71,7 @@ export async function DELETE(
     const enrolled = await db.collection('course_enrollments').countDocuments({ courseId: id })
     return NextResponse.json({ ok: true, enrolled })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[courses/[id]]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

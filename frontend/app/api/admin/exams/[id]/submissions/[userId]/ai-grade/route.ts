@@ -84,7 +84,7 @@ export async function POST(
       graded_by: result.graded_by ?? null,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'AI grading failed'
+    const msg = 'AI grading failed'
     console.error('[CodeSpectra] ai-grade POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

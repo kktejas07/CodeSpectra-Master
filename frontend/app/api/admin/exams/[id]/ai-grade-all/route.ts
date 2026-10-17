@@ -217,7 +217,7 @@ export async function POST(
       hasMore,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Bulk AI grading failed'
+    const msg = 'Bulk AI grading failed'
     console.error('[CodeSpectra] ai-grade-all POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

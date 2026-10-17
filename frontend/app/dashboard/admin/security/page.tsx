@@ -17,7 +17,7 @@ import {
   Shield, Users, LogIn, Ban, Globe, Monitor, Smartphone, Tablet,
   AlertTriangle, CheckCircle, XCircle, Clock, MapPin, Activity,
   RefreshCw, ChevronDown, ChevronUp, Loader2, Fingerprint, ShieldOff,
-  ShieldAlert, ShieldCheck, Plus, Trash2, Blocks, Download, ScrollText, ArrowRight,
+  ShieldAlert, ShieldCheck, Plus, Blocks, Download, ScrollText, ArrowRight,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -371,13 +371,6 @@ export default function Security() {
     setMutating(null)
   }, [concurrentLimitDraft, load])
 
-  const handleAuditDelete = useCallback(async (ids: string[]) => {
-    for (const id of ids) {
-      await csrfFetch(`/api/admin/audit-logs/${id}`, { method: 'DELETE', credentials: 'include' })
-    }
-    setAuditLogs(prev => prev.filter(l => !ids.includes(l.id)))
-  }, [])
-
   const handleAuditExport = useCallback((ids: string[]) => {
     const selected = auditLogs.filter(l => ids.includes(l.id))
     const headers = ['ts', 'actor', 'actorIp', 'action', 'resource', 'resourceType', 'severity', 'outcome', 'detail']
@@ -391,11 +384,12 @@ export default function Security() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url; a.download = 'audit-logs.csv'; a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }, [auditLogs])
 
   const auditBulkActions: BulkAction[] = [
-    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditDelete },
+    // No delete: audit logs are append-only (there is no DELETE route, and
+    // the old action only hid rows in the UI).
     { label: 'Export selected', icon: <Download className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditExport, clearSelection: false },
   ]
 

@@ -17,6 +17,6 @@ export async function DELETE(_req: NextRequest, { params }: IdRouteContext) {
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[payment-methods] DELETE:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

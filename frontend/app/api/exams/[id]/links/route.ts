@@ -147,7 +147,7 @@ export async function POST(req: NextRequest, ctx: IdRouteContext) {
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
   if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
-  if (gate.user.role === 'tenant_admin' && gate.user.tenantId && exam.tenant_id !== gate.user.tenantId) {
+  if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -267,7 +267,7 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
   if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
-  if (gate.user.role === 'tenant_admin' && gate.user.tenantId && exam.tenant_id !== gate.user.tenantId) {
+  if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const links = await (await linksCol()).find({ exam_id: examId }).sort({ created_at: -1 }).toArray()
@@ -296,7 +296,7 @@ export async function DELETE(req: NextRequest, ctx: IdRouteContext) {
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
   if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
-  if (gate.user.role === 'tenant_admin' && gate.user.tenantId && exam.tenant_id !== gate.user.tenantId) {
+  if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const col = await linksCol()

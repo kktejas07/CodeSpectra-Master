@@ -18,8 +18,9 @@ export async function GET() {
     const gates = data.map((r) => rowToQualityGateDTO(r as unknown as Record<string, unknown>))
     return NextResponse.json({ version: 1, exported_at: new Date().toISOString(), gates })
   } catch (error) {
+    console.error('[quality-gates/export]', error)
     return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed' },
+      { success: false, error: 'Failed' },
       { status: 500 },
     )
   }

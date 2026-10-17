@@ -36,6 +36,7 @@ export async function POST(req: NextRequest) {
       trial_duration_days: result.coupon?.trial_duration_days,
     } })
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+    console.error('[billing/coupons/validate]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

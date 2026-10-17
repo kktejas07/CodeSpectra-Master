@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Sparkles, Target, Zap, Lightbulb, BrainCircuit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +22,7 @@ export default function MockTestSetupPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
   const [selected, setSelected] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { startTour, setTourSeen } = useTour()
@@ -54,8 +55,11 @@ export default function MockTestSetupPage() {
   const handleStart = () => {
     if (!selected) return
     setIsSubmitting(true)
-    // the route param id contains something like "tcs-software-engineer"
-    router.push(`/dashboard/mock-tests/${params.id}/take?difficulty=${selected}`)
+    // Forward company/role from the list page; the take page falls back to the
+    // sample catalogue when they're missing.
+    const qs = new URLSearchParams(searchParams?.toString() || '')
+    qs.set('difficulty', selected)
+    router.push(`/dashboard/mock-tests/${params.id}/take?${qs.toString()}`)
   }
 
   if (!gate.ready) return null

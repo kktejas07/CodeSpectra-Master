@@ -41,7 +41,8 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to use invite token'
+    const msg = 'Failed to use invite token'
+    console.error('[assessment/invite/[token]]', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
@@ -96,7 +97,8 @@ export async function GET(
       created_at: invite.created_at,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to verify invite token'
+    const msg = 'Failed to verify invite token'
+    console.error('[assessment/invite/[token]]', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

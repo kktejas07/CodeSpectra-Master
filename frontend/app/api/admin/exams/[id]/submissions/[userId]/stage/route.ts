@@ -47,7 +47,7 @@ export async function PATCH(
     }
     return NextResponse.json({ ok: true, stage })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to set stage'
+    const msg = 'Failed to set stage'
     console.error('[CodeSpectra] pipeline stage PATCH:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

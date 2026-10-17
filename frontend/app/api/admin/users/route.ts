@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ users: rows })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to list users'
+    const msg = 'Failed to list users'
     console.error('[CodeSpectra] admin/users GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -309,7 +309,7 @@ export async function POST(request: Request) {
       is_existing_user: isExistingUser,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to create user'
+    const msg = 'Failed to create user'
     console.error('[CodeSpectra] admin/users POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

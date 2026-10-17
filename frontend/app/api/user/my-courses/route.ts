@@ -44,6 +44,7 @@ export async function GET() {
 
     return NextResponse.json({ courses: ordered })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[user/my-courses]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

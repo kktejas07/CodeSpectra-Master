@@ -55,6 +55,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
     return NextResponse.json(result)
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'AI hints failed' }, { status: 500 })
+    console.error('[ai/hints]', err)
+    return NextResponse.json({ error: 'AI hints failed' }, { status: 500 })
   }
 }

@@ -12,7 +12,7 @@ const PATCH_FIELDS = [
   'currentLesson',
   'skippedToFinal',
   'finalExamScore',
-  'certificateUrl',
+  // certificateUrl is server-set by /certificate only.
   'completedAt',
   'currentLessonId',
 ] as const
@@ -57,7 +57,7 @@ export async function GET(
     })
   } catch (e) {
     console.error('[progress] GET error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -115,6 +115,6 @@ export async function POST(
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('[progress] POST error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

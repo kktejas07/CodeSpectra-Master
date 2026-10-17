@@ -153,6 +153,6 @@ export async function POST(request: NextRequest) {
 
   } catch (e) {
     console.error('[generate-poster] error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

@@ -114,6 +114,8 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
   const [progress, setProgress] = useState<Progress | null>(null)
   const [showQuiz, setShowQuiz] = useState<number | null>(null)
+  const [certificate, setCertificate] = useState<{ verifyUrl: string } | null>(null)
+  const [claiming, setClaiming] = useState(false)
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
 
@@ -151,7 +153,9 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
-    ]).then(([courseData, progressData, enrollData, completionsData]) => {
+      fetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([courseData, progressData, enrollData, completionsData, certData]) => {
+      if (certData?.certificate?.verifyUrl) setCertificate({ verifyUrl: certData.certificate.verifyUrl })
       if (courseData.data) {
         setCourse(courseData.data)
       }
@@ -192,6 +196,22 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
         body: JSON.stringify({ lessonId }),
       })
     } catch {}
+  }
+
+  // Issue (or fetch the existing) certificate; verified via /cert/verify/[token].
+  const claimCertificate = async () => {
+    setClaiming(true)
+    try {
+      const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { method: 'POST' })
+      const j = await res.json().catch(() => null)
+      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(j?.error || 'Could not issue your certificate')
+      setCertificate({ verifyUrl: j.certificate.verifyUrl })
+      addToast({ type: 'success', title: 'Your certificate is ready' })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not issue your certificate' })
+    } finally {
+      setClaiming(false)
+    }
   }
 
   // Check if module is complete (all lessons done + quiz passed)
@@ -955,10 +975,26 @@ const handleEnroll = async () => {
                   </li>
                 ))}
               </ul>
-              {!enrolled && (
+              {!enrolled ? (
                 <Button onClick={handleEnroll} className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">
                   Get certified for free
                 </Button>
+              ) : certificate ? (
+                <Button asChild className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">
+                  <Link href={certificate.verifyUrl}>View your certificate</Link>
+                </Button>
+              ) : progressPercent >= 100 ? (
+                <Button
+                  onClick={() => void claimCertificate()}
+                  disabled={claiming}
+                  className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90"
+                >
+                  {claiming ? 'Issuing…' : 'Get your certificate'}
+                </Button>
+              ) : (
+                <p className="text-sm text-white/85">
+                  Finish every lesson and module quiz to unlock your certificate ({progressPercent}% done).
+                </p>
               )}
             </div>
 

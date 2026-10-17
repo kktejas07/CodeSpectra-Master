@@ -111,7 +111,7 @@ export async function POST(
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+  if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())

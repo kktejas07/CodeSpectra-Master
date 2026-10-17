@@ -73,7 +73,7 @@ export async function GET(
       },
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to load submission'
+    const msg = 'Failed to load submission'
     console.error('[CodeSpectra] submission review GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -148,7 +148,7 @@ export async function PATCH(
 
     return NextResponse.json({ score: newScore, has_pending_review: stillPending })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to save grades'
+    const msg = 'Failed to save grades'
     console.error('[CodeSpectra] submission grade PATCH:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

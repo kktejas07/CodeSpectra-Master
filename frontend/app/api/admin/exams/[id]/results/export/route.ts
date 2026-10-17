@@ -166,7 +166,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       },
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to export CSV'
+    const msg = 'Failed to export CSV'
     console.error('[CodeSpectra] admin/exams/[id]/results/export GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

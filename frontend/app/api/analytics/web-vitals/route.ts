@@ -90,13 +90,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await col.insertMany(docs as unknown as Parameters<typeof col.insertMany>[0])
       return NextResponse.json({ ok: true, inserted: docs.length })
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to store vitals'
-      console.error('[CodeSpectra] web_vitals_events insert:', msg)
+      const msg = 'Failed to store vitals'
+      console.error('[CodeSpectra] web_vitals_events insert:', e)
       return NextResponse.json({ error: msg }, { status: 500 })
     }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Internal error'
-    console.error('[CodeSpectra] web_vitals unhandled:', msg)
+    const msg = 'Internal error'
+    console.error('[CodeSpectra] web_vitals unhandled:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

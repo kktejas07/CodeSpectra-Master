@@ -22,7 +22,7 @@ interface Hackathon {
 
 interface Team {
   id: string; name: string; slug: string; xp: number; level: number
-  members: Array<{ user_id: string; name: string; role: string }>
+  members: Array<{ name: string; role: string }>
 }
 
 interface Submission {
@@ -73,42 +73,55 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
 
   const load = useCallback(async () => {
     try {
-      const hRes = await fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store' })
-      if (!hRes.ok) throw new Error('Event not found')
-      const hk = await hRes.json() as Hackathon
+      // Released results come from the public endpoint (works for any signed-in
+      // viewer, not just team members). Superadmins can still preview an
+      // unreleased event through the admin-scoped routes.
+      const pRes = await fetch(`/api/hackathons/${encodeURIComponent(slug)}/public-results`, { cache: 'no-store' })
+      if (!pRes.ok) throw new Error(pRes.status === 404 ? 'Event not found' : 'Could not load report')
+      const pub = await pRes.json() as {
+        hackathon: Hackathon; teams: Team[]; submissions: Submission[]; my_team_id: string | null
+      }
+      const hk = pub.hackathon
       setHackathon(hk)
 
-      if (!hk.results_released && gate.user?.role !== 'superadmin') {
+      const isSuper = gate.user?.role === 'superadmin'
+      if (!hk.results_released && !isSuper) {
         setError('Results not yet released')
         setLoading(false)
         return
       }
 
-      const [tRes, sRes, aRes] = await Promise.all([
-        fetch(`/api/hackathons/${slug}/teams`, { cache: 'no-store' }),
-        fetch(`/api/hackathons/${slug}/submissions`, { cache: 'no-store' }),
-        hasSession ? fetch(`/api/hackathons/${hk.id}/activity`, { cache: 'no-store' }).catch(() => null) : Promise.resolve(null),
-      ])
+      let teamList: Team[] = pub.teams || []
+      let subList: Submission[] = pub.submissions || []
+      let myTeamId = pub.my_team_id
+      if (!hk.results_released && isSuper) {
+        const [tRes, sRes] = await Promise.all([
+          fetch(`/api/hackathons/${slug}/teams`, { cache: 'no-store' }),
+          fetch(`/api/hackathons/${slug}/submissions`, { cache: 'no-store' }),
+        ])
+        if (tRes.ok) {
+          type AdminTeam = Omit<Team, 'members'> & { members: Array<{ user_id?: string; name: string; role: string }> }
+          const td = await tRes.json() as { items: AdminTeam[] }
+          teamList = td.items
+          myTeamId = td.items.find((t) => t.members.some((m) => m.user_id === hasSession))?.id ?? null
+        }
+        if (sRes.ok) subList = ((await sRes.json()) as { items: Submission[] }).items || []
+      }
 
-      if (tRes.ok) {
-        const td = await tRes.json() as { items: Team[] }
-        const sorted = [...td.items].sort((a, b) => b.xp - a.xp)
-        setTeams(sorted)
-        if (hasSession) {
-          const mine = sorted.find((t) => t.members.some(m => m.user_id === hasSession))
-          setMyTeam(mine || null)
+      const sorted = [...teamList].sort((a, b) => b.xp - a.xp)
+      setTeams(sorted)
+      setMyTeam(myTeamId ? sorted.find((t) => t.id === myTeamId) || null : null)
+      setSubmissions(subList)
+
+      if (hasSession) {
+        const aRes = await fetch(`/api/hackathons/${hk.id}/activity`, { cache: 'no-store' }).catch(() => null)
+        if (aRes?.ok) {
+          const ad = await aRes.json() as { activity: ActivityEvent[]; proctor: ProctorEvent[] }
+          setActivity(ad.activity || [])
+          setProctor(ad.proctor || [])
         }
       }
-      if (sRes.ok) {
-        const sd = await sRes.json() as { items: Submission[] }
-        setSubmissions(sd.items || [])
-      }
-      if (aRes?.ok) {
-        const ad = await aRes.json() as { activity: ActivityEvent[]; proctor: ProctorEvent[] }
-        setActivity(ad.activity || [])
-        setProctor(ad.proctor || [])
-      }
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load report') }
     finally { setLoading(false) }
   }, [slug, hasSession, gate.user?.role])
 

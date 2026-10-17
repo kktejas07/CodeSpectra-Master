@@ -98,7 +98,7 @@ export async function POST(
       message: 'A new invitation link has been generated and sent to your email.' 
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to renew invite link'
+    const msg = 'Failed to renew invite link'
     console.error('[CodeSpectra] candidate invite renew error:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

@@ -84,6 +84,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       score: number | null
       maxScore: number | null
       submittedAt: string | null
+      inviteToken?: string | null
       invitedAt: string | null
       proctoringFlags: number
       released: boolean
@@ -147,6 +148,9 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         maxScore: sub ? sub.max_score : null,
         submittedAt: sub?.submitted_at || sub?.created_at || null,
         invitedAt: inv.created_at || null,
+        // Admin-only, tenant-checked route: the token lets the recruiter copy
+        // the candidate's real /assessment/invite/[token] link.
+        inviteToken: inv.token || null,
         proctoringFlags: proctorMap.get(inv.user_id) || (sub ? proctorMap.get(sub.user_id) || 0 : 0),
         released: sub?.released_at ? true : false,
         deliveryStatus: sub && inv.delivery_status === 'sending' ? 'delivered' : (inv.delivery_status || null),
@@ -209,7 +213,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       debug: { inviteCount: invites.length, submissionCount: submissions.length },
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to load results'
+    const msg = 'Failed to load results'
     console.error('[CodeSpectra] admin/exams/[id]/results GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

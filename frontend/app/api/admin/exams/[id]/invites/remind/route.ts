@@ -80,7 +80,7 @@ export async function POST(
       errors: errors.length > 0 ? errors : undefined,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to send reminders'
+    const msg = 'Failed to send reminders'
     console.error('[CodeSpectra] admin/exams/[id]/invites/remind POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

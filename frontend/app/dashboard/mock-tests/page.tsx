@@ -23,16 +23,20 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { MOCK_TESTS, mockTestQuery } from '@/lib/mock-tests'
+import { formatDate } from '@/lib/format-datetime'
 
-const MOCK_TESTS = [
-  { id: 'tcs-software-engineer', company: 'TCS', role: 'Software Engineer', color: 'bg-blue-600', type: 'Tech', level: 'Entry-level' },
-  { id: 'tcs-qa-engineer', company: 'TCS', role: 'QA Engineer', color: 'bg-blue-600', type: 'Tech', level: 'Mid-level' },
-  { id: 'ey-data-analyst', company: 'EY', role: 'Data Analyst', color: 'bg-amber-500', type: 'Data', level: 'Entry-level' },
-  { id: 'fractal-data-scientist', company: 'Fractal Analytics', role: 'Data Scientist', color: 'bg-purple-600', type: 'Data', level: 'Advanced' },
-  { id: 'google-sde', company: 'Google', role: 'Software Development Engineer', color: 'bg-emerald-600', type: 'Tech', level: 'Mid-level' },
-  { id: 'amazon-sde', company: 'Amazon', role: 'SDE I', color: 'bg-orange-500', type: 'Tech', level: 'Entry-level' },
-  { id: 'wipro-frontend', company: 'Wipro', role: 'Frontend Developer', color: 'bg-cyan-600', type: 'Tech', level: 'Mid-level' },
-]
+
+interface MockAttempt {
+  id: string
+  company: string
+  role: string
+  difficulty: string
+  score: number
+  total: number
+  percentage: number
+  submitted_at: string
+}
 
 export default function MockTestsPage() {
   const gate = usePageGuard('user')
@@ -43,6 +47,16 @@ export default function MockTestsPage() {
   const [customData, setCustomData] = useState({ company: '', role: '', type: 'Tech', experience: 'Entry-level' })
   const [isGenerating, setIsGenerating] = useState(false)
   const { startTour, setTourSeen } = useTour()
+  const [history, setHistory] = useState<MockAttempt[] | null>(null)
+  const [historyError, setHistoryError] = useState(false)
+
+  useEffect(() => {
+    if (!gate.ready) return
+    fetch('/api/mock-tests/attempts', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d: { items?: MockAttempt[] }) => setHistory(d.items || []))
+      .catch(() => setHistoryError(true))
+  }, [gate.ready])
 
   useEffect(() => {
     if (gate.ready) {
@@ -75,8 +89,8 @@ export default function MockTestsPage() {
   )
 
   const handleGenerate = () => {
-    // Real custom-test flow: the [id] setup page parses company/role from the
-    // slug and the take page generates questions via /api/mock-tests/generate.
+    // Company and role travel as query params (a hyphenated slug can't be split
+    // back reliably, e.g. "goldman-sachs-sde"); the slug is only the URL id.
     const slug = `${customData.company} ${customData.role}`
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, '-')
@@ -87,7 +101,7 @@ export default function MockTestsPage() {
     }
     setIsGenerating(true)
     setIsModalOpen(false)
-    router.push(`/dashboard/mock-tests/${slug}`)
+    router.push(`/dashboard/mock-tests/${slug}?${mockTestQuery(customData.company, customData.role)}`)
   }
 
   if (!gate.ready) return null
@@ -156,7 +170,7 @@ export default function MockTestsPage() {
               <CardFooter className="pt-0">
                 <Button 
                   className="w-full gap-2"
-                  onClick={() => router.push(`/dashboard/mock-tests/${test.id}`)}
+                  onClick={() => router.push(`/dashboard/mock-tests/${test.id}?${mockTestQuery(test.company, test.role)}`)}
                 >
                   Start test <ChevronRight className="w-4 h-4" />
                 </Button>
@@ -176,6 +190,48 @@ export default function MockTestsPage() {
             }}
           />
       )}
+
+      <section aria-labelledby="mock-history-heading" className="space-y-3">
+        <h2 id="mock-history-heading" className="text-lg font-semibold">Your attempts</h2>
+        {historyError ? (
+          <p className="text-sm text-destructive">Couldn&apos;t load your past attempts. Refresh to try again.</p>
+        ) : history === null ? (
+          <p className="text-sm text-muted-foreground">Loading your attempts…</p>
+        ) : history.length === 0 ? (
+          <EmptyState
+            title="No attempts yet"
+            description="Finish a mock test and your score will be saved here."
+          />
+        ) : (
+          <Card className="rounded-3xl border-border/70 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/60 bg-muted/30 text-left text-muted-foreground">
+                    <th className="p-3 font-medium">Test</th>
+                    <th className="p-3 font-medium">Level</th>
+                    <th className="p-3 font-medium text-right">Score</th>
+                    <th className="p-3 font-medium text-right">Taken</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((a) => (
+                    <tr key={a.id} className="border-b border-border/40 last:border-0">
+                      <td className="p-3">
+                        <span className="font-medium">{a.company}</span>
+                        <span className="text-muted-foreground"> · {a.role}</span>
+                      </td>
+                      <td className="p-3 capitalize">{a.difficulty}</td>
+                      <td className="p-3 text-right tabular-nums">{a.score}/{a.total} ({a.percentage}%)</td>
+                      <td className="p-3 text-right text-muted-foreground tabular-nums">{formatDate(a.submitted_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+      </section>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px]">

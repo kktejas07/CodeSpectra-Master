@@ -27,7 +27,7 @@ export async function GET() {
     return NextResponse.json({ items })
   } catch (e) {
     console.error('[signals] GET:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ created: created.length, skipped: skipped.length, errors })
       } catch (e) {
         console.error('[signals] Ingest error:', e)
-        return NextResponse.json({ error: String(e), created: 0 }, { status: 500 })
+        return NextResponse.json({ error: 'Something went wrong. Please try again.', created: 0 }, { status: 500 })
       }
     }
 
@@ -202,6 +202,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, status: 'published', url: `/blog/${slug}`, post })
   } catch (e) {
     console.error('[signals] POST:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

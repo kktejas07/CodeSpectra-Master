@@ -108,6 +108,6 @@ export async function POST(
     })
   } catch (e) {
     console.error('[quiz-submit] error:', e)
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

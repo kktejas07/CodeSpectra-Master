@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed'
+    const msg = 'Failed'
     console.error('[CodeSpectra] admin/teams/members GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -210,7 +210,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ user: { id: newUserId, email, full_name: fullName, role: memberRole, tenant_id: tenantId } }, { status: 201 })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to add member'
+    const msg = 'Failed to add member'
     console.error('[CodeSpectra] admin/teams/members POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

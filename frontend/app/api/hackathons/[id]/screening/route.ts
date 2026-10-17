@@ -21,7 +21,7 @@ async function checkJudgeOrAdmin(hackathonId: string, user: { id: string; role?:
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id: hackathonId }, { slug: hackathonId }] })
   if (!hk) return { error: 'not found', status: 404 } as const
-  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+  if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
     return { error: 'Forbidden', status: 403 } as const
   }
   const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())

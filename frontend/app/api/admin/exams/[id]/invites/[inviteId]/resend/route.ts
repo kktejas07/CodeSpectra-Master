@@ -69,7 +69,7 @@ export async function POST(
       postalMessageId: result.postalMessageId,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to resend invite'
+    const msg = 'Failed to resend invite'
     console.error('[CodeSpectra] admin/exams/[id]/invites/[inviteId]/resend POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

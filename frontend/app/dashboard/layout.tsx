@@ -444,7 +444,6 @@ export default function DashboardLayout({
 
       // Support & Misc
       '/dashboard/support': LifeBuoy,
-      '/dashboard/status': Activity,
 
       // Admin & Platform
       [p.system]: Server,

@@ -1,6 +1,5 @@
 'use client'
 import { formatDateTime, formatDate } from '@/lib/format-datetime'
-import { useToast } from '@/lib/toast-context'
 
 import { use, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -9,13 +8,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Trophy, ArrowLeft, Users, Medal, Download,
-  Share2, FileText, Award, Sparkles, CheckCircle, LogIn,
+  Share2, FileText, Award, Sparkles, CheckCircle,
   Lock, Clock, Copy, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { Linkedin, Twitter } from '@/components/ui/brand-icons'
 import { useAuth } from '@/lib/auth-context'
 import QRCode from 'qrcode'
-import { usePageGuard } from '@/lib/use-page-guard'
 import { rankByScore } from '@/lib/hackathons/ranking'
 
 interface Hackathon {
@@ -28,7 +26,7 @@ interface Hackathon {
 interface Team {
   id: string; name: string; slug: string; qr_token?: string
   xp: number; level: number; submissions: number
-  members: Array<{ user_id: string; name: string; role: string }>
+  members: Array<{ name: string; role: string }>
   achievements: Array<{ id: string; name: string }>
   captain?: string
 }
@@ -106,16 +104,7 @@ function CountdownTimer({ targetDate, eventEnded }: { targetDate: string; eventE
 }
 
 function LockedState({ hackathon }: { hackathon: Hackathon }) {
-  const addToast = useToast()
-  const [notifyClicked, setNotifyClicked] = useState(false)
   const eventEnded = new Date(hackathon.ends_at).getTime() < Date.now()
-
-  const handleNotify = () => {
-    setNotifyClicked(true)
-    setTimeout(() => {
-      addToast({ type: 'info', title: 'Notification', message: "You'll be notified when results are released" })
-    }, 100)
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
@@ -136,9 +125,14 @@ function LockedState({ hackathon }: { hackathon: Hackathon }) {
           <CountdownTimer targetDate={hackathon.ends_at} eventEnded={eventEnded} />
         </div>
 
-        <Button onClick={handleNotify} variant="default" className="w-full gap-2" disabled={notifyClicked}>
-          <Trophy className="h-4 w-4" />
-          {notifyClicked ? 'You will be notified!' : 'Notify me when results are out'}
+        {/* Release sends an in-app + email notice to every registered team member (release-results route). */}
+        <p className="text-sm text-muted-foreground mb-4">
+          Registered team members get a notification and email when results are released.
+        </p>
+        <Button asChild variant="outline" className="w-full gap-2">
+          <Link href={`/hackathons/${hackathon.slug}`}>
+            <ArrowLeft className="h-4 w-4" /> Back to event
+          </Link>
         </Button>
       </Card>
     </div>
@@ -312,9 +306,7 @@ function MyTeamResults({
 }
 
 export default function HackathonResultsPage({ params }: { params: Promise<{ slug: string }> }) {
-  const addToast = useToast()
   const { slug } = use(params)
-  const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
   const certRef = useRef<HTMLDivElement>(null)
@@ -329,39 +321,24 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
   const [expandedTeams, setExpandedTeams] = useState<Set<string>>(new Set())
   const [certificateId, setCertificateId] = useState<string>('')
 
+  // Public endpoint: readable signed-out, but only returns teams/scores once
+  // results are released. The viewer's own team (if any) carries qr_token.
   const load = useCallback(async () => {
     try {
-      const [hRes] = await Promise.all([
-        fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store' }),
-      ])
-      if (!hRes.ok) throw new Error('Event not found')
-      const hk = await hRes.json() as Hackathon
-      setHackathon(hk)
-
-      if (!hk.results_released) {
-        setLoading(false)
-        return
+      const res = await fetch(`/api/hackathons/${encodeURIComponent(slug)}/public-results`, { cache: 'no-store' })
+      if (!res.ok) throw new Error(res.status === 404 ? 'Event not found' : 'Could not load results')
+      const j = await res.json() as {
+        hackathon: Hackathon
+        teams: Team[]
+        submissions: Submission[]
+        my_team_id: string | null
       }
-
-      const [tRes, sRes] = await Promise.all([
-        fetch(`/api/hackathons/${slug}/teams`, { cache: 'no-store' }),
-        fetch(`/api/hackathons/${slug}/submissions`, { cache: 'no-store' }),
-      ])
-
-      if (tRes.ok) {
-        const j = await tRes.json() as { items: Team[] }
-        const sorted = [...j.items].sort((a, b) => b.xp - a.xp)
-        setTeams(sorted)
-        if (hasSession) {
-          const my = sorted.find((t) => t.members.some((m) => m.user_id === hasSession))
-          setMyTeam(my || null)
-        }
-      }
-      if (sRes.ok) {
-        const j = await sRes.json() as { items: Submission[] }
-        setSubmissions(j.items)
-      }
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+      setHackathon(j.hackathon)
+      const sorted = [...(j.teams || [])].sort((a, b) => b.xp - a.xp)
+      setTeams(sorted)
+      setMyTeam(j.my_team_id ? sorted.find((t) => t.id === j.my_team_id) || null : null)
+      setSubmissions(j.submissions || [])
+    } catch (e) { setError(e instanceof Error ? e.message : 'Could not load results') }
     finally { setLoading(false) }
   }, [slug, hasSession])
 
@@ -509,30 +486,6 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
   }
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading results…</div>
-
-  if (!gate.allowed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="max-w-sm w-full rounded-3xl p-8 text-center border-border/70">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
-            <Trophy className="h-6 w-6 text-primary" />
-          </div>
-          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Please sign in to view hackathon results.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}/results`)}`}>
-              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline" className="w-full">Create account</Button>
-            </Link>
-          </div>
-        </Card>
-      </div>
-    )
-  }
 
   if (!hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p></div>
 

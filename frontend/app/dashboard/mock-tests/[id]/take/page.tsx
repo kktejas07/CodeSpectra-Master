@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Sparkles, AlertTriangle } from 'lucide-react'
@@ -11,13 +11,19 @@ import { Progress } from '@/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { MOCK_TESTS } from '@/lib/mock-tests'
 
 interface Question {
   id: string
   question: string
   options: string[]
-  correctIndex: number
-  explanation: string
+}
+
+interface GradedResult {
+  score: number
+  total: number
+  percentage: number
+  review: Array<{ correctIndex: number; explanation: string }>
 }
 
 export default function TakeMockTestPage() {
@@ -27,9 +33,13 @@ export default function TakeMockTestPage() {
   const searchParams = useSearchParams()
   const difficulty = searchParams?.get('difficulty') || 'basic'
   
-  // Parse company/role from id, e.g. "tcs-software-engineer"
+  // Company and role come from query params (set by the list page). A slug
+  // like "goldman-sachs-sde" can't be split reliably, so the only fallback is
+  // the sample catalogue by exact id.
   const paramId = params?.id || ''
-  const [company, role] = paramId.split('-', 2).concat(paramId.split('-').slice(2).join(' ')).map(s => s || '')
+  const sample = MOCK_TESTS.find((t) => t.id === paramId)
+  const company = (searchParams?.get('company') || sample?.company || '').trim()
+  const role = (searchParams?.get('role') || sample?.role || '').trim()
 
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,16 +50,29 @@ export default function TakeMockTestPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [finished, setFinished] = useState(false)
   const [timeLeft, setTimeLeft] = useState(15 * 60) // 15 mins default
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [result, setResult] = useState<GradedResult | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  // Each generate call spends an AI credit — never fire it twice for one mount.
+  const requestedRef = useRef(false)
 
   const fetchQuestions = useCallback(async () => {
+    if (requestedRef.current) return
+    if (!company || !role) {
+      setError('This test is missing a company or role. Go back and pick a test.')
+      setLoading(false)
+      return
+    }
+    requestedRef.current = true
     try {
       setLoading(true)
       const res = await csrfFetch('/api/mock-tests/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          company: company.toUpperCase(),
-          role: role.replace(/-/g, ' '),
+          company,
+          role,
           difficulty,
           count: 15
         })
@@ -60,6 +83,7 @@ export default function TakeMockTestPage() {
       }
       const data = await res.json()
       setQuestions(data.questions || [])
+      setSessionId(data.session_id || null)
     } catch (err: any) {
       setError(err.message || 'An error occurred')
     } finally {
@@ -100,13 +124,34 @@ export default function TakeMockTestPage() {
     }
   }
 
-  const calculateScore = () => {
-    let score = 0
-    questions.forEach((q, i) => {
-      if (answers[i] === q.correctIndex) score++
-    })
-    return score
-  }
+  // Grade on the server (answer key never reaches the client before submit)
+  // and save the attempt to the user's history.
+  const submitAttempt = useCallback(async () => {
+    if (!sessionId || submitting) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await csrfFetch('/api/mock-tests/attempts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          answers,
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error || 'Could not save your answers')
+      setResult(data as GradedResult)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Could not save your answers')
+    } finally {
+      setSubmitting(false)
+    }
+  }, [sessionId, answers, submitting])
+
+  useEffect(() => {
+    if (finished && !result && !submitting && !submitError) void submitAttempt()
+  }, [finished, result, submitting, submitError, submitAttempt])
 
   if (!gate.ready || loading) {
     return (
@@ -143,7 +188,7 @@ export default function TakeMockTestPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-2xl">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Sparkles className="h-5 w-5" /></span>
-              Before you start: {company.toUpperCase()} mock test
+              Before you start: {company} mock test
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-muted-foreground">
@@ -164,10 +209,26 @@ export default function TakeMockTestPage() {
     )
   }
 
-  if (finished) {
-    const score = calculateScore()
-    const percentage = Math.round((score / questions.length) * 100)
-    
+  if (finished && !result) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-4">
+        {submitError ? (
+          <>
+            <AlertTriangle className="h-12 w-12 text-destructive" />
+            <h2 className="text-xl font-bold">Couldn&apos;t save your answers</h2>
+            <p className="text-muted-foreground">{submitError}</p>
+            <Button onClick={() => { setSubmitError(null) }}>Try again</Button>
+          </>
+        ) : (
+          <p className="text-muted-foreground">Saving your answers…</p>
+        )}
+      </div>
+    )
+  }
+
+  if (finished && result) {
+    const { score, percentage } = result
+
     return (
       <div className="flex-1 space-y-6">
         <Card className="rounded-3xl border-border/70 text-center p-8">
@@ -188,7 +249,7 @@ export default function TakeMockTestPage() {
           </p>
           <div className="flex gap-4 justify-center">
             <Button variant="outline" onClick={() => router.push('/dashboard/mock-tests')}>
-              Back to tests
+              Back to tests and history
             </Button>
             <Button onClick={() => window.location.reload()}>
               Retake test
@@ -199,7 +260,9 @@ export default function TakeMockTestPage() {
         <div className="space-y-6">
           <h3 className="text-xl font-semibold">Review your answers</h3>
           {questions.map((q, i) => {
-            const isCorrect = answers[i] === q.correctIndex
+            const correctIndex = result.review[i]?.correctIndex
+            const explanation = result.review[i]?.explanation
+            const isCorrect = answers[i] === correctIndex
             const skipped = answers[i] === undefined
             return (
               <Card key={i} className={`rounded-3xl ${skipped ? 'border-border/70' : isCorrect ? 'border-green-500/50' : 'border-destructive/50'}`}>
@@ -218,13 +281,13 @@ export default function TakeMockTestPage() {
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     {q.options.map((opt, optIdx) => (
-                      <div key={optIdx} className={`p-3 rounded-xl border ${optIdx === q.correctIndex ? 'bg-green-500/10 border-green-500/30' : answers[i] === optIdx ? 'bg-destructive/10 border-destructive/30' : ''}`}>
+                      <div key={optIdx} className={`p-3 rounded-xl border ${optIdx === correctIndex ? 'bg-green-500/10 border-green-500/30' : answers[i] === optIdx ? 'bg-destructive/10 border-destructive/30' : ''}`}>
                         {opt}
                       </div>
                     ))}
                   </div>
                   <div className="bg-muted/50 p-4 rounded-xl text-sm">
-                    <strong>Explanation:</strong> {q.explanation}
+                    <strong>Explanation:</strong> {explanation}
                   </div>
                 </CardContent>
               </Card>
@@ -243,7 +306,7 @@ export default function TakeMockTestPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-xl font-bold capitalize">{company.toUpperCase()} · {role.replace(/-/g, ' ')}</h2>
+          <h2 className="text-xl font-bold">{company} · {role}</h2>
           <p className="text-sm text-muted-foreground tabular-nums">Question {currentIndex + 1} of {questions.length}</p>
         </div>
         <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono tabular-nums text-lg" aria-label="Time left">

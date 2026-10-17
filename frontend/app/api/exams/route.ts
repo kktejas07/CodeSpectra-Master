@@ -182,7 +182,7 @@ export async function GET() {
 
     return NextResponse.json({ data: examsList })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to fetch exams'
+    const msg = 'Failed to fetch exams'
     console.error('[CodeSpectra] GET /api/exams error:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -269,54 +269,12 @@ export async function POST(request: Request) {
     }
 
     if (questionList.length === 0 && numQuestions > 0) {
-      // Last-resort template questions. Only types this template can build
-      // correctly are eligible; anything else would emit a malformed doc.
-      const buildable = ['mcq', 'multiple_response', 'true_false', 'yes_no', 'fill_blanks', 'coding', 'descriptive'] as const
-      const filtered = allowedTypes.filter((t) => (buildable as readonly string[]).includes(t))
-      const typesPool: QuestionType[] = filtered.length ? filtered : ['mcq']
-      for (let i = 0; i < numQuestions; i++) {
-        const stack = stacks[i % stacks.length]
-        const type = typesPool[i % typesPool.length]
-        const sub = ['Fundamentals', 'Best Practices', 'Problem Solving', 'Debugging', 'Architecture', 'Performance'][i % 6]
-        const q: QuestionDoc = {
-          id: crypto.randomUUID(),
-          type,
-          title: `${stack} ${sub}: Question ${i + 1}`,
-          prompt: '',
-          score: 10,
-        }
-        if (type === 'coding') {
-          q.prompt = `Write a ${stack} function that demonstrates ${sub.toLowerCase()} at a ${body.level || 'Beginner'} level. Include input validation, edge cases, and follow best practices.`
-        } else if (type === 'yes_no') {
-          q.prompt = `In ${stack}, does ${sub.toLowerCase()} warrant extra attention at a ${body.level || 'Beginner'} level?`
-          q.options = ['Yes', 'No']
-          q.answer = 'Yes'
-        } else if (type === 'true_false') {
-          q.prompt = `In ${stack}, ${sub.toLowerCase()} is an important concept that every ${body.level || 'Beginner'} should know. Determine if the following statement is true or false.`
-          q.options = ['True', 'False']
-          q.answer = 'True'
-        } else if (type === 'multiple_response') {
-          q.prompt = `Which of the following are valid approaches for ${sub.toLowerCase()} in ${stack}? (Select all that apply)`
-          q.options = [`Standard ${stack} approach`, `Alternative valid method`, `Common best practice`, `This is incorrect for ${stack}`, `Outdated technique`]
-          q.answer = `Standard ${stack} approach, Alternative valid method, Common best practice`
-        } else if (type === 'descriptive') {
-          q.prompt = `Explain the concept of ${sub.toLowerCase()} in the context of ${stack}. Describe best practices, common pitfalls, and provide a real-world example.`
-        } else if (type === 'fill_blanks') {
-          q.prompt = `In ${stack}, the process of ${sub.toLowerCase()} involves using ___ to ensure quality and ___ for maintainability.`
-          q.options = [`testing`, `standards`, `automation`, `documentation`, `reviews`]
-          q.answer = 'testing, documentation'
-        } else {
-          q.prompt = `Which of the following best describes ${sub.toLowerCase()} in ${stack}?`
-          q.options = [
-            `The standard approach for ${sub.toLowerCase()} in ${stack}`,
-            `An outdated pattern no longer recommended`,
-            `A technique used only in legacy systems`,
-            `A concept unrelated to ${stack}`,
-          ]
-          q.answer = `The standard approach for ${sub.toLowerCase()} in ${stack}`
-        }
-        questionList.push(q)
-      }
+      // Don't fill the exam with generic template questions (their answers were
+      // always "Yes"/"True"/"the standard approach") — tell the recruiter instead.
+      return NextResponse.json(
+        { error: "We couldn't generate questions for this assessment. Try again, pick other question types, or add questions from the bank." },
+        { status: 502 },
+      )
     }
 
     const doc = {

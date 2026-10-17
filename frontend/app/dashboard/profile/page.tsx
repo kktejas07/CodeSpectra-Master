@@ -14,7 +14,7 @@ import { DigitalIdCard } from '@/components/dashboard/digital-id-card'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import { AiCreditsWidget } from '@/components/ui/ai-credits-widget'
-import { Edit2, Trophy, Shield, Clock, FolderGit2, Activity, Loader, CheckCircle2, XCircle, Smartphone, User, Loader2, Sparkles, TrendingUp, ArrowLeft, Eye, Lightbulb, FileText, Briefcase, Award, Info, FileStack, Trash2, Plus, Image as ImageIcon, Share2 } from 'lucide-react'
+import { Edit2, Trophy, Shield, Clock, FolderGit2, Activity, Loader, CheckCircle2, XCircle, Smartphone, User, Loader2, Sparkles, TrendingUp, ArrowLeft, Eye, Lightbulb, FileText, Briefcase, Award, Info, FileStack, Trash2, Plus, Image as ImageIcon, Share2, Globe } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
@@ -32,7 +32,6 @@ interface ActivityItem {
 }
 
 function TwoFactorAuth() {
-  const confirmDialog = useConfirm()
   const [status, setStatus] = useState<{ enabled: boolean; setupAt?: string | null; verifiedAt?: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [setupData, setSetupData] = useState<{ secret: string; otpauth: string } | null>(null)
@@ -40,6 +39,11 @@ function TwoFactorAuth() {
   const [verifyToken, setVerifyToken] = useState('')
   const [verifyError, setVerifyError] = useState('')
   const [verifying, setVerifying] = useState(false)
+  const [setupError, setSetupError] = useState('')
+  const [disableOpen, setDisableOpen] = useState(false)
+  const [disableSecret, setDisableSecret] = useState('')
+  const [disableError, setDisableError] = useState('')
+  const [disabling, setDisabling] = useState(false)
 
   const fetchStatus = async () => {
     try {
@@ -54,16 +58,19 @@ function TwoFactorAuth() {
 
   const handleSetup = async () => {
     setLoading(true)
+    setSetupError('')
     try {
       const res = await csrfFetch('/api/user/2fa/setup', { method: 'POST' })
-      const json = await res.json()
-      if (json.otpauth) {
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.otpauth) {
         setSetupData({ secret: json.secret, otpauth: json.otpauth })
         const QRCode = await import('qrcode')
         const url = await QRCode.toDataURL(json.otpauth, { width: 200, margin: 2 })
         setQrCode(url)
+      } else {
+        setSetupError(json.error || 'Couldn’t start 2FA setup. Try again.')
       }
-    } catch { /* ignore */ }
+    } catch { setSetupError('Couldn’t reach the server. Check your connection and try again.') }
     setLoading(false)
   }
 
@@ -90,14 +97,30 @@ function TwoFactorAuth() {
   }
 
   const handleDisable = async () => {
-    if (!await confirmDialog({ title: 'Confirmation', description: 'Disable two-factor authentication? This reduces account security.' })) return
+    const value = disableSecret.trim()
+    if (!value) return
+    setDisabling(true)
+    setDisableError('')
     try {
-      await csrfFetch('/api/user/2fa/disable', { method: 'POST' })
-      setStatus(null)
-      setQrCode('')
-      setSetupData(null)
-      await fetchStatus()
-    } catch { /* ignore */ }
+      // A 6-digit value is an authenticator code; anything else is the password.
+      const body = /^\d{6}$/.test(value) ? { code: value } : { password: value }
+      const res = await csrfFetch('/api/user/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setDisableError(json.error || 'Couldn’t turn off 2FA. Try again.')
+      } else {
+        setDisableOpen(false)
+        setDisableSecret('')
+        setQrCode('')
+        setSetupData(null)
+        await fetchStatus()
+      }
+    } catch { setDisableError('Couldn’t reach the server. Check your connection and try again.') }
+    setDisabling(false)
   }
 
   return (
@@ -114,10 +137,36 @@ function TwoFactorAuth() {
             <CheckCircle2 className="h-4 w-4" />
             <span className="font-medium">Enabled</span>
           </div>
-          <Button variant="outline" size="sm" className="mt-3 w-full gap-2" onClick={handleDisable}>
-            <XCircle className="h-3.5 w-3.5" />
-            Disable
-          </Button>
+          {disableOpen ? (
+            <form className="mt-3 space-y-2" onSubmit={e => { e.preventDefault(); handleDisable() }}>
+              <label htmlFor="disable-2fa-secret" className="block text-xs text-muted-foreground">
+                Enter your current password, or a 6-digit code from your authenticator app, to turn off 2FA.
+              </label>
+              <input
+                id="disable-2fa-secret"
+                type="password"
+                autoComplete="current-password"
+                value={disableSecret}
+                onChange={e => setDisableSecret(e.target.value)}
+                autoFocus
+                className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              {disableError ? <p className="text-xs text-destructive">{disableError}</p> : null}
+              <div className="flex gap-2">
+                <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={() => { setDisableOpen(false); setDisableSecret(''); setDisableError('') }}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="destructive" size="sm" className="flex-1" disabled={!disableSecret.trim() || disabling}>
+                  {disabling ? <Loader className="h-3 w-3 animate-spin" /> : 'Turn off 2FA'}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <Button variant="outline" size="sm" className="mt-3 w-full gap-2" onClick={() => setDisableOpen(true)}>
+              <XCircle className="h-3.5 w-3.5" />
+              Disable
+            </Button>
+          )}
         </div>
       ) : setupData ? (
         <div className="space-y-3">
@@ -152,6 +201,7 @@ function TwoFactorAuth() {
             <Smartphone className="h-3.5 w-3.5" />
             Set up
           </Button>
+          {setupError ? <p className="mt-2 text-xs text-destructive">{setupError}</p> : null}
         </div>
       )}
     </Card>
@@ -587,14 +637,30 @@ export default function ProfilePage() {
 
           <Card className="rounded-3xl border-border/70 p-6">
             <h2 className="text-lg font-bold text-foreground tracking-tight mb-4">Social links</h2>
-            <div className="flex gap-3">
-              <a href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-              </a>
-              <a href="#" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
-                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-              </a>
-            </div>
+            {/* Saved links from the extended profile; nothing is shown when none are set. */}
+            {socialLinks.linkedin || socialLinks.github || socialLinks.portfolio ? (
+              <div className="flex gap-3">
+                {socialLinks.linkedin && (
+                  <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
+                  </a>
+                )}
+                {socialLinks.github && (
+                  <a href={socialLinks.github} target="_blank" rel="noopener noreferrer" aria-label="GitHub profile" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                  </a>
+                )}
+                {socialLinks.portfolio && (
+                  <a href={socialLinks.portfolio} target="_blank" rel="noopener noreferrer" aria-label="Portfolio" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
+                    <Globe className="h-4 w-4" aria-hidden />
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No links yet. <Link href="/dashboard/profile/edit" className="text-primary underline-offset-4 hover:underline">Add your LinkedIn or GitHub</Link>.
+              </p>
+            )}
           </Card>
 
           <Card className="rounded-3xl border-border/70 p-6">

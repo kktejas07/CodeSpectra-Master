@@ -90,7 +90,7 @@ export async function GET() {
       recent,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to load organization overview'
+    const msg = 'Failed to load organization overview'
     console.error('[CodeSpectra] GET /api/user/org-overview error:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

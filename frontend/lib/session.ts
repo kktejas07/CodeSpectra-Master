@@ -152,6 +152,63 @@ export async function clearSessionCookie(): Promise<void> {
   })
 }
 
+/**
+ * Short-lived signed tokens for a single purpose (pending second factor,
+ * SSO state). The payload lives under `data` and never carries a top-level
+ * `uid`, so verifySessionToken can never accept one as a session.
+ */
+export async function signPurposeToken(purpose: string, data: Record<string, unknown>, expiresIn = '10m'): Promise<string> {
+  return new SignJWT({ purpose, data })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .sign(await getSecret())
+}
+
+export async function verifyPurposeToken<T = Record<string, unknown>>(purpose: string, token: string | null | undefined): Promise<T | null> {
+  if (!token) return null
+  try {
+    const { payload } = await jwtVerify(token, await getSecret())
+    if (payload.purpose !== purpose || !payload.data || typeof payload.data !== 'object') return null
+    return payload.data as T
+  } catch {
+    return null
+  }
+}
+
+const PENDING_2FA_COOKIE = 'codespectra_2fa_pending'
+
+export interface Pending2faPayload {
+  uid: string
+  email: string
+  role: string
+  method: 'face' | 'sso'
+  redirect?: string
+}
+
+/** First factor passed (face / SSO); park the user until they enter a TOTP code. */
+export async function setPending2faCookie(p: Pending2faPayload): Promise<void> {
+  const token = await signPurposeToken('2fa_pending', { ...p }, '5m')
+  const cookieStore = await cookies()
+  cookieStore.set(PENDING_2FA_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 5 * 60,
+  })
+}
+
+export async function readPending2faCookie(): Promise<Pending2faPayload | null> {
+  const cookieStore = await cookies()
+  return verifyPurposeToken<Pending2faPayload>('2fa_pending', cookieStore.get(PENDING_2FA_COOKIE)?.value)
+}
+
+export async function clearPending2faCookie(): Promise<void> {
+  const cookieStore = await cookies()
+  cookieStore.set(PENDING_2FA_COOKIE, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 })
+}
+
 export async function revokeAllUserSessions(userId: string): Promise<void> {
   const db = await getMongoDb()
   await db.collection('user').updateOne(

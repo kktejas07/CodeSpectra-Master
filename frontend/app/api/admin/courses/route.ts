@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     const courses = await db.collection('courses').find({}).sort({ created_at: -1 }).toArray()
     return NextResponse.json({ data: courses })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[admin/courses]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -54,11 +55,12 @@ export async function POST(request: NextRequest) {
       type: 'content.course_generated',
       title: 'Course Generated',
       message: `A new course "${newCourse.title}" has been successfully generated.`,
-      link: `/courses/${newCourse.id}`
+      link: `/dashboard/admin/courses/${newCourse.id}`
     })
 
     return NextResponse.json({ data: newCourse })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[admin/courses]', e)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }

@@ -4,15 +4,19 @@ import { z } from 'zod'
 import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
+import { getMongoDb } from '@/lib/mongodb'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
+import { MOCK_TEST_SESSIONS } from '@/lib/mock-tests'
+import { randomUUID } from 'crypto'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60 // Allow up to 60 seconds for generating questions
 
 const generateSchema = z.object({
-  company: z.string(),
-  role: z.string(),
-  difficulty: z.string(),
-  count: z.number().default(15) // Generate 15 by default to save time
+  company: z.string().trim().min(1).max(100),
+  role: z.string().trim().min(1).max(100),
+  difficulty: z.string().trim().min(1).max(30),
+  count: z.number().int().min(1).max(30).default(15) // Generate 15 by default to save time
 })
 
 const questionSchema = z.object({
@@ -28,6 +32,14 @@ const questionSchema = z.object({
 export async function POST(req: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  const rl = await rateLimitRedis(`mock-tests:generate:${gate.user.id}`, 10, 10 * 60_000)
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'Too many tests generated. Try again in a few minutes.' },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+    )
+  }
 
   try {
     const body = await req.json()
@@ -114,7 +126,25 @@ DO NOT wrap the response in markdown code blocks, just raw JSON.`
       await deductUserAiCredits(gate.user.id)
     }
 
-    return NextResponse.json({ questions: generatedObject.questions })
+    // Keep the answer key on the server: the attempt is graded by
+    // POST /api/mock-tests/attempts against this stored session.
+    const sessionId = randomUUID()
+    const db = await getMongoDb()
+    await db.collection(MOCK_TEST_SESSIONS).insertOne({
+      id: sessionId,
+      user_id: gate.user.id,
+      company,
+      role,
+      difficulty,
+      questions: generatedObject.questions,
+      created_at: new Date().toISOString(),
+      submitted_at: null,
+    })
+
+    return NextResponse.json({
+      session_id: sessionId,
+      questions: generatedObject.questions.map((q) => ({ id: q.id, question: q.question, options: q.options })),
+    })
 
   } catch (e) {
     console.error('[mock-tests generate] error:', e)

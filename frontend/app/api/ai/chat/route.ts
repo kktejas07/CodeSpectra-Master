@@ -166,9 +166,10 @@ export async function POST(req: NextRequest): Promise<Response> {
         }
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))
       } catch (e) {
+        console.error('[ai/chat] stream error:', e)
         controller.enqueue(
           encoder.encode(
-            `data: ${JSON.stringify({ error: e instanceof Error ? e.message : 'stream error' })}\n\n`,
+            `data: ${JSON.stringify({ error: 'stream error' })}\n\n`,
           ),
         )
       } finally {

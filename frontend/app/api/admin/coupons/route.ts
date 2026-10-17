@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ coupons })
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+    console.error('[admin/coupons]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -59,7 +60,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ coupon })
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+    console.error('[admin/coupons]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -83,7 +85,8 @@ export async function PATCH(req: NextRequest) {
     await couponsCol.updateOne({ id }, { $set })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+    console.error('[admin/coupons]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
 
@@ -98,6 +101,7 @@ export async function DELETE(req: NextRequest) {
     await couponsCol.deleteOne({ id })
     return NextResponse.json({ ok: true })
   } catch (error) {
-    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+    console.error('[admin/coupons]', error)
+    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
   }
 }
