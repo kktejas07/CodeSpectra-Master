@@ -16,6 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { User, UserPlus } from 'lucide-react'
+import { PageHeader } from '@/components/app/page-kit'
 import { useRouter } from 'next/navigation'
 
 interface Resume {
@@ -100,13 +101,13 @@ export default function MyResumesPage() {
 
   const columns: DataTableColumn<Resume>[] = [
     { key: 'name', header: 'File', cell: (r) => <span className="font-medium">{r.file_name}</span> },
-    { key: 'size', header: 'Size', cell: (r) => <span className="text-xs text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
+    { key: 'size', header: 'Size', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
     { key: 'status', header: 'Status', cell: (r) => (
-      <Badge className={r.status === 'processed' ? 'bg-green-500/20 text-green-700' : 'bg-yellow-500/20 text-yellow-700'}>
+      <Badge className={`capitalize ${r.status === 'processed' ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}`}>
         {r.status || 'pending'}
       </Badge>
     )},
-    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? formatDate(r.created_at) : '—'}</span> },
+    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{r.created_at ? formatDate(r.created_at) : '—'}</span> },
   ]
 
   const bulkActions: BulkAction[] = [
@@ -117,23 +118,34 @@ export default function MyResumesPage() {
 
   return (
     <div className="space-y-6 w-full pb-10">
-      
+      <PageHeader
+        className="mb-0"
+        icon={<FileText aria-hidden />}
+        title="Resumes"
+        description="Build a resume from a template or your profile, and keep the files you've uploaded in one place."
+        actions={
+          <Button onClick={handleTemplateClick}>
+            <Plus className="mr-1 h-4 w-4" /> New resume
+          </Button>
+        }
+      />
+
       {/* Top Section: Templates */}
-      <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-6 overflow-hidden" data-tour="resumes-templates">
-        <h2 className="text-xl font-bold text-foreground mb-6 tracking-tight">Choose from a wide variety of templates</h2>
+      <div className="bg-card rounded-3xl border border-border/70 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none p-6 overflow-hidden" data-tour="resumes-templates">
+        <h2 className="text-lg font-semibold text-foreground mb-5">Start from a template</h2>
         
         <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar -mx-2 px-2">
           {/* Create New Card */}
-          <div onClick={handleTemplateClick} data-tour="resumes-create" className="shrink-0 w-[240px] h-[320px] rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-blue-500/50 transition-all group">
-            <div className="h-14 w-14 rounded-full bg-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-md">
-              <Plus className="h-7 w-7 text-white" />
+          <div onClick={handleTemplateClick} data-tour="resumes-create" className="shrink-0 w-[240px] h-[320px] rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-primary/50 transition-all duration-200 group">
+            <div className="h-14 w-14 rounded-full bg-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200 motion-reduce:group-hover:scale-100 shadow-md">
+              <Plus className="h-7 w-7 text-primary-foreground" aria-hidden />
             </div>
-            <span className="text-blue-600 font-bold text-lg">Create a</span>
-            <span className="text-blue-600 font-bold text-lg">new resume</span>
+            <span className="text-primary font-bold text-lg">Create a</span>
+            <span className="text-primary font-bold text-lg">new resume</span>
           </div>
           
           {/* Mock Template 1 */}
-          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-xl border border-border bg-muted/20 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all p-4 shadow-sm group">
+          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border border-border bg-muted/20 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 p-4 shadow-sm group">
               <div className="absolute top-4 right-4 h-8 w-8 rounded-full bg-muted overflow-hidden border">
                  <UserAvatar seed="Abhiram" name="Abhiram" className="h-full w-full" />
               </div>
@@ -142,7 +154,7 @@ export default function MyResumesPage() {
              
              <div className="space-y-4">
                <div>
-                 <div className="h-2 w-12 bg-blue-500/80 rounded mb-2" />
+                 <div className="h-2 w-12 bg-primary/80 rounded mb-2" />
                  <div className="space-y-1">
                    <div className="h-1.5 w-full bg-border rounded" />
                    <div className="h-1.5 w-5/6 bg-border rounded" />
@@ -150,7 +162,7 @@ export default function MyResumesPage() {
                  </div>
                </div>
                <div>
-                 <div className="h-2 w-16 bg-blue-500/80 rounded mb-2" />
+                 <div className="h-2 w-16 bg-primary/80 rounded mb-2" />
                  <div className="space-y-2">
                    <div>
                      <div className="h-1.5 w-20 bg-foreground/60 rounded mb-1" />
@@ -163,23 +175,23 @@ export default function MyResumesPage() {
                  </div>
                </div>
              </div>
-             <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+             <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           </div>
 
           {/* Mock Template 2 (Selected) */}
-          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-xl border-2 border-blue-500 bg-blue-50/30 dark:bg-blue-900/10 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all p-3 shadow-md group flex">
+          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border-2 border-primary/60 bg-primary/5 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 p-3 shadow-md group flex">
              {/* Two column layout mock */}
-             <div className="w-1/3 border-r border-blue-200/50 pr-2 pt-2">
-                <div className="h-2 w-12 bg-blue-500 rounded mb-4" />
+             <div className="w-1/3 border-r border-primary/20 pr-2 pt-2">
+                <div className="h-2 w-12 bg-primary rounded mb-4" />
                 <div className="space-y-2 mb-6">
-                  <div className="h-1.5 w-full bg-blue-200 dark:bg-blue-800 rounded" />
-                  <div className="h-1.5 w-5/6 bg-blue-200 dark:bg-blue-800 rounded" />
-                  <div className="h-1.5 w-4/6 bg-blue-200 dark:bg-blue-800 rounded" />
+                  <div className="h-1.5 w-full bg-primary/25 rounded" />
+                  <div className="h-1.5 w-5/6 bg-primary/25 rounded" />
+                  <div className="h-1.5 w-4/6 bg-primary/25 rounded" />
                 </div>
-                <div className="h-2 w-10 bg-blue-500 rounded mb-2" />
+                <div className="h-2 w-10 bg-primary rounded mb-2" />
                 <div className="space-y-1.5">
-                  <div className="h-1.5 w-full bg-blue-200 dark:bg-blue-800 rounded" />
-                  <div className="h-1.5 w-3/4 bg-blue-200 dark:bg-blue-800 rounded" />
+                  <div className="h-1.5 w-full bg-primary/25 rounded" />
+                  <div className="h-1.5 w-3/4 bg-primary/25 rounded" />
                 </div>
              </div>
              <div className="w-2/3 pl-3 pt-2">
@@ -200,11 +212,11 @@ export default function MyResumesPage() {
                   </div>
                 </div>
              </div>
-             <div className="absolute inset-0 bg-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+             <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           </div>
 
           {/* Mock Template 3 (Dark Header) */}
-          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-xl border border-border bg-card relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all shadow-sm group flex flex-col">
+          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border border-border bg-card relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 shadow-sm group flex flex-col">
              <div className="h-16 bg-slate-800 p-3 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-white/20 overflow-hidden shrink-0">
                   <UserAvatar seed="ProductDesigner" name="Product Designer" className="h-full w-full" />
@@ -216,19 +228,19 @@ export default function MyResumesPage() {
              </div>
              <div className="p-3 flex-1 flex gap-3">
                <div className="w-1/3">
-                 <div className="h-2 w-12 bg-slate-700/80 dark:bg-slate-300/80 rounded mb-2" />
+                 <div className="h-2 w-12 bg-foreground/70 rounded mb-2" />
                  <div className="space-y-1.5 mb-4">
                    <div className="h-1 w-full bg-border rounded" />
                    <div className="h-1 w-5/6 bg-border rounded" />
                  </div>
-                 <div className="h-2 w-10 bg-slate-700/80 dark:bg-slate-300/80 rounded mb-2" />
+                 <div className="h-2 w-10 bg-foreground/70 rounded mb-2" />
                  <div className="space-y-1">
                    <div className="h-1 w-full bg-border rounded" />
                    <div className="h-1 w-3/4 bg-border rounded" />
                  </div>
                </div>
                <div className="w-2/3 border-l border-border/50 pl-3">
-                 <div className="h-2 w-16 bg-slate-700/80 dark:bg-slate-300/80 rounded mb-3" />
+                 <div className="h-2 w-16 bg-foreground/70 rounded mb-3" />
                  <div className="space-y-4">
                    <div>
                      <div className="h-1.5 w-20 bg-foreground/70 rounded mb-1.5" />
@@ -248,15 +260,15 @@ export default function MyResumesPage() {
                  </div>
                </div>
              </div>
-             <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+             <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
           </div>
 
         </div>
       </div>
 
       {/* Bottom Section: My Resumes */}
-      <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-6 min-h-[400px] flex flex-col" data-tour="resumes-list">
-        <h2 className="text-xl font-bold text-foreground mb-6 tracking-tight">My Resumes</h2>
+      <div className="bg-card rounded-3xl border border-border/70 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none p-6 min-h-[400px] flex flex-col" data-tour="resumes-list">
+        <h2 className="text-lg font-semibold text-foreground mb-5">My resumes</h2>
         
         {loading ? (
           <div className="flex-1 space-y-3">
@@ -264,12 +276,12 @@ export default function MyResumesPage() {
           </div>
         ) : resumes.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
-            <div className="w-64 h-64 relative mb-6 opacity-80">
-              <svg viewBox="0 0 400 400" className="w-full h-full">
+            <div className="w-48 h-48 relative mb-6 opacity-80">
+              <svg viewBox="0 0 400 400" className="w-full h-full" aria-hidden="true">
                 {/* Simplified Astronaut/Magnifying Glass Illustration */}
-                <circle cx="200" cy="200" r="120" fill="currentColor" className="text-blue-50 dark:text-blue-950" />
-                <path d="M120 280 L200 280 L200 360" stroke="currentColor" strokeWidth="8" fill="none" className="text-blue-100 dark:text-blue-900" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M280 120 L280 200 L360 200" stroke="currentColor" strokeWidth="8" fill="none" className="text-blue-100 dark:text-blue-900" strokeLinecap="round" strokeLinejoin="round" />
+                <circle cx="200" cy="200" r="120" fill="currentColor" className="text-primary/10" />
+                <path d="M120 280 L200 280 L200 360" stroke="currentColor" strokeWidth="8" fill="none" className="text-primary/20" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M280 120 L280 200 L360 200" stroke="currentColor" strokeWidth="8" fill="none" className="text-primary/20" strokeLinecap="round" strokeLinejoin="round" />
                 
                 {/* Astronaut Body */}
                 <path d="M170 200 Q200 150 230 200 L240 260 Q200 280 160 260 Z" fill="currentColor" className="text-foreground" />
@@ -281,19 +293,20 @@ export default function MyResumesPage() {
                 <circle cx="260" cy="140" r="30" fill="none" stroke="currentColor" strokeWidth="8" className="text-foreground" />
                 <line x1="280" y1="160" x2="310" y2="190" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="text-foreground" />
                 {/* Stars/Details */}
-                <circle cx="100" cy="100" r="4" fill="currentColor" className="text-blue-300" />
-                <circle cx="300" cy="80" r="6" fill="currentColor" className="text-blue-400" />
-                <circle cx="120" cy="300" r="5" fill="currentColor" className="text-blue-300" />
+                <circle cx="100" cy="100" r="4" fill="currentColor" className="text-primary/50" />
+                <circle cx="300" cy="80" r="6" fill="currentColor" className="text-primary/70" />
+                <circle cx="120" cy="300" r="5" fill="currentColor" className="text-primary/50" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-foreground">No Resume available</h3>
+            <h3 className="text-lg font-semibold text-foreground">No resumes yet</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Create one from a template above — it will show up here.</p>
           </div>
         ) : (
           <div className="flex-1">
             <DataTable
               columns={columns}
               data={resumes}
-              searchPlaceholder="Search resumes..."
+              searchPlaceholder="Search resumes…"
               searchKeys={['file_name']}
               bulkActions={bulkActions}
               loading={loading}
@@ -308,36 +321,36 @@ export default function MyResumesPage() {
           <DialogHeader>
             <DialogTitle className="text-xl text-center">Choose creation option</DialogTitle>
             <DialogDescription className="text-center pt-2">
-              You have the option to either use data from your profile to create a new resume or create fresh resume. Choose your preferred method.
+              Start from the details already on your profile, or begin with a blank resume.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-6">
+          <div className="grid grid-cols-1 gap-4 py-6 sm:grid-cols-2">
             <div 
               onClick={() => setCreationOption('profile')}
               className={`p-4 rounded-xl border-2 cursor-pointer flex items-center justify-center gap-3 transition-all ${
                 creationOption === 'profile' 
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-                  : 'border-border hover:border-blue-300 hover:bg-muted/50'
+                  ? 'border-primary bg-primary/10 text-primary' 
+                  : 'border-border hover:border-primary/40 hover:bg-muted/50'
               }`}
             >
               <User className="h-5 w-5" />
-              <span className="font-semibold">Fetch From Profile</span>
+              <span className="font-semibold">Use my profile</span>
             </div>
             <div 
               onClick={() => setCreationOption('new')}
               className={`p-4 rounded-xl border-2 cursor-pointer flex items-center justify-center gap-3 transition-all ${
                 creationOption === 'new' 
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-                  : 'border-border hover:border-blue-300 hover:bg-muted/50'
+                  ? 'border-primary bg-primary/10 text-primary' 
+                  : 'border-border hover:border-primary/40 hover:bg-muted/50'
               }`}
             >
               <UserPlus className="h-5 w-5" />
-              <span className="font-semibold">Create new Resume</span>
+              <span className="font-semibold">Start blank</span>
             </div>
           </div>
           <DialogFooter className="sm:justify-between w-full flex gap-3">
             <Button variant="outline" className="flex-1 rounded-full" onClick={() => setCreationModalOpen(false)}>Cancel</Button>
-            <Button className="flex-1 rounded-full bg-slate-200 text-slate-800 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700" onClick={handleProceed}>Proceed</Button>
+            <Button className="flex-1 rounded-full" onClick={handleProceed}>Proceed</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

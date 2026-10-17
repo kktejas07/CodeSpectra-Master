@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { ModelSelector } from '@/components/ai/model-selector'
 import { Sparkles, Bot, FileText, GraduationCap, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -41,58 +41,59 @@ export default function AISettingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold flex items-center gap-2" data-tour="ai-settings-header">
-        <Sparkles className="h-7 w-7 text-primary" /> AI Model Preferences
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        Choose which AI model the platform uses for each feature. Changes take effect immediately.
-        Gemini Flash is free; other models require an API key configured by your admin.
-      </p>
+      <div data-tour="ai-settings-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Sparkles aria-hidden />}
+          title="AI model preferences"
+          description="Choose which AI model the platform uses for each feature. Changes take effect immediately. Gemini Flash is free; other models need an API key added by your admin."
+        />
+      </div>
 
-      <div className="space-y-4" data-tour="ai-settings-models">
-        <Card className="p-5 space-y-3" data-tour="ai-settings-chat">
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+      <div className="grid gap-4 md:grid-cols-2" data-tour="ai-settings-models">
+        <Panel className="p-5 space-y-3" data-tour="ai-settings-chat">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bot className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">AI Chat & Agent</p>
+              <p className="font-medium text-foreground">AI chat and agent</p>
               <p className="text-xs text-muted-foreground">Used by the chat assistant, codebase chat, and agent workspace</p>
             </div>
           </div>
           <ModelSelector feature="chat_model" />
-        </Card>
+        </Panel>
 
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-primary" />
+        <Panel className="p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileText className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">Code Review & Analysis</p>
+              <p className="font-medium text-foreground">Code review and analysis</p>
               <p className="text-xs text-muted-foreground">Used by automated code reviews, static analysis, and PR reviews</p>
             </div>
           </div>
           <ModelSelector feature="review_model" />
-        </Card>
+        </Panel>
 
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
+        <Panel className="p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">Hints & Tutoring</p>
+              <p className="font-medium text-foreground">Hints and tutoring</p>
               <p className="text-xs text-muted-foreground">Used by smart hints, problem generation, and tutoring features</p>
             </div>
           </div>
           <ModelSelector feature="hints_model" />
-        </Card>
+        </Panel>
 
-        <Card className="p-5 space-y-3">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
+        <Panel className="p-5 space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium">Auto-Grading</p>
+              <p className="font-medium text-foreground">Auto-grading</p>
               <p className="text-xs text-muted-foreground">Used by submission grading and assessment evaluation</p>
             </div>
           </div>
           <ModelSelector feature="grade_model" />
-        </Card>
+        </Panel>
       </div>
     </div>
   )

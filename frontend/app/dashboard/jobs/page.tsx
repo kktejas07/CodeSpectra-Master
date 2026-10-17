@@ -15,6 +15,7 @@ import {
   CheckCircle, XCircle, Hourglass, ArrowRight,
 } from 'lucide-react'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 interface AppliedJob {
   id: string
@@ -27,11 +28,11 @@ interface AppliedJob {
 }
 
 const STATUS_CONFIG: Record<AppliedJob['status'], { label: string; color: string; icon: any }> = {
-  submitted:   { label: 'Submitted',    color: 'bg-blue-500/20 text-blue-700',    icon: Hourglass },
-  in_review:   { label: 'In Review',   color: 'bg-yellow-500/20 text-yellow-700', icon: Clock },
-  rejected:    { label: 'Rejected',    color: 'bg-red-500/20 text-red-700',       icon: XCircle },
-  accepted:    { label: 'Accepted',   color: 'bg-green-500/20 text-green-700',   icon: CheckCircle },
-  withdrawn:   { label: 'Withdrawn',   color: 'bg-gray-500/20 text-gray-700',     icon: XCircle },
+  submitted:   { label: 'Submitted',   color: 'bg-primary/10 text-primary',                                 icon: Hourglass },
+  in_review:   { label: 'In review',   color: 'bg-amber-500/15 text-amber-700 dark:text-amber-400',        icon: Clock },
+  rejected:    { label: 'Rejected',    color: 'bg-red-500/15 text-red-700 dark:text-red-400',              icon: XCircle },
+  accepted:    { label: 'Accepted',    color: 'bg-green-500/15 text-green-700 dark:text-green-400',        icon: CheckCircle },
+  withdrawn:   { label: 'Withdrawn',   color: 'bg-muted text-muted-foreground',                            icon: XCircle },
 }
 
 export default function DashboardJobsPage() {
@@ -91,15 +92,19 @@ export default function DashboardJobsPage() {
   )
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between" data-tour="jobs-header">
-        <div>
-          <h1 className="text-3xl font-bold">My Applications</h1>
-          <p className="text-muted-foreground mt-1">Track your job applications and their status</p>
-        </div>
-        <Button variant="outline" asChild className="gap-1.5" data-tour="jobs-browse">
-          <Link href="/jobs">Browse Jobs <ArrowRight className="h-4 w-4" /></Link>
-        </Button>
+    <div className="space-y-6">
+      <div data-tour="jobs-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Briefcase aria-hidden />}
+          title="My applications"
+          description="Track the jobs you've applied to and where each application stands."
+          actions={
+            <Button variant="outline" asChild className="gap-1.5" data-tour="jobs-browse">
+              <Link href="/jobs">Browse jobs <ArrowRight className="h-4 w-4" /></Link>
+            </Button>
+          }
+        />
       </div>
 
       <div data-tour="jobs-list">
@@ -108,29 +113,31 @@ export default function DashboardJobsPage() {
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : applications.length === 0 ? (
-        <Card className="border-border/60 p-12 text-center">
-          <Briefcase className="h-12 w-12 text-muted-foreground/30" />
-          <p className="mt-3 text-lg font-medium">No applications yet</p>
+        <Panel className="p-12 text-center">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Briefcase className="h-6 w-6" aria-hidden />
+          </span>
+          <p className="mt-4 text-lg font-medium text-foreground">No applications yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Browse open positions and apply to ones that interest you.
           </p>
           <Button className="mt-4" asChild>
-            <Link href="/jobs">Browse Open Jobs</Link>
+            <Link href="/jobs">Browse open jobs</Link>
           </Button>
-        </Card>
+        </Panel>
       ) : (
         <div className="space-y-3">
           {applications.map(app => {
-            const cfg = STATUS_CONFIG[app.status]
+            const cfg = STATUS_CONFIG[app.status] ?? STATUS_CONFIG.submitted
             const Icon = cfg.icon
             return (
-              <Card key={app.id} className="p-4 flex items-center justify-between gap-4">
+              <Card key={app.id} className="rounded-2xl border-border/70 p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
-                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Briefcase className="h-5 w-5 text-primary" aria-hidden />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{app.jobTitle || 'Unknown Position'}</p>
+                    <p className="font-medium text-foreground truncate">{app.jobTitle || 'Untitled position'}</p>
                     <p className="text-sm text-muted-foreground truncate">{app.company || 'Company'}</p>
                   </div>
                   <Badge className={`gap-1 ${cfg.color} shrink-0`}>
@@ -139,12 +146,12 @@ export default function DashboardJobsPage() {
                   </Badge>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs text-muted-foreground hidden sm:block">
+                  <span className="text-xs tabular-nums text-muted-foreground hidden sm:block">
                     Applied {formatDate(app.appliedAt)}
                   </span>
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/jobs/${app.jobId}`} target="_blank">
-                      View Job <ExternalLink className="h-3 w-3 ml-1" />
+                      View job <ExternalLink className="h-3 w-3 ml-1" />
                     </Link>
                   </Button>
                 </div>
@@ -155,9 +162,9 @@ export default function DashboardJobsPage() {
       )}
       </div>
 
-      <div className="border-t pt-6">
+      <div className="border-t border-border pt-6">
         <p className="text-sm text-muted-foreground mb-2">Looking for more opportunities?</p>
-        <Button asChild><Link href="/jobs">Explore Open Positions</Link></Button>
+        <Button asChild><Link href="/jobs">Explore open positions</Link></Button>
       </div>
     </div>
   )

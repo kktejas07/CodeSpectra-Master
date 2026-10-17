@@ -29,7 +29,7 @@ export type EbookCardData = {
 
 // coverTheme + readMinutes match EbookDoc / API publicShape
 
-/** Unstop-style 3D cover card */
+/** 3D-style ebook cover card */
 export function EbookCoverCard({
   ebook,
   href,
@@ -43,11 +43,11 @@ export function EbookCoverCard({
   const to = href || `/dashboard/resources/${ebook.slug}`
 
   return (
-    <Link href={to} className="group block perspective-midrange">
+    <Link href={to} className="group block rounded-2xl perspective-midrange focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
       <div
         className={cn(
-          'relative aspect-3/4 overflow-hidden rounded-lg shadow-lg transition-transform duration-300',
-          'group-hover:-translate-y-1 group-hover:shadow-xl',
+          'relative aspect-3/4 overflow-hidden rounded-2xl shadow-lg transition-[transform,box-shadow] duration-300',
+          'group-hover:-translate-y-1 group-hover:shadow-xl motion-reduce:group-hover:translate-y-0',
           'bg-linear-to-br text-white',
           THEME[theme],
         )}
@@ -59,7 +59,7 @@ export function EbookCoverCard({
               src={ebook.coverImageUrl}
               alt=""
               loading="lazy"
-              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:group-hover:scale-100"
             />
             {/* Scrim keeps the title readable over the artwork */}
             <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/25 to-transparent" />
@@ -70,7 +70,7 @@ export function EbookCoverCard({
         <div className="relative flex h-full flex-col justify-between p-4 pl-5">
           <div>
             {ebook.topic ? (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/80">
+              <p className="text-[11px] font-semibold text-white/85">
                 {ebook.topic}
               </p>
             ) : null}
@@ -82,8 +82,8 @@ export function EbookCoverCard({
             ) : null}
           </div>
           <div className="flex items-center justify-between gap-2 text-[11px] text-white/90">
-            <span className="inline-flex items-center gap-1">
-              <Clock className="h-3 w-3" />
+            <span className="inline-flex items-center gap-1 tabular-nums">
+              <Clock className="h-3 w-3" aria-hidden />
               {ebook.readMinutes || 5} min
             </span>
             {showStatus && ebook.status ? (

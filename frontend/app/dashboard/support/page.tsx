@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/lib/toast-context'
+import { PageHeader } from '@/components/app/page-kit'
 
 type Ticket = { id: string; subject: string; message: string; category: string; status: string; user_email?: string; created_at: string; updated_at: string }
 
@@ -128,7 +129,7 @@ export default function SupportPage() {
     if (selectedTicket?.id === ticketId) setSelectedTicket(prev => prev ? { ...prev, status: 'closed' } : null)
   }
 
-  const statusColor = (s: string) => s === 'open' ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'
+  const statusColor = (s: string) => s === 'open' ? 'bg-green-500/15 text-green-700 capitalize dark:text-green-400' : 'bg-muted text-muted-foreground capitalize'
 
   if (!gate.ready) return null
 
@@ -138,17 +139,17 @@ export default function SupportPage() {
         <button onClick={() => setSelectedTicket(null)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to tickets
         </button>
-        <Card className="p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-xl font-bold">{selectedTicket.subject}</h1>
+        <Card className="rounded-3xl border-border/70 p-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-xl font-bold text-foreground">{selectedTicket.subject}</h1>
               <div className="flex items-center gap-2 mt-2">
                 <Badge className={statusColor(selectedTicket.status)}>{selectedTicket.status}</Badge>
                 <span className="text-xs text-muted-foreground">{selectedTicket.user_email}</span>
               </div>
             </div>
             {selectedTicket.status !== 'closed' && (
-              <Button variant="outline" size="sm" className="text-red-500" onClick={() => closeTicket(selectedTicket.id)}>
+              <Button variant="outline" size="sm" className="text-destructive" onClick={() => closeTicket(selectedTicket.id)}>
                 <XCircle className="h-3.5 w-3.5 mr-1" /> Close
               </Button>
             )}
@@ -159,17 +160,17 @@ export default function SupportPage() {
         <div className="space-y-3">
           <h3 className="font-semibold text-foreground">Replies ({replies.length})</h3>
           {replies.map(r => (
-            <Card key={r.id} className="p-4">
+            <Card key={r.id} className="rounded-2xl border-border/70 p-4">
               <p className="text-xs text-muted-foreground mb-1">{r.user_email} · {formatDateTime(r.created_at)}</p>
-              <p className="text-sm whitespace-pre-wrap">{r.message}</p>
+              <p className="text-sm text-foreground whitespace-pre-wrap">{r.message}</p>
             </Card>
           ))}
         </div>
 
         {selectedTicket.status !== 'closed' && (
           <div className="flex gap-2">
-            <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type your reply..." onKeyDown={e => e.key === 'Enter' && sendReply()} />
-            <Button onClick={sendReply} disabled={sending || !newMessage.trim()} title="Send"><Send className="h-4 w-4" /></Button>
+            <Input aria-label="Reply" value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type your reply…" onKeyDown={e => e.key === 'Enter' && sendReply()} />
+            <Button onClick={sendReply} disabled={sending || !newMessage.trim()} title="Send" aria-label="Send reply"><Send className="h-4 w-4" /></Button>
           </div>
         )}
       </div>
@@ -178,38 +179,40 @@ export default function SupportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between" data-tour="support-header">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2"><MessageSquare className="h-8 w-8 text-primary" />Support Tickets</h1>
-          <p className="text-muted-foreground text-sm mt-1">{tickets.length} ticket{tickets.length !== 1 ? 's' : ''}</p>
-        </div>
-        <Button onClick={() => setShowForm(true)} data-tour="support-new"><Plus className="h-4 w-4 mr-2" />New Ticket</Button>
+      <div data-tour="support-header">
+        <PageHeader
+          className="mb-0"
+          icon={<MessageSquare aria-hidden />}
+          title="Support tickets"
+          description={<>Ask for help and follow replies from our team · <span className="tabular-nums">{tickets.length}</span> ticket{tickets.length !== 1 ? 's' : ''}</>}
+          actions={<Button onClick={() => setShowForm(true)} data-tour="support-new"><Plus className="h-4 w-4 mr-2" />New ticket</Button>}
+        />
       </div>
 
       {showForm && (
-        <Card className="p-6 space-y-4">
+        <Card className="rounded-3xl border-border/70 p-6 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label>Subject</Label>
-              <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Brief summary of your issue" />
+              <Label htmlFor="ticket-subject">Subject</Label>
+              <Input id="ticket-subject" value={subject} onChange={e => setSubject(e.target.value)} placeholder="Brief summary of your issue" />
             </div>
             <div>
-              <Label>Category</Label>
+              <Label htmlFor="ticket-category">Category</Label>
               <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger id="ticket-category"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="general">General</SelectItem>
                   <SelectItem value="billing">Billing</SelectItem>
                   <SelectItem value="technical">Technical</SelectItem>
-                  <SelectItem value="bug">Bug Report</SelectItem>
-                  <SelectItem value="feature">Feature Request</SelectItem>
+                  <SelectItem value="bug">Bug report</SelectItem>
+                  <SelectItem value="feature">Feature request</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <div>
-            <Label>Message</Label>
-            <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Describe your issue in detail" rows={4} />
+            <Label htmlFor="ticket-message">Message</Label>
+            <Textarea id="ticket-message" value={message} onChange={e => setMessage(e.target.value)} placeholder="Describe your issue in detail" rows={4} />
           </div>
           <div className="flex gap-2">
             <Button onClick={createTicket} disabled={!subject.trim() || !message.trim()}>Submit</Button>
@@ -220,15 +223,15 @@ export default function SupportPage() {
 
       <div data-tour="support-list">
       {loading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}</div>
-        : tickets.length === 0 ? <Card className="p-8 text-center text-muted-foreground">No tickets yet.</Card>
+        : tickets.length === 0 ? <Card className="rounded-3xl border-border/70 p-8 text-center text-muted-foreground">No tickets yet. Use “New ticket” to ask a question or report a problem.</Card>
         : <div className="space-y-3">
           {tickets.map(t => (
-            <Card key={t.id} className="p-4 hover:bg-muted/30 cursor-pointer" onClick={() => openTicket(t)}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{t.subject}</p>
+            <Card key={t.id} className="cursor-pointer rounded-2xl border-border/70 p-4 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/30" onClick={() => openTicket(t)}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-foreground">{t.subject}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline">{t.category}</Badge>
+                    <Badge variant="outline" className="capitalize">{t.category}</Badge>
                     {t.user_email && <span className="text-xs text-muted-foreground">{t.user_email}</span>}
                     <span className="text-xs text-muted-foreground"><Clock className="h-3 w-3 inline mr-0.5" />{formatDate(t.created_at)}</span>
                   </div>

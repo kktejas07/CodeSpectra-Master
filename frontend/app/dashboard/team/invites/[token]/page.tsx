@@ -81,9 +81,9 @@ export default function TeamInvitePage() {
   if (!info || info.error) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md p-8 text-center">
-          <XCircle className="h-10 w-10 text-destructive" />
-          <h1 className="mt-3 text-lg font-semibold">Invitation unavailable</h1>
+        <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center">
+          <XCircle className="mx-auto h-10 w-10 text-destructive" aria-hidden />
+          <h1 className="mt-3 text-lg font-semibold text-foreground">Invitation unavailable</h1>
           <p className="mt-1 text-sm text-muted-foreground">{info?.error || 'This invite may have expired or already been used.'}</p>
           <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>
         </Card>
@@ -93,28 +93,28 @@ export default function TeamInvitePage() {
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8 text-center">
+      <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center">
         {done ? (
           <>
             {done.ok
-              ? <CheckCircle2 className="h-10 w-10 text-green-600" />
-              : <XCircle className="h-10 w-10 text-destructive" />}
-            <h1 className="mt-3 text-lg font-semibold">{done.ok ? 'Welcome!' : 'Could not join'}</h1>
+              ? <CheckCircle2 className="mx-auto h-10 w-10 text-green-600 dark:text-green-400" aria-hidden />
+              : <XCircle className="mx-auto h-10 w-10 text-destructive" aria-hidden />}
+            <h1 className="mt-3 text-lg font-semibold text-foreground">{done.ok ? 'Welcome!' : 'Could not join'}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{done.message}</p>
             {!done.ok && <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>}
           </>
         ) : (
           <>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-              <Building2 className="h-6 w-6 text-primary" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+              <Building2 className="h-6 w-6 text-primary" aria-hidden />
             </div>
-            <h1 className="mt-4 text-lg font-semibold">Join {info.org_name || 'your organization'}</h1>
+            <h1 className="mt-4 text-lg font-semibold text-foreground">Join {info.org_name || 'your organization'}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               You've been invited to join an organization on CodeSpectra.
             </p>
 
             {info.expired || !info.org_active ? (
-              <p className="mt-4 text-sm text-amber-600">
+              <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
                 {info.expired ? 'This invitation has expired.' : 'This organization is currently inactive.'}
               </p>
             ) : emailMatches ? (
@@ -127,7 +127,7 @@ export default function TeamInvitePage() {
                 </Button>
               </>
             ) : (
-              <div className="mt-4 rounded-lg border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+              <div className="mt-4 rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
                 {user
                   ? <>This invite is for <strong className="text-foreground">{info.email}</strong>, but you're signed in as <strong className="text-foreground">{user.email}</strong>. Sign out and accept with the invited account.</>
                   : <>Sign in with <strong className="text-foreground">{info.email}</strong> to accept this invitation.</>}

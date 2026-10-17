@@ -30,7 +30,7 @@ import { CreditCard, Check, Download, Eye, Loader2, RefreshCw } from 'lucide-rea
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { cn } from '@/lib/utils'
-import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
+import { PageHeader } from '@/components/app/page-kit'
 import { findPlan } from '@/lib/billing-catalog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
@@ -374,10 +374,11 @@ function BillingContent() {
     : '—'
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div data-tour="billing-header">
-      <DashboardPageHeader
-        icon={CreditCard}
+      <PageHeader
+        className="mb-0"
+        icon={<CreditCard aria-hidden />}
         title="Billing & subscriptions"
         description="Upgrade, change billing cycle, manage payment methods, and download receipts."
         actions={
@@ -395,13 +396,13 @@ function BillingContent() {
       />
       </div>
 
-      <Card className="rounded-xl border-primary/25 p-6 shadow-sm sm:p-8">
+      <Card className="rounded-3xl border-primary/25 p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-foreground">{subscription.planName}</h2>
             <p className="mt-1 text-muted-foreground">
               {subscription.billingInterval === 'year' ? 'Annual' : 'Monthly'} billing ·{' '}
-              <span className="font-medium text-foreground">{getCurrencySymbol(currency)}{subscription.currentPrice}</span>
+              <span className="font-medium tabular-nums text-foreground">{getCurrencySymbol(currency)}{subscription.currentPrice}</span>
               {subscription.billingInterval === 'year' ? '/year' : '/month'}
             </p>
             {subscription.canceledAt ? (
@@ -430,7 +431,7 @@ function BillingContent() {
           <div className="space-y-3 text-sm">
             <div>
               <p className="text-muted-foreground">Next renewal</p>
-              <p className="font-medium text-foreground">{nextBill}</p>
+              <p className="font-medium tabular-nums text-foreground">{nextBill}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Receipt email</p>
@@ -454,10 +455,10 @@ function BillingContent() {
 
       <div data-tour="billing-invoices">
         <h3 className="mb-3 text-lg font-semibold tracking-tight text-foreground">Invoice history</h3>
-        <Card className="overflow-hidden rounded-xl border-border/60 shadow-sm">
+        <Card className="overflow-hidden rounded-3xl border-border/70">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-muted/50">
+              <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">Invoice</th>
                   <th className="px-4 py-3 text-left font-medium">Date</th>
@@ -477,8 +478,8 @@ function BillingContent() {
                   invoices.map((inv) => (
                     <tr key={inv.id} className="border-t border-border hover:bg-muted/30">
                       <td className="px-4 py-3 font-mono text-xs">{inv.id.slice(0, 8)}…</td>
-                      <td className="px-4 py-3">{inv.date}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 tabular-nums">{inv.date}</td>
+                      <td className="px-4 py-3 tabular-nums">
                           {getCurrencySymbol(inv.currency || currency)}{inv.amount.toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
@@ -507,18 +508,18 @@ function BillingContent() {
         </Card>
       </div>
 
-      <Card className="rounded-xl border-border/60 p-6 shadow-sm">
+      <Card className="rounded-3xl border-border/70 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h3 className="text-lg font-semibold text-foreground">Payment method</h3>
-            <p className="text-sm text-muted-foreground mt-1">Demo card on file — edit labels for your records.</p>
+            <p className="text-sm text-muted-foreground mt-1">The card used for your subscription renewals.</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setCardOpen(true)} disabled={!defaultPm || Boolean(busy)}>
             Edit card
           </Button>
         </div>
         {defaultPm ? (
-          <div className="mt-4 flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4">
+          <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
             <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded bg-linear-to-r from-slate-700 to-slate-900 text-[10px] font-bold text-white">
               {(defaultPm.brand || 'CARD').slice(0, 4).toUpperCase()}
             </div>

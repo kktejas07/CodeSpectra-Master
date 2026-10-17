@@ -6,6 +6,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
@@ -269,17 +270,15 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="w-full space-y-8">
-      <div className="space-y-2" data-tour="settings-header">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Settings className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Settings</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Theme follows the app-wide setting (same as the sidebar control). Language and toggles below save in this
-              browser; notification channels can be tuned in detail from{' '}
+    <div className="w-full space-y-6">
+      <div data-tour="settings-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Settings aria-hidden />}
+          title="Settings"
+          description={
+            <>
+              Theme, language, notifications and account security. Fine-tune each notification channel in{' '}
               <Link
                 href="/dashboard/notifications/preferences"
                 className="font-medium text-primary underline-offset-4 hover:underline"
@@ -287,14 +286,14 @@ export default function SettingsPage() {
                 notification preferences
               </Link>
               .
-            </p>
-          </div>
-        </div>
+            </>
+          }
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card className="rounded-xl border-border/60 shadow-sm" data-tour="settings-appearance">
+          <Card className="overflow-hidden rounded-3xl border-border/70" data-tour="settings-appearance">
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Palette className="h-5 w-5 text-primary" />
@@ -316,9 +315,9 @@ export default function SettingsPage() {
                     key={t.id}
                     type="button"
                     onClick={() => setTheme(t.id)}
-                    className={`flex items-center justify-center gap-2 rounded-lg border px-3 py-3 text-sm font-medium transition-colors ${
+                    className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-primary ${
                       active
-                        ? 'border-primary bg-primary/10 text-foreground'
+                        ? 'border-primary bg-primary/10 text-primary'
                         : 'border-border/60 bg-background text-muted-foreground hover:border-primary/40 hover:bg-muted/40'
                     }`}
                   >
@@ -357,7 +356,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm" data-tour="settings-notifications">
+          <Card className="overflow-hidden rounded-3xl border-border/70" data-tour="settings-notifications">
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Bell className="h-5 w-5 text-primary" />
@@ -397,7 +396,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm" data-tour="settings-security">
+          <Card className="overflow-hidden rounded-3xl border-border/70" data-tour="settings-security">
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Shield className="h-5 w-5 text-primary" />
@@ -441,7 +440,7 @@ export default function SettingsPage() {
             <Separator className="mx-6 w-auto" />
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">
-                <p className="font-medium text-foreground">Face Biometrics</p>
+                <p className="font-medium text-foreground">Face biometrics</p>
                 <p className="text-sm text-muted-foreground">
                   {user?.has_enrolled_face 
                     ? 'Enrolled — identity verified for proctored assessments'
@@ -477,10 +476,10 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 shadow-sm" data-tour="settings-danger">
+          <Card className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6" data-tour="settings-danger">
             <h2 className="text-lg font-semibold text-destructive">Danger zone</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Irreversible or sensitive actions. Confirm in a flow before executing in production.
+              Download a copy of your data, or permanently delete your account. Deleting cannot be undone.
             </p>
             <Separator className="my-5 bg-destructive/20" />
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -497,7 +496,7 @@ export default function SettingsPage() {
         </div>
 
         <aside className="lg:col-span-1">
-          <Card className="sticky top-4 rounded-xl border-border/60 p-5 shadow-sm">
+          <Card className="sticky top-4 rounded-3xl border-border/70 p-5">
             <p className="text-sm font-medium text-foreground">Account</p>
             <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
               Billing, invoices, and plan limits are under{' '}
@@ -520,7 +519,7 @@ export default function SettingsPage() {
             <PasswordInput id="pw-current" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} placeholder="Enter current password" />
             <Label htmlFor="pw-new">New password</Label>
             <PasswordInput id="pw-new" value={pwNew} onChange={e => setPwNew(e.target.value)} placeholder="At least 8 characters" />
-            {pwError ? <p className="text-xs text-red-500">{pwError}</p> : null}
+            {pwError ? <p className="text-xs text-destructive">{pwError}</p> : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPwDialogOpen(false)} disabled={pwSaving}>Cancel</Button>
@@ -533,15 +532,16 @@ export default function SettingsPage() {
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Account Deletion</DialogTitle>
+            <DialogTitle>Confirm account deletion</DialogTitle>
             <DialogDescription>
               Are you absolutely sure you want to delete your account? This action cannot be undone. Enter your password to confirm.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Password</Label>
+              <Label htmlFor="delete-password">Password</Label>
               <Input 
+                id="delete-password"
                 type="password"
                 value={deletePassword} 
                 onChange={e => setDeletePassword(e.target.value)} 
@@ -553,7 +553,7 @@ export default function SettingsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={deletingAccount}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDeleteAccount} disabled={deletingAccount}>
-              {deletingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />} Delete Account
+              {deletingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />} Delete account
             </Button>
           </DialogFooter>
         </DialogContent>

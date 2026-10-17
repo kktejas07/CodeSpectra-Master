@@ -78,7 +78,7 @@ export function AllFiltersDialog({
         <DialogHeader className="border-b px-5 py-4">
           <DialogTitle>All Filters</DialogTitle>
         </DialogHeader>
-        <div className="grid min-h-70 grid-cols-[160px_1fr]">
+        <div className="grid min-h-70 grid-cols-[120px_1fr] sm:grid-cols-[160px_1fr]">
           <nav className="border-r bg-muted/20 py-2">
             {NAV.map((item) => (
               <button
@@ -87,12 +87,12 @@ export function AllFiltersDialog({
                 onClick={() => setTab(item.key)}
                 className={cn(
                   'flex w-full items-center justify-between px-4 py-2.5 text-left text-sm',
-                  tab === item.key ? 'border-l-2 border-primary bg-background font-medium' : 'text-muted-foreground hover:bg-muted/40',
+                  tab === item.key ? 'border-l-2 border-primary bg-background font-medium text-foreground' : 'text-muted-foreground hover:bg-muted/40',
                 )}
               >
                 <span>{item.label}</span>
                 {activeCount(item.key) ? (
-                  <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
+                  <span className="rounded-full bg-primary px-1.5 text-[10px] font-semibold tabular-nums text-primary-foreground">
                     {activeCount(item.key)}
                   </span>
                 ) : null}
@@ -101,7 +101,7 @@ export function AllFiltersDialog({
           </nav>
           <div className="p-4">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-medium">{NAV.find((n) => n.key === tab)?.label}</p>
+              <p className="text-sm font-medium text-foreground">{NAV.find((n) => n.key === tab)?.label}</p>
               <button
                 type="button"
                 className="text-xs text-muted-foreground hover:text-foreground"
@@ -118,9 +118,10 @@ export function AllFiltersDialog({
                     key={opt}
                     type="button"
                     onClick={() => setDraft((d) => ({ ...d, [tab]: toggle(d[tab], opt) }))}
+                    aria-pressed={on}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-sm transition-colors',
-                      on ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted',
+                      'rounded-full border px-3 py-1.5 text-sm transition-colors duration-200',
+                      on ? 'border-primary bg-primary/10 text-primary' : 'border-border text-foreground hover:bg-muted',
                     )}
                   >
                     {opt}

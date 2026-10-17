@@ -63,9 +63,9 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
 
   if (loadErr) {
     return (
-      <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
         <AlertTriangle className="mr-1 inline h-3.5 w-3.5" />
-        Anon Aadhaar SDK unavailable: {loadErr}. Run <code>yarn install</code> in frontend/.
+        Aadhaar verification couldn&apos;t load right now ({loadErr}). Please refresh the page or try again later.
       </div>
     )
   }
@@ -96,8 +96,8 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
       />
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-teal-600" />
-          <span className="text-sm font-medium">Anon Aadhaar</span>
+          <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />
+          <span className="text-sm font-medium text-foreground">Anon Aadhaar</span>
           <Badge variant="outline" className="text-[10px]">
             {useTestAadhaar ? 'Test mode' : 'Live UIDAI'}
           </Badge>
@@ -106,10 +106,10 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
           Scan Aadhaar QR. We learn age≥18, gender, state, PIN only — not your Aadhaar number.
         </p>
         {done ? (
-          <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
+          <div className="flex items-start gap-2 rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600 dark:text-green-400" aria-hidden />
             <div>
-              <p className="font-medium">Verified</p>
+              <p className="font-medium text-foreground">Verified</p>
               <p className="text-xs text-muted-foreground">
                 Age≥18: {revealed?.age_above_18 ? 'yes' : '—'}
                 {revealed?.gender ? ` · ${revealed.gender}` : ''}

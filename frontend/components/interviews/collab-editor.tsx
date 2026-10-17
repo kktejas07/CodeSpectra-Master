@@ -138,21 +138,22 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
   }
 
   return (
-    <div className="rounded-lg border border-border/60 overflow-hidden">
+    <div className="rounded-2xl border border-border/70 overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center justify-between bg-muted/30 px-3 py-2 border-b border-border/40">
         <div className="flex items-center gap-2">
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="h-7 rounded border border-border/40 bg-background px-2 text-xs outline-none"
+            aria-label="Language"
+            className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {languages.map((l) => (
               <option key={l.value} value={l.value}>{l.label}</option>
             ))}
           </select>
           {lastSave && (
-            <span className="text-[10px] text-muted-foreground">Saved {lastSave}</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">Saved {lastSave}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -184,9 +185,10 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
         value={code}
         onChange={(e) => handleChange(e.target.value)}
         readOnly={readOnly}
-        className="w-full min-h-[400px] bg-zinc-950 p-4 text-sm font-mono text-green-400 outline-none resize-y leading-relaxed"
+        aria-label="Shared code editor"
+        className="w-full min-h-[400px] bg-zinc-950 p-4 text-sm font-mono text-zinc-100 caret-zinc-100 outline-none resize-y leading-relaxed placeholder:text-zinc-500"
         spellCheck={false}
-        placeholder="// Start coding..."
+        placeholder="// Start coding…"
         style={{ tabSize: 2 }}
       />
     </div>

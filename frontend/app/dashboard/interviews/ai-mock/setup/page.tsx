@@ -13,6 +13,7 @@ import {
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader } from '@/components/app/page-kit'
 import { ROLE_OPTIONS, DIFFICULTY_LEVELS } from '@/lib/interviews/ai-mock-types'
 
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -238,28 +239,32 @@ export default function AiMockSetupPage() {
   const resumeSourceOptions: { value: ResumeSource; label: string; icon: React.ReactNode }[] = [
     { value: 'none', label: 'None', icon: <FileText className="h-4 w-4" /> },
     { value: 'upload', label: 'Upload PDF', icon: <Upload className="h-4 w-4" /> },
-    { value: 'profile', label: 'From Profile', icon: <User className="h-4 w-4" /> },
+    { value: 'profile', label: 'From profile', icon: <User className="h-4 w-4" /> },
   ]
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3" data-tour="ai-mock-setup-header">
-        <Link href="/dashboard/interviews" className="rounded-lg p-2 hover:bg-muted">
-          <ArrowLeft className="h-4 w-4" />
+      <div className="space-y-4" data-tour="ai-mock-setup-header">
+        <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to interviews
         </Link>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Brain className="h-6 w-6 text-primary" /> AI Mock Interview
-        </h1>
+        <PageHeader
+          className="mb-0"
+          icon={<Brain aria-hidden />}
+          title="AI mock interview"
+          description="Pick a role, difficulty and length. Add your resume if you want questions tailored to your experience."
+        />
       </div>
 
-      <Card className="p-6 space-y-5" data-tour="ai-mock-setup-options">
+      <Card className="max-w-3xl rounded-3xl border-border/70 p-6 space-y-5" data-tour="ai-mock-setup-options">
         {/* Role */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Target Role</label>
+          <label htmlFor="mock-role" className="text-sm font-medium text-foreground">Target role</label>
           <select
+            id="mock-role"
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             {ROLE_OPTIONS.map((r) => (
               <option key={r} value={r}>{r}</option>
@@ -269,22 +274,24 @@ export default function AiMockSetupPage() {
             <input
               value={customRole}
               onChange={(e) => setCustomRole(e.target.value)}
-              placeholder="Enter your target role..."
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="Enter your target role…"
+              aria-label="Custom target role"
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           )}
         </div>
 
         {/* Difficulty */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Difficulty</label>
-          <div className="grid grid-cols-4 gap-2">
+          <p className="text-sm font-medium text-foreground">Difficulty</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Difficulty">
             {DIFFICULTY_LEVELS.map((d) => (
               <button
                 key={d}
                 type="button"
                 onClick={() => setDifficulty(d)}
-                className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                aria-pressed={difficulty === d}
+                className={`min-h-10 rounded-xl border px-3 py-2 text-xs font-medium transition-colors duration-200 ${
                   difficulty === d
                     ? 'bg-primary/10 border-primary text-primary'
                     : 'bg-background border-border text-muted-foreground hover:border-primary/40'
@@ -298,14 +305,15 @@ export default function AiMockSetupPage() {
 
         {/* Duration */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Duration</label>
-          <div className="flex gap-2">
+          <p className="text-sm font-medium text-foreground">Duration</p>
+          <div className="flex gap-2" role="group" aria-label="Duration">
             {DURATION_OPTIONS.map((d) => (
               <button
                 key={d}
                 type="button"
                 onClick={() => setDuration(d)}
-                className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                aria-pressed={duration === d}
+                className={`min-h-10 flex-1 rounded-xl border px-3 py-2 text-xs font-medium tabular-nums transition-colors duration-200 ${
                   duration === d
                     ? 'bg-primary/10 border-primary text-primary'
                     : 'bg-background border-border text-muted-foreground hover:border-primary/40'
@@ -319,18 +327,18 @@ export default function AiMockSetupPage() {
 
         {/* Resume Source Selector */}
         <div className="space-y-3" data-tour="ai-mock-resume-source">
-          <label className="text-sm font-medium flex items-center gap-2">
-            <FileText className="h-4 w-4" /> Resume (optional)
-          </label>
+          <p className="text-sm font-medium text-foreground flex items-center gap-2">
+            <FileText className="h-4 w-4 text-primary" aria-hidden /> Resume (optional)
+          </p>
 
           {/* Segmented Control */}
-          <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+          <div className="flex rounded-xl border border-border bg-muted/50 p-0.5">
             {resumeSourceOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => handleSourceChange(opt.value)}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                   resumeSource === opt.value
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -350,7 +358,7 @@ export default function AiMockSetupPage() {
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors ${
+                className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 cursor-pointer transition-colors ${
                   dragOver
                     ? 'border-primary bg-primary/5'
                     : resumeText
@@ -369,21 +377,21 @@ export default function AiMockSetupPage() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 ) : resumeText ? (
                   <>
-                    <CheckCircle className="h-8 w-8 text-green-500" />
+                    <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" aria-hidden />
                     <p className="text-sm font-medium text-green-600 dark:text-green-400">Resume extracted</p>
                     <p className="text-xs text-muted-foreground">Click or drop to replace</p>
                   </>
                 ) : (
                   <>
                     <Upload className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-sm font-medium">Drop your PDF here</p>
+                    <p className="text-sm font-medium text-foreground">Drop your PDF here</p>
                     <p className="text-xs text-muted-foreground">or click to browse (PDF, max 5 MB)</p>
                   </>
                 )}
               </div>
 
               {extractError && (
-                <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3">
+                <div className="flex items-start gap-2 rounded-xl bg-destructive/10 p-3">
                   <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                   <p className="text-xs text-destructive">{extractError}</p>
                 </div>
@@ -402,8 +410,9 @@ export default function AiMockSetupPage() {
                 ref={textareaRef}
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your resume content here..."
-                className="w-full h-24 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                placeholder="Paste your resume content here…"
+                aria-label="Resume text"
+                className="w-full h-24 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
           )}
@@ -412,19 +421,19 @@ export default function AiMockSetupPage() {
           {resumeSource === 'profile' && (
             <div className="space-y-3">
               {loadingResumes ? (
-                <div className="flex items-center justify-center gap-2 rounded-lg border border-border p-6">
+                <div className="flex items-center justify-center gap-2 rounded-2xl border border-border p-6">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading your resumes...</span>
+                  <span className="text-sm text-muted-foreground">Loading your resumes…</span>
                 </div>
               ) : profileResumes.length === 0 ? (
-                <div className="flex flex-col items-center gap-3 rounded-lg border border-border p-6">
+                <div className="flex flex-col items-center gap-3 rounded-2xl border border-border p-6">
                   <FileText className="h-8 w-8 text-muted-foreground" />
                   <div className="text-center">
-                    <p className="text-sm font-medium">No resumes found</p>
+                    <p className="text-sm font-medium text-foreground">No resumes found</p>
                     <p className="text-xs text-muted-foreground">
                       Upload a resume in{' '}
                       <Link href="/dashboard/resumes" className="text-primary underline">
-                        My Resumes
+                        My resumes
                       </Link>{' '}
                       first, or upload a PDF above.
                     </p>
@@ -437,7 +446,7 @@ export default function AiMockSetupPage() {
                       key={resume.id}
                       type="button"
                       onClick={() => handleSelectProfileResume(resume)}
-                      className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                      className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-colors ${
                         selectedResumeId === resume.id
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/40'
@@ -445,7 +454,7 @@ export default function AiMockSetupPage() {
                     >
                       <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{resume.file_name}</p>
+                        <p className="text-sm font-medium text-foreground truncate">{resume.file_name}</p>
                         <p className="text-xs text-muted-foreground">
                           {resume.text_content ? 'Text ready' : 'Upload PDF to use'}
                           {' · '}
@@ -468,7 +477,7 @@ export default function AiMockSetupPage() {
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
-                    className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 cursor-pointer transition-colors ${
+                    className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-4 cursor-pointer transition-colors ${
                       dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
                     }`}
                   >
@@ -497,11 +506,11 @@ export default function AiMockSetupPage() {
 
           {/* Resume text preview (when text is loaded from any source) */}
           {resumeSource !== 'none' && resumeText && (
-            <div className="rounded-lg bg-muted/50 p-3">
+            <div className="rounded-xl bg-muted/50 p-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-medium text-muted-foreground">
                   <ClipboardPaste className="inline h-3 w-3 mr-1" />
-                  Resume text loaded ({resumeText.length.toLocaleString()} chars)
+                  Resume text loaded (<span className="tabular-nums">{resumeText.length.toLocaleString()}</span> characters)
                 </p>
                 <button
                   type="button"
@@ -511,8 +520,8 @@ export default function AiMockSetupPage() {
                   Clear
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-3 font-mono">
-                {resumeText.slice(0, 300)}{resumeText.length > 300 ? '...' : ''}
+              <p className="text-xs text-muted-foreground line-clamp-3">
+                {resumeText.slice(0, 300)}{resumeText.length > 300 ? '…' : ''}
               </p>
             </div>
           )}
@@ -530,9 +539,9 @@ export default function AiMockSetupPage() {
           data-tour="ai-mock-setup-start"
         >
           {starting ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing...</>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
           ) : (
-            <><Sparkles className="mr-2 h-4 w-4" /> Start Interview</>
+            <><Sparkles className="mr-2 h-4 w-4" /> Start interview</>
           )}
         </Button>
       </Card>

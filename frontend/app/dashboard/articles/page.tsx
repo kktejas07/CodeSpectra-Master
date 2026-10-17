@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
@@ -84,52 +85,52 @@ export default function ArticlesNewsroomPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div data-tour="articles-header">
-          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-            <Newspaper className="h-8 w-8 text-primary" /> Articles / Newsroom
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Expert insights, product updates, and career Signals from CodeSpectra.
-          </p>
-        </div>
-        <Button asChild variant="outline" size="sm" data-tour="open-public-newsroom">
-          <Link href="/blog" target="_blank">
-            Open public newsroom
-          </Link>
-        </Button>
-      </div>
+      <PageHeader
+        className="mb-0"
+        icon={<Newspaper aria-hidden />}
+        title={<span data-tour="articles-header">Articles</span>}
+        description="Insights, product updates and career advice from the CodeSpectra team."
+        actions={
+          <Button asChild variant="outline" size="sm" data-tour="open-public-newsroom">
+            <Link href="/blog" target="_blank">
+              Open public newsroom
+            </Link>
+          </Button>
+        }
+      />
 
       {posts.length === 0 ? (
         <EmptyState
           variant="default"
           title="No published articles yet"
-          description="Superadmins can publish from Admin → Blog / Signals. New posts appear here automatically."
+          description="New articles will show up here as soon as they are published. Check back soon."
           actionLabel="Open public newsroom"
           actionHref="/blog"
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2" data-tour="articles-grid">
+        <div data-tour="articles-grid">
+        <BentoGrid className="lg:grid-cols-3">
           {posts.map((p) => (
             <Link key={p.slug} href={`/blog/${p.slug}`}>
-              <Card className="h-full p-4 transition-colors hover:border-primary/40 hover:bg-muted/30">
+              <Panel interactive className="h-full p-5">
                 {p.category ? (
                   <Badge variant="secondary" className="mb-2">
                     {p.category}
                   </Badge>
                 ) : null}
-                <p className="font-semibold leading-snug">{p.title}</p>
+                <p className="font-semibold leading-snug text-foreground">{p.title}</p>
                 {p.excerpt ? (
                   <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{p.excerpt}</p>
                 ) : null}
-                <p className="mt-3 inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <p className="mt-3 inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" />
                   {p.read_minutes || 5} min
                   {p.published_at ? ` · ${formatDate(p.published_at)}` : ''}
                 </p>
-              </Card>
+              </Panel>
             </Link>
           ))}
+        </BentoGrid>
         </div>
       )}
     </div>

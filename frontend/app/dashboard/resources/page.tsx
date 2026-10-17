@@ -7,6 +7,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader, Panel, Section, BentoGrid } from '@/components/app/page-kit'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
@@ -97,19 +98,15 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="w-full space-y-10">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Explore Resources</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Pocket ebooks and career essentials — original CodeSpectra guides you can flip through.
-        </p>
-      </div>
+    <div className="w-full space-y-8">
+      <PageHeader
+        className="mb-0"
+        icon={<Library aria-hidden />}
+        title="Explore resources"
+        description="Pocket ebooks and career essentials — original CodeSpectra guides you can flip through."
+      />
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-semibold">Ebooks</h2>
-          <p className="text-sm text-muted-foreground">Unstop-style flipbooks. Tap a cover to read.</p>
-        </div>
+      <Section title="Ebooks" description="Flip-through pocket guides. Tap a cover to start reading.">
         {loadingEbooks ? (
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading ebooks…
@@ -129,33 +126,32 @@ export default function ResourcesPage() {
             ))}
           </div>
         )}
-      </section>
+      </Section>
 
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold">More resources</h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <Section title="More resources">
+        <BentoGrid className="lg:grid-cols-3">
           {LINK_RESOURCES.map((r) => {
             const Icon = r.icon
             return (
               <Link key={r.href} href={r.href}>
-                <Card className="flex h-full flex-col gap-3 p-4 transition-colors hover:border-primary/40 hover:bg-muted/30">
+                <Panel interactive className="flex h-full flex-col gap-3 p-5">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
+                    <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" aria-hidden />
                     </span>
                     <Badge variant="secondary">{r.tag}</Badge>
                   </div>
                   <div>
-                    <p className="font-medium">{r.title}</p>
+                    <p className="font-medium text-foreground">{r.title}</p>
                     <p className="mt-1 text-sm text-muted-foreground">{r.description}</p>
                   </div>
-                  <p className="mt-auto text-xs text-muted-foreground">~{r.minutes} min</p>
-                </Card>
+                  <p className="mt-auto text-xs tabular-nums text-muted-foreground">~{r.minutes} min</p>
+                </Panel>
               </Link>
             )
           })}
-        </div>
-      </section>
+        </BentoGrid>
+      </Section>
     </div>
   )
 }

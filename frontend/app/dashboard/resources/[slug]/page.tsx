@@ -202,10 +202,10 @@ export default function EbookReaderPage() {
   if (error || !ebook) {
     return (
       <div className="flex w-full flex-col items-center space-y-4 py-16 text-center">
-        <p className="font-medium">{error || 'Ebook not found'}</p>
+        <p className="font-medium text-foreground">{error || 'Ebook not found'}</p>
         <Button asChild variant="outline">
           <Link href="/dashboard/resources">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Resources
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to resources
           </Link>
         </Button>
       </div>
@@ -222,7 +222,7 @@ export default function EbookReaderPage() {
         </Button>
 
         {ebook.coverImageUrl ? (
-          <div className="relative overflow-hidden rounded-xl shadow-lg">
+          <div className="relative overflow-hidden rounded-3xl shadow-lg dark:shadow-none">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={ebook.coverImageUrl}
@@ -231,7 +231,7 @@ export default function EbookReaderPage() {
             />
             <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
+              <p className="text-xs font-semibold text-white/85">
                 {ebook.topic || 'Guide'}
               </p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight drop-shadow-sm sm:text-3xl">
@@ -247,7 +247,7 @@ export default function EbookReaderPage() {
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-bold tracking-tight">{ebook.title}</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">{ebook.title}</h1>
             {ebook.subtitle ? (
               <p className="mt-1 text-sm text-muted-foreground">{ebook.subtitle}</p>
             ) : null}
@@ -268,7 +268,7 @@ export default function EbookReaderPage() {
         <div className="text-center py-6">
           <Button onClick={() => setShowQuiz(true)} size="lg" className="gap-2">
             <HelpCircle className="h-5 w-5" />
-            Take Quiz ({quizQuestions.length} questions)
+            Take the quiz (<span className="tabular-nums">{quizQuestions.length}</span> questions)
           </Button>
           <p className="text-xs text-muted-foreground mt-2">Test your understanding of this ebook</p>
         </div>

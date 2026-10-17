@@ -70,36 +70,36 @@ export function EbookOutlineReview({ topic, outline: initialOutline, onConfirm, 
   }
 
   const typeColors: Record<string, string> = {
-    cover: 'bg-purple-500/10 text-purple-600',
-    toc: 'bg-blue-500/10 text-blue-600',
-    section: 'bg-green-500/10 text-green-600',
-    infographic: 'bg-orange-500/10 text-orange-600',
-    code: 'bg-cyan-500/10 text-cyan-600',
-    quiz: 'bg-pink-500/10 text-pink-600',
-    timeline: 'bg-amber-500/10 text-amber-600',
-    callout: 'bg-red-500/10 text-red-600',
-    journey: 'bg-indigo-500/10 text-indigo-600',
-    tips: 'bg-emerald-500/10 text-emerald-600',
-    compare: 'bg-violet-500/10 text-violet-600',
-    stats: 'bg-teal-500/10 text-teal-600',
+    cover: 'bg-primary/10 text-primary',
+    toc: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+    section: 'bg-muted text-muted-foreground',
+    infographic: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
+    code: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
+    quiz: 'bg-pink-500/10 text-pink-700 dark:text-pink-400',
+    timeline: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    callout: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
+    journey: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+    tips: 'bg-primary/10 text-primary',
+    compare: 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400',
+    stats: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
   }
 
   return (
-    <Card className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <Card className="rounded-3xl border-border/70 p-6 space-y-4">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-lg font-bold">Review Outline</h3>
+          <h3 className="text-lg font-bold text-foreground">Review outline</h3>
           <p className="text-sm text-muted-foreground">
             Review and edit the chapter outline for "{topic}" before generating content.
           </p>
         </div>
-        <Badge variant="secondary">{outline.length} chapters</Badge>
+        <Badge variant="secondary" className="shrink-0 tabular-nums">{outline.length} chapters</Badge>
       </div>
 
       <div className="space-y-2 max-h-[400px] overflow-y-auto">
         {outline.map((item, idx) => (
-          <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-card/50">
-            <GripVertical className="h-4 w-4 text-muted-foreground mt-1 shrink-0 cursor-move" />
+          <div key={item.id} className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-card/50">
+            <GripVertical className="h-4 w-4 text-muted-foreground mt-1 shrink-0 cursor-move" aria-hidden />
             <div className="flex-1 min-w-0">
               {editingId === item.id ? (
                 <div className="space-y-2">
@@ -108,18 +108,20 @@ export function EbookOutlineReview({ topic, outline: initialOutline, onConfirm, 
                     onChange={(e) => setEditTitle(e.target.value)}
                     className="h-8 text-sm"
                     placeholder="Chapter title"
+                    aria-label="Chapter title"
                   />
                   <Input
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
                     className="h-8 text-sm"
                     placeholder="Brief description"
+                    aria-label="Chapter description"
                   />
                   <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" onClick={saveEditing}>
+                    <Button size="sm" variant="ghost" onClick={saveEditing} aria-label="Save chapter">
                       <Check className="h-3 w-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={cancelEditing}>
+                    <Button size="sm" variant="ghost" onClick={cancelEditing} aria-label="Cancel editing">
                       <X className="h-3 w-3" />
                     </Button>
                   </div>
@@ -127,8 +129,8 @@ export function EbookOutlineReview({ topic, outline: initialOutline, onConfirm, 
               ) : (
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{idx + 1}.</span>
-                    <p className="text-sm font-medium">{item.title}</p>
+                    <span className="text-xs tabular-nums text-muted-foreground">{idx + 1}.</span>
+                    <p className="text-sm font-medium text-foreground">{item.title}</p>
                     <Badge variant="outline" className={`text-[10px] ${typeColors[item.type] || ''}`}>{item.type}</Badge>
                   </div>
                   {item.description && (
@@ -138,10 +140,10 @@ export function EbookOutlineReview({ topic, outline: initialOutline, onConfirm, 
               )}
             </div>
             <div className="flex gap-1 shrink-0">
-              <Button size="sm" variant="ghost" onClick={() => startEditing(item)}>
+              <Button size="sm" variant="ghost" onClick={() => startEditing(item)} aria-label={`Edit ${item.title}`}>
                 <Edit2 className="h-3 w-3" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => removeItem(item.id)}>
+              <Button size="sm" variant="ghost" onClick={() => removeItem(item.id)} aria-label={`Remove ${item.title}`}>
                 <Trash2 className="h-3 w-3 text-destructive" />
               </Button>
             </div>
@@ -149,15 +151,15 @@ export function EbookOutlineReview({ topic, outline: initialOutline, onConfirm, 
         ))}
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-4 border-t border-border">
         <Button variant="outline" size="sm" onClick={addItem}>
-          <Plus className="h-3 w-3 mr-1" /> Add Chapter
+          <Plus className="h-3 w-3 mr-1" /> Add chapter
         </Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
           <Button onClick={() => onConfirm(outline)} disabled={loading || outline.length === 0}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-            Generate Ebook
+            Generate ebook
           </Button>
         </div>
       </div>

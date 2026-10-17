@@ -31,6 +31,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { cn } from '@/lib/utils'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
 
 type RecentItem = {
   type: string
@@ -41,11 +42,11 @@ type RecentItem = {
 }
 
 const TYPE_META: Record<string, { label: string; icon: typeof BookOpen; color: string }> = {
-  course: { label: 'Course', icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
-  lesson: { label: 'Lesson', icon: Video, color: 'text-violet-500 bg-violet-500/10' },
-  problem: { label: 'Problem', icon: Code2, color: 'text-emerald-500 bg-emerald-500/10' },
-  article: { label: 'Article', icon: Newspaper, color: 'text-amber-500 bg-amber-500/10' },
-  quiz: { label: 'Quiz', icon: ListChecks, color: 'text-cyan-500 bg-cyan-500/10' },
+  course: { label: 'Course', icon: BookOpen, color: 'text-primary bg-primary/10' },
+  lesson: { label: 'Lesson', icon: Video, color: 'text-violet-600 dark:text-violet-400 bg-violet-500/10' },
+  problem: { label: 'Problem', icon: Code2, color: 'text-rose-600 dark:text-rose-400 bg-rose-500/10' },
+  article: { label: 'Article', icon: Newspaper, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10' },
+  quiz: { label: 'Quiz', icon: ListChecks, color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10' },
 }
 
 function typeMeta(type: string) {
@@ -246,32 +247,33 @@ export default function RecentlyViewedPage() {
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-3" data-tour="recent-header">
-        <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-            <History className="h-7 w-7 text-primary" />
-            Recently Viewed
-            {items.length > 0 && (
-              <Badge variant="secondary" className="tabular-nums">
-                {items.length}
-              </Badge>
-            )}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Pick up where you left off — courses, lessons, and problems you opened.
-          </p>
-        </div>
-        {items.length > 0 && (
-          <Button variant="outline" size="sm" onClick={clearAll} disabled={clearing}>
-            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            {clearing ? 'Clearing…' : 'Clear history'}
-          </Button>
-        )}
+      <div data-tour="recent-header">
+        <PageHeader
+          className="mb-0"
+          icon={<History aria-hidden />}
+          title={
+            <span className="flex flex-wrap items-center gap-2">
+              Recently viewed
+              {items.length > 0 && (
+                <Badge variant="secondary" className="tabular-nums">
+                  {items.length}
+                </Badge>
+              )}
+            </span>
+          }
+          description="Pick up where you left off — courses, lessons, and problems you opened."
+          actions={items.length > 0 ? (
+            <Button variant="outline" size="sm" onClick={clearAll} disabled={clearing}>
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              {clearing ? 'Clearing…' : 'Clear history'}
+            </Button>
+          ) : undefined}
+        />
       </div>
 
       {error ? (
-        <Card className="flex flex-col items-center gap-3 p-10 text-center">
-          <p className="text-sm font-medium">Couldn&apos;t load your history</p>
+        <Card className="flex flex-col items-center gap-3 rounded-3xl p-10 text-center">
+          <p className="text-sm font-medium text-foreground">Couldn&apos;t load your history</p>
           <p className="text-xs text-muted-foreground">{error}</p>
           <Button size="sm" onClick={load}>
             <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Try again
@@ -289,47 +291,17 @@ export default function RecentlyViewedPage() {
         <>
           {/* ── 4 Stat Cards ──────────────────────────────────────────── */}
           <div
-            className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
             data-tour="recent-stats"
           >
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                  <History className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold tabular-nums">{stats.total}</p>
-                  <p className="text-xs text-muted-foreground">Total items</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
-                  <Clock className="h-5 w-5 text-emerald-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold tabular-nums">{stats.today}</p>
-                  <p className="text-xs text-muted-foreground">Viewed today</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-                  <CalendarDays className="h-5 w-5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold tabular-nums">{stats.thisWeek}</p>
-                  <p className="text-xs text-muted-foreground">This week</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
+            <StatCard icon={<History aria-hidden />} label="Total items" value={stats.total} />
+            <StatCard icon={<Clock aria-hidden />} label="Viewed today" value={stats.today} />
+            <StatCard icon={<CalendarDays aria-hidden />} label="This week" value={stats.thisWeek} />
+            <Card className="rounded-3xl border-border/70 p-5">
+              <div className="flex items-center gap-4">
                 <div
                   className={cn(
-                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                    'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
                     topMeta?.color || 'bg-muted',
                   )}
                 >
@@ -340,12 +312,13 @@ export default function RecentlyViewedPage() {
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-bold capitalize">
+                  <p className="text-sm font-medium text-muted-foreground">Most viewed</p>
+                  <p className="text-lg font-bold capitalize text-foreground">
                     {topMeta?.label || '—'}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {topMeta ? `${stats.topCount} views` : 'Most viewed'}
-                  </p>
+                  {topMeta && (
+                    <p className="text-xs tabular-nums text-muted-foreground">{stats.topCount} views</p>
+                  )}
                 </div>
               </div>
             </Card>
@@ -404,8 +377,8 @@ export default function RecentlyViewedPage() {
 
           {/* ── List ─────────────────────────────────────────────────── */}
           {filtered.length === 0 ? (
-            <Card className="p-10 text-center">
-              <p className="text-sm font-medium">No matches</p>
+            <Card className="rounded-3xl p-10 text-center">
+              <p className="text-sm font-medium text-foreground">No matches</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Try a different search or clear the type filter.
               </p>
@@ -425,7 +398,7 @@ export default function RecentlyViewedPage() {
             <div className="space-y-7" data-tour="recent-list">
               {groups.map((group) => (
                 <section key={group.name} aria-label={group.name}>
-                  <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h2 className="mb-2.5 text-sm font-semibold text-muted-foreground">
                     {group.name}
                   </h2>
                   <ul className="space-y-2">
@@ -434,7 +407,7 @@ export default function RecentlyViewedPage() {
                       const Icon = meta.icon
                       return (
                         <li key={`${it.type}-${it.id}`}>
-                          <Card className="group flex items-center gap-3 p-3 transition-colors hover:bg-muted/40">
+                          <Card className="group flex items-center gap-3 rounded-2xl border-border/70 p-3 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/40">
                             <span
                               className={cn(
                                 'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
@@ -444,7 +417,7 @@ export default function RecentlyViewedPage() {
                               <Icon className="h-4 w-4" />
                             </span>
                             <Link href={it.href} className="min-w-0 flex-1">
-                              <p className="truncate font-medium leading-tight">
+                              <p className="truncate font-medium leading-tight text-foreground">
                                 {it.title || 'Untitled'}
                               </p>
                               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -488,13 +461,13 @@ export default function RecentlyViewedPage() {
           href="/dashboard/activity/sessions"
           className="inline-flex items-center gap-1.5 text-primary hover:underline"
         >
-          <Video className="h-3.5 w-3.5" /> My Sessions
+          <Video className="h-3.5 w-3.5" /> My sessions
         </Link>
         <Link
           href="/dashboard/activity/bookmarks"
           className="inline-flex items-center gap-1.5 text-primary hover:underline"
         >
-          <Bookmark className="h-3.5 w-3.5" /> Bookmarked Questions
+          <Bookmark className="h-3.5 w-3.5" /> Bookmarked questions
         </Link>
       </div>
     </div>

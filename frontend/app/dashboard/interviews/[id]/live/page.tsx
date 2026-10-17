@@ -110,7 +110,7 @@ export default function LiveInterviewPage() {
       <div className="flex flex-col items-center justify-center gap-4 h-[60vh]">
         <p className="text-destructive text-sm max-w-md text-center">{error}</p>
         {error.includes('unreachable') && (
-          <p className="text-muted-foreground text-xs">Run: docker compose up livekit</p>
+          <p className="text-muted-foreground text-xs">The video service isn&apos;t reachable right now. Please try again in a few minutes.</p>
         )}
         <Link href={`/dashboard/interviews/${id}`} className="text-sm text-primary hover:underline">
           ← Back to interview
@@ -121,16 +121,16 @@ export default function LiveInterviewPage() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
-      <div className="flex items-center justify-between px-4 py-2 border-b">
+      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-card">
         <Link href={`/dashboard/interviews/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3 w-3" /> Back
         </Link>
-        <p className="text-sm font-medium">Interview Live Room</p>
+        <p className="text-sm font-medium text-foreground">Interview live room</p>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant={micOn ? 'default' : 'destructive'} onClick={toggleMic}>
+          <Button size="sm" variant={micOn ? 'default' : 'destructive'} onClick={toggleMic} aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'} aria-pressed={!micOn}>
             {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
           </Button>
-          <Button size="sm" variant={camOn ? 'default' : 'destructive'} onClick={toggleCam}>
+          <Button size="sm" variant={camOn ? 'default' : 'destructive'} onClick={toggleCam} aria-label={camOn ? 'Turn camera off' : 'Turn camera on'} aria-pressed={!camOn}>
             {camOn ? <VideoIcon className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
           </Button>
           <Button size="sm" variant="outline" onClick={leave}>Leave</Button>
@@ -199,7 +199,7 @@ function ParticipantTile({ participant }: { participant: Participant }) {
   }, [audioTrack])
 
   return (
-    <div className="relative rounded-lg overflow-hidden bg-muted flex items-center justify-center">
+    <div className="relative rounded-2xl overflow-hidden bg-neutral-900 flex items-center justify-center">
       <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted={participant.isLocal} />
       <audio ref={audioRef} autoPlay />
       <span className="absolute bottom-2 left-2 text-xs bg-black/60 text-white px-2 py-0.5 rounded">

@@ -17,6 +17,7 @@ import { ArrowLeft, ArrowRight, Save, CheckCircle2, User, Briefcase, GraduationC
 import { FileText, Calendar, MapPin, UploadCloud, FileBadge2, Trophy, UserCircle, Search, MapPinIcon } from 'lucide-react'
 import { AnonAadhaarProfileCard } from '@/components/kyc/AnonAadhaarProfileCard'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { PageHeader } from '@/components/app/page-kit'
 
 // Wizard Steps Configuration
 const STEPS = [
@@ -379,23 +380,24 @@ export default function EditProfileWizard() {
   return (
     <div className="w-full py-8 px-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 pb-4 border-b border-border">
-        <div className="flex items-center gap-4">
-          <Link href="/dashboard/profile">
-            <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted">
-              <ArrowLeft className="h-5 w-5" />
+      <Link href="/dashboard/profile" className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-4 w-4" /> Back to profile
+      </Link>
+      <PageHeader
+        className="mb-8 border-b border-border pb-5"
+        icon={<UserCircle aria-hidden />}
+        title="Edit profile"
+        description="Keep your details up to date — they power your public profile and fill in your resumes."
+        actions={
+          <>
+            <Button variant="outline" onClick={prevStep} disabled={step === 1}>Back</Button>
+            <Button onClick={handleSave} disabled={loading}>
+               {loading ? <Sparkles className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+               Save
             </Button>
-          </Link>
-          <h1 className="text-2xl font-bold">Edit Profile</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={prevStep} disabled={step === 1}>Back</Button>
-          <Button onClick={handleSave} disabled={loading} className="bg-primary hover:bg-primary/90 text-primary-foreground">
-             {loading ? <Sparkles className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-             Save
-          </Button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
         
@@ -405,17 +407,17 @@ export default function EditProfileWizard() {
           {/* Create Resume Promo */}
           <Link
             href="/dashboard/resumes/builder"
-            className="group relative block overflow-hidden rounded-2xl border border-sky-400/30 bg-linear-to-br from-sky-600 via-blue-600 to-indigo-700 p-4 text-white shadow-lg shadow-blue-900/30 transition hover:scale-[1.01] hover:shadow-xl hover:shadow-blue-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+            className="group relative block overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary via-primary to-indigo-700 p-4 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 dark:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl transition group-hover:bg-white/20" />
             <div className="relative flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
-                  <FileText className="h-5 w-5" />
+                  <FileText className="h-5 w-5" aria-hidden />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold leading-tight">Create your Resume</p>
-                  <p className="text-[11px] text-white/75">Build a portfolio-ready CV in minutes</p>
+                  <p className="text-sm font-semibold leading-tight">Create your resume</p>
+                  <p className="text-xs text-white/80">Build a portfolio-ready CV in minutes</p>
                 </div>
               </div>
               <ArrowRight className="h-4 w-4 shrink-0 opacity-80 transition group-hover:translate-x-0.5" />
@@ -423,13 +425,13 @@ export default function EditProfileWizard() {
           </Link>
 
            {/* Profile Completion Box */}
-           <Card className="p-4 border-border/50 shadow-sm">
-              <h3 className="font-semibold text-foreground">Complete your Profile</h3>
+           <Card className="rounded-3xl p-5 border-border/70">
+              <h3 className="font-semibold text-foreground">Complete your profile</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-3">Stay ahead of the competition by regularly updating your profile.</p>
               <div className="w-full bg-muted rounded-full h-1.5 mb-1">
-                <div className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${completionPercentage}%` }}></div>
+                <div className="bg-primary h-1.5 rounded-full transition-all duration-500 motion-reduce:transition-none" style={{ width: `${completionPercentage}%` }}></div>
               </div>
-              <div className="text-right text-xs font-medium text-emerald-500">{completionPercentage}%</div>
+              <div className="text-right text-xs font-medium tabular-nums text-primary">{completionPercentage}%</div>
            </Card>
 
           {/* Steps List */}
@@ -441,16 +443,16 @@ export default function EditProfileWizard() {
                 <div 
                   key={s.id} 
                   onClick={() => setStep(s.id)}
-                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${isActive ? 'bg-primary/10 border-l-4 border-primary shadow-sm' : 'hover:bg-muted border-l-4 border-transparent'}`}
+                  className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors duration-200 ${isActive ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-muted border-l-4 border-transparent'}`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-5 h-5">
-                      {isCompleted ? <div className="w-4 h-4 rounded-full border-2 border-emerald-500 bg-emerald-500/20" /> : <div className={`w-4 h-4 rounded-full border-2 ${isActive ? 'border-primary bg-primary/20' : 'border-muted-foreground bg-transparent'}`} />}
+                      {isCompleted ? <div className="w-4 h-4 rounded-full border-2 border-primary bg-primary" /> : <div className={`w-4 h-4 rounded-full border-2 ${isActive ? 'border-primary bg-primary/20' : 'border-muted-foreground bg-transparent'}`} />}
                     </div>
                     <p className={`text-sm ${isActive ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>{s.title}</p>
                   </div>
                   {s.required && (
-                    <span className="text-[10px] font-medium bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-1.5 py-0.5 rounded">Required</span>
+                    <span className="text-[10px] font-medium bg-red-500/10 text-red-700 dark:text-red-400 px-1.5 py-0.5 rounded">Required</span>
                   )}
                 </div>
               )
@@ -459,7 +461,7 @@ export default function EditProfileWizard() {
         </div>
 
         {/* Main Form Area */}
-        <Card className="p-6 md:p-8 border-border/50 shadow-sm relative overflow-hidden h-fit">
+        <Card className="rounded-3xl p-6 md:p-8 border-border/70 relative overflow-hidden h-fit">
           <div className="min-h-100">
             {/* Step 1: Basic Details */}
             {step === 1 && (
@@ -467,7 +469,7 @@ export default function EditProfileWizard() {
                 <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                   <div className="flex items-center gap-3">
                     <User className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl font-bold">Basic Details</h2>
+                    <h2 className="text-xl font-bold text-foreground">Basic details</h2>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
@@ -518,7 +520,7 @@ export default function EditProfileWizard() {
                     <div className="flex gap-2 relative">
                       <div className="relative flex-1">
                         <Input type="email" value={basic.email || user?.email || ''} readOnly className="bg-muted text-muted-foreground pr-8 w-full cursor-not-allowed" />
-                        {(basic.email || user?.email) && <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2" />}
+                        {(basic.email || user?.email) && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label="Verified" />}
                       </div>
                       <Button type="button" variant="outline" className="shrink-0 text-xs text-primary" onClick={() => { setShowEmailUpdate(true); setEmailOtpSent(false); setEmailOtp(''); setNewEmail('') }}>Update</Button>
                     </div>
@@ -586,7 +588,7 @@ export default function EditProfileWizard() {
                       <div className="flex flex-1 gap-2">
                         <div className="relative flex-1">
                           <Input placeholder="Enter mobile number" value={basic.phone} onChange={e => setBasic({...basic, phone: e.target.value})} className={isPhoneVerified ? "bg-muted text-muted-foreground pr-8 cursor-not-allowed" : "pr-8"} readOnly={isPhoneVerified} />
-                          {isPhoneVerified && <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2" />}
+                          {isPhoneVerified && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label="Verified" />}
                         </div>
                         {!isPhoneVerified && basic.phone.length > 5 && (
                           <Button variant="outline" className="shrink-0 text-xs text-primary" onClick={async () => {
@@ -787,7 +789,7 @@ export default function EditProfileWizard() {
                       />
                     </div>
                     <div className="rounded-lg border border-border bg-muted/20 p-3 max-h-56 overflow-y-auto">
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Popular</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">Popular</p>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {POPULAR_CAREER_GOALS.map(g => {
                           const selected = basic.careerGoal.split(',').filter(Boolean).includes(g)
@@ -811,7 +813,7 @@ export default function EditProfileWizard() {
                           )
                         })}
                       </div>
-                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">All roles</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">All roles</p>
                       <div className="flex flex-wrap gap-2">
                         {CAREER_GOAL_OPTIONS
                           .filter(g => !careerSearch || g.toLowerCase().includes(careerSearch.toLowerCase()))
@@ -859,7 +861,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <FileText className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold">Resume</h2>
+                  <h2 className="text-xl font-bold text-foreground">Resume</h2>
                 </div>
                 
                 <div className="space-y-4">
@@ -883,14 +885,14 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <Sparkles className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold">About You</h2>
+                  <h2 className="text-xl font-bold text-foreground">About you</h2>
                 </div>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                     <Label>Professional Summary</Label>
-                    <Button variant="secondary" size="sm" onClick={handleGenerateAI} disabled={isGeneratingAI} className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300">
+                    <Button variant="secondary" size="sm" onClick={handleGenerateAI} disabled={isGeneratingAI} className="bg-primary/10 text-primary hover:bg-primary/15">
                       <Sparkles className={`w-4 h-4 mr-2 ${isGeneratingAI ? 'animate-pulse' : ''}`} />
-                      {isGeneratingAI ? 'Generating...' : 'Generate with AI'}
+                      {isGeneratingAI ? 'Generating…' : 'Generate with AI'}
                     </Button>
                   </div>
                   <Textarea 
@@ -910,7 +912,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <Code2 className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold">Skills</h2>
+                  <h2 className="text-xl font-bold text-foreground">Skills</h2>
                 </div>
                 <div className="space-y-4">
                   <Label>Core Skills (Comma separated)</Label>
@@ -937,14 +939,14 @@ export default function EditProfileWizard() {
                 <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                   <div className="flex items-center gap-3">
                     <GraduationCap className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl font-bold">Education</h2>
+                    <h2 className="text-xl font-bold text-foreground">Education</h2>
                   </div>
                   <Button variant="outline" size="sm" onClick={addEdu}><Plus className="w-4 h-4 mr-2" /> Add</Button>
                 </div>
 
                 <div className="space-y-6">
                   {education.map((edu) => (
-                    <div key={edu.id} className="p-4 border border-border rounded-xl bg-card relative group">
+                    <div key={edu.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                       {education.length > 1 && (
                         <Button variant="ghost" size="icon" onClick={() => rmEdu(edu.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                           <Trash2 className="w-4 h-4" />
@@ -982,7 +984,7 @@ export default function EditProfileWizard() {
                         <div className="space-y-2"><Label>Roll Number</Label><Input value={edu.rollNumber} onChange={e => updateEdu(edu.id, 'rollNumber', e.target.value)} /></div>
                         
                         <div className="space-y-2 sm:col-span-2 flex items-center gap-2 mt-4">
-                          <input type="checkbox" id={`lateral-${edu.id}`} className="w-4 h-4 rounded border-gray-300" checked={edu.lateralEntry} onChange={e => updateEdu(edu.id, 'lateralEntry', e.target.checked)} />
+                          <input type="checkbox" id={`lateral-${edu.id}`} className="w-4 h-4 rounded border-border accent-primary" checked={edu.lateralEntry} onChange={e => updateEdu(edu.id, 'lateralEntry', e.target.checked)} />
                           <Label htmlFor={`lateral-${edu.id}`} className="cursor-pointer">Lateral Entry</Label>
                         </div>
 
@@ -1008,14 +1010,14 @@ export default function EditProfileWizard() {
                 <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                   <div className="flex items-center gap-3">
                     <Briefcase className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl font-bold">Work Experience</h2>
+                    <h2 className="text-xl font-bold text-foreground">Work experience</h2>
                   </div>
                   <Button variant="outline" size="sm" onClick={addExp}><Plus className="w-4 h-4 mr-2" /> Add</Button>
                 </div>
 
                 <div className="space-y-6">
                   {experience.map((exp, index) => (
-                    <div key={exp.id} className="p-4 border border-border rounded-xl bg-card relative group">
+                    <div key={exp.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                       {experience.length > 1 && (
                         <Button variant="ghost" size="icon" onClick={() => rmExp(exp.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                           <Trash2 className="w-4 h-4" />
@@ -1067,19 +1069,19 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <Trophy className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold">Accomplishments & Initiatives</h2>
+                  <h2 className="text-xl font-bold text-foreground">Accomplishments and initiatives</h2>
                 </div>
                 
                 <div className="space-y-8 mt-6">
                   {/* Projects */}
                   <div>
                     <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
-                      <h3 className="font-semibold text-lg flex items-center gap-2"><Code2 className="w-4 h-4 text-blue-500" /> Projects</h3>
+                      <h3 className="font-semibold text-lg flex items-center gap-2"><Code2 className="w-4 h-4 text-primary" aria-hidden /> Projects</h3>
                       <Button variant="outline" size="sm" onClick={addProj}><Plus className="w-4 h-4 mr-2" /> Add Project</Button>
                     </div>
                     <div className="space-y-4">
                       {projects.map(proj => (
-                        <div key={proj.id} className="p-4 border border-border rounded-xl bg-card relative group">
+                        <div key={proj.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                           <Button variant="ghost" size="icon" onClick={() => rmProj(proj.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1112,7 +1114,7 @@ export default function EditProfileWizard() {
                     </div>
                     <div className="space-y-4">
                       {achievements.map(ach => (
-                        <div key={ach.id} className="p-4 border border-border rounded-xl bg-card relative group">
+                        <div key={ach.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                           <Button variant="ghost" size="icon" onClick={() => rmAchieve(ach.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1137,12 +1139,12 @@ export default function EditProfileWizard() {
                   {/* Responsibilities */}
                   <div>
                     <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
-                      <h3 className="font-semibold text-lg flex items-center gap-2"><Briefcase className="w-4 h-4 text-emerald-500" /> Responsibilities</h3>
+                      <h3 className="font-semibold text-lg flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" aria-hidden /> Responsibilities</h3>
                       <Button variant="outline" size="sm" onClick={addResp}><Plus className="w-4 h-4 mr-2" /> Add Responsibility</Button>
                     </div>
                     <div className="space-y-4">
                       {responsibilities.map(resp => (
-                        <div key={resp.id} className="p-4 border border-border rounded-xl bg-card relative group">
+                        <div key={resp.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                           <Button variant="ghost" size="icon" onClick={() => rmResp(resp.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1170,12 +1172,12 @@ export default function EditProfileWizard() {
                   {/* Certificates */}
                   <div>
                     <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
-                      <h3 className="font-semibold text-lg flex items-center gap-2"><FileBadge2 className="w-4 h-4 text-purple-500" /> Certificates</h3>
+                      <h3 className="font-semibold text-lg flex items-center gap-2"><FileBadge2 className="w-4 h-4 text-primary" aria-hidden /> Certificates</h3>
                       <Button variant="outline" size="sm" onClick={addCert}><Plus className="w-4 h-4 mr-2" /> Add Certificate</Button>
                     </div>
                     <div className="space-y-4">
                       {certificates.map(cert => (
-                        <div key={cert.id} className="p-4 border border-border rounded-xl bg-card relative group">
+                        <div key={cert.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                           <Button variant="ghost" size="icon" onClick={() => rmCert(cert.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -1208,7 +1210,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <UserCircle className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold">Personal Details</h2>
+                  <h2 className="text-xl font-bold text-foreground">Personal details</h2>
                 </div>
                 
                 <div className="space-y-4">
@@ -1245,7 +1247,7 @@ export default function EditProfileWizard() {
                        <label className="flex items-center gap-2 text-xs cursor-pointer">
                          <input 
                            type="checkbox" 
-                           className="rounded border-gray-300" 
+                           className="rounded border-border accent-primary" 
                            checked={personalDetails.sameAsCurrent}
                            onChange={e => {
                              const checked = e.target.checked
@@ -1280,7 +1282,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <LinkIcon className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold">Social Links</h2>
+                  <h2 className="text-xl font-bold text-foreground">Social links</h2>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-4">
@@ -1298,11 +1300,11 @@ export default function EditProfileWizard() {
                   </div>
                 </div>
                 
-                <div className="p-4 bg-muted/50 rounded-xl mt-8 flex items-start gap-4">
+                <div className="p-4 bg-primary/5 border border-primary/15 rounded-2xl mt-8 flex items-start gap-4">
                   <Award className="w-8 h-8 text-primary shrink-0 mt-1" />
                   <div>
-                    <h4 className="font-semibold">Ready to build your resume!</h4>
-                    <p className="text-sm text-muted-foreground">Once you save your profile, you can head over to the AI Resume Builder to generate a beautiful tailored PDF in 1-click.</p>
+                    <h4 className="font-semibold text-foreground">Ready to build your resume</h4>
+                    <p className="text-sm text-muted-foreground">Once you save your profile, open the resume builder to turn it into a tailored PDF.</p>
                   </div>
                 </div>
               </div>

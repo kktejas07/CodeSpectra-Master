@@ -23,7 +23,7 @@ function PageBody({ page }: { page: EbookPage }) {
   if (page.type === 'cover') {
     return (
       <div className="flex h-full flex-col items-center justify-center space-y-3 px-6 text-center">
-        <p className="text-xs uppercase tracking-[0.25em] text-primary">CodeSpectra</p>
+        <p className="text-xs font-semibold text-primary">CodeSpectra</p>
         <h2 className="text-3xl font-bold leading-tight">{page.title}</h2>
         {page.subtitle ? <p className="max-w-md text-muted-foreground">{page.subtitle}</p> : null}
       </div>
@@ -52,8 +52,8 @@ function PageBody({ page }: { page: EbookPage }) {
         <h3 className="text-xl font-semibold">{page.title}</h3>
         <div className="grid grid-cols-2 gap-4">
           {page.left && (
-            <div className="space-y-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3">
-              <p className="text-sm font-semibold text-emerald-600">{page.left.title}</p>
+            <div className="space-y-2 rounded-xl border border-green-500/20 bg-green-500/5 p-3">
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400">{page.left.title}</p>
               <ul className="space-y-1">
                 {page.left.points.map((pt, i) => (
                   <li key={i} className="text-xs leading-relaxed">{pt}</li>
@@ -62,8 +62,8 @@ function PageBody({ page }: { page: EbookPage }) {
             </div>
           )}
           {page.right && (
-            <div className="space-y-2 rounded-lg border border-rose-500/20 bg-rose-500/5 p-3">
-              <p className="text-sm font-semibold text-rose-600">{page.right.title}</p>
+            <div className="space-y-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-3">
+              <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">{page.right.title}</p>
               <ul className="space-y-1">
                 {page.right.points.map((pt, i) => (
                   <li key={i} className="text-xs leading-relaxed">{pt}</li>
@@ -83,8 +83,8 @@ function PageBody({ page }: { page: EbookPage }) {
         {page.stats && (
           <div className="grid grid-cols-3 gap-3">
             {page.stats.map((s, i) => (
-              <div key={i} className="rounded-lg border border-border/60 bg-muted/30 p-3 text-center">
-                <p className="text-2xl font-bold text-primary">{s.value}</p>
+              <div key={i} className="rounded-xl border border-border/60 bg-muted/30 p-3 text-center">
+                <p className="text-2xl font-bold tabular-nums text-primary">{s.value}</p>
                 <p className="text-xs text-muted-foreground">{s.label}</p>
               </div>
             ))}
@@ -134,7 +134,7 @@ function PageBody({ page }: { page: EbookPage }) {
           <div className="grid grid-cols-2 gap-3">
             {page.stats.map((s, i) => (
               <div key={i} className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-4 text-center">
-                <p className="text-3xl font-bold text-primary">{s.value}</p>
+                <p className="text-3xl font-bold tabular-nums text-primary">{s.value}</p>
                 <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
               </div>
             ))}
@@ -145,7 +145,7 @@ function PageBody({ page }: { page: EbookPage }) {
           <ul className="space-y-2">
             {page.bullets.map((b, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
                 <span>{b}</span>
               </li>
             ))}
@@ -160,12 +160,12 @@ function PageBody({ page }: { page: EbookPage }) {
     return (
       <div className="space-y-4 p-4">
         <div className="flex items-center gap-2">
-          <Code className="h-5 w-5 text-blue-500" />
+          <Code className="h-5 w-5 text-primary" aria-hidden />
           <h3 className="text-xl font-semibold">{page.title}</h3>
         </div>
         {page.body && <p className="text-sm text-muted-foreground">{page.body}</p>}
         {page.code && (
-          <div className="rounded-lg bg-gray-900 p-4 overflow-x-auto">
+          <div className="rounded-xl bg-neutral-900 p-4 overflow-x-auto">
             <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">{page.code}</pre>
           </div>
         )}
@@ -181,17 +181,17 @@ function PageBody({ page }: { page: EbookPage }) {
     return (
       <div className="space-y-4 p-4">
         <div className="flex items-center gap-2">
-          <HelpCircle className="h-5 w-5 text-purple-500" />
-          <h3 className="text-xl font-semibold">{page.title || 'Quiz Time'}</h3>
+          <HelpCircle className="h-5 w-5 text-primary" aria-hidden />
+          <h3 className="text-xl font-semibold">{page.title || 'Quiz time'}</h3>
         </div>
         {(page.questions || []).map((q, qi) => (
-          <div key={qi} className="space-y-2 rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+          <div key={qi} className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
             <p className="text-sm font-semibold">Q{qi + 1}: {q.question}</p>
             <div className="space-y-1">
               {q.options.map((opt, oi) => (
                 <div key={oi} className={cn(
                   "text-xs px-2 py-1 rounded",
-                  oi === q.correct ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted/50"
+                  oi === q.correct ? "bg-green-500/15 text-green-800 dark:text-green-300" : "bg-muted/50"
                 )}>
                   {String.fromCharCode(65 + oi)}. {opt}
                 </div>
@@ -209,16 +209,16 @@ function PageBody({ page }: { page: EbookPage }) {
     return (
       <div className="space-y-4 p-4">
         <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-orange-500" />
+          <Clock className="h-5 w-5 text-primary" aria-hidden />
           <h3 className="text-xl font-semibold">{page.title}</h3>
         </div>
         <div className="relative space-y-4 pl-6">
-          <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-orange-200 dark:bg-orange-800" />
+          <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-primary/25" />
           {(page.timeline || []).map((t, i) => (
             <div key={i} className="relative">
-              <div className="absolute -left-4 top-1 h-3 w-3 rounded-full bg-orange-500" />
+              <div className="absolute -left-4 top-1 h-3 w-3 rounded-full bg-primary" />
               <div>
-                <p className="text-xs font-bold text-orange-600">{t.year}</p>
+                <p className="text-xs font-bold tabular-nums text-primary">{t.year}</p>
                 <p className="text-sm font-semibold">{t.title}</p>
                 <p className="text-xs text-muted-foreground">{t.description}</p>
               </div>
@@ -233,16 +233,16 @@ function PageBody({ page }: { page: EbookPage }) {
   if (page.type === 'callout') {
     const icons = { tip: Lightbulb, warning: AlertTriangle, info: Info, success: CheckCircle }
     const colors = {
-      tip: 'border-blue-500/20 bg-blue-500/5 text-blue-600',
-      warning: 'border-amber-500/20 bg-amber-500/5 text-amber-600',
-      info: 'border-cyan-500/20 bg-cyan-500/5 text-cyan-600',
-      success: 'border-green-500/20 bg-green-500/5 text-green-600',
+      tip: 'border-primary/20 bg-primary/5 text-primary',
+      warning: 'border-amber-500/25 bg-amber-500/5 text-amber-700 dark:text-amber-400',
+      info: 'border-cyan-500/25 bg-cyan-500/5 text-cyan-700 dark:text-cyan-400',
+      success: 'border-green-500/25 bg-green-500/5 text-green-700 dark:text-green-400',
     }
     const Icon = icons[page.calloutType || 'info']
     const colorClass = colors[page.calloutType || 'info']
     return (
       <div className="space-y-4 p-4">
-        <div className={cn("rounded-lg border p-4", colorClass)}>
+        <div className={cn("rounded-xl border p-4", colorClass)}>
           <div className="flex items-center gap-2 mb-2">
             <Icon className="h-5 w-5" />
             <h3 className="text-lg font-semibold">{page.title}</h3>
@@ -317,8 +317,8 @@ export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProp
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm tabular-nums text-muted-foreground">
           {title && <span className="font-medium text-foreground">{title}</span>}
           {title && ' · '}
           Page {current + 1} of {pages.length}
@@ -334,10 +334,10 @@ export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProp
               Download PDF
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={prev} disabled={current === 0}>
+          <Button variant="outline" size="sm" onClick={prev} disabled={current === 0} aria-label="Previous page">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={next} disabled={current >= pages.length - 1}>
+          <Button variant="outline" size="sm" onClick={next} disabled={current >= pages.length - 1} aria-label="Next page">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -349,7 +349,7 @@ export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProp
           {/* Cover page (centered on desktop) */}
           {current === 0 && (
             <div className="hidden lg:block">
-              <div className="flex h-[420px] w-[300px] items-center justify-center rounded-lg border border-border/60 bg-card shadow-lg">
+              <div className="flex h-[420px] w-[300px] items-center justify-center rounded-2xl border border-border/60 bg-card text-card-foreground shadow-lg dark:shadow-none">
                 <PageBody page={leftPage} />
               </div>
             </div>
@@ -358,7 +358,7 @@ export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProp
           {/* Left page */}
           {current > 0 && (
             <div className="hidden lg:block">
-              <div className="flex h-[420px] w-[300px] items-center justify-center rounded-l-lg border border-r-0 border-border/60 bg-card shadow-lg">
+              <div className="flex h-[420px] w-[300px] items-center justify-center rounded-l-2xl border border-r-0 border-border/60 bg-card text-card-foreground shadow-lg dark:shadow-none">
                 <PageBody page={leftPage} />
               </div>
             </div>
@@ -366,7 +366,7 @@ export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProp
 
           {/* Right page (or single page on mobile) */}
           <div>
-            <div className="flex h-[420px] w-[300px] sm:w-[340px] items-center justify-center rounded-lg border border-border/60 bg-card shadow-lg lg:rounded-r-lg lg:rounded-l-none">
+            <div className="flex h-[420px] w-[min(300px,calc(100vw-3rem))] sm:w-[340px] items-center justify-center rounded-2xl border border-border/60 bg-card text-card-foreground shadow-lg dark:shadow-none lg:rounded-r-2xl lg:rounded-l-none">
               <PageBody page={rightPage || leftPage} />
             </div>
           </div>

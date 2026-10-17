@@ -30,7 +30,7 @@ export function AnonAadhaarProfileCard() {
 
   if (!cfg) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/40 p-4 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading verification options…
       </div>
     )
@@ -38,18 +38,18 @@ export function AnonAadhaarProfileCard() {
 
   if (cfg.profile_aadhaar !== 'anon_aadhaar') {
     return (
-      <div className="flex flex-col gap-2 rounded-xl border border-border bg-muted/40 p-4 sm:flex-row sm:items-start">
+      <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-muted/40 p-4 sm:flex-row sm:items-start">
         <div className="mx-auto shrink-0 rounded-full bg-muted p-3 sm:mx-0">
           <ShieldCheck className="h-5 w-5 text-muted-foreground" />
         </div>
         <div className="flex-1 space-y-1 text-center sm:text-left">
-          <p className="text-sm font-semibold">Identity verification</p>
+          <p className="text-sm font-semibold text-foreground">Identity verification</p>
           <p className="text-xs text-muted-foreground">
-            Full KYC is on the{' '}
+            Verify your ID and selfie on the{' '}
             <Link href="/dashboard/identity-verify" className="text-primary underline">
-              Identity Verify
+              Identity verification
             </Link>{' '}
-            page (Didit / DigiLocker per SuperAdmin settings).
+            page.
           </p>
         </div>
       </div>
@@ -57,23 +57,23 @@ export function AnonAadhaarProfileCard() {
   }
 
   return (
-    <div className="space-y-3 rounded-xl border border-border bg-muted/40 p-4">
+    <div className="space-y-3 rounded-2xl border border-border/70 bg-muted/40 p-4">
       <div className="flex items-start gap-3">
-        <div className="shrink-0 rounded-full bg-muted p-3">
-          <ShieldCheck className="h-5 w-5 text-teal-600" />
+        <div className="shrink-0 rounded-full bg-primary/10 p-3">
+          <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
         </div>
         <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm font-semibold">Aadhaar (privacy-preserving)</p>
+          <p className="text-sm font-semibold text-foreground">Aadhaar (privacy-preserving)</p>
           <p className="text-xs text-muted-foreground">
             Optional. Proves you hold a valid Aadhaar without sharing the number. Full photo KYC
             stays on{' '}
             <Link href="/dashboard/identity-verify" className="text-primary underline">
-              Identity Verify
+              Identity verification
             </Link>
             .
           </p>
           {status?.verified ? (
-            <p className="text-[11px] font-medium text-emerald-600">Status: verified</p>
+            <p className="text-xs font-medium text-green-600 dark:text-green-400">Status: verified</p>
           ) : (
             <div className="pt-2">
               <AnonAadhaarVerify

@@ -194,35 +194,35 @@ export default function ResumeBuilderPage() {
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background overflow-hidden -m-4 sm:-m-6 md:-m-8">
       {/* Header */}
-      <div className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shrink-0 z-10">
-        <div className="flex items-center gap-4">
+      <div className="min-h-16 border-b border-border bg-card flex flex-wrap items-center justify-between gap-2 px-4 py-2 sm:px-6 shrink-0 z-10">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-4">
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/resumes')} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
-          <div className="w-px h-6 bg-border mx-2" />
-          <Input defaultValue="Untitled Resume" className="border-transparent hover:border-border focus-visible:ring-0 shadow-none w-64 text-lg font-semibold px-2 h-9" />
+          <div className="hidden sm:block w-px h-6 bg-border mx-2" />
+          <Input defaultValue="Untitled resume" aria-label="Resume name" className="border-transparent hover:border-border focus-visible:border-border shadow-none w-40 sm:w-64 text-base sm:text-lg font-semibold text-foreground px-2 h-9" />
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm">
-            <Save className="w-4 h-4 mr-2" /> Save Draft
+            <Save className="w-4 h-4 mr-2" /> Save draft
           </Button>
-          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Button size="sm">
             <Download className="w-4 h-4 mr-2" /> Download PDF
           </Button>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 flex-col md:flex-row overflow-hidden">
         {/* Editor Pane */}
-        <div className="w-[45%] lg:w-[40%] h-full overflow-y-auto border-r border-border bg-card p-6 custom-scrollbar">
+        <div className="w-full md:w-[45%] lg:w-[40%] h-1/2 md:h-full overflow-y-auto border-b md:border-b-0 md:border-r border-border bg-card p-4 sm:p-6 custom-scrollbar">
           <div className="space-y-8 pb-20">
             
             {/* Personal Details */}
             <section className="space-y-4">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">Personal Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label>Full Name</Label><Input value={data.personal.fullName} onChange={e => updatePersonal('fullName', e.target.value)} /></div>
+              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">Personal details</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5"><Label>Full name</Label><Input value={data.personal.fullName} onChange={e => updatePersonal('fullName', e.target.value)} /></div>
                 <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={data.personal.email} onChange={e => updatePersonal('email', e.target.value)} /></div>
                 <div className="space-y-1.5"><Label>Phone</Label><Input value={data.personal.phone} onChange={e => updatePersonal('phone', e.target.value)} /></div>
                 <div className="space-y-1.5"><Label>Location</Label><Input value={data.personal.location} onChange={e => updatePersonal('location', e.target.value)} /></div>
@@ -234,15 +234,15 @@ export default function ResumeBuilderPage() {
             {/* Professional Summary */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground">Professional Summary</h3>
-                <Button variant="secondary" size="sm" onClick={generateWithAI} disabled={isGeneratingAI} className="bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50">
+                <h3 className="text-lg font-bold text-foreground">Professional summary</h3>
+                <Button variant="secondary" size="sm" onClick={generateWithAI} disabled={isGeneratingAI} className="bg-primary/10 text-primary hover:bg-primary/15">
                   {isGeneratingAI ? <Sparkles className="w-4 h-4 mr-2 animate-pulse" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  {isGeneratingAI ? 'Generating...' : 'AI Magic'}
+                  {isGeneratingAI ? 'Generating…' : 'Write with AI'}
                 </Button>
               </div>
               <Textarea 
                 className="min-h-30" 
-                placeholder="Write a brief summary of your professional background..." 
+                placeholder="Write a brief summary of your professional background…" 
                 value={data.summary} 
                 onChange={e => setData(prev => ({ ...prev, summary: e.target.value }))}
               />
@@ -251,27 +251,27 @@ export default function ResumeBuilderPage() {
             {/* Work Experience */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground">Work Experience</h3>
+                <h3 className="text-lg font-bold text-foreground">Work experience</h3>
               </div>
               <div className="space-y-6">
                 {data.experience.map((exp, index) => (
-                  <div key={exp.id} className="p-4 rounded-xl border border-border bg-muted/20 relative group">
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeExperience(exp.id)}>
+                  <div key={exp.id} className="p-4 rounded-2xl border border-border bg-muted/20 relative group">
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeExperience(exp.id)} aria-label="Remove experience">
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                    <div className="grid grid-cols-2 gap-4 mb-4 pr-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pr-8">
                       <div className="space-y-1.5"><Label>Company</Label><Input value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} /></div>
                       <div className="space-y-1.5"><Label>Role</Label><Input value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} /></div>
-                      <div className="space-y-1.5 col-span-2"><Label>Dates</Label><Input placeholder="e.g. Jan 2020 - Present" value={exp.dates} onChange={e => updateExperience(exp.id, 'dates', e.target.value)} /></div>
+                      <div className="space-y-1.5 sm:col-span-2"><Label>Dates</Label><Input placeholder="e.g. Jan 2020 - Present" value={exp.dates} onChange={e => updateExperience(exp.id, 'dates', e.target.value)} /></div>
                     </div>
                     <div className="space-y-1.5">
                       <Label>Description</Label>
-                      <Textarea value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} rows={3} placeholder="Describe your achievements..." />
+                      <Textarea value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} rows={3} placeholder="Describe your achievements…" />
                     </div>
                   </div>
                 ))}
                 <Button variant="outline" className="w-full border-dashed" onClick={addExperience}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Experience
+                  <Plus className="w-4 h-4 mr-2" /> Add experience
                 </Button>
               </div>
             </section>
@@ -281,17 +281,17 @@ export default function ResumeBuilderPage() {
               <h3 className="text-lg font-bold text-foreground">Education</h3>
               <div className="space-y-4">
                 {data.education.map((edu, index) => (
-                  <div key={edu.id} className="p-4 rounded-xl border border-border bg-muted/20 relative group grid grid-cols-2 gap-4">
-                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeEducation(edu.id)}>
+                  <div key={edu.id} className="p-4 rounded-2xl border border-border bg-muted/20 relative group grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeEducation(edu.id)} aria-label="Remove education">
                       <Trash2 className="w-4 h-4" />
                     </Button>
                     <div className="space-y-1.5"><Label>Institution</Label><Input value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} /></div>
                     <div className="space-y-1.5 pr-8"><Label>Degree</Label><Input value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} /></div>
-                    <div className="space-y-1.5 col-span-2"><Label>Dates</Label><Input value={edu.dates} onChange={e => updateEducation(edu.id, 'dates', e.target.value)} /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label>Dates</Label><Input value={edu.dates} onChange={e => updateEducation(edu.id, 'dates', e.target.value)} /></div>
                   </div>
                 ))}
                 <Button variant="outline" className="w-full border-dashed" onClick={addEducation}>
-                  <Plus className="w-4 h-4 mr-2" /> Add Education
+                  <Plus className="w-4 h-4 mr-2" /> Add education
                 </Button>
               </div>
             </section>
@@ -302,7 +302,7 @@ export default function ResumeBuilderPage() {
               <Textarea 
                 value={data.skills} 
                 onChange={e => setData(prev => ({ ...prev, skills: e.target.value }))}
-                placeholder="React, TypeScript, Node.js, Design..."
+                placeholder="React, TypeScript, Node.js, Design…"
                 rows={3}
               />
             </section>
@@ -310,15 +310,16 @@ export default function ResumeBuilderPage() {
         </div>
 
         {/* Live Preview Pane */}
-        <div className="flex-1 bg-muted/30 dark:bg-muted/10 p-6 flex flex-col relative h-full overflow-hidden">
+        <div className="flex-1 bg-muted/30 dark:bg-muted/10 p-4 sm:p-6 flex flex-col relative min-h-0 md:h-full overflow-hidden">
           
           {/* Template Switcher */}
-          <div className="bg-card border border-border rounded-full px-2 py-2 flex items-center justify-center gap-2 mb-6 shadow-sm w-max">
+          <div className="bg-card border border-border rounded-full px-2 py-2 flex items-center gap-1 sm:gap-2 mb-6 shadow-sm max-w-full w-max overflow-x-auto">
             {(['modern', 'minimal', 'elegant', 'professional', 'creative'] as const).map(t => (
               <Button
                 key={t}
                 variant={template === t ? 'default' : 'ghost'}
-                className={`rounded-full px-6 h-8 text-sm capitalize ${template === t ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' : 'text-muted-foreground'}`}
+                className={`rounded-full px-4 sm:px-6 h-8 text-sm capitalize ${template === t ? 'shadow-md' : 'text-muted-foreground'}`}
+                aria-pressed={template === t}
                 onClick={() => setTemplate(t)}
               >
                 {t}

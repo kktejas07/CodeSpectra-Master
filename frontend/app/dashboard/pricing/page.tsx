@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader } from '@/components/app/page-kit'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
@@ -22,9 +23,9 @@ interface PlanDef {
 }
 
 const PLAN_COLORS: Record<string, string> = {
-  free: 'from-green-500/10 to-green-500/5 border-green-500/20',
-  pro: 'from-blue-500/10 to-blue-500/5 border-blue-500/20',
-  enterprise: 'from-purple-500/10 to-purple-500/5 border-purple-500/20',
+  free: 'from-muted/40 to-card border-border/70',
+  pro: 'from-primary/10 to-card border-primary/30',
+  enterprise: 'from-primary/5 to-card border-border/70',
 }
 
 export default function PricingPage() {
@@ -164,8 +165,8 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
   if (!gate.ready) return null
 
   if (loading) return (
-    <div className="space-y-12">
-      <div className="text-center space-y-3">
+    <div className="space-y-6">
+      <div className="space-y-3">
         <div className="h-10 w-64 bg-muted/60 rounded animate-pulse" />
         <div className="h-5 w-80 bg-muted/40 rounded animate-pulse" />
       </div>
@@ -176,23 +177,27 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
   )
 
   return (
-    <div className="space-y-12">
-      <div className="text-center" data-tour="pricing-header">
-        <h1 className="text-4xl font-bold text-foreground">Choose Your Plan</h1>
-        <p className="text-muted-foreground mt-3 text-lg">Start free, upgrade when you need more power.</p>
+    <div className="space-y-6">
+      <div data-tour="pricing-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Crown aria-hidden />}
+          title="Choose your plan"
+          description="Start free and upgrade when you need more."
+        />
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3" data-tour="pricing-plans">
+      <div className="grid gap-5 pt-3 md:grid-cols-3" data-tour="pricing-plans">
         {plans.map(plan => {
           const isPro = plan.plan === 'pro'
           return (
-            <Card key={plan.plan} className={`relative p-6 bg-linear-to-b ${PLAN_COLORS[plan.plan] || ''} ${isPro ? 'ring-2 ring-primary sm:scale-105' : ''}`}>
-              {isPro && <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">Most Popular</Badge>}
+            <Card key={plan.plan} className={`relative rounded-3xl p-6 bg-linear-to-b ${PLAN_COLORS[plan.plan] || ''} ${isPro ? 'ring-2 ring-primary md:scale-[1.03]' : ''}`}>
+              {isPro && <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">Recommended</Badge>}
               <div className="text-center mb-6">
                 <h2 className="text-xl font-bold text-foreground">{plan.name}</h2>
                 <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-foreground">{plan.price ? `${currSymbol}${plan.price.replace('$', '').replace('/month', '')}` : 'Free'}</span>
+                  <span className="text-4xl font-bold tabular-nums text-foreground">{plan.price ? `${currSymbol}${plan.price.replace('$', '').replace('/month', '')}` : 'Free'}</span>
                   {plan.price && <span className="text-sm text-muted-foreground">/mo</span>}
                 </div>
               </div>
@@ -200,7 +205,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
               <div className="space-y-3 mb-6">
                 {plan.features.map(f => (
                   <div key={f} className="flex items-start gap-3 text-sm">
-                    <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 mt-0.5" />
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-primary mt-0.5" aria-hidden />
                     <span className="text-foreground">{f}</span>
                   </div>
                 ))}
@@ -214,9 +219,9 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
                 asChild={!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free'}
               >
                 {(!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free') ? (
-                  <Link href="/dashboard">Get Started Free</Link>
+                  <Link href="/dashboard">Get started free</Link>
                 ) : plan.plan === 'enterprise' || plan.price?.toLowerCase().includes('contact') ? (
-                  <><Zap className="h-4 w-4 mr-2" /> Contact Sales</>
+                  <><Zap className="h-4 w-4 mr-2" /> Contact sales</>
                 ) : (
                   <><Crown className="h-4 w-4 mr-2" /> Upgrade to {plan.name}</>
                 )}
@@ -230,14 +235,14 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
       <Dialog open={!!checkoutPlan} onOpenChange={(v) => { if (!v) { setCheckoutPlan(null); setCouponCode(''); setDiscountInfo(null) } }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Complete Your Upgrade</DialogTitle>
+            <DialogTitle>Complete your upgrade</DialogTitle>
             <DialogDescription>You are upgrading to {checkoutPlan?.name}.</DialogDescription>
           </DialogHeader>
           
           <div className="py-4 space-y-4">
-            <div className="flex justify-between items-center bg-muted/20 p-4 rounded-lg border border-border/50">
-              <span className="font-medium text-foreground">Base Price</span>
-              <span className="font-bold">{checkoutPlan?.price ? `${currSymbol}${checkoutPlan.price.replace('$', '').replace('/month', '')}` : ''}</span>
+            <div className="flex justify-between items-center bg-muted/20 p-4 rounded-2xl border border-border/50">
+              <span className="font-medium text-foreground">Base price</span>
+              <span className="font-bold tabular-nums">{checkoutPlan?.price ? `${currSymbol}${checkoutPlan.price.replace('$', '').replace('/month', '')}` : ''}</span>
             </div>
             
             <div className="space-y-2">
@@ -255,7 +260,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
                 </Button>
               </div>
               {discountInfo && (
-                <p className={`text-sm ${discountInfo.valid ? 'text-green-500' : 'text-red-500'}`}>
+                <p className={`text-sm ${discountInfo.valid ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}>
                   {discountInfo.valid 
                     ? `Coupon applied! ${discountInfo.type === 'percentage' ? `${discountInfo.value}% OFF` : `${currSymbol}${discountInfo.value} OFF`}`
                     : discountInfo.error}
@@ -268,7 +273,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
             <Button variant="outline" onClick={() => { setCheckoutPlan(null); setCouponCode(''); setDiscountInfo(null) }}>Cancel</Button>
             <Button onClick={handleCheckout} disabled={checkoutLoading}>
               {checkoutLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
-              Proceed to Payment
+              Proceed to payment
             </Button>
           </DialogFooter>
         </DialogContent>

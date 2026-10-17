@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft } from 'lucide-react'
+import { Loader2, ArrowLeft, Video } from 'lucide-react'
+import { PageHeader } from '@/components/app/page-kit'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -105,52 +106,59 @@ export default function ScheduleInterviewPage() {
         <ArrowLeft className="h-3 w-3" /> Back to interviews
       </Link>
 
-      <h1 className="text-3xl font-bold" data-tour="interview-schedule-header">Schedule Interview</h1>
+      <div data-tour="interview-schedule-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Video aria-hidden />}
+          title="Schedule interview"
+          description="Set up an interview with a registered candidate — pick the type, time and length."
+        />
+      </div>
 
-      <Card className="p-6 space-y-4" data-tour="interview-schedule-form">
+      <Card className="max-w-3xl rounded-3xl border-border/70 p-6 space-y-4" data-tour="interview-schedule-form">
         <div>
-          <Label>Interview Title</Label>
-          <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Senior Frontend Screening" />
+          <Label htmlFor="iv-title">Interview title</Label>
+          <Input id="iv-title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Senior Frontend Screening" />
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <Label>Type</Label>
-            <select value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
-              className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm">
+            <Label htmlFor="iv-type">Type</Label>
+            <select id="iv-type" value={form.type} onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground">
               <option value="technical">Technical</option>
               <option value="behavioral">Behavioral</option>
-              <option value="system-design">System Design</option>
+              <option value="system-design">System design</option>
               <option value="coding">Coding</option>
             </select>
           </div>
           <div>
-            <Label>Role</Label>
-            <Input value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder="Frontend Engineer" />
+            <Label htmlFor="iv-role">Role</Label>
+            <Input id="iv-role" value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} placeholder="Frontend Engineer" />
           </div>
         </div>
         <div>
-          <Label>Candidate Email</Label>
-          <Input value={form.candidate_email} onChange={(e) => setForm((f) => ({ ...f, candidate_email: e.target.value }))} placeholder="candidate@company.com" type="email" />
+          <Label htmlFor="iv-email">Candidate email</Label>
+          <Input id="iv-email" value={form.candidate_email} onChange={(e) => setForm((f) => ({ ...f, candidate_email: e.target.value }))} placeholder="candidate@company.com" type="email" />
           <p className="text-xs text-muted-foreground mt-1">Must be a registered user on the platform</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <Label>Scheduled At</Label>
-            <Input type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm((f) => ({ ...f, scheduled_at: e.target.value }))} />
+            <Label htmlFor="iv-when">Scheduled at</Label>
+            <Input id="iv-when" type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm((f) => ({ ...f, scheduled_at: e.target.value }))} />
           </div>
           <div>
-            <Label>Duration (minutes)</Label>
-            <Input type="number" min={15} max={180} value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: Number(e.target.value) }))} />
+            <Label htmlFor="iv-duration">Duration (minutes)</Label>
+            <Input id="iv-duration" type="number" min={15} max={180} value={form.duration_minutes} onChange={(e) => setForm((f) => ({ ...f, duration_minutes: Number(e.target.value) }))} />
           </div>
         </div>
         <div>
-          <Label>Resume / Context (optional)</Label>
-          <Textarea rows={4} value={form.resume_info} onChange={(e) => setForm((f) => ({ ...f, resume_info: e.target.value }))} placeholder="Paste resume text or notes about the candidate..." />
+          <Label htmlFor="iv-context">Resume / context (optional)</Label>
+          <Textarea id="iv-context" rows={4} value={form.resume_info} onChange={(e) => setForm((f) => ({ ...f, resume_info: e.target.value }))} placeholder="Paste resume text or notes about the candidate…" />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button onClick={schedule} disabled={busy} data-tour="interview-schedule-submit">
           {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-          Schedule Interview
+          Schedule interview
         </Button>
       </Card>
     </div>

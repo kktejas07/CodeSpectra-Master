@@ -66,12 +66,12 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
   }
 
   return (
-    <Card className="w-full max-w-xl mx-auto p-8">
+    <Card className="w-full max-w-xl mx-auto rounded-3xl border-border/70 p-6 sm:p-8">
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Upload Resume</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Upload your resume</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Add your resume so mock interviewer can reference it during conversation. {isOptional && '(Optional)'}
+            Add your resume so the mock interviewer can refer to it during the conversation. {isOptional && '(Optional)'}
           </p>
         </div>
 
@@ -79,12 +79,12 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleFileDrop}
-            className="border-2 border-dashed border-muted-foreground/50 rounded-lg p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
+            className="border-2 border-dashed border-border rounded-2xl p-8 sm:p-12 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
             onClick={() => fileInputRef.current?.click()}
           >
             <div className="flex flex-col items-center gap-3">
-              <div className="p-3 bg-muted rounded-lg">
-                <Upload className="w-8 h-8 text-muted-foreground" />
+              <div className="p-3 bg-primary/10 rounded-xl">
+                <Upload className="w-8 h-8 text-primary" aria-hidden />
               </div>
               <div>
                 <p className="font-semibold text-foreground">Drag and drop your resume here</p>
@@ -102,20 +102,22 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="bg-muted/50 rounded-lg p-4 flex items-center justify-between">
+            <div className="bg-muted/50 rounded-2xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileText className="w-6 h-6 text-primary" />
                 <div>
                   <p className="font-medium text-foreground">{uploadedFile.name}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs tabular-nums text-muted-foreground">
                     {(uploadedFile.size / 1024).toFixed(2)} KB
                   </p>
                 </div>
               </div>
               <button
+                type="button"
                 onClick={handleRemoveFile}
                 className="p-2 hover:bg-background rounded-lg transition-colors"
                 title="Remove"
+                aria-label="Remove file"
               >
                 <X className="w-5 h-5 text-muted-foreground hover:text-foreground" />
               </button>
@@ -125,15 +127,15 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="w-full bg-muted rounded-full h-2">
-                    <div className="bg-primary h-2 rounded-full w-2/3 animate-pulse" />
+                    <div className="bg-primary h-2 rounded-full w-2/3 animate-pulse motion-reduce:animate-none" />
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground">Uploading {uploadedFile.name}...</p>
+                <p className="text-sm text-muted-foreground">Uploading {uploadedFile.name}…</p>
               </div>
             )}
 
             {!isUploading && (
-              <p className="text-sm text-green-600 flex items-center gap-2">
+              <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
                 <CheckCircle className="w-4 h-4" />
                 Your resume has been added
               </p>
@@ -142,7 +144,7 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
         )}
 
         {error && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
+          <div role="alert" className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-xl text-sm">
             <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
           </div>
@@ -159,7 +161,7 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
             onClick={onContinue}
             disabled={isUploading}
           >
-            {uploadedFile && !isUploading ? 'Continue' : isOptional ? 'Continue Anyway' : 'Continue'}
+            {uploadedFile && !isUploading ? 'Continue' : isOptional ? 'Continue anyway' : 'Continue'}
           </Button>
         </div>
       </div>

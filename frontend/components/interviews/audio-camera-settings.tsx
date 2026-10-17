@@ -155,18 +155,20 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
 
   const getStatusBadge = (status: string) => {
     if (status === 'granted') {
-      return <Badge variant="success">Access Granted</Badge>
+      return <Badge variant="success">Access granted</Badge>
     }
-    return <Badge variant="danger">Access Required</Badge>
+    return <Badge variant="danger">Access required</Badge>
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto p-8">
+    <Card className="w-full max-w-2xl mx-auto rounded-3xl border-border/70 p-6 sm:p-8">
       <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Sliders className="w-6 h-6" />
-            Audio & Camera Settings
+          <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+              <Sliders className="w-5 h-5" aria-hidden />
+            </span>
+            Audio and camera settings
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             You must enable camera and microphone access before joining the AI interview.
@@ -175,7 +177,7 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
 
         {/* Camera Preview */}
         {permissions.camera === 'granted' && (
-          <div className="rounded-lg overflow-hidden bg-black aspect-video">
+          <div className="rounded-2xl overflow-hidden bg-black aspect-video">
             <video
               id="camera-preview"
               autoPlay
@@ -186,10 +188,10 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
         )}
 
         {permissions.camera !== 'granted' && (
-          <div className="rounded-lg bg-muted flex items-center justify-center aspect-video">
+          <div className="rounded-2xl bg-muted flex items-center justify-center aspect-video">
             <div className="text-center">
               <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-2" />
-              <p className="text-muted-foreground">Camera Access Required</p>
+              <p className="font-medium text-foreground">Camera access required</p>
               <p className="text-xs text-muted-foreground mt-1">
                 You must enable camera access before joining the interview.
               </p>
@@ -203,13 +205,13 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
           <div className="space-y-3">
             <label className="block">
               <p className="font-medium text-foreground mb-2 flex items-center gap-2">
-                <Mic className="w-4 h-4" />
+                <Mic className="w-4 h-4 text-primary" aria-hidden />
                 Microphone
               </p>
               <select
                 value={selectedDevices.microphone}
                 onChange={(e) => setSelectedDevices({ ...selectedDevices, microphone: e.target.value })}
-                className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground"
+                className="w-full px-3 py-2 border border-input rounded-xl bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {devices.microphone.map((device) => (
                   <option key={device.deviceId} value={device.deviceId}>
@@ -225,13 +227,13 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
           <div className="space-y-3">
             <label className="block">
               <p className="font-medium text-foreground mb-2 flex items-center gap-2">
-                <Sliders className="w-4 h-4" />
+                <Sliders className="w-4 h-4 text-primary" aria-hidden />
                 Camera
               </p>
               <select
                 value={selectedDevices.camera}
                 onChange={(e) => setSelectedDevices({ ...selectedDevices, camera: e.target.value })}
-                className="w-full px-3 py-2 border border-input rounded-lg bg-background text-foreground"
+                className="w-full px-3 py-2 border border-input rounded-xl bg-background text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {devices.camera.map((device) => (
                   <option key={device.deviceId} value={device.deviceId}>
@@ -245,10 +247,10 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
         </div>
 
         {/* Speaker Test */}
-        <div className="p-4 bg-muted rounded-lg">
+        <div className="p-4 bg-muted rounded-2xl">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium text-foreground">Test Speaker</p>
+              <p className="font-medium text-foreground">Test speaker</p>
               <p className="text-sm text-muted-foreground">Click to test your speaker volume</p>
             </div>
             <Button
@@ -257,22 +259,22 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
               onClick={testSpeaker}
               disabled={isTestingSpeaker}
             >
-              {isTestingSpeaker ? 'Testing...' : 'Test Speakers'}
+              {isTestingSpeaker ? 'Testing…' : 'Test speakers'}
             </Button>
           </div>
         </div>
 
         {/* Permission Summary */}
-        <div className="space-y-2 p-4 bg-muted/50 rounded-lg">
-          <p className="font-medium text-foreground text-sm">Permission Status</p>
+        <div className="space-y-2 p-4 bg-muted/50 rounded-2xl">
+          <p className="font-medium text-foreground text-sm">Permission status</p>
           <div className="space-y-2">
             {['Microphone', 'Sound', 'Camera'].map((item) => (
               <div key={item} className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{item}</span>
                 {permissions[item.toLowerCase() as keyof PermissionStatus] === 'granted' ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" aria-label="Allowed" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 text-red-600" />
+                  <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400" aria-label="Not allowed" />
                 )}
               </div>
             ))}
@@ -290,7 +292,7 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
             }}
             className="flex-1"
           >
-            Start Interview
+            Start interview
           </Button>
         </div>
       </div>

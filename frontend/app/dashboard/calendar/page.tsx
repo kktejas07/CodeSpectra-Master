@@ -13,6 +13,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
+import { PageHeader } from '@/components/app/page-kit'
 
 type CalEvent = {
   id: string
@@ -148,35 +149,37 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3" data-tour="calendar-header">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <CalendarDays className="h-7 w-7 text-primary" /> Calendar
-        </h1>
-        <p className="text-sm text-muted-foreground max-w-md">
-          Stay on CodeSpectra — events live here. Optional .ics / Google export remains available from courses if you want external sync.
-        </p>
+      <div data-tour="calendar-header">
+        <PageHeader
+          className="mb-0"
+          icon={<CalendarDays aria-hidden />}
+          title="Calendar"
+          description="Keep your study sessions and deadlines in one place. Courses also offer an .ics / Google Calendar export if you want them elsewhere."
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <Card className="p-4 space-y-4" data-tour="calendar-grid">
+        <Card className="rounded-3xl border-border/70 p-4 space-y-4 sm:p-5" data-tour="calendar-grid">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+              aria-label="Previous month"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <p className="font-semibold">{monthLabel}</p>
+            <p className="font-semibold text-foreground">{monthLabel}</p>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+              aria-label="Next month"
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase text-muted-foreground">
+          <div className="grid grid-cols-7 gap-1 text-center text-xs font-medium text-muted-foreground">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <div key={d}>{d}</div>
             ))}
@@ -184,7 +187,7 @@ export default function CalendarPage() {
           {loading ? (
             <div className="grid grid-cols-7 gap-1">
               {Array.from({ length: 35 }).map((_, i) => (
-                <div key={i} className="min-h-18 rounded-md border border-border bg-card/50 p-1 animate-pulse" />
+                <div key={i} className="min-h-18 rounded-lg border border-border bg-card/50 p-1 animate-pulse motion-reduce:animate-none" />
               ))}
             </div>
           ) : (
@@ -194,13 +197,13 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={c.key}
-                    className={`min-h-18 rounded-md border p-1 text-left ${
-                      c.date ? 'border-border bg-card' : 'border-transparent'
+                    className={`min-h-18 rounded-lg border p-1 text-left ${
+                      c.date ? 'border-border/70 bg-card' : 'border-transparent'
                     }`}
                   >
                     {c.date && (
                       <>
-                        <p className="text-[11px] font-medium px-0.5">{c.date.getDate()}</p>
+                        <p className="text-[11px] font-medium tabular-nums text-foreground px-0.5">{c.date.getDate()}</p>
                         <div className="mt-0.5 space-y-0.5">
                           {dayEvents.slice(0, 2).map((ev) => (
                             <p key={ev.id} className="truncate rounded bg-primary/15 px-1 text-[10px] text-primary">
@@ -221,26 +224,26 @@ export default function CalendarPage() {
         </Card>
 
         <div className="space-y-4">
-          <Card className="space-y-3 p-4" data-tour="calendar-add">
-            <h2 className="flex items-center gap-2 font-semibold">
-              <Plus className="h-4 w-4" /> Add event
+          <Card className="space-y-3 rounded-3xl border-border/70 p-5" data-tour="calendar-add">
+            <h2 className="flex items-center gap-2 font-semibold text-foreground">
+              <Plus className="h-4 w-4 text-primary" aria-hidden /> Add event
             </h2>
             <div className="space-y-2">
-              <Label>Title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Study session / deadline" />
+              <Label htmlFor="cal-title">Title</Label>
+              <Input id="cal-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Study session / deadline" />
             </div>
             <div className="space-y-2">
-              <Label>When</Label>
-              <Input type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
+              <Label htmlFor="cal-when">When</Label>
+              <Input id="cal-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
             </div>
             <Button onClick={addEvent} disabled={busy} className="w-full">
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Save on CodeSpectra
+              Save event
             </Button>
           </Card>
 
-          <Card className="space-y-3 p-4">
-            <h2 className="font-semibold">Upcoming</h2>
+          <Card className="space-y-3 rounded-3xl border-border/70 p-5">
+            <h2 className="font-semibold text-foreground">Upcoming</h2>
             {items.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No events yet. Add one here, or use “Add to calendar” on a course.
@@ -251,10 +254,10 @@ export default function CalendarPage() {
                   .slice()
                   .sort((a, b) => +new Date(a.start) - +new Date(b.start))
                   .map((ev) => (
-                    <li key={ev.id} className="flex gap-2 rounded-lg border border-border p-2 text-sm">
+                    <li key={ev.id} className="flex gap-2 rounded-xl border border-border/70 p-2.5 text-sm">
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">{ev.title}</p>
-                        <p className="text-[11px] text-muted-foreground">{formatDateTime(ev.start)}</p>
+                        <p className="truncate font-medium text-foreground">{ev.title}</p>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">{formatDateTime(ev.start)}</p>
                         {ev.url && (
                           <Link href={ev.url} className="text-[11px] text-primary hover:underline">
                             Open →
@@ -263,8 +266,9 @@ export default function CalendarPage() {
                       </div>
                       <button
                         type="button"
-                        className="text-muted-foreground hover:text-destructive"
+                        className="rounded-md p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"
                         onClick={() => void remove(ev.id)}
+                        aria-label={`Delete ${ev.title}`}
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

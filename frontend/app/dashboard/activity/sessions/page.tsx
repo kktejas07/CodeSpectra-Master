@@ -3,7 +3,7 @@ import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Video } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
@@ -11,6 +11,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/app/page-kit'
 
 type Session = {
   id: string
@@ -74,16 +75,18 @@ export default function MySessionsPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3" data-tour="sessions-header">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Sessions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Interview and mock sessions linked to your account.
-          </p>
-        </div>
-        <Button asChild size="sm" data-tour="sessions-action">
-          <Link href="/dashboard/interviews">Schedule / browse</Link>
-        </Button>
+      <div data-tour="sessions-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Video aria-hidden />}
+          title="My sessions"
+          description="Interview and mock sessions linked to your account."
+          actions={
+            <Button asChild size="sm" data-tour="sessions-action">
+              <Link href="/dashboard/interviews">Schedule / browse</Link>
+            </Button>
+          }
+        />
       </div>
       <div data-tour="sessions-list">
       {sessions.length === 0 ? (
@@ -99,9 +102,9 @@ export default function MySessionsPage() {
           {sessions.map((s) => (
             <li key={s.id}>
               <Link href={s.href}>
-                <Card className="flex items-center justify-between gap-3 p-3 hover:bg-muted/40">
+                <Card className="flex items-center justify-between gap-3 rounded-2xl border-border/70 p-3 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/40">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{s.title}</p>
+                    <p className="truncate font-medium text-foreground">{s.title}</p>
                     <p className="text-xs text-muted-foreground">
                       {[s.type, s.role].filter(Boolean).join(' · ')}
                       {s.scheduledAt ? ` · ${formatDateTime(s.scheduledAt)}` : ''}

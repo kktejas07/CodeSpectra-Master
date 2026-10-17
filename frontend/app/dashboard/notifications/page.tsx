@@ -14,6 +14,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader } from '@/components/app/page-kit'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import DOMPurify from 'isomorphic-dompurify'
 
@@ -222,18 +223,25 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between" data-tour="notifications-header">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Bell className="h-7 w-7 text-primary" /> Notifications
-          {unreadCount > 0 && (
-            <Badge variant="default" className="ml-2">{unreadCount} unread</Badge>
-          )}
-        </h1>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllRead}>
-            <CheckCheck className="h-4 w-4 mr-1" /> Mark all read
-          </Button>
-        )}
+      <div data-tour="notifications-header">
+        <PageHeader
+          className="mb-0"
+          icon={<Bell aria-hidden />}
+          title={
+            <span className="flex flex-wrap items-center gap-2">
+              Notifications
+              {unreadCount > 0 && (
+                <Badge variant="default" className="tabular-nums">{unreadCount} unread</Badge>
+              )}
+            </span>
+          }
+          description="Updates about your assessments, courses, events and account."
+          actions={unreadCount > 0 ? (
+            <Button variant="outline" size="sm" onClick={markAllRead}>
+              <CheckCheck className="h-4 w-4 mr-1" /> Mark all read
+            </Button>
+          ) : undefined}
+        />
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-2" data-tour="notifications-filters">
@@ -265,12 +273,12 @@ export default function NotificationsPage() {
           }
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {filtered.map((n) => {
             const Icon = IconComponent(n.icon || 'bell') as React.ComponentType<{ className?: string }>
             return (
-              <div key={n.id} className={`rounded-lg border transition-colors ${
-                n.is_read ? 'border-border bg-card hover:bg-muted/30' : 'border-primary/30 bg-primary/10 hover:bg-primary/15'
+              <div key={n.id} className={`rounded-2xl border transition-colors duration-200 ${
+                n.is_read ? 'border-border/70 bg-card hover:border-primary/30 hover:bg-muted/30' : 'border-primary/30 bg-primary/5 hover:bg-primary/10'
               }`}>
                 <div className="flex items-start gap-3 p-4 cursor-pointer"
                   onClick={async () => {
@@ -288,10 +296,10 @@ export default function NotificationsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm ${n.is_read ? 'text-muted-foreground' : 'font-medium'}`}>
+                      <p className={`text-sm ${n.is_read ? 'text-muted-foreground' : 'font-medium text-foreground'}`}>
                         {n.title}
                       </p>
-                      <span className="shrink-0 text-[10px] text-muted-foreground">
+                      <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
                         {formatDate(n.created_at)}
                       </span>
                     </div>

@@ -9,6 +9,7 @@ import {
   Brain, Loader2, Clock, Flag, Mic, MicOff, Send, Volume2,
   CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { PageHeader } from '@/components/app/page-kit'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import type { Question, Evaluation } from '@/lib/interviews/ai-mock-types'
@@ -283,14 +284,14 @@ export default function AiMockSessionPage() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-card/50 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-3">
           <Brain className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-sm hidden sm:inline">AI Mock Interview</span>
+          <span className="font-semibold text-sm text-foreground hidden sm:inline">AI mock interview</span>
           <Badge variant="outline" className="text-[10px]">{stored.difficulty}</Badge>
         </div>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1">
+          <span className="flex items-center gap-1 font-mono tabular-nums">
             <Clock className="h-3 w-3" /> {formatTime(elapsed)}
           </span>
-          <span className="font-medium">
+          <span className="font-medium tabular-nums">
             Q{Math.min(questionIndex + 1, totalQuestions)}/{totalQuestions}
           </span>
           <Button
@@ -307,14 +308,14 @@ export default function AiMockSessionPage() {
       {/* Main Content - Two Panel Layout */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         {/* Voice Area - Left/Top */}
-        <div className="flex-1 flex flex-col items-center justify-center bg-black/95 relative min-h-[200px] lg:min-h-0">
+        <div className="flex-1 flex flex-col items-center justify-center bg-neutral-950 relative min-h-[200px] lg:min-h-0">
           {/* Waveform Visualization */}
           <div className="flex items-center justify-center gap-1 h-20">
             {status === 'speaking' || status === 'listening' ? (
               Array.from({ length: 12 }).map((_, i) => (
                 <div
                   key={i}
-                  className="w-1.5 rounded-full transition-all duration-100"
+                  className="w-1.5 rounded-full transition-all duration-100 motion-reduce:transition-none"
                   style={{
                     height: `${Math.max(8, (waveform[i % waveform.length] || 0) * 60 + Math.random() * 20)}px`,
                     backgroundColor: status === 'speaking' ? '#22c55e' : '#ef4444',
@@ -327,7 +328,7 @@ export default function AiMockSessionPage() {
                 {status === 'processing' ? (
                   <Loader2 className="h-12 w-12 text-primary animate-spin" />
                 ) : (
-                  <Mic className="h-12 w-12 text-muted-foreground/50" />
+                  <Mic className="h-12 w-12 text-white/40" aria-hidden />
                 )}
               </div>
             )}
@@ -337,17 +338,17 @@ export default function AiMockSessionPage() {
           <div className="mt-4 text-center">
             {status === 'speaking' && (
               <p className="text-green-400 text-sm flex items-center gap-2">
-                <Volume2 className="h-4 w-4 animate-pulse" /> Interviewer is speaking...
+                <Volume2 className="h-4 w-4 animate-pulse motion-reduce:animate-none" /> Interviewer is speaking…
               </p>
             )}
             {status === 'listening' && (
               <p className="text-red-400 text-sm flex items-center gap-2">
-                <Mic className="h-4 w-4 animate-pulse" /> Listening...
+                <Mic className="h-4 w-4 animate-pulse motion-reduce:animate-none" /> Listening…
               </p>
             )}
             {status === 'processing' && (
-              <p className="text-primary text-sm flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Thinking...
+              <p className="text-blue-300 text-sm flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> Thinking…
               </p>
             )}
             {interimText && (
@@ -357,7 +358,7 @@ export default function AiMockSessionPage() {
 
           {/* Evaluation Flash */}
           {showEvaluation && currentEvaluation && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-border/40 min-w-[200px]">
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/95 backdrop-blur-sm rounded-2xl p-3 shadow-lg border border-border/40 min-w-[200px]">
               <div className="flex items-center gap-2 mb-1">
                 {currentEvaluation.score >= 7 ? (
                   <CheckCircle2 className="h-4 w-4 text-green-500" />
@@ -366,10 +367,10 @@ export default function AiMockSessionPage() {
                 ) : (
                   <XCircle className="h-4 w-4 text-red-500" />
                 )}
-                <span className="font-semibold text-sm">Score: {currentEvaluation.score}/10</span>
+                <span className="font-semibold text-sm tabular-nums text-foreground">Score: {currentEvaluation.score}/10</span>
               </div>
               {currentEvaluation.strengths.length > 0 && (
-                <p className="text-xs text-green-500">+{currentEvaluation.strengths.length} strengths</p>
+                <p className="text-xs text-green-700 dark:text-green-400">+{currentEvaluation.strengths.length} strengths</p>
               )}
             </div>
           )}
@@ -378,7 +379,7 @@ export default function AiMockSessionPage() {
           {error && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-destructive/90 text-white text-xs px-3 py-1.5 rounded-full">
               {error}
-              <button onClick={() => setError('')} className="ml-2 underline">dismiss</button>
+              <button type="button" onClick={() => setError('')} className="ml-2 underline">Dismiss</button>
             </div>
           )}
         </div>
@@ -387,7 +388,7 @@ export default function AiMockSessionPage() {
         <div className="flex-1 flex flex-col border-t lg:border-t-0 lg:border-l border-border/40 bg-background min-h-[300px] lg:min-h-0">
           <div className="px-4 py-2 border-b border-border/40 flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Transcript</span>
-            <span className="text-[10px] text-muted-foreground">{transcript.length} messages</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">{transcript.length} messages</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {transcript.map((entry) => (
@@ -396,12 +397,12 @@ export default function AiMockSessionPage() {
                 className={`flex ${entry.role === 'candidate' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                  className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${
                     entry.role === 'ai'
                       ? 'bg-primary/10 text-foreground'
                       : entry.role === 'candidate'
                         ? 'bg-muted text-foreground'
-                        : 'bg-amber-500/10 text-amber-600 text-xs'
+                        : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 text-xs'
                   }`}
                 >
                   {entry.role === 'ai' && (
@@ -411,12 +412,12 @@ export default function AiMockSessionPage() {
                   {entry.evaluation && (
                     <div className="mt-2 pt-2 border-t border-border/40">
                       <div className="flex items-center gap-2 text-xs">
-                        <span className="font-medium">{entry.evaluation.score}/10</span>
+                        <span className="font-medium tabular-nums">{entry.evaluation.score}/10</span>
                         {entry.evaluation.strengths.length > 0 && (
-                          <span className="text-green-500">+{entry.evaluation.strengths.length}</span>
+                          <span className="text-green-700 dark:text-green-400">+{entry.evaluation.strengths.length}</span>
                         )}
                         {entry.evaluation.improvements.length > 0 && (
-                          <span className="text-amber-500">-{entry.evaluation.improvements.length}</span>
+                          <span className="text-amber-700 dark:text-amber-400">-{entry.evaluation.improvements.length}</span>
                         )}
                       </div>
                     </div>
@@ -438,14 +439,16 @@ export default function AiMockSessionPage() {
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
-              placeholder="Type your answer..."
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              placeholder="Type your answer…"
+              aria-label="Your answer"
+              className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               disabled={status !== 'listening'}
             />
             <Button
               onClick={handleTextSubmit}
               disabled={status !== 'listening' || !textInput.trim()}
               size="sm"
+              aria-label="Send answer"
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -454,6 +457,7 @@ export default function AiMockSessionPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setTextMode(false)}
+                aria-label="Answer by voice"
               >
                 <Mic className="h-4 w-4" />
               </Button>
@@ -473,7 +477,8 @@ export default function AiMockSessionPage() {
               type="button"
               onClick={toggleMic}
               disabled={status === 'processing' || status === 'loading'}
-              className={`h-14 w-14 rounded-full flex items-center justify-center transition-all ${
+              aria-label={status === 'listening' ? 'Stop answering' : 'Answer by voice'}
+              className={`h-14 w-14 rounded-full flex items-center justify-center transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 status === 'listening'
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30'
                   : status === 'speaking'
@@ -530,54 +535,57 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
   if (!report) {
     return (
       <div className="text-center text-muted-foreground py-12">
-        <p>Report not found.</p>
+        <p>We couldn&apos;t find this report. Reports are kept in this browser tab only — start a new practice interview to get a fresh one.</p>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>
-          Start New Interview
+          Start new interview
         </Button>
       </div>
     )
   }
 
-  const scoreColor = report.overallScore >= 80 ? 'text-green-500' : report.overallScore >= 60 ? 'text-amber-500' : 'text-red-500'
+  const scoreColor = report.overallScore >= 80 ? 'text-green-600 dark:text-green-400' : report.overallScore >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Brain className="h-6 w-6 text-primary" /> Interview Report
-        </h1>
-        <Button variant="outline" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>
-          Practice Again
-        </Button>
-      </div>
+      <PageHeader
+        className="mb-0"
+        icon={<Brain aria-hidden />}
+        title="Interview report"
+        description="How your AI mock interview went, with strengths and what to work on next."
+        actions={
+          <Button variant="outline" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>
+            Practice again
+          </Button>
+        }
+      />
 
       {/* Overall Score */}
-      <Card className="p-6 text-center space-y-3">
-        <p className={`text-5xl font-bold ${scoreColor}`}>{report.overallScore}</p>
+      <Card className="rounded-3xl border-border/70 p-6 text-center space-y-3">
+        <p className={`text-5xl font-bold tabular-nums ${scoreColor}`}>{report.overallScore}</p>
         <p className="text-sm text-muted-foreground">out of 100</p>
         <Badge variant="outline" className="text-sm">{report.category}</Badge>
       </Card>
 
       {/* Summary */}
       {report.summary && (
-        <Card className="p-5">
-          <p className="text-sm leading-relaxed">{report.summary}</p>
+        <Card className="rounded-3xl border-border/70 p-5">
+          <p className="text-sm leading-relaxed text-foreground">{report.summary}</p>
         </Card>
       )}
 
       {/* Strengths & Improvements */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {report.topStrengths?.length > 0 && (
-          <Card className="p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-green-600">Strengths</h3>
+          <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-green-700 dark:text-green-400">Strengths</h3>
             {report.topStrengths.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
           </Card>
         )}
         {report.topImprovements?.length > 0 && (
-          <Card className="p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-amber-600">Areas to Improve</h3>
+          <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">Areas to improve</h3>
             {report.topImprovements.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
@@ -587,8 +595,8 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
 
       {/* Resources */}
       {report.recommendedResources?.length > 0 && (
-        <Card className="p-5 space-y-2">
-          <h3 className="text-sm font-semibold">Recommended Resources</h3>
+        <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+          <h3 className="text-sm font-semibold text-foreground">Recommended resources</h3>
           {report.recommendedResources.map((r: string, i: number) => (
             <p key={i} className="text-xs text-muted-foreground">• {r}</p>
           ))}
@@ -596,13 +604,14 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
       )}
 
       {/* Collapsible Transcript */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden rounded-3xl border-border/70">
         <button
           type="button"
           onClick={() => setTranscriptOpen(!transcriptOpen)}
+          aria-expanded={transcriptOpen}
           className="w-full px-5 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
         >
-          <span className="text-sm font-medium">Full Transcript</span>
+          <span className="text-sm font-medium text-foreground">Full transcript</span>
           {transcriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {transcriptOpen && (

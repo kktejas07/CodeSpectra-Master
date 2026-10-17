@@ -87,15 +87,15 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold text-foreground">Choose Your Mock Interview Experience</h2>
-        <p className="text-muted-foreground mt-2">
+        <h2 className="text-2xl font-bold tracking-tight text-balance text-foreground sm:text-[1.75rem]">Choose your mock interview</h2>
+        <p className="mt-1 max-w-[70ch] text-[15px] leading-relaxed text-muted-foreground">
           Start with popular ready-made roles or build your own based on a specific job description.
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
         {INTERVIEW_ROLES.map((role) => {
           const isLocked = role.locked && !completedRoles.includes(role.prerequisite || '')
           const isCompleted = completedRoles.includes(role.id)
@@ -104,24 +104,24 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
           return (
             <Card
               key={role.id}
-              className={`p-6 cursor-pointer transition-all hover:shadow-lg ${
+              className={`rounded-3xl border-border/70 p-6 cursor-pointer transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 ${
                 selectedRole === role.id ? 'ring-2 ring-primary' : ''
               } ${
                 isLocked ? 'opacity-60 pointer-events-none' : ''
               } ${
-                isCompleted ? 'ring-2 ring-green-500 bg-green-50 dark:bg-green-950/20' : ''
+                isCompleted ? 'ring-2 ring-green-500/60 bg-green-500/5' : ''
               }`}
               onClick={() => handleSelectRole(role.id, Boolean(isLocked))}
             >
               <div className="space-y-4">
                 {/* Header */}
                 <div className="flex items-start justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-primary">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
                     <RoleIcon className="h-6 w-6" strokeWidth={1.75} aria-hidden />
                   </div>
                   {isLocked && (
-                    <div className="p-2 bg-red-100 dark:bg-red-950/30 rounded-lg">
-                      <Lock className="w-4 h-4 text-red-600" />
+                    <div className="p-2 bg-muted rounded-lg">
+                      <Lock className="w-4 h-4 text-muted-foreground" aria-label="Locked" />
                     </div>
                   )}
                   {isCompleted && (
@@ -148,7 +148,7 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
 
                 {/* Lock Info */}
                 {isLocked && role.prerequisite && (
-                  <div className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 p-2 rounded">
+                  <div className="text-xs text-muted-foreground bg-muted p-2 rounded-lg">
                     Complete {INTERVIEW_ROLES.find((r) => r.id === role.prerequisite)?.title} to unlock
                   </div>
                 )}

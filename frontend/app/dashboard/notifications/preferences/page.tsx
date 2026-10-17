@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
+import { PageHeader } from '@/components/app/page-kit'
 import { Bell, Mail, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Slack } from '@/components/ui/brand-icons'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -156,10 +156,11 @@ export default function NotificationPreferencesPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       <div data-tour="notification-preferences-header">
-      <DashboardPageHeader
-        icon={SlidersHorizontal}
+      <PageHeader
+        className="mb-0"
+        icon={<SlidersHorizontal aria-hidden />}
         title="Notification preferences"
         description="Fine-tune channels and categories. Quick toggles also live on Settings."
         actions={
@@ -179,15 +180,15 @@ export default function NotificationPreferencesPage() {
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-5">
           {preferences.map((pref) => (
             <Card
               key={pref.id}
-              className="overflow-hidden rounded-xl border-border/60 shadow-sm"
+              className="overflow-hidden rounded-3xl border-border/70"
             >
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 px-6 py-4">
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
                     <ChannelIcon type={pref.type} />
                   </div>
                   <div className="min-w-0">
@@ -231,11 +232,11 @@ export default function NotificationPreferencesPage() {
             </Card>
           ))}
 
-          <Card className="overflow-hidden rounded-xl border-border/60 shadow-sm">
+          <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">
               <h3 className="text-lg font-semibold text-foreground">Email digest</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Optional summaries (demo toggles — wire to your backend when ready).
+                Optional summaries of what happened on your account.
               </p>
             </div>
             <div className="divide-y divide-border/60 px-6">
@@ -256,11 +257,11 @@ export default function NotificationPreferencesPage() {
             </div>
           </Card>
 
-          <Card className="overflow-hidden rounded-xl border-border/60 shadow-sm">
+          <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">
               <h3 className="text-lg font-semibold text-foreground">Quiet hours</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Local preview — connect to your notification service to enforce delivery windows.
+                Set the hours when you would rather not be notified.
               </p>
             </div>
             <div className="grid gap-4 px-6 py-5 sm:grid-cols-2">
@@ -292,7 +293,7 @@ export default function NotificationPreferencesPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border border-amber-500/30 bg-amber-500/5 shadow-sm">
+          <Card className="rounded-3xl border border-border/70 bg-muted/30">
             <div className="px-6 py-5">
               <h3 className="text-lg font-semibold text-foreground">Privacy &amp; data</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
