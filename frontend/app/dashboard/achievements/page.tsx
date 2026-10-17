@@ -60,31 +60,31 @@ export default function AchievementsPage() {
       const achievementsTour: TourStep[] = [
         {
           target: '[data-tour="achievements-header"]',
-          title: 'Your Achievements Overview',
+          title: 'Your achievements overview',
           description: 'This page shows your earned achievements, skill badges, and progress for all learners.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-stats"]',
-          title: 'Track Level and XP',
+          title: 'Track level and XP',
           description: 'Track your level, XP, earned achievements, and solved problems at a glance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-graph"]',
-          title: 'Review Activity Streaks',
+          title: 'Review activity streaks',
           description: 'Review your contribution graph to spot activity streaks and gaps over time.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-badges"]',
-          title: 'Earn Skill Badges',
+          title: 'Earn skill badges',
           description: 'Earn skill badges as you master technologies tracked in the SkillBadges section.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-tabs"]',
-          title: 'Browse Every Achievement',
+          title: 'Browse every achievement',
           description: 'Pro tip: open each achievement card to check progress counts and finish remaining tasks first.',
           position: 'bottom',
         },

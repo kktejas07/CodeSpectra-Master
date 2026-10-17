@@ -1,7 +1,7 @@
 'use client'
 import { formatDate } from '@/lib/format-datetime'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,14 +23,6 @@ interface CloudflareData {
   timeSeries?: Array<{ datetime: string; requests: number; cached: number; bandwidth: number }>
   realtime?: { estimatedVisitorsPerMinute: number; requestsPerHour: number }
   error?: string
-}
-
-interface WafRule {
-  id: string
-  name: string
-  description: string
-  action: 'block' | 'challenge' | 'allow'
-  enabled: boolean
 }
 
 const COUNTRY_NAME_TO_CODE: Record<string, string> = {
@@ -76,19 +68,6 @@ export default function CdnAdminPage() {
   const [cfData, setCfData] = useState<CloudflareData | null>(null)
   const [cfLoading, setCfLoading] = useState(true)
 
-  const [wafRules, setWafRules] = useState<WafRule[]>(() => {
-    try {
-      const saved = localStorage.getItem('cs_waf_rules')
-      if (saved) return JSON.parse(saved)
-    } catch {}
-    return [
-      { id: '1', name: 'SQL Injection Protection', description: 'Detects and blocks SQL injection attempt patterns in incoming requests.', action: 'block', enabled: true },
-      { id: '2', name: 'Cross-Site Scripting (XSS)', description: 'Sanitizes and blocks scripts sent through URL queries or POST payloads.', action: 'challenge', enabled: true },
-      { id: '3', name: 'Rate Limiting (Anti-DDoS)', description: 'Limits clients to maximum 120 requests/minute during surge periods.', action: 'block', enabled: true },
-      { id: '4', name: 'Bad Bot Ingress Blocker', description: 'Restricts unverified scrapers and vulnerability scanners from indexing pages.', action: 'challenge', enabled: false },
-    ]
-  })
-
   const fetchCfData = () => {
     fetch('/api/admin/cloudflare-analytics', { credentials: 'include' })
       .then(r => r.json())
@@ -123,25 +102,6 @@ export default function CdnAdminPage() {
       setPurging(false)
     }
   }
-
-  const toggleWafRule = useCallback((id: string) => {
-    setWafRules(prev => {
-      const next = prev.map(rule => {
-        if (rule.id === id) {
-          const nextState = !rule.enabled
-          toast({
-            type: 'success',
-            title: `WAF Rule ${nextState ? 'Enabled' : 'Disabled'}`,
-            message: `Successfully modified security status for "${rule.name}"`,
-          })
-          return { ...rule, enabled: nextState }
-        }
-        return rule
-      })
-      try { localStorage.setItem('cs_waf_rules', JSON.stringify(next)) } catch {}
-      return next
-    })
-  }, [toast])
 
   const chartData = cfData?.timeSeries ? formatTimeSeriesData(cfData.timeSeries) : []
 
@@ -390,37 +350,22 @@ export default function CdnAdminPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Web application firewall (WAF)</h3>
-                <p className="text-xs text-muted-foreground">Manage active intrusion protection rules deployed at the CDN edge network layer.</p>
-                {!cfData?.configured && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
-                    WAF rules shown here are simulated and stored locally. Configure Cloudflare to manage real WAF rules.
-                  </p>
-                )}
+                <p className="text-xs text-muted-foreground">Firewall rules run at the Cloudflare edge.</p>
               </div>
             </div>
 
-            <div className="space-y-4">
-              {wafRules.map(rule => (
-                <div key={rule.id} className="flex items-start justify-between p-3 rounded-2xl bg-muted/40 border border-border/60 hover:border-primary/30 transition-colors duration-200">
-                  <div className="space-y-1 pr-4">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-sm">{rule.name}</span>
-                      <Badge variant="outline" className="text-[11px] capitalize px-1.5 py-0 border-primary/20 text-primary">
-                        {rule.action}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">{rule.description}</p>
-                  </div>
-                  <Button
-                    onClick={() => toggleWafRule(rule.id)}
-                    variant={rule.enabled ? 'default' : 'outline'}
-                    className={`h-8 w-16 text-xs transition-all ${rule.enabled ? 'bg-green-600 text-white hover:bg-green-700' : ''}`}
-                  >
-                    {rule.enabled ? 'Active' : 'Off'}
-                  </Button>
-                </div>
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Managing WAF rules from CodeSpectra isn&apos;t available yet. Turn rules on or off in the{' '}
+              <a
+                href="https://dash.cloudflare.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Cloudflare dashboard<span className="sr-only"> (opens in a new tab)</span>
+              </a>
+              .
+            </p>
           </Panel>
         </div>
 

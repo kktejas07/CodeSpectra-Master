@@ -60,19 +60,19 @@ export default function CourseWishlistPage() {
       const wishlistTour: TourStep[] = [
         {
           target: '[data-tour="wishlist-header"]',
-          title: 'Saved Courses Watchlist',
+          title: 'Saved courses watchlist',
           description: 'This page stores courses you hearted so you can enroll later when ready.',
           position: 'bottom',
         },
         {
           target: '[data-tour="wishlist-browse"]',
-          title: 'Browse Full Course Catalog',
+          title: 'Browse full course catalog',
           description: 'Browse the course catalog to discover new courses worth saving.',
           position: 'bottom',
         },
         {
           target: '[data-tour="wishlist-list"]',
-          title: 'Open or Remove Saved',
+          title: 'Open or remove saved',
           description: 'Tip: open a saved course to enroll, or tap the heart to remove it.',
           position: 'top',
         },

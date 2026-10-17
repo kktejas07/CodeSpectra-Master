@@ -77,7 +77,7 @@ export default function LeaderboardPage() {
         },
         {
           target: '[data-tour="leaderboard-tabs"]',
-          title: 'Live vs Previous',
+          title: 'Live vs previous',
           description: 'Toggle between live rankings and past leaderboard results.',
           position: 'bottom',
         },
@@ -89,19 +89,19 @@ export default function LeaderboardPage() {
         },
         {
           target: '[data-tour="leaderboard-podium"]',
-          title: 'Top Performers',
+          title: 'Top performers',
           description: 'The top 3 performers are highlighted here. Can you reach the podium?',
           position: 'bottom',
         },
         {
           target: '[data-tour="leaderboard-my-rank"]',
-          title: 'Your Rank',
+          title: 'Your rank',
           description: 'See your current global rank and points. Keep climbing!',
           position: 'bottom',
         },
         {
           target: '[data-tour="leaderboard-table"]',
-          title: 'Full Rankings',
+          title: 'Full rankings',
           description: 'Browse all developers ranked by points. Search to find specific users.',
           position: 'top',
         },

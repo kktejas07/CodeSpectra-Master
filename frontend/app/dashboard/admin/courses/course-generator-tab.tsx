@@ -298,7 +298,7 @@ export default function CourseGeneratorTab() {
 
   // Delete course
   const handleDeleteCourse = (courseId: string, title: string) => {
-    setConfirmTitle('Delete Course')
+    setConfirmTitle('Delete course')
     setConfirmMessage(`Delete "${title}"? This action cannot be undone. All videos, quizzes, and progress will be permanently removed.`)
     setConfirmAction(() => async () => {
       try {
@@ -337,7 +337,7 @@ export default function CourseGeneratorTab() {
   }
 
   const handleDeleteJob = (jobId: string) => {
-    setConfirmTitle('Delete Job')
+    setConfirmTitle('Delete job')
     setConfirmMessage('Delete this job record? This cannot be undone.')
     setConfirmAction(() => async () => {
       try {

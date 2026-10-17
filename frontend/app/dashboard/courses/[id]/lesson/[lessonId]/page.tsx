@@ -286,7 +286,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background gap-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40" />
         <h2 className="text-xl font-semibold">Course not found</h2>
-        <Button onClick={() => router.push('/dashboard/courses')}>Back to Courses</Button>
+        <Button onClick={() => router.push('/dashboard/courses')}>Back to courses</Button>
       </div>
     )
   }
@@ -339,7 +339,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background gap-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40" />
         <h2 className="text-xl font-semibold">Lesson not found</h2>
-        <Button onClick={() => router.push(`/dashboard/courses/${courseId}`)}>Back to Course</Button>
+        <Button onClick={() => router.push(`/dashboard/courses/${courseId}`)}>Back to course</Button>
       </div>
     )
   }
@@ -453,7 +453,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <BookOpen className="w-4 h-4" /> Text Lesson
+                      <BookOpen className="w-4 h-4" /> Text lesson
                     </button>
                     <button
                       onClick={() => setViewMode('video')}
@@ -464,7 +464,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <Play className="w-4 h-4" /> Video Lesson
+                      <Play className="w-4 h-4" /> Video lesson
                     </button>
                   </div>
                 )}
@@ -535,7 +535,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
                     <Button variant="outline" disabled={!quizPrevHref} onClick={() => quizPrevHref && router.push(quizPrevHref)}>Previous</Button>
                     <Button disabled={!quizNextHref || (quizSectionIndex != null && (quizScores[quizSectionIndex] ?? 0) < 80)} onClick={() => quizNextHref && router.push(quizNextHref)}>
-                      Next Module
+                      Next module
                     </Button>
                   </div>
                 </div>
@@ -705,7 +705,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         router.push(`/dashboard/courses/${courseId}/lesson/${nextLesson?.id}`)
                       }}
                     >
-                      {isDone ? 'Next Lesson' : 'Complete & Continue'}
+                      {isDone ? 'Next lesson' : 'Complete and continue'}
                     </Button>
                   </div>
                 </div>
@@ -721,7 +721,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}>
           <div className="px-5 py-4 border-b border-border/40 shrink-0 bg-muted/20 flex items-center justify-between">
-            <h3 className="font-semibold">Course Content</h3>
+            <h3 className="font-semibold">Course content</h3>
             <span className="text-xs text-muted-foreground font-medium bg-background px-2 py-1 rounded-md border border-border/50">
               {completedLessons.size} / {allLessons.length}
             </span>

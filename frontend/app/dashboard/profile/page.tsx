@@ -286,19 +286,19 @@ export default function ProfilePage() {
       const profileTour: TourStep[] = [
         {
           target: '[data-tour="profile-header"]',
-          title: 'Your Developer Profile Overview',
+          title: 'Your developer profile overview',
           description: 'This page showcases your identity, level, and progress to recruiters and teammates.',
           position: 'bottom',
         },
         {
           target: '[data-tour="profile-edit"]',
-          title: 'Edit Profile Details',
+          title: 'Edit profile details',
           description: 'Open the profile editor to update bio, links, and experience for completeness.',
           position: 'bottom',
         },
         {
           target: '[data-tour="profile-about"]',
-          title: 'Tip: Strengthen About Bio',
+          title: 'Tip: Strengthen about bio',
           description: 'Tip: write two lines on skills and goals so recruiters understand you quickly.',
           position: 'top',
         },
@@ -564,7 +564,7 @@ export default function ProfilePage() {
                   </div>
                   <Badge variant="outline" className="text-[10px] text-primary border-primary/30">Priority</Badge>
                 </div>
-                <h4 className="font-semibold text-foreground mb-1">System Design: Scaling</h4>
+                <h4 className="font-semibold text-foreground mb-1">System design: Scaling</h4>
                 <p className="text-xs text-muted-foreground mb-3">A core topic in most system design interviews</p>
                 <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   Practice now
@@ -576,7 +576,7 @@ export default function ProfilePage() {
                     <FolderGit2 className="h-4 w-4 text-primary" aria-hidden />
                   </div>
                 </div>
-                <h4 className="font-semibold text-foreground mb-1">React State Management</h4>
+                <h4 className="font-semibold text-foreground mb-1">React state management</h4>
                 <p className="text-xs text-muted-foreground mb-3">A frequent topic in frontend interviews</p>
                 <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   Practice now
@@ -652,12 +652,12 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
                {[
-                 { id: 'blue-3d', label: 'Tech Nodes', file: 'blue-3d.jpg' },
-                 { id: 'purple-3d', label: 'Neon Fluid', file: 'purple-3d.jpg' },
-                 { id: 'green-3d', label: 'Cyber City', file: 'green-3d.jpg' },
-                 { id: 'dark-tech', label: 'Dark Tech', file: 'dark-tech.jpg' },
-                 { id: 'gradient-blue', label: 'Ocean Wave', file: 'gradient-blue.jpg' },
-                 { id: 'emerald-code', label: 'Code Dark', file: 'emerald-code.jpg' },
+                 { id: 'blue-3d', label: 'Tech nodes', file: 'blue-3d.jpg' },
+                 { id: 'purple-3d', label: 'Neon fluid', file: 'purple-3d.jpg' },
+                 { id: 'green-3d', label: 'Cyber city', file: 'green-3d.jpg' },
+                 { id: 'dark-tech', label: 'Dark tech', file: 'dark-tech.jpg' },
+                 { id: 'gradient-blue', label: 'Ocean wave', file: 'gradient-blue.jpg' },
+                 { id: 'emerald-code', label: 'Code dark', file: 'emerald-code.jpg' },
                ].map((t) => (
                  <div
                    key={t.id}

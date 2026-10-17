@@ -127,7 +127,7 @@ export default function AgentPage() {
       const agentTour: TourStep[] = [
         {
           target: '[data-tour="agent-header"]',
-          title: 'Agent Workspace Overview',
+          title: 'Agent workspace overview',
           description: 'This workspace lets developers run an autonomous coding agent to plan and rewrite code.',
           position: 'bottom',
         },

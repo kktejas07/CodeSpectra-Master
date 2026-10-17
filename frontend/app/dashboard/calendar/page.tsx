@@ -49,19 +49,19 @@ export default function CalendarPage() {
       const calendarTour: TourStep[] = [
         {
           target: '[data-tour="calendar-header"]',
-          title: 'Personal Study Calendar Hub',
+          title: 'Personal study calendar hub',
           description: 'Manage study sessions, deadlines, and course events in one place for your prep.',
           position: 'bottom',
         },
         {
           target: '[data-tour="calendar-grid"]',
-          title: 'Browse Events by Month',
+          title: 'Browse events by month',
           description: 'Browse days with the arrow buttons to spot sessions and deadlines across months.',
           position: 'right',
         },
         {
           target: '[data-tour="calendar-add"]',
-          title: 'Save Study Session Fast',
+          title: 'Save study session fast',
           description: 'Where next: enter a title and date, Save on CodeSpectra, then track it in Upcoming.',
           position: 'left',
         },

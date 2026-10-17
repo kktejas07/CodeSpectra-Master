@@ -133,19 +133,19 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       const codeathonDetailTour: TourStep[] = [
         {
           target: '[data-tour="codeathon-detail-header"]',
-          title: 'Codeathon Details For Participants',
+          title: 'Codeathon details for participants',
           description: 'This page shows one codeathon’s rules, teams, and problems for participants.',
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathon-detail-register"]',
-          title: 'Register For Event',
+          title: 'Register for the event',
           description: 'Click Register for Codeathon to join, then solve problems when contest starts.',
           position: 'top',
         },
         {
           target: '[data-tour="codeathon-detail-overview"]',
-          title: 'Check Stats Before Registering',
+          title: 'Check stats before registering',
           description: 'Pro tip: check prize, difficulty, and countdown here before registering or forming a team.',
           position: 'top',
         },

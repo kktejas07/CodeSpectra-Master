@@ -5,95 +5,60 @@ import { useParams } from 'next/navigation'
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
-import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { CADTaskTypeSelector } from '@/components/cad/cad-task-type-selector'
 import {
   Clock,
   Upload,
-  FileCheck,
-  CheckCircle2,
-  AlertCircle,
   Save,
   Send,
-  HelpCircle,
   Download,
-  Layers,
   MessageSquare,
-  ShieldCheck,
-  Cpu,
+  Eye,
 } from 'lucide-react'
 
 const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) => m.CADEditor), {
   ssr: false,
   loading: () => (
     <div className="flex h-96 items-center justify-center rounded-lg border border-border bg-card">
-      <div className="text-sm text-muted-foreground">Loading CAD Task Environment...</div>
+      <div className="text-sm text-muted-foreground">Loading CAD editor…</div>
     </div>
   ),
 })
 
+/**
+ * CAD assessment preview.
+ *
+ * There is no CAD assessment session, timer or submission/scoring API yet, so
+ * this page is an honest preview: no candidate name, no countdown, no
+ * proctoring, and nothing is uploaded or scored. When a real CAD session API
+ * exists, load the session by `params.id` here and drop the preview banner.
+ */
 export default function CandidateCADAssessmentPage() {
   const addToast = useToast()
   const gate = usePageGuard('user')
   const params = useParams()
-  const assessmentId = (params?.id as string) || 'unknown'
+  const assessmentId = (params?.id as string) || 'demo'
   const [activeTab, setActiveTab] = useState<'editor' | 'file_upload' | 'task_selection'>('editor')
-
-  if (!gate.ready) return null
-  if (!gate.allowed) {
-    return null
-  }
   const [selectedTaskCode, setSelectedTaskCode] = useState<string>('T1_PART_MODELLING')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSubmitted, setIsSubmitted] = useState(false)
 
-  // Dual submission: Native file + STEP AP242 paired export per FR-43
+  // Dual submission: Native file + STEP AP242 paired export per FR-43.
+  // In preview the files are only picked locally — never uploaded or scored.
   const [nativeFile, setNativeFile] = useState<File | null>(null)
   const [stepAp242File, setStepAp242File] = useState<File | null>(null)
 
   // T9 Design Rationale & Viva Explanation
   const [vivaRationale, setVivaRationale] = useState('')
 
-  const [evaluationResult, setEvaluationResult] = useState<any | null>(null)
-
-  const handleNativeFileUpload = (file: File) => {
-    setNativeFile(file)
-    triggerEvaluation(file, stepAp242File)
-  }
-
-  const handleStepFileUpload = (file: File) => {
-    setStepAp242File(file)
-    triggerEvaluation(nativeFile, file)
-  }
-
-  const triggerEvaluation = (nFile: File | null, sFile: File | null) => {
-    if (!nFile && !sFile) return
-    // 4-Layer Automated Evaluator (Layer 1 Geometric, Layer 2 Feature Tree, Layer 3 GD&T, Layer 4 Rationale)
-    setTimeout(() => {
-      setEvaluationResult({
-        compositeScore: 93.8,
-        layer1_geometric: { score: 95.0, hausdorffDistanceMm: 0.02, massCheck: 'Passed (1.24 kg vs 1.25 kg target)' },
-        layer2_modelling_quality: { score: 92.5, fullyDefinedPct: 96.0, rebuildErrors: 0, treeDepth: 8 },
-        layer3_drawing_gdt: { score: 94.0, standardApplied: 'ISO 1101 / ASME Y14.5', datumsValid: true },
-        layer4_sme_review: { score: 93.0, vivaRationaleVerified: true, aiNarrative: 'Parametric design intent verified.' },
-        authorshipCheck: 'Passed (SolidWorks 2026 Metadata Forensics & Build History Verified)',
-      })
-    }, 1000)
-  }
-
-  const handleSubmit = () => {
-    setIsSubmitting(true)
-    setTimeout(() => {
-      setIsSubmitting(false)
-      setIsSubmitted(true)
-    }, 1500)
+  if (!gate.ready) return null
+  if (!gate.allowed) {
+    return null
   }
 
   const handleSaveDraft = () => {
     try {
       const key = `codespectra-cad-draft-${assessmentId}-${selectedTaskCode}`
       localStorage.setItem(key, JSON.stringify({ vivaRationale: vivaRationale || '', selectedTaskCode, savedAt: new Date().toISOString() }))
-      addToast({ type: 'success', title: 'Draft saved locally' })
+      addToast({ type: 'success', title: 'Draft saved on this device' })
     } catch {
       addToast({ type: 'error', title: 'Could not save draft', message: 'Browser storage is unavailable.' })
     }
@@ -127,21 +92,27 @@ export default function CandidateCADAssessmentPage() {
   }
 
   return (
-    <ProctoringWrapper proctoringLevel="ai_flagged" candidateName="Marcus Vance">
       <div className="flex h-[calc(100vh-2.5rem)] flex-col bg-background">
+        <div role="note" className="flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-800 dark:text-amber-300">
+          <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <p>
+            <strong className="font-semibold">Preview.</strong> This is a sample CAD task to try the tools. There is no
+            timer, nothing is proctored, and files you pick are not uploaded or scored.
+          </p>
+        </div>
         {/* Header Task Bar */}
         <div className="flex items-center justify-between border-b border-border bg-card px-4 py-2.5">
           <div>
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-              Task 2 of 5 · CAD and engineering assessment
+              Preview · Sample CAD task
             </span>
-            <h1 className="text-base font-bold text-foreground">Bracket Mass Reduction & Stress FEA Optimization</h1>
+            <h1 className="text-base font-bold text-foreground">Bracket mass reduction and stress optimization</h1>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-1 text-xs font-mono font-bold tabular-nums text-foreground">
-              <Clock className="h-3.5 w-3.5 text-primary" />
-              <span>38:14 left</span>
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+              <Clock className="h-3.5 w-3.5" aria-hidden />
+              <span>No time limit in preview</span>
             </div>
 
             <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5 text-xs font-medium">
@@ -179,13 +150,16 @@ export default function CandidateCADAssessmentPage() {
             </button>
 
             <button
-              onClick={handleSubmit}
-              disabled={isSubmitting || isSubmitted}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
+              type="button"
+              disabled
+              title="Submitting isn't available in preview"
+              aria-describedby="cad-submit-hint"
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Send className="h-3.5 w-3.5" />
-              {isSubmitted ? 'Submitted' : isSubmitting ? 'Submitting…' : 'Submit task'}
+              <Send className="h-3.5 w-3.5" aria-hidden />
+              Submit task
             </button>
+            <span id="cad-submit-hint" className="sr-only">Submitting isn&apos;t available in preview.</span>
           </div>
         </div>
 
@@ -249,23 +223,6 @@ export default function CandidateCADAssessmentPage() {
               </button>
             </div>
 
-            {evaluationResult && (
-              <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-3 space-y-2">
-                <div className="flex items-center justify-between font-bold text-green-700 dark:text-green-400 text-xs">
-                  <span>Automatic score (4 layers)</span>
-                  <span className="font-mono text-sm tabular-nums">{evaluationResult.compositeScore}%</span>
-                </div>
-                <div className="space-y-1 text-[11px] text-muted-foreground border-t border-green-500/20 pt-2">
-                  <div>• Layer 1 (Geometric): <strong className="text-foreground">{evaluationResult.layer1_geometric.score}%</strong></div>
-                  <div>• Layer 2 (Modelling Quality): <strong className="text-foreground">{evaluationResult.layer2_modelling_quality.score}%</strong></div>
-                  <div>• Layer 3 (Drawing & GD&T): <strong className="text-foreground">{evaluationResult.layer3_drawing_gdt.score}%</strong></div>
-                  <div>• Layer 4 (Viva Rationale): <strong className="text-foreground">{evaluationResult.layer4_sme_review.score}%</strong></div>
-                </div>
-                <div className="text-[10px] text-green-700 dark:text-green-300 font-semibold pt-1">
-                  {evaluationResult.authorshipCheck}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right Main Editor / Upload / Modality Workspace */}
@@ -296,19 +253,22 @@ export default function CandidateCADAssessmentPage() {
                   <div>
                     <h3 className="font-bold text-foreground text-base">Submit both CAD files</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Upload your Native CAD file for Layer 2 feature-tree evaluation <strong>PLUS</strong> STEP AP242 export for Layer 1 geometry & semantic PMI validation.
+                      A real assessment asks for your native CAD file (for the feature tree) and a STEP AP242 export (for geometry and tolerances).
+                    </p>
+                    <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mt-2">
+                      Preview only: files stay on your device and are not uploaded or scored.
                     </p>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4 text-left pt-2">
                     {/* Native CAD File Upload */}
                     <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
-                      <div className="font-bold text-xs text-foreground">1. Native CAD File (.sldprt, .ipt, .prt)</div>
-                      <p className="text-[11px] text-muted-foreground">Required for Layer 2 feature tree & design intent parsing.</p>
+                      <div className="font-bold text-xs text-foreground">1. Native CAD file (.sldprt, .ipt, .prt)</div>
+                      <p className="text-[11px] text-muted-foreground">Used to check the feature tree and design intent.</p>
                       <input
                         type="file"
                         accept=".sldprt,.ipt,.prt,.catpart"
-                        onChange={(e) => e.target.files?.[0] && handleNativeFileUpload(e.target.files[0])}
+                        onChange={(e) => e.target.files?.[0] && setNativeFile(e.target.files[0])}
                         className="hidden"
                         id="native-file-input"
                       />
@@ -319,20 +279,20 @@ export default function CandidateCADAssessmentPage() {
                         Choose native file
                       </label>
                       {nativeFile && (
-                        <div className="text-[11px] font-semibold text-green-700 dark:text-green-400 truncate">
-                          ✓ {nativeFile.name}
+                        <div className="text-[11px] font-medium text-foreground truncate">
+                          Picked: {nativeFile.name}
                         </div>
                       )}
                     </div>
 
                     {/* STEP AP242 File Upload */}
                     <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
-                      <div className="font-bold text-xs text-foreground">2. STEP AP242 Export (.step, .stp)</div>
-                      <p className="text-[11px] text-muted-foreground">Required for Layer 1 geometry & PMI machine reading.</p>
+                      <div className="font-bold text-xs text-foreground">2. STEP AP242 export (.step, .stp)</div>
+                      <p className="text-[11px] text-muted-foreground">Used to check geometry and tolerances.</p>
                       <input
                         type="file"
                         accept=".stp,.step"
-                        onChange={(e) => e.target.files?.[0] && handleStepFileUpload(e.target.files[0])}
+                        onChange={(e) => e.target.files?.[0] && setStepAp242File(e.target.files[0])}
                         className="hidden"
                         id="step-file-input"
                       />
@@ -343,8 +303,8 @@ export default function CandidateCADAssessmentPage() {
                         Choose STEP AP242 file
                       </label>
                       {stepAp242File && (
-                        <div className="text-[11px] font-semibold text-green-700 dark:text-green-400 truncate">
-                          ✓ {stepAp242File.name}
+                        <div className="text-[11px] font-medium text-foreground truncate">
+                          Picked: {stepAp242File.name}
                         </div>
                       )}
                     </div>
@@ -355,6 +315,5 @@ export default function CandidateCADAssessmentPage() {
           </div>
         </div>
       </div>
-    </ProctoringWrapper>
   )
 }

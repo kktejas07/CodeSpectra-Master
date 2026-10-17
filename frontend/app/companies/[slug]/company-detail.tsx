@@ -7,9 +7,7 @@ import {
   Building2,
   Calendar,
   MapPin,
-  Star,
   Briefcase,
-  TrendingUp,
   MessageSquare,
   Lightbulb,
   ChevronRight,
@@ -63,9 +61,6 @@ export function CompanyDetail({ company }: { company: CompanyEntry }) {
               <span className="flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" /> Founded {company.founded}
               </span>
-              <span className="flex items-center gap-1 font-medium tabular-nums text-amber-700 dark:text-amber-400">
-                <Star className="h-3.5 w-3.5" /> {company.glassdoor.toFixed(1)} Glassdoor
-              </span>
             </div>
           </div>
         </div>
@@ -112,7 +107,8 @@ export function CompanyDetail({ company }: { company: CompanyEntry }) {
 
             {/* Difficulty Distribution */}
             <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
-              <h2 className="mb-4 text-lg font-bold text-cs-ink">Difficulty mix</h2>
+              <h2 className="mb-1 text-lg font-bold text-cs-ink">Difficulty mix</h2>
+              <p className="mb-4 text-sm text-cs-ink-soft">An editorial estimate, not measured data.</p>
               <div>
                 <div className="space-y-3">
                   {([
@@ -134,32 +130,6 @@ export function CompanyDetail({ company }: { company: CompanyEntry }) {
                 </div>
               </div>
             </section>
-
-            {/* Salary + Quick Facts */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none flex items-center gap-4">
-                <div className="contents">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cs-accent/10">
-                    <TrendingUp className="h-6 w-6 text-cs-accent-text" aria-hidden />
-                  </div>
-                  <div>
-                    <p className="text-sm text-cs-ink-soft">Salary range</p>
-                    <p className="text-lg font-semibold text-cs-ink">{company.salaryRange}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none flex items-center gap-4">
-                <div className="contents">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10">
-                    <Star className="h-6 w-6 text-amber-600 dark:text-amber-400" aria-hidden />
-                  </div>
-                  <div>
-                    <p className="text-sm text-cs-ink-soft">Glassdoor rating</p>
-                    <p className="text-lg font-semibold tabular-nums text-cs-ink">{company.glassdoor.toFixed(1)} / 5.0</p>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -208,8 +178,8 @@ export function CompanyDetail({ company }: { company: CompanyEntry }) {
             ))}
             <div className="pt-4 text-center">
               <Button asChild>
-                <Link href="/dashboard/mock-tests">
-                  Start AI Mock Interview for {company.name}
+                <Link href="/dashboard/interviews/ai-mock/setup">
+                  Start AI mock interview for {company.name}
                   <ChevronRight className="ml-2 h-4 w-4" aria-hidden />
                 </Link>
               </Button>
@@ -232,7 +202,7 @@ export function CompanyDetail({ company }: { company: CompanyEntry }) {
             <div className="pt-4 text-center">
               <Button asChild>
                 <Link href="/dashboard/interviews/ai-mock/setup">
-                  Start AI Mock Interview for {company.name}
+                  Start AI mock interview for {company.name}
                   <ChevronRight className="ml-2 h-4 w-4" aria-hidden />
                 </Link>
               </Button>

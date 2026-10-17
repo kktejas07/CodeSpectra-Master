@@ -97,7 +97,7 @@ export default function RecruiterAnalyticsPage() {
 
   const exportCsv = () => {
     if (!data) return
-    const headers = ['Rank', 'Candidate', 'Interviews', 'Avg Score', 'Roles', 'Latest']
+    const headers = ['Rank', 'Candidate', 'Interviews', 'Avg score', 'Roles', 'Latest']
     const rows = data.candidates.map((c, i) => [
       i + 1,
       c.candidate_id.slice(0, 8),

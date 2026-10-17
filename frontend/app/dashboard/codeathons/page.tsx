@@ -98,13 +98,13 @@ export default function CodeathonsPage() {
         },
         {
           target: '[data-tour="codeathons-filters"]',
-          title: 'Filter Codeathons',
+          title: 'Filter codeathons',
           description: 'Filter competitions by status and difficulty level.',
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathons-grid"]',
-          title: 'Codeathon List',
+          title: 'Codeathon list',
           description: 'Browse upcoming and ongoing coding competitions.',
           position: 'bottom',
         },

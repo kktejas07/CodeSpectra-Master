@@ -170,19 +170,19 @@ export default function EbookReaderPage() {
       const resourceReaderTour: TourStep[] = [
         {
           target: '[data-tour="resource-reader-header"]',
-          title: 'Guide Reader Overview',
+          title: 'Guide reader overview',
           description: 'This page opens one saved resource guide for learners, showing its title, topic, and estimated read time.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resource-reader-actions"]',
-          title: 'Return To Library',
+          title: 'Return to library',
           description: 'Click Resources to return to the full library and pick another guide.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resource-reader-viewer"]',
-          title: 'Read Then Export',
+          title: 'Read then export',
           description: 'Tip: flip through every page first, then export the full guide as PDF for offline review.',
           position: 'top',
         },

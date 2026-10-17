@@ -41,19 +41,19 @@ export default function MyCoursesPage() {
       const myCoursesTour: TourStep[] = [
         {
           target: '[data-tour="my-courses-header"]',
-          title: 'Your Enrolled Courses Hub',
+          title: 'Your enrolled courses hub',
           description: 'This page collects every course you enrolled in so you can resume learning quickly.',
           position: 'bottom',
         },
         {
           target: '[data-tour="my-courses-actions"]',
-          title: 'Open Watchlist or Catalog',
+          title: 'Open watchlist or catalog',
           description: 'Visit your watchlist or browse the full catalog to find courses to start.',
           position: 'bottom',
         },
         {
           target: '[data-tour="my-courses-list"]',
-          title: 'Resume Any Course Here',
+          title: 'Resume any course here',
           description: 'Tip: click any course card to open its detail page and continue lessons.',
           position: 'top',
         },

@@ -282,25 +282,25 @@ export default function SystemAdminDashboard() {
       const adminSystemTour: TourStep[] = [
         {
           target: '[data-tour="admin-system-header"]',
-          title: 'Platform Operations Overview',
+          title: 'Platform operations overview',
           description: 'Admin hub for live server health, platform metrics, and audit access.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-server-health"]',
-          title: 'Monitor Server Health',
+          title: 'Monitor server health',
           description: 'Monitor CPU, RAM, disk, and containers; refresh or clear caches in Maintenance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-redis"]',
-          title: 'Check Redis Limits',
+          title: 'Check Redis limits',
           description: 'Check Redis mode, latency, and live rate-limit counters before debugging throttles.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-quick-links"]',
-          title: 'Jump to Admin Sections',
+          title: 'Jump to admin sections',
           description: 'Open Users and roles, Insights, Platform settings, or Audit logs quickly.',
           position: 'bottom',
         },
@@ -312,7 +312,7 @@ export default function SystemAdminDashboard() {
         },
         {
           target: '[data-tour="admin-system-analytics"]',
-          title: 'Spot Trends Next',
+          title: 'Spot trends next',
           description: 'Tip: spot user growth and activity trends here, then check audit logs below.',
           position: 'bottom',
         },

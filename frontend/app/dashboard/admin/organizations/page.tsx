@@ -695,7 +695,7 @@ export default function TenantsPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="user">User</SelectItem>
-                                <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                                <SelectItem value="tenant_admin">Org admin</SelectItem>
                               </SelectContent>
                             </Select>
                           )}
@@ -811,7 +811,7 @@ export default function TenantsPage() {
                     <SelectTrigger id="member-role"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                      <SelectItem value="tenant_admin">Org admin</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">Org Admin can manage this tenant's team. Pick User for regular members.</p>
@@ -849,7 +849,7 @@ export default function TenantsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="edit-member-password">New Password <span className="text-muted-foreground">(leave blank to keep current)</span></Label>
+              <Label htmlFor="edit-member-password">New password <span className="text-muted-foreground">(leave blank to keep current)</span></Label>
               <div className="relative">
                 <Input
                   id="edit-member-password"

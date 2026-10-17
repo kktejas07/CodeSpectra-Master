@@ -231,11 +231,11 @@ export default function DayPage() {
               <p className="text-sm text-muted-foreground leading-relaxed">{problem.description}</p>
             </div>
             <div>
-              <h3 className="font-semibold text-foreground text-sm mb-1">Input Format</h3>
+              <h3 className="font-semibold text-foreground text-sm mb-1">Input format</h3>
               <p className="text-xs text-muted-foreground">{problem.inputFormat}</p>
             </div>
             <div>
-              <h3 className="font-semibold text-foreground text-sm mb-1">Output Format</h3>
+              <h3 className="font-semibold text-foreground text-sm mb-1">Output format</h3>
               <p className="text-xs text-muted-foreground">{problem.outputFormat}</p>
             </div>
             <div>
@@ -375,7 +375,7 @@ function TestCasesPanel({ examples }: { examples: HundredDayProblem['examples'] 
               <pre className="font-mono whitespace-pre-wrap text-foreground bg-muted/30 rounded p-1.5 text-[11px]">{ex.input || '(empty)'}</pre>
             </div>
             <div>
-              <div className="text-muted-foreground mb-0.5 font-medium">Expected Output</div>
+              <div className="text-muted-foreground mb-0.5 font-medium">Expected output</div>
               <pre className="font-mono whitespace-pre-wrap text-foreground bg-muted/30 rounded p-1.5 text-[11px]">{ex.output || '(empty)'}</pre>
             </div>
           </div>

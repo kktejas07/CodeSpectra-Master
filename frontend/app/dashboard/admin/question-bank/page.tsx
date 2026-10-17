@@ -512,7 +512,7 @@ export default function QuestionBankPage() {
                 <Select value={form.branch} onValueChange={v => setForm({ ...form, branch: v })}>
                   <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="General" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">General / None</SelectItem>
+                    <SelectItem value="all">General / none</SelectItem>
                     {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
                   </SelectContent>
                 </Select>

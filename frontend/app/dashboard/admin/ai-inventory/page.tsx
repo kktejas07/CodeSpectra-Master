@@ -645,10 +645,10 @@ export default function AiInventoryPage() {
                     onChange={(e) => setNewTool({ ...newTool, category: e.target.value })}
                     className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs"
                   >
-                    <option value="ai_skills">AI Skills</option>
-                    <option value="mcp_tools">MCP Tools</option>
-                    <option value="mcp_servers">MCP Servers</option>
-                    <option value="llm_models">LLM Models</option>
+                    <option value="ai_skills">AI skills</option>
+                    <option value="mcp_tools">MCP tools</option>
+                    <option value="mcp_servers">MCP servers</option>
+                    <option value="llm_models">LLM models</option>
                     <option value="agents">Agents</option>
                     <option value="automations">Automations</option>
                     <option value="connectors">Connectors</option>

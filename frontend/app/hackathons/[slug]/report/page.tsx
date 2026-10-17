@@ -92,7 +92,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
 
       if (tRes.ok) {
         const td = await tRes.json() as { items: Team[] }
-        const sorted = td.items.sort((a, b) => b.xp - a.xp)
+        const sorted = [...td.items].sort((a, b) => b.xp - a.xp)
         setTeams(sorted)
         if (hasSession) {
           const mine = sorted.find((t) => t.members.some(m => m.user_id === hasSession))

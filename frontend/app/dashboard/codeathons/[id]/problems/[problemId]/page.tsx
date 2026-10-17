@@ -124,7 +124,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
       setSubmissions(prev => [data, ...prev])
       addToast({
         type: data.status === 'accepted' ? 'success' : 'error',
-        title: data.status === 'accepted' ? 'Accepted!' : 'Not Accepted',
+        title: data.status === 'accepted' ? 'Accepted!' : 'Not accepted',
         message: `${data.test_cases_passed}/${data.test_cases_total} test cases passed`,
       })
     } catch (e) {
@@ -153,7 +153,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
 
       addToast({
         type: 'success',
-        title: 'Code Executed',
+        title: 'Code ran',
         message: data.output || 'No output',
       })
     } catch (e) {

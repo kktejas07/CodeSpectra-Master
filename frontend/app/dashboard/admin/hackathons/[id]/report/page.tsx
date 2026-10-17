@@ -212,7 +212,8 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
           <p className="text-sm text-muted-foreground text-center py-6">No teams registered yet. Teams appear here once people sign up for the event.</p>
         ) : (
           <div className="space-y-2">
-            {teams.sort((a, b) => {
+            {/* Copy before sorting: never mutate React state during render. */}
+            {[...teams].sort((a, b) => {
               const sa = teamSuspicion(a.id).score; const sb = teamSuspicion(b.id).score
               return sb - sa
             }).map(team => {

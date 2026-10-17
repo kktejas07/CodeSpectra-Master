@@ -71,7 +71,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       judging_rubrics: false,
       rubric_criteria: [
         { name: 'Innovation', weight: 25 },
-        { name: 'Technical Complexity', weight: 25 },
+        { name: 'Technical complexity', weight: 25 },
         { name: 'Design/UX', weight: 20 },
         { name: 'Impact', weight: 20 },
         { name: 'Completeness', weight: 10 },
@@ -344,8 +344,17 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     }
   }
 
+  const [rubricTouched, setRubricTouched] = useState(false)
+  const rubricHasEmptyName = form.features.judging_rubrics
+    && form.features.rubric_criteria.some((c) => !c.name.trim())
+
   async function update() {
     if (!form.name.trim()) return
+    if (rubricHasEmptyName) {
+      setRubricTouched(true)
+      setError('Give every rubric criterion a name, or remove the empty ones, before saving.')
+      return
+    }
     setBusy(true); setError(null)
     try {
       const body: Record<string, unknown> = {
@@ -915,7 +924,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               ))}
               <Button variant="outline" size="sm" onClick={() => setForm((f: any) => ({
                 ...f, rules: [...f.rules, { type: 'general' as const, title: '', description: '' }]
-              }))}>+ Add Rule</Button>
+              }))}>+ Add rule</Button>
             </div>
 
             <div className="rounded border p-4 space-y-4">
@@ -1081,12 +1090,19 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
                   <p className="text-xs text-muted-foreground">Rubric criteria (weights should sum to 100):</p>
                   {form.features.rubric_criteria.map((c, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={i} className="space-y-1">
+                    <div className="flex items-center gap-2">
                       <Input value={c.name} className="flex-1 h-8 text-xs"
+                        aria-label={`Criterion ${i + 1} name`}
+                        placeholder="Criterion name, e.g. Code quality"
+                        aria-invalid={rubricTouched && !c.name.trim() ? true : undefined}
+                        aria-describedby={rubricTouched && !c.name.trim() ? `rubric-name-error-${i}` : undefined}
+                        onBlur={() => setRubricTouched(true)}
                         onChange={(e) => setForm((f) => ({
                           ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
                         }))} />
                       <Input type="number" value={c.weight} className="w-20 h-8 text-xs"
+                        aria-label={`Criterion ${i + 1} weight (percent)`}
                         onChange={(e) => setForm((f) => ({
                           ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, weight: Number(e.target.value) } : x) }
                         }))} />
@@ -1094,12 +1110,17 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                       <Button size="sm" variant="ghost" className="text-destructive h-6"
                         onClick={() => setForm((f) => ({
                           ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.filter((_, idx) => idx !== i) }
-                        }))}>×</Button>
+                        }))}
+                        aria-label={`Remove criterion ${i + 1}`}>×</Button>
+                    </div>
+                    {rubricTouched && !c.name.trim() && (
+                      <p id={`rubric-name-error-${i}`} className="text-xs text-destructive">Criterion name is required.</p>
+                    )}
                     </div>
                   ))}
                   <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
                     ...f, features: { ...f.features, rubric_criteria: [...f.features.rubric_criteria, { name: '', weight: 0 }] }
-                  }))}>+ Add Criterion</Button>
+                  }))}>+ Add criterion</Button>
                 </div>
               )}
             </div>
@@ -1118,7 +1139,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 </select>
               </div>
               {[
-                { key: 'project_showcase' as const, label: 'Project Showcase', desc: 'Show submitted projects publicly after event ends' },
+                { key: 'project_showcase' as const, label: 'Project showcase', desc: 'Show submitted projects publicly after event ends' },
                 { key: 'forum' as const, label: 'Forum', desc: 'Q&A forum for participants during the event' },
                 { key: 'proctoring' as const, label: 'Proctoring', desc: 'Detect cheating (tab switch, copy, paste, etc.)' },
                 { key: 'certificates' as const, label: 'Certificates', desc: 'Generate certificates for participants' },
@@ -1142,7 +1163,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 <h4 className="text-sm font-semibold text-muted-foreground">Sponsor tracks</h4>
                 <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
                   ...f, features: { ...f.features, sponsor_tracks: [...f.features.sponsor_tracks, { name: '', prize: '', description: '' }] }
-                }))}>+ Add Track</Button>
+                }))}>+ Add track</Button>
               </div>
               {form.features.sponsor_tracks.length > 0 && (
                 <div className="space-y-2">
@@ -1241,6 +1262,9 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
+            {rubricTouched && rubricHasEmptyName && (
+              <p role="alert" className="text-xs text-destructive">Some rubric criteria have no name. Name them or remove them in the judging step.</p>
+            )}
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setStep(4)}>← Back</Button>
               <Button onClick={update} disabled={busy}>

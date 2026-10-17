@@ -229,14 +229,14 @@ export default function AdminKycPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.front_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID Front</p>
-                        <img src={selectedRecord.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">ID front</p>
+                        <img src={selectedRecord.front_image} alt="ID front" className="w-full h-40 object-contain rounded-lg border border-border" />
                       </div>
                     )}
                     {selectedRecord.back_image && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID Back</p>
-                        <img src={selectedRecord.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">ID back</p>
+                        <img src={selectedRecord.back_image} alt="ID back" className="w-full h-40 object-contain rounded-lg border border-border" />
                       </div>
                     )}
                     {selectedRecord.portrait_image && (
@@ -263,8 +263,8 @@ export default function AdminKycPage() {
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     {selectedRecord.face_match_source && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">ID Photo</p>
-                        <img src={selectedRecord.face_match_source} alt="ID Photo" className="w-full h-28 object-cover rounded-lg border border-border" />
+                        <p className="text-xs text-muted-foreground mb-1">ID photo</p>
+                        <img src={selectedRecord.face_match_source} alt="ID photo" className="w-full h-28 object-cover rounded-lg border border-border" />
                       </div>
                     )}
                     {selectedRecord.face_match_target && (

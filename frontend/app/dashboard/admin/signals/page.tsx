@@ -84,7 +84,7 @@ export default function AdminSignalsPage() {
           title: `Ingested ${data.created ?? 0} draft(s)`,
         })
       } else if (action === 'approve') {
-        addToast({ type: 'success', title: 'Published to Newsroom' })
+        addToast({ type: 'success', title: 'Published to newsroom' })
       } else if (action === 'unpublish') {
         addToast({ type: 'success', title: 'Unpublished' })
       } else if (action === 'delete') {

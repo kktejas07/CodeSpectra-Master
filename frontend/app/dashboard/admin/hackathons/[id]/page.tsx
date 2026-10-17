@@ -10,7 +10,7 @@ import { useConfirm } from '@/lib/confirm-context'
  * bump the submission counter. The QR code for each team is rendered
  * inline so admins can hand out badges at the door.
  */
-import { use, useCallback, useEffect, useState } from 'react'
+import { use, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { PageHeader, Panel } from '@/components/app/page-kit'
@@ -41,6 +41,7 @@ import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { rankByScore, formatRank } from '@/lib/hackathons/ranking'
 import { DEFAULT_JUDGING_CONFIG, sanitizeJudgingConfig, type JudgingConfig } from '@/lib/hackathons/judge-config'
 
 interface Hackathon {
@@ -272,17 +273,30 @@ export default function HackathonDetailPage({
     }
   }
 
-  async function searchJudges() {
-    const q = judgeInput.trim()
-    if (!q || q.length < 2) { setJudgeSearchResults([]); return }
+  // Latest search wins: results from an older, slower request are dropped.
+  const judgeSearchSeq = useRef(0)
+  const searchJudges = useCallback(async (raw: string) => {
+    const q = raw.trim()
+    const seq = ++judgeSearchSeq.current
+    if (!q || q.length < 2) { setJudgeSearchResults([]); setJudgeSearching(false); return }
     setJudgeSearching(true)
     try {
       const res = await fetch(`/api/admin/users?search=${encodeURIComponent(q)}&limit=10`, { credentials: 'include' })
       const data = await res.json()
+      if (seq !== judgeSearchSeq.current) return
       setJudgeSearchResults(Array.isArray(data?.users) ? data.users : [])
-    } catch { setJudgeSearchResults([]) }
-    finally { setJudgeSearching(false) }
-  }
+    } catch {
+      if (seq === judgeSearchSeq.current) setJudgeSearchResults([])
+    } finally {
+      if (seq === judgeSearchSeq.current) setJudgeSearching(false)
+    }
+  }, [])
+
+  // Debounce typing: search 300 ms after the last keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => { void searchJudges(judgeInput) }, 300)
+    return () => clearTimeout(t)
+  }, [judgeInput, searchJudges])
 
   function addJudge(user: { id: string; name: string }) {
     if (user.id && !judgeIds.includes(user.id)) {
@@ -343,6 +357,9 @@ export default function HackathonDetailPage({
       </div>
     )
   }
+
+  // Rank by XP so equal scores share a rank (list order alone is not a rank).
+  const teamRanks = rankByScore(teams, (t) => t.id, (t) => t.xp)
 
   return (
     <div className="space-y-6" data-testid="hackathon-detail-page">
@@ -451,12 +468,13 @@ export default function HackathonDetailPage({
           <Input
             placeholder="Search by name or email..."
             value={judgeInput}
-            onChange={(e) => { setJudgeInput(e.target.value); if (e.target.value.length >= 2) setTimeout(() => searchJudges(), 300) }}
+            onChange={(e) => setJudgeInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') void searchJudges(judgeInput) }}
             aria-label="Search people to add as judges"
             className="h-11 text-sm flex-1 rounded-xl"
           />
           <div className="flex gap-2">
-            <Button size="lg" variant="secondary" onClick={() => searchJudges()} disabled={judgeInput.trim().length < 2} className="h-11 px-6 font-semibold rounded-xl">Search</Button>
+            <Button size="lg" variant="secondary" onClick={() => void searchJudges(judgeInput)} disabled={judgeInput.trim().length < 2} className="h-11 px-6 font-semibold rounded-xl">Search</Button>
             <Button size="lg" onClick={saveJudges} className="h-11 px-6 font-semibold rounded-xl">Save judges</Button>
           </div>
           {judgeSearchResults.length > 0 && (
@@ -606,14 +624,15 @@ export default function HackathonDetailPage({
         </Panel>
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {teams.map((t, i) => {
+          {[...teams].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0)).map((t) => {
             const g = grant[t.id] || { xp: '', achievement: '', busy: false }
+            const rankInfo = teamRanks.get(t.id)
             return (
               <Panel key={t.id} className="space-y-4 overflow-hidden p-5" data-testid={`team-card-${t.slug}`}>
                 <div className="flex items-start justify-between">
                   <div className="flex-1 mr-2">
                     <p className="text-xs tabular-nums text-muted-foreground">
-                      Rank #{i + 1}
+                      {formatRank(rankInfo)} <span className="sr-only">by XP</span>
                     </p>
                     {editingTeamId === t.id ? (
                       <div className="flex gap-1.5 mt-1">

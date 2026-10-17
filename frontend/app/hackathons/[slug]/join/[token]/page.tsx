@@ -186,7 +186,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
             <p className="text-sm text-muted-foreground">You can&apos;t join once the event has started.</p>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
-                View Event
+                View event
               </Button>
             </div>
           </>

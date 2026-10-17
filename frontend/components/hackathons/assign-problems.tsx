@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -150,7 +151,7 @@ export function AssignProblems({
             problemSource === 'ai' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-muted/50'
           }`}
         >
-          <Sparkles className="h-4 w-4" /> AI Generate
+          <Sparkles className="h-4 w-4" /> Generate with AI
         </button>
       </div>
 
@@ -327,6 +328,44 @@ function CreateCustomProblem({ form, setForm, testCases, setTestCases, onAdd }: 
   onAdd: (problem: ProblemOption) => void
 }) {
   const [expanded, setExpanded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Save the problem to the library first so it has a real slug the event can use.
+  async function save() {
+    setSaving(true); setSaveError(null)
+    try {
+      const slug = String(form.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const test_cases = testCases
+        .filter((tc) => tc.stdin.trim() || tc.expected.trim())
+        .map((tc, i) => ({ id: `tc_${Date.now()}_${i}`, stdin: tc.stdin, expected_stdout: tc.expected, is_sample: tc.is_sample }))
+      const res = await csrfFetch('/api/problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: form.title,
+          difficulty: form.difficulty,
+          topics: [],
+          statement_md: form.statement_md || '',
+          input_format: form.input_format || null,
+          output_format: form.output_format || null,
+          constraints: form.constraints || null,
+          test_cases,
+          slug,
+          starter_code: {},
+          visibility: 'hackathon_only',
+          is_published: true,
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(j.error || 'The problem could not be saved. Try again.')
+      onAdd({ slug: j.slug || slug, title: form.title, difficulty: form.difficulty })
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
@@ -339,7 +378,7 @@ function CreateCustomProblem({ form, setForm, testCases, setTestCases, onAdd }: 
 
       <div className="grid gap-3 md:grid-cols-2">
         <div className="md:col-span-2 space-y-1.5">
-          <Label>Problem Title *</Label>
+          <Label>Problem title *</Label>
           <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Two Sum" />
         </div>
         <div className="space-y-1.5">
@@ -360,17 +399,17 @@ function CreateCustomProblem({ form, setForm, testCases, setTestCases, onAdd }: 
       {expanded && (
         <div className="space-y-4 pt-2 border-t">
           <div className="space-y-1.5">
-            <Label>Problem Statement (Markdown)</Label>
+            <Label>Problem statement (Markdown)</Label>
             <Textarea rows={4} value={form.statement_md} onChange={(e) => setForm({ ...form, statement_md: e.target.value })}
               placeholder="## Description&#10;Given an array..." />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Input Format</Label>
+              <Label>Input format</Label>
               <Input value={form.input_format} onChange={(e) => setForm({ ...form, input_format: e.target.value })} placeholder="First line contains n..." />
             </div>
             <div className="space-y-1.5">
-              <Label>Output Format</Label>
+              <Label>Output format</Label>
               <Input value={form.output_format} onChange={(e) => setForm({ ...form, output_format: e.target.value })} placeholder="Print the result..." />
             </div>
           </div>
@@ -381,9 +420,9 @@ function CreateCustomProblem({ form, setForm, testCases, setTestCases, onAdd }: 
         </div>
       )}
 
-      <Button onClick={() => onAdd({ slug: `custom-${Date.now()}`, title: form.title, difficulty: form.difficulty })}
-        disabled={!form.title.trim()} className="w-full">
-        <Plus className="h-4 w-4 mr-1" /> Add problem
+      {saveError && <p role="alert" className="text-sm text-destructive">{saveError}</p>}
+      <Button onClick={save} disabled={!form.title.trim() || saving} className="w-full">
+        <Plus className="h-4 w-4 mr-1" /> {saving ? 'Saving…' : 'Add problem'}
       </Button>
     </div>
   )
@@ -395,6 +434,54 @@ function AIGenerate({ config, setConfig, onGenerate }: {
   onGenerate: (problem: ProblemOption) => void
 }) {
   const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [lastTitle, setLastTitle] = useState<string | null>(null)
+
+  const generate = async () => {
+    setGenerating(true)
+    setError(null)
+    setLastTitle(null)
+    try {
+      const topics = String(config.topics || '')
+        .split(',')
+        .map((t: string) => t.trim())
+        .filter(Boolean)
+      // publish: true saves the problem to the library so it has a real slug
+      // that can be assigned to the event.
+      const res = await csrfFetch('/api/ai/generate-problem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: config.role,
+          difficulty: config.difficulty,
+          topics,
+          language_hint: config.language_hint,
+          publish: true,
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        problem?: { title?: string; difficulty?: string; topics?: string[] }
+        published_problem_slug?: string | null
+      }
+      if (!res.ok) throw new Error(data.error || 'Could not generate a problem. Try again.')
+      if (!data.published_problem_slug) {
+        throw new Error('The problem was generated but could not be saved to the library. Try again.')
+      }
+      const title = data.problem?.title || data.published_problem_slug
+      onGenerate({
+        slug: data.published_problem_slug,
+        title,
+        difficulty: data.problem?.difficulty || config.difficulty,
+        topics: data.problem?.topics,
+      })
+      setLastTitle(title)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not generate a problem. Try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
@@ -403,12 +490,12 @@ function AIGenerate({ config, setConfig, onGenerate }: {
       </h4>
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Role</Label>
-          <Input value={config.role} onChange={(e) => setConfig({ ...config, role: e.target.value })} placeholder="Software Engineer" />
+          <Label htmlFor="ai-gen-role">Role</Label>
+          <Input id="ai-gen-role" value={config.role} onChange={(e) => setConfig({ ...config, role: e.target.value })} placeholder="Software Engineer" />
         </div>
         <div className="space-y-1.5">
-          <Label>Difficulty</Label>
-          <select value={config.difficulty} onChange={(e) => setConfig({ ...config, difficulty: e.target.value })}
+          <Label htmlFor="ai-gen-difficulty">Difficulty</Label>
+          <select id="ai-gen-difficulty" value={config.difficulty} onChange={(e) => setConfig({ ...config, difficulty: e.target.value })}
             className="flex h-10 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm cursor-pointer">
             <option value="easy">Easy</option>
             <option value="medium">Medium</option>
@@ -416,13 +503,20 @@ function AIGenerate({ config, setConfig, onGenerate }: {
           </select>
         </div>
         <div className="md:col-span-2 space-y-1.5">
-          <Label>Topics (comma-separated)</Label>
-          <Input value={config.topics} onChange={(e) => setConfig({ ...config, topics: e.target.value })} placeholder="arrays, dynamic programming" />
+          <Label htmlFor="ai-gen-topics">Topics (comma-separated)</Label>
+          <Input id="ai-gen-topics" value={config.topics} onChange={(e) => setConfig({ ...config, topics: e.target.value })} placeholder="arrays, dynamic programming" />
         </div>
       </div>
-      <Button onClick={() => {/* AI generation logic */}} disabled={generating} className="w-full">
+      <p className="text-xs text-muted-foreground">
+        The new problem is saved to your problem library and added to this event. Review it before the event starts.
+      </p>
+      {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+      {lastTitle && !error && (
+        <p role="status" className="text-xs text-green-700 dark:text-green-400">Added &ldquo;{lastTitle}&rdquo;</p>
+      )}
+      <Button onClick={generate} disabled={generating} className="w-full">
         {generating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
-        Generate Problem
+        {generating ? 'Generating…' : 'Generate problem'}
       </Button>
     </div>
   )
@@ -512,7 +606,7 @@ function QuickAddDialog({ open, onClose, searchQuery, onSearch, results, searchi
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Quick Add Problem</DialogTitle>
+          <DialogTitle>Quick add problem</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="relative">

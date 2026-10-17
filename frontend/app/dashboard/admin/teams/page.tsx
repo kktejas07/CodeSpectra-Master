@@ -23,6 +23,7 @@ export default function TeamsManagement() {
 
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     fetch('/api/admin/teams')
@@ -43,6 +44,12 @@ export default function TeamsManagement() {
   )
 
   const safeTeams = teams || []
+  const q = query.trim().toLowerCase()
+  const visibleTeams = q
+    ? safeTeams.filter(t =>
+        [t.name, t.admin, t.status].some(v => String(v ?? '').toLowerCase().includes(q)),
+      )
+    : safeTeams
 
   return (
     <div className="space-y-6">
@@ -64,7 +71,23 @@ export default function TeamsManagement() {
         }
         description="Groups of people inside each organization, and who looks after them."
         icon={<Users />}
-        actions={<Button className="gap-2"><Plus className="w-4 h-4" />Create team</Button>}
+        actions={
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                {/* span wrapper so the tooltip still works on a disabled button */}
+                <span tabIndex={0} className="inline-flex rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Button className="gap-2" disabled aria-describedby="create-team-hint">
+                    <Plus className="w-4 h-4" />Create team
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p id="create-team-hint" className="text-xs max-w-62.5">Not available yet. Creating teams from this page isn&apos;t supported.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -83,10 +106,20 @@ export default function TeamsManagement() {
         <Panel>
           <div className="relative mb-6">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden />
-            <Input placeholder="Search teams..." className="pl-9" aria-label="Search teams" />
+            <Input
+              type="search"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Search by team, admin or status"
+              className="pl-9"
+              aria-label="Search teams"
+            />
           </div>
+          {visibleTeams.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">No teams match &ldquo;{query.trim()}&rdquo;.</p>
+          )}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {safeTeams.map(team => (
+            {visibleTeams.map(team => (
               <div key={team.id} className="rounded-2xl border border-border/70 bg-card p-4">
                 <h3 className="font-semibold text-foreground">{team.name}</h3>
                 <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">

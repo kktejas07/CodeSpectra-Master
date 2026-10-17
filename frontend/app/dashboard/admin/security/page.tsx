@@ -203,7 +203,7 @@ function SessionRow({ session }: { session: UserSession }) {
           <td colSpan={6} className="py-3 px-8">
             <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
               <div><span className="font-medium text-foreground">Session ID</span><p className="font-mono mt-0.5">{session.id}</p></div>
-              <div><span className="font-medium text-foreground">User Agent</span><p className="truncate mt-0.5">{session.user_agent}</p></div>
+              <div><span className="font-medium text-foreground">User agent</span><p className="truncate mt-0.5">{session.user_agent}</p></div>
               <div><span className="font-medium text-foreground">ISP</span><p className="mt-0.5">{session.isp || '—'}</p></div>
               <div><span className="font-medium text-foreground">Signed in</span><p className="mt-0.5">{formatDateTime(session.created_at)}</p></div>
               <div><span className="font-medium text-foreground">Last seen</span><p className="mt-0.5">{lastSeen.toLocaleString()}</p></div>
@@ -395,7 +395,7 @@ export default function Security() {
 
   const auditBulkActions: BulkAction[] = [
     { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditDelete },
-    { label: 'Export Selected', icon: <Download className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditExport, clearSelection: false },
+    { label: 'Export selected', icon: <Download className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditExport, clearSelection: false },
   ]
 
   // ── Chart data ─────────────────────────────────────────────────────────
@@ -611,10 +611,10 @@ export default function Security() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border/40 text-muted-foreground text-xs">
-                      <th className="text-left py-3 px-4 font-medium">Device / Browser</th>
+                      <th className="text-left py-3 px-4 font-medium">Device / browser</th>
                       <th className="text-left py-3 px-4 font-medium">OS</th>
                       <th className="text-left py-3 px-4 font-medium">User</th>
-                      <th className="text-left py-3 px-4 font-medium">IP Address</th>
+                      <th className="text-left py-3 px-4 font-medium">IP address</th>
                       <th className="text-left py-3 px-4 font-medium">Location</th>
                       <th className="py-3 px-4" />
                     </tr>
@@ -748,7 +748,7 @@ export default function Security() {
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">IP Whitelist</p>
+                    <p className="text-sm font-medium">IP whitelist</p>
                     <p className="text-xs text-muted-foreground mt-0.5">When enabled, only these IPs / CIDR ranges may sign in. One per line or comma-separated.</p>
                   </div>
                   {(() => {
@@ -778,7 +778,7 @@ export default function Security() {
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-muted-foreground">{cur.length} saved entries</p>
                         <Button size="sm" variant="outline" disabled={mutating === 'whitelist'} onClick={() => saveWhitelist(s)}>
-                          Save Whitelist
+                          Save whitelist
                         </Button>
                       </div>
                     </div>
@@ -789,7 +789,7 @@ export default function Security() {
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium">Concurrent Session Limit</p>
+                    <p className="text-sm font-medium">Concurrent session limit</p>
                     <p className="text-xs text-muted-foreground mt-0.5">Max active sessions per user. Oldest sessions are pruned when exceeded. 0 = unlimited.</p>
                   </div>
                   {(() => {
@@ -818,7 +818,7 @@ export default function Security() {
                         onChange={e => setConcurrentLimitDraft(e.target.value)}
                       />
                       <Button size="sm" variant="outline" disabled={mutating === 'concurrent'} onClick={() => saveConcurrentLimit(s)}>
-                        Save Limit
+                        Save limit
                       </Button>
                     </div>
                   )
@@ -840,7 +840,7 @@ export default function Security() {
                 <p className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{auditStats.critical}</p>
               </Card>
               <Card className="rounded-2xl border-border/70 p-4">
-                <p className="text-sm font-medium text-muted-foreground">Denied / Failed</p>
+                <p className="text-sm font-medium text-muted-foreground">Denied / failed</p>
                 <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{auditStats.denied}</p>
               </Card>
             </div>
@@ -908,7 +908,7 @@ export default function Security() {
                         <th className="text-left py-3 px-4 font-medium">Fingerprint</th>
                         <th className="text-left py-3 px-4 font-medium">Accounts</th>
                         <th className="text-left py-3 px-4 font-medium">Seen</th>
-                        <th className="text-left py-3 px-4 font-medium">Last Seen</th>
+                        <th className="text-left py-3 px-4 font-medium">Last seen</th>
                         <th className="text-left py-3 px-4 font-medium">Risk</th>
                         <th className="py-3 px-4" />
                       </tr>
@@ -973,7 +973,7 @@ export default function Security() {
             <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <Ban className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Block an IP Address</h3>
+                <h3 className="font-semibold">Block an IP address</h3>
               </div>
               <div className="p-6 flex flex-col gap-3 sm:flex-row">
                 <Input
@@ -1010,7 +1010,7 @@ export default function Security() {
                       <tr className="border-b border-border/40 text-muted-foreground text-xs">
                         <th className="text-left py-3 px-4 font-medium">IP</th>
                         <th className="text-left py-3 px-4 font-medium">Reason</th>
-                        <th className="text-left py-3 px-4 font-medium">Blocked By</th>
+                        <th className="text-left py-3 px-4 font-medium">Blocked by</th>
                         <th className="text-left py-3 px-4 font-medium">Date</th>
                         <th className="py-3 px-4" />
                       </tr>

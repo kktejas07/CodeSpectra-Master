@@ -45,7 +45,7 @@ const LINK_RESOURCES = [
     minutes: 6,
   },
   {
-    title: 'Newsroom / Articles',
+    title: 'Newsroom / articles',
     description: 'Long-form updates and career Signals.',
     href: '/dashboard/articles',
     tag: 'Editorial',

@@ -52,7 +52,7 @@ const TOP_LANGUAGES = [
   { id: "csharp", label: "C#", monaco: "csharp" },
   { id: "ruby", label: "Ruby", monaco: "ruby" },
   { id: "php", label: "PHP", monaco: "php" },
-  { id: "plaintext", label: "Plain Text", monaco: "plaintext" },
+  { id: "plaintext", label: "Plain text", monaco: "plaintext" },
 ];
 
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -473,7 +473,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         addToast({ type: 'error', title: data.error || 'Failed to select problem' })
         return
       }
-      addToast({ type: 'success', title: 'Problem Selected!', message: 'You can now submit solutions for this problem.' })
+      addToast({ type: 'success', title: 'Problem selected', message: 'You can now submit solutions for this problem.' })
       await refreshAll() // to update team.selected_problems
     } catch {
       addToast({ type: 'error', title: 'Network error' })

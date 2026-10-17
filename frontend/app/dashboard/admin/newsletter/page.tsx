@@ -68,10 +68,10 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 // Content templates
 const TEMPLATES = [
   { id: 'blank', label: 'Blank', body: '' },
-  { id: 'update', label: 'Product Update', body: '<h2>What\'s New</h2><p>We\'ve been working hard to bring you new features and improvements.</p><h3>Key Highlights</h3><ul><li>Feature 1 - Description</li><li>Feature 2 - Description</li><li>Feature 3 - Description</li></ul><p>Try these features today and let us know what you think!</p>' },
-  { id: 'event', label: 'Event Announcement', body: '<h2>You\'re Invited!</h2><p>Join us for an exciting event that you won\'t want to miss.</p><p><strong>Date:</strong> [Date]<br><strong>Time:</strong> [Time]<br><strong>Location:</strong> [Location/Virtual]</p><p>Register now to secure your spot!</p>' },
-  { id: 'digest', label: 'Weekly Digest', body: '<h2>This Week\'s Highlights</h2><p>Here\'s what happened this week on CodeSpectra:</p><h3>🏆 Top Performers</h3><p>Congratulations to our top contributors this week!</p><h3>📊 Platform Stats</h3><ul><li>New users: [Number]</li><li>Challenges completed: [Number]</li><li>Certificates earned: [Number]</li></ul><h3>📅 Upcoming Events</h3><p>Stay tuned for next week\'s activities!</p>' },
-  { id: 'feature', label: 'Feature Launch', body: '<h2>Introducing [Feature Name]</h2><p>We\'re excited to announce a powerful new feature that will transform your experience.</p><h3>What it does</h3><p>[Describe the feature and its benefits]</p><h3>How to use it</h3><ol><li>Step 1</li><li>Step 2</li><li>Step 3</li></ol><p>Start using [Feature Name] today!</p>' },
+  { id: 'update', label: 'Product update', body: '<h2>What\'s new</h2><p>We\'ve been working hard to bring you new features and improvements.</p><h3>Key highlights</h3><ul><li>Feature 1 - description</li><li>Feature 2 - description</li><li>Feature 3 - description</li></ul><p>Try these features today and let us know what you think!</p>' },
+  { id: 'event', label: 'Event announcement', body: '<h2>You\'re invited!</h2><p>Join us for an exciting event that you won\'t want to miss.</p><p><strong>Date:</strong> [Date]<br><strong>Time:</strong> [Time]<br><strong>Location:</strong> [Location/Virtual]</p><p>Register now to secure your spot!</p>' },
+  { id: 'digest', label: 'Weekly digest', body: '<h2>This week\'s highlights</h2><p>Here\'s what happened this week on CodeSpectra:</p><h3>🏆 Top performers</h3><p>Congratulations to our top contributors this week!</p><h3>📊 Platform stats</h3><ul><li>New users: [Number]</li><li>Challenges completed: [Number]</li><li>Certificates earned: [Number]</li></ul><h3>📅 Upcoming events</h3><p>Stay tuned for next week\'s activities!</p>' },
+  { id: 'feature', label: 'Feature launch', body: '<h2>Introducing [Feature name]</h2><p>We\'re excited to announce a powerful new feature that will transform your experience.</p><h3>What it does</h3><p>[Describe the feature and its benefits]</p><h3>How to use it</h3><ol><li>Step 1</li><li>Step 2</li><li>Step 3</li></ol><p>Start using [Feature Name] today!</p>' },
 ]
 
 /** Convert a stored timestamp to the local `<input type="datetime-local">` value. */
@@ -434,7 +434,7 @@ export default function NewsletterPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Button text</Label><Input value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder="Read More" /></div>
+                  <div><Label>Button text</Label><Input value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder="Read more" /></div>
                   <div><Label>Button link</Label><Input value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} className="mt-1.5" placeholder="https://example.com" /></div>
                 </div>
               </div>
@@ -540,8 +540,8 @@ export default function NewsletterPage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            title="Publish to Newsroom"
-                            aria-label="Publish to Newsroom"
+                            title="Publish to newsroom"
+                            aria-label="Publish to newsroom"
                             onClick={() => void publishToBlog(c.id)}
                             className="text-primary hover:bg-primary/10"
                           >

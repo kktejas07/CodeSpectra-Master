@@ -909,7 +909,7 @@ export default function HackathonsAdminPage() {
                 ))}
                 <Button variant="outline" size="sm" onClick={() => setForm((f: any) => ({
                   ...f, rules: [...f.rules, { type: 'general' as const, title: '', description: '' }]
-                }))}>+ Add Rule</Button>
+                }))}>+ Add rule</Button>
               </div>
 
               <div className="rounded border p-4 space-y-4">

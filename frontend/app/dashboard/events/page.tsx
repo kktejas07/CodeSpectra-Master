@@ -155,7 +155,7 @@ function EventCard({ event }: { event: EventItem }) {
 
         <Link href={detailUrl}>
           <Button size="sm" variant={isLive ? 'default' : 'outline'} className="w-full gap-1.5 text-xs">
-            {isLive ? 'Enter Event' : isClosed ? 'View Results' : 'View Details'}
+            {isLive ? 'Enter event' : isClosed ? 'View results' : 'View details'}
             <ArrowRight className="w-3 h-3" />
           </Button>
         </Link>
@@ -245,19 +245,19 @@ export default function EventsPage() {
       const eventsTour: TourStep[] = [
         {
           target: '[data-tour="events-header"]',
-          title: 'Browse All Events',
+          title: 'Browse all events',
           description: 'Central hub where participants discover hackathons and codeathons in one list.',
           position: 'bottom',
         },
         {
           target: '[data-tour="events-tabs"]',
-          title: 'Filter Events Fast',
+          title: 'Filter events fast',
           description: 'Switch tabs to show all, joined, live, upcoming, or past events.',
           position: 'bottom',
         },
         {
           target: '[data-tour="events-grid"]',
-          title: 'Tip Enter an Event',
+          title: 'Tip enter an event',
           description: 'Tip: open a card and press its button to enter, view details, or see results.',
           position: 'bottom',
         },
@@ -320,7 +320,7 @@ export default function EventsPage() {
             <EmptyState 
               title={tab === 'my' ? 'No events joined' : 'No events found'} 
               description={tab === 'my' ? "You haven't joined any events yet. Browse upcoming hackathons and codeathons to take part." : 'Nothing here right now. Check the other tabs or come back later.'}
-              actionLabel={tab === 'my' ? 'Explore Events' : undefined}
+              actionLabel={tab === 'my' ? 'Explore events' : undefined}
               onAction={tab === 'my' ? () => setTab('all') : undefined}
             />
           ) : (

@@ -91,7 +91,6 @@ export function ListingTrustFooter({
           <span className="font-medium text-foreground/80">Updated:</span> {updatedLabel}
         </p>
       ) : null}
-      <p>The data on this page gets updated every 15 minutes.</p>
       <p>
         This opportunity has been listed by <span className="font-medium text-foreground/80">{org}</span>.
         CodeSpectra is not liable for any content mentioned in this opportunity or the process followed

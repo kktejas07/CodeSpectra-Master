@@ -132,7 +132,7 @@ export default function GenerateCoursePage() {
       }
 
       setProgress(100)
-      setCurrentTask(genData.message || 'Course Ready!')
+      setCurrentTask(genData.message || 'Course ready')
       setTimeout(() => {
         if (genData.course_id) {
           router.push(`/dashboard/courses/${genData.course_id}`)
@@ -229,11 +229,11 @@ export default function GenerateCoursePage() {
 
                 {/* Step 2: Level & Duration */}
                 <div className={`transition-all duration-500 ${step === 2 ? 'opacity-100 translate-x-0' : 'opacity-0 absolute translate-x-full pointer-events-none'}`}>
-                  <h2 className="text-2xl font-bold mb-6">Customize the Experience</h2>
+                  <h2 className="text-2xl font-bold mb-6">Customize the experience</h2>
                   
                   <div className="space-y-6 mb-8">
                     <div>
-                      <Label className="mb-3 block text-base">Current Experience Level</Label>
+                      <Label className="mb-3 block text-base">Current experience level</Label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {LEVELS.map(l => (
                           <div 
@@ -248,7 +248,7 @@ export default function GenerateCoursePage() {
                     </div>
 
                     <div>
-                      <Label className="mb-3 block text-base">Course Duration (Hours)</Label>
+                      <Label className="mb-3 block text-base">Course duration (hours)</Label>
                       <div className="grid grid-cols-4 gap-3">
                         {DURATIONS.map(d => (
                           <div 
@@ -290,8 +290,7 @@ export default function GenerateCoursePage() {
                       <ul className="text-sm space-y-2 text-muted-foreground">
                         <li>• Topic: <strong className="text-foreground">{technology}</strong></li>
                         <li>• Level: <strong className="text-foreground">{level}</strong></li>
-                        <li>• Est. Generation Time: <strong className="text-foreground">12 Hours (Simulated)</strong></li>
-                        <li>• Cost: <strong className="text-amber-500">10 Credits</strong></li>
+                        <li>• Cost: <strong className="text-amber-500">10 credits</strong></li>
                       </ul>
                     </div>
                   </div>
@@ -299,7 +298,7 @@ export default function GenerateCoursePage() {
                   <div className="flex gap-4">
                     <Button onClick={handleBack} variant="outline" className="w-1/3">Back</Button>
                     <Button onClick={startGeneration} className="w-2/3">
-                      <Zap className="mr-2 h-4 w-4" /> Generate Course
+                      <Zap className="mr-2 h-4 w-4" /> Generate course
                     </Button>
                   </div>
                 </div>
@@ -372,12 +371,12 @@ export default function GenerateCoursePage() {
             
             <div className="w-full max-w-md bg-secondary/50 rounded-lg p-4 text-left border border-border/50">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-muted-foreground">Estimated time: 12 hours</span>
+                <span className="text-muted-foreground">Progress</span>
                 <span className="font-medium tabular-nums text-primary">{progress}%</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 <Clock className="inline h-3 w-3 mr-1" />
-                You can close this page. We'll email you when it's ready.
+                Keep this page open. You'll go to your course as soon as it's ready.
               </p>
             </div>
           </div>

@@ -21,15 +21,15 @@ import { PageHeader } from '@/components/app/page-kit'
 
 // Wizard Steps Configuration
 const STEPS = [
-  { id: 1, title: 'Basic Details', icon: User, required: true },
+  { id: 1, title: 'Basic details', icon: User, required: true },
   { id: 2, title: 'Resume', icon: FileText, required: false },
   { id: 3, title: 'About', icon: Sparkles, required: true },
   { id: 4, title: 'Skills', icon: Code2, required: true },
   { id: 5, title: 'Education', icon: GraduationCap, required: false },
-  { id: 6, title: 'Work Experience', icon: Briefcase, required: true },
-  { id: 7, title: 'Accomplishments & Initiatives', icon: Trophy, required: false },
-  { id: 8, title: 'Personal Details', icon: UserCircle, required: false },
-  { id: 9, title: 'Social Links', icon: LinkIcon, required: false },
+  { id: 6, title: 'Work experience', icon: Briefcase, required: true },
+  { id: 7, title: 'Accomplishments & initiatives', icon: Trophy, required: false },
+  { id: 8, title: 'Personal details', icon: UserCircle, required: false },
+  { id: 9, title: 'Social links', icon: LinkIcon, required: false },
 ]
 
 // Parse the SSE stream returned by POST /api/ai/chat into plain text.
@@ -278,7 +278,7 @@ export default function EditProfileWizard() {
     setTimeout(() => {
       setAbout(`Passionate and driven professional with a background in ${basic.designation || 'tech'}. Experienced in ${skills || 'building modern applications'} and dedicated to continuous learning and delivering high-quality results. Proven track record of working collaboratively in fast-paced environments to solve complex problems.`)
       setIsGeneratingAI(false)
-      addToast({ type: 'success', title: 'AI Summary Generated!' })
+      addToast({ type: 'success', title: 'AI summary generated!' })
     }, 1500)
   }
 
@@ -496,19 +496,19 @@ export default function EditProfileWizard() {
                     </label>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg">Profile Photo</h3>
+                    <h3 className="font-semibold text-lg">Profile photo</h3>
                     <p className="text-sm text-muted-foreground max-w-sm">Upload a professional photo. We recommend a square image at least 256x256px.</p>
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label>First Name <span className="text-destructive">*</span></Label>
-                    <Input placeholder="Enter First Name" value={basic.firstName} onChange={e => setBasic({...basic, firstName: e.target.value})} />
+                    <Label>First name <span className="text-destructive">*</span></Label>
+                    <Input placeholder="Enter first name" value={basic.firstName} onChange={e => setBasic({...basic, firstName: e.target.value})} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Last Name <span className="text-destructive">*</span></Label>
-                    <Input placeholder="Enter Last Name" value={basic.lastName} onChange={e => setBasic({...basic, lastName: e.target.value})} />
+                    <Label>Last name <span className="text-destructive">*</span></Label>
+                    <Input placeholder="Enter last name" value={basic.lastName} onChange={e => setBasic({...basic, lastName: e.target.value})} />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Username <span className="text-destructive">*</span></Label>
@@ -640,7 +640,7 @@ export default function EditProfileWizard() {
                   </div>
 
                   <div className="space-y-3 sm:col-span-2 mt-4">
-                    <Label>User Type <span className="text-destructive">*</span></Label>
+                    <Label>User type <span className="text-destructive">*</span></Label>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {['College Students', 'Professional', 'School Student', 'Fresher'].map((type) => (
                         <div 
@@ -677,49 +677,49 @@ export default function EditProfileWizard() {
                       onChange={e => setBasic({...basic, designation: e.target.value})}
                       className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      <option value="" disabled>Select Designation</option>
+                      <option value="" disabled>Select designation</option>
                       <optgroup label="Engineering">
-                        <option value="Software Engineer">Software Engineer</option>
-                        <option value="Frontend Developer">Frontend Developer</option>
-                        <option value="Backend Developer">Backend Developer</option>
-                        <option value="Full Stack Developer">Full Stack Developer</option>
-                        <option value="Mobile App Developer">Mobile App Developer</option>
-                        <option value="DevOps Engineer">DevOps Engineer</option>
-                        <option value="Cloud Architect">Cloud Architect</option>
-                        <option value="Security Engineer">Security Engineer</option>
-                        <option value="QA Engineer">QA Engineer</option>
-                        <option value="Engineering Manager">Engineering Manager</option>
+                        <option value="Software Engineer">Software engineer</option>
+                        <option value="Frontend Developer">Frontend developer</option>
+                        <option value="Backend Developer">Backend developer</option>
+                        <option value="Full Stack Developer">Full stack developer</option>
+                        <option value="Mobile App Developer">Mobile app developer</option>
+                        <option value="DevOps Engineer">DevOps engineer</option>
+                        <option value="Cloud Architect">Cloud architect</option>
+                        <option value="Security Engineer">Security engineer</option>
+                        <option value="QA Engineer">QA engineer</option>
+                        <option value="Engineering Manager">Engineering manager</option>
                       </optgroup>
                       <optgroup label="Data & AI">
-                        <option value="Data Scientist">Data Scientist</option>
-                        <option value="Data Analyst">Data Analyst</option>
-                        <option value="Data Engineer">Data Engineer</option>
-                        <option value="Machine Learning Engineer">Machine Learning Engineer</option>
-                        <option value="AI Researcher">AI Researcher</option>
-                        <option value="Business Analyst">Business Analyst</option>
+                        <option value="Data Scientist">Data scientist</option>
+                        <option value="Data Analyst">Data analyst</option>
+                        <option value="Data Engineer">Data engineer</option>
+                        <option value="Machine Learning Engineer">Machine learning engineer</option>
+                        <option value="AI Researcher">AI researcher</option>
+                        <option value="Business Analyst">Business analyst</option>
                       </optgroup>
-                      <optgroup label="Product & Design">
-                        <option value="Product Manager">Product Manager</option>
-                        <option value="UI/UX Designer">UI/UX Designer</option>
-                        <option value="Product Designer">Product Designer</option>
-                        <option value="Graphic Designer">Graphic Designer</option>
-                        <option value="Scrum Master">Scrum Master</option>
-                        <option value="Technical Writer">Technical Writer</option>
+                      <optgroup label="Product & design">
+                        <option value="Product Manager">Product manager</option>
+                        <option value="UI/UX Designer">UI/UX designer</option>
+                        <option value="Product Designer">Product designer</option>
+                        <option value="Graphic Designer">Graphic designer</option>
+                        <option value="Scrum Master">Scrum master</option>
+                        <option value="Technical Writer">Technical writer</option>
                       </optgroup>
-                      <optgroup label="Marketing & Sales">
-                        <option value="Marketing Manager">Marketing Manager</option>
-                        <option value="Digital Marketer">Digital Marketer</option>
-                        <option value="Content Creator">Content Creator</option>
-                        <option value="Sales Executive">Sales Executive</option>
-                        <option value="Growth Hacker">Growth Hacker</option>
+                      <optgroup label="Marketing & sales">
+                        <option value="Marketing Manager">Marketing manager</option>
+                        <option value="Digital Marketer">Digital marketer</option>
+                        <option value="Content Creator">Content creator</option>
+                        <option value="Sales Executive">Sales executive</option>
+                        <option value="Growth Hacker">Growth hacker</option>
                       </optgroup>
-                      <optgroup label="Academic & Other">
+                      <optgroup label="Academic & other">
                         <option value="Student">Student</option>
                         <option value="Researcher">Researcher</option>
-                        <option value="Educator / Teacher">Educator / Teacher</option>
+                        <option value="Educator / Teacher">Educator / teacher</option>
                         <option value="Freelancer">Freelancer</option>
                         <option value="Consultant">Consultant</option>
-                        <option value="Founder / Entrepreneur">Founder / Entrepreneur</option>
+                        <option value="Founder / Entrepreneur">Founder / entrepreneur</option>
                         <option value="Other">Other</option>
                       </optgroup>
                     </select>
@@ -727,13 +727,13 @@ export default function EditProfileWizard() {
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
-                    <Label>Work Experience <span className="text-destructive">*</span></Label>
+                    <Label>Work experience <span className="text-destructive">*</span></Label>
                     <select 
                       value={basic.workExperience} 
                       onChange={e => setBasic({...basic, workExperience: e.target.value})}
                       className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
-                      <option value="" disabled>Select Years</option>
+                      <option value="" disabled>Select years</option>
                       <option value="Fresher">Fresher</option>
                       <option value="1 year">1 year</option>
                       <option value="2 years">2 years</option>
@@ -754,12 +754,12 @@ export default function EditProfileWizard() {
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
-                    <Label>Organisation/College <span className="text-destructive">*</span></Label>
+                    <Label>Organisation/college <span className="text-destructive">*</span></Label>
                     <Input className="h-11" placeholder="Enter your current organisation or college" value={basic.organisation} onChange={e => setBasic({...basic, organisation: e.target.value})} />
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
-                    <Label>Career Goal(s)</Label>
+                    <Label>Career goal(s)</Label>
                     <p className="text-xs text-muted-foreground">Pick one or more roles — search and tap to select.</p>
                     {basic.careerGoal.split(',').filter(Boolean).length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-2">
@@ -844,10 +844,10 @@ export default function EditProfileWizard() {
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
-                    <Label>Current Location <span className="text-destructive">*</span></Label>
+                    <Label>Current location <span className="text-destructive">*</span></Label>
                     <div className="relative">
                       <Input className="h-11 pr-12" placeholder="Hyderabad, Telangana, India" value={basic.location} onChange={e => setBasic({...basic, location: e.target.value})} />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-accent rounded-md cursor-pointer transition-colors" title="Use Live Location" onClick={handleLiveLocation}>
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-accent rounded-md cursor-pointer transition-colors" title="Use live location" onClick={handleLiveLocation}>
                         <MapPinIcon className="w-4 h-4 text-primary" />
                       </div>
                     </div>
@@ -873,7 +873,7 @@ export default function EditProfileWizard() {
                   
                   <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer mt-4">
                     <UploadCloud className="w-10 h-10 text-primary mb-3" />
-                    <h3 className="font-medium text-primary">Update Resume</h3>
+                    <h3 className="font-medium text-primary">Update resume</h3>
                     <p className="text-xs text-muted-foreground mt-1">Supported file formats DOC, DOCX, PDF. File size limit 10 MB.</p>
                   </div>
                 </div>
@@ -889,7 +889,7 @@ export default function EditProfileWizard() {
                 </div>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <Label>Professional Summary</Label>
+                    <Label>Professional summary</Label>
                     <Button variant="secondary" size="sm" onClick={handleGenerateAI} disabled={isGeneratingAI} className="bg-primary/10 text-primary hover:bg-primary/15">
                       <Sparkles className={`w-4 h-4 mr-2 ${isGeneratingAI ? 'animate-pulse' : ''}`} />
                       {isGeneratingAI ? 'Generating…' : 'Generate with AI'}
@@ -915,7 +915,7 @@ export default function EditProfileWizard() {
                   <h2 className="text-xl font-bold text-foreground">Skills</h2>
                 </div>
                 <div className="space-y-4">
-                  <Label>Core Skills (Comma separated)</Label>
+                  <Label>Core skills (comma separated)</Label>
                   <Textarea 
                     rows={4} 
                     placeholder="e.g. JavaScript, React, Node.js, System Design, Agile Methodologies"
@@ -957,35 +957,35 @@ export default function EditProfileWizard() {
                           <Label>Qualification <span className="text-destructive">*</span></Label>
                           <select className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             value={edu.qualification} onChange={e => updateEdu(edu.id, 'qualification', e.target.value)}>
-                            <option value="">Select Qualification</option>
+                            <option value="">Select qualification</option>
                             <option value="Degree">Degree</option>
                             <option value="Diploma">Diploma</option>
-                            <option value="High School">High School</option>
+                            <option value="High School">High school</option>
                           </select>
                         </div>
                         <div className="space-y-2"><Label>Course <span className="text-destructive">*</span></Label><Input placeholder="e.g. B.Tech" value={edu.course} onChange={e => updateEdu(edu.id, 'course', e.target.value)} /></div>
                         <div className="space-y-2"><Label>Specialization <span className="text-destructive">*</span></Label><Input placeholder="e.g. Computer Science" value={edu.specialization} onChange={e => updateEdu(edu.id, 'specialization', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>College/University <span className="text-destructive">*</span></Label><Input placeholder="e.g. IIT" value={edu.college} onChange={e => updateEdu(edu.id, 'college', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>College/university <span className="text-destructive">*</span></Label><Input placeholder="e.g. IIT" value={edu.college} onChange={e => updateEdu(edu.id, 'college', e.target.value)} /></div>
                         
-                        <div className="space-y-2"><Label>Start Date</Label><Input type="month" value={edu.start} onChange={e => updateEdu(edu.id, 'start', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>End Date</Label><Input type="month" value={edu.end} onChange={e => updateEdu(edu.id, 'end', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Start date</Label><Input type="month" value={edu.start} onChange={e => updateEdu(edu.id, 'start', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>End date</Label><Input type="month" value={edu.end} onChange={e => updateEdu(edu.id, 'end', e.target.value)} /></div>
                         
                         <div className="space-y-2">
-                          <Label>Course Type</Label>
+                          <Label>Course type</Label>
                           <select className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             value={edu.courseType} onChange={e => updateEdu(edu.id, 'courseType', e.target.value)}>
-                            <option value="">Select Type</option>
-                            <option value="Full Time">Full Time</option>
-                            <option value="Part Time">Part Time</option>
+                            <option value="">Select type</option>
+                            <option value="Full Time">Full time</option>
+                            <option value="Part Time">Part time</option>
                             <option value="Distance">Distance</option>
                           </select>
                         </div>
                         <div className="space-y-2"><Label>Percentage/CGPA</Label><Input placeholder="e.g. 8.5 or 85%" value={edu.percentage} onChange={e => updateEdu(edu.id, 'percentage', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Roll Number</Label><Input value={edu.rollNumber} onChange={e => updateEdu(edu.id, 'rollNumber', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Roll number</Label><Input value={edu.rollNumber} onChange={e => updateEdu(edu.id, 'rollNumber', e.target.value)} /></div>
                         
                         <div className="space-y-2 sm:col-span-2 flex items-center gap-2 mt-4">
                           <input type="checkbox" id={`lateral-${edu.id}`} className="w-4 h-4 rounded border-border accent-primary" checked={edu.lateralEntry} onChange={e => updateEdu(edu.id, 'lateralEntry', e.target.checked)} />
-                          <Label htmlFor={`lateral-${edu.id}`} className="cursor-pointer">Lateral Entry</Label>
+                          <Label htmlFor={`lateral-${edu.id}`} className="cursor-pointer">Lateral entry</Label>
                         </div>
 
                         <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={edu.skills} onChange={e => updateEdu(edu.id, 'skills', e.target.value)} /></div>
@@ -1028,12 +1028,12 @@ export default function EditProfileWizard() {
                         <div className="space-y-2"><Label>Organisation <span className="text-destructive">*</span></Label><Input placeholder="e.g. Google" value={exp.organisation} onChange={e => updateExp(exp.id, 'organisation', e.target.value)} /></div>
                         
                         <div className="space-y-2">
-                          <Label>Employment Type <span className="text-destructive">*</span></Label>
+                          <Label>Employment type <span className="text-destructive">*</span></Label>
                           <select className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             value={exp.employmentType} onChange={e => updateExp(exp.id, 'employmentType', e.target.value)}>
-                            <option value="">Select Type</option>
-                            <option value="Full Time">Full Time</option>
-                            <option value="Part Time">Part Time</option>
+                            <option value="">Select type</option>
+                            <option value="Full Time">Full time</option>
+                            <option value="Part Time">Part time</option>
                             <option value="Freelance">Freelance</option>
                             <option value="Internship">Internship</option>
                           </select>
@@ -1041,8 +1041,8 @@ export default function EditProfileWizard() {
                         
                         <div className="space-y-2"><Label>Location</Label><Input placeholder="e.g. Remote, India" value={exp.location} onChange={e => updateExp(exp.id, 'location', e.target.value)} /></div>
                         
-                        <div className="space-y-2"><Label>Start Date <span className="text-destructive">*</span></Label><Input type="month" value={exp.start} onChange={e => updateExp(exp.id, 'start', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>End Date</Label><Input type="month" value={exp.end} onChange={e => updateExp(exp.id, 'end', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Start date <span className="text-destructive">*</span></Label><Input type="month" value={exp.start} onChange={e => updateExp(exp.id, 'start', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>End date</Label><Input type="month" value={exp.end} onChange={e => updateExp(exp.id, 'end', e.target.value)} /></div>
                         
                         <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={exp.skills} onChange={e => updateExp(exp.id, 'skills', e.target.value)} /></div>
                       </div>
@@ -1077,7 +1077,7 @@ export default function EditProfileWizard() {
                   <div>
                     <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
                       <h3 className="font-semibold text-lg flex items-center gap-2"><Code2 className="w-4 h-4 text-primary" aria-hidden /> Projects</h3>
-                      <Button variant="outline" size="sm" onClick={addProj}><Plus className="w-4 h-4 mr-2" /> Add Project</Button>
+                      <Button variant="outline" size="sm" onClick={addProj}><Plus className="w-4 h-4 mr-2" /> Add project</Button>
                     </div>
                     <div className="space-y-4">
                       {projects.map(proj => (
@@ -1086,10 +1086,10 @@ export default function EditProfileWizard() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Project Name <span className="text-destructive">*</span></Label><Input value={proj.name} onChange={e => updateProj(proj.id, 'name', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Project Type <span className="text-destructive">*</span></Label><Input value={proj.type} onChange={e => updateProj(proj.id, 'type', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Start Date</Label><Input type="month" value={proj.start} onChange={e => updateProj(proj.id, 'start', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>End Date</Label><Input type="month" value={proj.end} onChange={e => updateProj(proj.id, 'end', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Project name <span className="text-destructive">*</span></Label><Input value={proj.name} onChange={e => updateProj(proj.id, 'name', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Project type <span className="text-destructive">*</span></Label><Input value={proj.type} onChange={e => updateProj(proj.id, 'type', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Start date</Label><Input type="month" value={proj.start} onChange={e => updateProj(proj.id, 'start', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>End date</Label><Input type="month" value={proj.end} onChange={e => updateProj(proj.id, 'end', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2"><Label>Link this Project</Label><Input placeholder="https://..." value={proj.link} onChange={e => updateProj(proj.id, 'link', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={proj.skills} onChange={e => updateProj(proj.id, 'skills', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2">
@@ -1110,7 +1110,7 @@ export default function EditProfileWizard() {
                   <div>
                     <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
                       <h3 className="font-semibold text-lg flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" /> Achievements</h3>
-                      <Button variant="outline" size="sm" onClick={addAchieve}><Plus className="w-4 h-4 mr-2" /> Add Achievement</Button>
+                      <Button variant="outline" size="sm" onClick={addAchieve}><Plus className="w-4 h-4 mr-2" /> Add achievement</Button>
                     </div>
                     <div className="space-y-4">
                       {achievements.map(ach => (
@@ -1140,7 +1140,7 @@ export default function EditProfileWizard() {
                   <div>
                     <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
                       <h3 className="font-semibold text-lg flex items-center gap-2"><Briefcase className="w-4 h-4 text-primary" aria-hidden /> Responsibilities</h3>
-                      <Button variant="outline" size="sm" onClick={addResp}><Plus className="w-4 h-4 mr-2" /> Add Responsibility</Button>
+                      <Button variant="outline" size="sm" onClick={addResp}><Plus className="w-4 h-4 mr-2" /> Add responsibility</Button>
                     </div>
                     <div className="space-y-4">
                       {responsibilities.map(resp => (
@@ -1149,12 +1149,12 @@ export default function EditProfileWizard() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Position of Responsibility <span className="text-destructive">*</span></Label><Input value={resp.position} onChange={e => updateResp(resp.id, 'position', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Position of responsibility <span className="text-destructive">*</span></Label><Input value={resp.position} onChange={e => updateResp(resp.id, 'position', e.target.value)} /></div>
                             <div className="space-y-2"><Label>Organisation <span className="text-destructive">*</span></Label><Input value={resp.organisation} onChange={e => updateResp(resp.id, 'organisation', e.target.value)} /></div>
                             <div className="space-y-2"><Label>Location</Label><Input value={resp.location} onChange={e => updateResp(resp.id, 'location', e.target.value)} /></div>
                             <div className="space-y-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={resp.skills} onChange={e => updateResp(resp.id, 'skills', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Start Date <span className="text-destructive">*</span></Label><Input type="month" value={resp.start} onChange={e => updateResp(resp.id, 'start', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>End Date</Label><Input type="month" value={resp.end} onChange={e => updateResp(resp.id, 'end', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Start date <span className="text-destructive">*</span></Label><Input type="month" value={resp.start} onChange={e => updateResp(resp.id, 'start', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>End date</Label><Input type="month" value={resp.end} onChange={e => updateResp(resp.id, 'end', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2">
                               <Label>Description</Label>
                               <Textarea rows={3} placeholder="Outline the specific duties and initiatives..." value={resp.description} onChange={e => updateResp(resp.id, 'description', e.target.value)} />
@@ -1173,7 +1173,7 @@ export default function EditProfileWizard() {
                   <div>
                     <div className="flex items-center justify-between mb-4 border-b border-border pb-2">
                       <h3 className="font-semibold text-lg flex items-center gap-2"><FileBadge2 className="w-4 h-4 text-primary" aria-hidden /> Certificates</h3>
-                      <Button variant="outline" size="sm" onClick={addCert}><Plus className="w-4 h-4 mr-2" /> Add Certificate</Button>
+                      <Button variant="outline" size="sm" onClick={addCert}><Plus className="w-4 h-4 mr-2" /> Add certificate</Button>
                     </div>
                     <div className="space-y-4">
                       {certificates.map(cert => (
@@ -1182,10 +1182,10 @@ export default function EditProfileWizard() {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Certificate Name <span className="text-destructive">*</span></Label><Input value={cert.title} onChange={e => updateCert(cert.id, 'title', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Issuing Organisation <span className="text-destructive">*</span></Label><Input value={cert.organisation} onChange={e => updateCert(cert.id, 'organisation', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Issue Date <span className="text-destructive">*</span></Label><Input type="month" value={cert.issued} onChange={e => updateCert(cert.id, 'issued', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Expiration Date</Label><Input type="month" value={cert.expiry} onChange={e => updateCert(cert.id, 'expiry', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Certificate name <span className="text-destructive">*</span></Label><Input value={cert.title} onChange={e => updateCert(cert.id, 'title', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Issuing organisation <span className="text-destructive">*</span></Label><Input value={cert.organisation} onChange={e => updateCert(cert.id, 'organisation', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Issue date <span className="text-destructive">*</span></Label><Input type="month" value={cert.issued} onChange={e => updateCert(cert.id, 'issued', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Expiration date</Label><Input type="month" value={cert.expiry} onChange={e => updateCert(cert.id, 'expiry', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2"><Label>Link this Certificate</Label><Input placeholder="https://..." value={cert.link} onChange={e => updateCert(cert.id, 'link', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={cert.skills} onChange={e => updateCert(cert.id, 'skills', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2">
@@ -1237,13 +1237,13 @@ export default function EditProfileWizard() {
                   </div>
 
                   <div className="space-y-2 mt-4 p-4 border border-border rounded-xl bg-muted/20">
-                    <Label>Current Address</Label>
-                    <Input placeholder="Select Location" value={personalDetails.currentAddress} onChange={e => setPersonalDetails({...personalDetails, currentAddress: e.target.value})} />
+                    <Label>Current address</Label>
+                    <Input placeholder="Select location" value={personalDetails.currentAddress} onChange={e => setPersonalDetails({...personalDetails, currentAddress: e.target.value})} />
                   </div>
 
                   <div className="space-y-2 mt-4 p-4 border border-border rounded-xl bg-muted/20">
                     <div className="flex justify-between items-center mb-2">
-                       <Label>Permanent Address</Label>
+                       <Label>Permanent address</Label>
                        <label className="flex items-center gap-2 text-xs cursor-pointer">
                          <input 
                            type="checkbox" 
@@ -1258,11 +1258,11 @@ export default function EditProfileWizard() {
                              })
                            }} 
                          />
-                         Copy Current Address
+                         Copy current address
                        </label>
                     </div>
                     <Input 
-                      placeholder="Select Location" 
+                      placeholder="Select location" 
                       value={personalDetails.permanentAddress} 
                       disabled={personalDetails.sameAsCurrent}
                       onChange={e => setPersonalDetails({...personalDetails, permanentAddress: e.target.value})} 
@@ -1295,7 +1295,7 @@ export default function EditProfileWizard() {
                     <Input placeholder="https://github.com/username" value={links.github} onChange={e => setLinks({...links, github: e.target.value})} />
                   </div>
                   <div className="space-y-2">
-                    <Label>Personal Portfolio</Label>
+                    <Label>Personal portfolio</Label>
                     <Input placeholder="https://yourwebsite.com" value={links.portfolio} onChange={e => setLinks({...links, portfolio: e.target.value})} />
                   </div>
                 </div>
@@ -1316,18 +1316,18 @@ export default function EditProfileWizard() {
       {showTips && (() => {
         const STEP_TIPS: Record<number, { title: string; icon: string; tips: { heading: string; body: string }[] }> = {
           1: {
-            title: 'Basic Details Tips',
+            title: 'Basic details tips',
             icon: '👤',
             tips: [
               { heading: 'Use your real name', body: 'Employers verify this during background checks. Avoid nicknames or abbreviations.' },
               { heading: 'Profile photo matters', body: 'A professional headshot increases profile views by 14x. Use a clear, front-facing photo.' },
-              { heading: 'Career Goal', body: 'Selecting multiple goals lets our AI match you with a broader range of opportunities.' },
-              { heading: 'Current Location', body: 'Use the GPS button to auto-detect your city and state for accurate job matching.' },
+              { heading: 'Career goal', body: 'Selecting multiple goals lets our AI match you with a broader range of opportunities.' },
+              { heading: 'Current location', body: 'Use the GPS button to auto-detect your city and state for accurate job matching.' },
               { heading: 'Keep details accurate', body: 'Employers and mentors trust complete, truthful profiles. Optional ID verification will arrive later.' },
             ],
           },
           2: {
-            title: 'Resume Tips',
+            title: 'Resume tips',
             icon: '📄',
             tips: [
               { heading: 'Use a clean format', body: 'ATS systems prefer single-column resumes without tables or images. Use PDF format.' },
@@ -1337,7 +1337,7 @@ export default function EditProfileWizard() {
             ],
           },
           3: {
-            title: 'About / Bio Tips',
+            title: 'About / bio tips',
             icon: '✨',
             tips: [
               { heading: 'Start with your value', body: 'Open with what you bring to the table, not just your job title.' },
@@ -1347,7 +1347,7 @@ export default function EditProfileWizard() {
             ],
           },
           4: {
-            title: 'Skills Tips',
+            title: 'Skills tips',
             icon: '🛠️',
             tips: [
               { heading: 'Match job descriptions', body: 'Mirror skills from job postings you want. ATS systems keyword-match your profile.' },
@@ -1356,7 +1356,7 @@ export default function EditProfileWizard() {
             ],
           },
           5: {
-            title: 'Education Tips',
+            title: 'Education tips',
             icon: '🎓',
             tips: [
               { heading: 'Include all degrees', body: 'Add your highest qualification first. Include diplomas and certifications too.' },
@@ -1365,7 +1365,7 @@ export default function EditProfileWizard() {
             ],
           },
           6: {
-            title: 'Work Experience Tips',
+            title: 'Work experience tips',
             icon: '💼',
             tips: [
               { heading: 'Quantify achievements', body: 'Use numbers wherever possible: "Managed a team of 5", "Reduced bug count by 30%".' },
@@ -1375,7 +1375,7 @@ export default function EditProfileWizard() {
             ],
           },
           7: {
-            title: 'Accomplishments Tips',
+            title: 'Accomplishments tips',
             icon: '🏆',
             tips: [
               { heading: 'Projects speak louder', body: 'Even personal projects demonstrate initiative. Add GitHub links where possible.' },
@@ -1385,7 +1385,7 @@ export default function EditProfileWizard() {
             ],
           },
           8: {
-            title: 'Links & Social Tips',
+            title: 'Links & social tips',
             icon: '🔗',
             tips: [
               { heading: 'LinkedIn is essential', body: 'Recruiters always check LinkedIn. Make sure it is up to date and matches your profile.' },
@@ -1394,12 +1394,12 @@ export default function EditProfileWizard() {
             ],
           },
           9: {
-            title: 'Personal Details Tips',
+            title: 'Personal details tips',
             icon: '📋',
             tips: [
-              { heading: 'Date of Birth', body: 'Required for some opportunities and compliance. This is kept private and secure.' },
+              { heading: 'Date of birth', body: 'Required for some opportunities and compliance. This is kept private and secure.' },
               { heading: 'Address', body: 'Your location helps match you to local and remote opportunities in your region.' },
-              { heading: 'Hobbies & Interests', body: 'Relatable hobbies create talking points in interviews and humanize your profile.' },
+              { heading: 'Hobbies & interests', body: 'Relatable hobbies create talking points in interviews and humanize your profile.' },
             ],
           },
         }

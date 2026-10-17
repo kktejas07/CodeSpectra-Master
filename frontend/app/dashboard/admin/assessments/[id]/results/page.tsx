@@ -1,5 +1,6 @@
 'use client'
 
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -114,45 +115,45 @@ interface ReviewData {
 }
 
 const PROCTOR_LABELS: Record<string, string> = {
-  tab_blur: 'Tab Switch',
-  tab_focus: 'Tab Return',
+  tab_blur: 'Tab switch',
+  tab_focus: 'Tab return',
   copy: 'Copy',
   paste: 'Paste',
-  fullscreen_exit: 'Fullscreen Exit',
-  fullscreen_enter: 'Fullscreen Enter',
-  right_click: 'Right Click',
-  visibility_change: 'Visibility Change',
-  window_blur: 'Window Blur',
-  window_focus: 'Window Focus',
+  fullscreen_exit: 'Fullscreen exit',
+  fullscreen_enter: 'Fullscreen enter',
+  right_click: 'Right click',
+  visibility_change: 'Visibility change',
+  window_blur: 'Window blur',
+  window_focus: 'Window focus',
   screenshot: 'Screenshot',
-  clipboard_copy: 'Copy Attempt',
-  clipboard_paste: 'Paste Attempt',
+  clipboard_copy: 'Copy attempt',
+  clipboard_paste: 'Paste attempt',
   alt_tab_detected: 'Alt+Tab',
-  right_click_blocked: 'Right Click Blocked',
-  keyboard_shortcut_blocked: 'Blocked Shortcut',
-  hardware_port_audit: 'Hardware Port Audit',
-  usb_device_plugged: 'USB Device Plugged',
-  usb_device_unplugged: 'USB Device Unplugged',
-  screen_share_started: 'Screen Share Started',
-  screen_share_ended: 'Screen Share Ended',
-  screen_capture_detected: 'Screen Capture Detected',
-  prohibited_app_detected: 'Prohibited App Detected',
-  remote_desktop_detected: 'Remote Desktop Detected',
-  rapid_window_resize: 'Rapid Window Resize',
-  secondary_voice_detected: 'Secondary Voice Detected',
-  volume_anomaly_detected: 'Volume Anomaly',
-  tab_focus_lost: 'Tab Switch',
-  copy_paste_attempt: 'Copy-Paste Attempt',
-  hardware_port_anomaly: 'Hardware Port Anomaly',
-  eye_blink_detected: 'Eye Blink Detected',
-  eye_gaze_changed: 'Eye Gaze Changed',
-  head_pose_turned_away: 'Head Turned Away',
-  browser_fingerprint_captured: 'Device Fingerprint Captured',
-  browser_fingerprint_changed: 'Device Change Detected',
-  face_match_mismatch: 'Face Mismatch',
-  face_match_restored: 'Face Verified',
-  keyboard_dynamics_snapshot: 'Typing Pattern Analysis',
-  answer_pattern_score: 'Answer Pattern Score',
+  right_click_blocked: 'Right click blocked',
+  keyboard_shortcut_blocked: 'Blocked shortcut',
+  hardware_port_audit: 'Hardware port audit',
+  usb_device_plugged: 'USB device plugged',
+  usb_device_unplugged: 'USB device unplugged',
+  screen_share_started: 'Screen share started',
+  screen_share_ended: 'Screen share ended',
+  screen_capture_detected: 'Screen capture detected',
+  prohibited_app_detected: 'Prohibited app detected',
+  remote_desktop_detected: 'Remote desktop detected',
+  rapid_window_resize: 'Rapid window resize',
+  secondary_voice_detected: 'Secondary voice detected',
+  volume_anomaly_detected: 'Volume anomaly',
+  tab_focus_lost: 'Tab switch',
+  copy_paste_attempt: 'Copy-paste attempt',
+  hardware_port_anomaly: 'Hardware port anomaly',
+  eye_blink_detected: 'Eye blink detected',
+  eye_gaze_changed: 'Eye gaze changed',
+  head_pose_turned_away: 'Head turned away',
+  browser_fingerprint_captured: 'Device fingerprint captured',
+  browser_fingerprint_changed: 'Device change detected',
+  face_match_mismatch: 'Face mismatch',
+  face_match_restored: 'Face verified',
+  keyboard_dynamics_snapshot: 'Typing pattern analysis',
+  answer_pattern_score: 'Answer pattern score',
 }
 
 const PROCTOR_ICONS: Record<string, React.ReactNode> = {
@@ -182,30 +183,30 @@ const PROCTOR_META_HIDDEN = new Set(['ua', 'timestamp', 'id', 'user_id', 'sessio
 const PROCTOR_META_LABELS: Record<string, string> = {
   total: 'Devices', safe: 'Safe', warn: 'Review', blocked: 'Blocked',
   multi_monitor: 'Multi-monitor', screen_count: 'Monitors', browser: 'Browser',
-  os: 'Operating System', device: 'Device Type', ip: 'IP Address',
+  os: 'Operating system', device: 'Device type', ip: 'IP address',
   textLength: 'Characters', preview: 'Content', appName: 'Application',
-  category: 'Category', url: 'URL', title: 'Page Title', deviceName: 'Device',
+  category: 'Category', url: 'URL', title: 'Page title', deviceName: 'Device',
   deviceType: 'Type', isBlocked: 'Blocked?', manufacturer: 'Manufacturer',
-  indicator: 'Detected Signal', displaySurface: 'Capture Surface',
-  trackKinds: 'Stream Type', state: 'Permission State', count: 'Count',
-  removedCount: 'Removed', audioLevelDb: 'Audio Level', speechDetected: 'Speech',
+  indicator: 'Detected signal', displaySurface: 'Capture surface',
+  trackKinds: 'Stream type', state: 'Permission state', count: 'Count',
+  removedCount: 'Removed', audioLevelDb: 'Audio level', speechDetected: 'Speech',
   key: 'Key', label: 'Shortcut',
-  blink_count: 'Total Blinks', new_blinks: 'New Blinks', gaze_direction: 'Gaze Direction',
-  yaw: 'Head Yaw', pitch: 'Head Pitch',
-  hash: 'Fingerprint Hash', original_hash: 'Original Hash', current_hash: 'Current Hash',
-  original_screen: 'Original Screen', current_screen: 'Current Screen',
-  score: 'Score', mismatch_count: 'Mismatch Count', threshold: 'Threshold',
-  avg_flight_time: 'Avg Flight Time', avg_dwell_time: 'Avg Dwell Time',
-  typing_speed_cpm: 'Typing Speed (CPM)', rhythm_variance: 'Rhythm Variance',
-  total_keystrokes: 'Total Keystrokes', backspace_ratio: 'Backspace Ratio',
+  blink_count: 'Total blinks', new_blinks: 'New blinks', gaze_direction: 'Gaze direction',
+  yaw: 'Head yaw', pitch: 'Head pitch',
+  hash: 'Fingerprint hash', original_hash: 'Original hash', current_hash: 'Current hash',
+  original_screen: 'Original screen', current_screen: 'Current screen',
+  score: 'Score', mismatch_count: 'Mismatch count', threshold: 'Threshold',
+  avg_flight_time: 'Avg flight time', avg_dwell_time: 'Avg dwell time',
+  typing_speed_cpm: 'Typing speed (CPM)', rhythm_variance: 'Rhythm variance',
+  total_keystrokes: 'Total keystrokes', backspace_ratio: 'Backspace ratio',
   is_suspicious: 'Suspicious?', flags: 'Flags', breakdown: 'Breakdown',
-  paste_score: 'Paste Score', speed_score: 'Speed Score',
-  pattern_score: 'Pattern Score', clipboard_score: 'Clipboard Score',
-  total_answers: 'Total Answers', total_pastes: 'Total Pastes',
+  paste_score: 'Paste score', speed_score: 'Speed score',
+  pattern_score: 'Pattern score', clipboard_score: 'Clipboard score',
+  total_answers: 'Total answers', total_pastes: 'Total pastes',
 }
 
 const humanize = (k: string): string =>
-  PROCTOR_META_LABELS[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  PROCTOR_META_LABELS[k] || k.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())
 
 /** Friendly, human-readable rendering of a proctoring event's metadata. */
 function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Record<string, unknown> }) {
@@ -528,7 +529,7 @@ export default function ExamResultsPage() {
       return
     }
     if (withAnswer.length === 0) {
-      addToast({ type: 'success', title: `${blank.length} unanswered question(s) set to 0`, message: 'Click Save Manual Grades to persist.' })
+      addToast({ type: 'success', title: `${blank.length} unanswered question(s) set to 0`, message: 'Click Save manual grades to persist.' })
       return
     }
     setBulkGrading({ running: true, done: 0, total: withAnswer.length, failed: [] })
@@ -558,7 +559,7 @@ export default function ExamResultsPage() {
     if (failed.length > 0) {
       addToast({ type: 'error', title: `Graded ${withAnswer.length - failed.length}/${withAnswer.length}`, message: `${failed.length} question(s) could not be graded — check them manually.` })
     } else {
-      addToast({ type: 'success', title: `AI graded ${withAnswer.length} question(s)`, message: `Review the suggestions, then click Save Manual Grades.${blank.length > 0 ? ` ${blank.length} unanswered question(s) set to 0.` : ''}` })
+      addToast({ type: 'success', title: `AI graded ${withAnswer.length} question(s)`, message: `Review the suggestions, then click Save manual grades.${blank.length > 0 ? ` ${blank.length} unanswered question(s) set to 0.` : ''}` })
     }
   }
 
@@ -954,8 +955,8 @@ export default function ExamResultsPage() {
 <h1>Proctor Report: ${examData.title}</h1>
 <p class="meta">Level: ${examData.level} | Duration: ${examData.duration} min | Generated: ${fmtDateTime(new Date())}</p>
 <p class="meta">Total Candidates: ${json.total_candidates} | Total Proctor Events: ${json.total_events}</p>
-<h2>Event Type Summary</h2>
-<div class="summary-box"><table><tr><th>Event Type</th><th>Count</th></tr>`
+<h2>Event type summary</h2>
+<div class="summary-box"><table><tr><th>Event type</th><th>Count</th></tr>`
 
       for (const [type, count] of Object.entries(json.event_type_summary || {})) {
         html += `<tr><td>${formatEvtType(type)}</td><td>${count}</td></tr>`
@@ -965,11 +966,11 @@ export default function ExamResultsPage() {
       for (const c of candidates) {
         const pct = c.max_score > 0 ? Math.round((c.score / c.max_score) * 100) : null
         const passed = pct !== null && pct >= 50
-        const rating = (c.event_count || 0) === 0 ? 'Clean' : (c.event_count || 0) < 5 ? 'Low Risk' : (c.event_count || 0) < 15 ? 'Medium Risk' : 'High Risk'
+        const rating = (c.event_count || 0) === 0 ? 'Clean' : (c.event_count || 0) < 5 ? 'Low risk' : (c.event_count || 0) < 15 ? 'Medium risk' : 'High risk'
 
         html += `<h2>${c.name || 'Unknown'} <span class="meta">(${c.email || 'N/A'})</span></h2>`
         html += `<div class="summary-box">`
-        html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity Events</th><th>Rating</th></tr>`
+        html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity events</th><th>Rating</th></tr>`
         html += `<tr><td>${pct !== null ? pct + '%' : '--'}</td><td class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</td>`
         html += `<td>${c.submitted_at ? fmtDateTime(c.submitted_at) : '--'}</td>`
         html += `<td>${c.event_count || 0}</td><td><strong>${rating}</strong></td></tr></table>`
@@ -977,7 +978,7 @@ export default function ExamResultsPage() {
         if (c.id_photo || c.face_photo) {
           html += `<div style="margin-top:8px">`
           if (c.id_photo) html += `<div style="display:inline-block;margin-right:12px"><div class="meta">ID Photo</div><img src="${c.id_photo}" /></div>`
-          if (c.face_photo) html += `<div style="display:inline-block"><div class="meta">Face Photo</div><img src="${c.face_photo}" /></div>`
+          if (c.face_photo) html += `<div style="display:inline-block"><div class="meta">Face photo</div><img src="${c.face_photo}" /></div>`
           html += `</div>`
         }
 
@@ -1001,7 +1002,7 @@ export default function ExamResultsPage() {
         html += `</div></div>`
 
         if (c.proctor_events && c.proctor_events.length > 0) {
-          html += `<h3>Proctoring Event Log</h3><table><tr><th>Event</th><th>Time</th><th>Details</th></tr>`
+          html += `<h3>Proctoring event log</h3><table><tr><th>Event</th><th>Time</th><th>Details</th></tr>`
           for (const evt of c.proctor_events) {
             const evtType = formatEvtType(evt.event_type)
             const time = evt.created_at ? fmtDateTime(evt.created_at) : '--'
@@ -1368,7 +1369,7 @@ export default function ExamResultsPage() {
               )}
               {row.status === 'completed' && row.graded && !row.released && (
                 <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-green-600 dark:text-green-400 focus:text-green-600">
-                  <Send className="h-4 w-4" /> Release Score
+                  <Send className="h-4 w-4" /> Release score
                 </DropdownMenuItem>
               )}
               {row.status !== 'completed' && (
@@ -1377,7 +1378,7 @@ export default function ExamResultsPage() {
                     <Mail className="h-4 w-4" /> Resend Invite
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => sendReminder(row.inviteId, row.name)} className="gap-2">
-                    <Bell className="h-4 w-4" /> Send Reminder
+                    <Bell className="h-4 w-4" /> Send reminder
                   </DropdownMenuItem>
                 </>
               )}
@@ -1463,13 +1464,18 @@ export default function ExamResultsPage() {
             </Badge>
           )}
           {jevConfigured !== null && (
-            <Badge
-              variant="secondary"
-              title={jevConfigured ? 'Jev second-opinion verification active — disagreements escalate to human review' : 'Jev key not configured — free-text grades will be flagged for human review'}
-              className={jevConfigured ? 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' : 'gap-1 bg-muted text-muted-foreground'}
+            <SecondOpinionHint
+              text={jevConfigured
+                ? 'A second AI model double-checks each AI grade on written and code answers. If it disagrees, the answer is flagged for a person to review.'
+                : 'Not set up. Written and code answers are still graded by AI, but every one is flagged for a person to review.'}
             >
-              <ShieldAlert className="w-3.5 h-3.5" /> {jevConfigured ? 'Jev verified' : 'Jev off'}
-            </Badge>
+              <Badge
+                variant="secondary"
+                className={jevConfigured ? 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' : 'gap-1 bg-muted text-muted-foreground'}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" aria-hidden /> {jevConfigured ? 'Second-opinion check on' : 'Second-opinion check off'}
+              </Badge>
+            </SecondOpinionHint>
           )}
           {exam?.plagiarismReport && (
             <Badge
@@ -1642,7 +1648,7 @@ export default function ExamResultsPage() {
               },
             },
             {
-              label: 'Release Scores',
+              label: 'Release scores',
               variant: 'default',
               icon: <Send className="w-3.5 h-3.5 mr-1" />,
               onClick: async (ids) => {
@@ -1655,7 +1661,7 @@ export default function ExamResultsPage() {
               },
             },
             {
-              label: 'Send Reminder',
+              label: 'Send reminder',
               variant: 'outline',
               icon: <Bell className="w-3.5 h-3.5 mr-1" />,
               onClick: async (ids) => {
@@ -1755,7 +1761,7 @@ export default function ExamResultsPage() {
                           </p>
                           <p className="text-amber-700/80 dark:text-amber-300/80">
                             Scroll to the highlighted rows, set the points (the AI&apos;s value is pre-filled), then
-                            click <strong>Save Manual Grades</strong> — that clears them.
+                            click <strong>Save manual grades</strong> — that clears them.
                           </p>
                         </div>
                       )
@@ -1823,18 +1829,23 @@ export default function ExamResultsPage() {
                               ) : (
                                 <div className="flex items-center gap-2">
                                   {detail?.requires_human_review && (
-                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0" title="AI Confidence was low, human review is recommended">
-                                      <AlertTriangle className="w-3 h-3 mr-1" /> Review Recommended
+                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0" title="The AI was not confident about this grade. A person should review it.">
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> Review recommended
                                     </Badge>
                                   )}
                                   {detail?.jev_agree !== undefined && detail?.jev_agree !== null && (
-                                    <Badge
-                                      variant="outline"
-                                      title={detail.jev_agree ? 'Jev second opinion agreed with the AI grade' : 'Jev second opinion disagreed — check this grade manually'}
-                                      className={detail.jev_agree ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/30 shrink-0' : 'text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0'}
+                                    <SecondOpinionHint
+                                      text={detail.jev_agree
+                                        ? 'A second AI model checked this grade and agrees with it.'
+                                        : 'A second AI model checked this grade and disagrees. Check this answer yourself before relying on the score.'}
                                     >
-                                      <ShieldAlert className="w-3 h-3 mr-1" /> Jev {detail.jev_agree ? 'agreed' : 'disputed'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` ${Math.round(detail.jev_confidence * 100)}%` : ''}
-                                    </Badge>
+                                      <Badge
+                                        variant="outline"
+                                        className={detail.jev_agree ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/30 shrink-0' : 'text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0'}
+                                      >
+                                        <ShieldAlert className="w-3 h-3 mr-1" aria-hidden /> Second opinion {detail.jev_agree ? 'agrees' : 'disagrees'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` (${Math.round(detail.jev_confidence * 100)}% sure)` : ''}
+                                      </Badge>
+                                    </SecondOpinionHint>
                                   )}
                                   <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
                                     {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
@@ -1992,8 +2003,8 @@ export default function ExamResultsPage() {
                         {bulkGrading.running
                           ? `Grading… ${bulkGrading.done}/${bulkGrading.total}`
                           : bulkGrading.failed.length > 0
-                            ? `Grade All (${bulkGrading.total - bulkGrading.failed.length}/${bulkGrading.total} graded)`
-                            : 'Grade All with AI'}
+                            ? `Grade all (${bulkGrading.total - bulkGrading.failed.length}/${bulkGrading.total} graded)`
+                            : 'Grade all with AI'}
                       </Button>
                       {bulkGrading.running && (
                         <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
@@ -2008,7 +2019,7 @@ export default function ExamResultsPage() {
                           disabled={savingGrades}
                         >
                           {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                          Save Manual Grades
+                          Save manual grades
                         </Button>
                       )}
                     </div>
@@ -2210,7 +2221,7 @@ export default function ExamResultsPage() {
                         ) : (
                           <Send className="w-4 h-4" />
                         )}
-                        Release Score
+                        Release score
                       </Button>
                     )}
                   </div>
@@ -2457,5 +2468,23 @@ export default function ExamResultsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  )
+}
+
+/** Keyboard-reachable tooltip explaining the second-opinion grade check. */
+function SecondOpinionHint({ text, children }: { text: string; children: React.ReactNode }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-flex cursor-help rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            {children}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          <p className="max-w-64 text-xs">{text}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }

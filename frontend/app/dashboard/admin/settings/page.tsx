@@ -1205,7 +1205,7 @@ function SystemSettingsInner() {
           </div>
           <div className="grid gap-6 md:grid-cols-2">
             <div>
-              <Label htmlFor="video_player_primary_color">Primary Theme Color (Hex)</Label>
+              <Label htmlFor="video_player_primary_color">Primary theme color (hex)</Label>
               <Input
                 id="video_player_primary_color"
                 value={form.video_player_primary_color}
@@ -1215,7 +1215,7 @@ function SystemSettingsInner() {
               />
             </div>
             <div>
-              <Label htmlFor="video_player_default_speed">Default Playback Speed</Label>
+              <Label htmlFor="video_player_default_speed">Default playback speed</Label>
               <Input
                 id="video_player_default_speed"
                 type="number"
@@ -1231,7 +1231,7 @@ function SystemSettingsInner() {
               </p>
             </div>
             <div>
-              <Label htmlFor="video_player_transcript">Transcript Panel</Label>
+              <Label htmlFor="video_player_transcript">Transcript panel</Label>
               <Select
                 value={form.video_player_transcript}
                 onValueChange={(v) => setForm((f) => ({ ...f, video_player_transcript: v as typeof f.video_player_transcript }))}
@@ -1249,7 +1249,7 @@ function SystemSettingsInner() {
             <div className="flex flex-col justify-center space-y-4">
               <div className="flex items-center justify-between mt-6">
                 <div className="space-y-0.5">
-                  <Label>Autoplay by Default</Label>
+                  <Label>Autoplay by default</Label>
                   <p className="text-sm text-muted-foreground">Start videos automatically when loaded</p>
                 </div>
                 <Switch
@@ -1259,7 +1259,7 @@ function SystemSettingsInner() {
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label>Muted by Default</Label>
+                  <Label>Muted by default</Label>
                   <p className="text-sm text-muted-foreground">Start videos with sound off</p>
                 </div>
                 <Switch
@@ -1576,7 +1576,7 @@ function SystemSettingsInner() {
             <div className="flex items-center justify-between gap-4 py-4">
               <div className="space-y-0.5">
                 <Label htmlFor="enable_chatbot" className="text-foreground">
-                  Ask CodeSpectra Chatbot
+                  Ask CodeSpectra chatbot
                 </Label>
                 <p className="text-sm text-muted-foreground">Enable the global AI coding assistant for all users</p>
               </div>
@@ -1667,7 +1667,7 @@ function SystemSettingsInner() {
           <div className="space-y-6 p-6">
             <div className="space-y-4">
               <div className="min-w-0 space-y-0.5">
-                <Label className="text-foreground">Default Template</Label>
+                <Label className="text-foreground">Default template</Label>
                 <p className="text-sm text-muted-foreground">This template is used when issuing certificates after event completion.</p>
               </div>
               <div className="grid grid-cols-3 gap-3">
@@ -2005,7 +2005,7 @@ function SystemSettingsInner() {
                 {/* TypeSafe Jev (grade verification second opinion) */}
                 <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="jev-section">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">Grade verification (TypeSafe Jev)</p>
+                    <p className="text-sm font-semibold text-foreground">Second-opinion grade check <span className="font-normal text-muted-foreground">(TypeSafe Jev)</span></p>
                     <div className="flex items-center gap-2">
                       {secretsMeta.has_typesafe_api_key ? (
                         <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
@@ -2016,11 +2016,12 @@ function SystemSettingsInner() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Decision-only second opinion on LLM grades (descriptive + non-executed code).
-                    Jev answers two yes/no checks per grade and escalates to human review on
-                    disagreement — it can never lower a grade or clear caution. Key from{' '}
-                    <code>console.typesafe.ai → Settings → Keys</code>. Without this, free-text
-                    grades still work but are always flagged for human review (fail-closed).
+                    A second AI model (TypeSafe Jev) double-checks each AI grade on written and
+                    code answers. If it disagrees, the answer is flagged for a person to review. It
+                    never changes a score on its own. Get a key from{' '}
+                    <code>console.typesafe.ai → Settings → Keys</code>. Without a key, written
+                    answers are still graded, but every one is flagged for a person to review.
+                    Recruiters see this as &ldquo;Second-opinion check&rdquo; on results pages.
                   </p>
                   {secretsMeta.has_typesafe_api_key ? (
                     <p className="font-mono text-[11px] text-muted-foreground">
@@ -2144,7 +2145,7 @@ function SystemSettingsInner() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
                         <Flame className="h-4 w-4 text-primary" />
                       </div>
-                      <p className="text-sm font-semibold text-foreground">Firebase Auth SDK</p>
+                      <p className="text-sm font-semibold text-foreground">Firebase auth SDK</p>
                     </div>
                     {secretsMeta.firebase_api_key &&
                     secretsMeta.firebase_auth_domain &&
@@ -2174,13 +2175,13 @@ function SystemSettingsInner() {
                   </p>
                   <div className="grid gap-4 sm:grid-cols-2">
                     {[
-                      { key: 'firebase_api_key', label: 'API Key', ph: 'AIzaSy…' },
-                      { key: 'firebase_auth_domain', label: 'Auth Domain', ph: 'your-project.firebaseapp.com' },
+                      { key: 'firebase_api_key', label: 'API key', ph: 'AIzaSy…' },
+                      { key: 'firebase_auth_domain', label: 'Auth domain', ph: 'your-project.firebaseapp.com' },
                       { key: 'firebase_project_id', label: 'Project ID', ph: 'your-project' },
-                      { key: 'firebase_storage_bucket', label: 'Storage Bucket', ph: 'your-project.appspot.com' },
-                      { key: 'firebase_messaging_sender_id', label: 'Messaging Sender ID', ph: '123456789012' },
+                      { key: 'firebase_storage_bucket', label: 'Storage bucket', ph: 'your-project.appspot.com' },
+                      { key: 'firebase_messaging_sender_id', label: 'Messaging sender ID', ph: '123456789012' },
                       { key: 'firebase_app_id', label: 'App ID', ph: '1:123456789012:web:abc123' },
-                      { key: 'firebase_vapid_key', label: 'Web Push VAPID Key', ph: 'BL…' },
+                      { key: 'firebase_vapid_key', label: 'Web push VAPID key', ph: 'BL…' },
                     ].map(({ key, label, ph }) => (
                           <div key={key} className="space-y-1.5">
                         <Label className="text-foreground">{label}</Label>
@@ -2368,7 +2369,7 @@ function SystemSettingsInner() {
                 {/* PhonePe */}
                 <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4" data-testid="phonepe-section">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">PhonePe (UPI & Cards)</p>
+                    <p className="text-sm font-semibold text-foreground">PhonePe (UPI & cards)</p>
                     {secretsMeta.phonepe_merchant_id ? (
                       <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">
                         ✓ Active
@@ -2386,7 +2387,7 @@ function SystemSettingsInner() {
                       target="_blank"
                       className="text-primary underline-offset-4 hover:underline"
                     >
-                      PhonePe Developer Portal
+                      PhonePe developer portal
                     </Link>
                     . Use merchant ID from your PhonePe account dashboard.
                   </p>
@@ -2421,7 +2422,7 @@ function SystemSettingsInner() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="pay_phonepe_sk">Salt Key</Label>
+                    <Label htmlFor="pay_phonepe_sk">Salt key</Label>
                     {secretsMeta.has_phonepe_salt_key ? (
                       <p className="mt-1 font-mono text-xs text-muted-foreground">
                         Current: {String(secretsMeta.phonepe_salt_key_masked ?? '—')}
@@ -2451,7 +2452,7 @@ function SystemSettingsInner() {
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="pay_phonepe_si">Salt Index</Label>
+                    <Label htmlFor="pay_phonepe_si">Salt index</Label>
                     <p className="mt-1 font-mono text-xs text-muted-foreground">
                       Current: {String(secretsMeta.phonepe_salt_index ?? '1')}
                     </p>
@@ -2469,7 +2470,7 @@ function SystemSettingsInner() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="pay_phonepe_wh">Webhook Secret (optional)</Label>
+                    <Label htmlFor="pay_phonepe_wh">Webhook secret (optional)</Label>
                     {secretsMeta.has_phonepe_webhook_secret ? (
                       <p className="mt-1 font-mono text-xs text-muted-foreground">
                         Current: {String(secretsMeta.phonepe_webhook_secret_masked ?? '—')}
@@ -2731,7 +2732,7 @@ function SystemSettingsInner() {
               <Card className="rounded-3xl border-border/70 p-6">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">AI & LLM Configuration</h3>
+                  <h3 className="font-semibold text-foreground">AI & LLM configuration</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-6">
                   Configure API keys, view usage stats, and manage routing. Supports multiple keys per provider with automatic rotation.

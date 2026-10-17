@@ -438,19 +438,19 @@ export default function ArenaChallengePage() {
       const arenaDetailTour: TourStep[] = [
         {
           target: '[data-tour="arena-detail-header"]',
-          title: 'Solve Rated Coding Challenges',
+          title: 'Solve rated coding challenges',
           description: 'This page gives every user one arena challenge with its difficulty and points.',
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-detail-actions"]',
-          title: 'Run Then Submit Solution',
+          title: 'Run then submit solution',
           description: 'Test with Run, then Submit to advance to the next challenge.',
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-detail-editor"]',
-          title: 'Tip: Match Sample Outputs',
+          title: 'Tip: Match sample outputs',
           description: 'Tip: type your solution here in the selected language and mirror the example inputs and outputs.',
           position: 'top',
         },

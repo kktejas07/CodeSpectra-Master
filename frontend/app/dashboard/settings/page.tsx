@@ -117,31 +117,31 @@ export default function SettingsPage() {
       const settingsTour: TourStep[] = [
         {
           target: '[data-tour="settings-header"]',
-          title: 'Account Settings Hub',
+          title: 'Account settings hub',
           description: 'Manage theme, language, notifications, and security for your account.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-appearance"]',
-          title: 'Set Theme Language',
+          title: 'Set theme language',
           description: 'Pick Light, Dark, or System theme and language, then save appearance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-notifications"]',
-          title: 'Toggle Email Push',
+          title: 'Toggle email push',
           description: 'Toggle Email and Push alerts, then save; fine-tune channels in preferences.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-security"]',
-          title: 'Secure Sign-In Methods',
+          title: 'Secure sign-in methods',
           description: 'Review 2FA status, enroll face biometrics, or change your password.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-danger"]',
-          title: 'Export Before Deleting',
+          title: 'Export before deleting',
           description: 'Tip: export your data first; deletion needs password confirmation and cannot be undone.',
           position: 'bottom',
         },

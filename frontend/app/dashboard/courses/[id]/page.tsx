@@ -124,19 +124,19 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       const courseDetailTour: TourStep[] = [
         {
           target: '[data-tour="course-detail-header"]',
-          title: 'Course Details At Glance',
+          title: 'Course details at glance',
           description: 'This page shows one course content, ratings, and enrollment options for learners deciding what to study.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-enroll"]',
-          title: 'Enroll or Resume Learning',
+          title: 'Enroll or resume learning',
           description: 'Enroll free to unlock lessons, or resume where you stopped to keep progressing.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-curriculum"]',
-          title: 'Finish Lessons, Earn Certificate',
+          title: 'Finish lessons, earn certificate',
           description: 'Complete lessons in order and pass module quizzes to unlock your verified certificate.',
           position: 'top',
         },
@@ -366,24 +366,24 @@ const handleEnroll = async () => {
   const progressPercent = totalLessons > 0 ? Math.round((completedLessons.size / totalLessons) * 100) : 0
 
   // Career outcomes based on tags
-  const careerMap: Record<string, { title: string; growth: string; salary: string; color: string }[]> = {
+  const careerMap: Record<string, { title: string; color: string }[]> = {
     CPP: [
-      { title: 'Software Engineer', growth: '+28%', salary: '$85k–$130k', color: 'from-blue-500/20 to-blue-600/5' },
-      { title: 'Systems Programmer', growth: '+22%', salary: '$90k–$140k', color: 'from-indigo-500/20 to-indigo-600/5' },
+      { title: 'Software engineer', color: 'from-blue-500/20 to-blue-600/5' },
+      { title: 'Systems programmer', color: 'from-indigo-500/20 to-indigo-600/5' },
     ],
     Python: [
-      { title: 'Data Scientist', growth: '+35%', salary: '$90k–$145k', color: 'from-yellow-500/20 to-yellow-600/5' },
-      { title: 'ML Engineer', growth: '+42%', salary: '$110k–$170k', color: 'from-orange-500/20 to-orange-600/5' },
+      { title: 'Data scientist', color: 'from-yellow-500/20 to-yellow-600/5' },
+      { title: 'ML engineer', color: 'from-orange-500/20 to-orange-600/5' },
     ],
     Web: [
-      { title: 'Frontend Engineer', growth: '+25%', salary: '$75k–$125k', color: 'from-cyan-500/20 to-cyan-600/5' },
-      { title: 'Full Stack Developer', growth: '+30%', salary: '$85k–$145k', color: 'from-teal-500/20 to-teal-600/5' },
+      { title: 'Frontend engineer', color: 'from-cyan-500/20 to-cyan-600/5' },
+      { title: 'Full stack developer', color: 'from-teal-500/20 to-teal-600/5' },
     ]
   }
   const careerTag = (course.tags || []).find(t => careerMap[t])
   const careers = careerTag ? careerMap[careerTag] : [
-    { title: 'Software Engineer', growth: '+25%', salary: '$80k–$130k', color: 'from-blue-500/20 to-blue-600/5' },
-    { title: 'Tech Lead', growth: '+30%', salary: '$100k–$160k', color: 'from-purple-500/20 to-purple-600/5' },
+    { title: 'Software engineer', color: 'from-blue-500/20 to-blue-600/5' },
+    { title: 'Tech lead', color: 'from-purple-500/20 to-purple-600/5' },
   ]
 
   return (

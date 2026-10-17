@@ -16,6 +16,7 @@ import { Linkedin, Twitter } from '@/components/ui/brand-icons'
 import { useAuth } from '@/lib/auth-context'
 import QRCode from 'qrcode'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { rankByScore } from '@/lib/hackathons/ranking'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -229,12 +230,14 @@ function MyTeamResults({
   submissions,
   tasks,
   myRank,
+  myRankTied,
   teams,
 }: {
   myTeam: Team
   submissions: Submission[]
   tasks: Hackathon['tasks']
   myRank: number
+  myRankTied?: boolean
   teams: Team[]
 }) {
   const teamSubs = submissions.filter((s) => s.team_id === myTeam.id && s.status === 'released')
@@ -255,7 +258,7 @@ function MyTeamResults({
           </div>
         </div>
         <Badge variant="default" className="text-lg px-4 py-1 tabular-nums">
-          Rank #{myRank} of {teams.length}
+          Rank #{myRank}{myRankTied ? ' (tied)' : ''} of {teams.length}
         </Badge>
       </div>
 
@@ -347,7 +350,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
       if (tRes.ok) {
         const j = await tRes.json() as { items: Team[] }
-        const sorted = j.items.sort((a, b) => b.xp - a.xp)
+        const sorted = [...j.items].sort((a, b) => b.xp - a.xp)
         setTeams(sorted)
         if (hasSession) {
           const my = sorted.find((t) => t.members.some((m) => m.user_id === hasSession))
@@ -364,7 +367,10 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
   useEffect(() => { void load() }, [load])
 
-  const myRank = myTeam ? teams.findIndex((t) => t.id === myTeam.id) + 1 : null
+  // Rank comes from XP, not list position: teams with equal XP share a rank.
+  const teamRanks = rankByScore(teams, (t) => t.id, (t) => t.xp)
+  const myRankInfo = myTeam ? teamRanks.get(myTeam.id) ?? null : null
+  const myRank = myRankInfo?.rank ?? null
 
   const toggleTeamExpand = (teamId: string) => {
     setExpandedTeams((prev) => {
@@ -454,7 +460,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
     ctx.font = '18px sans-serif'
     ctx.fillStyle = 'rgba(255,255,255,0.85)'
-    ctx.fillText(`achieved Rank #${myRank} of ${teams.length} teams in`, 400, 300)
+    ctx.fillText(`achieved Rank #${myRank}${myRankInfo?.tied ? ' (tied)' : ''} of ${teams.length} teams in`, 400, 300)
 
     ctx.font = 'bold 28px sans-serif'
     ctx.fillStyle = '#ffffff'
@@ -565,6 +571,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
             submissions={submissions}
             tasks={hackathon.tasks}
             myRank={myRank}
+            myRankTied={myRankInfo?.tied}
             teams={teams}
           />
         )}
@@ -609,6 +616,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
               const teamSubs = submissions.filter((s) => s.team_id === t.id && s.status === 'released')
               const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
               const isExpanded = expandedTeams.has(t.id)
+              const r = teamRanks.get(t.id)?.rank ?? i + 1
 
               return (
                 <div key={t.id}>
@@ -616,8 +624,11 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                     className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors ${myTeam?.id === t.id ? 'bg-primary/5' : ''}`}
                     onClick={() => toggleTeamExpand(t.id)}
                   >
-                    <span className={`w-10 text-2xl font-bold tabular-nums text-center ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-foreground/60' : i === 2 ? 'text-amber-700 dark:text-amber-600' : 'text-muted-foreground'}`}>
-                      {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                    <span
+                      className={`w-10 text-2xl font-bold tabular-nums text-center ${r === 1 ? 'text-amber-500' : r === 2 ? 'text-foreground/60' : r === 3 ? 'text-amber-700 dark:text-amber-600' : 'text-muted-foreground'}`}
+                      aria-label={`Rank ${r}${teamRanks.get(t.id)?.tied ? ', tied' : ''}`}
+                    >
+                      {r === 1 ? '🥇' : r === 2 ? '🥈' : r === 3 ? '🥉' : `#${r}`}
                     </span>
                     <div className="flex-1">
                       <p className="font-medium">{t.name}</p>
@@ -660,7 +671,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                       team={t}
                       submissions={submissions}
                       tasks={hackathon.tasks}
-                      rank={i + 1}
+                      rank={r}
                     />
                   )}
                 </div>
@@ -686,6 +697,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                 })
 
                 const medals = ['🥇', '🥈', '🥉']
+                // Ties on score share a rank; ungraded submissions get none.
+                const subRanks = rankByScore(taskSubs, (s) => s.id, (s) => s.score)
 
                 return (
                   <Card key={task.problem_slug} className="rounded-3xl overflow-hidden">
@@ -721,16 +734,19 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                               </td>
                             </tr>
                           ) : (
-                            taskSubs.map((sub, idx) => {
+                            taskSubs.map((sub) => {
                               const team = teams.find((t) => t.id === sub.team_id)
-                              const isMedaled = idx < 3
+                              const subRank = subRanks.get(sub.id)?.rank ?? null
+                              const isMedaled = subRank !== null && subRank <= 3
                               return (
                                 <tr key={sub.id} className={`border-b border-border/30 ${isMedaled ? 'bg-muted/10' : ''}`}>
                                   <td className="p-3">
-                                    {isMedaled ? (
-                                      <span className="text-lg">{medals[idx]}</span>
+                                    {subRank === null ? (
+                                      <span className="text-muted-foreground" aria-label="Not ranked">—</span>
+                                    ) : isMedaled ? (
+                                      <span className="text-lg" aria-label={`Rank ${subRank}`}>{medals[subRank - 1]}</span>
                                     ) : (
-                                      <span className="text-muted-foreground">#{idx + 1}</span>
+                                      <span className="text-muted-foreground">#{subRank}</span>
                                     )}
                                   </td>
                                   <td className="p-3 font-medium">{team?.name || 'Unknown'}</td>

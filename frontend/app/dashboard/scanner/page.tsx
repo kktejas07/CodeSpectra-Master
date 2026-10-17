@@ -101,25 +101,25 @@ function CodeScannerPageInner() {
       const scannerTour: TourStep[] = [
         {
           target: '[data-tour="scanner-code-input"]',
-          title: 'Manual Code Scanner',
+          title: 'Manual code scanner',
           description: 'Manual scan page: paste code here for bug and quality feedback.',
           position: 'bottom',
         },
         {
           target: '[data-tour="scanner-scan-button"]',
-          title: 'Run Code Scan',
+          title: 'Run code scan',
           description: 'Click Scan Code to analyze pasted code and reveal quality issues.',
           position: 'bottom',
         },
         {
           target: '[data-tour="scanner-results"]',
-          title: 'Review Quality Results',
+          title: 'Review quality results',
           description: 'Review quality score, issues, fixes, and recommendations after each scan.',
           position: 'top',
         },
         {
           target: '[data-tour="scanner-history"]',
-          title: 'Reload Past Scans',
+          title: 'Reload past scans',
           description: 'Tip: select any past scan to reload its code and results instantly.',
           position: 'bottom',
         },

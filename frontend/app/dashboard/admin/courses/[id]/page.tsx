@@ -122,7 +122,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
     if (!course) return
     setCourse({
       ...course,
-      sections: [...(course.sections || []), { title: 'New Module', slug: `module-${Date.now()}`, lessons: [] }]
+      sections: [...(course.sections || []), { title: 'New module', slug: `module-${Date.now()}`, lessons: [] }]
     })
   }
 
@@ -146,7 +146,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
     const newSections = [...course.sections]
     newSections[sectionIndex].lessons.push({
       id: crypto.randomUUID(),
-      title: 'New Lesson',
+      title: 'New lesson',
       slug: `lesson-${Date.now()}`,
       type: 'text',
       videoType: 'youtube',

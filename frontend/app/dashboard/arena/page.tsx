@@ -91,25 +91,25 @@ export default function ArenaPage() {
       const arenaTour: TourStep[] = [
         {
           target: '[data-tour="arena-overview"]',
-          title: 'Coding Arena',
+          title: 'Coding arena',
           description: 'Browse and solve coding challenges to earn points and improve your skills.',
           position: 'bottom',
         },
         {
           target: '[data-tour="stats-panel"]',
-          title: 'Your Stats',
+          title: 'Your stats',
           description: 'Track your progress with total challenges, solved count, and points earned.',
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-filters"]',
-          title: 'Filter Challenges',
+          title: 'Filter challenges',
           description: 'Filter challenges by difficulty and category to find the right problem for you.',
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-grid"]',
-          title: 'Challenge List',
+          title: 'Challenge list',
           description: 'Click any challenge to start solving and earn points.',
           position: 'bottom',
         },

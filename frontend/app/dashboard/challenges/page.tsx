@@ -40,13 +40,13 @@ export default function ChallengesPage() {
       const challengesTour: TourStep[] = [
         {
           target: '[data-tour="challenges-header"]',
-          title: 'Interview Challenge Practice Hub',
+          title: 'Interview challenge practice hub',
           description: 'Practice coding, system design, and behavioral challenges to prepare for technical interviews.',
           position: 'bottom',
         },
         {
           target: '[data-tour="challenges-content"]',
-          title: 'Filter Cards Track Progress',
+          title: 'Filter cards track progress',
           description: 'Pro tip: filter by type and level, watch Completed counts, then Start or Retry unlocked cards.',
           position: 'bottom',
         },

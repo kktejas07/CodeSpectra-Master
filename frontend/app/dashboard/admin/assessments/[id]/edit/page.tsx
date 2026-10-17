@@ -1015,7 +1015,7 @@ export default function ExamReviewPage() {
                 const fileInput = document.getElementById('import-file-input')
                 if (fileInput) fileInput.click()
               }} className="gap-2">
-                <Upload className="h-4 w-4" /> Upload File (.csv, .json, .txt)
+                <Upload className="h-4 w-4" /> Upload file (.csv, .json, .txt)
               </Button>
               <input
                 id="import-file-input"
@@ -1522,7 +1522,7 @@ export default function ExamReviewPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setQuestionModal(false)}>Cancel</Button>
             <Button onClick={saveQuestion}>
-              <Save className="h-4 w-4 mr-2" /> Save Question
+              <Save className="h-4 w-4 mr-2" /> Save question
             </Button>
           </DialogFooter>
         </DialogContent>

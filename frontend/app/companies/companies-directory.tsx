@@ -14,7 +14,7 @@ interface Props {
 export function CompaniesDirectory({ companies, industries }: Props) {
   const [query, setQuery] = useState('')
   const [selectedIndustry, setSelectedIndustry] = useState<string>('')
-  const [sortBy, setSortBy] = useState<'name' | 'difficulty' | 'glassdoor'>('name')
+  const [sortBy, setSortBy] = useState<'name' | 'difficulty'>('name')
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase()
@@ -34,7 +34,7 @@ export function CompaniesDirectory({ companies, industries }: Props) {
         const bDiff = b.difficultyDistribution.hard
         return bDiff - aDiff
       }
-      return b.glassdoor - a.glassdoor
+      return 0
     })
 
     return result
@@ -75,7 +75,6 @@ export function CompaniesDirectory({ companies, industries }: Props) {
         >
           <option value="name">Sort by name</option>
           <option value="difficulty">Sort by difficulty</option>
-          <option value="glassdoor">Sort by rating</option>
         </select>
       </div>
 
@@ -103,9 +102,6 @@ export function CompaniesDirectory({ companies, industries }: Props) {
                     </h3>
                     <p className="text-sm text-cs-ink-soft">{company.industry}</p>
                   </div>
-                  <div className="flex items-center gap-1 text-sm font-semibold tabular-nums text-amber-700 dark:text-amber-400" title="Glassdoor rating">
-                    <span aria-hidden>★</span> {company.glassdoor.toFixed(1)}
-                  </div>
                 </div>
                 <div className="px-6">
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -126,7 +122,7 @@ export function CompaniesDirectory({ companies, industries }: Props) {
                 </div>
                 <div className="px-6 pt-3">
                   <div className="flex items-center gap-2 text-xs text-cs-ink-soft">
-                    <span>Difficulty</span>
+                    <span title="Editorial estimate, not measured data">Difficulty (est.)</span>
                     <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-cs-grid" aria-hidden>
                       <div
                         className="bg-green-500"
@@ -143,9 +139,6 @@ export function CompaniesDirectory({ companies, industries }: Props) {
                     </div>
                     <span className="tabular-nums">{company.difficultyDistribution.hard}% hard</span>
                   </div>
-                </div>
-                <div className="px-6 pt-2">
-                  <p className="text-sm font-medium text-cs-ink">{company.salaryRange}</p>
                 </div>
               </div>
             </Link>

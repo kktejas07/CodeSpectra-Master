@@ -24,25 +24,25 @@ import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/d
 const PAGE_SIZE = 10
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Courses', icon: <Monitor className="h-4 w-4" /> },
+  { id: 'all', label: 'All courses', icon: <Monitor className="h-4 w-4" /> },
   { id: 'CPP', label: 'C++', icon: <Braces className="h-4 w-4" /> },
   { id: 'C', label: 'C', icon: <Terminal className="h-4 w-4" /> },
   { id: 'Coding', label: 'Coding', icon: <Code className="h-4 w-4" /> },
   { id: 'Python', label: 'Python', icon: <FlaskConical className="h-4 w-4" /> },
   { id: 'Java', label: 'Java', icon: <Cpu className="h-4 w-4" /> },
   { id: 'JavaScript', label: 'JavaScript', icon: <Braces className="h-4 w-4" /> },
-  { id: 'Full Stack Web dev', label: 'Full Stack Web', icon: <Layers className="h-4 w-4" /> },
+  { id: 'Full Stack Web dev', label: 'Full stack web', icon: <Layers className="h-4 w-4" /> },
   { id: 'React', label: 'React', icon: <Globe className="h-4 w-4" /> },
   { id: 'Node.js', label: 'Node.js', icon: <Server className="h-4 w-4" /> },
-  { id: 'Software Tools', label: 'Software Tools', icon: <Settings className="h-4 w-4" /> },
+  { id: 'Software Tools', label: 'Software tools', icon: <Settings className="h-4 w-4" /> },
   { id: 'DevOps', label: 'DevOps', icon: <GitBranch className="h-4 w-4" /> },
   { id: 'Docker', label: 'Docker / K8s', icon: <Cloud className="h-4 w-4" /> },
   { id: 'General Aptitude', label: 'Aptitude', icon: <Lightbulb className="h-4 w-4" /> },
-  { id: 'SQL', label: 'SQL / Databases', icon: <Database className="h-4 w-4" /> },
+  { id: 'SQL', label: 'SQL / databases', icon: <Database className="h-4 w-4" /> },
   { id: 'Management', label: 'Management', icon: <Briefcase className="h-4 w-4" /> },
   { id: 'AI', label: 'AI / ML', icon: <BarChart2 className="h-4 w-4" /> },
-  { id: 'System Design', label: 'System Design', icon: <Network className="h-4 w-4" /> },
-  { id: 'Mobile', label: 'Mobile Dev', icon: <Smartphone className="h-4 w-4" /> },
+  { id: 'System Design', label: 'System design', icon: <Network className="h-4 w-4" /> },
+  { id: 'Mobile', label: 'Mobile dev', icon: <Smartphone className="h-4 w-4" /> },
   { id: 'Security', label: 'Security', icon: <Shield className="h-4 w-4" /> },
 ]
 
@@ -142,25 +142,25 @@ function LearningPageInner() {
       const coursesTour: TourStep[] = [
         {
           target: '[data-tour="courses-header"]',
-          title: 'Explore Course Catalog',
+          title: 'Explore course catalog',
           description: 'Course library where learners browse courses and open the wishlist.',
           position: 'bottom',
         },
         {
           target: '[data-tour="courses-search"]',
-          title: 'Search Courses Quickly',
+          title: 'Search courses quickly',
           description: 'Type a title, topic, or tag to narrow the catalog instantly.',
           position: 'bottom',
         },
         {
           target: '[data-tour="categories"]',
-          title: 'Filter by Category',
+          title: 'Filter by category',
           description: 'Tap a category pill to show only matching courses.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-card"]',
-          title: 'Tip Open Course Cards',
+          title: 'Tip open course cards',
           description: 'Tip: click a card to open details, or tap the heart to save it.',
           position: 'bottom',
         },

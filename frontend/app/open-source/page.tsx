@@ -8,7 +8,7 @@ import { ExternalLink, Award, BookOpen, ShieldCheck, Code2 } from 'lucide-react'
 /**
  * /open-source — public attribution page.
  *
- * Lists every open-source dependency, curriculum source, and tool used by
+ * Lists the main open-source dependencies, curriculum sources, and tools used by
  * the certification + audit features. Linked from the footer of
  * every certification page so candidates and employers can audit the
  * supply chain in one click.
@@ -20,13 +20,12 @@ interface Item {
   use: string
 }
 
+// Licences checked against each project's published licence. Only sources the
+// certification docs (docs/user/07-certifications-guide.md) name are listed.
 const CURRICULA: Item[] = [
-  { name: 'Web Standards (W3C)', license: 'CC-BY-SA 2.5', url: 'https://www.w3.org/', use: 'JavaScript (Basic) — question bank' },
-  { name: 'Python Software Foundation', license: 'MIT', url: 'https://www.python.org/', use: 'Python (Basic) — question bank' },
-  { name: 'SQL Foundation', license: 'BSD-3-Clause', url: 'https://www.iso.org/standard/76583.html', use: 'SQL (Basic) — question bank' },
-  { name: 'ECMA International', license: 'CC-BY-4.0', url: 'https://www.ecma-international.org/', use: 'React (Intermediate) — question bank' },
-  { name: 'Open Source CS Curriculum', license: 'MIT', url: 'https://github.com/ossu/computer-science', use: 'Data Structures & Algorithms — question bank' },
-  { name: 'Web Platform Initiative', license: 'CC-BY-4.0', url: 'https://web.dev/', use: 'Frontend Developer — question bank' },
+  { name: 'MDN Web Docs', license: 'CC-BY-SA-2.5', url: 'https://developer.mozilla.org/en-US/docs/MDN/Writing_guidelines/Attrib_copyright_license', use: 'Reference for JavaScript, HTML, CSS and web platform questions (code samples are CC0)' },
+  { name: 'Exercism problem specifications', license: 'MIT', url: 'https://github.com/exercism/problem-specifications', use: 'Reference for coding exercises' },
+  { name: 'OSSU Computer Science', license: 'MIT', url: 'https://github.com/ossu/computer-science', use: 'Reference for computer science and algorithms topics' },
 ]
 
 const LIBRARIES: Item[] = [
@@ -38,7 +37,7 @@ const LIBRARIES: Item[] = [
   { name: 'Firebase JavaScript SDK', license: 'Apache-2.0', url: 'https://github.com/firebase/firebase-js-sdk', use: 'Authentication and session management' },
   { name: 'MongoDB Node driver', license: 'Apache-2.0', url: 'https://github.com/mongodb/node-mongodb-native', use: 'Database access' },
   { name: 'React Flow', license: 'MIT', url: 'https://github.com/xyflow/xyflow', use: 'Workflow visual builder' },
-  { name: 'Monaco Editor', license: 'MIT', url: 'https://github.com/microsoft/monaco-editor', use: 'Code sandbox editor' },
+  { name: '@monaco-editor/react (Monaco Editor)', license: 'MIT', url: 'https://github.com/suren-atoyan/monaco-react', use: 'Code sandbox editor' },
 ]
 
 const TOOLS: Item[] = [
@@ -94,7 +93,7 @@ export default function OpenSourcePage() {
       <div data-testid="open-source-page">
         <PageHero
           title="Built on open source"
-          lead="CodeSpectra certifications draw on open curricula, are rendered with open-source libraries and checked with open-source tools. This page lists every source so candidates, employers and contributors can see where things come from."
+          lead="CodeSpectra certifications draw on open curricula, are rendered with open-source libraries and checked with open-source tools. This page lists the main sources so candidates, employers and contributors can see where things come from."
           actions={
             <>
               <a href="#oss-curricula" className={btnPrimary}>See the sources</a>
@@ -108,7 +107,7 @@ export default function OpenSourcePage() {
             <Section
               icon={BookOpen}
               title="Curriculum sources"
-              subtitle="Every assessment question is paraphrased from one of these open knowledge bases."
+              subtitle="Open references our question writers draw on."
               items={CURRICULA}
               testid="oss-curricula"
             />
@@ -117,7 +116,7 @@ export default function OpenSourcePage() {
           <Section
             icon={Code2}
             title="Application libraries"
-            subtitle="The open-source packages this Next.js and React app depends on."
+            subtitle="Key open-source packages this app is built on. Licences match each package's published licence."
             items={LIBRARIES}
             testid="oss-libraries"
           />

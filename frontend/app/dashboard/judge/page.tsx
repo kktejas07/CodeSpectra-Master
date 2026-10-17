@@ -66,7 +66,7 @@ export default function JudgeDashboardPage() {
       const judgeDeskTour: TourStep[] = [
         {
           target: '[data-tour="judge-header"]',
-          title: 'Judge Desk',
+          title: 'Judge desk',
           description: 'All hackathons assigned to you for submission review appear here.',
           position: 'bottom',
         },

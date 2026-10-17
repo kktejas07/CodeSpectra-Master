@@ -144,7 +144,7 @@ export function AiAnalyticsDashboard() {
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
-            <p className="text-sm font-medium mb-4">Daily Token Usage</p>
+            <p className="text-sm font-medium mb-4">Daily token usage</p>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.dailyChartData}>
@@ -161,7 +161,7 @@ export function AiAnalyticsDashboard() {
           </div>
           
           <div>
-            <p className="text-sm font-medium mb-4">Usage by Feature</p>
+            <p className="text-sm font-medium mb-4">Usage by feature</p>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

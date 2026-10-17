@@ -47,7 +47,7 @@ interface ParsedCandidate {
   error?: string
 }
 
-const STEPS = ['Select Assessment', 'Upload CSV', 'Preview', 'Schedule', 'Confirm']
+const STEPS = ['Select assessment', 'Upload CSV', 'Preview', 'Schedule', 'Confirm']
 
 export default function BulkSchedulePage() {
   const gate = usePageGuard('superadmin')

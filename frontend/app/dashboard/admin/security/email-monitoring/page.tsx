@@ -203,10 +203,10 @@ export default function EmailMonitoring() {
 
       <Tabs defaultValue="logs" className="w-full">
         <TabsList className="mb-4">
-          <TabsTrigger value="logs" className="gap-1.5"><Mail className="h-4 w-4" />Delivery Log</TabsTrigger>
+          <TabsTrigger value="logs" className="gap-1.5"><Mail className="h-4 w-4" />Delivery log</TabsTrigger>
           <TabsTrigger value="analytics" className="gap-1.5"><BarChart3 className="h-4 w-4" />Analytics</TabsTrigger>
-          <TabsTrigger value="domains" className="gap-1.5"><Globe className="h-4 w-4" />Domains & Geo</TabsTrigger>
-          <TabsTrigger value="failures" className="gap-1.5"><AlertTriangle className="h-4 w-4" />Bounce Reasons</TabsTrigger>
+          <TabsTrigger value="domains" className="gap-1.5"><Globe className="h-4 w-4" />Domains & geo</TabsTrigger>
+          <TabsTrigger value="failures" className="gap-1.5"><AlertTriangle className="h-4 w-4" />Bounce reasons</TabsTrigger>
         </TabsList>
 
         {/* ── Delivery Log ─────────────────────────────────── */}
@@ -218,7 +218,7 @@ export default function EmailMonitoring() {
                 <Input placeholder="Search email or subject..." value={search} onChange={e => { setSearch(e.target.value); setSkip(0) }} className="pl-9" />
               </div>
               <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as any); setSkip(0) }} className="h-9 rounded-md border border-border bg-background px-3 text-sm">
-                <option value="">All Statuses</option>
+                <option value="">All statuses</option>
                 <option value="delivered">Delivered</option>
                 <option value="sending">Sending</option>
                 <option value="bounced">Bounced</option>
@@ -227,7 +227,7 @@ export default function EmailMonitoring() {
                 <option value="deferred">Deferred</option>
               </select>
               <select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value as any); setSkip(0) }} className="h-9 rounded-md border border-border bg-background px-3 text-sm">
-                <option value="">All Categories</option>
+                <option value="">All categories</option>
                 <option value="transactional">Transactional</option>
                 <option value="newsletter">Newsletter</option>
                 <option value="invite">Invite</option>
@@ -257,7 +257,7 @@ export default function EmailMonitoring() {
                       <th className="text-left py-3 px-4 font-medium">Subject</th>
                       <th className="text-left py-3 px-4 font-medium">Category</th>
                       <th className="text-left py-3 px-4 font-medium">Status</th>
-                      <th className="text-left py-3 px-4 font-medium">IP / Location</th>
+                      <th className="text-left py-3 px-4 font-medium">IP / location</th>
                       <th className="text-left py-3 px-4 font-medium">Device</th>
                     </tr>
                   </thead>

@@ -54,19 +54,19 @@ export default function ArticlesNewsroomPage() {
       const articlesTour: TourStep[] = [
         {
           target: '[data-tour="articles-header"]',
-          title: 'Articles & Newsroom',
+          title: 'Articles & newsroom',
           description: 'Read expert insights, product updates, and career signals from CodeSpectra.',
           position: 'bottom',
         },
         {
           target: '[data-tour="open-public-newsroom"]',
-          title: 'Open Public Newsroom',
+          title: 'Open public newsroom',
           description: 'Visit the public newsroom to see all published articles.',
           position: 'bottom',
         },
         {
           target: '[data-tour="articles-grid"]',
-          title: 'Article List',
+          title: 'Article list',
           description: 'Browse through the latest articles and click to read full content.',
           position: 'bottom',
         },

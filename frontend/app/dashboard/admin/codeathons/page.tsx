@@ -185,7 +185,7 @@ function CodeathonFormFields({
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-semibold text-foreground">Rules & Guidelines</Label>
+          <Label className="text-xs font-semibold text-foreground">Rules & guidelines</Label>
           <Textarea
             value={formData.rules}
             onChange={(e) => setFormData((prev) => ({ ...prev, rules: e.target.value }))}
@@ -292,8 +292,8 @@ function CodeathonFormFields({
             >
               <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="classic">Classic (Gold / Serif)</SelectItem>
-                <SelectItem value="modern">Modern (Dark Gradient)</SelectItem>
+                <SelectItem value="classic">Classic (gold / serif)</SelectItem>
+                <SelectItem value="modern">Modern (dark gradient)</SelectItem>
                 <SelectItem value="minimal">Minimal (Monochrome)</SelectItem>
               </SelectContent>
             </Select>
@@ -317,7 +317,7 @@ function CodeathonFormFields({
                 <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="individual">Individual</SelectItem>
-                  <SelectItem value="team">Team Competition</SelectItem>
+                  <SelectItem value="team">Team competition</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -590,7 +590,7 @@ export default function AdminCodeathonsPage() {
         test_cases: j.test_cases || [],
       }
       targetListSetter((prev) => [...prev, newProb])
-      addToast({ type: 'success', title: 'AI Problem generated & added to competition!' })
+      addToast({ type: 'success', title: 'AI problem generated and added to the competition' })
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'AI generation failed' })
     } finally {
@@ -761,7 +761,7 @@ export default function AdminCodeathonsPage() {
                     variant="ghost"
                     className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400"
                     onClick={() => removeProblem(p.id)}
-                    title="Remove Problem"
+                    title="Remove problem"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
@@ -780,7 +780,7 @@ export default function AdminCodeathonsPage() {
           <Tabs value={problemTab} onValueChange={(v) => setProblemTab(v as 'create' | 'bank' | 'ai')}>
             <TabsList className="grid grid-cols-3 w-full bg-muted/40 p-1">
               <TabsTrigger value="create" className="text-xs gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Create Problem
+                <Plus className="h-3.5 w-3.5" /> Create problem
               </TabsTrigger>
               <TabsTrigger value="bank" className="text-xs gap-1.5">
                 <Search className="h-3.5 w-3.5" /> Import from Bank
@@ -934,15 +934,15 @@ export default function AdminCodeathonsPage() {
             <TabsContent value="ai" className="space-y-3 pt-3">
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Domain / Role</Label>
+                  <Label className="text-[11px] font-medium">Domain / role</Label>
                   <Select value={aiRole} onValueChange={setAiRole}>
                     <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Software Engineer">Software Engineer</SelectItem>
-                      <SelectItem value="Full Stack Developer">Full Stack Developer</SelectItem>
-                      <SelectItem value="Data Structures & Algo">Data Structures & Algo</SelectItem>
-                      <SelectItem value="AI / ML Engineer">AI / ML Engineer</SelectItem>
-                      <SelectItem value="Security Researcher">Security Researcher</SelectItem>
+                      <SelectItem value="Software Engineer">Software engineer</SelectItem>
+                      <SelectItem value="Full Stack Developer">Full stack developer</SelectItem>
+                      <SelectItem value="Data Structures & Algo">Data structures & algo</SelectItem>
+                      <SelectItem value="AI / ML Engineer">AI / ML engineer</SelectItem>
+                      <SelectItem value="Security Researcher">Security researcher</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1093,7 +1093,7 @@ export default function AdminCodeathonsPage() {
               setShareTarget(r)
               copyShareLink(r)
             }}
-            title="Share Competition & Copy Direct Link"
+            title="Share competition & copy direct link"
           >
             <Share2 className="h-3.5 w-3.5" />
           </Button>
@@ -1104,7 +1104,7 @@ export default function AdminCodeathonsPage() {
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
             onClick={() => void loadSubmissions(r)}
-            title="Submissions & Code Reviews / Judge Scores"
+            title="Submissions & code reviews / judge scores"
           >
             <Award className="h-3.5 w-3.5" />
           </Button>
@@ -1115,7 +1115,7 @@ export default function AdminCodeathonsPage() {
             variant="ghost"
             asChild
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
-            title="Open Participant Arena"
+            title="Open participant arena"
           >
             <Link href={`/dashboard/codeathons/${r.id}`} target="_blank">
               <ExternalLink className="h-3.5 w-3.5" />
@@ -1128,7 +1128,7 @@ export default function AdminCodeathonsPage() {
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
             onClick={() => openEdit(r)}
-            title="Edit Settings"
+            title="Edit settings"
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -1277,7 +1277,7 @@ export default function AdminCodeathonsPage() {
               className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-              Save Changes
+              Save changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1316,7 +1316,7 @@ export default function AdminCodeathonsPage() {
               className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-1.5" />}
-              Save Problem Set
+              Save problem set
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1402,7 +1402,7 @@ export default function AdminCodeathonsPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-muted-foreground block text-[11px]">Submission Time</span>
+                    <span className="text-muted-foreground block text-[11px]">Submission time</span>
                     <span className="font-mono font-medium text-foreground">
                       {selectedSubmission.created_at ? formatDateTime(selectedSubmission.created_at) : 'N/A'}
                     </span>
@@ -1414,7 +1414,7 @@ export default function AdminCodeathonsPage() {
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-foreground flex items-center gap-1.5">
                       <FileCode className="h-3.5 w-3.5 text-primary" />
-                      Submitted Source Code
+                      Submitted source code
                     </span>
                     <Button
                       size="sm"
@@ -1466,9 +1466,9 @@ export default function AdminCodeathonsPage() {
                       <Select value={reviewStatus} onValueChange={setReviewStatus}>
                         <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="accepted">Accepted (Full Credit)</SelectItem>
-                          <SelectItem value="needs_improvement">Needs Improvement (Partial Credit)</SelectItem>
-                          <SelectItem value="wrong_answer">Wrong Answer</SelectItem>
+                          <SelectItem value="accepted">Accepted (full credit)</SelectItem>
+                          <SelectItem value="needs_improvement">Needs improvement (partial credit)</SelectItem>
+                          <SelectItem value="wrong_answer">Wrong answer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1492,7 +1492,7 @@ export default function AdminCodeathonsPage() {
                       className="font-semibold text-xs gap-1.5"
                     >
                       {savingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckSquare className="h-3.5 w-3.5" />}
-                      Publish Review & Update Score
+                      Publish review & update score
                     </Button>
                   </div>
                 </div>
@@ -1509,7 +1509,7 @@ export default function AdminCodeathonsPage() {
                         <th className="p-3">Language</th>
                         <th className="p-3">Result</th>
                         <th className="p-3">Score</th>
-                        <th className="p-3">Review Status</th>
+                        <th className="p-3">Review status</th>
                         <th className="p-3 text-right">Action</th>
                       </tr>
                     </thead>
@@ -1549,7 +1549,7 @@ export default function AdminCodeathonsPage() {
                                 <Check className="h-2.5 w-2.5" /> Reviewed
                               </Badge>
                             ) : (
-                              <span className="text-[11px] text-muted-foreground">Pending Review</span>
+                              <span className="text-[11px] text-muted-foreground">Pending review</span>
                             )}
                           </td>
                           <td className="p-3 text-right">
@@ -1559,7 +1559,7 @@ export default function AdminCodeathonsPage() {
                               className="h-7 px-2.5 text-xs gap-1 hover:border-primary/40 hover:text-primary"
                               onClick={() => openReviewDrawer(s)}
                             >
-                              <Code2 className="h-3.5 w-3.5" /> Review Code
+                              <Code2 className="h-3.5 w-3.5" /> Review code
                             </Button>
                           </td>
                         </tr>
