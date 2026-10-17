@@ -13,6 +13,8 @@ import { useAuth } from '@/lib/auth-context'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type Category = 'Global' | 'Female' | 'Arts & Science' | 'Engineering' | 'Management' | 'Quiz' | 'Hackathon'
 
@@ -164,12 +166,15 @@ export default function LeaderboardPage() {
 
       {/* Main Content */}
       <div className="flex-1 min-w-0 space-y-6 pb-12" data-tour="leaderboard-header">
-        <PageHeader
-          title={`${activeTab} leaderboard`}
-          description={`${activeCategory} rankings by points earned from practice, quizzes and events.`}
-          icon={<BarChart3 />}
-          className="mb-0"
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            title={`${activeTab} leaderboard`}
+            description={`${activeCategory} rankings by points earned from practice, quizzes and events.`}
+            icon={<BarChart3 />}
+            className="mb-0"
+          />
+        </div>
 
         {error && (
           <Card className="rounded-2xl border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{error}</Card>
@@ -193,6 +198,13 @@ export default function LeaderboardPage() {
               ))}
             </Card>
           </div>
+        ) : entries.length === 0 ? (
+          <EmptyState
+            title="Nobody's on this leaderboard yet"
+            description="Solve a problem to earn points and be the first name here."
+            actionLabel="Practise problems"
+            actionHref="/dashboard/problems"
+          />
         ) : (
           <>
             {/* Podium */}

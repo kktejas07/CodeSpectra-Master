@@ -222,7 +222,7 @@ export default function DayPage() {
           {/* Left: problem */}
           <Card className="rounded-3xl p-6 border-border/70 space-y-4 overflow-y-auto max-h-[calc(100vh-14rem)]">
             <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-foreground">{problem.title}</h2>
+              <h2 className="text-lg font-semibold text-foreground">{problem.title}</h2>
               <Badge variant={problem.difficulty === 'easy' ? 'success' : problem.difficulty === 'medium' ? 'warning' : 'danger'}>{problem.difficulty}</Badge>
               {completedProblems.has(problem.id) && <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" /> Solved</Badge>}
             </div>

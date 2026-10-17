@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader, Panel, Section, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
@@ -99,12 +100,15 @@ export default function ResourcesPage() {
 
   return (
     <div className="w-full space-y-8">
-      <PageHeader
-        className="mb-0"
-        icon={<Library aria-hidden />}
-        title="Explore resources"
-        description="Pocket ebooks and career essentials — original CodeSpectra guides you can flip through."
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+        <PageHeader
+          className="mb-0"
+          icon={<Library aria-hidden />}
+          title="Explore resources"
+          description="Pocket ebooks and career essentials — original CodeSpectra guides you can flip through."
+        />
+      </div>
 
       <Section title="Ebooks" description="Flip-through pocket guides. Tap a cover to start reading.">
         {loadingEbooks ? (

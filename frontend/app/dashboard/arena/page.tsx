@@ -9,6 +9,7 @@ import { Trophy, Code, Loader, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
 interface ArenaChallenge {
@@ -131,12 +132,15 @@ export default function ArenaPage() {
   return (
     <div className="space-y-6" data-tour="arena-overview">
       <div data-tour="stats-panel">
-        <PageHeader
-          title="Coding arena"
-          description="Solve timed challenges to earn points and climb the leaderboard."
-          icon={<Trophy />}
-          className="mb-0"
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            title="Coding arena"
+            description="Solve timed challenges to earn points and climb the leaderboard."
+            icon={<Trophy />}
+            className="mb-0"
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -193,7 +197,7 @@ export default function ArenaPage() {
               <Link key={c.id} href={`/dashboard/arena/${c.id}`} className="rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 <Panel interactive className="h-full p-5">
                   <div className="mb-3 flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-foreground">{c.title}</h3>
+                    <h3 className="text-base font-semibold text-foreground">{c.title}</h3>
                     <Badge variant="outline" className={`text-[10px] capitalize ${difficultyColors[c.difficulty] || ''}`}>
                       {c.difficulty}
                     </Badge>

@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/lib/toast-context'
 import { PageHeader } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type Ticket = { id: string; subject: string; message: string; category: string; status: string; user_email?: string; created_at: string; updated_at: string }
 
@@ -158,7 +159,7 @@ export default function SupportPage() {
         </Card>
 
         <div className="space-y-3">
-          <h3 className="font-semibold text-foreground">Replies ({replies.length})</h3>
+          <h3 className="text-base font-semibold text-foreground">Replies ({replies.length})</h3>
           {replies.map(r => (
             <Card key={r.id} className="rounded-2xl border-border/70 p-4">
               <p className="text-xs text-muted-foreground mb-1">{r.user_email} · {formatDateTime(r.created_at)}</p>
@@ -223,7 +224,7 @@ export default function SupportPage() {
 
       <div data-tour="support-list">
       {loading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}</div>
-        : tickets.length === 0 ? <Card className="rounded-3xl border-border/70 p-8 text-center text-muted-foreground">No tickets yet. Use “New ticket” to ask a question or report a problem.</Card>
+        : tickets.length === 0 ? <EmptyState variant="notifications" title="No tickets yet" description="Use “New ticket” to ask a question or report a problem." />
         : <div className="space-y-3">
           {tickets.map(t => (
             <Card key={t.id} className="cursor-pointer rounded-2xl border-border/70 p-4 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/30" onClick={() => openTicket(t)}>

@@ -12,6 +12,8 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Problem {
   id: string
@@ -162,22 +164,25 @@ export default function CodeathonsPage() {
   return (
     <div className="space-y-6">
       <div data-tour="codeathons-header">
-        <PageHeader
-          className="mb-0"
-          icon={<Trophy />}
-          description="Join live coding competitions and prove your skills."
-          title={<span className="inline-flex items-center gap-2">Codeathons
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" aria-label="About codeathons" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Compete in coding competitions, solve challenges, and win prizes</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider></span>}
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            className="mb-0"
+            icon={<Trophy />}
+            description="Join live coding competitions and prove your skills."
+            title={<span className="inline-flex items-center gap-2">Codeathons
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" aria-label="About codeathons" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-62.5">Compete in coding competitions, solve challenges, and win prizes</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider></span>}
+          />
+        </div>
       </div>
 
       {/* Filters */}
@@ -208,24 +213,21 @@ export default function CodeathonsPage() {
       </div>
 
       {codeathons.length === 0 ? (
-        <Panel className="flex flex-col items-center p-10 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Trophy className="h-6 w-6" aria-hidden />
-          </span>
-          <p className="mt-3 font-semibold text-foreground">No codeathons yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Upcoming competitions will show up here once they&apos;re announced.</p>
-        </Panel>
+        <EmptyState
+          title="No codeathons yet"
+          description="Upcoming competitions will show up here once they're announced. Practise problems in the meantime."
+          actionLabel="Practise problems"
+          actionHref="/dashboard/problems"
+        />
       ) : filtered.length === 0 ? (
-        <Panel className="p-10 text-center">
-          <p className="text-sm text-muted-foreground">No codeathons match these filters. Try a different status or level.</p>
-        </Panel>
+        <EmptyState variant="search" title="No codeathons match" description="Try a different status or level." />
       ) : (
         <div className="cs-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3 lg:gap-5" data-tour="codeathons-grid">
           {filtered.map(h => (
             <Card key={h.id} className="flex flex-col gap-0 rounded-3xl p-6 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
               {/* Header */}
               <div className="mb-3 flex items-start justify-between gap-2">
-                <h3 className="font-semibold text-foreground line-clamp-1">{h.title}</h3>
+                <h3 className="text-base font-semibold text-foreground line-clamp-1">{h.title}</h3>
                 <div className="flex gap-1.5 shrink-0">
                   <Badge variant="outline" className={getStatusColor(isActive(h) ? 'active' : isUpcoming(h) ? 'upcoming' : h.status)}>
                     {isActive(h) ? 'Live' : isUpcoming(h) ? 'Upcoming' : <span className="capitalize">{h.status}</span>}

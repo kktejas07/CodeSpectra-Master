@@ -11,9 +11,11 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { PageHeader } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { INTERVIEW_PREP_QUESTIONS, type InterviewPrepQuestion } from '@/lib/interview-prep-data'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type Tab = 'browse' | 'quiz'
 
@@ -180,12 +182,15 @@ export default function InterviewPrepPage() {
   return (
     <div className="space-y-6">
       <div data-tour="interview-prep-header">
-        <PageHeader
-          className="mb-0"
-          title="Interview prep"
-          description="Practice for frontend interviews with 300+ questions and AI-generated quizzes."
-          icon={<Brain aria-hidden />}
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            className="mb-0"
+            title="Interview prep"
+            description="Practice for frontend interviews with 300+ questions and AI-generated quizzes."
+            icon={<Brain aria-hidden />}
+          />
+        </div>
       </div>
 
       {/* Tab switcher */}
@@ -345,9 +350,7 @@ export default function InterviewPrepPage() {
               )
             })}
             {filtered.length === 0 && (
-              <Card className="rounded-3xl p-8 text-center text-muted-foreground">
-                No questions match your filters. Try another category or clear the search.
-              </Card>
+              <EmptyState variant="search" title="No questions match" description="Try another category or clear the search." />
             )}
             {filtered.length > 50 && (
               <p className="text-center text-xs text-muted-foreground py-2">
@@ -365,7 +368,7 @@ export default function InterviewPrepPage() {
             <Card className="rounded-3xl border-border/70 p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" aria-hidden />
-                <h3 className="font-semibold text-foreground">Generate a custom quiz</h3>
+                <h3 className="text-base font-semibold text-foreground">Generate a custom quiz</h3>
               </div>
               <p className="text-sm text-muted-foreground">
                 AI will generate {quizCount} multiple-choice questions based on your preferences.
@@ -441,7 +444,7 @@ export default function InterviewPrepPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" aria-hidden />
-                  <h3 className="font-semibold tabular-nums text-foreground">Question {quizIndex + 1} of {quizQuestions.length}</h3>
+                  <h3 className="text-base font-semibold tabular-nums text-foreground">Question {quizIndex + 1} of {quizQuestions.length}</h3>
                 </div>
                 <Badge variant="outline">{quizQuestions[quizIndex]?.difficulty}</Badge>
               </div>

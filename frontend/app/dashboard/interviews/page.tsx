@@ -12,6 +12,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -102,7 +103,7 @@ export default function InterviewsPage() {
             <Brain className="h-5 w-5 text-primary transition-colors group-hover:text-primary-foreground" aria-hidden />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-foreground">Start an AI mock interview</h3>
+            <h3 className="text-base font-semibold text-foreground">Start an AI mock interview</h3>
             <p className="text-sm text-muted-foreground">Practice with AI-generated questions tailored to your resume</p>
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
@@ -119,10 +120,13 @@ export default function InterviewsPage() {
           <Button variant="outline" size="sm" onClick={() => void load()}>Try again</Button>
         </Panel>
       ) : interviews.length === 0 ? (
-        <Panel className="p-8 text-center text-sm text-muted-foreground">
-          <Bot className="mx-auto h-10 w-10 mb-3 text-muted-foreground/50" aria-hidden />
-          No interviews yet. Schedule one above, or start an AI mock interview to practice.
-        </Panel>
+        <EmptyState
+          variant="sessions"
+          title="No interviews yet"
+          description="Schedule one above, or start an AI mock interview to practise."
+          actionLabel="Start an AI mock interview"
+          actionHref="/dashboard/interviews/ai-mock/setup"
+        />
       ) : (
         <div className="grid gap-4 md:grid-cols-2" data-tour="interviews-list">
           {interviews.map((iv) => (
@@ -131,7 +135,7 @@ export default function InterviewsPage() {
             <Panel key={iv.id} interactive className="relative h-full p-5 space-y-3 focus-within:ring-2 focus-within:ring-ring">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-foreground">
+                    <h3 className="text-base font-semibold text-foreground">
                       <Link href={`/dashboard/interviews/${iv.id}`} className="after:absolute after:inset-0 after:rounded-3xl after:content-[''] focus-visible:outline-none">
                         {iv.title}
                       </Link>

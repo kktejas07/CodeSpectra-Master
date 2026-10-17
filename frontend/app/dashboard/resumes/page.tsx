@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label'
 import { User, UserPlus } from 'lucide-react'
 import { PageHeader } from '@/components/app/page-kit'
 import { useRouter } from 'next/navigation'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Resume {
   id: string
@@ -275,32 +276,11 @@ export default function MyResumesPage() {
             {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : resumes.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12">
-            <div className="w-48 h-48 relative mb-6 opacity-80">
-              <svg viewBox="0 0 400 400" className="w-full h-full" aria-hidden="true">
-                {/* Simplified Astronaut/Magnifying Glass Illustration */}
-                <circle cx="200" cy="200" r="120" fill="currentColor" className="text-primary/10" />
-                <path d="M120 280 L200 280 L200 360" stroke="currentColor" strokeWidth="8" fill="none" className="text-primary/20" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M280 120 L280 200 L360 200" stroke="currentColor" strokeWidth="8" fill="none" className="text-primary/20" strokeLinecap="round" strokeLinejoin="round" />
-                
-                {/* Astronaut Body */}
-                <path d="M170 200 Q200 150 230 200 L240 260 Q200 280 160 260 Z" fill="currentColor" className="text-foreground" />
-                {/* Visor */}
-                <circle cx="200" cy="180" r="25" fill="currentColor" className="text-background border-4 border-foreground" />
-                {/* Backpack */}
-                <rect x="150" y="190" width="20" height="50" rx="5" fill="currentColor" className="text-muted-foreground" />
-                {/* Magnifying Glass */}
-                <circle cx="260" cy="140" r="30" fill="none" stroke="currentColor" strokeWidth="8" className="text-foreground" />
-                <line x1="280" y1="160" x2="310" y2="190" stroke="currentColor" strokeWidth="12" strokeLinecap="round" className="text-foreground" />
-                {/* Stars/Details */}
-                <circle cx="100" cy="100" r="4" fill="currentColor" className="text-primary/50" />
-                <circle cx="300" cy="80" r="6" fill="currentColor" className="text-primary/70" />
-                <circle cx="120" cy="300" r="5" fill="currentColor" className="text-primary/50" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-semibold text-foreground">No resumes yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Create one from a template above — it will show up here.</p>
-          </div>
+          <EmptyState
+            title="No resumes yet"
+            description="Create one from a template above — it will show up here."
+            className="flex-1 border-0 bg-transparent"
+          />
         ) : (
           <div className="flex-1">
             <DataTable

@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
-import { PageHeader, Panel, Section, BentoGrid } from '@/components/app/page-kit'
+import { Panel, Section, BentoGrid } from '@/components/app/page-kit'
+import { AppBanner, BannerChip, DeviceShowcase, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 
 export default function CertificationsPage() {
@@ -50,11 +51,26 @@ export default function CertificationsPage() {
     <div className="space-y-8" data-testid="certifications-page">
       {/* Header */}
       <div data-tour="certifications-header">
-        <PageHeader
-          title="Certifications"
+        <AppBanner
+          eyebrow="Certifications"
+          title="Get certified the honest way"
           description="The official AWS, Azure and Google exams are paid, so we link you to the free study path, a free official practice exam and the booking page. We also list free credentials you can earn from freeCodeCamp, Microsoft Learn and others."
-          icon={<Award />}
-          className="mb-0"
+          actions={
+            <>
+              <a href="#prep-tracks" className={bannerBtnPrimary}>
+                <GraduationCap className="h-4 w-4" aria-hidden /> Prep tracks
+              </a>
+              <a href="#free-credentials" className={bannerBtnSecondary}>
+                <Award className="h-4 w-4" aria-hidden /> Free credentials
+              </a>
+            </>
+          }
+          art={
+            <div className="flex flex-col items-end gap-3">
+              <BannerChip icon={<BookOpen />} label="Free study paths" sub="Official vendor material" />
+              <BannerChip icon={<CheckCircle2 />} label="Practice exams" sub="Then book the real one" className="mr-8" delay="0.6s" />
+            </div>
+          }
         />
       </div>
 
@@ -77,7 +93,7 @@ export default function CertificationsPage() {
 
       {/* Vendor prep tracks */}
       {prep.length > 0 && (
-        <div data-tour="certifications-prep">
+        <div data-tour="certifications-prep" id="prep-tracks" className="scroll-mt-24">
         <Section
           title={<span className="flex items-center gap-2"><GraduationCap className="h-5 w-5 text-primary" aria-hidden /> Prepare for a real certification</span>}
           description="Study for free, take the official practice exam, then book the real exam."
@@ -93,7 +109,7 @@ export default function CertificationsPage() {
 
       {/* Free credentials */}
       {free.length > 0 && (
-        <div data-tour="certifications-free">
+        <div data-tour="certifications-free" id="free-credentials" className="scroll-mt-24">
         <Section
           title={<span className="flex items-center gap-2"><Award className="h-5 w-5 text-primary" aria-hidden /> Free credentials you can earn today</span>}
           description="Finish these free courses to earn shareable, verifiable certificates."
@@ -107,19 +123,28 @@ export default function CertificationsPage() {
         </div>
       )}
 
-      {/* Platform certs note */}
-      <Card className="rounded-3xl p-5 border-border/70">
-        <div className="flex items-start gap-3">
-          <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <div className="text-sm text-muted-foreground">
-            <p className="font-medium text-foreground mb-1">Also on CodeSpectra</p>
-            <p>
-              You can also earn verifiable CodeSpectra certificates by passing assessments,
-              levelling up and taking part in events.
-            </p>
+      {/* CodeSpectra certificates — this page has no list of the user's own certificates yet, so show how to earn one. */}
+      <Panel className="grid items-center gap-6 overflow-hidden p-6 md:grid-cols-[1fr_minmax(0,320px)] lg:p-8">
+        <div className="min-w-0">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <BookOpen className="h-5 w-5" aria-hidden />
+          </span>
+          <h2 className="mt-4 text-lg font-semibold text-foreground">Earn a CodeSpectra certificate</h2>
+          <p className="mt-1 max-w-prose text-sm leading-relaxed text-muted-foreground">
+            You can also earn verifiable CodeSpectra certificates by passing assessments,
+            levelling up and taking part in events. Each one has a public link anyone can check.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button asChild className="rounded-full px-5">
+              <Link href="/dashboard/assessments">See your assessments</Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-full px-5">
+              <Link href="/dashboard/hackathons">Browse events</Link>
+            </Button>
           </div>
         </div>
-      </Card>
+        <DeviceShowcase variant="certificate" compact className="hidden max-w-[320px] sm:block" />
+      </Panel>
     </div>
   )
 }
@@ -147,7 +172,7 @@ function PrepCard({ track }: { track: CertTrack }) {
           <p className="text-xs text-muted-foreground font-medium">
             {track.providerBadge}
           </p>
-          <h3 className="font-semibold text-foreground mt-0.5">{track.certName}</h3>
+          <h3 className="text-base font-semibold text-foreground mt-0.5">{track.certName}</h3>
           <p className="text-xs text-muted-foreground mt-1">{track.description}</p>
         </div>
         <div className="text-xs text-muted-foreground space-y-1 border-t border-border/40 pt-3">
@@ -203,7 +228,7 @@ function FreeCard({ track }: { track: CertTrack }) {
           <p className="text-xs text-muted-foreground font-medium">
             {track.providerBadge}
           </p>
-          <h3 className="font-semibold text-foreground mt-0.5">{track.certName}</h3>
+          <h3 className="text-base font-semibold text-foreground mt-0.5">{track.certName}</h3>
           <p className="text-xs text-muted-foreground mt-1">{track.description}</p>
         </div>
         <div className="border-t border-border/40 pt-3">

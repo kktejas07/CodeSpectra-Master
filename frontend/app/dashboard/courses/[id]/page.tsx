@@ -825,7 +825,7 @@ const handleEnroll = async () => {
                     <div className="w-11 h-11 rounded-xl border border-primary/20 bg-primary/10 text-primary flex items-center justify-center">
                       <TrendingUp className="h-5 w-5" aria-hidden />
                     </div>
-                    <h3 className="font-semibold text-foreground">{c.title}</h3>
+                    <h3 className="text-base font-semibold text-foreground">{c.title}</h3>
                   </div>
                 ))}
               </div>

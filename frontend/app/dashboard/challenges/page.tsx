@@ -11,6 +11,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
 interface Challenge {
@@ -77,12 +78,15 @@ export default function ChallengesPage() {
   return (
     <div className="space-y-6" data-tour="challenges-content">
       <div data-tour="challenges-header">
-        <PageHeader
-          title="Challenges"
-          description="Practise coding, system design and behavioural interview questions."
-          icon={<Trophy />}
-          className="mb-0"
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            title="Challenges"
+            description="Practise coding, system design and behavioural interview questions."
+            icon={<Trophy />}
+            className="mb-0"
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -134,7 +138,7 @@ export default function ChallengesPage() {
                     <Lock className="h-4 w-4 text-muted-foreground" aria-label="Locked" />
                   ) : null}
                 </div>
-                <h3 className="mb-1 font-semibold text-foreground">{c.title}</h3>
+                <h3 className="text-base mb-1 font-semibold text-foreground">{c.title}</h3>
                 <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">{c.description}</p>
                 <div className="mb-3 flex flex-wrap gap-2 text-xs">
                   <Badge variant={c.difficulty === 'Hard' ? 'destructive' : c.difficulty === 'Medium' ? 'default' : 'secondary'} className="text-[10px]">

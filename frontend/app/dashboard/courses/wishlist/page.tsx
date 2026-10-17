@@ -140,7 +140,7 @@ export default function CourseWishlistPage() {
                     {c.category && <Badge variant="secondary" className="text-[11px] capitalize">{c.category}</Badge>}
                     {c.level && <Badge variant="outline" className="text-[10px] capitalize">{c.level}</Badge>}
                   </div>
-                  <h2 className="font-semibold text-foreground truncate">{c.title}</h2>
+                  <h2 className="text-lg font-semibold text-foreground truncate">{c.title}</h2>
                   <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{c.description}</p>
                 </div>
                 <button

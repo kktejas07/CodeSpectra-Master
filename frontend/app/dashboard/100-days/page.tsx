@@ -16,6 +16,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonCard, SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 
 function getCompletedLocal(): Set<number> {
   if (typeof window === 'undefined') return new Set()
@@ -170,12 +171,15 @@ export default function HundredDaysPage() {
   return (
     <div className="space-y-6 w-full pb-12">
       <div data-tour="100-days-header">
-        <PageHeader
-          title="100-day coding sprint"
-          description="One theme a day, a few problems each. Days unlock in order as you finish them."
-          icon={<Flame />}
-          className="mb-0"
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            title="100-day coding sprint"
+            description="One theme a day, a few problems each. Days unlock in order as you finish them."
+            icon={<Flame />}
+            className="mb-0"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
@@ -188,7 +192,7 @@ export default function HundredDaysPage() {
              {/* Progress Card */}
              <Card className="rounded-3xl p-5 border-border/70 flex flex-col md:flex-row gap-6 items-center md:items-start justify-between">
                 <div>
-                   <h2 className="font-semibold text-foreground mb-4">Progress</h2>
+                   <h2 className="text-base font-semibold text-foreground mb-4">Progress</h2>
                    
                    {/* Radial Progress (SVG) */}
                    <div className="relative w-32 h-32 flex items-center justify-center">
@@ -239,7 +243,7 @@ export default function HundredDaysPage() {
              {/* Heatmap Card */}
              <Card className="rounded-3xl p-5 border-border/70 flex flex-col">
                <div className="flex items-center justify-between mb-4">
-                 <h2 className="font-semibold text-foreground">Recent activity</h2>
+                 <h2 className="text-base font-semibold text-foreground">Recent activity</h2>
                </div>
 
                <div className="flex-1 overflow-x-auto min-h-25 mb-2 -mx-2 px-2 custom-scrollbar">
@@ -251,6 +255,7 @@ export default function HundredDaysPage() {
                         tooltipData={heatmapData.tooltipData}
                         totalContributions={0}
                         totalActiveDays={0}
+                        compactEmpty
                      />
                    ) : (
                       <SkeletonCard />
@@ -259,7 +264,6 @@ export default function HundredDaysPage() {
 
                <div className="flex justify-between items-center gap-3 pt-3 border-t border-border/40 mt-auto text-xs text-muted-foreground">
                  <div>Current streak: <span className="font-semibold tabular-nums text-foreground">{stats.streak} {stats.streak === 1 ? 'day' : 'days'}</span></div>
-                 <div>Best streak: <span className="font-semibold tabular-nums text-foreground">{Math.max(stats.streak, 1)} {Math.max(stats.streak, 1) === 1 ? 'day' : 'days'}</span></div>
                </div>
              </Card>
           </div>
@@ -325,7 +329,7 @@ export default function HundredDaysPage() {
                     onKeyDown={(e) => { if (isAvailable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleDay(d.day) } }}
                   >
                      <div>
-                       <h3 className="font-semibold text-foreground">Day {d.day}</h3>
+                       <h3 className="text-base font-semibold text-foreground">Day {d.day}</h3>
                        <p className="text-xs text-muted-foreground mt-0.5">{d.theme}</p>
                      </div>
                      <div className="flex items-center gap-3">
@@ -389,7 +393,7 @@ export default function HundredDaysPage() {
            
            {/* Leaderboard Card */}
            <Card className="rounded-3xl p-5 border-border/70">
-             <h2 className="font-semibold text-foreground mb-4">Leaderboard</h2>
+             <h2 className="text-base font-semibold text-foreground mb-4">Leaderboard</h2>
              
              <div className="flex justify-between items-end gap-2 mb-6 h-36 px-4">
                 {/* Rank 2 */}
@@ -457,7 +461,7 @@ export default function HundredDaysPage() {
 
            {/* Badges Card */}
            <Card className="rounded-3xl p-5 border-border/70">
-             <h2 className="font-semibold text-foreground mb-1">Badges</h2>
+             <h2 className="text-base font-semibold text-foreground mb-1">Badges</h2>
              <p className="text-xs text-muted-foreground mb-4">Unlock a badge at each points milestone.</p>
              
              <div className="flex justify-between items-center gap-1.5 mb-2 mt-4 px-1">
@@ -484,7 +488,7 @@ export default function HundredDaysPage() {
            {/* Promotion Card */}
            <Card className="rounded-3xl p-5 border-primary/20 bg-linear-to-br from-primary/10 to-card relative overflow-hidden">
               <div className="relative z-10">
-                <h2 className="font-semibold text-foreground mb-2">Courses</h2>
+                <h2 className="text-base font-semibold text-foreground mb-2">Courses</h2>
                 <p className="text-xs text-muted-foreground mb-4 max-w-[160px]">
                   Learn the topics behind common interview questions.
                 </p>

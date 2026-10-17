@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -281,17 +282,20 @@ function LearningPageInner() {
   return (
     <div className="space-y-6 w-full pb-12">
       <div data-tour="courses-header">
-        <PageHeader
-          title="Explore courses"
-          description="Short, structured courses on the skills interviews test. Save the ones you like to your wishlist."
-          icon={<BookOpen />}
-          className="mb-4"
-          actions={
-            <Button asChild variant="outline" size="sm" className="gap-1.5">
-              <Link href="/dashboard/courses/wishlist"><Heart className="h-4 w-4" /> Wishlist</Link>
-            </Button>
-          }
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            title="Explore courses"
+            description="Short, structured courses on the skills interviews test. Save the ones you like to your wishlist."
+            icon={<BookOpen />}
+            className="mb-4"
+            actions={
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link href="/dashboard/courses/wishlist"><Heart className="h-4 w-4" /> Wishlist</Link>
+              </Button>
+            }
+          />
+        </div>
         <div className="relative w-full" data-tour="courses-search">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input

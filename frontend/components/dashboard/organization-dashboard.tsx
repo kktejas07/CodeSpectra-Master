@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
 } from 'lucide-react'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface OrgOverview {
   org: { id: string; name: string; slug: string; plan: string } | null
@@ -145,18 +146,13 @@ export function OrganizationDashboard() {
               </Link>
             </div>
             {(data?.recent?.length ?? 0) === 0 ? (
-              <div className="flex flex-col items-center rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-10 text-center">
-                <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                  <FileText className="h-6 w-6" aria-hidden />
-                </span>
-                <p className="font-medium text-foreground">No assessments yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">Create your first one to start screening candidates.</p>
-                <Link href="/dashboard/admin/assessments">
-                  <Button size="sm" className="mt-4 gap-1.5">
-                    <Plus className="h-4 w-4" /> Add assessment
-                  </Button>
-                </Link>
-              </div>
+              <EmptyState
+                title="No assessments yet"
+                description="Create your first one to start screening candidates."
+                actionLabel="Add assessment"
+                actionHref="/dashboard/admin/assessments"
+                className="py-10 md:py-10"
+              />
             ) : (
               <div className="divide-y divide-border/70">
                 {data!.recent.map((e) => (

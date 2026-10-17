@@ -721,7 +721,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}>
           <div className="px-5 py-4 border-b border-border/40 shrink-0 bg-muted/20 flex items-center justify-between">
-            <h3 className="font-semibold">Course content</h3>
+            <h3 className="text-base font-semibold">Course content</h3>
             <span className="text-xs text-muted-foreground font-medium bg-background px-2 py-1 rounded-md border border-border/50">
               {completedLessons.size} / {allLessons.length}
             </span>

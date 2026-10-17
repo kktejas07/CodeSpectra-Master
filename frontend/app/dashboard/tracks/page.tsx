@@ -9,6 +9,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -84,12 +85,15 @@ export default function TracksPage() {
   return (
     <div className="space-y-6">
       <div data-tour="tracks-header">
-        <PageHeader
-          title="Tech-stack tracks"
-          description="Pick a stack and work through problems picked for it."
-          icon={<Layers />}
-          className="mb-0"
-        />
+        <div className="relative isolate">
+          <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
+          <PageHeader
+            title="Tech-stack tracks"
+            description="Pick a stack and work through problems picked for it."
+            icon={<Layers />}
+            className="mb-0"
+          />
+        </div>
       </div>
 
       {loading ? (
@@ -118,7 +122,7 @@ export default function TracksPage() {
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
                       <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="font-semibold text-foreground flex-1">{t.name}</h3>
+                    <h3 className="text-base font-semibold text-foreground flex-1">{t.name}</h3>
                     {t.badge && (
                       <span className="rounded-full bg-primary/10 text-primary text-[11px] font-medium px-2 py-0.5">{t.badge}</span>
                     )}

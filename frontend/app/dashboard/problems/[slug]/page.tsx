@@ -447,7 +447,7 @@ export default function ProblemDetailPage() {
     return (
       <div className="flex items-center justify-center p-6 py-20">
         <div className="rounded-3xl border border-destructive/40 bg-destructive/10 p-6">
-          <h2 className="font-semibold text-destructive mb-1">Could not load problem</h2>
+          <h2 className="text-lg font-semibold text-destructive mb-1">Could not load problem</h2>
           <p className="text-sm text-muted-foreground">{loadError}</p>
           <Link href="/dashboard/problems" className="inline-flex items-center gap-1 text-primary mt-3 text-sm">
             <ArrowLeft className="h-4 w-4" /> Back to problems
@@ -621,7 +621,7 @@ export default function ProblemDetailPage() {
 
                   {problem.test_cases.length > 0 && (
                     <div className="space-y-4 mb-8">
-                       <h3 className="font-bold text-foreground">Sample test cases</h3>
+                       <h3 className="text-base font-bold text-foreground">Sample test cases</h3>
                        {problem.test_cases.filter(t => t.is_sample).map((t, i) => (
                          <div key={t.id} className="rounded-xl border border-border overflow-hidden bg-card/40">
                             <div className="bg-muted/40 px-4 py-2 border-b border-border flex justify-between items-center text-sm font-semibold">
@@ -859,7 +859,7 @@ export default function ProblemDetailPage() {
         {isInfoPanelOpen && (
            <div className="relative z-40 lg:z-auto w-full sm:w-[320px] lg:w-100 border-l border-border bg-card flex flex-col shrink-0 animate-in slide-in-from-right">
               <div className="flex items-center justify-between px-4 py-4 border-b border-border/50">
-                 <h2 className="font-bold text-foreground">Information</h2>
+                 <h2 className="text-lg font-bold text-foreground">Information</h2>
                  <button onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
               </div>
               <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">

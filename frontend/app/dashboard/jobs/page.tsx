@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface AppliedJob {
   id: string
@@ -113,18 +114,12 @@ export default function DashboardJobsPage() {
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : applications.length === 0 ? (
-        <Panel className="p-12 text-center">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Briefcase className="h-6 w-6" aria-hidden />
-          </span>
-          <p className="mt-4 text-lg font-medium text-foreground">No applications yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Browse open positions and apply to ones that interest you.
-          </p>
-          <Button className="mt-4" asChild>
-            <Link href="/jobs">Browse open jobs</Link>
-          </Button>
-        </Panel>
+        <EmptyState
+          title="No applications yet"
+          description="Browse open positions and apply to ones that interest you. Your applications will show up here."
+          actionLabel="Browse open jobs"
+          actionHref="/jobs"
+        />
       ) : (
         <div className="space-y-3">
           {applications.map(app => {

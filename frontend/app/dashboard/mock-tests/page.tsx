@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge'
 import { AiCreditsWidget } from '@/components/ui/ai-credits-widget'
 import { EmptyState } from '@/components/ui/empty-state'
-import { PageHeader, Panel } from '@/components/app/page-kit'
+import { AppBanner, BannerChip, bannerBtnPrimary } from '@/components/visuals'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/lib/toast-context'
@@ -95,23 +95,25 @@ export default function MockTestsPage() {
   return (
     <div className="flex-1 space-y-6">
       <div data-tour="mock-tests-header">
-        <PageHeader
-          title="Mock tests"
-          description="Practise role-based tests for the companies you're applying to. AI writes a fresh set of questions each time."
-          icon={<Sparkles />}
-          className="mb-0"
+        <AppBanner
+          eyebrow="Mock tests"
+          title="Practise the test before the real one"
+          description="Role-based tests for the companies you're applying to. AI writes a fresh set of questions each time."
           actions={
-            <div className="w-full sm:w-64 shrink-0 flex flex-col gap-3">
-              <AiCreditsWidget />
-              <Button data-tour="mock-tests-create" onClick={() => setIsModalOpen(true)} className="w-full gap-2">
-                <Plus className="w-4 h-4" /> Create custom test
-              </Button>
+            <button type="button" data-tour="mock-tests-create" onClick={() => setIsModalOpen(true)} className={bannerBtnPrimary}>
+              <Plus className="h-4 w-4" aria-hidden /> Create custom test
+            </button>
+          }
+          art={
+            <div className="flex flex-col items-end gap-3">
+              <BannerChip icon={<Building2 />} label="Company and role" sub="Pick what you're applying for" />
+              <BannerChip icon={<Sparkles />} label="Fresh questions" sub="Written by AI each time" className="mr-8" delay="0.6s" />
             </div>
           }
         />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -122,6 +124,7 @@ export default function MockTestsPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+        <AiCreditsWidget className="w-full shrink-0 sm:w-64" />
       </div>
 
       {filteredTests.length > 0 ? (
@@ -162,8 +165,8 @@ export default function MockTestsPage() {
           ))}
         </div>
       ) : (
-        <Panel className="p-4">
-          <EmptyState 
+          <EmptyState
+            variant="search"
             title="No tests found" 
             description={`Nothing matches "${search}" yet. Create a custom test for that company and role instead.`} 
             actionLabel="Create custom test"
@@ -172,7 +175,6 @@ export default function MockTestsPage() {
               setIsModalOpen(true)
             }}
           />
-        </Panel>
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>

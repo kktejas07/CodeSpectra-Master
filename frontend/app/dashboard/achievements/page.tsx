@@ -151,7 +151,7 @@ export default function AchievementsPage() {
                           <Icon className="h-5 w-5" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-foreground">{a.name}</h3>
+                          <h3 className="text-base font-semibold text-foreground">{a.name}</h3>
                           <p className="text-xs text-muted-foreground">{a.description}</p>
                         </div>
                       </div>
@@ -172,7 +172,7 @@ export default function AchievementsPage() {
                   ))}
                 </div>
               ) : (
-                <p className="py-10 text-center text-sm text-muted-foreground">No badges yet. Solve problems to earn your first one.</p>
+                <EmptyState title="No badges yet" description="Solve problems to earn your first one." actionLabel="Go to problems" actionHref="/dashboard/problems" className="border-0 bg-transparent" />
               )}
             </TabsContent>}
           </Tabs>

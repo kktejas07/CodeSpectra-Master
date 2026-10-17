@@ -741,7 +741,7 @@ function CodeScannerPageInner() {
                 {/* Performance Notes */}
                 {analysis.performance && (
                   <Panel className="p-5">
-                    <h4 className="font-semibold text-foreground mb-2">Performance</h4>
+                    <h4 className="text-base font-semibold text-foreground mb-2">Performance</h4>
                     <p className="text-sm text-muted-foreground">{analysis.performance}</p>
                   </Panel>
                 )}
@@ -749,7 +749,7 @@ function CodeScannerPageInner() {
                 {/* Best Practices */}
                 {analysis.bestPractices.length > 0 && (
                   <Card className="gap-0 rounded-3xl border-green-500/30 bg-green-500/5 p-5">
-                    <h4 className="mb-3 font-semibold text-green-700 dark:text-green-400">What you did well</h4>
+                    <h4 className="text-base mb-3 font-semibold text-green-700 dark:text-green-400">What you did well</h4>
                     <ul className="space-y-2">
                       {analysis.bestPractices.map((practice, i) => (
                         <li key={i} className="flex gap-2 text-sm text-foreground">
@@ -764,7 +764,7 @@ function CodeScannerPageInner() {
                 {/* Suggestions */}
                 {analysis.suggestions.length > 0 && (
                   <Card className="gap-0 rounded-3xl border-primary/25 bg-primary/5 p-5">
-                    <h4 className="mb-3 font-semibold text-primary">Recommendations</h4>
+                    <h4 className="text-base mb-3 font-semibold text-primary">Recommendations</h4>
                     <ul className="space-y-2">
                       {analysis.suggestions.map((suggestion, i) => (
                         <li key={i} className="flex gap-2 text-sm text-foreground">
@@ -793,7 +793,7 @@ function CodeScannerPageInner() {
             />
 
             <Panel>
-              <h3 className="mb-4 font-semibold text-foreground">GitHub setup notes</h3>
+              <h3 className="text-base mb-4 font-semibold text-foreground">GitHub setup notes</h3>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <h4 className="flex items-center gap-2 text-sm font-medium text-primary">
@@ -862,7 +862,7 @@ function CodeScannerPageInner() {
         <div className="space-y-6">
           <Panel>
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold text-foreground">Code quality trends</h3>
+              <h3 className="text-base font-semibold text-foreground">Code quality trends</h3>
               <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">Sample data</span>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -975,7 +975,7 @@ function CodeScannerPageInner() {
       {mode === 'patterns' && !isModeLocked('patterns') && (
         <div className="space-y-6">
           <Panel className="border-dashed p-5">
-            <h3 className="font-semibold text-foreground mb-1">Pattern detection</h3>
+            <h3 className="text-base font-semibold text-foreground mb-1">Pattern detection</h3>
             <p className="text-sm text-muted-foreground">Detect design patterns, React hooks, and anti-patterns in your codebase. Supports common architectural patterns including singleton, factory, observer, decorator, and more.</p>
           </Panel>
           <PatternDetector />
@@ -986,7 +986,7 @@ function CodeScannerPageInner() {
       {mode === 'pr-impact' && !isModeLocked('pr-impact') && (
         <div className="space-y-6">
           <Panel className="border-dashed p-5">
-            <h3 className="font-semibold text-foreground mb-1">PR impact analysis</h3>
+            <h3 className="text-base font-semibold text-foreground mb-1">PR impact analysis</h3>
             <p className="text-sm text-muted-foreground">Paste any GitHub pull request URL to see which architecture components it affects and compute its blast radius across your dependency graph.</p>
           </Panel>
           <PRImpactAnalysis

@@ -286,7 +286,7 @@ export default function GenerateCoursePage() {
                     </div>
                     
                     <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl">
-                      <h4 className="font-semibold flex items-center gap-2 mb-2"><Sparkles className="h-4 w-4 text-primary"/> Summary</h4>
+                      <h4 className="text-base font-semibold flex items-center gap-2 mb-2"><Sparkles className="h-4 w-4 text-primary"/> Summary</h4>
                       <ul className="text-sm space-y-2 text-muted-foreground">
                         <li>• Topic: <strong className="text-foreground">{technology}</strong></li>
                         <li>• Level: <strong className="text-foreground">{level}</strong></li>

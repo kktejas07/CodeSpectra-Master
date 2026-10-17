@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users, ExternalLink, Loader2, Crown, FileText } from 'lucide-react'
+import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users, ExternalLink, Loader2, Crown, FileText, ScanFace } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
@@ -17,12 +17,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
 import { useTour } from '@/components/tour/tour-context'
 import { WELCOME_TOUR_STEPS, autoPlayPageTour, startPageHints, type TourHint } from '@/lib/tour-driver'
-import {
-  DeveloperRankBanner,
-  IsometricScanChip,
-  IsometricProblemCube,
-  IsometricFixEngine,
-} from '@/components/dashboard/dashboard-vectors'
+import { BentoGrid, Panel, StatCard } from '@/components/app/page-kit'
+import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 
 // Quick actions — each tile links to the page it names (Assessments/Arena were swapped before).
 const QUICK_ACTIONS = [
@@ -33,6 +29,11 @@ const QUICK_ACTIONS = [
   { href: '/dashboard/tracks', label: 'Tracks', hint: 'Structured courses', icon: Layers, tour: undefined },
   { href: '/dashboard/achievements', label: 'Achievements', hint: 'Badges you’ve earned', icon: Star, tour: undefined },
 ] as const
+
+function greetingFor(d: Date): string {
+  const h = d.getHours()
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
+}
 
 interface ActivityItem {
   ts: string
@@ -80,6 +81,9 @@ export default function DashboardPage() {
   const addToast = useToast()
   const [role, setRole] = useState<string | null>(null)
   const [stats, setStats] = useState({ scans: 0, reviews: 0, fixes: 0, challenges: 0, dailyChallenges: 0, streak: 0, xp: 0 })
+  const [statsLoaded, setStatsLoaded] = useState(false)
+  // Face enrolment from the session (the auth context doesn't carry it yet).
+  const [faceEnrolled, setFaceEnrolled] = useState<boolean | null>(null)
   const [plan, setPlan] = useState<string | null>(null)
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [myTeams, setMyTeams] = useState<any[]>([])
@@ -113,7 +117,9 @@ export default function DashboardPage() {
       fetch('/api/user/heatmap?weeks=52', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/hackathons/my-teams', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/billing/me', { credentials: 'include' }).then(r => r.json()).catch(() => null),
-    ]).then(([statsData, activityData, heatmapData, teamsData, billingData]) => {
+      fetch('/api/auth/session', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([statsData, activityData, heatmapData, teamsData, billingData, sessionData]) => {
+      if (typeof sessionData?.user?.has_enrolled_face === 'boolean') setFaceEnrolled(sessionData.user.has_enrolled_face)
       if (statsData && !statsData.error) {
         setStats({
           scans: statsData.scans ?? 0,
@@ -124,6 +130,7 @@ export default function DashboardPage() {
           streak: statsData.streak ?? 0,
           xp: statsData.xp ?? 0,
         })
+        setStatsLoaded(true)
       }
       if (activityData?.data) setActivities(activityData.data)
       if (heatmapData?.cells) {
@@ -145,53 +152,58 @@ export default function DashboardPage() {
 
   if (!gate.ready) return null
 
+  const firstName = (fbUser?.displayName || '').trim().split(/\s+/)[0] || ''
+
   if (role && isTenantAdmin(normalizeUserRole(role))) {
     return <OrganizationDashboard />
   }
 
   return (
     <div className="space-y-8">
-      {/* Developer Rank & XP Hero Banner */}
-      <DeveloperRankBanner
-        name={fbUser?.displayName || fbUser?.email?.split('@')[0]}
-        role={role || undefined}
-        stats={stats}
+      <AppBanner
+        eyebrow={greetingFor(new Date())}
+        title={firstName ? `Welcome back, ${firstName}` : 'Welcome back'}
+        description={
+          statsLoaded && stats.streak > 0
+            ? `You're on a ${stats.streak}-day streak. Solve one problem today to keep it going.`
+            : 'Your practice, assessments and certificates in one place. One problem a day is a good start.'
+        }
+        actions={
+          <div data-tour="quick-actions" className="flex flex-wrap gap-2.5">
+            {QUICK_ACTIONS.map(({ href, label, icon: Icon, tour }, i) => (
+              <Link key={href} href={href} data-tour={tour} className={i === 0 ? bannerBtnPrimary : bannerBtnSecondary}>
+                <Icon className="h-4 w-4" aria-hidden /> {label}
+              </Link>
+            ))}
+          </div>
+        }
+        art={
+          <div className="flex flex-col items-end gap-3">
+            {faceEnrolled === true ? (
+              <BannerChip icon={<ScanFace />} label="Face enrolled" sub="Ready for proctored tests" />
+            ) : faceEnrolled === false ? (
+              <BannerChip icon={<ScanFace />} label="Face not enrolled" sub="Set it up in settings" />
+            ) : (
+              <BannerChip icon={<Code />} label="Practice" sub="Problems and tracks" />
+            )}
+            {statsLoaded && stats.streak > 0 ? (
+              <BannerChip icon={<Flame />} label={`${stats.streak}-day streak`} sub="Keep it going" className="mr-8" delay="0.6s" />
+            ) : (
+              <BannerChip icon={<FileText />} label="Mock tests" sub="Practise before the real one" className="mr-8" delay="0.6s" />
+            )}
+          </div>
+        }
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 [&:not(:has(>[data-hint=daily-challenge]>*))]:xl:grid-cols-3" data-tour="dashboard-overview">
-        <Card className="group rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
-          <div className="flex items-center gap-4">
-            <IsometricScanChip />
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Code scans</p>
-              <p className="text-3xl font-bold tabular-nums text-foreground tracking-tight">{stats.scans}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="group rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
-          <div className="flex items-center gap-4">
-            <IsometricProblemCube />
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Challenges</p>
-              <p className="text-3xl font-bold tabular-nums text-foreground tracking-tight">{stats.challenges}</p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="group rounded-3xl border-border/70 p-5 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
-          <div className="flex items-center gap-4">
-            <IsometricFixEngine />
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Fixes applied</p>
-              <p className="text-3xl font-bold tabular-nums text-foreground tracking-tight">{stats.fixes}</p>
-            </div>
-          </div>
-        </Card>
-
+      <div data-tour="dashboard-overview">
+      <BentoGrid className="[&:not(:has(>[data-hint=daily-challenge]>*))]:lg:grid-cols-3">
+        <StatCard label="Code scans" value={stats.scans} icon={<Activity />} />
+        <StatCard label="Challenges" value={stats.challenges} icon={<Code />} />
+        <StatCard label="Fixes applied" value={stats.fixes} icon={<CheckCircle />} />
         <div data-hint="daily-challenge" className="min-w-0">
           <DailyChallengeWidget />
         </div>
+      </BentoGrid>
       </div>
 
       <div data-hint="contribution-graph">
@@ -210,7 +222,7 @@ export default function DashboardPage() {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">My Events</h2>
+              <h2 className="text-lg font-semibold text-foreground">My events</h2>
             </div>
             <Link href="/dashboard/hackathons">
               <Button variant="ghost" size="sm" className="gap-1 text-sm">
@@ -251,33 +263,7 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="rounded-3xl border-border/70 p-6" data-tour="quick-actions">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                <BookOpen className="h-4 w-4 text-primary" aria-hidden /> Quick actions
-              </h2>
-            </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {QUICK_ACTIONS.map(({ href, label, hint, icon: Icon, tour }) => (
-                <Link
-                  key={href}
-                  href={href}
-                  data-tour={tour}
-                  className="group rounded-2xl border border-border/70 bg-card p-4 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_14px_30px_-18px_rgba(47,91,231,0.45)] focus-visible:outline-2 focus-visible:outline-primary motion-reduce:hover:translate-y-0"
-                >
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
-                    <Icon className="h-5 w-5" aria-hidden />
-                  </span>
-                  <p className="mt-3 text-sm font-semibold text-foreground">{label}</p>
-                  <p className="text-xs text-muted-foreground">{hint}</p>
-                </Link>
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        <div className="space-y-6">
+        <div className="min-w-0 lg:col-span-2">
           <ActivityTimeline
             activities={activities}
             limit={5}
@@ -285,11 +271,13 @@ export default function DashboardPage() {
             title="Recent activity"
             subtitle="Your latest contributions"
           />
+        </div>
 
-          <Card className="space-y-3 rounded-3xl border-border/70 p-6">
+        <div className="space-y-6">
+          <Panel className="space-y-3">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-semibold text-foreground">Learning progress</h2>
+              <h2 className="text-base font-semibold text-foreground">Learning progress</h2>
             </div>
             <p className="text-xs text-muted-foreground">Track your learning journey across tech stacks.</p>
             <Link href="/dashboard/tracks">
@@ -298,7 +286,7 @@ export default function DashboardPage() {
                 Browse learning tracks
               </Button>
             </Link>
-          </Card>
+          </Panel>
         </div>
       </div>
     </div>

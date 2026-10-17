@@ -258,12 +258,12 @@ function ArenaChallengeInner() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left: problem statement */}
         <Card className="space-y-4 rounded-3xl border-border/70 p-6 overflow-y-auto max-h-[calc(100vh-14rem)]">
-          <h2 className="font-semibold text-foreground">Problem</h2>
+          <h2 className="text-lg font-semibold text-foreground">Problem</h2>
           <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
             {challenge.statement.map((p, i) => <p key={i}>{p}</p>)}
           </div>
           <div className="space-y-2">
-            <h3 className="font-semibold text-foreground">Examples</h3>
+            <h3 className="text-base font-semibold text-foreground">Examples</h3>
             {challenge.examples.map((ex, i) => (
               <div key={i} className="rounded-xl border border-border/60 bg-muted/30 p-3 font-mono text-xs">
                 <p className="text-foreground/80">Input: {ex.input}</p>
@@ -273,7 +273,7 @@ function ArenaChallengeInner() {
             ))}
           </div>
           <div>
-            <h3 className="mb-2 font-semibold text-foreground">Constraints</h3>
+            <h3 className="text-base mb-2 font-semibold text-foreground">Constraints</h3>
             <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
               {challenge.constraints.map((c, i) => <li key={i}>{c}</li>)}
             </ul>

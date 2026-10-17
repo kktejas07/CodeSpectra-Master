@@ -15,7 +15,9 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useProblemsViewModel, type ProblemSummary } from './use-problems-viewmodel'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
-import { PageHeader, Panel } from '@/components/app/page-kit'
+import { Panel } from '@/components/app/page-kit'
+import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 function FilterAccordion({ title, items, selected, onToggle }: { title: string, items: {id: string, label: string}[], selected: string[], onToggle: (id: string) => void }) {
   const [open, setOpen] = useState(true)
@@ -204,18 +206,33 @@ export default function ProblemsListPage() {
   return (
     <div className="max-w-[1400px] mx-auto pb-12 space-y-6">
       
-      <PageHeader
+      <AppBanner
+        eyebrow="Practice"
         title="Coding practice for placements and interviews"
-        description="Pick a problem, write your solution in the browser and run it against the tests."
-        icon={<Code />}
-        className="mb-0"
+        description="Pick a problem, write your solution in the browser and run it against the tests. One a day keeps your streak going."
+        actions={
+          <>
+            <Link href="/dashboard/100-days" className={bannerBtnPrimary}>
+              Start the 100-day sprint <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+            <Link href="/dashboard/leaderboard" className={bannerBtnSecondary}>
+              <Trophy className="h-4 w-4" aria-hidden /> Leaderboard
+            </Link>
+          </>
+        }
+        art={
+          <div className="flex flex-col items-end gap-3">
+            <BannerChip icon={<Code />} label="Write in the browser" sub="Run sample tests" />
+            <BannerChip icon={<Flame />} label="Daily practice" sub="Build a streak" className="mr-8" delay="0.6s" />
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* Left Column (Filters) */}
         <div className="hidden lg:block lg:col-span-2 space-y-2">
-           <h2 className="font-semibold text-foreground mb-4">Filters</h2>
+           <h2 className="mb-1 text-base font-semibold text-foreground">Filters</h2>
            <FilterAccordion
               title="Difficulty"
               items={DIFFICULTY_LEVELS.map(l => ({ id: l, label: DIFFICULTY_LABELS[l] }))}
@@ -288,7 +305,7 @@ export default function ProblemsListPage() {
              {/* Heatmap Card */}
              <Card className="rounded-3xl p-5 border-border/70 flex flex-col">
                <div className="flex items-center justify-between mb-4">
-                 <h2 className="font-semibold text-foreground">Last 12 weeks</h2>
+                 <h2 className="text-base font-semibold text-foreground">Last 12 weeks</h2>
                </div>
 
                <div className="flex-1 overflow-x-auto min-h-25 mb-2 -mx-2 px-2 custom-scrollbar">
@@ -300,6 +317,7 @@ export default function ProblemsListPage() {
                         tooltipData={heatmapData.tooltipData}
                         totalContributions={heatmapData.totalContributions ?? 0}
                         totalActiveDays={heatmapData.totalActiveDays ?? 0}
+                        compactEmpty
                      />
                   ) : heatmapFailed ? (
                      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">Activity isn&apos;t available right now.</div>
@@ -319,21 +337,6 @@ export default function ProblemsListPage() {
                  ) : <div>&nbsp;</div>}
                </div>
              </Card>
-           </div>
-
-           {/* Daily practice banner */}
-           <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] p-6 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-48 w-48 rounded-full bg-[#38bdf8]/30 blur-3xl" />
-              <div className="relative">
-                <div className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white/15 px-2.5 py-0.5 text-xs font-semibold mb-2">
-                  <Flame className="h-3.5 w-3.5 text-amber-300" aria-hidden /> Daily practice
-                </div>
-                <h2 className="text-xl font-bold tracking-tight">Solve one problem a day</h2>
-                <p className="mt-1 text-sm text-white/80">Keep your streak going — small daily practice adds up before placements.</p>
-              </div>
-              <Button onClick={() => router.push('/dashboard/100-days')} className="relative shrink-0 rounded-full bg-white px-6 font-semibold text-[#2448c9] hover:bg-white/90">
-                Start the 100-day sprint <ArrowRight className="h-4 w-4" />
-              </Button>
            </div>
 
            {/* Search & Problems Table */}
@@ -362,7 +365,7 @@ export default function ProblemsListPage() {
                  ) : error ? (
                     <div className="p-6 text-center text-destructive text-sm font-medium">{error}</div>
                  ) : visible.length === 0 ? (
-                    <div className="p-12 text-center text-muted-foreground text-sm">No problems match your search. Try a different word or clear the filters.</div>
+                    <EmptyState variant="search" title="No problems match" description="Try a different word or clear the filters." className="rounded-none border-0 bg-transparent" />
                  ) : (
                     <div className="divide-y divide-border/40">
                        {visible.map((p, i) => (
@@ -407,7 +410,7 @@ export default function ProblemsListPage() {
            <Panel className="p-5">
              <div className="flex items-center gap-3 mb-3">
                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Trophy className="h-5 w-5" aria-hidden /></span>
-               <h2 className="font-semibold text-foreground">Leaderboard</h2>
+               <h2 className="text-base font-semibold text-foreground">Leaderboard</h2>
              </div>
              <p className="text-sm text-muted-foreground mb-4">See how your points compare with other learners.</p>
              <Button variant="outline" className="w-full rounded-full text-sm font-semibold" onClick={() => router.push('/dashboard/leaderboard')}>
@@ -419,7 +422,7 @@ export default function ProblemsListPage() {
            <Panel className="p-5">
              <div className="flex items-center gap-3 mb-3">
                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Award className="h-5 w-5" aria-hidden /></span>
-               <h2 className="font-semibold text-foreground">Badges</h2>
+               <h2 className="text-base font-semibold text-foreground">Badges</h2>
              </div>
              <p className="text-sm text-muted-foreground mb-4">Solve problems and keep your streak to unlock badges.</p>
              <Button variant="outline" className="w-full rounded-full text-sm font-semibold" onClick={() => router.push('/dashboard/achievements')}>
@@ -429,7 +432,7 @@ export default function ProblemsListPage() {
 
            {/* 100 Days Promo */}
            <Card className="rounded-3xl p-6 border-primary/20 bg-linear-to-br from-primary/10 to-card flex flex-col items-center text-center">
-              <h2 className="text-xl font-bold text-foreground mb-2">100-day<br/>coding sprint</h2>
+              <h2 className="mb-2 text-lg font-semibold text-foreground">100-day coding sprint</h2>
               <p className="text-xs text-muted-foreground mb-6">Transform your coding skills with a 100-day marathon</p>
               
               {/* Mock visualization of days */}

@@ -7,6 +7,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface SkillData {
   user?: { email?: string; id?: string } | null
@@ -114,12 +115,12 @@ export default function SkillAnalyticsPage() {
   }
   if (!data || !data.totals) {
     return (
-      <Panel className="p-8 text-center">
-        <p className="font-semibold text-foreground">No skill data yet</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Solve a few problems on the <a href="/dashboard/problems" className="font-medium text-primary underline-offset-4 hover:underline">Problems page</a> and your skill fingerprint will build up here.
-        </p>
-      </Panel>
+      <EmptyState
+        title="No skill data yet"
+        description="Solve a few problems and your skill fingerprint will build up here."
+        actionLabel="Go to problems"
+        actionHref="/dashboard/problems"
+      />
     )
   }
 

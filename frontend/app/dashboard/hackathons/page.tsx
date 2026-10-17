@@ -16,7 +16,8 @@ import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
-import { PageHeader, Panel } from '@/components/app/page-kit'
+import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -125,28 +126,42 @@ export default function UserHackathonsPage() {
   return (
     <div className="space-y-6">
       <div data-tour="hackathons-header">
-        <PageHeader
-          className="mb-0"
-          title="Hackathons"
-          description="Join a team and compete in live coding events."
-          icon={<Trophy />}
+        <AppBanner
+          eyebrow="Hackathons"
+          title="Build with a team, compete live"
+          description="Join a team, solve the event's problems before the clock runs out and climb the event leaderboard."
+          actions={
+            hasSession ? (
+              <>
+                <Link href="/dashboard/events" className={bannerBtnPrimary}>
+                  <CalendarDays className="h-4 w-4" aria-hidden /> My events
+                </Link>
+                <Link href="/dashboard/codeathons" className={bannerBtnSecondary}>
+                  Codeathons <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </>
+            ) : (
+              <Link href={`/auth/login?redirect=${encodeURIComponent('/dashboard/hackathons')}`} className={bannerBtnPrimary}>
+                <LogIn className="h-4 w-4" aria-hidden /> Sign in to join a team
+              </Link>
+            )
+          }
+          art={
+            <div className="flex flex-col items-end gap-3">
+              <BannerChip icon={<Trophy />} label={`${liveHackathons.length} live now`} sub="Open for teams" />
+              <BannerChip icon={<Timer />} label={`${upcomingHackathons.length} upcoming`} sub="Register early" className="mr-8" delay="0.6s" />
+            </div>
+          }
         />
       </div>
 
-      {!hasSession && (
-        <Panel className="border-primary/20 bg-primary/5 p-5">
-          <p className="text-sm text-foreground">Sign in to join hackathon teams and compete.</p>
-          <Link href={`/auth/login?redirect=${encodeURIComponent('/dashboard/hackathons')}`}>
-            <Button className="mt-3 gap-1.5" size="sm"><LogIn className="h-3.5 w-3.5" /> Sign in</Button>
-          </Link>
-        </Panel>
-      )}
-
       {liveHackathons.length === 0 && upcomingHackathons.length === 0 && (
-        <Panel className="p-10 text-center">
-          <p className="font-semibold text-foreground">No hackathons open right now</p>
-          <p className="mt-1 text-sm text-muted-foreground">New events will appear here as soon as they&apos;re announced.</p>
-        </Panel>
+        <EmptyState
+          title="No hackathons open right now"
+          description="New events will appear here as soon as they're announced. Meanwhile, keep practising problems."
+          actionLabel="Practise problems"
+          actionHref="/dashboard/problems"
+        />
       )}
 
       {liveHackathons.length > 0 && (

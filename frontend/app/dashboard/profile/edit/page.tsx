@@ -426,7 +426,7 @@ export default function EditProfileWizard() {
 
            {/* Profile Completion Box */}
            <Card className="rounded-3xl p-5 border-border/70">
-              <h3 className="font-semibold text-foreground">Complete your profile</h3>
+              <h3 className="text-base font-semibold text-foreground">Complete your profile</h3>
               <p className="text-xs text-muted-foreground mt-1 mb-3">Stay ahead of the competition by regularly updating your profile.</p>
               <div className="w-full bg-muted rounded-full h-1.5 mb-1">
                 <div className="bg-primary h-1.5 rounded-full transition-all duration-500 motion-reduce:transition-none" style={{ width: `${completionPercentage}%` }}></div>
@@ -873,7 +873,7 @@ export default function EditProfileWizard() {
                   
                   <div className="border-2 border-dashed border-border rounded-xl p-8 flex flex-col items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors cursor-pointer mt-4">
                     <UploadCloud className="w-10 h-10 text-primary mb-3" />
-                    <h3 className="font-medium text-primary">Update resume</h3>
+                    <h3 className="text-base font-medium text-primary">Update resume</h3>
                     <p className="text-xs text-muted-foreground mt-1">Supported file formats DOC, DOCX, PDF. File size limit 10 MB.</p>
                   </div>
                 </div>
@@ -1303,7 +1303,7 @@ export default function EditProfileWizard() {
                 <div className="p-4 bg-primary/5 border border-primary/15 rounded-2xl mt-8 flex items-start gap-4">
                   <Award className="w-8 h-8 text-primary shrink-0 mt-1" />
                   <div>
-                    <h4 className="font-semibold text-foreground">Ready to build your resume</h4>
+                    <h4 className="text-base font-semibold text-foreground">Ready to build your resume</h4>
                     <p className="text-sm text-muted-foreground">Once you save your profile, open the resume builder to turn it into a tailored PDF.</p>
                   </div>
                 </div>
@@ -1440,7 +1440,7 @@ export default function EditProfileWizard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !emailBusy && setShowEmailUpdate(false)}>
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Update email</h3>
+              <h3 className="text-base font-semibold">Update email</h3>
               <button type="button" onClick={() => setShowEmailUpdate(false)}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">We will send a verification code to the new address. Your login email updates only after you verify.</p>
@@ -1494,7 +1494,7 @@ export default function EditProfileWizard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !phoneVerifyBusy && setPhoneOtpSent(false)}>
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold">Verify mobile</h3>
+              <h3 className="text-base font-semibold">Verify mobile</h3>
               <button type="button" onClick={() => setPhoneOtpSent(false)}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">

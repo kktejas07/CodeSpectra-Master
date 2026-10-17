@@ -225,7 +225,7 @@ export default function CalendarPage() {
 
         <div className="space-y-4">
           <Card className="space-y-3 rounded-3xl border-border/70 p-5" data-tour="calendar-add">
-            <h2 className="flex items-center gap-2 font-semibold text-foreground">
+            <h2 className="text-lg flex items-center gap-2 font-semibold text-foreground">
               <Plus className="h-4 w-4 text-primary" aria-hidden /> Add event
             </h2>
             <div className="space-y-2">
@@ -243,7 +243,7 @@ export default function CalendarPage() {
           </Card>
 
           <Card className="space-y-3 rounded-3xl border-border/70 p-5">
-            <h2 className="font-semibold text-foreground">Upcoming</h2>
+            <h2 className="text-lg font-semibold text-foreground">Upcoming</h2>
             {items.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No events yet. Add one here, or use “Add to calendar” on a course.

@@ -469,7 +469,7 @@ export default function ProfilePage() {
           {/* Rankings Card */}
           <Card className="rounded-3xl border-border/70 p-5 bg-card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">Rankings</h3>
+              <h3 className="text-base font-semibold text-foreground">Rankings</h3>
             </div>
             
             <div className="rounded-2xl bg-linear-to-br from-primary/5 to-primary/10 p-5 text-center border border-primary/20 relative overflow-hidden">
@@ -564,7 +564,7 @@ export default function ProfilePage() {
                   </div>
                   <Badge variant="outline" className="text-[10px] text-primary border-primary/30">Priority</Badge>
                 </div>
-                <h4 className="font-semibold text-foreground mb-1">System design: Scaling</h4>
+                <h4 className="text-base font-semibold text-foreground mb-1">System design: Scaling</h4>
                 <p className="text-xs text-muted-foreground mb-3">A core topic in most system design interviews</p>
                 <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   Practice now
@@ -576,7 +576,7 @@ export default function ProfilePage() {
                     <FolderGit2 className="h-4 w-4 text-primary" aria-hidden />
                   </div>
                 </div>
-                <h4 className="font-semibold text-foreground mb-1">React state management</h4>
+                <h4 className="text-base font-semibold text-foreground mb-1">React state management</h4>
                 <p className="text-xs text-muted-foreground mb-3">A frequent topic in frontend interviews</p>
                 <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                   Practice now

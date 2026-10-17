@@ -136,7 +136,7 @@ export function WhatsAppSettingsSection() {
       <div className="border-b border-border/60 px-6 py-4">
         <div className="flex items-center gap-2">
           <MessageCircle className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold text-foreground">WhatsApp (OpenWA)</h3>
+          <h3 className="text-base font-semibold text-foreground">WhatsApp (OpenWA)</h3>
           {isConfigured && <Badge variant="success" className="text-[10px]">Configured</Badge>}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
