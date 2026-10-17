@@ -184,7 +184,7 @@ export default function MyAssessmentsPage() {
       cell: (row) => (
         row.certificate_url ? (
           <a href={row.certificate_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
-            View
+            View certificate
           </a>
         ) : (
           <span className="text-xs text-muted-foreground">—</span>

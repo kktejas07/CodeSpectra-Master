@@ -4,7 +4,7 @@ import { exams } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { getMongoDb } from '@/lib/mongodb'
 import { sanitizeExamQuestionList } from '@/lib/grading'
-import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, normalizeRetakeFields, attemptSummary, examAttemptPolicy, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
+import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, normalizeRetakeFields, normalizeCertificateFields, attemptSummary, examAttemptPolicy, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth().catch(() => ({ error: 'Unauthorized' }))
@@ -57,7 +57,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       return NextResponse.json({
         ...view,
         attempts,
-        submission: { released: true, score: submission.score, total: submission.max_score, details, attempt_no: summary.attempt_no },
+        submission: { released: true, score: submission.score, total: submission.max_score, details, attempt_no: summary.attempt_no, passed: typeof submission.passed === 'boolean' ? submission.passed : null },
       })
     }
 
@@ -90,6 +90,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     const data = pickFields(await request.json().catch(() => ({})), EXAM_EDITABLE_FIELDS)
     if (Object.keys(data).length === 0) return NextResponse.json({ error: 'No editable fields' }, { status: 400 })
     normalizeRetakeFields(data)
+    normalizeCertificateFields(data)
     // Same injection guard as PATCH /api/exams (see lib/grading.ts).
     if (Array.isArray(data.questionList)) {
       data.questionList = sanitizeExamQuestionList(data.questionList)

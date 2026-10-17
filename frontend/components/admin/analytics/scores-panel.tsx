@@ -23,20 +23,40 @@ const BUCKET_COLORS: Record<string, string> = {
 export function ScoresPanel() {
   const [data, setData] = useState<ScoresData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/admin/analytics/scores', { credentials: 'include' })
-      .then(r => r.json())
-      .then(json => { if (json) setData(json) })
-      .catch(() => {})
+      .then(async (r) => {
+        const json = await r.json().catch(() => null)
+        if (!r.ok || !json || json.error) throw new Error('load failed')
+        setData(json)
+      })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   if (loading) {
     return (
       <div className="flex justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <EmptyState
+        compact
+        illustration="error"
+        title="Couldn't load score analytics"
+        description="Check your connection and try again."
+        actionLabel="Try again"
+        onAction={() => setReloadKey((k) => k + 1)}
+      />
     )
   }
 

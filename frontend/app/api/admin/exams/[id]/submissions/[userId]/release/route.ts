@@ -5,6 +5,8 @@ import { nowIso } from '@/lib/db/ai'
 
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
+import { issueExamCertificate } from '@/lib/db/certifications'
+import { notify } from '@/lib/notifications'
 
 export async function PATCH(
   _request: Request,
@@ -59,6 +61,28 @@ export async function PATCH(
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
     }
 
+    // Verifiable certificate when the released score meets the pass mark (idempotent per exam + user).
+    let certificateUrl: string | null = null
+    if (exam) {
+      try {
+        const cert = await issueExamCertificate(db, exam as Record<string, unknown>, { ...submission, score_released: true, released_at: nowIso() }, cutoff)
+        if (cert) {
+          certificateUrl = `/cert/verify/${cert.token}`
+          if (cert.created) {
+            await notify({
+              user_id: userId,
+              type: 'assessment.certificate_issued',
+              title: `You earned a certificate for "${examTitle}"`,
+              message: 'Your certificate is ready to view and share. Anyone can verify it from its link.',
+              link: certificateUrl,
+            }).catch(() => {})
+          }
+        }
+      } catch (e) {
+        console.error('[CodeSpectra] release certificate issue failed:', e)
+      }
+    }
+
     // Determine candidate name
     let candidateName = submission.email ? submission.email.split('@')[0] : 'Candidate'
     const userDoc = await db.collection('user').findOne({ $or: [{ _id: userId as any }, { id: userId }] })
@@ -85,7 +109,7 @@ export async function PATCH(
       })
     }
 
-    return NextResponse.json({ success: true, released_at: nowIso() })
+    return NextResponse.json({ success: true, released_at: nowIso(), certificate_url: certificateUrl })
   } catch (e: unknown) {
     const msg = 'Failed to release score'
     console.error('[CodeSpectra] release score PATCH:', e)

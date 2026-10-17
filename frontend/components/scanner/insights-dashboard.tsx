@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TrendingUp, TrendingDown, AlertCircle, CheckCircle2, Target, Users } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface StatisticsData {
   totalScans: number
@@ -35,6 +36,8 @@ interface InsightsDashboardProps {
 export function InsightsDashboard({ stats }: InsightsDashboardProps) {
   const [data, setData] = useState<StatisticsData | null>(null)
   const [loading, setLoading] = useState(!stats)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (stats) {
@@ -42,25 +45,27 @@ export function InsightsDashboard({ stats }: InsightsDashboardProps) {
       return
     }
     setLoading(true)
+    setLoadError(false)
     fetch('/api/user/insights', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((json) => {
-        if (!json.error) setData(json)
+      .then(async (r) => {
+        const json = await r.json().catch(() => null)
+        if (!r.ok || !json || json.error) throw new Error('load failed')
+        setData(json)
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [stats])
+  }, [stats, reloadKey])
 
   const defaultStats: StatisticsData = {
     totalScans: 0,
-    avgQuality: 75,
+    avgQuality: 0,
     fixedIssues: 0,
     totalBugsDetected: 0,
     vulnerabilitiesFound: 0,
     criticalIssues: 0,
     topIssueType: 'None',
-    scanAccuracy: 94,
-    timeToFix: '24h',
+    scanAccuracy: 0,
+    timeToFix: '—',
     totalAllTime: 0,
     resolvedRate: 0,
     improvements: [],
@@ -78,12 +83,21 @@ export function InsightsDashboard({ stats }: InsightsDashboardProps) {
     )
   }
 
-  const improvements = displayData.improvements.length > 0 ? displayData.improvements : [
-    { metric: 'Quality Score', from: 68, to: displayData.avgQuality, improvement: 14, trend: 'up' as const },
-    { metric: 'Test Coverage', from: 60, to: 81, improvement: 21, trend: 'up' as const },
-    { metric: 'Issues Resolved', from: 45, to: displayData.fixedIssues, improvement: 73, trend: 'up' as const },
-    { metric: 'Vulnerabilities', from: 8, to: displayData.vulnerabilitiesFound, improvement: 87, trend: 'down' as const },
-  ]
+  if (loadError) {
+    return (
+      <EmptyState
+        compact
+        illustration="error"
+        title="Couldn't load insights"
+        description="Check your connection and try again."
+        actionLabel="Try again"
+        onAction={() => setReloadKey((k) => k + 1)}
+      />
+    )
+  }
+
+  // Only real trend data from the server — no placeholder improvements.
+  const improvements = displayData.improvements
 
   return (
     <div className="space-y-6">

@@ -264,8 +264,8 @@ export default function ExamPage() {
             <span className="text-2xl tabular-nums text-white/75">/ {results.total}</span>
           </div>
           <p className="text-sm font-medium text-white/85">
-            {results.score / results.total >= 0.7 
-              ? 'Great work — you passed.' 
+            {((results as { passed?: boolean | null }).passed ?? (results.score / results.total >= 0.7))
+              ? 'Great work — you passed.'
               : 'Keep practicing to improve your score!'}
           </p>
         </Card>

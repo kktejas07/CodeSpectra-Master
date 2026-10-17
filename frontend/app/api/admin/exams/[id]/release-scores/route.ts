@@ -3,6 +3,7 @@ import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
 import { notify } from '@/lib/notifications'
+import { issueExamCertificate } from '@/lib/db/certifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -75,6 +76,30 @@ export async function POST(
     // Notify candidates (in-app + WhatsApp via the shared notify helper)
     const examTitle = exam?.title || 'Assessment'
 
+    // Verifiable certificates for every released attempt at or above the pass mark
+    // (one per candidate per exam; re-releases and retakes never duplicate).
+    let certificatesIssued = 0
+    if (exam.issue_certificates !== false) {
+      for (const sub of releasable) {
+        const fresh = { ...sub, score_released: true, released_at: now }
+        try {
+          const cert = await issueExamCertificate(db, exam, fresh, cutoff)
+          if (!cert?.created) continue
+          certificatesIssued++
+          await notify({
+            user_id: String(sub.user_id),
+            type: 'assessment.certificate_issued',
+            title: `You earned a certificate for "${examTitle}"`,
+            message: 'Your certificate is ready to view and share. Anyone can verify it from its link.',
+            link: `/cert/verify/${cert.token}`,
+          }).catch(() => {})
+        } catch (e) {
+          // Never fail the release over one certificate; it can be re-issued by releasing again.
+          console.error('[release-scores] certificate issue failed:', sub.user_id, e)
+        }
+      }
+    }
+
     for (const sub of releasable) {
       if (!sub.user_id || sub.user_id.startsWith('candidate_')) continue
       const scoreText = sub.max_score > 0
@@ -94,7 +119,7 @@ export async function POST(
       }
     }
 
-    return NextResponse.json({ released: releasable.length, passed, failed, skipped_pending: skippedPending, cutoff })
+    return NextResponse.json({ released: releasable.length, passed, failed, skipped_pending: skippedPending, cutoff, certificates_issued: certificatesIssued })
   } catch (e: unknown) {
     console.error('[release-scores] error:', e)
     return NextResponse.json({ error: 'Failed to release scores' }, { status: 500 })

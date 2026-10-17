@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import type { DepIssue } from '@/lib/dependency-scanner'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const SEV_COLORS: Record<string, string> = {
   critical: 'bg-red-500/10 text-red-500 border-red-500/20',
@@ -39,6 +40,8 @@ export function DependencyScannerPanel() {
   const [loading, setLoading] = useState(false)
   const [issues, setIssues] = useState<DepIssue[]>([])
   const [manifests, setManifests] = useState<string[]>([])
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [scanned, setScanned] = useState(false)
 
   const addDemoFile = (f: typeof DEMO_FILES[0]) => {
     setFiles((prev) => [...prev.filter((x) => x.path !== f.path), f])
@@ -47,17 +50,26 @@ export function DependencyScannerPanel() {
   const runScan = async () => {
     if (files.length === 0) return
     setLoading(true)
+    setScanError(null)
+    setScanned(false)
     try {
       const res = await csrfFetch('/api/scanner/dependencies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ files }),
       })
-      const data = await res.json()
-      if (data.issues) setIssues(data.issues)
-      if (data.manifestsScanned) setManifests(data.manifestsScanned)
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'The dependency scan failed.')
+      }
+      setIssues(Array.isArray(data.issues) ? data.issues : [])
+      setManifests(Array.isArray(data.manifestsScanned) ? data.manifestsScanned : [])
+      setScanned(true)
     } catch (e) {
       console.error(e)
+      setIssues([])
+      setManifests([])
+      setScanError(e instanceof Error ? e.message : 'The dependency scan failed.')
     } finally {
       setLoading(false)
     }
@@ -118,8 +130,22 @@ export function DependencyScannerPanel() {
           <Button onClick={runScan} disabled={loading || files.length === 0}>
             {loading ? 'Scanning dependencies...' : 'Scan for Vulnerabilities'}
           </Button>
+          {scanned && !scanError && issues.length === 0 ? (
+            <p className="text-sm text-muted-foreground" role="status">No known vulnerabilities in the scanned manifests.</p>
+          ) : null}
         </CardContent>
       </Card>
+
+      {scanError ? (
+        <EmptyState
+          compact
+          illustration="error"
+          title="Couldn't scan dependencies"
+          description={scanError}
+          actionLabel="Try again"
+          onAction={() => void runScan()}
+        />
+      ) : null}
 
       {manifests.length > 0 && (
         <Card>

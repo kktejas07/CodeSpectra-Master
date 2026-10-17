@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Copy, Loader, Plus, Shield, Pencil, Trash2 } from 'lucide-react'
 import { COMPLIANCE_GATE_PRESETS, type ComplianceGatePreset } from '@/lib/compliance-templates'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type GateDTO = {
   id: string
@@ -47,6 +48,7 @@ export function QualityGatesLivePanel() {
   const confirmDialog = useConfirm()
   const [gates, setGates] = useState<GateDTO[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
@@ -60,18 +62,21 @@ export function QualityGatesLivePanel() {
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setLoadFailed(false)
     try {
       const res = await fetch('/api/quality-gates', { credentials: 'include' })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        setError(typeof json.error === 'string' ? json.error : 'Could not load gates')
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json?.success) {
+        setError(typeof json?.error === 'string' ? json.error : 'Could not load gates')
         setGates([])
+        setLoadFailed(true)
         return
       }
       setGates(Array.isArray(json.gates) ? json.gates : [])
     } catch {
       setError('Could not load gates')
       setGates([])
+      setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -422,6 +427,15 @@ export function QualityGatesLivePanel() {
             <Loader className="h-4 w-4 animate-spin" />
             Loading…
           </p>
+        ) : loadFailed ? (
+          <EmptyState
+            compact
+            illustration="error"
+            title="Couldn't load your gates"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => void load()}
+          />
         ) : gates.length === 0 ? (
           <p className="text-sm text-muted-foreground">No gates yet — create one or apply a preset.</p>
         ) : (

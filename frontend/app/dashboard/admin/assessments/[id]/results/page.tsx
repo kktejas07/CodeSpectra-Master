@@ -426,6 +426,8 @@ export default function ExamResultsPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load results')
       setExam(json.exam)
+      // Pre-fill the release cutoff with the exam's saved pass mark.
+      if (typeof json.exam?.passing_score === 'number') setReleaseCutoff(json.exam.passing_score)
       setResults((json.results || []).map((r: CandidateResult) => ({
         ...r,
         inviteId: r.id,
@@ -1022,7 +1024,10 @@ export default function ExamResultsPage() {
         title: json.released === 0
           ? 'No unreleased scores found'
           : `${json.released} scores released (${json.passed} passed, ${json.failed} below cutoff)`,
-        message: json.skipped_pending > 0 ? `${json.skipped_pending} ungraded submission(s) stayed locked.` : undefined,
+        message: [
+          json.certificates_issued > 0 ? `${json.certificates_issued} certificate${json.certificates_issued === 1 ? '' : 's'} issued.` : null,
+          json.skipped_pending > 0 ? `${json.skipped_pending} ungraded submission(s) stayed locked.` : null,
+        ].filter(Boolean).join(' ') || undefined,
       })
 
       if (json.released > 0) {

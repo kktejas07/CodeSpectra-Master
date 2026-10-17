@@ -28,7 +28,10 @@ export async function GET() {
     const attempts = submissions.map((s: any) => {
       const exam = examMap.get(s.exam_id)
       const scorePercentage = s.max_score > 0 ? Math.round((s.score / s.max_score) * 100) : 0
-      const passed = s.max_score > 0 && s.score >= s.max_score * 0.6
+      // Released rows carry the pass result computed at release against the exam's pass mark.
+      const passed = s.score_released === true && typeof s.passed === 'boolean'
+        ? s.passed
+        : s.max_score > 0 && s.score >= s.max_score * 0.6
 
       return {
         id: s.id,
@@ -53,7 +56,7 @@ export async function GET() {
       )
       for (const a of attempts as any[]) {
         const t = tokens.get(String(a.id || ''))
-        if (t) a.certificate_url = `/certificate-preview/${encodeURIComponent(t)}`
+        if (t) a.certificate_url = `/cert/verify/${encodeURIComponent(t)}`
       }
     } catch (e) {
       console.error('[user assessments] certificate lookup:', e)

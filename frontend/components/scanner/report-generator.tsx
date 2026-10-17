@@ -42,6 +42,8 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
   const [loading, setLoading] = useState(!data)
   const [selectedFormat, setSelectedFormat] = useState<ReportFormat>('json')
   const [isExporting, setIsExporting] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (data) {
@@ -49,14 +51,16 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
       return
     }
     setLoading(true)
+    setLoadError(false)
     fetch('/api/reports/generate?format=json', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((json) => {
+      .then(async (r) => {
+        const json = await r.json().catch(() => null)
+        if (!r.ok) throw new Error('load failed')
         if (json?.data) setReportData(json.data)
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [data])
+  }, [data, reloadKey])
 
   const handleExport = async (format: ReportFormat) => {
     setIsExporting(true)
@@ -92,6 +96,19 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
     } finally {
       setIsExporting(false)
     }
+  }
+
+  if (!loading && loadError) {
+    return (
+      <EmptyState
+        compact
+        illustration="error"
+        title="Couldn't load your report"
+        description="Check your connection and try again."
+        actionLabel="Try again"
+        onAction={() => setReloadKey((k) => k + 1)}
+      />
+    )
   }
 
   if (!loading && !reportData) {

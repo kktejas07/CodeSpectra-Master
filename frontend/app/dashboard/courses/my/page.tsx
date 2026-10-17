@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { BookOpen, Heart, Loader2 } from 'lucide-react'
+import { Award, BookOpen, CheckCircle2, Heart, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
@@ -10,6 +10,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Progress } from '@/components/ui/progress'
+import { Badge } from '@/components/ui/badge'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 
 type Course = {
   id: string
@@ -18,6 +22,13 @@ type Course = {
   category?: string
   level?: string
   enrolledAt?: string | null
+  /** Server-verified progress (lesson_completions + graded quiz_results). */
+  progressPercent?: number
+  lessonsDone?: number
+  totalLessons?: number
+  quizzesPassed?: number
+  quizzesTotal?: number
+  completed?: boolean
 }
 
 export default function MyCoursesPage() {
@@ -27,6 +38,22 @@ export default function MyCoursesPage() {
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
+  const [claimingId, setClaimingId] = useState<string | null>(null)
+  const addToast = useToast()
+
+  // Issue (or fetch the existing) certificate, then open its public verify page.
+  const getCertificate = async (courseId: string) => {
+    setClaimingId(courseId)
+    try {
+      const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { method: 'POST' })
+      const j = await res.json().catch(() => null)
+      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(j?.error || 'Could not get your certificate')
+      window.location.assign(j.certificate.verifyUrl)
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not get your certificate' })
+      setClaimingId(null)
+    }
+  }
 
   useEffect(() => {
     if (!gate.ready) return
@@ -121,21 +148,67 @@ export default function MyCoursesPage() {
         </Panel>
       ) : (
         <BentoGrid className="lg:grid-cols-3">
-          {courses.map((c) => (
-            <Link key={c.id} href={`/dashboard/courses/${c.id}`} className="rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-              <Panel interactive className="h-full p-5">
-                <p className="font-semibold text-foreground">{c.title}</p>
-                {c.category || c.level ? (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {[c.category, c.level].filter(Boolean).join(' · ')}
-                  </p>
-                ) : null}
-                {c.description ? (
-                  <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{c.description}</p>
-                ) : null}
+          {courses.map((c) => {
+            const pct = Math.max(0, Math.min(100, Math.round(Number(c.progressPercent) || 0)))
+            const total = Number(c.totalLessons) || 0
+            const quizzes = Number(c.quizzesTotal) || 0
+            return (
+              <Panel key={c.id} className="flex h-full flex-col gap-3 p-5">
+                <div className="min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link
+                      href={`/dashboard/courses/${c.id}`}
+                      className="font-semibold text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded"
+                    >
+                      {c.title}
+                    </Link>
+                    {c.completed ? (
+                      <Badge variant="outline" className="shrink-0 gap-1 border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400">
+                        <CheckCircle2 className="h-3 w-3" aria-hidden /> Completed
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {c.category || c.level ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {[c.category, c.level].filter(Boolean).join(' · ')}
+                    </p>
+                  ) : null}
+                  {c.description ? (
+                    <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{c.description}</p>
+                  ) : null}
+                </div>
+
+                <div className="mt-auto space-y-2">
+                  {total > 0 ? (
+                    <>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium tabular-nums text-foreground">{pct}%</span>
+                      </div>
+                      <Progress value={pct} aria-label={`${c.title} progress`} />
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {Number(c.lessonsDone) || 0}/{total} lessons
+                        {quizzes > 0 ? ` · ${Number(c.quizzesPassed) || 0}/${quizzes} quizzes passed` : ''}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No lessons published yet.</p>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button asChild size="sm" variant={c.completed ? 'outline' : 'default'}>
+                      <Link href={`/dashboard/courses/${c.id}`}>{c.completed ? 'Review course' : pct > 0 ? 'Continue' : 'Start'}</Link>
+                    </Button>
+                    {c.completed ? (
+                      <Button size="sm" className="gap-1.5" onClick={() => getCertificate(c.id)} disabled={claimingId === c.id}>
+                        {claimingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Award className="h-4 w-4" aria-hidden />}
+                        Get certificate
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
               </Panel>
-            </Link>
-          ))}
+            )
+          })}
         </BentoGrid>
       )}
       </div>

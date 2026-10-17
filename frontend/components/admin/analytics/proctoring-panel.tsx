@@ -54,17 +54,21 @@ export function ProctoringPanel() {
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/analytics/proctoring', { credentials: 'include' })
-      const json = await res.json()
-      if (json) {
-        setData(json)
-        setLastUpdated(new Date())
-      }
-    } catch { /* ignore */ }
-    finally { setLoading(false) }
+      const json = await res.json().catch(() => null)
+      if (!res.ok || !json || json.error) throw new Error('load failed')
+      setData(json)
+      setLastUpdated(new Date())
+      setLoadError(false)
+    } catch {
+      setLoadError(true)
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -82,6 +86,20 @@ export function ProctoringPanel() {
       <div className="flex justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
+    )
+  }
+
+  // Nothing loaded yet: an honest error instead of an empty dashboard.
+  if (loadError && !data) {
+    return (
+      <EmptyState
+        compact
+        illustration="error"
+        title="Couldn't load proctoring analytics"
+        description="Check your connection and try again."
+        actionLabel="Try again"
+        onAction={() => { setLoading(true); void fetchData() }}
+      />
     )
   }
 
@@ -132,7 +150,11 @@ export function ProctoringPanel() {
         description="Proctoring flags and how they are spread across your assessments."
         icon={<Shield />}
         actions={<>
-          {lastUpdated && (
+          {loadError ? (
+            <span className="flex items-center gap-1 text-xs text-destructive" role="status">
+              <AlertCircle className="h-3.5 w-3.5" aria-hidden /> Couldn&apos;t refresh — showing the last data
+            </span>
+          ) : lastUpdated && (
             <span className="text-xs text-muted-foreground">
               Updated: {formatTime(lastUpdated)}
             </span>

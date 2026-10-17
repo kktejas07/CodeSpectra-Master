@@ -359,7 +359,29 @@ export const EXAM_EDITABLE_FIELDS = [
   'starts_at', 'ends_at', 'require_token_links', 'require_id_verification', 'require_face_capture',
   'cert_template', 'degree_type', 'branch', 'screening_type', 'techStack',
   'questions', 'questionList', 'published', 'access_type', 'status', 'allow_retake', 'max_attempts',
+  'issue_certificates',
 ] as const
+
+/** Pass mark used when an exam has never stored `passing_score` (matches the release routes). */
+export const DEFAULT_PASS_PERCENT = 40
+/** Pass mark pre-filled for new exams on the create screen. */
+export const NEW_EXAM_PASS_PERCENT = 60
+
+/** The exam's pass mark in percent (0–100); also the certificate threshold. */
+export function examPassPercent(exam: Doc): number {
+  const n = Number(exam.passing_score)
+  return Number.isFinite(n) && n >= 0 ? Math.min(100, Math.round(n)) : DEFAULT_PASS_PERCENT
+}
+
+/** Coerce pass-mark / certificate settings from an editor body (call after pickFields). */
+export function normalizeCertificateFields(data: Doc): void {
+  if ('issue_certificates' in data) data.issue_certificates = data.issue_certificates !== false
+  if ('passing_score' in data) {
+    const n = Math.round(Number(data.passing_score))
+    if (Number.isFinite(n)) data.passing_score = Math.max(0, Math.min(100, n))
+    else delete data.passing_score
+  }
+}
 
 export function pickFields(body: unknown, allowed: readonly string[]): Doc {
   const out: Doc = {}

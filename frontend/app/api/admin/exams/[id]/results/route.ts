@@ -228,6 +228,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         duration: exam.duration || 0,
         publicLinkViews: exam.public_link_views || 0,
         plagiarismReport: exam.plagiarism_report || null,
+        passing_score: Number.isFinite(Number(exam.passing_score)) && exam.passing_score !== null ? Number(exam.passing_score) : null,
+        issue_certificates: exam.issue_certificates !== false,
       },
       results,
       plagiarism,

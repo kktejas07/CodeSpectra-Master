@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { SecretFinding } from '@/lib/secret-scanner'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const SEV_COLORS: Record<string, string> = {
   critical: 'bg-red-500/10 text-red-500 border-red-500/20',
@@ -38,21 +39,29 @@ export function SecretScannerPanel() {
   const [loading, setLoading] = useState(false)
   const [findings, setFindings] = useState<SecretFinding[]>([])
   const [stats, setStats] = useState<{ critical: number; high: number; medium: number; total: number } | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
 
   const runScan = async () => {
     if (!code.trim()) return
     setLoading(true)
+    setScanError(null)
     try {
       const res = await csrfFetch('/api/scanner/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, filename }),
       })
-      const data = await res.json()
-      if (data.findings) setFindings(data.findings)
-      if (data.stats) setStats(data.stats)
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) {
+        throw new Error(typeof data?.error === 'string' ? data.error : 'The secret scan failed.')
+      }
+      setFindings(Array.isArray(data.findings) ? data.findings : [])
+      setStats(data.stats ?? null)
     } catch (e) {
       console.error(e)
+      setFindings([])
+      setStats(null)
+      setScanError(e instanceof Error ? e.message : 'The secret scan failed.')
     } finally {
       setLoading(false)
     }
@@ -104,6 +113,17 @@ export function SecretScannerPanel() {
           </Button>
         </CardContent>
       </Card>
+
+      {scanError ? (
+        <EmptyState
+          compact
+          illustration="error"
+          title="Couldn't scan for secrets"
+          description={scanError}
+          actionLabel="Try again"
+          onAction={() => void runScan()}
+        />
+      ) : null}
 
       {stats && (
         <Card>

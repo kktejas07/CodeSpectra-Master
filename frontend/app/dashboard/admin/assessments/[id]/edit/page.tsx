@@ -139,6 +139,8 @@ interface Exam {
   require_face_capture?: boolean | null
   allow_retake?: boolean
   max_attempts?: number
+  passing_score?: number | null
+  issue_certificates?: boolean | null
   questions: number
   questionList: Question[]
   published: boolean
@@ -328,6 +330,8 @@ export default function ExamReviewPage() {
   const [metaRequireFace, setMetaRequireFace] = useState(true)
   const [metaAllowRetake, setMetaAllowRetake] = useState(false)
   const [metaMaxAttempts, setMetaMaxAttempts] = useState(1)
+  const [metaPassingScore, setMetaPassingScore] = useState(40)
+  const [metaIssueCertificates, setMetaIssueCertificates] = useState(true)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
@@ -357,6 +361,9 @@ export default function ExamReviewPage() {
         setMetaAllowRetake(found.allow_retake === true)
         setMetaMaxAttempts(found.allow_retake === true ? Math.max(1, Number(found.max_attempts) || 2) : 1)
         setMetaCertTemplate(found.cert_template || 'classic')
+        // Exams saved before the pass mark was editable release at 40% (see the release routes).
+        setMetaPassingScore(Number.isFinite(Number(found.passing_score)) && found.passing_score !== null ? Number(found.passing_score) : 40)
+        setMetaIssueCertificates(found.issue_certificates !== false)
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
         setMetaScreeningType(found.screening_type || 'mixed')
@@ -419,13 +426,15 @@ export default function ExamReviewPage() {
           allow_retake: metaAllowRetake,
           max_attempts: metaAllowRetake ? metaMaxAttempts : 1,
           cert_template: metaCertTemplate,
+          passing_score: metaPassingScore,
+          issue_certificates: metaIssueCertificates,
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
         })
       })
       if (!metaRes.ok) throw new Error('update failed')
-      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
+      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -771,6 +780,28 @@ export default function ExamReviewPage() {
                     />
                   </div>
                 )}
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="meta-passing-score" className="text-xs text-muted-foreground whitespace-nowrap">Pass mark (%):</Label>
+                  <Input
+                    id="meta-passing-score"
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={metaPassingScore}
+                    onChange={(e) => setMetaPassingScore(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                    className="h-8 w-16 text-sm"
+                    title="Released scores at or above this count as a pass and earn a certificate"
+                  />
+                </div>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Candidates who pass get a verifiable certificate when scores are released (one per candidate, even with retakes)">
+                  <input
+                    type="checkbox"
+                    checked={metaIssueCertificates}
+                    onChange={(e) => setMetaIssueCertificates(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Issue certificates</span>
+                </label>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Certificate template:</Label>
                   <select

@@ -42,6 +42,8 @@ interface Exam {
   access_type?: 'invite_only' | 'open'
   allow_retake?: boolean
   max_attempts?: number
+  passing_score?: number | null
+  issue_certificates?: boolean | null
   questions: number
   published: boolean
   attempts: number
@@ -101,6 +103,8 @@ export default function AdminExamsPage() {
   const [requireFaceCapture, setRequireFaceCapture] = useState(true)
   const [allowRetake, setAllowRetake] = useState(false)
   const [maxAttempts, setMaxAttempts] = useState(1)
+  const [passingScore, setPassingScore] = useState(60)
+  const [issueCertificates, setIssueCertificates] = useState(true)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
   const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
@@ -218,6 +222,8 @@ export default function AdminExamsPage() {
     setRequireFaceCapture(true)
     setAllowRetake(false)
     setMaxAttempts(1)
+    setPassingScore(60)
+    setIssueCertificates(true)
     setQuestions(0)
     setPublished(false)
     setAccessType('invite_only')
@@ -242,6 +248,9 @@ export default function AdminExamsPage() {
     setAccessType(exam.access_type === 'open' ? 'open' : 'invite_only')
     setAllowRetake(exam.allow_retake === true)
     setMaxAttempts(exam.allow_retake === true ? Math.max(1, Number(exam.max_attempts) || 2) : 1)
+    // Exams saved before the pass mark was editable release at 40% (see the release routes).
+    setPassingScore(Number.isFinite(Number(exam.passing_score)) && exam.passing_score !== null ? Number(exam.passing_score) : 40)
+    setIssueCertificates(exam.issue_certificates !== false)
     setQuestions(exam.questions)
     setPublished(exam.published)
     setDegreeType(exam.degree_type || '')
@@ -276,6 +285,8 @@ export default function AdminExamsPage() {
       require_face_capture: requireFaceCapture,
       allow_retake: allowRetake,
       max_attempts: allowRetake ? maxAttempts : 1,
+      passing_score: passingScore,
+      issue_certificates: issueCertificates,
       questions, 
       published,
       access_type: accessType,
@@ -776,6 +787,35 @@ export default function AdminExamsPage() {
                   <p id="maxAttemptsHint" className="text-xs text-muted-foreground">Total attempts per candidate, including the first (up to 20).</p>
                 </div>
               )}
+            </div>
+            <div className="grid gap-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="passingScore">Pass mark (%)</Label>
+                <Input
+                  id="passingScore"
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={passingScore}
+                  onChange={(e) => setPassingScore(Math.min(100, Math.max(0, parseInt(e.target.value) || 0)))}
+                  className="w-24"
+                  aria-describedby="passingScoreHint"
+                />
+                <p id="passingScoreHint" className="text-xs text-muted-foreground">Released scores at or above this count as a pass. You can still change it when you release scores.</p>
+              </div>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="issueCertificates">
+                <input
+                  id="issueCertificates"
+                  type="checkbox"
+                  checked={issueCertificates}
+                  onChange={(e) => setIssueCertificates(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Issue certificates
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates who pass get a certificate anyone can verify, once scores are released. One per candidate, even with retakes.</span>
+                </span>
+              </label>
             </div>
             <div className="sm:col-span-2 lg:col-span-3 rounded-lg border bg-muted/20 p-4 space-y-3">
               <div>

@@ -6,7 +6,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
-import { isExamStaff, pickFields, normalizeRetakeFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP } from '@/lib/exam-access'
+import { isExamStaff, pickFields, normalizeRetakeFields, normalizeCertificateFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP, NEW_EXAM_PASS_PERCENT } from '@/lib/exam-access'
 import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 
@@ -296,6 +296,11 @@ export async function POST(request: Request) {
       max_attempts: body.allow_retake === true
         ? Math.min(MAX_ATTEMPTS_CAP, Math.max(1, Math.floor(Number(body.max_attempts)) || 1))
         : 1,
+      // Pass mark (%) for released scores; candidates at or above it get a verifiable certificate.
+      passing_score: Number.isFinite(Number(body.passing_score))
+        ? Math.max(0, Math.min(100, Math.round(Number(body.passing_score))))
+        : NEW_EXAM_PASS_PERCENT,
+      issue_certificates: body.issue_certificates !== false,
       questions: numQuestions,
       questionList,
       access_type: body.access_type || 'invite_only',
@@ -330,6 +335,7 @@ export async function PATCH(request: Request) {
     // Allow-list: never id/_id/tenant_id/created_by or stats from the body.
     const updates = pickFields(body, EXAM_EDITABLE_FIELDS)
     normalizeRetakeFields(updates)
+    normalizeCertificateFields(updates)
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id })
     if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })

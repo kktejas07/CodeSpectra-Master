@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Loader2Icon } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
-import { Trophy, Flame, Star, Target, Medal, Award, Hash, Crosshair, Bug, Lock, Zap } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Trophy, Flame, Star, Target, Medal, Award, Hash } from 'lucide-react'
 
 interface TeamMember {
   userId: string
@@ -26,6 +27,8 @@ interface TeamLeaderboardProps {
 export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>(members || [])
   const [loading, setLoading] = useState(!members)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (members) {
@@ -33,16 +36,16 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
       return
     }
     setLoading(true)
+    setLoadError(false)
     fetch('/api/admin/teams/activity?weeks=12', { credentials: 'include' })
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.userStats && Array.isArray(json.userStats)) {
-          setTeamMembers(json.userStats)
-        }
+      .then(async (r) => {
+        const json = await r.json().catch(() => null)
+        if (!r.ok || !json) throw new Error('load failed')
+        if (Array.isArray(json.userStats)) setTeamMembers(json.userStats)
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [members])
+  }, [members, reloadKey])
 
   const defaultMembers: TeamMember[] = teamMembers.length > 0 ? teamMembers : []
 
@@ -55,18 +58,8 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
     return 'text-muted-foreground'
   }
 
-  const getQualityBadge = (score: number) => {
-    if (score >= 85) return { bg: 'bg-green-500/20', text: 'text-green-600', label: 'Excellent' }
-    if (score >= 80) return { bg: 'bg-blue-500/20', text: 'text-blue-600', label: 'Good' }
-    return { bg: 'bg-yellow-500/20', text: 'text-yellow-600', label: 'Fair' }
-  }
-
-  const teamAvgQuality =
-    sorted.length > 0
-      ? Math.round(sorted.reduce((sum, m) => sum + Math.min(95, 60 + m.total * 2), 0) / sorted.length)
-      : 0
   const totalBugsFixed = sorted.reduce((sum, m) => sum + m.fixes, 0)
-  const maxStreak = sorted.length > 0 ? Math.max(...sorted.map((m) => m.total * 3)) : 0
+  const totalScans = sorted.reduce((sum, m) => sum + m.scans, 0)
 
   if (loading) {
     return (
@@ -77,12 +70,25 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
     )
   }
 
+  if (loadError) {
+    return (
+      <EmptyState
+        compact
+        illustration="error"
+        title="Couldn't load the leaderboard"
+        description="Check your connection and try again."
+        actionLabel="Try again"
+        onAction={() => setReloadKey((k) => k + 1)}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Trophy className="w-5 h-5" />
-          Team Leaderboard
+          Team leaderboard
         </h3>
         <p className="text-sm text-muted-foreground">
           {sorted.length > 0
@@ -92,18 +98,14 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
       </div>
 
       {sorted.length === 0 ? (
-        <Card className="rounded-3xl p-8 text-center">
-          <Trophy className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
-          <p className="text-muted-foreground">No team data available.</p>
-          <p className="text-xs text-muted-foreground/60 mt-1">
-            Connect GitHub integrations to see team activity.
-          </p>
-        </Card>
+        <EmptyState
+          illustration="leaderboard"
+          title="No team activity yet"
+          description="Connect GitHub to see scans, reviews and fixes for your team."
+        />
       ) : (
         <div className="space-y-3">
           {sorted.map((member, index) => {
-            const qualityScore = Math.min(95, 60 + member.total * 2)
-            const qualityColor = getQualityBadge(qualityScore)
             const medalColor = getMedalColor(index)
 
             return (
@@ -150,7 +152,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
 
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground">Total</p>
-                      <Badge className={`${qualityColor.bg} ${qualityColor.text} border-0`}>
+                      <Badge variant="secondary" className="border-0 tabular-nums">
                         {member.total}
                       </Badge>
                     </div>
@@ -180,8 +182,8 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
           <p className="text-2xl font-bold text-foreground flex justify-center">
             <Target className="w-6 h-6 text-primary" />
           </p>
-          <p className="text-xs text-muted-foreground mt-2">Avg team quality</p>
-          <p className="text-sm font-bold text-foreground">{teamAvgQuality}%</p>
+          <p className="text-xs text-muted-foreground mt-2">Total scans</p>
+          <p className="text-sm font-bold text-foreground">{totalScans}</p>
         </Card>
 
         <Card className="p-4 text-center">
@@ -201,27 +203,6 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
         </Card>
       </div>
 
-      <Card className="space-y-3 border-primary/25 bg-primary/5 p-4">
-        <h4 className="font-semibold text-foreground">Team achievements</h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
-            <Crosshair className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
-            <span className="text-foreground">Quality goal</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
-            <Bug className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" aria-hidden="true" />
-            <span className="text-foreground">Bug hunters</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
-            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-            <span className="text-foreground">Security first</span>
-          </div>
-          <div className="flex items-center gap-2 rounded-lg bg-background p-2">
-            <Zap className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
-            <span className="text-foreground">Quick fixers</span>
-          </div>
-        </div>
-      </Card>
     </div>
   )
 }
