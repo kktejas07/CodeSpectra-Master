@@ -7,8 +7,8 @@ import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 import { ResultsSheet } from '@/components/landing/results-sheet'
 import { HeroShowcase } from '@/components/landing/hero-showcase'
+import { BentoGrid } from '@/components/landing/bento-grid'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
-import { cn } from '@/lib/utils'
 
 /* Shared button styles for marketing pages. Kept here rather than in
    components/ui/button so the dashboard's mint button stays untouched. */
@@ -40,46 +40,8 @@ const STEPS = [
   },
 ]
 
-const DOMAINS = [
-  {
-    art: 'domain-code',
-    name: 'Software engineering',
-    task: 'Write and run code in the browser against hidden test cases, plus MCQs and short written answers.',
-    scoring: 'Auto-graded on test cases passed; plagiarism compared across the cohort.',
-  },
-  {
-    art: 'domain-cad',
-    name: 'Mechanical and CAD design',
-    task: 'Model a part or assembly, such as a pump or valve component, and review engineering drawings.',
-    scoring: 'Design tasks graded against a rubric, with subject-expert review where you want it.',
-  },
-  {
-    art: 'domain-qa',
-    name: 'QA and test automation',
-    task: 'Write automation scripts and design test cases for a real feature spec.',
-    scoring: 'Code answers auto-graded on test cases; test design marked by rubric.',
-  },
-  {
-    art: 'domain-aptitude',
-    name: 'Aptitude and written',
-    task: 'Multiple choice, true or false, fill-in-the-blank and long-form answers for any discipline.',
-    scoring: 'Objective questions auto-scored; written answers marked by rubric.',
-  },
-]
 
-const WEIGHTS = [
-  { level: 'Easy', points: 3 },
-  { level: 'Medium', points: 4 },
-  { level: 'Hard', points: 5 },
-]
 
-const RUBRIC = [
-  { label: 'Correctness', weight: 40 },
-  { label: 'Code quality', weight: 20 },
-  { label: 'Efficiency', weight: 20 },
-  { label: 'Documentation', weight: 10 },
-  { label: 'Edge cases', weight: 10 },
-]
 
 export default function Home() {
   const hasSession = useHasUserSession()
@@ -128,152 +90,17 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Domains — rows, because each has the same two attributes to compare */}
+      {/* Platform bento — every capability as one animated grid */}
       <section className="border-b border-cs-grid">
         <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
-            <h2 className="cs-heading max-w-[16ch] text-4xl sm:text-5xl">Assess the role, not only the code</h2>
-            <p className="max-w-[60ch] text-lg leading-relaxed text-cs-ink-soft lg:pt-2">
-              Hiring for a plant, a design office or a test team works the same way as hiring developers.
-              Each role gets tasks that match the work, and the same ranking at the end.
+          <div className="mb-12 grid gap-6 lg:grid-cols-[1.1fr_1fr] lg:items-end lg:gap-16">
+            <h2 className="cs-heading max-w-[18ch] text-4xl sm:text-5xl">One platform for every screening</h2>
+            <p className="max-w-[54ch] text-lg leading-relaxed text-cs-ink-soft">
+              Build the test, proctor it, score it and rank it, for engineers, designers, testers and graduates
+              alike. <strong className="font-semibold text-cs-ink">One score, one shortlist</strong>, whatever the role.
             </p>
           </div>
-
-          <div className="mt-12 border-t border-cs-ink">
-            <div className="hidden grid-cols-[1fr_1.5fr_1.5fr] gap-8 py-3 text-sm text-cs-ink-soft md:grid">
-              <span>Role family</span>
-              <span>What candidates do</span>
-              <span>How it is scored</span>
-            </div>
-            {DOMAINS.map((d) => (
-              <div
-                key={d.name}
-                className="grid gap-2 border-t border-cs-grid py-6 md:grid-cols-[1fr_1.5fr_1.5fr] md:items-center md:gap-8"
-              >
-                <div className="flex items-center gap-4">
-                  <ThemeIllustration name={d.art} width={96} height={96} className="w-16 shrink-0" />
-                  <h3 className="text-xl font-semibold">{d.name}</h3>
-                </div>
-                <p className="leading-relaxed">{d.task}</p>
-                <p className="leading-relaxed text-cs-ink-soft">{d.scoring}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Scoring + integrity — side by side on desktop */}
-      <section className="border-b border-cs-grid bg-cs-sheet">
-        <div className="mx-auto grid max-w-[1200px] gap-16 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:gap-20 lg:px-8 lg:py-28">
-          <div>
-            <h2 className="cs-heading text-4xl sm:text-5xl">Scored fairly for every level</h2>
-            <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-cs-ink-soft">
-              Harder questions are worth more. A fresher gets a set weighted towards easy and medium questions;
-              a senior gets more hard ones. Both are ranked on points, so nobody is penalised for the level
-              they were assessed at.
-            </p>
-            <dl className="mt-10 grid max-w-md grid-cols-3 border-t border-cs-ink">
-              {WEIGHTS.map((w) => (
-                <div key={w.level} className="border-r border-cs-grid pt-4 pr-4 last:border-r-0 [&:not(:first-child)]:pl-4">
-                  <dt className="text-sm text-cs-ink-soft">{w.level}</dt>
-                  <dd className="cs-display mt-1 text-6xl">
-                    {w.points}
-                    <span className="ml-1 text-base font-medium [font-stretch:100%] text-cs-ink-soft">points</span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <figure className="mt-12">
-              <ThemeIllustration
-                name="scoring-mix"
-                alt="Example question mix: a fresher gets 50% easy, 35% medium and 15% hard questions; a senior gets 15% easy, 35% medium and 50% hard"
-                width={320}
-                height={184}
-                className="w-full max-w-[400px]"
-              />
-              <figcaption className="mt-3 text-sm text-cs-ink-soft">Illustrative mix. The real mix depends on the role and experience band you choose.</figcaption>
-            </figure>
-          </div>
-
-          <div>
-            <h2 className="cs-heading text-4xl sm:text-5xl">Integrity you can check</h2>
-            <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-center">
-              <p className="max-w-[40ch] text-lg leading-relaxed text-cs-ink-soft">
-                Proctoring runs for the whole session. Anything unusual is logged with a timestamp on the
-                candidate’s report, so a reviewer decides what it means.
-              </p>
-              <ThemeIllustration name="integrity-shield" width={300} height={220} className="w-60 shrink-0" />
-            </div>
-            <ul className="mt-10 divide-y divide-cs-grid border-y border-cs-grid">
-              {[
-                ['Fullscreen lock', 'Every exit from fullscreen is logged.'],
-                ['Tab-switch detection', 'Each switch away from the test is counted.'],
-                ['Webcam face matching', 'Snapshots are matched to the candidate’s ID photo; a missing face is flagged.'],
-                ['Second-screen detection', 'Extra monitors are detected at the start of the session.'],
-                ['Copy-paste blocking', 'Copy and paste are disabled, and every attempt is recorded.'],
-                ['Plagiarism comparison', 'Code answers are compared across everyone who took the test.'],
-              ].map(([title, desc]) => (
-                <li key={title} className="grid gap-1 py-4 sm:grid-cols-[11rem_1fr] sm:gap-6">
-                  <span className="font-semibold">{title}</span>
-                  <span className="text-cs-ink-soft">{desc}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-
-      {/* Hackathons */}
-      <section className="border-b border-cs-grid">
-        <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="grid gap-10 lg:grid-cols-[1fr_1.2fr] lg:gap-16">
-            <div>
-              <h2 className="cs-heading max-w-[18ch] text-4xl sm:text-5xl">Run hackathons on the same platform</h2>
-              <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-cs-ink-soft">
-                Teams of up to five join with a shared link, claim problems and submit their repository. Judges
-                score every submission on one rubric and release results when they are ready.
-              </p>
-              <Link
-                href="/hackathons"
-                className="mt-8 inline-block font-semibold text-cs-accent-text underline decoration-2 underline-offset-4 hover:decoration-cs-accent-text/50"
-              >
-                See upcoming hackathons
-              </Link>
-            </div>
-
-            <figure className="self-end">
-              <ThemeIllustration
-                name="hackathon-team"
-                alt="A captain and four teammates submit one repository, which judges score out of 100"
-                width={420}
-                height={210}
-                className="mb-8 w-full max-w-[460px]"
-              />
-              <figcaption className="mb-4 text-sm text-cs-ink-soft">Judging rubric, out of 100</figcaption>
-              <div className="flex h-14 overflow-hidden rounded-sm" role="img" aria-label={RUBRIC.map((r) => `${r.label} ${r.weight}`).join(', ')}>
-                {RUBRIC.map((r, i) => (
-                  <div
-                    key={r.label}
-                    style={{ width: `${r.weight}%` }}
-                    className={cn(
-                      'flex items-center border-r-2 border-cs-paper px-3 font-semibold tabular-nums last:border-r-0',
-                      i === 0 ? 'bg-cs-ink text-cs-paper' : i < 3 ? 'bg-cs-accent text-cs-accent-ink' : 'bg-cs-grid text-cs-ink',
-                    )}
-                  >
-                    {r.weight}
-                  </div>
-                ))}
-              </div>
-              <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
-                {RUBRIC.map((r) => (
-                  <li key={r.label} className="flex justify-between gap-3 border-b border-cs-grid pb-2">
-                    <span>{r.label}</span>
-                    <span className="tabular-nums text-cs-ink-soft">{r.weight}</span>
-                  </li>
-                ))}
-              </ul>
-            </figure>
-          </div>
+          <BentoGrid />
         </div>
       </section>
 

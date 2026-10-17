@@ -1000,3 +1000,26 @@
 @media (prefers-reduced-motion: reduce) {
   .cs-float, .cs-underline { animation: none; }
 }
+
+/* ── Bento grid (UI/UX Pro Max: bento-box-grid + Stagger List, from centre) ── */
+@keyframes cs-bento-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+.reveal-ready .cs-bento:not(.is-in) { opacity: 0; }
+.cs-bento.is-in { animation: cs-bento-in 450ms cubic-bezier(.34, 1.4, .64, 1) var(--d, 0ms) backwards; }
+
+@keyframes cs-marquee { to { transform: translateX(-50%); } }
+.cs-marquee { animation: cs-marquee 28s linear infinite; }
+.cs-bento:hover .cs-marquee { animation-play-state: paused; }
+
+@keyframes cs-grow-y { from { transform: scaleY(0.1); } to { transform: none; } }
+@keyframes cs-grow-x { from { transform: scaleX(0); } to { transform: none; } }
+@keyframes cs-slide-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+.cs-bento.is-in .cs-grow-y { animation: cs-grow-y 700ms cubic-bezier(.2,.7,.2,1) calc(var(--d, 0ms) + 250ms) backwards; }
+.cs-bento.is-in .cs-grow-x { animation: cs-grow-x 800ms cubic-bezier(.2,.7,.2,1) calc(var(--d, 0ms) + var(--gd, 0ms) + 250ms) backwards; }
+.cs-bento.is-in .cs-slide-in { animation: cs-slide-in 450ms ease-out calc(var(--d, 0ms) + var(--gd, 0ms) + 250ms) backwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-marquee, .cs-bento.is-in, .cs-bento.is-in .cs-grow-y, .cs-bento.is-in .cs-grow-x, .cs-bento.is-in .cs-slide-in { animation: none; }
+}
