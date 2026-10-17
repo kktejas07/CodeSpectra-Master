@@ -9,7 +9,7 @@ import { Github } from "@/components/ui/brand-icons";
 import { useAuth, getLastLogin } from "@/lib/auth-context";
 import { FaceCamera } from "@/components/auth/face-camera";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
-import { ThemeIllustration } from "@/components/landing/theme-illustration";
+import { DeviceShowcase } from "@/components/visuals";
 import {
   AuthShell,
   AuthHeading,
@@ -162,9 +162,9 @@ function LoginInner() {
   return (
     <AuthShell
       aside={
-        <div className="space-y-10">
-          <ThemeIllustration name="auth-visor" alt="The CodeSpectra visor mascot beside live test results: 12 of 12 tests passed, 42 minutes left, score 94" width={420} height={260} priority className="w-full max-w-[400px]" />
-          <p className="cs-display max-w-[12ch] text-5xl xl:text-6xl">Your assessments, results and shortlists.</p>
+        <div className="space-y-8">
+          <DeviceShowcase variant="candidate" compact className="mx-0 max-w-[360px]" />
+          <p className="cs-display max-w-[18ch] text-4xl">Your assessments, results and shortlists.</p>
           <div className="space-y-6">
             <AsideNote title="Taking an assessment?">
               Sign in with the email address your invite was sent to. No account yet? Open the invite link and it

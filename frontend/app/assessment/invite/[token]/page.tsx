@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useAuth } from '@/lib/auth-context'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 
 interface AssessmentStepData {
   id: string
@@ -100,7 +101,8 @@ export default function CandidateInviteLandingPage() {
 
   if (error || !candidateData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="relative isolate min-h-screen flex items-center justify-center bg-background p-4">
+        <SoftGlow />
         <Card className="max-w-md w-full rounded-3xl p-6 sm:p-8 text-center border-border/70 space-y-4 shadow-xl dark:shadow-none">
           {renewedMsg ? (
             <>
@@ -210,7 +212,9 @@ export default function CandidateInviteLandingPage() {
       ]
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4 py-8">
+    <div className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-linear-to-br from-background via-background to-primary/5 p-4 py-8 xl:gap-16">
+      <SoftGlow />
+      <DeviceShowcase variant="candidate" compact className="mx-0 hidden max-w-[400px] shrink-0 xl:block" />
       <Card className="max-w-2xl w-full rounded-3xl p-6 sm:p-8 border-border/70 space-y-6 shadow-2xl dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex items-center gap-3">

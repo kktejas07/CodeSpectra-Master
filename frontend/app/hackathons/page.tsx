@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Loader2, Users, Clock, CalendarDays, ArrowRight, ListChecks } from 'lucide-react'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
-import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { DeviceShowcase } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -52,7 +53,7 @@ export default function PublicHackathonsPage() {
             <Link href="/contact?topic=pilot" className={btnSecondary}>Host one on CodeSpectra</Link>
           </>
         }
-        art={<ThemeIllustration name="hackathon-team" alt="" width={420} height={210} priority className="w-full" />}
+        art={<DeviceShowcase variant="hackathon" compact />}
       />
 
       {/* Listings */}
@@ -62,12 +63,13 @@ export default function PublicHackathonsPage() {
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : hackathons.length === 0 ? (
-          <div className="mx-auto max-w-xl rounded-3xl border border-cs-grid bg-cs-sheet p-10 text-center">
-            <ThemeIllustration name="binary-brackets" alt="" width={360} height={240} className="mx-auto w-48" />
-            <h2 className="cs-heading mt-6 text-3xl">No hackathons open right now</h2>
-            <p className="mt-2 text-cs-ink-soft">Create a free account and you’ll see new hackathons on your dashboard as soon as they open.</p>
-            <Link href="/auth/signup" className={`${btnPrimary} mt-6`}>Create a free account</Link>
-          </div>
+          <EmptyState
+            className="mx-auto max-w-xl"
+            title="No hackathons open right now"
+            description="Create a free account and you’ll see new hackathons on your dashboard as soon as they open."
+            actionLabel="Create a free account"
+            actionHref="/auth/signup"
+          />
         ) : (
           <div className="grid gap-5 md:grid-cols-2">
             {hackathons.map(h => (

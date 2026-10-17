@@ -6,8 +6,9 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Trophy, Users, Clock, CalendarDays, ArrowRight, Code, Timer } from 'lucide-react'
-import { PageHero, btnPrimary } from '@/components/landing/page-hero'
-import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { PageHero } from '@/components/landing/page-hero'
+import { DeviceShowcase } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export const metadata: Metadata = {
   title: 'Events — CodeSpectra',
@@ -108,17 +109,18 @@ export default async function PublicEventsPage() {
       <PageHero
         title="Events"
         lead="Hackathons, codeathons and coding competitions on CodeSpectra. Join one live, or browse results from past events."
-        art={<ThemeIllustration name="binary-brackets" alt="" width={360} height={240} priority className="w-full" />}
+        art={<DeviceShowcase variant="candidate" compact />}
       />
 
       <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 lg:px-8">
         {events.length === 0 ? (
-          <div className="mx-auto max-w-xl rounded-3xl border border-cs-grid bg-cs-sheet p-10 text-center">
-            <ThemeIllustration name="hackathon-team" alt="" width={420} height={210} className="mx-auto w-64" />
-            <h2 className="cs-heading mt-6 text-3xl">No events open right now</h2>
-            <p className="mt-2 text-cs-ink-soft">Create a free account to see new events on your dashboard as soon as they’re announced.</p>
-            <Link href="/auth/signup" className={`${btnPrimary} mt-6`}>Create a free account</Link>
-          </div>
+          <EmptyState
+            className="mx-auto max-w-xl"
+            title="No events open right now"
+            description="Create a free account to see new events on your dashboard as soon as they’re announced."
+            actionLabel="Create a free account"
+            actionHref="/auth/signup"
+          />
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {events.map((event: any) => (

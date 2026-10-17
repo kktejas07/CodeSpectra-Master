@@ -1,4 +1,6 @@
 import { cn } from '@/lib/utils'
+import { SoftGlow } from '@/components/visuals/stage'
+import { ThemeIllustration } from '@/components/landing/theme-illustration'
 
 /** Shared header for public pages: condensed display title, lead text, optional actions and art. */
 export function PageHero({
@@ -31,6 +33,26 @@ export function PageHero({
         {art && <div className="hidden lg:block">{art}</div>}
       </div>
     </section>
+  )
+}
+
+/** Lighter hero art for text-heavy pages: a theme illustration on a soft glow. Decorative. */
+export function HeroIllustration({
+  name,
+  width = 240,
+  height = 200,
+  className,
+}: {
+  name: string
+  width?: number
+  height?: number
+  className?: string
+}) {
+  return (
+    <div className={cn('relative isolate py-6', className)}>
+      <SoftGlow className="rounded-full" />
+      <ThemeIllustration name={name} alt="" width={width} height={height} priority className="mx-auto w-full max-w-[320px]" />
+    </div>
   )
 }
 

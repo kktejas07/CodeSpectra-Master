@@ -4,8 +4,9 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { BLOG_CATEGORIES, blogPosts, categoryLabel, type BlogPostDoc } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
 import { coverForPost } from '@/lib/blog-covers'
-import { Clock, Newspaper, Search } from 'lucide-react'
-import { PageHero } from '@/components/landing/page-hero'
+import { Clock, Search } from 'lucide-react'
+import { HeroIllustration, PageHero } from '@/components/landing/page-hero'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export const dynamic = 'force-dynamic'
 
@@ -61,6 +62,7 @@ export default async function BlogIndexPage({
       <PageHero
         title="Newsroom"
         lead="Product updates, engineering notes, campus stories, and career Signals for builders."
+        art={<HeroIllustration name="binary-brackets" width={360} height={240} />}
       />
       <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <nav aria-label="Article categories" className="mb-6 flex flex-wrap gap-2">
@@ -91,14 +93,13 @@ export default async function BlogIndexPage({
         </form>
 
         {posts.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-cs-grid bg-cs-sheet p-12 text-center text-cs-ink-soft">
-            <Newspaper className="mx-auto mb-3 h-10 w-10 opacity-40" aria-hidden />
-            <p className="font-medium text-cs-ink">No articles here yet.</p>
-            <p className="mt-1 text-sm">
-              Try another category, or{' '}
-              <Link href="/blog" className="font-medium text-cs-accent-text hover:underline">see all articles</Link>.
-            </p>
-          </div>
+          <EmptyState
+            variant={q ? 'search' : 'default'}
+            title={q ? 'No articles match your search' : 'No articles here yet'}
+            description="Try another category or search term, or browse every article."
+            actionLabel="See all articles"
+            actionHref="/blog"
+          />
         ) : (
           <div className="space-y-8">
             {featured ? <FeaturedCard post={featured} /> : null}

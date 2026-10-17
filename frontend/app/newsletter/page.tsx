@@ -2,8 +2,9 @@ import { formatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { emailCampaigns } from '@/lib/db/email-campaigns'
-import { Mail, ArrowRight } from 'lucide-react'
-import { PageHero } from '@/components/landing/page-hero'
+import { ArrowRight } from 'lucide-react'
+import { HeroIllustration, PageHero } from '@/components/landing/page-hero'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,18 +28,21 @@ export default async function NewsletterIndexPage() {
 
   return (
     <PublicPageWrapper>
-      <PageHero title="Newsletters" lead="Recent product, campus, and community updates from CodeSpectra." />
+      <PageHero
+        title="Newsletters"
+        lead="Recent product, campus, and community updates from CodeSpectra."
+        art={<HeroIllustration name="step-invite" width={160} height={120} />}
+      />
       <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
 
         {list.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-cs-grid bg-cs-sheet p-12 text-center text-cs-ink-soft">
-            <Mail className="mx-auto mb-3 h-10 w-10 opacity-40" aria-hidden />
-            <p className="font-medium text-cs-ink">No newsletters published yet.</p>
-            <p className="mt-1 text-sm">
-              In the meantime, the{' '}
-              <Link href="/blog" className="font-medium text-cs-accent-text hover:underline">Newsroom</Link> has the latest articles.
-            </p>
-          </div>
+          <EmptyState
+            variant="notifications"
+            title="No newsletters published yet"
+            description="In the meantime, the Newsroom has the latest articles."
+            actionLabel="Open the Newsroom"
+            actionHref="/blog"
+          />
         ) : (
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((c) => {

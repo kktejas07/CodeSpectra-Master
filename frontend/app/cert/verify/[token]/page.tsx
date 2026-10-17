@@ -16,6 +16,7 @@ import {
   type TemplateKey,
 } from '@/components/cert/CertificateTemplates'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 
 interface VerifyResponse {
   valid: boolean
@@ -103,7 +104,9 @@ export default function CertVerifyPage() {
 
   if (!gate.allowed) {
     return (
-      <main className="min-h-screen flex items-center justify-center bg-background">
+      <main className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-background p-6 xl:gap-16">
+        <SoftGlow />
+        <DeviceShowcase variant="certificate" compact className="mx-0 hidden max-w-[420px] lg:block" />
         <Card className="max-w-sm w-full p-8 text-center border-primary/20">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
             <Award className="h-6 w-6 text-primary" />
@@ -135,7 +138,8 @@ export default function CertVerifyPage() {
 
   if (!data?.valid) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6" data-testid="cert-verify-invalid">
+      <main className="relative isolate min-h-screen flex items-center justify-center p-6" data-testid="cert-verify-invalid">
+        <SoftGlow />
         <Card className="max-w-md w-full p-8 text-center border-destructive/40 bg-destructive/5">
           <XCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
           <h1 className="text-xl font-bold mb-2">Certificate not found</h1>
@@ -162,7 +166,8 @@ export default function CertVerifyPage() {
   }
 
   return (
-    <main className="min-h-screen bg-linear-to-br from-background via-background to-primary/5 py-10 px-4" data-testid="cert-verify-valid">
+    <main className="relative isolate min-h-screen bg-linear-to-br from-background via-background to-primary/5 py-10 px-4" data-testid="cert-verify-valid">
+      <SoftGlow className="print:hidden" />
       {/* Header — hidden in print */}
       <div className="max-w-6xl mx-auto mb-6 print:hidden" data-testid="cert-verify-header">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">

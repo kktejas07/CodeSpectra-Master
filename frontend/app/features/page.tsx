@@ -21,11 +21,13 @@ import {
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 
 function Group({ id, title, lead, children }: { id: string; title: string; lead: string; children: React.ReactNode }) {
   return (
-    <section id={id} className="scroll-mt-24 border-b border-cs-grid">
+    <section id={id} className="relative isolate scroll-mt-24 border-b border-cs-grid">
+      <SoftGlow className="[mask-image:linear-gradient(to_bottom,#000,transparent_45%)]" />
       <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
         <div className="mb-10 grid gap-4 lg:grid-cols-[1fr_1.2fr] lg:items-end lg:gap-16">
           <h2 className="cs-heading text-4xl sm:text-5xl">{title}</h2>
@@ -61,7 +63,7 @@ export default function FeaturesPage() {
             <Link href="/pricing" className={btnSecondary}>See pricing</Link>
           </>
         }
-        art={<ThemeIllustration name="code-visor" alt="" width={240} height={200} priority className="mx-auto w-full max-w-[320px]" />}
+        art={<DeviceShowcase variant="analytics" compact />}
       />
 
       {/* jump links */}
@@ -85,7 +87,7 @@ export default function FeaturesPage() {
               design tasks in one test.
             </BentoBody>
             <div className="mt-auto pt-6">
-              <ThemeIllustration name="step-build" alt="Questions stacked by difficulty, worth 3, 4 and 5 points" width={160} height={120} className="mx-auto w-full max-w-[360px]" />
+              <DeviceShowcase variant="builder" compact />
             </div>
           </BentoCard>
           <BentoCard className="sm:col-span-2">
@@ -108,22 +110,20 @@ export default function FeaturesPage() {
 
       <Group id="run" title="Run" lead="Invite candidates by email, send reminders, and let proctoring run for the whole session.">
         <BentoShell>
-          <BentoCard className="sm:col-span-2">
-            <div className="grid h-full gap-6 sm:grid-cols-[1.1fr_1fr] sm:items-center">
-              <div>
-                <BentoIcon><ScanFace className="h-5 w-5" aria-hidden /></BentoIcon>
-                <BentoTitle>Live proctoring</BentoTitle>
-                <BentoBody>Fullscreen lock, tab-switch detection, webcam face matching against the ID photo, copy-paste blocking and second-screen detection.</BentoBody>
-              </div>
-              <ThemeIllustration name="step-proctor" alt="Webcam proctoring with face check" width={160} height={120} className="w-full" />
+          <BentoCard className="sm:col-span-2 lg:row-span-2">
+            <BentoIcon><ScanFace className="h-5 w-5" aria-hidden /></BentoIcon>
+            <BentoTitle>Live proctoring</BentoTitle>
+            <BentoBody>Fullscreen lock, tab-switch detection, webcam face matching against the ID photo, copy-paste blocking and second-screen detection.</BentoBody>
+            <div className="mt-auto pt-6">
+              <DeviceShowcase variant="proctor" compact />
             </div>
           </BentoCard>
-          <BentoCard>
+          <BentoCard className="lg:col-span-2">
             <BentoIcon><Timer className="h-5 w-5" aria-hidden /></BentoIcon>
             <BentoTitle>Timed sessions</BentoTitle>
             <BentoBody className="text-sm">Each invite opens a timed attempt with a visible countdown.</BentoBody>
           </BentoCard>
-          <BentoCard>
+          <BentoCard className="lg:col-span-2">
             <BentoIcon><GitCompare className="h-5 w-5" aria-hidden /></BentoIcon>
             <BentoTitle>Plagiarism check</BentoTitle>
             <BentoBody className="text-sm">Code answers are compared across everyone who took the test.</BentoBody>
@@ -149,7 +149,7 @@ export default function FeaturesPage() {
             <BentoTitle>Ranked shortlist</BentoTitle>
             <BentoBody>Candidates arrive ordered by points, with integrity flags beside each score.</BentoBody>
             <div className="mt-auto pt-6">
-              <ThemeIllustration name="step-review" alt="Candidates sorted into a ranked shortlist" width={160} height={120} className="mx-auto w-full max-w-[360px]" />
+              <DeviceShowcase variant="results" compact />
             </div>
           </BentoCard>
           <BentoCard className="sm:col-span-2">
@@ -171,7 +171,8 @@ export default function FeaturesPage() {
       </Group>
 
       <Group id="candidates" title="For candidates" lead="A free account gives candidates somewhere to prepare before test day, and somewhere to show what they can do after it.">
-        <BentoShell>
+        <div className="grid gap-8 lg:grid-cols-[1.35fr_1fr] lg:items-start lg:gap-10">
+        <BentoShell className="lg:grid-cols-2">
           {[
             [Code2, 'Coding practice', 'Problems and challenges with real test cases.'],
             [Timer, 'Mock tests', 'Timed practice tests in the same format as the real thing.'],
@@ -195,6 +196,8 @@ export default function FeaturesPage() {
             <span className={`${btnPrimary} mt-auto self-start`}>Start practising</span>
           </BentoCard>
         </BentoShell>
+        <DeviceShowcase variant="certificate" compact className="hidden lg:sticky lg:top-32 lg:block" />
+        </div>
       </Group>
     </PublicPageWrapper>
   )

@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2, CheckCircle, XCircle, Users, ArrowRight, LogIn, UserPlus, ShieldAlert } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 
 export default function JoinHackathonPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
   const { slug, token } = use(params)
@@ -92,8 +93,10 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center space-y-4">
+    <div className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-background p-6 xl:gap-16">
+      <SoftGlow />
+      <DeviceShowcase variant="hackathon" compact className="mx-0 hidden max-w-[480px] xl:block" />
+      <Card className="w-full max-w-md shrink-0 rounded-3xl border-border/70 p-8 text-center space-y-4">
         {status === 'loading' && (
           <>
             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />

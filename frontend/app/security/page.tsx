@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Bug, KeyRound, ScanFace, ShieldCheck, Users } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
-import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { HeroIllustration, PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 
 /*
  * Keep this page factual. It describes how the product works today; it is
@@ -25,6 +25,7 @@ export default function SecurityPage() {
             </Link>
           </>
         }
+        art={<HeroIllustration name="integrity-shield" />}
       />
 
       <section className="border-b border-cs-grid">

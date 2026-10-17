@@ -8,11 +8,13 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
-  Search, Briefcase, MapPinIcon, DollarSign, Clock,
+  Search, MapPinIcon, DollarSign, Clock,
   Filter, X, Loader2, ArrowRight, Building2,
 } from 'lucide-react'
 import { useCurrency } from '@/lib/use-currency'
 import { PageHero } from '@/components/landing/page-hero'
+import { DeviceShowcase } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface JobPosting {
   id: string
@@ -91,6 +93,7 @@ export default function JobsPage() {
       <PageHero
         title="Job board"
         lead="Open roles posted on CodeSpectra. Search by title, company or skill, then open a role to read the details and apply."
+        art={<DeviceShowcase variant="candidate" compact />}
       />
       <div className="sticky top-16 z-30 border-b border-cs-grid bg-cs-paper/90 backdrop-blur">
         <div className="mx-auto max-w-[1200px] px-4 py-4 sm:px-6 lg:px-8">
@@ -162,20 +165,17 @@ export default function JobsPage() {
             <Loader2 className="h-6 w-6 animate-spin text-cs-ink-soft motion-reduce:animate-none" aria-label="Loading jobs" />
           </div>
         ) : filtered.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-cs-grid bg-cs-sheet p-12 text-center">
-            <Briefcase className="mx-auto h-12 w-12 text-cs-ink-soft/40" aria-hidden />
-            <p className="mt-3 text-lg font-semibold text-cs-ink">No jobs found</p>
-            <p className="mt-1 text-sm text-cs-ink-soft">
-              {search || filterType || filterLevel || filterLocation
-                ? 'Try adjusting your search or filters.'
-                : 'No open positions right now — check back soon.'}
-            </p>
-            {(search || filterType || filterLevel || filterLocation) && (
-              <Button variant="outline" className="mt-4 rounded-full" onClick={() => { setSearch(''); clearFilters() }}>
-                Clear search
-              </Button>
-            )}
-          </div>
+          (search || filterType || filterLevel || filterLocation) ? (
+            <EmptyState
+              variant="search"
+              title="No jobs match your search"
+              description="Try adjusting your search or filters."
+              actionLabel="Clear search"
+              onAction={() => { setSearch(''); clearFilters() }}
+            />
+          ) : (
+            <EmptyState title="No open positions right now" description="Check back soon. New roles appear here as soon as they’re posted." />
+          )
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map(job => (

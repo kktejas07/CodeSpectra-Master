@@ -16,6 +16,7 @@ import {
   Lock,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { SoftGlow } from "@/components/visuals";
 
 function ResetPasswordInner() {
   const router = useRouter();
@@ -59,7 +60,8 @@ function ResetPasswordInner() {
 
   if (!oobCode) {
     return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+      <div className="relative isolate min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+      <SoftGlow />
         <div className="w-full max-w-md space-y-8 text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-8">
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -78,7 +80,8 @@ function ResetPasswordInner() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+    <div className="relative isolate min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+      <SoftGlow />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-8">

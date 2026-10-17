@@ -16,6 +16,7 @@ import {
   Mail,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { SoftGlow } from "@/components/visuals";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 export default function ForgotPasswordPage() {
@@ -45,7 +46,8 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+    <div className="relative isolate min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
+      <SoftGlow />
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
           <Link href="/" className="inline-flex items-center gap-2 mb-8">

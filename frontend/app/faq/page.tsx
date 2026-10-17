@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
-import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { HeroIllustration, PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 
 /*
  * Answers here must match what the product actually does (see /features,
@@ -122,6 +122,7 @@ export default function FAQPage() {
             <Link href="/docs" className={btnSecondary}>Read the docs</Link>
           </>
         }
+        art={<HeroIllustration name="auth-visor" />}
       />
 
       <section className="border-b border-cs-grid">

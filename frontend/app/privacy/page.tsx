@@ -1,10 +1,14 @@
 import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
+import { SoftGlow } from '@/components/visuals'
 
 export default function PrivacyPage() {
   return (
     <PublicPageWrapper>
-      <PageHero title="Privacy Policy" lead={<>Last updated: August 9, 2026</>} />
+      <div className="relative isolate">
+        <SoftGlow />
+        <PageHero title="Privacy Policy" lead={<>Last updated: August 9, 2026</>} />
+      </div>
       <article className="mx-auto max-w-[72ch] space-y-12 px-4 py-14 text-[15px] leading-7 text-cs-ink-soft sm:px-6 lg:py-20">
 
         <section className="space-y-4">

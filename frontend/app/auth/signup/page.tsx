@@ -8,7 +8,7 @@ import { safeRedirect } from "@/lib/safe-redirect";
 import { Github } from "@/components/ui/brand-icons";
 import { useAuth } from "@/lib/auth-context";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
-import { ThemeIllustration } from "@/components/landing/theme-illustration";
+import { DeviceShowcase } from "@/components/visuals";
 import { cn } from "@/lib/utils";
 import {
   AuthShell,
@@ -175,9 +175,9 @@ function SignupInner() {
   return (
     <AuthShell
       aside={
-        <div className="space-y-10">
-          <ThemeIllustration name="auth-signup" alt="A profile filling in with practice, a mock test and a certificate" width={340} height={210} priority className="w-full max-w-[400px]" />
-          <p className="cs-display max-w-[13ch] text-5xl xl:text-6xl">Practise, get assessed, get shortlisted.</p>
+        <div className="space-y-8">
+          <DeviceShowcase variant="results" compact className="mx-0 max-w-[520px]" />
+          <p className="cs-display max-w-[18ch] text-4xl">Practise, get assessed, get shortlisted.</p>
           <div className="space-y-6">
             <AsideNote title="Invited to an assessment?">
               Create your account with the email address the invite was sent to, so your test is waiting when you

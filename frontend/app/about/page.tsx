@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { Building2, Compass, MapPin, Scale, ShieldCheck, Users } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
-import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 
 /*
@@ -43,7 +43,7 @@ export default function AboutPage() {
             each candidate actually did.
           </>
         }
-        art={<ThemeIllustration name="code-visor" alt="" width={240} height={200} priority className="mx-auto w-full max-w-[300px]" />}
+        art={<DeviceShowcase variant="results" compact />}
       />
 
       <section className="border-b border-cs-grid">
@@ -90,7 +90,8 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section className="border-b border-cs-grid">
+      <section className="relative isolate border-b border-cs-grid">
+        <SoftGlow />
         <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
           <h2 className="cs-heading mb-10 text-4xl sm:text-5xl">What we hold to</h2>
           <BentoShell className="lg:grid-cols-3">

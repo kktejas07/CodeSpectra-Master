@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
-import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { HeroIllustration, PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 import { ExternalLink, Award, BookOpen, ShieldCheck, Code2 } from 'lucide-react'
 
 /**
@@ -100,6 +100,7 @@ export default function OpenSourcePage() {
               <Link href="/contact" className={btnSecondary}>Report a missing credit</Link>
             </>
           }
+          art={<HeroIllustration name="binary-brackets" width={360} height={240} />}
         />
 
         <div className="mx-auto max-w-4xl space-y-6 px-4 py-16 sm:px-6 lg:py-20">

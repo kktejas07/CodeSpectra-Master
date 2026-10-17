@@ -8,6 +8,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { cn } from '@/lib/utils'
+import { DeviceShowcase } from '@/components/visuals'
 
 const TOPICS = [
   { value: 'pilot', label: 'Book a pilot', hint: 'Try CodeSpectra on one open role.' },
@@ -114,6 +115,9 @@ function ContactInner() {
                 Hyderabad, India · Princeton, New Jersey
               </p>
             </div>
+
+            {/* What a pilot ends in — sample report */}
+            <DeviceShowcase variant="results" compact className="mt-10 hidden lg:block" />
           </div>
 
           {/* Right: form */}

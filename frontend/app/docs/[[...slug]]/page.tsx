@@ -16,6 +16,7 @@ import { DocSidebar } from '@/components/docs/DocSidebar'
 import { DocContent } from '@/components/docs/DocContent'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { docHref, docDescription, getDocTree, resolveDoc, type DocSection } from '@/lib/docs'
 
 interface Props {
@@ -140,6 +141,8 @@ function DocsHome({ sections }: { sections: DocSection[] }) {
           style={{ backgroundImage: 'radial-gradient(rgba(47,91,231,0.28) 1px, transparent 1px)', backgroundSize: '22px 22px' }}
         />
         <div aria-hidden className="absolute -right-16 -top-16 -z-10 h-48 w-48 rounded-full bg-cs-accent/10 blur-3xl" />
+        <div className="grid items-center gap-8 lg:grid-cols-[1fr_220px]">
+        <div>
         <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-cs-accent/25 bg-cs-accent/10 px-3 py-1 text-xs font-semibold text-cs-accent-text">
           <BookOpen className="h-3.5 w-3.5" aria-hidden />
           Documentation
@@ -165,6 +168,9 @@ function DocsHome({ sections }: { sections: DocSection[] }) {
             <code className="rounded bg-cs-paper px-1 font-mono">docs/user</code>.
           </p>
         )}
+        </div>
+        <ThemeIllustration name="code-visor" alt="" width={240} height={200} priority className="hidden w-full lg:block" />
+        </div>
       </div>
 
       {totalDocs > 0 ? (

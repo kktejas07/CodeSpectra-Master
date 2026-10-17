@@ -6,8 +6,10 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Award, Code2, Download, Share2, ShieldCheck, XCircle } from 'lucide-react'
+import { Award, Download, Share2, ShieldCheck, XCircle } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
+import { BrandLogo } from '@/app/public-layout'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 
 interface VerifyResponse {
   valid: boolean
@@ -98,10 +100,9 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
       {/* Top Navbar */}
       <header className="print:hidden sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-lg text-foreground">
-            <Code2 className="h-6 w-6 text-primary" />
-            <span>CodeSpectra</span>
-          </div>
+          <Link href="/" aria-label="CodeSpectra home" className="text-foreground">
+            <BrandLogo className="[&>span:last-child]:text-lg" />
+          </Link>
           <div className="flex items-center gap-2">
             <Button asChild size="sm" className="rounded-full">
               <Link href={`/auth/login?redirect=${encodeURIComponent(`/certificate-preview/${id}`)}`}>Log in</Link>
@@ -111,7 +112,8 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center py-12 px-4">
+      <main className="relative isolate flex-1 flex flex-col items-center py-12 px-4">
+        <SoftGlow className="print:hidden" />
 
         {loading ? (
           <div className="flex items-center gap-2 text-muted-foreground py-20">
@@ -182,7 +184,13 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
             </div>
 
             <div className="absolute top-8 left-8 flex items-center gap-2">
-               <div className="h-8 w-8 rounded-full bg-[#2F5BE7] flex items-center justify-center text-white font-bold italic">CS</div>
+               <div className="h-8 w-8 rounded-lg bg-[#2F5BE7] flex items-center justify-center text-white">
+                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                   <path d="M8 7L3 12L8 17" />
+                   <path d="M16 7L21 12L16 17" />
+                   <path d="M14 4.5L10 19.5" />
+                 </svg>
+               </div>
                <span className="font-bold text-xl text-slate-800 tracking-tight">CodeSpectra</span>
             </div>
 
@@ -234,6 +242,21 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
           <a href={verifyUrl} className="text-primary underline-offset-4 hover:underline break-all font-mono text-xs">{verifyUrl}</a>
           <Button variant="outline" size="sm" className="sm:ml-auto rounded-full" onClick={copyLink}>Copy link</Button>
         </div>
+
+        {/* Earn-your-own prompt for visitors who opened a shared link */}
+        <section className="print:hidden mt-16 w-full max-w-4xl grid items-center gap-8 rounded-3xl border border-border bg-card/70 p-6 sm:p-10 md:grid-cols-[1fr_minmax(0,320px)]">
+          <div>
+            <p className="text-sm font-semibold text-primary">CodeSpectra certificates</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">Earn a verified certificate of your own</h2>
+            <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+              Take a proctored assessment, and the certificate you earn comes with a link and QR code anyone can check.
+            </p>
+            <Button asChild className="mt-6 rounded-full px-6">
+              <Link href="/auth/signup">Create a free account</Link>
+            </Button>
+          </div>
+          <DeviceShowcase variant="certificate" compact className="hidden max-w-[320px] md:block" />
+        </section>
         </>
         )}
       </main>

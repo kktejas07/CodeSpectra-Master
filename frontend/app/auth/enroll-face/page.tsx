@@ -10,6 +10,7 @@ import { Shield, AlertCircle, Loader2 } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { csrfFetch } from "@/lib/csrf-fetch";
+import { SoftGlow } from "@/components/visuals";
 
 function EnrollFaceInner() {
   const router = useRouter();
@@ -63,10 +64,10 @@ function EnrollFaceInner() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-6 bg-background relative overflow-hidden">
+    <div className="min-h-screen w-full flex items-center justify-center p-6 bg-background relative isolate overflow-hidden">
       {/* Background decoration */}
       <div aria-hidden className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <SoftGlow />
 
       <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-2xl rounded-2xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">

@@ -143,7 +143,7 @@ export default function Home() {
       {/* Closing CTA */}
       <section className="cs-graph relative">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-r from-cs-paper via-cs-paper/85 to-cs-paper/40" />
-        <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[1.3fr_0.7fr] lg:px-8 lg:py-32">
+        <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-32">
           <div>
           <h2 className="cs-display max-w-[16ch] text-5xl sm:text-6xl lg:text-7xl">
             Run your next screening on CodeSpectra.
@@ -161,7 +161,8 @@ export default function Home() {
             </Link>
           </div>
           </div>
-          <ThemeIllustration name="binary-brackets" width={360} height={240} className="mx-auto w-full max-w-[380px]" />
+          {/* What a pilot ends in — the shortlist report on a laptop */}
+          <DeviceShowcase variant="results" compact className="hidden lg:block" />
         </div>
       </section>
     </PublicPageWrapper>

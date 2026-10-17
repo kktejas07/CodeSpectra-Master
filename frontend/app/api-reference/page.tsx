@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
-import { PageHero, btnSecondary } from '@/components/landing/page-hero'
+import { HeroIllustration, PageHero, btnSecondary } from '@/components/landing/page-hero'
 
 const code = 'rounded-md bg-cs-accent/8 px-1.5 py-0.5 font-mono text-[13px] text-cs-ink'
 const link = 'font-medium text-cs-accent-text underline-offset-4 hover:underline'
@@ -21,6 +21,7 @@ export default function ApiReferencePage() {
             Back to documentation
           </Link>
         }
+        art={<HeroIllustration name="domain-code" />}
       />
 
       <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[200px_1fr] lg:gap-16 lg:px-8 lg:py-20">
