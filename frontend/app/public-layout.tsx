@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useId } from 'react'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
@@ -53,9 +53,8 @@ export function PublicPageWrapper({
         )}
       >
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="Code Spectra home">
-            <BrandMark />
-            <span className="text-[1.2rem] font-bold tracking-tight [font-stretch:85%]">Code Spectra</span>
+          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="CodeSpectra home">
+            <BrandLogo />
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
@@ -77,7 +76,7 @@ export function PublicPageWrapper({
             {hasSession ? (
               <Link
                 href={DASHBOARD_HREF}
-                className="inline-flex h-10 items-center rounded-md bg-cs-blue px-4 text-sm font-semibold text-cs-blue-ink hover:brightness-110"
+                className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-text-ink hover:brightness-110"
               >
                 Dashboard
               </Link>
@@ -88,7 +87,7 @@ export function PublicPageWrapper({
                 </Link>
                 <Link
                   href="/contact"
-                  className="inline-flex h-10 items-center rounded-md bg-cs-blue px-4 text-sm font-semibold text-cs-blue-ink hover:brightness-110"
+                  className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-text-ink hover:brightness-110"
                 >
                   Book a pilot
                 </Link>
@@ -147,9 +146,8 @@ export function PublicPageWrapper({
         <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
-              <Link href="/" className="mb-5 flex items-center gap-2.5" aria-label="Code Spectra home">
-                <BrandMark />
-                <span className="text-lg font-bold tracking-tight [font-stretch:85%]">Code Spectra</span>
+              <Link href="/" className="mb-5 flex items-center gap-2.5" aria-label="CodeSpectra home">
+                <BrandLogo badge={false} />
               </Link>
               <p className="text-sm text-cs-ink-soft leading-relaxed">
                 Proctored skills assessments and hackathons that rank every candidate, for hiring teams, colleges and
@@ -250,14 +248,38 @@ export function PublicPageWrapper({
   )
 }
 
-/** Brand mark: a spectrum of five bars of rising height, the top three highlighted — a ranked shortlist. */
-export function BrandMark({ className }: { className?: string }) {
+/**
+ * Original CodeSpectra logo: gradient hexagon mark in a tinted tile, wordmark,
+ * optional "AI" badge. Gradient ids come from useId so several logos can share a page.
+ */
+export function BrandLogo({ badge = true, className }: { badge?: boolean; className?: string }) {
+  const uid = useId().replace(/:/g, '')
   return (
-    <svg viewBox="0 0 28 28" className={cn('h-7 w-7', className)} aria-hidden>
-      <rect width="28" height="28" rx="6" fill="var(--cs-ink)" />
-      {[5, 9, 13, 17, 21].map((x, i) => (
-        <rect key={x} x={x} y={21 - (i + 1) * 3} width="2.6" height={(i + 1) * 3} rx="0.8" fill={i >= 2 ? 'var(--cs-mark)' : 'var(--cs-paper)'} opacity={i >= 2 ? 1 : 0.55} />
-      ))}
-    </svg>
+    <span className={cn('flex items-center gap-2.5', className)}>
+      <span className="relative flex items-center justify-center rounded-xl border border-teal-500/40 bg-linear-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 shadow-sm shadow-teal-500/20">
+        <svg className="h-5 w-5" viewBox="0 0 32 32" fill="none" aria-hidden>
+          <defs>
+            <linearGradient id={`${uid}-g`} x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stopColor="#2dd4bf" />
+              <stop offset="50%" stopColor="#00c573" />
+              <stop offset="100%" stopColor="#38bdf8" />
+            </linearGradient>
+            <filter id={`${uid}-f`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          <path d="M7 10L16 4L25 10V22L16 28L7 22V10Z" stroke={`url(#${uid}-g)`} strokeWidth="2" strokeLinejoin="round" />
+          <path d="M16 4V28M7 10L25 22M7 22L25 10" stroke={`url(#${uid}-g)`} strokeWidth="1.2" strokeOpacity="0.6" />
+          <circle cx="16" cy="16" r="3" fill="#00c573" filter={`url(#${uid}-f)`} />
+        </svg>
+      </span>
+      <span className="text-lg font-bold tracking-tight md:text-xl">CodeSpectra</span>
+      {badge && (
+        <span className="hidden rounded border border-teal-500/30 bg-teal-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold text-cs-accent-text sm:inline-block">
+          AI
+        </span>
+      )}
+    </span>
   )
 }

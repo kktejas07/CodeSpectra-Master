@@ -161,10 +161,10 @@ export function ResultsSheet() {
                   {row.rank === CUTOFF + 1 && (
                     <tr aria-hidden>
                       <td colSpan={role.sections.length + 4} className="px-5 sm:px-7">
-                        <div className="flex items-center gap-3 py-1.5 text-sm font-semibold text-cs-blue">
-                          <span className="h-0.5 flex-1 bg-cs-blue" />
+                        <div className="flex items-center gap-3 py-1.5 text-sm font-semibold text-cs-accent-text">
+                          <span className="h-0.5 flex-1 bg-cs-accent" />
                           Shortlist cutoff
-                          <span className="h-0.5 w-8 bg-cs-blue" />
+                          <span className="h-0.5 w-8 bg-cs-accent" />
                         </div>
                       </td>
                     </tr>

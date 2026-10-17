@@ -6,29 +6,34 @@ import Link from 'next/link'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 import { ResultsSheet } from '@/components/landing/results-sheet'
+import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { cn } from '@/lib/utils'
 
 /* Shared button styles for marketing pages. Kept here rather than in
    components/ui/button so the dashboard's mint button stays untouched. */
 const btnPrimary =
-  'inline-flex h-12 items-center justify-center rounded-md bg-cs-blue px-6 text-[15px] font-semibold text-cs-blue-ink transition-[filter] hover:brightness-110'
+  'inline-flex h-12 items-center justify-center rounded-md bg-cs-accent px-6 text-[15px] font-semibold text-cs-accent-text-ink transition-[filter] hover:brightness-110'
 const btnSecondary =
   'inline-flex h-12 items-center justify-center rounded-md border border-cs-ink/25 px-6 text-[15px] font-semibold text-cs-ink transition-colors hover:border-cs-ink'
 
 const STEPS = [
   {
+    art: 'step-build',
     title: 'Build the assessment',
     body: 'Pick the role and experience band. Code Spectra assembles a question mix weighted to that level, and you can edit any question before it goes out.',
   },
   {
+    art: 'step-invite',
     title: 'Invite candidates',
     body: 'Email invites to your applicant list and send reminders to anyone who hasn’t started. Each invite opens a timed, proctored session.',
   },
   {
+    art: 'step-proctor',
     title: 'Candidates take it under proctoring',
     body: 'Fullscreen lock, tab-switch detection, webcam face matching and copy-paste blocking run during the test. Every event lands on the candidate’s report.',
   },
   {
+    art: 'step-review',
     title: 'Review the shortlist',
     body: 'Candidates arrive ranked by difficulty-weighted points. Check flags, read answers, then release results or export them as CSV.',
   },
@@ -36,21 +41,25 @@ const STEPS = [
 
 const DOMAINS = [
   {
+    art: 'domain-code',
     name: 'Software engineering',
     task: 'Write and run code in the browser against hidden test cases, plus MCQs and short written answers.',
     scoring: 'Auto-graded on test cases passed; plagiarism compared across the cohort.',
   },
   {
+    art: 'domain-cad',
     name: 'Mechanical and CAD design',
     task: 'Model a part or assembly, such as a pump or valve component, and review engineering drawings.',
     scoring: 'Design tasks graded against a rubric, with subject-expert review where you want it.',
   },
   {
+    art: 'domain-qa',
     name: 'QA and test automation',
     task: 'Write automation scripts and design test cases for a real feature spec.',
     scoring: 'Code answers auto-graded on test cases; test design marked by rubric.',
   },
   {
+    art: 'domain-aptitude',
     name: 'Aptitude and written',
     task: 'Multiple choice, true or false, fill-in-the-blank and long-form answers for any discipline.',
     scoring: 'Objective questions auto-scored; written answers marked by rubric.',
@@ -81,9 +90,19 @@ export default function Home() {
         {/* fade the grid out behind the headline so type stays crisp */}
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[70%] bg-linear-to-b from-cs-paper via-cs-paper/90 to-cs-paper/0" />
         <div className="relative mx-auto max-w-[1200px] px-4 pt-16 pb-16 sm:px-6 sm:pt-20 lg:px-8 lg:pb-24">
-          <h1 className="cs-display max-w-[19ch] text-[2.9rem] sm:text-7xl lg:text-[5.5rem]">
-            Assess 100 applicants. Interview the 20 who can do the job.
-          </h1>
+          <div className="grid items-center gap-10 lg:grid-cols-[1.3fr_0.7fr] lg:gap-12">
+            <h1 className="cs-display max-w-[19ch] text-[2.9rem] sm:text-7xl lg:text-[5rem]">
+              Assess 100 applicants. Interview the 20 who can do the job.
+            </h1>
+            <ThemeIllustration
+              name="hero-funnel"
+              alt="100 applicants pass through a proctored assessment and the top 20 come out ranked"
+              width={480}
+              height={420}
+              priority
+              className="mx-auto w-full max-w-[420px]"
+            />
+          </div>
 
           <div className="mt-8 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <p className="max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">
@@ -114,9 +133,12 @@ export default function Home() {
           <ol className="mt-12 grid gap-10 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
             {STEPS.map((step, i) => (
               <li key={step.title} className="border-t-2 border-cs-ink pt-5">
-                <span className="cs-display block text-5xl text-cs-blue" aria-hidden>
-                  {i + 1}
-                </span>
+                <div className="flex items-start justify-between gap-4">
+                  <span className="cs-display block text-5xl text-cs-accent-text" aria-hidden>
+                    {i + 1}
+                  </span>
+                  <ThemeIllustration name={step.art} width={160} height={120} className="w-32" />
+                </div>
                 <h3 className="mt-4 text-lg font-semibold">{step.title}</h3>
                 <p className="mt-2 leading-relaxed text-cs-ink-soft">{step.body}</p>
               </li>
@@ -145,9 +167,12 @@ export default function Home() {
             {DOMAINS.map((d) => (
               <div
                 key={d.name}
-                className="grid gap-2 border-t border-cs-grid py-6 md:grid-cols-[1fr_1.5fr_1.5fr] md:gap-8"
+                className="grid gap-2 border-t border-cs-grid py-6 md:grid-cols-[1fr_1.5fr_1.5fr] md:items-center md:gap-8"
               >
-                <h3 className="text-xl font-semibold">{d.name}</h3>
+                <div className="flex items-center gap-4">
+                  <ThemeIllustration name={d.art} width={96} height={96} className="w-16 shrink-0" />
+                  <h3 className="text-xl font-semibold">{d.name}</h3>
+                </div>
                 <p className="leading-relaxed">{d.task}</p>
                 <p className="leading-relaxed text-cs-ink-soft">{d.scoring}</p>
               </div>
@@ -177,14 +202,27 @@ export default function Home() {
                 </div>
               ))}
             </dl>
+            <figure className="mt-12">
+              <ThemeIllustration
+                name="scoring-mix"
+                alt="Example question mix: a fresher gets 50% easy, 35% medium and 15% hard questions; a senior gets 15% easy, 35% medium and 50% hard"
+                width={320}
+                height={184}
+                className="w-full max-w-[400px]"
+              />
+              <figcaption className="mt-3 text-sm text-cs-ink-soft">Illustrative mix. The real mix depends on the role and experience band you choose.</figcaption>
+            </figure>
           </div>
 
           <div>
             <h2 className="cs-heading text-4xl sm:text-5xl">Integrity you can check</h2>
-            <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-cs-ink-soft">
-              Proctoring runs for the whole session. Anything unusual is logged with a timestamp on the
-              candidate’s report, so a reviewer decides what it means.
-            </p>
+            <div className="mt-5 flex flex-col gap-6 sm:flex-row sm:items-center">
+              <p className="max-w-[40ch] text-lg leading-relaxed text-cs-ink-soft">
+                Proctoring runs for the whole session. Anything unusual is logged with a timestamp on the
+                candidate’s report, so a reviewer decides what it means.
+              </p>
+              <ThemeIllustration name="integrity-shield" width={300} height={220} className="w-60 shrink-0" />
+            </div>
             <ul className="mt-10 divide-y divide-cs-grid border-y border-cs-grid">
               {[
                 ['Fullscreen lock', 'Every exit from fullscreen is logged.'],
@@ -216,13 +254,20 @@ export default function Home() {
               </p>
               <Link
                 href="/hackathons"
-                className="mt-8 inline-block font-semibold text-cs-blue underline decoration-2 underline-offset-4 hover:decoration-cs-blue/50"
+                className="mt-8 inline-block font-semibold text-cs-accent-text underline decoration-2 underline-offset-4 hover:decoration-cs-accent-text/50"
               >
                 See upcoming hackathons
               </Link>
             </div>
 
             <figure className="self-end">
+              <ThemeIllustration
+                name="hackathon-team"
+                alt="A captain and four teammates submit one repository, which judges score out of 100"
+                width={420}
+                height={210}
+                className="mb-8 w-full max-w-[460px]"
+              />
               <figcaption className="mb-4 text-sm text-cs-ink-soft">Judging rubric, out of 100</figcaption>
               <div className="flex h-14 overflow-hidden rounded-sm" role="img" aria-label={RUBRIC.map((r) => `${r.label} ${r.weight}`).join(', ')}>
                 {RUBRIC.map((r, i) => (
@@ -231,7 +276,7 @@ export default function Home() {
                     style={{ width: `${r.weight}%` }}
                     className={cn(
                       'flex items-center border-r-2 border-cs-paper px-3 font-semibold tabular-nums last:border-r-0',
-                      i === 0 ? 'bg-cs-ink text-cs-paper' : i < 3 ? 'bg-cs-blue text-cs-blue-ink' : 'bg-cs-grid text-cs-ink',
+                      i === 0 ? 'bg-cs-ink text-cs-paper' : i < 3 ? 'bg-cs-accent text-cs-accent-text-ink' : 'bg-cs-grid text-cs-ink',
                     )}
                   >
                     {r.weight}

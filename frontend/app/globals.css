@@ -842,30 +842,38 @@
 
 /* ─────────────────────────────────────────────────────────────
    Code Spectra brand — public marketing + auth pages
-   Graph-paper blue, indigo ink, highlighter only for "shortlisted".
+   Original obsidian + mint palette; mint tint marks "shortlisted".
    Scope: anything inside .cs-brand (PublicPageWrapper, auth pages).
    ───────────────────────────────────────────────────────────── */
 :root {
-  --cs-paper: #f4f6fb;      /* page */
-  --cs-sheet: #ffffff;      /* report sheet / raised surface */
-  --cs-ink: #161a3a;        /* text */
-  --cs-ink-soft: #4b5175;   /* secondary text (7.3:1 on paper) */
-  --cs-blue: #2f4bdb;       /* actions, rules, links */
-  --cs-blue-ink: #ffffff;   /* text on blue */
-  --cs-grid: #dce2f0;       /* graph lines, borders */
-  --cs-mark: #ffe066;       /* highlighter — shortlist only */
-  --cs-flag: #c7372f;       /* integrity flag / errors */
+  /* Original CodeSpectra palette — light */
+  --cs-paper: #fbfdfc;
+  --cs-sheet: #ffffff;
+  --cs-ink: #0f1729;
+  --cs-ink-soft: #475569;
+  --cs-accent: #00c573;       /* mint — buttons, bars */
+  --cs-accent-ink: #020617;   /* text on mint */
+  --cs-accent-text: #047857;  /* mint as text/links on light (5.5:1) */
+  --cs-teal: #14b8a6;
+  --cs-cyan: #06b6d4;
+  --cs-grid: #e2e8f0;
+  --cs-mark: #00c573;         /* shortlist highlight (tinted) */
+  --cs-flag: #dc2626;
 }
 .dark {
-  --cs-paper: #12152e;
-  --cs-sheet: #191d3b;
-  --cs-ink: #e9ecf7;
-  --cs-ink-soft: #a9afd1;
-  --cs-blue: #8a9dff;
-  --cs-blue-ink: #10132b;
-  --cs-grid: #2a3058;
-  --cs-mark: #ffe066;
-  --cs-flag: #ff7a70;
+  /* Original CodeSpectra palette — obsidian */
+  --cs-paper: #080c14;
+  --cs-sheet: #0d131f;
+  --cs-ink: #f8fafc;
+  --cs-ink-soft: #cbd5e1;
+  --cs-accent: #00c573;
+  --cs-accent-ink: #020617;
+  --cs-accent-text: #3ecf8e;
+  --cs-teal: #2dd4bf;
+  --cs-cyan: #22d3ee;
+  --cs-grid: #1e293b;
+  --cs-mark: #00c573;
+  --cs-flag: #f87171;
 }
 
 @theme inline {
@@ -874,18 +882,17 @@
   --color-cs-sheet: var(--cs-sheet);
   --color-cs-ink: var(--cs-ink);
   --color-cs-ink-soft: var(--cs-ink-soft);
-  --color-cs-blue: var(--cs-blue);
-  --color-cs-blue-ink: var(--cs-blue-ink);
+  --color-cs-accent: var(--cs-accent);
+  --color-cs-accent-ink: var(--cs-accent-ink);
+  --color-cs-accent-text: var(--cs-accent-text);
+  --color-cs-teal: var(--cs-teal);
+  --color-cs-cyan: var(--cs-cyan);
   --color-cs-grid: var(--cs-grid);
   --color-cs-mark: var(--cs-mark);
   --color-cs-flag: var(--cs-flag);
 }
 
 .cs-brand {
-  /* shadcn primitives inside branded pages (e.g. theme switch) follow the brand blue */
-  --primary: 230 70% 52%;
-  --primary-foreground: 0 0% 100%;
-  --ring: 230 70% 52%;
   font-family: var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif;
   background: var(--cs-paper);
   color: var(--cs-ink);
@@ -910,7 +917,7 @@
   background-size: 24px 24px;
 }
 .cs-brand :focus-visible {
-  outline: 2px solid var(--cs-blue);
+  outline: 2px solid var(--cs-accent-text);
   outline-offset: 2px;
 }
 /* The one orchestrated moment: highlighter sweeps across shortlisted rows. */
@@ -922,7 +929,8 @@
   content: '';
   position: absolute;
   inset: 3px 0;
-  background: color-mix(in srgb, var(--cs-mark) 55%, transparent);
+  background: color-mix(in srgb, var(--cs-mark) 22%, transparent);
+  box-shadow: inset 2px 0 0 var(--cs-mark);
   transform-origin: left center;
   animation: cs-mark-sweep 520ms cubic-bezier(.2,.7,.2,1) both;
   animation-delay: calc(var(--i, 0) * 70ms + 350ms);
@@ -930,13 +938,8 @@
   border-radius: 2px;
 }
 .dark .cs-mark-row::before {
-  background: color-mix(in srgb, var(--cs-mark) 88%, transparent);
-}
-.dark .cs-mark-row > * { color: #161a3a; }
-.dark .cs-brand {
-  --primary: 230 100% 77%;
-  --primary-foreground: 233 46% 12%;
-  --ring: 230 100% 77%;
+  background: color-mix(in srgb, var(--cs-mark) 24%, transparent);
+  box-shadow: inset 2px 0 0 var(--cs-mark);
 }
 @media (prefers-reduced-motion: reduce) {
   .cs-mark-row::before { animation: none; }

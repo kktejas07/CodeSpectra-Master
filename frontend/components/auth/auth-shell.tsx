@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { forwardRef, useId, useState } from 'react'
 import { ChevronDown, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { BrandMark } from '@/app/public-layout'
+import { BrandLogo } from '@/app/public-layout'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
 
 /**
@@ -17,9 +17,8 @@ export function AuthShell({ aside, children }: { aside: React.ReactNode; childre
     <div className="cs-brand grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
       <div className="flex flex-col px-5 py-6 sm:px-10 lg:px-16">
         <header className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="Code Spectra home">
-            <BrandMark />
-            <span className="text-lg font-bold tracking-tight [font-stretch:85%]">Code Spectra</span>
+          <Link href="/" className="flex items-center gap-2.5" aria-label="CodeSpectra home">
+            <BrandLogo />
           </Link>
           <NavThemeSwitch compact />
         </header>
@@ -54,7 +53,7 @@ export function AuthHeading({ title, children }: { title: string; children?: Rea
 }
 
 const inputBase =
-  'h-12 w-full rounded-md border border-cs-grid bg-cs-sheet px-3.5 text-base text-cs-ink placeholder:text-cs-ink-soft/70 transition-colors hover:border-cs-ink-soft focus:border-cs-blue focus:outline-none focus-visible:outline-2 focus-visible:outline-cs-blue aria-invalid:border-cs-flag'
+  'h-12 w-full rounded-md border border-cs-grid bg-cs-sheet px-3.5 text-base text-cs-ink placeholder:text-cs-ink-soft/70 transition-colors hover:border-cs-ink-soft focus:border-cs-accent focus:outline-none focus-visible:outline-2 focus-visible:outline-cs-accent-text aria-invalid:border-cs-flag'
 
 type FieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
   label: string
@@ -142,7 +141,7 @@ export function PrimaryButton({
       disabled={props.disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-cs-blue px-5 text-base font-semibold text-cs-blue-ink transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-cs-accent px-5 text-base font-semibold text-cs-accent-text-ink transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}
     >
@@ -187,7 +186,7 @@ export function FormError({ children }: { children: React.ReactNode }) {
 
 export function LastUsedBadge() {
   return (
-    <span className="absolute -top-2.5 right-3 rounded-full bg-cs-mark px-2 py-0.5 text-xs font-semibold text-[#161a3a]">
+    <span className="absolute -top-2.5 right-3 rounded-full bg-cs-mark px-2 py-0.5 text-xs font-semibold text-cs-accent-ink">
       Last used
     </span>
   )

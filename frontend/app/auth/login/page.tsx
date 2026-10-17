@@ -9,6 +9,7 @@ import { Github } from "@/components/ui/brand-icons";
 import { useAuth, getLastLogin } from "@/lib/auth-context";
 import { FaceCamera } from "@/components/auth/face-camera";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { ThemeIllustration } from "@/components/landing/theme-illustration";
 import {
   AuthShell,
   AuthHeading,
@@ -162,7 +163,8 @@ function LoginInner() {
     <AuthShell
       aside={
         <div className="space-y-10">
-          <p className="cs-display max-w-[12ch] text-6xl xl:text-7xl">Your assessments, results and shortlists.</p>
+          <ThemeIllustration name="auth-login" alt="A timed coding assessment passing all its test cases" width={340} height={210} priority className="w-full max-w-[400px]" />
+          <p className="cs-display max-w-[12ch] text-5xl xl:text-6xl">Your assessments, results and shortlists.</p>
           <div className="space-y-6">
             <AsideNote title="Taking an assessment?">
               Sign in with the email address your invite was sent to. No account yet? Open the invite link and it
@@ -181,7 +183,7 @@ function LoginInner() {
         {mode === "password" ? (
           <>
             New to Code Spectra?{" "}
-            <Link href={`/auth/signup${redirectTo !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className="font-semibold text-cs-blue underline decoration-2 underline-offset-4">
+            <Link href={`/auth/signup${redirectTo !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className="font-semibold text-cs-accent-text underline decoration-2 underline-offset-4">
               Create an account
             </Link>
           </>
@@ -207,7 +209,7 @@ function LoginInner() {
               required
               autoComplete="current-password"
               labelAction={
-                <Link href="/auth/forgot-password" className="text-sm font-medium text-cs-blue hover:underline">
+                <Link href="/auth/forgot-password" className="text-sm font-medium text-cs-accent-text hover:underline">
                   Forgot password?
                 </Link>
               }
@@ -252,7 +254,7 @@ function LoginInner() {
               <button type="button" onClick={() => goTo("sso")} className="relative inline-flex items-center gap-2 font-medium text-cs-ink-soft hover:text-cs-ink">
                 <ShieldCheck className="h-4 w-4" aria-hidden />
                 Use single sign-on (SSO)
-                {lastLogin?.method === "sso" && <span className="rounded-full bg-cs-mark px-2 text-xs font-semibold text-[#161a3a]">Last used</span>}
+                {lastLogin?.method === "sso" && <span className="rounded-full bg-cs-mark px-2 text-xs font-semibold text-cs-accent-ink">Last used</span>}
               </button>
             )}
             <button type="button" onClick={() => goTo("face")} className="inline-flex items-center gap-2 font-medium text-cs-ink-soft hover:text-cs-ink">
@@ -286,7 +288,7 @@ function LoginInner() {
       )}
 
       {mode !== "password" && (
-        <button type="button" onClick={() => goTo("password")} className="mt-6 text-[15px] font-semibold text-cs-blue hover:underline">
+        <button type="button" onClick={() => goTo("password")} className="mt-6 text-[15px] font-semibold text-cs-accent-text hover:underline">
           Sign in with a password instead
         </button>
       )}

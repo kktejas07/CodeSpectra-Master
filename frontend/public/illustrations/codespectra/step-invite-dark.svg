@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 124" fill="none" role="img"><title>Invites sent to candidates</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#3ecf8e"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset=".5" stop-color="#00c573"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
+  .surf{fill:#0d131f;stroke:#94a3b8;stroke-opacity:.7}
+  .ln{stroke:#94a3b8;stroke-opacity:.6;fill:none}
+  .txt{fill:#94a3b8;opacity:.75}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+    .tag,.num,.row,.ev,.pass,.f{opacity:1!important}
+    .ck,.ok{stroke-dashoffset:0!important}
+    .gauge{stroke-dashoffset:36!important}
+    .pkt{offset-distance:50%}
+  }
+
+  .letter{animation:slide 3.6s ease-in-out infinite}
+  @keyframes slide{0%,15%{transform:translateY(16px)}45%,100%{transform:translateY(0)}}
+  .p{fill:#475569;fill-opacity:.25;stroke:#94a3b8;stroke-opacity:.6;animation:ping 3.6s ease-out infinite}
+  .p2{animation-delay:.3s}.p3{animation-delay:.6s}
+  @keyframes ping{0%,40%{fill:#475569;fill-opacity:.25}55%,90%{fill:#00c573;fill-opacity:.9}100%{fill:#475569;fill-opacity:.25}}
+  .trail{stroke:#00c573;stroke-dasharray:3 5;animation:dash 1s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-8}}
+</style><g class="letter"><rect x="34" y="30" width="44" height="36" rx="3" fill="#1e293b" fill-opacity=".9" stroke="#94a3b8" stroke-opacity=".5"/><rect x="41" y="38" width="22" height="4" rx="2" fill="#00c573"/><rect x="41" y="46" width="30" height="3" rx="1.5" fill="#475569"/><rect x="41" y="52" width="26" height="3" rx="1.5" fill="#475569"/></g><path d="M24 54 V96 H88 V54 L56 76 Z" class="surf" stroke-width="1.5"/><path d="M24 96 L50 74 M88 96 L62 74" class="ln"/><path class="trail" d="M92 72 C110 72 112 40 128 40 M92 76 H128 M92 80 C110 80 112 108 128 108"/><circle class="p" cx="136" cy="40" r="8"/><circle class="p p2" cx="136" cy="76" r="8"/><circle class="p p3" cx="136" cy="108" r="8"/></svg>

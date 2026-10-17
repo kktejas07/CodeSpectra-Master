@@ -8,6 +8,7 @@ import { safeRedirect } from "@/lib/safe-redirect";
 import { Github } from "@/components/ui/brand-icons";
 import { useAuth } from "@/lib/auth-context";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { ThemeIllustration } from "@/components/landing/theme-illustration";
 import { cn } from "@/lib/utils";
 import {
   AuthShell,
@@ -175,7 +176,8 @@ function SignupInner() {
     <AuthShell
       aside={
         <div className="space-y-10">
-          <p className="cs-display max-w-[13ch] text-6xl xl:text-7xl">Practise, get assessed, get shortlisted.</p>
+          <ThemeIllustration name="auth-signup" alt="A profile filling in with practice, a mock test and a certificate" width={340} height={210} priority className="w-full max-w-[400px]" />
+          <p className="cs-display max-w-[13ch] text-5xl xl:text-6xl">Practise, get assessed, get shortlisted.</p>
           <div className="space-y-6">
             <AsideNote title="Invited to an assessment?">
               Create your account with the email address the invite was sent to, so your test is waiting when you
@@ -184,7 +186,7 @@ function SignupInner() {
             <AsideNote title="Hiring, or running campus placements?">
               <>
                 Accounts here are for individuals.{" "}
-                <Link href="/contact" className="font-semibold text-cs-blue underline underline-offset-4">
+                <Link href="/contact" className="font-semibold text-cs-accent-text underline underline-offset-4">
                   Book a pilot
                 </Link>{" "}
                 and we’ll set up a workspace for your team.
@@ -202,7 +204,7 @@ function SignupInner() {
         <>
           <AuthHeading title="Create your account">
             Already have one?{" "}
-            <Link href={loginHref} className="font-semibold text-cs-blue underline decoration-2 underline-offset-4">
+            <Link href={loginHref} className="font-semibold text-cs-accent-text underline decoration-2 underline-offset-4">
               Sign in
             </Link>
           </AuthHeading>
@@ -285,8 +287,8 @@ function SignupInner() {
                     <label
                       key={t.value}
                       className={cn(
-                        "relative cursor-pointer rounded-md border bg-cs-sheet px-3.5 py-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-cs-blue",
-                        selected ? "border-cs-blue ring-1 ring-cs-blue" : "border-cs-grid hover:border-cs-ink-soft",
+                        "relative cursor-pointer rounded-md border bg-cs-sheet px-3.5 py-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-cs-accent-text",
+                        selected ? "border-cs-accent ring-1 ring-cs-accent" : "border-cs-grid hover:border-cs-ink-soft",
                       )}
                     >
                       <input
@@ -422,7 +424,7 @@ function SignupInner() {
               setError(null);
               setStep(1);
             }}
-            className="mt-6 inline-flex items-center gap-1.5 text-[15px] font-semibold text-cs-blue hover:underline"
+            className="mt-6 inline-flex items-center gap-1.5 text-[15px] font-semibold text-cs-accent-text hover:underline"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Back to account details

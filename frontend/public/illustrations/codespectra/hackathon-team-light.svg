@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 210" fill="none" role="img"><title>A team of five submits a repository that judges score out of 100</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#3ecf8e"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset=".5" stop-color="#00c573"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
+  .surf{fill:#f8fafc;stroke:#64748b;stroke-opacity:.7}
+  .ln{stroke:#64748b;stroke-opacity:.6;fill:none}
+  .txt{fill:#64748b;opacity:.75}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none!important}
+    .tag,.num,.row,.ev,.pass,.f{opacity:1!important}
+    .ck,.ok{stroke-dashoffset:0!important}
+    .gauge{stroke-dashoffset:36!important}
+    .pkt{offset-distance:50%}
+  }
+
+  .link{stroke:#00c573;stroke-width:1.5;stroke-dasharray:4 5;animation:dash 1.2s linear infinite}
+  @keyframes dash{to{stroke-dashoffset:-9}}
+  .pkt{fill:#00c573;offset-path:path('M204 110 H300');animation:move 2.4s ease-in-out infinite}
+  @keyframes move{from{offset-distance:0%}to{offset-distance:100%}}
+  .mem{animation:bob 3s ease-in-out infinite}
+  .m2{animation-delay:.3s}.m3{animation-delay:.6s}.m4{animation-delay:.9s}
+  @keyframes bob{50%{transform:translateY(-4px)}}
+  .score{transform-box:fill-box;transform-origin:0 50%;animation:sc 4.8s ease infinite}
+  @keyframes sc{0%,30%{transform:scaleX(0)}60%,90%{transform:scaleX(1)}100%{transform:scaleX(0)}}
+</style><path class="link" d="M60 50 L92 110"/><path class="link" d="M124 50 L92 110"/><path class="link" d="M40 160 L92 110"/><path class="link" d="M144 160 L92 110"/><g class="mem m1"><circle cx="60" cy="50" r="15" class="surf" stroke-width="1.5"/><circle cx="60" cy="46" r="4.5" fill="#64748b" opacity=".7"/><path d="M52 59c2-6 5-8 8-8s6 2 8 8" fill="#64748b" opacity=".7"/></g><g class="mem m2"><circle cx="124" cy="50" r="15" class="surf" stroke-width="1.5"/><circle cx="124" cy="46" r="4.5" fill="#64748b" opacity=".7"/><path d="M116 59c2-6 5-8 8-8s6 2 8 8" fill="#64748b" opacity=".7"/></g><g class="mem m3"><circle cx="40" cy="160" r="15" class="surf" stroke-width="1.5"/><circle cx="40" cy="156" r="4.5" fill="#64748b" opacity=".7"/><path d="M32 169c2-6 5-8 8-8s6 2 8 8" fill="#64748b" opacity=".7"/></g><g class="mem m4"><circle cx="144" cy="160" r="15" class="surf" stroke-width="1.5"/><circle cx="144" cy="156" r="4.5" fill="#64748b" opacity=".7"/><path d="M136 169c2-6 5-8 8-8s6 2 8 8" fill="#64748b" opacity=".7"/></g><circle cx="92" cy="110" r="22" fill="url(#mint)" stroke="#14b8a6" stroke-width="1.5"/><circle cx="92" cy="104" r="6" fill="#020617" opacity=".75"/><path d="M80 122c3-8 7-10 12-10s9 2 12 10" fill="#020617" opacity=".75"/><path d="M84 84 l4 5 4-7 4 7 4-5 -2 9 h-12z" fill="#f59e0b"/><path d="M114 110 H204" class="ln" stroke-width="1.5"/><rect x="204" y="86" width="96" height="48" rx="7" class="surf" stroke-width="1.5"/><path d="M218 100a5 5 0 1 0 0.1 0M218 105v12M218 117a5 5 0 1 0 0.1 0M232 100a5 5 0 1 0 0.1 0M232 105c0 6-14 6-14 12" stroke="#06b6d4" stroke-width="1.5" fill="none"/><rect x="244" y="101" width="44" height="5" rx="2.5" fill="#94a3b8" opacity=".6"/><rect x="244" y="112" width="30" height="5" rx="2.5" fill="#94a3b8" opacity=".4"/><circle class="pkt" r="4"/><path d="M300 110 H326" class="ln" stroke-width="1.5"/><rect x="326" y="78" width="80" height="64" rx="7" class="surf" stroke-width="1.5"/><text x="336" y="96" class="txt" font-family="ui-sans-serif,system-ui" font-size="10">Judge score</text><rect x="336" y="104" width="60" height="8" rx="4" fill="#94a3b8" opacity=".25"/><rect class="score" x="336" y="104" width="52" height="8" rx="4" fill="url(#mint)"/><text x="336" y="132" font-family="ui-monospace,monospace" font-size="15" font-weight="700" fill="#00c573">87/100</text></svg>
