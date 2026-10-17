@@ -82,7 +82,7 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
           },
         ]}
         loading={loading}
-        emptyMessage="No audit events yet. Admin actions will be logged here."
+        emptyState={{ illustration: 'security' }} emptyMessage="No audit events yet. Admin actions will be logged here."
         pageSize={20}
       />
     </div>

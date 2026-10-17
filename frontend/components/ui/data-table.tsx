@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { EmptyState, type EmptyStateVariant } from '@/components/ui/empty-state'
+import type { IllustrationName } from '@/components/illustrations/spot'
 import { Search, CheckSquare, Square, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   Select,
@@ -43,6 +44,8 @@ export interface DataTableEmptyState {
   actionHref?: string
   onAction?: () => void
   variant?: EmptyStateVariant
+  /** Subject-specific spot illustration for the empty state. */
+  illustration?: IllustrationName
 }
 
 interface DataTableProps<T extends { id: string }> {

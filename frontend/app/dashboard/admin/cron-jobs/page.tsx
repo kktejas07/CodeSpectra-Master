@@ -282,6 +282,7 @@ export default function CronJobsPage() {
   return (
     <div className="w-full min-w-0 space-y-6">
       <PageHeader
+        illustration="calendar"
         icon={<Timer />}
         title="Cron jobs"
         description={
@@ -560,7 +561,7 @@ export default function CronJobsPage() {
               </p>
             </div>
             {data.scheduledWorkflows.length === 0 ? (
-              <EmptyState variant="sessions" title="No scheduled workflows yet" description="Create one in Workflows and set its trigger to Schedule." className="border-0 bg-transparent py-6 md:py-8" />
+              <EmptyState illustration="calendar" variant="sessions" title="No scheduled workflows yet" description="Create one in Workflows and set its trigger to Schedule." className="border-0 bg-transparent py-6 md:py-8" />
             ) : (
               <div className="divide-y divide-border/60">
                 {data.scheduledWorkflows.map((w) => (
@@ -627,7 +628,7 @@ export default function CronJobsPage() {
               </h2>
             </div>
             {data.recentRuns.length === 0 ? (
-              <EmptyState title="No runs recorded yet" description="Runs appear here after the scheduler fires a workflow." className="border-0 bg-transparent py-6 md:py-8" />
+              <EmptyState illustration="settings" title="No runs recorded yet" description="Runs appear here after the scheduler fires a workflow." className="border-0 bg-transparent py-6 md:py-8" />
             ) : (
               <div className="divide-y divide-border/60">
                 {data.recentRuns.map((r) => (

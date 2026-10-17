@@ -228,6 +228,7 @@ export default function PermissionsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="team"
         icon={<Shield />}
         title="Roles and permissions"
         description={<>{autoSeeded ? `${roles.length} roles · ${allResources.length} resources` : 'Loading...'} · Changes take effect immediately.</>}

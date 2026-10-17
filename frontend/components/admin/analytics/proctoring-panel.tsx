@@ -126,6 +126,7 @@ export function ProctoringPanel() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="proctoring"
         className="mb-0"
         title="Proctoring analytics"
         description="Proctoring flags and how they are spread across your assessments."
@@ -192,7 +193,7 @@ export function ProctoringPanel() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <EmptyState title="No data yet" description="Flag types appear once proctored sessions are recorded." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+              <EmptyState illustration="proctoring" title="No data yet" description="Flag types appear once proctored sessions are recorded." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
             )}
           </div>
         </Card>
@@ -200,7 +201,7 @@ export function ProctoringPanel() {
         <Card className="rounded-3xl border-border/70 p-6 flex flex-col">
           <h2 className="text-lg font-semibold text-foreground mb-4">Most-flagged assessments</h2>
           {examFlags.length === 0 ? (
-            <EmptyState title="No proctoring flags yet" description="Assessments with the most flags show up here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="proctoring" title="No proctoring flags yet" description="Assessments with the most flags show up here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           ) : (
             <div className="space-y-4 overflow-y-auto max-h-[250px] pr-2">
               {examFlags.slice(0, 5).map(exam => (
@@ -227,7 +228,7 @@ export function ProctoringPanel() {
           <h2 className="text-lg font-semibold text-foreground">Flags by event type</h2>
         </div>
         {sortedTypes.length === 0 ? (
-          <EmptyState title="No proctoring events yet" description="Event types are listed here once candidates take proctored tests." className="rounded-none border-0 bg-transparent" />
+          <EmptyState illustration="proctoring" title="No proctoring events yet" description="Event types are listed here once candidates take proctored tests." className="rounded-none border-0 bg-transparent" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

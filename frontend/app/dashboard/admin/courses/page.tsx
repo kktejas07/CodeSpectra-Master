@@ -144,6 +144,7 @@ export default function AdminCoursesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="courses"
         icon={<BookOpen />}
         title="Courses"
         description="Create and manage courses, their curriculum and AI-generated video lessons."
@@ -194,7 +195,7 @@ export default function AdminCoursesPage() {
           ]}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No courses yet. Select Create course to add your first one."
+          emptyState={{ illustration: 'courses' }} emptyMessage="No courses yet. Select Create course to add your first one."
         />
       )}
         </TabsContent>

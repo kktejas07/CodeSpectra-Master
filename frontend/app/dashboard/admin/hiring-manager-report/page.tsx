@@ -51,6 +51,7 @@ export default function HiringManagerReportPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="analytics"
           title="Hiring manager report"
           description="Candidates and their combined assessment score, ready to share with the hiring manager."
           icon={<FileText />}
@@ -70,7 +71,7 @@ export default function HiringManagerReportPage() {
       {loading ? (
         <SkeletonTable rows={6} />
       ) : (
-        <DataTable columns={columns} data={candidates} searchKeys={['name', 'role']} loading={loading} emptyMessage="No candidates yet. They appear here once people finish an assessment." />
+        <DataTable columns={columns} data={candidates} searchKeys={['name', 'role']} loading={loading} emptyState={{ illustration: 'analytics' }} emptyMessage="No candidates yet. They appear here once people finish an assessment." />
       )}
     </div>
   )

@@ -83,6 +83,7 @@ export default function SecurityScansPage() {
           <ArrowLeft className="h-4 w-4" /> Security
         </Link>
         <PageHeader
+          illustration="scanner"
           className="mb-0 mt-2"
           title="Security scans"
           description={<>
@@ -105,6 +106,7 @@ export default function SecurityScansPage() {
         </Card>
       ) : !latest ? (
         <EmptyState
+          illustration="scanner"
           variant="default"
           title="No scan reports yet"
           description="Reports appear here after the first scheduled Sunday run, or trigger /usr/local/bin/codespectra-weekly-scan.sh on the host."

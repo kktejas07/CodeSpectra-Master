@@ -479,6 +479,7 @@ export default function Security() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="security"
         className="mb-0"
         title="Security and audit"
         description="Live view of sessions, devices, audit logs, blocked IPs and security events."
@@ -525,7 +526,7 @@ export default function Security() {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -542,7 +543,7 @@ export default function Security() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -560,7 +561,7 @@ export default function Security() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
           </div>
@@ -623,7 +624,7 @@ export default function Security() {
                 </table>
               </div>
             ) : (
-              <EmptyState title="No active sessions" description="Sessions appear after users log in." className="border-0 bg-transparent py-6 md:py-8" />
+              <EmptyState illustration="security" title="No active sessions" description="Sessions appear after users log in." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
 
@@ -659,7 +660,7 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <EmptyState title="No login events today" className="border-0 bg-transparent py-6 md:py-8" />
+                <EmptyState illustration="security" title="No login events today" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
 
@@ -694,7 +695,7 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <EmptyState title="No security alerts in the past 7 days" className="border-0 bg-transparent py-6 md:py-8" />
+                <EmptyState illustration="security" title="No security alerts in the past 7 days" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </div>
@@ -721,7 +722,7 @@ export default function Security() {
                 ))}
               </div>
             ) : (
-              <EmptyState title="No security settings configured" description="Run the seed script to populate defaults." className="border-0 bg-transparent py-6 md:py-8" />
+              <EmptyState illustration="settings" title="No security settings configured" description="Run the seed script to populate defaults." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
 
@@ -856,7 +857,7 @@ export default function Security() {
               ]}
               bulkActions={auditBulkActions}
               loading={auditLoading}
-              emptyMessage="No audit events found."
+              emptyState={{ illustration: 'security' }} emptyMessage="No audit events found."
               pageSize={50}
             />
           </TabsContent>
@@ -946,7 +947,7 @@ export default function Security() {
                   </table>
                 </div>
               ) : (
-                <EmptyState title="No fingerprints yet" description="They appear as users sign in from this platform." className="border-0 bg-transparent py-6 md:py-8" />
+                <EmptyState illustration="security" title="No fingerprints yet" description="They appear as users sign in from this platform." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>
@@ -1023,7 +1024,7 @@ export default function Security() {
                   </table>
                 </div>
               ) : (
-                <EmptyState title="No blocked IPs" description="IPs are auto-blocked after brute-force attempts or added manually above." className="border-0 bg-transparent py-6 md:py-8" />
+                <EmptyState illustration="security" title="No blocked IPs" description="IPs are auto-blocked after brute-force attempts or added manually above." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>
@@ -1084,7 +1085,7 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <EmptyState title="No security events yet" className="border-0 bg-transparent py-6 md:py-8" />
+                <EmptyState illustration="security" title="No security events yet" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>

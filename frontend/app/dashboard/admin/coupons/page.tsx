@@ -195,6 +195,7 @@ export default function CouponsAdminPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="billing"
         title="Coupons"
         description="Create and manage discount codes and free-trial codes."
         icon={<Tag />}
@@ -260,7 +261,7 @@ export default function CouponsAdminPage() {
         </DialogContent>
       </Dialog>
 
-      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyMessage="No coupons yet. Use New coupon to create your first code." pageSize={20} />
+      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyState={{ illustration: 'billing' }} emptyMessage="No coupons yet. Use New coupon to create your first code." pageSize={20} />
 
       <Dialog open={!!viewRedemptions} onOpenChange={(o) => { if (!o) setViewRedemptions(null) }}>
         <DialogContent className="sm:max-w-[550px]">

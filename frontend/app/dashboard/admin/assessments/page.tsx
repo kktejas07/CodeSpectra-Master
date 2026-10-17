@@ -565,6 +565,7 @@ export default function AdminExamsPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="assessment"
           className="mb-0"
           title="Assessments"
           description="Build tests, invite candidates and review results."
@@ -623,7 +624,7 @@ export default function AdminExamsPage() {
           searchKeys={['title', 'subject', 'level', 'tenant_id']}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No assessments yet. Click 'Add assessment' to create your first test."
+          emptyState={{ illustration: 'assessment' }} emptyMessage="No assessments yet. Click 'Add assessment' to create your first test."
         />
       )}
 

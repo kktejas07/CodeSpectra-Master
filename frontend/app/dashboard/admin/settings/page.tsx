@@ -932,6 +932,7 @@ function SystemSettingsInner() {
   return (
     <div className="w-full space-y-6">
       <PageHeader
+        illustration="settings"
         className="mb-0"
         title="Platform settings"
         description="Manage platform branding, email delivery, payments, and integrations. Environment variables override stored secrets."

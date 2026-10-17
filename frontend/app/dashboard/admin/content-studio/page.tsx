@@ -93,6 +93,7 @@ export default function ContentStudioPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="courses"
         icon={<Zap />}
         title="Content studio"
         description={
@@ -523,7 +524,7 @@ function NewsroomTab() {
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <EmptyState title="No posts yet" description="Select New post or generate a draft above to get started." />
+        <EmptyState illustration="courses" title="No posts yet" description="Select New post or generate a draft above to get started." />
       ) : (
         <div className="space-y-2">
           {items.map((p) => (

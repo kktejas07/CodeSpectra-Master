@@ -524,6 +524,7 @@ export default function AnalyticsPage() {
       <div className="relative isolate">
       <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
       <PageHeader
+        illustration="analytics"
         icon={<BarChart3 />}
         title="Analytics"
         description="Live visitors, page performance, events, funnels, AI usage and revenue in one place."
@@ -726,6 +727,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
         </div>
         <div className="grid items-stretch gap-6 lg:grid-cols-2">
           <EmptyState
+            illustration="analytics"
             title="No traffic in this range yet"
             description="Visitors, top pages, traffic sources and devices appear here as soon as people start using the site. Try a longer date range."
             className="h-full"
@@ -908,6 +910,7 @@ function LiveTab({ sessions, activeNow, expandedSession, onToggleSession }: {
         </div>
         {sessions.length === 0 ? (
           <EmptyState
+            illustration="calendar"
             variant="sessions"
             title="No one is on the site right now"
             description="Sessions appear here as soon as someone visits."
@@ -1160,7 +1163,7 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
             data={filteredEvents}
             pageSize={25}
             loading={loading}
-            emptyMessage="No events found"
+            emptyState={{ illustration: 'analytics' }} emptyMessage="No events found"
             searchPlaceholder="Search events…"
           />
         </div>
@@ -1252,7 +1255,7 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
       )}
 
       {!loading && !result && funnels.length === 0 && (
-        <EmptyState title="No funnels yet" description="Create one to track how people move through a conversion flow." />
+        <EmptyState illustration="analytics" title="No funnels yet" description="Create one to track how people move through a conversion flow." />
       )}
     </div>
   )
@@ -1267,7 +1270,7 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
 
   if (!data || data.cohorts.length === 0) {
     return (
-      <EmptyState title="No retention data yet" description="Cohorts appear here as people sign in and come back." />
+      <EmptyState illustration="analytics" title="No retention data yet" description="Cohorts appear here as people sign in and come back." />
     )
   }
 
@@ -1321,7 +1324,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
 
   if (!data || data.totalRequests === 0) {
     return (
-      <EmptyState title="No AI usage yet" description="Requests, cost and latency appear here once people use AI features." />
+      <EmptyState illustration="ai" title="No AI usage yet" description="Requests, cost and latency appear here once people use AI features." />
     )
   }
 
@@ -1448,7 +1451,7 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
 
   if (!data) {
     return (
-      <EmptyState title="No billing data yet" description="Revenue analytics appear here when people subscribe." />
+      <EmptyState illustration="billing" title="No billing data yet" description="Revenue analytics appear here when people subscribe." />
     )
   }
 
@@ -1598,7 +1601,7 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading flags…
         </div>
       ) : flags.length === 0 ? (
-        <EmptyState title="No feature flags yet" description="Create one to turn features on or off without a deploy." />
+        <EmptyState illustration="settings" title="No feature flags yet" description="Create one to turn features on or off without a deploy." />
       ) : (
         <div className="space-y-2">
           {flags.map((f: any) => (
@@ -1728,6 +1731,7 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
 function ChartEmpty({ title = 'No data yet', description }: { title?: string; description?: string }) {
   return (
     <EmptyState
+      illustration="analytics"
       title={title}
       description={description ?? 'This fills in as activity is recorded in the selected range.'}
       className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base"

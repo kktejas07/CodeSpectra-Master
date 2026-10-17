@@ -193,6 +193,7 @@ export default function AdminResourcesPage() {
   return (
     <div className="w-full space-y-6">
       <PageHeader
+        illustration="courses"
         title="Resources and ebooks"
         description="Short CodeSpectra guides for candidates. A new draft is created every day; review and publish them here."
         icon={<BookOpen />}
@@ -270,7 +271,7 @@ export default function AdminResourcesPage() {
       )}
 
       {items.length === 0 && (
-        <EmptyState variant="courses" title="No ebooks yet" description="Enter a topic above to generate your first one." />
+        <EmptyState illustration="courses" variant="courses" title="No ebooks yet" description="Enter a topic above to generate your first one." />
       )}
 
       <div className="cs-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

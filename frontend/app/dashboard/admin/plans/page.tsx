@@ -118,6 +118,7 @@ export default function PlansPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="billing"
         title={
           <>
             Plans and pricing

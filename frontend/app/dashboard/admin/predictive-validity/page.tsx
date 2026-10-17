@@ -51,6 +51,7 @@ export default function PredictiveValidityPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="analytics"
           title="Predictive validity and adverse impact"
           description="How well assessment scores predict on-the-job results, by discipline and region."
           icon={<BarChart3 />}
@@ -66,7 +67,7 @@ export default function PredictiveValidityPage() {
       {loading ? (
         <SkeletonTable rows={6} />
       ) : (
-        <DataTable columns={columns} data={data} searchKeys={['assessmentName', 'discipline']} loading={loading} emptyMessage="No studies yet. They appear once enough assessment results are linked to hiring outcomes." />
+        <DataTable columns={columns} data={data} searchKeys={['assessmentName', 'discipline']} loading={loading} emptyState={{ illustration: 'analytics' }} emptyMessage="No studies yet. They appear once enough assessment results are linked to hiring outcomes." />
       )}
     </div>
   )

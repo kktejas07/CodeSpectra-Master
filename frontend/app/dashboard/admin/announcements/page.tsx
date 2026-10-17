@@ -111,6 +111,7 @@ export default function AnnouncementsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="notifications"
         title="Announcements"
         description="Send a message to users in the app, by email, push or WhatsApp."
         icon={<Megaphone />}

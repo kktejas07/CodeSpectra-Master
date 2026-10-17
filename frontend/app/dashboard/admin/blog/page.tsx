@@ -198,6 +198,7 @@ export default function AdminBlogPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="inbox"
         title="Newsroom"
         description={
           <>
@@ -355,7 +356,7 @@ export default function AdminBlogPage() {
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <EmptyState title="No posts yet" description="Use New post to write your first article." />
+        <EmptyState illustration="inbox" title="No posts yet" description="Use New post to write your first article." />
       ) : (
         <div className="space-y-2">
           {items.map((p) => (

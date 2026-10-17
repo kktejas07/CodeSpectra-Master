@@ -299,6 +299,7 @@ export default function AiInventoryPage() {
   return (
     <div className="space-y-6" data-testid="ai-inventory-page">
       <PageHeader
+        illustration="ai"
         icon={<ScanLine />}
         title={
           <span className="inline-flex items-center gap-1.5">

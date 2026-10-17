@@ -94,6 +94,7 @@ export default function RagAdminPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="ai"
         title="AI search index"
         description="The content AI features look up before they answer: problems, hackathons and docs."
         icon={<Database />}

@@ -91,6 +91,7 @@ export default function TeamManagement() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="team"
         title={
           <>
             Organization
@@ -131,6 +132,7 @@ export default function TeamManagement() {
         </div>
         {members.length === 0 ? (
           <EmptyState
+            illustration="team"
             title="No members yet"
             description="Add the people who will create and review assessments."
             actionLabel="Add member"

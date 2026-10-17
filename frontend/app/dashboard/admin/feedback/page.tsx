@@ -201,6 +201,7 @@ export default function AdminFeedbackPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="inbox"
         title={
           <>
             Feedback and reports
@@ -247,7 +248,7 @@ export default function AdminFeedbackPage() {
             bulkActions={bulkActions}
             searchPlaceholder="Search feedback, reporter, source..."
             searchKeys={['content', 'user_name', 'user_email', 'source', 'type', 'status']}
-            emptyMessage="No feedback yet. Reports people send from the app will appear here."
+            emptyState={{ illustration: 'inbox' }} emptyMessage="No feedback yet. Reports people send from the app will appear here."
             loading={loading}
           />
 

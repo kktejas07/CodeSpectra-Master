@@ -75,6 +75,7 @@ export default function AdminResumesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="resume"
         title="Resume analysis"
         description="Resumes people have uploaded and the skills found in each one."
         icon={<FileText />}
@@ -96,7 +97,7 @@ export default function AdminResumesPage() {
           searchKeys={['file_name']}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No resumes yet. They appear here when candidates upload one."
+          emptyState={{ illustration: 'resume' }} emptyMessage="No resumes yet. They appear here when candidates upload one."
         />
       )}
     </div>

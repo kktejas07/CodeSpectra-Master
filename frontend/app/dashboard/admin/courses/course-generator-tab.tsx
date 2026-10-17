@@ -671,7 +671,7 @@ export default function CourseGeneratorTab() {
                 </div>
 
                 {jobs.length === 0 ? (
-                  <EmptyState variant="sessions" title="No jobs yet" description="Generate a course and its video job will appear here." className="border-0 bg-transparent py-6 md:py-8" />
+                  <EmptyState illustration="courses" variant="sessions" title="No jobs yet" description="Generate a course and its video job will appear here." className="border-0 bg-transparent py-6 md:py-8" />
                 ) : (
                   <div className="space-y-3">
                     {jobs.map(job => (

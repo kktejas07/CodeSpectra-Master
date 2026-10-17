@@ -253,6 +253,7 @@ export default function CertificatesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="certificate"
         icon={<Award />}
         title="Certificates"
         description="Issue certificates, preview them and check every certificate issued so far."
@@ -310,7 +311,7 @@ export default function CertificatesPage() {
                     {auditSearch ? (
                       <EmptyState variant="search" title="No certificates match your search" description="Try a different name, email or certificate ID." className="border-0 bg-transparent py-6 md:py-8" />
                     ) : (
-                      <EmptyState title="No certificates issued yet" description="Use Issue certificate to create the first one." className="border-0 bg-transparent py-6 md:py-8" />
+                      <EmptyState illustration="certificate" title="No certificates issued yet" description="Use Issue certificate to create the first one." className="border-0 bg-transparent py-6 md:py-8" />
                     )}
                   </td>
                 </tr>

@@ -1,5 +1,6 @@
 'use client'
 
+import { EmptyState } from '@/components/ui/empty-state'
 import React, { useEffect, useState, use } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -321,7 +322,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
   }
 
   if (!course) {
-    return <div className="p-6 text-muted-foreground">Course not found. It may have been deleted — go back to Courses to pick another one.</div>
+    return <EmptyState illustration="not-found" title="Course not found" description="It may have been deleted — go back to Courses to pick another one." actionLabel="All courses" actionHref="/dashboard/admin/courses" className="m-6" />
   }
 
   return (

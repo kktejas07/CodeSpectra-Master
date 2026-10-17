@@ -20,7 +20,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { BentoGrid, StatCard } from '@/components/app/page-kit'
-import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary, Illustration } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
 const emptyCharts: AnalyticsDashboardProps = {
@@ -355,8 +355,8 @@ export default function SystemAdminDashboard() {
           }
           art={
             <div className="flex flex-col items-end gap-3 pr-2">
-              <BannerChip icon={<Server />} label="Server health" sub="Refreshes every 30s" />
-              <BannerChip icon={<Shield />} label="Audit logs" sub="Every admin action" className="mr-10" delay="1.2s" />
+              <Illustration name="settings" inverse className="w-40" />
+              <BannerChip icon={<Server />} label="Server health" sub="Refreshes every 30s" className="mr-10" />
             </div>
           }
         />
@@ -807,6 +807,7 @@ export default function SystemAdminDashboard() {
         ) : (
           webVitals ? (
             <EmptyState
+              illustration="analytics"
               title="No page-speed data yet"
               description="Core Web Vitals appear here once visitors load pages."
             />

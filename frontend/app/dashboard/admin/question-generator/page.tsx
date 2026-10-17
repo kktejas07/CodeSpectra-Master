@@ -60,6 +60,7 @@ export default function QuestionGeneratorPage() {
   return (
     <div className="space-y-6" data-testid="qgen-page">
       <PageHeader
+        illustration="ai"
         title={
           <>
             AI question generator

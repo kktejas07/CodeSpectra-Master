@@ -55,6 +55,7 @@ export default function TeamsManagement() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="team"
         title={
           <>
             Teams
@@ -98,7 +99,7 @@ export default function TeamsManagement() {
       </div>
 
       {safeTeams.length === 0 ? (
-        <EmptyState title="No teams yet" description="Teams created inside an organization will show up here." />
+        <EmptyState illustration="team" title="No teams yet" description="Teams created inside an organization will show up here." />
       ) : (
         <Panel>
           <div className="relative mb-6">

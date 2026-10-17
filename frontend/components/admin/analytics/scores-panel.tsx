@@ -46,6 +46,7 @@ export function ScoresPanel() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="analytics"
         className="mb-0"
         title="Score analytics"
         description="How scores are spread across submitted assessments."
@@ -62,7 +63,7 @@ export function ScoresPanel() {
       <Card className="rounded-3xl border-border/70 p-6">
         <h2 className="text-lg font-semibold text-foreground mb-6">Score distribution</h2>
         {dist.length === 0 ? (
-          <EmptyState title="No scores yet" description="The distribution appears once candidates submit." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+          <EmptyState illustration="analytics" title="No scores yet" description="The distribution appears once candidates submit." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         ) : (
           <div className="space-y-4">
             {dist.map(d => {

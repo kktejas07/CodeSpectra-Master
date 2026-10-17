@@ -17,6 +17,7 @@ export default function SpeedInsightsPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="analytics"
           title="Speed insights"
           description="How fast pages load for real visitors (Core Web Vitals)."
           icon={<Gauge />}

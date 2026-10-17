@@ -105,6 +105,7 @@ export default function AdminSignalsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="inbox"
         title="Signals"
         description={
           <>

@@ -419,6 +419,7 @@ export default function TenantsPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="team"
           className="mb-0"
           title={
             <span className="inline-flex items-center gap-1.5">
@@ -470,6 +471,7 @@ export default function TenantsPage() {
           <EmptyState variant="search" title="No organizations match your search" description="Try a different name or slug." />
         ) : (
           <EmptyState
+            illustration="team"
             title="No organizations yet"
             description="Create one, then add its organization admins."
             actionLabel="New organization"
@@ -680,6 +682,7 @@ export default function TenantsPage() {
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : members.length === 0 ? (
                 <EmptyState
+                  illustration="team"
                   title="No members in this organization yet"
                   description="Use Add member to create one and attach it to this organization."
                   className="border-0 bg-transparent py-6 md:py-8"

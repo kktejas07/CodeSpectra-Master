@@ -204,6 +204,7 @@ export default function AdminProctorPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="proctoring"
         title="Proctoring events"
         description="Everything proctoring recorded during tests, newest first. A flag is evidence for a reviewer, not an automatic fail."
         icon={<Shield />}

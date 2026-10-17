@@ -402,7 +402,7 @@ export default function BulkSchedulePage() {
               searchPlaceholder="Search candidates..."
               searchKeys={['email', 'name', 'company']}
               pageSize={20}
-              emptyMessage="No candidates parsed"
+              emptyState={{ illustration: 'upload' }} emptyMessage="No candidates parsed"
             />
 
             <div className="flex justify-between">

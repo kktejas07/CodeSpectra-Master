@@ -280,6 +280,7 @@ export default function QuestionBankPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="assessment"
           icon={<Database />}
           title="Question bank"
           description={stats ? `${stats.total} engineering questions you can reuse across assessments.` : `${total} questions shown. Reuse them across assessments.`}
@@ -407,6 +408,7 @@ export default function QuestionBankPage() {
               ) : rows.length === 0 ? (
                 <tr><td colSpan={9} className="p-0">
                   <EmptyState
+                    illustration="search"
                     variant="search"
                     title="No questions match these filters"
                     description="Clear a filter, add a question, import a CSV or JSON file, or generate some with AI."

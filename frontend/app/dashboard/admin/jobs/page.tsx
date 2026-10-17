@@ -269,6 +269,7 @@ export default function AdminJobsPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="jobs"
           title="Job postings"
           description="Jobs listed on the public jobs board, and how many people applied."
           icon={<Briefcase />}
@@ -288,6 +289,7 @@ export default function AdminJobsPage() {
 
       {jobs.length === 0 && !loading ? (
         <EmptyState
+          illustration="jobs"
           title="No job postings yet"
           description="Post your first one and it will show on the public jobs page."
           actionLabel="Post a job"
@@ -302,7 +304,7 @@ export default function AdminJobsPage() {
           searchKeys={['title', 'company'] as (keyof JobPosting)[]}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No job postings yet."
+          emptyState={{ illustration: 'jobs' }} emptyMessage="No job postings yet."
           pageSize={20}
         />
       )}

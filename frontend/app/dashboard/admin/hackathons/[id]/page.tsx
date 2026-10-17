@@ -617,6 +617,7 @@ export default function HackathonDetailPage({
 
       {teams.length === 0 ? (
         <EmptyState
+          illustration="team"
           title="No teams have registered yet"
           description={`Share /hackathons/${event.slug} with participants so they can sign up.`}
         />

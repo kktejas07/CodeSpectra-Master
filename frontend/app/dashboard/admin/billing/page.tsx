@@ -69,6 +69,7 @@ export default function AdminBillingPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="billing"
         title="Billing analytics"
         description="Subscriptions, recurring revenue and cancellations across all organizations."
         icon={<DollarSign />}

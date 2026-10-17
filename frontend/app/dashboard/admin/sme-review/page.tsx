@@ -55,6 +55,7 @@ export default function SMEReviewPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="assessment"
         title="Expert review and grading"
         description="Written and design answers waiting for a subject-matter expert to mark."
         icon={<Users />}
@@ -69,7 +70,7 @@ export default function SMEReviewPage() {
       {loading ? (
         <SkeletonTable />
       ) : (
-        <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
+        <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyState={{ illustration: 'assessment' }} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
       )}
     </div>
   )

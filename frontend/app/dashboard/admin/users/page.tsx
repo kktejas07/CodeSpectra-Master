@@ -359,6 +359,7 @@ export default function UsersManagement() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="team"
           icon={<Users />}
           title={
             <span className="inline-flex items-center gap-1.5">

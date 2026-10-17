@@ -77,7 +77,7 @@ export function AnalyticsDashboard({
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <EmptyState title="No sign-ups yet" description="New profiles will show here by month." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+          <EmptyState illustration="team" title="No sign-ups yet" description="New profiles will show here by month." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Card>
 
@@ -109,7 +109,7 @@ export function AnalyticsDashboard({
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyState title="No role distribution yet" description="This fills in as people join with different roles." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="team" title="No role distribution yet" description="This fills in as people join with different roles." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Card>
 
@@ -156,7 +156,7 @@ export function AnalyticsDashboard({
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <EmptyState title="No accepted submissions in this window" description="Accepted solutions are charted here as they come in." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+          <EmptyState illustration="coding" title="No accepted submissions in this window" description="Accepted solutions are charted here as they come in." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Card>
     </div>

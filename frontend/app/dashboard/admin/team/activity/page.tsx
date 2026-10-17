@@ -106,6 +106,7 @@ export default function TeamActivityPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="team"
         title="Team activity"
         description="What your team has been doing over the last 12 weeks."
         icon={<Activity />}
@@ -140,7 +141,7 @@ export default function TeamActivityPage() {
             <h2 className="text-lg font-semibold text-foreground">Top contributors</h2>
           </div>
           {userStats.length === 0 ? (
-            <EmptyState title="No activity yet" description="Contributors appear once members start scanning, reviewing or solving." className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState illustration="team" title="No activity yet" description="Contributors appear once members start scanning, reviewing or solving." className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {userStats.slice(0, 10).map((user, idx) => (

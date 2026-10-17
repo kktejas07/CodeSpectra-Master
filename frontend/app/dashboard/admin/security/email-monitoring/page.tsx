@@ -178,6 +178,7 @@ export default function EmailMonitoring() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="security"
         className="mb-0"
         title="Email monitoring"
         description="Track delivery, bounces, spam complaints and sender reputation across every channel."
@@ -268,7 +269,7 @@ export default function EmailMonitoring() {
                 </table>
               </div>
             ) : (
-              <EmptyState title="No email logs yet" description="Emails appear after the first send." className="border-0 bg-transparent py-6 md:py-8" />
+              <EmptyState illustration="inbox" title="No email logs yet" description="Emails appear after the first send." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
         </TabsContent>
@@ -288,7 +289,7 @@ export default function EmailMonitoring() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -305,7 +306,7 @@ export default function EmailMonitoring() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
           </div>
@@ -322,7 +323,7 @@ export default function EmailMonitoring() {
                 ))}
               </div>
             ) : (
-              <EmptyState title="No failures recorded" description="Failed sends will be listed here." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+              <EmptyState illustration="success" title="No failures recorded" description="Failed sends will be listed here." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
             )}
           </Card>
         </TabsContent>
@@ -343,7 +344,7 @@ export default function EmailMonitoring() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+                <EmptyState illustration="analytics" title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -360,7 +361,7 @@ export default function EmailMonitoring() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyState title="No geo data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
+                <EmptyState illustration="analytics" title="No geo data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
           </div>
@@ -390,7 +391,7 @@ export default function EmailMonitoring() {
                 ))}
               </div>
             ) : (
-              <EmptyState title="No bounces or failures recorded" description="All emails are being delivered." className="border-0 bg-transparent py-6 md:py-8" />
+              <EmptyState illustration="success" title="No bounces or failures recorded" description="All emails are being delivered." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
         </TabsContent>

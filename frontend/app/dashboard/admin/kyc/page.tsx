@@ -167,6 +167,7 @@ export default function AdminKycPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="security"
         title="Identity checks (KYC)"
         description="ID document, liveness and face-match results for people who verified their identity."
         icon={<ShieldCheck />}
@@ -187,7 +188,7 @@ export default function AdminKycPage() {
           <SkeletonTable />
         </div>
       ) : (
-        <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyMessage="No identity checks yet. They appear here when candidates verify their ID." />
+        <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyState={{ illustration: 'security' }} emptyMessage="No identity checks yet. They appear here when candidates verify their ID." />
       )}
 
       {/* Detail Modal — Full Didit-style view */}

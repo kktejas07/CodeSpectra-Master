@@ -63,6 +63,7 @@ export default function AdminSSOPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="integrations"
         title="Single sign-on"
         description="Let organizations sign in through their own identity provider (SAML or OIDC)."
         icon={<Shield />}

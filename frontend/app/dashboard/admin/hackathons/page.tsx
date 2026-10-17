@@ -384,6 +384,7 @@ export default function HackathonsAdminPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="hackathon"
           icon={<Trophy />}
           title="Hackathon events"
           description="Create coding competitions, assign problems, manage teams and release results."
@@ -986,6 +987,7 @@ export default function HackathonsAdminPage() {
         </Panel>
       ) : items.length === 0 ? (
         <EmptyState
+          illustration="hackathon"
           title="No hackathon events yet"
           description="Create an event, assign problems and open registration for teams."
           actionLabel="New event"

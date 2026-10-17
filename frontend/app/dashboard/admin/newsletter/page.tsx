@@ -348,6 +348,7 @@ export default function NewsletterPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="inbox"
         icon={<Megaphone />}
         title="Newsletter"
         description="Write a campaign, preview it, send a test, then send it by email, push, in-app or WhatsApp."

@@ -185,6 +185,7 @@ export default function RolesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="team"
         title={
           <>
             Roles

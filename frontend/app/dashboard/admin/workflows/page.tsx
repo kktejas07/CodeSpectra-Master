@@ -210,6 +210,7 @@ export default function WorkflowsPage() {
   return (
     <div className="space-y-6" data-testid="workflows-page">
       <PageHeader
+        illustration="integrations"
         title={
           <>
             Workflow automation
@@ -277,7 +278,7 @@ export default function WorkflowsPage() {
             </div>
           )}
           {!loading && items.length === 0 && (
-            <EmptyState title="No workflows yet" description="Select New workflow to automate your first task." className="border-0 bg-transparent py-6 md:py-8" />
+            <EmptyState illustration="integrations" title="No workflows yet" description="Select New workflow to automate your first task." className="border-0 bg-transparent py-6 md:py-8" />
           )}
           <ul className="divide-y divide-border/60">
             {items.map((w) => (

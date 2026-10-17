@@ -109,6 +109,7 @@ export default function CdnAdminPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="analytics"
         icon={<Globe2 />}
         title="CDN and edge"
         description="Traffic, cache performance and visitor geography from Cloudflare, plus cache purge and firewall rules."
@@ -411,7 +412,7 @@ export default function CdnAdminPage() {
                   </div>
                 </>
               ) : (
-                <EmptyState title="No traffic recorded yet" description="Data appears once Cloudflare reports requests." className="border-0 bg-transparent py-6 md:py-8" />
+                <EmptyState illustration="analytics" title="No traffic recorded yet" description="Data appears once Cloudflare reports requests." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </div>
           </Panel>

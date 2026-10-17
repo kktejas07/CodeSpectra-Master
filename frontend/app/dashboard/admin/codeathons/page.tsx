@@ -1148,6 +1148,7 @@ export default function AdminCodeathonsPage() {
     <div className="space-y-6">
       {/* Header Banner */}
       <PageHeader
+        illustration="hackathon"
         className="mb-0"
         title="Codeathons"
         description="Write problem sets, share invite links, review submitted code and publish judge scores."
@@ -1188,7 +1189,7 @@ export default function AdminCodeathonsPage() {
           ]}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No codeathons yet. Click 'Create codeathon' to write problems and host your first event."
+          emptyState={{ illustration: 'hackathon' }} emptyMessage="No codeathons yet. Click 'Create codeathon' to write problems and host your first event."
         />
       )}
 
@@ -1355,6 +1356,7 @@ export default function AdminCodeathonsPage() {
               </div>
             ) : submissionsList.length === 0 ? (
               <EmptyState
+                illustration="coding"
                 title="No submissions yet"
                 description="When participants write code and select Submit, their solutions appear here for review."
               />

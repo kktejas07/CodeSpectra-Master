@@ -100,6 +100,7 @@ export default function IntegrationsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="integrations"
         title={
           <>
             Integrations

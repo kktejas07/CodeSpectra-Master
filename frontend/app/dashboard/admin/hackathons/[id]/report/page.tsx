@@ -112,7 +112,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
   }
 
   if (!hackathon) {
-    return <div className="p-8 text-center text-muted-foreground">Hackathon not found. It may have been deleted — go back to all events.</div>
+    return <EmptyState illustration="not-found" title="Hackathon not found" description="It may have been deleted — go back to all events." actionLabel="All events" actionHref="/dashboard/admin/hackathons" className="m-6" />
   }
 
   const totalSuspicion = proctorEvents.reduce((acc, e) => acc + (severityWeight[e.severity] || 0), 0)
@@ -210,7 +210,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
           <Users className="h-4 w-4 text-primary" /> Team breakdown
         </h2>
         {teams.length === 0 ? (
-          <EmptyState title="No teams registered yet" description="Teams appear here once people sign up for the event." className="border-0 bg-transparent py-6 md:py-8" />
+          <EmptyState illustration="team" title="No teams registered yet" description="Teams appear here once people sign up for the event." className="border-0 bg-transparent py-6 md:py-8" />
         ) : (
           <div className="space-y-2">
             {/* Copy before sorting: never mutate React state during render. */}
@@ -324,7 +324,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         {filteredEvents.length === 0 ? (
-          <EmptyState variant="search" title="No proctoring events at this severity" description="Choose All to see every event." className="border-0 bg-transparent py-6 md:py-8" />
+          <EmptyState illustration="proctoring" variant="search" title="No proctoring events at this severity" description="Choose All to see every event." className="border-0 bg-transparent py-6 md:py-8" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

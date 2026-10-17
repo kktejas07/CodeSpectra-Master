@@ -208,6 +208,7 @@ export default function PipelinePage() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader
+        illustration="assessment"
         className="mb-0"
         title="Candidate pipeline"
         description="Track candidates through each stage of an assessment and move them between hiring rounds."
@@ -385,6 +386,7 @@ export default function PipelinePage() {
           {/* Empty state for pipeline */}
           {pipeline.stats.total === 0 && (
             <EmptyState
+              illustration="assessment"
               title="No candidates yet"
               description="Invite candidates or schedule a bulk run from the Assessments page."
               actionLabel="Go to assessments"
