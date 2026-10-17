@@ -19,10 +19,19 @@ const mono = localFont({
   display: 'swap',
 })
 
+// Archivo variable (wght 100–900, wdth 62–125). Self-hosted for the same Docker
+// reason as JetBrains Mono. Used by public marketing + auth pages via `font-archivo`.
+const archivo = localFont({
+  src: '../fonts/archivo-latin-variable.woff2',
+  variable: '--font-archivo',
+  display: 'swap',
+  weight: '100 900',
+})
+
 export const metadata: Metadata = {
-  title: 'CodeSpectra - Master Code Through AI',
+  title: 'Code Spectra — Skills assessments that shortlist for you',
   description:
-    'CodeSpectra: Real-time code analysis, competitive challenges, and AI-powered learning for developers',
+    'Code Spectra runs proctored, auto-scored skills assessments for software, CAD and engineering, QA and aptitude roles, and ranks every candidate so hiring teams review only the strongest.',
   icons: {
     icon: '/icon.svg',
     apple: '/apple-icon.svg',
@@ -40,7 +49,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${mono.variable}`}
+      className={`${mono.variable} ${archivo.variable}`}
     >
       <body
         className="antialiased bg-background text-foreground font-sans"
