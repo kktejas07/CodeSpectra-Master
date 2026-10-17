@@ -102,5 +102,7 @@ function Cards({ variant, compact }: { variant: ShowcaseVariant; compact?: boole
     ],
   }
   const cards = all[variant]
-  return <>{compact ? cards.slice(0, 2) : cards}</>
+  // Compact panels are narrow: keep only the cards that sit clear of the device.
+  const keep = variant === 'candidate' ? [1, 3] : cards.map((_, i) => i).slice(0, 2)
+  return <>{compact ? cards.filter((_, i) => keep.includes(i)) : cards}</>
 }
