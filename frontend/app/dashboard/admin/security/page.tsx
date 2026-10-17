@@ -181,8 +181,11 @@ function SessionRow({ session }: { session: UserSession }) {
   return (
     <>
       <tr
-        className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors"
+        className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary"
+        tabIndex={0}
+        aria-expanded={expanded}
         onClick={() => setExpanded(!expanded)}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded) } }}
       >
         <td className="py-3 px-4">
           <div className="flex items-center gap-2">
@@ -517,7 +520,7 @@ export default function Security() {
                     <XAxis dataKey="hour" tick={{ fontSize: 10 }} interval={3} />
                     <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
                     <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
-                    <Area type="monotone" dataKey="success" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} name="Success" />
+                    <Area type="monotone" dataKey="success" stackId="1" stroke="#16a34a" fill="#16a34a" fillOpacity={0.3} name="Success" />
                     <Area type="monotone" dataKey="failed" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} name="Failed" />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -589,7 +592,7 @@ export default function Security() {
               value={data?.activeSessions?.length ?? 0}
               sub="Last 24h"
               icon={Users}
-              color="bg-violet-600"
+              color="bg-primary"
             />
           </div>
 
@@ -921,7 +924,7 @@ export default function Security() {
                             {fp.is_blocked ? (
                               <Badge variant="destructive" className="text-[10px]">Blocked</Badge>
                             ) : fp.risk ? (
-                              <Badge variant="secondary" className="text-[10px] text-amber-600">Multi-account</Badge>
+                              <Badge variant="secondary" className="text-[10px] text-amber-700 dark:text-amber-400">Multi-account</Badge>
                             ) : (
                               <Badge variant="outline" className="text-[10px] text-green-700 dark:text-green-400">Clean</Badge>
                             )}

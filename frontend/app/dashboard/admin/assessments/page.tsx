@@ -855,8 +855,8 @@ export default function AdminExamsPage() {
               <div className="space-y-2">
                 <Label>Invite link</Label>
                 <div className="flex gap-2">
-                  <Input readOnly value={generatedLink} className="font-mono text-sm" />
-                  <Button variant="secondary" onClick={() => {
+                  <Input readOnly value={generatedLink} aria-label="Invite link" className="font-mono text-sm" />
+                  <Button variant="secondary" aria-label="Copy link" onClick={() => {
                     navigator.clipboard.writeText(generatedLink)
                     addToast({ type: 'success', title: 'Copied!' })
                   }}>
@@ -1056,8 +1056,8 @@ export default function AdminExamsPage() {
               <div className="space-y-2">
                 <Label>New link</Label>
                 <div className="flex gap-2">
-                  <Input readOnly value={linkCreatedUrl} className="font-mono text-sm break-all" />
-                  <Button variant="secondary" onClick={() => {
+                  <Input readOnly value={linkCreatedUrl} aria-label="Assessment link" className="font-mono text-sm break-all" />
+                  <Button variant="secondary" aria-label="Copy link" onClick={() => {
                     navigator.clipboard.writeText(linkCreatedUrl)
                     addToast({ type: 'success', title: 'Copied!' })
                   }}>
@@ -1085,10 +1085,10 @@ export default function AdminExamsPage() {
                         </span>
                         {!l.revoked && (
                           <>
-                            <Button size="sm" variant="ghost" className="h-7 shrink-0" onClick={() => void fetchUsage(linkExam?.id || '', l.id)}>
+                            <Button size="sm" variant="ghost" className="h-7 shrink-0" onClick={() => void fetchUsage(linkExam?.id || '', l.id)} aria-label={usageLinkId === l.id ? 'Hide link usage' : 'Show link usage'}>
                               {usageLinkId === l.id ? <ChevronUp className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                             </Button>
-                            <Button size="sm" variant="ghost" className="h-7 text-destructive shrink-0" onClick={() => handleRevokeLink(l.id)}>
+                            <Button size="sm" variant="ghost" className="h-7 text-destructive shrink-0" onClick={() => handleRevokeLink(l.id)} aria-label="Revoke link">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </>

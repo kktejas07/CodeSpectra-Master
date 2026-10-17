@@ -115,11 +115,11 @@ export default function TeamActivityPage() {
               <Users className="h-4 w-4" aria-hidden />
               <span className="text-sm font-medium tabular-nums">{totalMembers} members</span>
             </Badge>
-            <Link href="/dashboard/admin/team">
-              <Button variant="outline" size="sm" className="gap-1.5" title="Back">
+            <Button variant="outline" size="sm" className="gap-1.5" title="Back" asChild>
+              <Link href="/dashboard/admin/team">
                 <ArrowLeft className="h-4 w-4" aria-hidden /> Back to team
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </>
         }
       />
@@ -192,7 +192,7 @@ export default function TeamActivityPage() {
                 <div key={idx} className="relative pb-4 last:pb-0">
                   <span className={`absolute -left-[21px] top-1 flex h-3 w-3 rounded-full border-2 border-background ${
                     event.type === 'scan' ? 'bg-primary' :
-                    event.type === 'review' ? 'bg-sky-500' :
+                    event.type === 'review' ? 'bg-primary/50' :
                     'bg-muted-foreground'
                   }`} />
                   <p className="font-medium text-foreground text-sm">{event.title}</p>

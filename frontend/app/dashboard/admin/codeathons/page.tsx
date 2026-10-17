@@ -746,7 +746,7 @@ export default function AdminCodeathonsPage() {
                           variant="outline"
                           className={cn(
                             'text-[10px] px-1.5 py-0',
-                            p.difficulty === 'Hard' ? 'border-rose-500/40 text-rose-700 dark:text-rose-400 bg-rose-500/10' :
+                            p.difficulty === 'Hard' ? 'border-red-500/40 text-red-700 dark:text-red-400 bg-red-500/10' :
                             p.difficulty === 'Easy' ? 'border-green-500/40 text-green-700 dark:text-green-400 bg-green-500/10' :
                             'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10'
                           )}
@@ -757,10 +757,10 @@ export default function AdminCodeathonsPage() {
                       </div>
                     </div>
                   </div>
-                  <Button
+                  <Button aria-label="Remove problem"
                     size="sm"
                     variant="ghost"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                     onClick={() => removeProblem(p.id)}
                     title="Remove problem"
                   >
@@ -1015,7 +1015,7 @@ export default function AdminCodeathonsPage() {
             r.status === 'active'
               ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
               : r.status === 'upcoming'
-              ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30'
+              ? 'bg-primary/10 text-primary border-primary/30'
               : 'bg-muted text-muted-foreground border-border'
           }
         >
@@ -1031,7 +1031,7 @@ export default function AdminCodeathonsPage() {
           variant="outline"
           className={
             r.difficulty === 'Hard'
-              ? 'border-rose-500/40 text-rose-700 dark:text-rose-400 bg-rose-500/10'
+              ? 'border-red-500/40 text-red-700 dark:text-red-400 bg-red-500/10'
               : r.difficulty === 'Easy'
               ? 'border-green-500/40 text-green-700 dark:text-green-400 bg-green-500/10'
               : 'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10'
@@ -1045,7 +1045,7 @@ export default function AdminCodeathonsPage() {
       key: 'dates',
       header: 'Dates',
       cell: (r) => (
-        <span className="text-xs text-muted-foreground font-mono">
+        <span className="text-xs text-muted-foreground tabular-nums">
           {r.startDate ? formatDate(r.startDate) : 'N/A'} — {r.endDate ? formatDate(r.endDate) : 'N/A'}
         </span>
       ),
@@ -1054,7 +1054,7 @@ export default function AdminCodeathonsPage() {
       key: 'participants',
       header: 'Participants',
       cell: (r) => (
-        <span className="text-xs font-mono font-medium text-foreground">
+        <span className="text-xs font-medium tabular-nums text-foreground">
           {r.participants || 0}{r.maxParticipants ? ` / ${r.maxParticipants}` : ''}
         </span>
       ),
@@ -1063,7 +1063,7 @@ export default function AdminCodeathonsPage() {
       key: 'problems',
       header: 'Problems',
       cell: (r) => (
-        <Button
+        <Button aria-label="Click to view and manage problems"
           size="sm"
           variant="outline"
           onClick={() => openProblemManager(r)}
@@ -1077,8 +1077,8 @@ export default function AdminCodeathonsPage() {
     },
     {
       key: 'prize',
-      header: 'Prize Pool',
-      cell: (r) => <span className="text-xs font-mono">{r.prizePool || '—'}</span>
+      header: 'Prize pool',
+      cell: (r) => <span className="text-xs">{r.prizePool || '—'}</span>
     },
     {
       key: 'actions',
@@ -1086,7 +1086,7 @@ export default function AdminCodeathonsPage() {
       cell: (r) => (
         <div className="flex items-center gap-1">
           {/* Share & Copy Link Button */}
-          <Button
+          <Button aria-label="Share competition & copy direct link"
             size="sm"
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
@@ -1100,7 +1100,7 @@ export default function AdminCodeathonsPage() {
           </Button>
 
           {/* Submissions & Reviews / Judging Button */}
-          <Button
+          <Button aria-label="Submissions & code reviews / judge scores"
             size="sm"
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
@@ -1124,7 +1124,7 @@ export default function AdminCodeathonsPage() {
           </Button>
 
           {/* Edit Codeathon */}
-          <Button
+          <Button aria-label="Edit settings"
             size="sm"
             variant="ghost"
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
@@ -1368,18 +1368,18 @@ export default function AdminCodeathonsPage() {
                     className="text-xs gap-1.5"
                     onClick={() => setSelectedSubmission(null)}
                   >
-                    ← Back to Submissions List
+                    ← Back to submissions
                   </Button>
 
                   <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="font-mono text-xs uppercase">
+                    <Badge variant="outline" className="font-mono text-xs">
                       {selectedSubmission.language}
                     </Badge>
                     <Badge
                       className={
                         selectedSubmission.status === 'accepted'
                           ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
-                          : 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30'
+                          : 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30'
                       }
                     >
                       {selectedSubmission.status}
@@ -1428,7 +1428,7 @@ export default function AdminCodeathonsPage() {
                       <Copy className="h-3 w-3" /> Copy code
                     </Button>
                   </div>
-                  <pre className="p-4 rounded-xl border border-border/80 bg-slate-950 font-mono text-xs text-emerald-300 overflow-x-auto max-h-64 select-text">
+                  <pre className="p-4 rounded-xl border border-border/80 bg-slate-950 font-mono text-xs text-slate-100 overflow-x-auto max-h-64 select-text">
                     <code>{selectedSubmission.code}</code>
                   </pre>
                 </div>
@@ -1524,7 +1524,7 @@ export default function AdminCodeathonsPage() {
                             <span className="font-semibold text-foreground">{s.problemTitle}</span>
                           </td>
                           <td className="p-3">
-                            <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                            <Badge variant="outline" className="font-mono text-[10px]">
                               {s.language}
                             </Badge>
                           </td>
@@ -1534,7 +1534,7 @@ export default function AdminCodeathonsPage() {
                                 'text-[10px]',
                                 s.status === 'accepted'
                                   ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
-                                  : 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30'
+                                  : 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/30'
                               )}
                             >
                               {s.status === 'accepted' ? 'Accepted' : 'Wrong answer'} ({s.test_cases_passed}/{s.test_cases_total})

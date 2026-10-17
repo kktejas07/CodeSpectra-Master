@@ -185,7 +185,7 @@ export default function CdnAdminPage() {
       {!cfLoading && cfData && !cfData.configured && (
         <Panel className="border-amber-500/30 bg-amber-500/5">
           <div className="flex items-start gap-4">
-            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 shrink-0">
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-400 shrink-0">
               <AlertTriangle className="h-5 w-5" />
             </div>
             <div className="space-y-3 flex-1">

@@ -7,10 +7,10 @@ import { cn } from '@/lib/utils'
 export type EbookCoverTheme = 'violet' | 'teal' | 'amber' | 'rose' | 'slate'
 
 const THEME: Record<EbookCoverTheme, string> = {
-  violet: 'from-violet-700 via-violet-600 to-fuchsia-500',
-  teal: 'from-teal-700 via-teal-600 to-cyan-500',
+  violet: 'from-[#1E3FB0] via-[#2F5BE7] to-[#4A6EF3]',
+  teal: 'from-[#0F1E4D] via-[#1E3A8A] to-[#2F5BE7]',
   amber: 'from-amber-700 via-amber-500 to-orange-400',
-  rose: 'from-rose-700 via-rose-600 to-pink-500',
+  rose: 'from-red-800 via-red-700 to-orange-500',
   slate: 'from-slate-800 via-slate-700 to-slate-500',
 }
 

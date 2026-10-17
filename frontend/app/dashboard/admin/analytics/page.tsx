@@ -1180,7 +1180,7 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Conversion funnels</h2>
+          <h2 className="text-lg font-semibold">Conversion funnels</h2>
           <p className="text-sm text-muted-foreground">Track user progression through multi-step flows</p>
         </div>
         <div className="flex gap-2">
@@ -1276,7 +1276,7 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">User retention</h2>
+        <h2 className="text-lg font-semibold">User retention</h2>
         <p className="text-sm text-muted-foreground">{data.total_users.toLocaleString()} total tracked users · Weekly cohorts</p>
       </div>
 
@@ -1331,7 +1331,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">AI analytics</h2>
+        <h2 className="text-lg font-semibold">AI analytics</h2>
         <p className="text-sm text-muted-foreground">LLM usage, token consumption, and cost tracking</p>
       </div>
 
@@ -1426,7 +1426,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Failed requests</p>
-              <p className="text-2xl font-bold tabular-nums text-red-500">{data.failed}</p>
+              <p className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{data.failed}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Avg. tokens per request</p>
@@ -1458,7 +1458,7 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold">Revenue</h2>
+        <h2 className="text-lg font-semibold">Revenue</h2>
         <p className="text-sm text-muted-foreground">MRR, subscriptions, and payment insights</p>
       </div>
 
@@ -1578,7 +1578,7 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold">Feature flags</h2>
+          <h2 className="text-lg font-semibold">Feature flags</h2>
           <p className="text-sm text-muted-foreground">Turn features on or off without a deploy</p>
         </div>
         <Button size="sm" onClick={onToggleForm}>{showForm ? 'Cancel' : '+ New flag'}</Button>
@@ -1704,7 +1704,7 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
               <Bar dataKey="p75" radius={[4, 4, 0, 0]}>
                 {chartData.map((entry, i) => {
                   const r = vitalRating(entry.name, entry.p75)
-                  return <Cell key={i} fill={r.label === 'Good' ? '#10b981' : r.label === 'Needs work' ? '#f59e0b' : '#ef4444'} />
+                  return <Cell key={i} fill={r.label === 'Good' ? '#16a34a' : r.label === 'Needs work' ? '#f59e0b' : '#ef4444'} />
                 })}
               </Bar>
             </BarChart>

@@ -388,9 +388,9 @@ export default function HackathonsAdminPage() {
           title="Hackathon events"
           description="Create coding competitions, assign problems, manage teams and release results."
           actions={
-            <Link href="/dashboard/admin/hackathons/create" data-testid="hackathon-new-btn">
-              <Button><Plus className="mr-1 h-4 w-4" /> New event</Button>
-            </Link>
+            <Button asChild>
+              <Link href="/dashboard/admin/hackathons/create" data-testid="hackathon-new-btn"><Plus className="mr-1 h-4 w-4" /> New event</Link>
+            </Button>
           }
           className="mb-0"
         />
@@ -732,7 +732,7 @@ export default function HackathonsAdminPage() {
                               </label>
                               {ownTestCases.length > 1 && (
                                 <Button size="sm" variant="ghost" className="h-6 text-destructive"
-                                  onClick={() => setOwnTestCases((t) => t.filter((_, idx) => idx !== i))}>
+                                  onClick={() => setOwnTestCases((t) => t.filter((_, idx) => idx !== i))} aria-label="Remove test case">
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               )}
@@ -1014,12 +1014,12 @@ export default function HackathonsAdminPage() {
                 {formatDateTime(hk.starts_at)} → {formatTime(hk.ends_at)}
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
-                <Link href={`/hackathons/${hk.slug}`}>
-                  <Button variant="outline" size="sm">Open <ExternalLink className="ml-1 h-3 w-3" /></Button>
-                </Link>
-                <Link href={`/dashboard/admin/hackathons/${hk.id}`}>
-                  <Button variant="outline" size="sm">Manage</Button>
-                </Link>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/hackathons/${hk.slug}`}>Open <ExternalLink className="ml-1 h-3 w-3" /></Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/dashboard/admin/hackathons/${hk.id}`}>Manage</Link>
+                </Button>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>

@@ -172,9 +172,9 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
         description="Activity logs, proctoring events and suspicion scores for every team."
         actions={
           <>
-            <Link href={`/dashboard/admin/hackathons/${id}`}>
-              <Button variant="outline" size="sm" className="gap-1.5" title="Back"><ArrowLeft className="h-3.5 w-3.5" /> Back to event</Button>
-            </Link>
+            <Button variant="outline" size="sm" className="gap-1.5" title="Back" asChild>
+              <Link href={`/dashboard/admin/hackathons/${id}`}><ArrowLeft className="h-3.5 w-3.5" /> Back to event</Link>
+            </Button>
             <Button variant="outline" size="sm" className="gap-1.5" onClick={exportCSV}>
               <Download className="h-3.5 w-3.5" /> Export CSV
             </Button>

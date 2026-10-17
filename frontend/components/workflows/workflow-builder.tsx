@@ -64,8 +64,8 @@ const NODE_TYPES = [
 const EDGE_COLOR = '#2f5be7'
 const NODE_COLOR: Record<string, string> = {
   'trigger.manual': '#2f5be7',
-  'http.request': '#0ea5e9',
-  'ai.complete': '#a855f7',
+  'http.request': '#1e40af',
+  'ai.complete': '#6d8cf5',
   'mongo.find': '#f59e0b',
   log: '#94a3b8',
   delay: '#64748b',

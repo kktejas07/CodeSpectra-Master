@@ -726,7 +726,7 @@ export default function TenantsPage() {
                           </TooltipProvider>
                         ) : (
                           <div className="flex items-center gap-1">
-                            <Button
+                            <Button aria-label="Edit email / password"
                               size="sm"
                               variant="ghost"
                               className="h-7 gap-1 px-2 text-xs"
@@ -739,7 +739,7 @@ export default function TenantsPage() {
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
-                            <Button
+                            <Button aria-label="Send password reset email"
                               size="sm"
                               variant="ghost"
                               className="h-7 gap-1 px-2 text-xs"
@@ -809,6 +809,7 @@ export default function TenantsPage() {
                     <button
                       type="button"
                       onClick={() => setShowNewMemberPassword(!showNewMemberPassword)}
+                    aria-label={showNewMemberPassword ? 'Hide password' : 'Show password'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showNewMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -872,6 +873,7 @@ export default function TenantsPage() {
                 <button
                   type="button"
                   onClick={() => setShowEditMemberPassword(!showEditMemberPassword)}
+                    aria-label={showEditMemberPassword ? 'Hide password' : 'Show password'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showEditMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -880,7 +882,7 @@ export default function TenantsPage() {
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="destructive" size="sm" onClick={() => void handleDeleteMember()} disabled={deletingMember}>
+            <Button variant="destructive" size="sm" onClick={() => void handleDeleteMember()} disabled={deletingMember} aria-label="Delete member">
               {deletingMember ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
             </Button>
             <div className="flex-1" />

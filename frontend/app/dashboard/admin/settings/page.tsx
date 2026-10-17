@@ -355,7 +355,7 @@ function EmailTemplatesSection() {
             </div>
             {expanded[tpl.id] && preview && (
               <div className="mt-4 rounded-lg border border-border/40 bg-background overflow-hidden">
-                <div className="border-b border-border/40 bg-muted/20 px-4 py-2 text-xs text-muted-foreground font-mono">
+                <div className="border-b border-border/40 bg-muted/20 px-4 py-2 text-xs text-muted-foreground">
                   Subject: {preview.subject}
                 </div>
                 <div className="p-4 max-h-100 overflow-y-auto">
@@ -1049,7 +1049,7 @@ function SystemSettingsInner() {
                 value={form.timezone || 'UTC'}
                 onValueChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
               >
-                <SelectTrigger id="timezone" className="mt-1.5 h-10 w-full rounded-lg border-border/60 font-mono text-sm">
+                <SelectTrigger id="timezone" className="mt-1.5 h-10 w-full rounded-lg border-border/60 text-sm">
                   <SelectValue placeholder="Select timezone" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1093,7 +1093,7 @@ function SystemSettingsInner() {
                 value={form.platform_currency || 'USD'}
                 onValueChange={(v) => setForm((f) => ({ ...f, platform_currency: v }))}
               >
-                <SelectTrigger id="platform_currency" className="mt-1.5 h-10 w-full rounded-lg border-border/60 font-mono text-sm">
+                <SelectTrigger id="platform_currency" className="mt-1.5 h-10 w-full rounded-lg border-border/60 text-sm">
                   <SelectValue placeholder="Select currency" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1211,7 +1211,7 @@ function SystemSettingsInner() {
                 value={form.video_player_primary_color}
                 onChange={(e) => setForm((f) => ({ ...f, video_player_primary_color: e.target.value }))}
                 className="mt-1.5 h-10 rounded-lg border-border/60 bg-background"
-                placeholder="#34d399"
+                placeholder="#2F5BE7"
               />
             </div>
             <div>
@@ -1472,7 +1472,7 @@ function SystemSettingsInner() {
                       }
                       className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                     />
-                    <button
+                    <button aria-label="Toggle visibility"
                       type="button"
                       tabIndex={-1}
                       onClick={() => handleRevealToggle('postal_api_key')}
@@ -1688,7 +1688,7 @@ function SystemSettingsInner() {
                         <div
                           className={`h-3 w-3 rounded-full ${
                             t.key === 'classic' ? 'bg-amber-600' :
-                            t.key === 'modern' ? 'bg-emerald-500' : 'bg-neutral-800'
+                            t.key === 'modern' ? 'bg-primary' : 'bg-neutral-800'
                           }`}
                         />
                         <span className="text-sm font-medium">{t.label}</span>
@@ -1943,7 +1943,7 @@ function SystemSettingsInner() {
                       data-testid="github-token-input"
                       autoComplete="off"
                     />
-                    <button
+                    <button aria-label="Toggle visibility"
                       type="button"
                       tabIndex={-1}
                       onClick={() => handleRevealToggle('github_app_token')}
@@ -1991,7 +1991,7 @@ function SystemSettingsInner() {
                       className="font-mono pr-10"
                       autoComplete="off"
                     />
-                    <button
+                    <button aria-label="Toggle visibility"
                       type="button"
                       tabIndex={-1}
                       onClick={() => handleRevealToggle('internal_backend_secret')}
@@ -2041,7 +2041,7 @@ function SystemSettingsInner() {
                       data-testid="jev-key-input"
                       autoComplete="off"
                     />
-                    <button
+                    <button aria-label="Toggle visibility"
                       type="button"
                       tabIndex={-1}
                       onClick={() => handleRevealToggle('typesafe_api_key')}
@@ -2119,7 +2119,7 @@ function SystemSettingsInner() {
                           data-testid="github-client-secret-input"
                           autoComplete="off"
                         />
-                        <button
+                        <button aria-label="Toggle visibility"
                           type="button"
                           tabIndex={-1}
                           onClick={() => handleRevealToggle('github_client_secret')}
@@ -2196,7 +2196,7 @@ function SystemSettingsInner() {
                             className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                             autoComplete="off"
                           />
-                          <button
+                          <button aria-label="Toggle visibility"
                             type="button"
                             tabIndex={-1}
                             onClick={() => toggleVisible(key)}
@@ -2286,7 +2286,7 @@ function SystemSettingsInner() {
                         placeholder="rzp_test_xxxxxxxxxxxx"
                         data-testid="rzp-key-id-input"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('razorpay_key_id')}
@@ -2316,7 +2316,7 @@ function SystemSettingsInner() {
                         placeholder="••••••••••••••••••••"
                         data-testid="rzp-key-secret-input"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('razorpay_key_secret')}
@@ -2346,7 +2346,7 @@ function SystemSettingsInner() {
                         placeholder="paste from Razorpay → Webhooks page"
                         data-testid="rzp-webhook-input"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('razorpay_webhook_secret')}
@@ -2411,7 +2411,7 @@ function SystemSettingsInner() {
                         placeholder="Mxxxxxx"
                         data-testid="phonepe-merchant-id-input"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('phonepe_merchant_id')}
@@ -2441,7 +2441,7 @@ function SystemSettingsInner() {
                         placeholder="••••••••••••••••"
                         data-testid="phonepe-salt-key-input"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('phonepe_salt_key')}
@@ -2489,7 +2489,7 @@ function SystemSettingsInner() {
                         placeholder="••••••••••••••••"
                         data-testid="phonepe-webhook-secret-input"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('phonepe_webhook_secret')}
@@ -2539,7 +2539,7 @@ function SystemSettingsInner() {
                         className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                         placeholder="sk_live_… or sk_test_…"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('stripe_secret_key')}
@@ -2568,7 +2568,7 @@ function SystemSettingsInner() {
                         className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                         placeholder="whsec_…"
                       />
-                      <button
+                      <button aria-label="Toggle visibility"
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('stripe_webhook_secret')}

@@ -496,17 +496,17 @@ export default function HackathonDetailPage({
           {judgeSearching && <p className="absolute left-3 -bottom-6 text-xs font-medium text-muted-foreground motion-safe:animate-pulse">Searching...</p>}
         </div>
         <div className="flex flex-wrap gap-3 pt-4 border-t border-border/60">
-          <Link href={`/dashboard/events/${event.id}?tab=judge`}>
-            <Button size="lg" className="h-11 px-6 font-semibold rounded-xl gap-2">
+          <Button size="lg" className="h-11 px-6 font-semibold rounded-xl gap-2" asChild>
+            <Link href={`/dashboard/events/${event.id}?tab=judge`}>
               <Gavel className="h-4 w-4" /> Review submissions
-            </Button>
-          </Link>
-          <Link href={`/dashboard/admin/hackathons/${event.id}/report`}>
-            <Button size="lg" variant="secondary" className="h-11 px-6 font-semibold rounded-xl gap-2">
+            </Link>
+          </Button>
+          <Button size="lg" variant="secondary" className="h-11 px-6 font-semibold rounded-xl gap-2" asChild>
+            <Link href={`/dashboard/admin/hackathons/${event.id}/report`}>
               <FileBarChart className="h-4 w-4" /> Submission report
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </Panel>
 
@@ -675,7 +675,7 @@ export default function HackathonDetailPage({
                             onKeyDown={(e) => e.key === 'Enter' && void addMemberToTeam(t)}
                           />
                           <Button size="sm" className="h-6 text-[10px] px-1.5" onClick={() => addMemberToTeam(t)}>Add</Button>
-                          <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1" onClick={() => setAddingMemberTeamId(null)}>
+                          <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1" onClick={() => setAddingMemberTeamId(null)} aria-label="Cancel adding member">
                             <X className="h-3 w-3" />
                           </Button>
                         </div>
@@ -833,8 +833,8 @@ export default function HackathonDetailPage({
         <div className="absolute top-0 left-0 w-1.5 h-full bg-linear-to-b from-primary to-primary/50" />
         <div className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3">
-            <h2 className="flex items-center gap-2.5 text-xl font-bold text-foreground tracking-tight">
-              <Trophy className="h-6 w-6 text-primary" /> Results
+            <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground tracking-tight">
+              <Trophy className="h-5 w-5 text-primary" /> Results
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed max-w-[70ch]">
               {event.results_released

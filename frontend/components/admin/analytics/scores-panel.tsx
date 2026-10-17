@@ -16,8 +16,8 @@ const BUCKET_COLORS: Record<string, string> = {
   '0-20': '#ef4444',
   '20-40': '#f97316',
   '40-60': '#f59e0b',
-  '60-80': '#3b82f6',
-  '80-100': '#10b981',
+  '60-80': '#2f5be7',
+  '80-100': '#16a34a',
 }
 
 export function ScoresPanel() {

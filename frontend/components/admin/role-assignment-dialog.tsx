@@ -136,7 +136,7 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
               {ROLES.map((role) => {
                 const Icon = role.icon
                 return (
-                  <Card key={role.id} className={`p-4 cursor-pointer border-2 transition-all ${selectedRole === role.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`} onClick={() => setSelectedRole(role.id)}>
+                  <Card key={role.id} className={`p-4 cursor-pointer border-2 transition-all ${selectedRole === role.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`} role="button" tabIndex={0} aria-pressed={selectedRole === role.id} onClick={() => setSelectedRole(role.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedRole(role.id) } }}>
                     <div className="flex items-start gap-4">
                       <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${role.color}`}><Icon className="w-6 h-6" /></div>
                       <div className="flex-1">

@@ -141,10 +141,10 @@ export function UserManagementTable({
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
           <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="All Roles" />
+            <SelectValue placeholder="All roles" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="all">All roles</SelectItem>
             <SelectItem value="superadmin">Superadmin</SelectItem>
             <SelectItem value="tenant_admin">Tenant admin</SelectItem>
             <SelectItem value="user">User</SelectItem>
@@ -152,10 +152,10 @@ export function UserManagementTable({
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-35">
-            <SelectValue placeholder="All Status" />
+            <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
@@ -190,19 +190,19 @@ export function UserManagementTable({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'user'); setSelected(new Set()) }}>
-                  Set as User
+                  Set as user
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'tenant_admin'); setSelected(new Set()) }}>
-                  Set as Org Admin
+                  Set as org admin
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'superadmin'); setSelected(new Set()) }}>
-                  Set as Platform Admin
+                  Set as platform admin
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
           {onBulkDelete && (
-            <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => { onBulkDelete(Array.from(selected)); setSelected(new Set()) }}>
+            <Button variant="outline" size="sm" className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => { onBulkDelete(Array.from(selected)); setSelected(new Set()) }}>
               <Trash2 className="w-3.5 h-3.5 mr-1" />
               Delete
             </Button>
@@ -229,7 +229,7 @@ export function UserManagementTable({
                 <th className="text-left py-3 px-4 font-semibold">Role</th>
                 <th className="text-left py-3 px-4 font-semibold">Status</th>
                 <th className="text-left py-3 px-4 font-semibold">Joined</th>
-                <th className="text-left py-3 px-4 font-semibold">Last Active</th>
+                <th className="text-left py-3 px-4 font-semibold">Last active</th>
                 <th className="text-right py-3 px-4 font-semibold">Actions</th>
               </tr>
             </thead>
@@ -274,7 +274,7 @@ export function UserManagementTable({
                     <td className="py-3 px-4 text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" title="More options">
+                          <Button variant="ghost" size="sm" title="More options" aria-label={`More options for ${user.name || user.email}`}>
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -300,7 +300,7 @@ export function UserManagementTable({
                             className="text-red-600 dark:text-red-400"
                           >
                             <Trash2 className="w-4 h-4 mr-2" />
-                            Delete User
+                            Delete user
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

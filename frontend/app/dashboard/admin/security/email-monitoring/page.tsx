@@ -66,7 +66,7 @@ const CATEGORY_COLORS: Record<EmailCategory, string> = {
   notification: 'info',
 }
 
-const PIE_COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#f97316', '#3b82f6', '#8b5cf6']
+const PIE_COLORS = ['#16a34a', '#ef4444', '#f59e0b', '#f97316', '#2f5be7', '#64748b']
 
 export default function EmailMonitoring() {
   const gate = usePageGuard('superadmin')
@@ -153,7 +153,7 @@ export default function EmailMonitoring() {
 
   // ── Chart data ──
   const statusData = stats ? [
-    { name: 'Delivered', value: stats.delivered, color: '#22c55e' },
+    { name: 'Delivered', value: stats.delivered, color: '#16a34a' },
     { name: 'Bounced', value: stats.bounced, color: '#f59e0b' },
     { name: 'Failed', value: stats.failed, color: '#ef4444' },
     { name: 'Spam', value: stats.spam, color: '#f97316' },
@@ -199,7 +199,7 @@ export default function EmailMonitoring() {
         <StatCard label="Bounced" value={stats?.bounced ?? 0} icon={MailX} color="bg-amber-600" />
         <StatCard label="Failed" value={stats?.failed ?? 0} icon={MailX} color="bg-red-600" />
         <StatCard label="Spam" value={stats?.spam ?? 0} icon={AlertTriangle} color="bg-orange-600" />
-        <StatCard label="Bounce rate" value={`${bounceRate}%`} icon={BarChart3} color="bg-rose-600" sub={stats?.sending ? `${stats.sending} sending` : undefined} />
+        <StatCard label="Bounce rate" value={`${bounceRate}%`} icon={BarChart3} color="bg-red-600" sub={stats?.sending ? `${stats.sending} sending` : undefined} />
       </div>
 
       <Tabs defaultValue="logs" className="w-full">
@@ -418,7 +418,7 @@ function EmailRow({ log }: { log: EmailLog }) {
 
   return (
     <>
-      <tr className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setExpanded(!expanded)}>
+      <tr className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-primary" tabIndex={0} aria-expanded={expanded} onClick={() => setExpanded(!expanded)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpanded(!expanded) } }}>
         <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(time)}</td>
         <td className="py-3 px-4 text-sm font-mono">{log.to_email}</td>
         <td className="py-3 px-4 text-sm max-w-62.5 truncate" title={log.subject}>{log.subject}</td>
@@ -443,7 +443,7 @@ function EmailRow({ log }: { log: EmailLog }) {
               <div><span className="font-medium text-foreground">Sender IP</span><p className="font-mono mt-0.5">{log.sender_ip || '—'}</p></div>
               <div><span className="font-medium text-foreground">Device</span><p className="mt-0.5">{log.device_info ? `${log.device_info.browser.name} ${log.device_info.browser.version} on ${log.device_info.os.name}` : '—'}</p></div>
               {log.delivery_error && (
-                <div className="col-span-3"><span className="font-medium text-red-500">Error</span><p className="font-mono mt-0.5 text-red-600 break-all">{log.delivery_error}</p></div>
+                <div className="col-span-3"><span className="font-medium text-red-600 dark:text-red-400">Error</span><p className="font-mono mt-0.5 text-red-600 dark:text-red-400 break-all">{log.delivery_error}</p></div>
               )}
               <div><span className="font-medium text-foreground">Updated</span><p className="mt-0.5">{log.delivery_updated_at ? formatDateTime(log.delivery_updated_at) : '—'}</p></div>
               <div><span className="font-medium text-foreground">Geo</span><p className="mt-0.5">{log.geo ? `${log.geo.city || ''}, ${log.geo.country || ''}`.trim() || '—' : '—'}</p></div>

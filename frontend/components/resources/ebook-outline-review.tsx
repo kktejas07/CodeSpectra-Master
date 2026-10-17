@@ -71,17 +71,17 @@ export function EbookOutlineReview({ topic, outline: initialOutline, onConfirm, 
 
   const typeColors: Record<string, string> = {
     cover: 'bg-primary/10 text-primary',
-    toc: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+    toc: 'bg-primary/10 text-primary',
     section: 'bg-muted text-muted-foreground',
     infographic: 'bg-orange-500/10 text-orange-700 dark:text-orange-400',
-    code: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-400',
-    quiz: 'bg-pink-500/10 text-pink-700 dark:text-pink-400',
+    code: 'bg-muted text-foreground',
+    quiz: 'bg-primary/10 text-primary',
     timeline: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    callout: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
-    journey: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-400',
+    callout: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    journey: 'bg-primary/10 text-primary',
     tips: 'bg-primary/10 text-primary',
-    compare: 'bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-400',
-    stats: 'bg-sky-500/10 text-sky-700 dark:text-sky-400',
+    compare: 'bg-muted text-foreground',
+    stats: 'bg-primary/10 text-primary',
   }
 
   return (

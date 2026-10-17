@@ -1275,7 +1275,7 @@ export default function ExamReviewPage() {
                           }}
                           placeholder={isSeq ? `Item ${i + 1}` : `Option ${i + 1}`}
                         />
-                        <Button
+                        <Button aria-label="Remove"
                           variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove"
                           onClick={() => {
                             const newOpts = (editingQuestion.options || []).filter((_, j) => j !== i)
@@ -1327,7 +1327,7 @@ export default function ExamReviewPage() {
                       <Input value={p.left} placeholder={`Item ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], left: e.target.value }; setQ({ pairs: next }) }} />
                       <span className="text-muted-foreground">→</span>
                       <Input value={p.right} placeholder={`Match ${i + 1}`} onChange={(e) => { const next = [...(editingQuestion.pairs || [])]; next[i] = { ...next[i], right: e.target.value }; setQ({ pairs: next }) }} />
-                      <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove" onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
+                      <Button aria-label="Remove" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove" onClick={() => setQ({ pairs: (editingQuestion.pairs || []).filter((_, j) => j !== i) })}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1348,7 +1348,7 @@ export default function ExamReviewPage() {
                       {m.columns.map((c, i) => (
                         <div key={i} className="flex items-center gap-1">
                           <Input className="w-32" value={c} onChange={(e) => { const cols = [...m.columns]; cols[i] = e.target.value; setQ({ matrix: { ...m, columns: cols } }) }} />
-                          <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove column" onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
+                          <Button aria-label="Remove column" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove column" onClick={() => setQ({ matrix: { ...m, columns: m.columns.filter((_, j) => j !== i) } })}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
@@ -1367,7 +1367,7 @@ export default function ExamReviewPage() {
                             {m.columns.filter(Boolean).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ matrix: { ...m, rows: m.rows.filter((_, j) => j !== ri) } })}>
+                        <Button aria-label="Remove row" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ matrix: { ...m, rows: m.rows.filter((_, j) => j !== ri) } })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -1389,7 +1389,7 @@ export default function ExamReviewPage() {
                       <div key={ri} className="flex items-center gap-2">
                         <Input value={r} placeholder={`Row ${ri + 1}`} onChange={(e) => { const rows = [...tb.rows]; rows[ri] = e.target.value; setQ({ table: { ...tb, rows } }) }} />
                         <Input value={ans[ri] || ''} placeholder="Correct value" onChange={(e) => { const next = [...ans]; next[ri] = e.target.value; setQ({ answer: next.map(s => s || '').join(', ') }) }} />
-                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
+                        <Button aria-label="Remove row" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove row" onClick={() => setQ({ table: { ...tb, rows: tb.rows.filter((_, j) => j !== ri) } })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>
@@ -1413,7 +1413,7 @@ export default function ExamReviewPage() {
                       {(['x', 'y', 'w', 'h'] as const).map((k) => (
                         <Input key={k} type="number" className="w-20" value={r[k]} title={k} onChange={(e) => { const next = [...(editingQuestion.regions || [])]; next[i] = { ...next[i], [k]: parseFloat(e.target.value) || 0 }; setQ({ regions: next }) }} />
                       ))}
-                      <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove region" onClick={() => setQ({ regions: (editingQuestion.regions || []).filter((_, j) => j !== i) })}>
+                      <Button aria-label="Remove region" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove region" onClick={() => setQ({ regions: (editingQuestion.regions || []).filter((_, j) => j !== i) })}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1482,7 +1482,7 @@ export default function ExamReviewPage() {
                           placeholder={`expected stdout ${i + 1}`}
                           className="font-mono text-xs"
                         />
-                        <Button variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove test case" onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
+                        <Button aria-label="Remove test case" variant="ghost" size="sm" className="h-9 w-9 shrink-0 p-0 text-destructive" title="Remove test case" onClick={() => setQ({ test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}>
                           <X className="h-4 w-4" />
                         </Button>
                       </div>

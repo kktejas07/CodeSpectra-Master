@@ -521,6 +521,7 @@ export default function SystemAdminDashboard() {
                     size="sm"
                     disabled={clearing === 'next'}
                     onClick={() => clearCache('next')}
+                    aria-label="Clear Next.js build cache"
                   >
                     {clearing === 'next' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   </Button>
@@ -535,6 +536,7 @@ export default function SystemAdminDashboard() {
                     size="sm"
                     disabled={clearing === 'secrets'}
                     onClick={() => clearCache('secrets')}
+                    aria-label="Clear server secrets cache"
                   >
                     {clearing === 'secrets' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   </Button>
@@ -549,6 +551,7 @@ export default function SystemAdminDashboard() {
                     size="sm"
                     disabled={clearing === 'piston'}
                     onClick={() => clearCache('piston')}
+                    aria-label="Restart Piston"
                   >
                     {clearing === 'piston' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                   </Button>
@@ -563,6 +566,7 @@ export default function SystemAdminDashboard() {
                     size="sm"
                     disabled={clearing === 'system'}
                     onClick={() => clearCache('system')}
+                    aria-label="Run system cleanup"
                   >
                     {clearing === 'system' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                   </Button>
@@ -577,6 +581,7 @@ export default function SystemAdminDashboard() {
                     size="sm"
                     disabled={clearing === 'docker'}
                     onClick={() => clearCache('docker')}
+                    aria-label="Run Docker system prune"
                   >
                     {clearing === 'docker' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   </Button>
@@ -599,7 +604,7 @@ export default function SystemAdminDashboard() {
                       {redis.connected ? 'Connected' : 'Disconnected'}
                     </Badge>
                   )}
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchRedisStatus}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchRedisStatus} aria-label="Refresh Redis status">
                     <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
                   </Button>
                 </div>

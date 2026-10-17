@@ -390,7 +390,7 @@ export default function BulkSchedulePage() {
             {invalidCount > 0 && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
                 <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                <span className="text-amber-700">
+                <span className="text-amber-700 dark:text-amber-400">
                   {invalidCount} row(s) will be skipped. Invalid rows are highlighted below.
                 </span>
               </div>

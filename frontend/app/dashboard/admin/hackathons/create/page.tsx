@@ -622,7 +622,7 @@ export default function HackathonCreatePage() {
                             </label>
                             {ownTestCases.length > 1 && (
                               <Button size="sm" variant="ghost" className="h-6 text-destructive"
-                                onClick={() => setOwnTestCases((t) => t.filter((_, idx) => idx !== i))}>
+                                onClick={() => setOwnTestCases((t) => t.filter((_, idx) => idx !== i))} aria-label="Remove test case">
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             )}

@@ -31,7 +31,7 @@ export interface AnalyticsDashboardProps {
   }
 }
 
-const COLORS = ['#2F5BE7', '#f97316', '#a855f7']
+const COLORS = ['#2F5BE7', '#f97316', '#64748b']
 
 export function AnalyticsDashboard({
   userGrowth,
@@ -152,7 +152,7 @@ export function AnalyticsDashboard({
                 cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }}
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} itemStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Bar dataKey="accepted" name="Accepted" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="accepted" name="Accepted" fill="#16a34a" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (

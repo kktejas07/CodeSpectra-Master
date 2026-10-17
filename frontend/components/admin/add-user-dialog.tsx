@@ -93,7 +93,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
           <div className="grid gap-4 py-4 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="add-user-email">Email Address</Label>
+                <Label htmlFor="add-user-email">Email address</Label>
                 <Input
                   id="add-user-email"
                   type="email"
@@ -105,7 +105,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="add-user-name">Full Name</Label>
+                <Label htmlFor="add-user-name">Full name</Label>
                 <Input
                   id="add-user-name"
                   value={fullName}
@@ -130,6 +130,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

@@ -339,7 +339,7 @@ export default function PermissionsPage() {
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[9px] shrink-0">{r.resourceType}</Badge>
                         <span className="font-mono text-[11px] text-foreground truncate max-w-70" title={r.resource}>{r.label || r.resource.split('/').pop() || r.resource}</span>
-                        {isNew && <Badge className="text-[9px] bg-amber-500/20 text-amber-600">new</Badge>}
+                        {isNew && <Badge className="text-[9px] bg-amber-500/20 text-amber-700 dark:text-amber-400">new</Badge>}
                       </div>
                     </td>
                     {(['read','create','update','delete','manage'] as PermissionAction[]).map(action => (

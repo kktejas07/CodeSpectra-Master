@@ -70,7 +70,7 @@ interface PipelineData {
 }
 
 const STAGE_CONFIG = [
-  { key: 'invited' as const, label: 'Invited', icon: Mail, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+  { key: 'invited' as const, label: 'Invited', icon: Mail, color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/20' },
   { key: 'inProgress' as const, label: 'In progress', icon: Play, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
   { key: 'completed' as const, label: 'Completed', icon: CheckCircle2, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border' },
   { key: 'passed' as const, label: 'Passed', icon: Trophy, color: 'text-green-700 dark:text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
@@ -80,12 +80,12 @@ const STAGE_CONFIG = [
 /** Drag-and-drop recruitment board columns. 'none' holds everyone not yet moved. */
 const RECRUITMENT_STAGES = [
   { key: 'none', label: 'New / unstaged', color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border' },
-  { key: 'shortlisted', label: 'Shortlisted', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  { key: 'hr', label: 'HR round', color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
-  { key: 'technical', label: 'Technical round', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+  { key: 'shortlisted', label: 'Shortlisted', color: 'text-primary', bg: 'bg-primary/5', border: 'border-primary/20' },
+  { key: 'hr', label: 'HR round', color: 'text-primary', bg: 'bg-primary/10', border: 'border-primary/30' },
+  { key: 'technical', label: 'Technical round', color: 'text-primary', bg: 'bg-primary/15', border: 'border-primary/40' },
   { key: 'offer', label: 'Offer', color: 'text-green-700 dark:text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
   { key: 'hold', label: 'On hold', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  { key: 'rejected', label: 'Rejected', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+  { key: 'rejected', label: 'Rejected', color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/20' },
 ] as const
 
 type RecruitStageKey = (typeof RECRUITMENT_STAGES)[number]['key']

@@ -610,11 +610,11 @@ export default function CourseGeneratorTab() {
                             <Button variant="ghost" size="sm" onClick={() => handleRegenerate(course.id, course.title)} title="Regenerate videos (force)" aria-label="Regenerate videos">
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
-                            <Link href={`/dashboard/courses/${course.id}`}>
-                              <Button variant="ghost" size="sm" title="Open course" aria-label="Open course">
+                            <Button variant="ghost" size="sm" title="Open course" aria-label="Open course" asChild>
+                              <Link href={`/dashboard/courses/${course.id}`}>
                                 <Eye className="h-3.5 w-3.5" />
-                              </Button>
-                            </Link>
+                              </Link>
+                            </Button>
                             <Button variant="ghost" size="sm" onClick={() => handleDeleteCourse(course.id, course.title)} title="Delete course" aria-label="Delete course" className="text-destructive hover:text-destructive">
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -676,7 +676,7 @@ export default function CourseGeneratorTab() {
                   <div className="space-y-3">
                     {jobs.map(job => (
                       <div key={job.id} className="border border-border/60 rounded-2xl overflow-hidden">
-                        <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30" onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}>
+                        <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 focus-visible:outline-2 focus-visible:outline-primary" role="button" tabIndex={0} aria-expanded={expandedJob === job.id} onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedJob(expandedJob === job.id ? null : job.id) } }}>
                           <div className="flex items-center gap-3">
                             <StatusBadge status={job.status} />
                             <div>
