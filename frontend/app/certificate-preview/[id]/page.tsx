@@ -14,12 +14,13 @@ import { Illustration } from '@/components/illustrations/spot'
 
 interface VerifyResponse {
   valid: boolean
+  status?: 'valid' | 'revoked'
   reason?: string
-  candidate?: { name: string }
+  holder?: { name: string }
   certification?: { title: string; level: string; source: string }
-  score?: number
-  score_label?: string
-  issued_at?: string
+  score_band?: string | null
+  issued_at?: string | null
+  issuer?: string
   template?: string
 }
 
@@ -77,7 +78,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
     setLoading(true)
     fetch(`/api/certifications/verify/${encodeURIComponent(id)}`, { cache: 'no-store' })
       .then(async (res) => {
-        const json = (await res.json()) as VerifyResponse
+        const json = (await res.json().catch(() => ({ valid: false, reason: 'error' }))) as VerifyResponse
         if (active) setData(json)
       })
       .catch(() => {
@@ -91,7 +92,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
     }
   }, [id])
 
-  const recipientName = data?.candidate?.name || 'Anonymous candidate'
+  const recipientName = data?.holder?.name || 'Certificate holder'
   const courseName = data?.certification?.title || 'CodeSpectra Assessment'
   const source = data?.certification?.source || 'CodeSpectra'
   const issueDate = formatIssueDate(data?.issued_at || '')
@@ -124,9 +125,15 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
         ) : !data?.valid ? (
           <Card className="max-w-md w-full rounded-3xl p-8 text-center border-destructive/40 bg-destructive/5">
             <Illustration name="not-found" className="mx-auto mb-4 w-40" />
-            <h1 className="text-xl font-bold mb-2">Certificate not found</h1>
+            <h1 className="text-xl font-bold mb-2">
+              {data?.status === 'revoked' ? 'This certificate was revoked' : data?.reason === 'rate-limited' ? 'Too many lookups' : 'Certificate not found'}
+            </h1>
             <p className="text-sm text-muted-foreground">
-              This certificate id is invalid or the certificate has been revoked.
+              {data?.status === 'revoked'
+                ? `${recipientName}'s certificate "${courseName}" is no longer valid.`
+                : data?.reason === 'rate-limited'
+                  ? 'Wait a minute, then reload this page.'
+                  : 'No certificate matches this link. Check that it was copied in full.'}
             </p>
             <code className="text-[11px] block mt-4 text-muted-foreground break-all">{id}</code>
           </Card>
@@ -148,7 +155,9 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
                </div>
                <div>
                  <p className="font-bold text-foreground">{courseName}</p>
-                 <p className="text-muted-foreground text-xs">Issued {issueDate}</p>
+                 <p className="text-muted-foreground text-xs">
+                   Issued {issueDate} by {data.issuer || 'CodeSpectra'}{data.score_band ? ` · ${data.score_band}` : ''}
+                 </p>
                </div>
             </div>
           </div>

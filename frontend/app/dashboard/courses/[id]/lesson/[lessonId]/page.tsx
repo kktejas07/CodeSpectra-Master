@@ -17,8 +17,8 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { resumeSeconds, shouldAutoComplete } from '@/lib/courses/watch-progress'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { QuizComponent, type QuizQuestion } from '@/components/courses/QuizComponent'
-import { quizLessonId, parseQuizLessonId, fallbackModuleQuiz } from '@/lib/courses/module-quiz'
+import { QuizComponent, type QuizQuestion, type QuizGradeResult } from '@/components/courses/QuizComponent'
+import { quizLessonId, parseQuizLessonId } from '@/lib/courses/module-quiz'
 import { stripEmbeddedQuizzes, stripQuizSlides } from '@/lib/courses/strip-embedded-quizzes'
 
 interface Resource {
@@ -188,6 +188,12 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const positionsRef = useRef<Record<string, number>>(cached?.positions ?? {})
   const lessonIdRef = useRef(lessonId)
   lessonIdRef.current = lessonId
+  // Completion is decided by the server from recorded activity; these only pace retries.
+  const lastCompleteTry = useRef(0)
+  const readEndReached = useRef(false)
+  const completingRef = useRef(false)
+  const readEndRef = useRef<HTMLDivElement | null>(null)
+  const completeRef = useRef<((id: string, mode: 'watched' | 'read', position?: number) => Promise<boolean>) | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -219,6 +225,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     lastPos.current = 0
     lastSave.current = 0
+    lastCompleteTry.current = 0
+    readEndReached.current = false
     autoCompleted.current = completedLessons.has(lessonId)
     setStartAt(resumeSeconds(positionsRef.current[lessonId]))
     setViewMode('video')
@@ -262,6 +270,37 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     }
   }, [courseId, lessonId])
 
+  // Reading mode: send an activity heartbeat every 10 s while the tab is visible, and
+  // once the end of the text has been on screen, ask the server to record completion.
+  useEffect(() => {
+    if (viewMode !== 'text' || parseQuizLessonId(lessonId) != null || !course) return
+    let stopped = false
+    const tryComplete = () => {
+      if (!readEndReached.current || Date.now() - lastCompleteTry.current < 10_000) return
+      void completeRef.current?.(lessonId, 'read')
+    }
+    const beat = async () => {
+      if (stopped || document.visibilityState !== 'visible') return
+      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId }),
+      }).catch(() => {})
+      if (!stopped) tryComplete()
+    }
+    void beat()
+    const timer = setInterval(() => { void beat() }, 10_000)
+    let io: IntersectionObserver | null = null
+    const el = readEndRef.current
+    if (el && typeof IntersectionObserver !== 'undefined') {
+      io = new IntersectionObserver((entries) => {
+        if (entries.some(e => e.isIntersecting)) { readEndReached.current = true; tryComplete() }
+      })
+      io.observe(el)
+    }
+    return () => { stopped = true; clearInterval(timer); io?.disconnect() }
+  }, [viewMode, courseId, lessonId, course])
+
   if (!course && (loading || !gate.ready)) {
     return (
       <div className="w-full h-screen flex flex-col bg-background">
@@ -299,11 +338,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const quizSectionIndex = parseQuizLessonId(lessonId)
   const isQuizMode = quizSectionIndex != null
   const quizSection = isQuizMode ? sections[quizSectionIndex] : null
-  const quizQuestions: QuizQuestion[] = quizSection
-    ? (Array.isArray(quizSection.quiz) && quizSection.quiz.length
-        ? quizSection.quiz as QuizQuestion[]
-        : fallbackModuleQuiz(quizSection.title, quizSection.lessons, course.title) as QuizQuestion[])
-    : []
+  // Questions come without answers; the server grades them (quiz-submit).
+  const quizQuestions: QuizQuestion[] = quizSection && Array.isArray(quizSection.quiz) ? quizSection.quiz : []
 
   const allLessons = sections.flatMap(s => s.lessons)
   const activeIndex = allLessons.findIndex(l => l.id === lessonId)
@@ -351,17 +387,43 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const seekToTime = (sec: number) => { setStartAt(sec); setSeekNonce(n => n + 1) }
 
 
-  const markComplete = (id: string) => {
-    setCompletedLessons(prev => new Set([...prev, id]))
-    csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
+  /** Ask the server to record completion; it checks watch/read time it has recorded itself. */
+  const requestCompletion = async (id: string, mode: 'watched' | 'read', position?: number): Promise<boolean> => {
+    if (completingRef.current || completedLessons.has(id)) return completedLessons.has(id)
+    completingRef.current = true
+    lastCompleteTry.current = Date.now()
+    try {
+      const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId: id, mode, ...(position != null ? { position: Math.floor(position) } : {}) }),
+      })
+      const j = await res.json().catch(() => null)
+      if (!res.ok || !j?.completed) return false
+      setCompletedLessons(prev => new Set([...prev, id]))
+      if (lessonShellCache?.courseId === courseId) {
+        lessonShellCache = { ...lessonShellCache, completions: [...new Set([...lessonShellCache.completions, id])] }
+      }
+      addToast({ title: 'Lesson complete', type: 'success' })
+      return true
+    } catch {
+      return false
+    } finally {
+      completingRef.current = false
+    }
+  }
+
+  completeRef.current = requestCompletion
+
+  const gradeQuiz = async (answers: Record<number, number>): Promise<QuizGradeResult> => {
+    const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/quiz-submit`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lessonId: id }),
-    }).catch(() => {})
-    if (lessonShellCache?.courseId === courseId) {
-      lessonShellCache = { ...lessonShellCache, completions: [...new Set([...lessonShellCache.completions, id])] }
-    }
-    addToast({ title: 'Lesson marked as complete!', type: 'success' })
+      body: JSON.stringify({ sectionIndex: quizSectionIndex, answers }),
+    })
+    const j = await res.json().catch(() => null)
+    if (!res.ok || !j?.success) throw new Error(j?.error || 'Could not check your answers. Try again.')
+    return { score: j.score, total: j.total, passed: j.passed, results: j.results }
   }
 
   const savePosition = (t: number, duration: number) => {
@@ -378,9 +440,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
         body: JSON.stringify({ lessonId, position: pos }),
       }).catch(() => {})
     }
-    if (!autoCompleted.current && shouldAutoComplete(t, duration)) {
-      autoCompleted.current = true
-      markComplete(lessonId)
+    // Near the end: ask the server (it also checks recorded watch time). Retry at most every 15 s.
+    if (!autoCompleted.current && shouldAutoComplete(t, duration) && now - lastCompleteTry.current >= 15_000) {
+      void requestCompletion(lessonId, 'watched', t).then(ok => { if (ok) autoCompleted.current = true })
     }
   }
 
@@ -417,11 +479,11 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
             <div className="hidden sm:flex items-center gap-2 text-green-700 dark:text-green-400 font-medium text-sm px-3 py-1.5 bg-green-500/10 rounded-full">
               <CheckCircle className="h-4 w-4" /> Completed
             </div>
-          ) : (
-            <Button size="sm" variant="outline" className="hidden sm:flex h-8 text-xs font-medium" onClick={() => markComplete(activeLesson!.id)}>
-              Mark as Complete
-            </Button>
-          )}
+          ) : !isQuizMode ? (
+            <p className="hidden sm:block text-xs text-muted-foreground">
+              Watch to the end or read to the end to complete
+            </p>
+          ) : null}
 
           {/* Toggle Sidebar on Mobile/Desktop */}
           <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
@@ -504,30 +566,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           ? `Review lesson: ${quizSection.lessons[0].title}`
                           : 'Review module lessons'
                       }
-                      onComplete={async (score, total) => {
+                      grade={gradeQuiz}
+                      onComplete={(score, total) => {
                         const pct = Math.round((score / total) * 100)
                         if (quizSectionIndex == null) return
-                        setQuizScores(prev => ({ ...prev, [quizSectionIndex]: pct }))
-                        try {
-                          await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              quizScores: { ...quizScores, [quizSectionIndex]: pct },
-                              ...(pct >= 80
-                                ? { completedModules: Array.from(new Set([
-                                    ...((await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})))?.completedModules || []),
-                                    quizSectionIndex,
-                                  ])) }
-                                : {}),
-                            }),
-                          })
-                        } catch {}
+                        setQuizScores(prev => ({ ...prev, [quizSectionIndex]: Math.max(prev[quizSectionIndex] ?? 0, pct) }))
                         if (pct >= 80) {
-                          addToast({ title: `Passed! ${pct}% — module unlocked`, type: 'success' })
+                          addToast({ title: `Passed with ${pct}%. Next module unlocked`, type: 'success' })
                           if (quizNextHref) setTimeout(() => router.push(quizNextHref), 800)
                         } else {
-                          addToast({ title: `${pct}% — need 80% to pass. Review and retry.`, type: 'error' })
+                          addToast({ title: `${pct}%: you need 80% to pass. Review and try again.`, type: 'error' })
                         }
                       }}
                     />
@@ -554,7 +602,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         startAt={startAt}
                         captionsSrc={resolveMediaUrl(activeLesson?.captionsUrl)}
                         onProgress={savePosition}
-                        onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
+                        onEnded={() => { if (!isDone) void requestCompletion(activeLesson.id, 'watched', lastPos.current) }}
                         transcriptSlides={activeLesson?.script}
                         lessonDuration={activeLesson?.duration}
                         onSeekTime={seekToTime}
@@ -569,7 +617,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         className="w-full h-full"
                         startAt={startAt}
                         onProgress={savePosition}
-                        onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
+                        onEnded={() => { if (!isDone) void requestCompletion(activeLesson.id, 'watched', lastPos.current) }}
                         transcriptSlides={activeLesson?.script}
                         lessonDuration={activeLesson?.duration}
                         onSeekTime={seekToTime}
@@ -589,6 +637,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           || 'No text content available for this lesson.',
                       )}
                     </ReactMarkdown>
+                    <div ref={readEndRef} aria-hidden className="h-px" />
                   </div>
                 )}
               </div>
@@ -700,12 +749,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                     </Button>
                     <Button 
                       disabled={!nextLesson}
-                      onClick={() => {
-                        if (!isDone) markComplete(activeLesson!.id)
-                        router.push(`/dashboard/courses/${courseId}/lesson/${nextLesson?.id}`)
-                      }}
+                      onClick={() => router.push(`/dashboard/courses/${courseId}/lesson/${nextLesson?.id}`)}
                     >
-                      {isDone ? 'Next lesson' : 'Complete and continue'}
+                      Next lesson
                     </Button>
                   </div>
                 </div>

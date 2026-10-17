@@ -39,6 +39,10 @@ export interface CertificationAttemptDoc {
   score_label?: string
   template?: string
   event_title?: string | null
+  /** One-per-learner key for auto-issued certificates (e.g. `course:<id>:<user>`); unique when set. */
+  issue_key?: string
+  /** Set by an admin to invalidate a certificate; the public verify page then shows "revoked". */
+  revoked_at?: string | null
 }
 
 async function db() {
@@ -59,4 +63,30 @@ export function newAttemptId(): string {
 
 export function nowIsoString(): string {
   return nowIso()
+}
+
+/**
+ * Unique index on `issue_key` (only rows that set it), so course / codeathon
+ * certificates stay one per learner even under concurrent requests.
+ * Idempotent; the build runs once per process.
+ */
+let issuedIndex: Promise<unknown> | null = null
+export function ensureIssuedCertificateIndex(): Promise<unknown> {
+  if (!issuedIndex) {
+    issuedIndex = certificationAttempts()
+      .then((col) =>
+        Promise.all([
+          col.createIndex(
+            { issue_key: 1 },
+            { unique: true, name: 'cert_issue_key_unique', partialFilterExpression: { issue_key: { $exists: true } } },
+          ),
+          col.createIndex({ verify_token: 1 }, { name: 'cert_verify_token' }),
+        ]),
+      )
+      .catch((e) => {
+        issuedIndex = null
+        console.error('[certifications] index build failed', e)
+      })
+  }
+  return issuedIndex
 }

@@ -8,16 +8,19 @@
  * (`/cert/verify/[token]` + `/api/certifications/verify/[token]`).
  * One certificate per user per course (`certification_id: course-<id>`).
  *
- * Completion rule: every lesson in the course is in `lesson_completions`, and
- * every module that has a quiz is in `course_progress.completedModules`.
+ * Completion rule (server records only, see ../../_lib/course-rules.ts): every
+ * lesson has a verified `lesson_completions` row and every module quiz has a
+ * passing, server-graded `quiz_results` row.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import type { Document, Filter } from 'mongodb'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
+import { courseCompletionStatus } from '../../_lib/course-rules'
 import {
   certificationAttempts,
+  ensureIssuedCertificateIndex,
   newAttemptId,
   newAttemptToken,
   nowIsoString,
@@ -84,25 +87,12 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
     const progress = await db.collection('course_progress').findOne({ courseId, userId: user.id })
     if (!progress) return NextResponse.json({ error: 'Enroll in this course first' }, { status: 400 })
 
-    type Section = { lessons?: Array<{ id?: string }>; quiz?: unknown[] }
-    const sections: Section[] = Array.isArray(course.sections) ? course.sections : []
-    const lessonIds = sections.flatMap((s) => (s.lessons || []).map((l) => l.id).filter((x): x is string => !!x))
-    if (lessonIds.length === 0) {
+    // Only server-recorded evidence counts: verified lesson completions + server-graded quiz passes.
+    const status = await courseCompletionStatus(db, course, user.id)
+    if (status.totalLessons === 0) {
       return NextResponse.json({ error: 'This course has no lessons to complete yet' }, { status: 400 })
     }
-
-    const done = new Set(
-      (await db.collection('lesson_completions')
-        .find({ courseId, userId: user.id }, { projection: { lessonId: 1 } })
-        .toArray()).map((c) => String(c.lessonId)),
-    )
-    const lessonsLeft = lessonIds.filter((l) => !done.has(l)).length
-
-    const completedModules: number[] = Array.isArray(progress.completedModules) ? progress.completedModules : []
-    const quizzesLeft = sections.reduce(
-      (n, s, i) => n + (Array.isArray(s.quiz) && s.quiz.length > 0 && !completedModules.includes(i) ? 1 : 0),
-      0,
-    )
+    const { lessonsLeft, quizzesLeft } = status
 
     if (lessonsLeft > 0 || quizzesLeft > 0) {
       const parts = [
@@ -112,12 +102,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
       return NextResponse.json({ error: `Finish ${parts.join(' and ')} to get your certificate` }, { status: 400 })
     }
 
-    const finalExamScore = progress.finalExamScore
-    if (typeof finalExamScore === 'number' && finalExamScore < 80) {
-      return NextResponse.json({ error: `Final exam score ${finalExamScore}%: 80% is needed for the certificate` }, { status: 400 })
-    }
-
-    const quizScores = Object.values(progress.quizScores || {}).filter((v): v is number => typeof v === 'number')
+    const quizScores = status.passedSections.map((i) => status.bestScores[i]).filter((v): v is number => typeof v === 'number')
     const avgQuiz = quizScores.length > 0 ? Math.round(quizScores.reduce((a, b) => a + b, 0) / quizScores.length) : null
 
     const userDoc = await db.collection('user').findOne(
@@ -131,6 +116,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
       id: newAttemptId(),
       user_id: user.id,
       certification_id: certId(courseId),
+      issue_key: `course:${courseId}:${user.id}`,
       verify_token: newAttemptToken(),
       started_at: String(progress.enrolledAt || now),
       submitted_at: now,
@@ -146,12 +132,19 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
     }
 
     // Idempotent under concurrent clicks: insert only if no certificate exists yet.
-    const res = await attempts.updateOne(
-      { user_id: user.id, certification_id: doc.certification_id, passed: true },
-      { $setOnInsert: doc },
-      { upsert: true },
-    )
-    const saved = res.upsertedCount > 0
+    await ensureIssuedCertificateIndex()
+    let inserted = false
+    try {
+      const res = await attempts.updateOne(
+        { user_id: user.id, certification_id: doc.certification_id, passed: true },
+        { $setOnInsert: doc },
+        { upsert: true },
+      )
+      inserted = res.upsertedCount > 0
+    } catch (e) {
+      if ((e as { code?: number })?.code !== 11000) throw e
+    }
+    const saved = inserted
       ? doc
       : await attempts.findOne({ user_id: user.id, certification_id: doc.certification_id, passed: true })
     if (!saved) return NextResponse.json({ error: 'Could not issue the certificate' }, { status: 500 })

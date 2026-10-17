@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { publicCourse } from '@/app/api/user/courses/_lib/course-rules'
 
 // Every course has its own unique, purpose-built thumbnail and full curriculum structure
 const SEED_COURSES = [
@@ -305,8 +306,7 @@ export async function GET(request: NextRequest) {
             ? c.modules.length
             : 0
         return {
-          ...c,
-          _id: undefined,
+          ...publicCourse(c),
           enrolled: enrolledCount || (c.enrolled as number) || 0,
           sessions: Number(c.sessions) || sectionCount || 0,
         }

@@ -19,6 +19,8 @@ interface ProblemData {
   constraints?: string
   test_cases: Array<{ stdin?: string; expected_stdout?: string; is_sample?: boolean }>
   starter_code?: Record<string, string>
+  time_limit_ms?: number
+  memory_limit_kb?: number
 }
 
 interface ChallengeData {
@@ -112,6 +114,8 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
         constraints={constraints}
         inputFormat={inputFormat}
         outputFormat={outputFormat}
+        timeLimitMs={problem?.time_limit_ms ?? null}
+        memoryLimitKb={problem?.memory_limit_kb ?? null}
       />
     </div>
   )

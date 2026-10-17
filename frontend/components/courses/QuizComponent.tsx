@@ -12,8 +12,16 @@ export interface QuizQuestion {
   type: 'mcq' | 'code' | 'true_false'
   question: string
   options: string[]
-  correct: number
-  explanation: string
+  /** Absent when the quiz is graded on the server (answer key never reaches the browser). */
+  correct?: number
+  explanation?: string
+}
+
+export type QuizGradeResult = {
+  score: number
+  total: number
+  passed: boolean
+  results: Array<{ questionIndex: number; userAnswer: number | null; correctAnswer: number; isCorrect: boolean; explanation?: string }>
 }
 
 export type QuizBookmarkContext = {
@@ -33,6 +41,12 @@ interface QuizComponentProps {
   passPercent?: number
   /** When set, each question can be bookmarked (snapshot stored server-side). */
   bookmark?: QuizBookmarkContext
+  /**
+   * Server grading. When set, answers are collected for every question and
+   * submitted at the end; correct answers are only shown from the server's
+   * response. `onComplete` then receives the server's score.
+   */
+  grade?: (answers: Record<number, number>) => Promise<QuizGradeResult>
 }
 
 /**
@@ -47,7 +61,12 @@ export function QuizComponent({
   reviewLabel = 'Review the lesson',
   passPercent = 80,
   bookmark,
+  grade,
 }: QuizComponentProps) {
+  const graded = !!grade
+  const [grading, setGrading] = useState(false)
+  const [gradeError, setGradeError] = useState<string | null>(null)
+  const [graderResult, setGraderResult] = useState<QuizGradeResult | null>(null)
   const [currentQ, setCurrentQ] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
   const [showAnswer, setShowAnswer] = useState(false)
@@ -77,8 +96,8 @@ export function QuizComponent({
     }
   }, [bookmark?.courseId, bookmark?.lessonId])
 
-  async function toggleBookmark(q: QuizQuestion) {
-    if (!bookmark || bookmarkBusy || readOnly) return
+  async function toggleBookmark(q: QuizQuestion, key: { correct?: number; explanation?: string } = q) {
+    if (!bookmark || bookmarkBusy || readOnly || typeof key.correct !== 'number') return
     setBookmarkBusy(true)
     const next = !bookmarkedIds.has(q.id)
     setBookmarkedIds((prev) => {
@@ -98,8 +117,8 @@ export function QuizComponent({
           questionId: q.id,
           question: q.question,
           options: q.options,
-          correct: q.correct,
-          explanation: q.explanation,
+          correct: key.correct,
+          explanation: key.explanation || '',
           href:
             bookmark.href ||
             `/dashboard/courses/${encodeURIComponent(bookmark.courseId)}/lesson/${encodeURIComponent(bookmark.lessonId)}`,
@@ -157,6 +176,36 @@ export function QuizComponent({
     setShowAnswer(false)
   }
 
+  const submitForGrading = async (all: Record<number, number>) => {
+    if (!grade) return
+    setGrading(true)
+    setGradeError(null)
+    try {
+      const r = await grade(all)
+      setGraderResult(r)
+      setCompleted(true)
+      const correctCount = r.results.filter((x) => x.isCorrect).length
+      onComplete?.(correctCount, r.total || questions.length)
+    } catch (e) {
+      setGradeError(e instanceof Error ? e.message : 'Could not submit your answers. Try again.')
+    } finally {
+      setGrading(false)
+    }
+  }
+
+  /** Server-graded mode: lock this answer in and move on (no answer reveal until the end). */
+  const handleGradedNext = () => {
+    if (selected === null) return
+    const all = { ...answers, [currentQ]: selected }
+    setAnswers(all)
+    if (currentQ < questions.length - 1) {
+      setCurrentQ(currentQ + 1)
+      setSelected(all[currentQ + 1] ?? null)
+    } else {
+      void submitForGrading(all)
+    }
+  }
+
   const handleNext = () => {
     if (currentQ < questions.length - 1) {
       setCurrentQ(currentQ + 1)
@@ -169,6 +218,8 @@ export function QuizComponent({
   }
 
   const handleRetryAll = () => {
+    setGraderResult(null)
+    setGradeError(null)
     setCurrentQ(0)
     setSelected(null)
     setShowAnswer(false)
@@ -181,11 +232,18 @@ export function QuizComponent({
   }
 
   if (completed) {
-    const percentage = Math.round((score / questions.length) * 100)
-    const passed = percentage >= passPercent
+    const keyFor = (i: number) => {
+      const r = graderResult?.results.find((x) => x.questionIndex === i)
+      return r
+        ? { correct: r.correctAnswer, explanation: r.explanation || questions[i]?.explanation || '' }
+        : { correct: questions[i]?.correct, explanation: questions[i]?.explanation || '' }
+    }
+    const finalScore = graderResult ? graderResult.results.filter((x) => x.isCorrect).length : score
+    const percentage = graderResult ? graderResult.score : Math.round((score / questions.length) * 100)
+    const passed = graderResult ? graderResult.passed : percentage >= passPercent
     const missed = questions
-      .map((q, i) => ({ q, i, picked: answers[i] }))
-      .filter(({ q, picked }) => picked !== q.correct)
+      .map((q, i) => ({ q, i, picked: answers[i], key: keyFor(i) }))
+      .filter(({ picked, key }) => picked !== key.correct)
 
     return (
       <div className="p-6 space-y-5">
@@ -197,7 +255,7 @@ export function QuizComponent({
             {passed ? 'Passed' : 'Not yet'}
           </div>
           <h3 className="text-2xl font-bold">
-            {score} / {questions.length} · {percentage}%
+            {finalScore} / {questions.length} · {percentage}%
           </h3>
           <p className="text-muted-foreground text-sm">
             {passed
@@ -212,16 +270,31 @@ export function QuizComponent({
               <Lightbulb className="h-4 w-4" />
               Concepts to review
             </div>
-            {missed.map(({ q, i, picked }) => (
+            {missed.map(({ q, i, picked, key }) => (
               <div key={q.id || i} className="text-sm border-t border-border/40 pt-3 first:border-0 first:pt-0">
-                <p className="font-medium text-foreground">{q.question}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="font-medium text-foreground">{q.question}</p>
+                  {bookmark && graded && typeof key.correct === 'number' ? (
+                    <Button
+                      aria-label={bookmarkedIds.has(q.id) ? 'Remove bookmark' : 'Bookmark question'}
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 px-2 shrink-0"
+                      disabled={bookmarkBusy}
+                      onClick={() => void toggleBookmark(q, key)}
+                    >
+                      <Bookmark className={`h-4 w-4 ${bookmarkedIds.has(q.id) ? 'fill-amber-400 text-amber-400' : ''}`} />
+                    </Button>
+                  ) : null}
+                </div>
                 <p className="text-red-600 dark:text-red-400 mt-1">
                   Your answer: {typeof picked === 'number' ? q.options[picked] : '—'}
                 </p>
                 <p className="text-green-700 dark:text-green-400 mt-0.5">
-                  Correct: {q.options[q.correct]}
+                  Correct: {typeof key.correct === 'number' ? q.options[key.correct] : '—'}
                 </p>
-                <p className="text-muted-foreground mt-1">{q.explanation}</p>
+                {key.explanation ? <p className="text-muted-foreground mt-1">{key.explanation}</p> : null}
               </div>
             ))}
             {reviewHref && (
@@ -247,7 +320,7 @@ export function QuizComponent({
 
   if (!question) return null
 
-  const correctLabel = question.options[question.correct]
+  const correctLabel = typeof question.correct === 'number' ? question.options[question.correct] : ''
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
@@ -256,7 +329,7 @@ export function QuizComponent({
           Question {currentQ + 1} of {questions.length}
         </Badge>
         <div className="flex items-center gap-2">
-          {bookmark ? (
+          {bookmark && !graded ? (
             <Button
               aria-label={bookmarkedIds.has(question.id) ? 'Remove bookmark' : 'Bookmark question'}
               type="button"
@@ -278,9 +351,11 @@ export function QuizComponent({
                 key={i}
                 className={`h-2 w-2 rounded-full ${
                   i < currentQ
-                    ? answers[i] === questions[i].correct
-                      ? 'bg-green-500'
-                      : 'bg-red-500'
+                    ? graded
+                      ? 'bg-primary/60'
+                      : answers[i] === questions[i].correct
+                        ? 'bg-green-500'
+                        : 'bg-red-500'
                     : i === currentQ
                       ? 'bg-primary'
                       : 'bg-muted'
@@ -292,7 +367,11 @@ export function QuizComponent({
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Choose an answer, then press <span className="font-medium text-foreground">Check answer</span>.
+        {graded ? (
+          <>Choose an answer for each question. Your answers are checked when you press <span className="font-medium text-foreground">Submit answers</span>.</>
+        ) : (
+          <>Choose an answer, then press <span className="font-medium text-foreground">Check answer</span>.</>
+        )}
       </p>
 
       <div className="text-lg font-medium leading-snug">{question.question}</div>
@@ -380,8 +459,32 @@ export function QuizComponent({
         </div>
       )}
 
+      {gradeError && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">{gradeError}</p>
+      )}
+
       <div className="flex justify-end gap-2 flex-wrap">
-        {!showAnswer ? (
+        {graded ? (
+          <>
+            {currentQ > 0 && (
+              <Button
+                variant="outline"
+                disabled={grading}
+                onClick={() => {
+                  const all = selected === null ? answers : { ...answers, [currentQ]: selected }
+                  setAnswers(all)
+                  setCurrentQ(currentQ - 1)
+                  setSelected(all[currentQ - 1] ?? null)
+                }}
+              >
+                Previous question
+              </Button>
+            )}
+            <Button onClick={handleGradedNext} disabled={selected === null || readOnly || grading}>
+              {currentQ < questions.length - 1 ? 'Next question' : grading ? 'Checking…' : 'Submit answers'}
+            </Button>
+          </>
+        ) : !showAnswer ? (
           <Button onClick={handleSubmit} disabled={selected === null || readOnly}>
             Check answer
           </Button>

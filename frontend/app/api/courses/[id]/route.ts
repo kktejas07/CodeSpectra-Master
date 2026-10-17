@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { publicCourse } from '@/app/api/user/courses/_lib/course-rules'
 
 export async function GET(
   request: NextRequest,
@@ -22,7 +23,8 @@ export async function GET(
       userId: gate.user.id,
     })) > 0
 
-    return NextResponse.json({ data: { ...course, _id: undefined, enrolled, userEnrolled } })
+    // Quiz answer keys stay on the server; quizzes are graded by /api/user/courses/[id]/quiz-submit.
+    return NextResponse.json({ data: { ...publicCourse(course), enrolled, userEnrolled } })
   } catch (e) {
     console.error('[courses/[id]]', e)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })

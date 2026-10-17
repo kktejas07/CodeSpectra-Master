@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 import { StatCard } from '@/components/app/page-kit'
 import { Player } from '@remotion/player'
 import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
-import { QuizComponent, type QuizQuestion } from '@/components/courses/QuizComponent'
+import { QuizComponent, type QuizQuestion, type QuizGradeResult } from '@/components/courses/QuizComponent'
 
 interface Resource {
   title?: string
@@ -174,28 +174,23 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     .finally(() => setLoading(false))
   }, [courseId])
 
-  // Save progress
-  const saveProgress = async (updates: Partial<Progress>) => {
-    if (!enrolled) return
-    try {
-      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
-      })
-    } catch {}
-  }
-
-  const markComplete = async (lessonId: string) => {
-    const newCompleted = new Set([...completedLessons, lessonId])
-    setCompletedLessons(newCompleted)
-    try {
-      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId }),
-      })
-    } catch {}
+  // Module quizzes are graded on the server; the response says what was right.
+  const gradeQuiz = (sectionIndex: number) => async (answers: Record<number, number>): Promise<QuizGradeResult> => {
+    const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/quiz-submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sectionIndex, answers }),
+    })
+    const j = await res.json().catch(() => null)
+    if (!res.ok || !j?.success) throw new Error(j?.error || 'Could not check your answers. Try again.')
+    if (j.passed) {
+      setProgress(prev => ({
+        ...(prev || { completedModules: [], quizScores: {}, currentModule: 0, skippedToFinal: false }),
+        completedModules: Array.from(new Set([...(prev?.completedModules || []), sectionIndex])),
+        quizScores: { ...(prev?.quizScores || {}), [sectionIndex]: Math.max(prev?.quizScores?.[sectionIndex] ?? 0, j.score) },
+      }))
+    }
+    return { score: j.score, total: j.total, passed: j.passed, results: j.results }
   }
 
   // Issue (or fetch the existing) certificate; verified via /cert/verify/[token].
@@ -809,17 +804,11 @@ const handleEnroll = async () => {
                                     ? `Review: ${section.lessons[0].title}`
                                     : 'Review module lessons'
                                 }
+                                grade={gradeQuiz(sIdx)}
                                 onComplete={(score, total) => {
-                                  if (score >= total * 0.8) {
-                                    addToast({ type: 'success', title: `Passed! ${Math.round(score/total*100)}%` })
-                                    saveProgress({
-                                      completedModules: [...(progress?.completedModules || []), sIdx],
-                                      quizScores: { ...(progress?.quizScores || {}), [sIdx]: Math.round(score/total*100) },
-                                    })
-                                  } else {
-                                    addToast({ type: 'error', title: `Not yet — ${Math.round(score/total*100)}% (need 80%)` })
-                                  }
-                                  setShowQuiz(null)
+                                  const pct = Math.round((score / total) * 100)
+                                  if (pct >= 80) addToast({ type: 'success', title: `Passed with ${pct}%` })
+                                  else addToast({ type: 'error', title: `Not yet: ${pct}% (you need 80%)` })
                                 }}
                               />
                             )}

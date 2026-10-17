@@ -2,31 +2,31 @@
 import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, useSearchParams, useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { useParams, useSearchParams } from 'next/navigation'
 import QRCode from 'qrcode'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Award, Printer, Download, Sparkles, LogIn, Code2 } from 'lucide-react'
+import { Award, Printer, ShieldAlert } from 'lucide-react'
 import {
   CertificateRenderer,
   TEMPLATES,
   type CertificateData,
   type TemplateKey,
 } from '@/components/cert/CertificateTemplates'
-import { usePageGuard } from '@/lib/use-page-guard'
-import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { SoftGlow } from '@/components/visuals'
 import { Illustration } from '@/components/illustrations/spot'
 
 interface VerifyResponse {
   valid: boolean
+  status?: 'valid' | 'revoked'
   reason?: string
-  candidate?: { name: string }
+  holder?: { name: string }
   certification?: { title: string; level: string; source: string }
-  score?: number
-  score_label?: string
-  issued_at?: string
+  score_band?: string | null
+  issued_at?: string | null
+  revoked_at?: string | null
+  issuer?: string
   template?: string
 }
 
@@ -43,9 +43,7 @@ interface VerifyResponse {
  */
 export default function CertVerifyPage() {
   const { token } = useParams() as { token: string }
-  const gate = usePageGuard('user')
   const search = useSearchParams()
-  const router = useRouter()
   const initialTemplate = (search.get('template') as TemplateKey) || 'classic'
 
   const [data, setData] = useState<VerifyResponse | null>(null)
@@ -64,7 +62,7 @@ export default function CertVerifyPage() {
     let active = true
     fetch(`/api/certifications/verify/${token}`)
       .then(async (res) => {
-        const json = (await res.json()) as VerifyResponse
+        const json = (await res.json().catch(() => ({ valid: false, reason: 'error' }))) as VerifyResponse
         if (active) {
           setData(json)
           if (json.template) {
@@ -92,41 +90,6 @@ export default function CertVerifyPage() {
       .catch(() => setQrDataUrl(''))
   }, [verifyUrl])
 
-  if (!gate.ready) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-muted-foreground">
-        <div className="flex items-center gap-2">
-          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          Verifying…
-        </div>
-      </main>
-    )
-  }
-
-  if (!gate.allowed) {
-    return (
-      <main className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-background p-6 xl:gap-16">
-        <SoftGlow />
-        <DeviceShowcase variant="certificate" compact className="mx-0 hidden max-w-[420px] lg:block" />
-        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
-          <Illustration name="certificate" className="mx-auto mb-4 w-32" />
-          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
-          <p className="text-sm text-muted-foreground mb-6">
-            Please sign in to verify certificates.
-          </p>
-          <div className="flex flex-col gap-2">
-            <Button className="w-full gap-2" asChild>
-              <Link href={`/auth/login?redirect=${encodeURIComponent(`/cert/verify/${token}`)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
-            </Button>
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/auth/signup">Create account</Link>
-            </Button>
-          </div>
-        </Card>
-      </main>
-    )
-  }
-
   if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6 text-muted-foreground" data-testid="cert-verify-loading">
@@ -135,15 +98,46 @@ export default function CertVerifyPage() {
     )
   }
 
+  if (data?.status === 'revoked') {
+    return (
+      <main className="relative isolate min-h-screen flex items-center justify-center p-6" data-testid="cert-verify-revoked">
+        <SoftGlow />
+        <Card className="max-w-md w-full p-8 border-destructive/40 bg-destructive/5">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10 text-destructive">
+              <ShieldAlert className="w-5 h-5" aria-hidden />
+            </span>
+            <div>
+              <Badge variant="outline" className="border-destructive/40 text-destructive mb-1">Revoked</Badge>
+              <h1 className="text-xl font-bold leading-tight">This certificate is no longer valid</h1>
+            </div>
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Holder</dt><dd className="font-medium">{data.holder?.name}</dd>
+            <dt className="text-muted-foreground">Certificate</dt><dd className="font-medium">{data.certification?.title}</dd>
+            {data.issued_at && (<><dt className="text-muted-foreground">Issued</dt><dd>{formatDate(data.issued_at)}</dd></>)}
+            {data.revoked_at && (<><dt className="text-muted-foreground">Revoked</dt><dd>{formatDate(data.revoked_at)}</dd></>)}
+            <dt className="text-muted-foreground">Issuer</dt><dd>{data.issuer || 'CodeSpectra'}</dd>
+          </dl>
+        </Card>
+      </main>
+    )
+  }
+
   if (!data?.valid) {
+    const rateLimited = data?.reason === 'rate-limited'
     return (
       <main className="relative isolate min-h-screen flex items-center justify-center p-6" data-testid="cert-verify-invalid">
         <SoftGlow />
         <Card className="max-w-md w-full p-8 text-center border-destructive/40 bg-destructive/5">
           <Illustration name="not-found" className="mx-auto mb-4 w-40" />
-          <h1 className="text-xl font-bold mb-2">Certificate not found</h1>
+          <h1 className="text-xl font-bold mb-2">{rateLimited ? 'Too many lookups' : 'Certificate not found'}</h1>
           <p className="text-sm text-muted-foreground">
-            This token is invalid or the certificate has been revoked.
+            {rateLimited
+              ? 'Wait a minute, then reload this page to check the certificate.'
+              : data?.reason === 'network' || data?.reason === 'error'
+                ? 'We could not check this certificate right now. Reload the page to try again.'
+                : 'No certificate matches this link. Check that the link was copied in full.'}
           </p>
           <code className="text-[11px] block mt-4 text-muted-foreground break-all">{token}</code>
         </Card>
@@ -152,13 +146,14 @@ export default function CertVerifyPage() {
   }
 
   const certData: CertificateData = {
-    candidateName: data.candidate?.name || 'Anonymous Candidate',
-    certificationTitle: data.certification?.title || 'CodeSpectra Assessment',
-    level: data.certification?.level || 'Basic',
-    source: data.certification?.source || 'Open-source curriculum',
-    score: data.score ?? 0,
-    scoreLabel: data.score_label,
-    issuedAt: data.issued_at || new Date().toISOString(),
+    candidateName: data.holder?.name || 'Certificate holder',
+    certificationTitle: data.certification?.title || 'CodeSpectra certificate',
+    level: data.certification?.level || 'Certified',
+    source: data.certification?.source || data.issuer || 'CodeSpectra',
+    score: 0,
+    // Verifiers see a band, never the exact score.
+    scoreLabel: data.score_band || 'Completed',
+    issuedAt: data.issued_at || '',
     verifyUrl,
     verifyToken: token,
     qrDataUrl,
@@ -174,15 +169,17 @@ export default function CertVerifyPage() {
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Award className="w-5 h-5" /></span>
             <div>
               <Badge variant="outline" className="border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400 mb-1">
-                Verified by CodeSpectra
+                Valid · issued by {data.issuer || 'CodeSpectra'}
               </Badge>
               <h1 className="text-2xl font-bold tracking-tight leading-tight text-foreground" data-testid="cert-verify-title">
                 {certData.certificationTitle}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Awarded to <span className="font-semibold text-foreground" data-testid="cert-verify-name">{certData.candidateName}</span> · score{' '}
-                <span className="font-semibold tabular-nums text-foreground" data-testid="cert-verify-score">{certData.score}%</span> · issued{' '}
-                {formatDate(certData.issuedAt)}
+                Awarded to <span className="font-semibold text-foreground" data-testid="cert-verify-name">{certData.candidateName}</span>
+                {data.score_band ? (
+                  <> · <span className="font-semibold text-foreground" data-testid="cert-verify-score">{data.score_band}</span></>
+                ) : null}
+                {data.issued_at ? <> · issued {formatDate(data.issued_at)}</> : null}
               </p>
             </div>
           </div>

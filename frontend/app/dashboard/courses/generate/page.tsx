@@ -18,7 +18,6 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { COURSE_LEVELS, INDUSTRIES, subjectsForIndustry, estimateCourse } from '@/lib/courses/syllabus'
 
 const LEVELS = [...COURSE_LEVELS]
-const DURATIONS = [2, 5, 12, 20]
 
 export default function GenerateCoursePage() {
   const gate = usePageGuard('user')
@@ -29,11 +28,13 @@ export default function GenerateCoursePage() {
   const [industry, setIndustry] = useState<(typeof INDUSTRIES)[number]['id']>('software')
   const [technology, setTechnology] = useState('')
   const [level, setLevel] = useState('')
-  const [duration, setDuration] = useState(12)
   const [goal, setGoal] = useState('')
   const industrySubjects = subjectsForIndustry(industry)
   const subjectNames = industrySubjects.map(s => s.name)
   const preview = technology ? estimateCourse(technology, level || 'Beginner') : null
+  // ponytail: length comes from the catalog syllabus for topic + level (courses are shared per
+  // topic/level), so there is no duration picker — we show the real estimate instead.
+  const levelPreview = technology && level ? estimateCourse(technology, level) : null
   
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -227,7 +228,7 @@ export default function GenerateCoursePage() {
                   </Button>
                 </div>
 
-                {/* Step 2: Level & Duration */}
+                {/* Step 2: Level */}
                 <div className={`transition-all duration-500 ${step === 2 ? 'opacity-100 translate-x-0' : 'opacity-0 absolute translate-x-full pointer-events-none'}`}>
                   <h2 className="text-2xl font-bold mb-6">Customize the experience</h2>
                   
@@ -247,20 +248,12 @@ export default function GenerateCoursePage() {
                       </div>
                     </div>
 
-                    <div>
-                      <Label className="mb-3 block text-base">Course duration (hours)</Label>
-                      <div className="grid grid-cols-4 gap-3">
-                        {DURATIONS.map(d => (
-                          <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={duration === d} 
-                            key={d}
-                            onClick={() => setDuration(d)}
-                            className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all ${duration === d ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
-                          >
-                            <span className="font-medium text-lg">{d}h</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    {levelPreview && (
+                      <p className="text-sm text-muted-foreground" aria-live="polite">
+                        Estimated length: <strong className="text-foreground tabular-nums">~{levelPreview.estimatedHours}h</strong>
+                        {' '}across {levelPreview.moduleCount} modules. The length is set by the syllabus for this topic and level.
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-4">
@@ -290,6 +283,9 @@ export default function GenerateCoursePage() {
                       <ul className="text-sm space-y-2 text-muted-foreground">
                         <li>• Topic: <strong className="text-foreground">{technology}</strong></li>
                         <li>• Level: <strong className="text-foreground">{level}</strong></li>
+                        {levelPreview && (
+                          <li>• Length: <strong className="text-foreground tabular-nums">~{levelPreview.estimatedHours}h</strong></li>
+                        )}
                         <li>• Cost: <strong className="text-amber-500">10 credits</strong></li>
                       </ul>
                     </div>
@@ -362,7 +358,7 @@ export default function GenerateCoursePage() {
             </div>
             
             <h2 className="text-3xl font-bold mb-4 text-foreground">
-              Generating your {duration}-hour course…
+              Generating your course…
             </h2>
             
             <p className="text-xl text-muted-foreground mb-8 min-h-7.5 transition-all">

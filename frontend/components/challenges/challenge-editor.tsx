@@ -55,7 +55,18 @@ interface ChallengeEditorProps {
   constraints?: string
   inputFormat?: string
   outputFormat?: string
+  /** Real limits from the problem; the line is hidden when a limit isn't set. */
+  timeLimitMs?: number | null
+  memoryLimitKb?: number | null
   onSubmitSuccess?: (result: any) => void
+}
+
+function formatTimeLimit(ms: number): string {
+  return ms % 1000 === 0 ? `${ms / 1000} second${ms === 1000 ? '' : 's'}` : `${ms} ms`
+}
+
+function formatMemoryLimit(kb: number): string {
+  return kb >= 1024 && kb % 1024 === 0 ? `${kb / 1024} MB` : `${kb} KB`
 }
 
 const LANGUAGES = [
@@ -184,8 +195,12 @@ export function ChallengeEditor({
   constraints,
   inputFormat,
   outputFormat,
+  timeLimitMs,
+  memoryLimitKb,
   onSubmitSuccess,
 }: ChallengeEditorProps) {
+  const hasTimeLimit = typeof timeLimitMs === 'number' && Number.isFinite(timeLimitMs) && timeLimitMs > 0
+  const hasMemoryLimit = typeof memoryLimitKb === 'number' && Number.isFinite(memoryLimitKb) && memoryLimitKb > 0
   const [language, setLanguage] = useState('javascript')
   const [code, setCode] = useState(initialCode || LANGUAGE_TEMPLATES[language] || '')
   const codeRef = useRef(code)
@@ -471,24 +486,20 @@ export function ChallengeEditor({
             </div>
           )}
 
-          {/* Constraints */}
-          <div className="space-y-3">
-            <h2 className="text-sm font-semibold text-foreground">Constraints</h2>
-            <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
-              {constraints ? (
-                constraints
+          {/* Constraints — only what the problem actually defines */}
+          {(constraints || hasTimeLimit || hasMemoryLimit) && (
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-foreground">Constraints</h2>
+              <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+                {hasTimeLimit && <li>Time limit: {formatTimeLimit(timeLimitMs as number)}</li>}
+                {hasMemoryLimit && <li>Memory limit: {formatMemoryLimit(memoryLimitKb as number)}</li>}
+                {(constraints || '')
                   .split('\n')
-                  .filter(Boolean)
-                  .map((c, i) => <li key={i}>{c.trim()}</li>)
-              ) : (
-                <>
-                  <li>Time limit: 1 second</li>
-                  <li>Memory limit: 256 MB</li>
-                  <li>Maximum input size: 10^5 elements</li>
-                </>
-              )}
-            </ul>
-          </div>
+                  .filter((c) => c.trim())
+                  .map((c, i) => <li key={i}>{c.trim()}</li>)}
+              </ul>
+            </div>
+          )}
         </div>
       </div>
 

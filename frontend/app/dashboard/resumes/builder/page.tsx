@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { ArrowLeft, Save, Download, FileText, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, Save, Download, FileText, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon, Sparkles, Loader2 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 // Basic Resume Data Structure
 interface ResumeData {
@@ -34,9 +35,24 @@ const emptyData: ResumeData = {
   skills: ''
 }
 
-// ponytail: drafts live in this browser only — /api/resumes stores uploaded
-// files, not builder data. Move to the API once it has a structured field.
+// Drafts are saved to the account (/api/resumes/drafts). This browser copy is
+// only an offline fallback, used when the account copy can't be reached or is older.
 const DRAFT_KEY = 'codeSpectra_resumeDraft'
+
+type LocalDraft = { id?: string; name?: string; template?: TemplateKey; data?: ResumeData; saved_at?: string; synced?: boolean }
+
+function readLocalDraft(): LocalDraft | null {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY)
+    return raw ? (JSON.parse(raw) as LocalDraft) : null
+  } catch {
+    return null
+  }
+}
+
+function writeLocalDraft(d: LocalDraft) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify(d)) } catch { /* storage blocked */ }
+}
 
 type TemplateKey = 'modern' | 'minimal' | 'elegant' | 'professional' | 'creative'
 
@@ -74,28 +90,113 @@ export default function ResumeBuilderPage() {
   const [template, setTemplate] = useState<TemplateKey>('modern')
   const [resumeName, setResumeName] = useState('Untitled resume')
   const sheetRef = useRef<HTMLDivElement>(null)
+  const [draftId, setDraftId] = useState<string | null>(null)
+  const [savingDraft, setSavingDraft] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [aiBusy, setAiBusy] = useState<string | null>(null)
 
-  // Restore a draft saved on this device (unless we were asked to load the profile).
+  const applyDraft = (d: LocalDraft) => {
+    if (d.data) setData({ ...emptyData, ...d.data, personal: { ...emptyData.personal, ...d.data.personal } })
+    if (d.name) setResumeName(d.name)
+    if (d.template) setTemplate(d.template)
+  }
+
+  // Load the latest draft from the account; fall back to this device's copy when offline
+  // or when the device has newer unsynced changes. Skipped when loading from the profile.
   useEffect(() => {
     if (source === 'profile') return
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY)
-      if (!raw) return
-      const draft = JSON.parse(raw) as { name?: string; template?: TemplateKey; data?: ResumeData }
-      if (draft.data) setData({ ...emptyData, ...draft.data, personal: { ...emptyData.personal, ...draft.data.personal } })
-      if (draft.name) setResumeName(draft.name)
-      if (draft.template) setTemplate(draft.template)
-    } catch {
-      // Storage blocked or corrupt draft — start fresh.
-    }
+    let cancelled = false
+    const local = readLocalDraft()
+    fetch('/api/resumes/drafts', { credentials: 'include' })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(String(r.status))
+        return r.json() as Promise<{ draft: (LocalDraft & { id: string; updated_at: string }) | null }>
+      })
+      .then(({ draft }) => {
+        if (cancelled) return
+        const localNewer = !!local?.data && local.synced === false &&
+          (!draft || (local.saved_at || '') > (draft.updated_at || ''))
+        if (localNewer && local) {
+          applyDraft(local)
+          if (local.id) setDraftId(local.id)
+          addToast({ type: 'info', title: 'Loaded unsaved changes from this device', message: 'Press Save draft to store them in your account.' })
+        } else if (draft) {
+          applyDraft(draft)
+          setDraftId(draft.id)
+          setLastSavedAt(draft.updated_at)
+        }
+      })
+      .catch(() => {
+        if (cancelled || !local?.data) return
+        applyDraft(local)
+        if (local.id) setDraftId(local.id)
+        addToast({ type: 'info', title: 'Showing the copy saved on this device', message: 'We could not reach your account just now.' })
+      })
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [source])
 
-  const saveDraft = () => {
+  const saveDraft = async () => {
+    setSavingDraft(true)
+    const savedAt = new Date().toISOString()
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ name: resumeName, template, data, saved_at: new Date().toISOString() }))
-      addToast({ type: 'success', title: 'Saved on this device', message: 'Your draft is stored in this browser only.' })
+      const res = await csrfFetch('/api/resumes/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: draftId || undefined, name: resumeName, template, data }),
+      })
+      const j = await res.json().catch(() => null)
+      if (!res.ok || !j?.draft?.id) throw new Error(j?.error || 'Could not save your draft')
+      setDraftId(j.draft.id)
+      setLastSavedAt(j.draft.updated_at)
+      writeLocalDraft({ id: j.draft.id, name: resumeName, template, data, saved_at: j.draft.updated_at, synced: true })
+      addToast({ type: 'success', title: 'Draft saved to your account' })
+    } catch (e) {
+      writeLocalDraft({ id: draftId || undefined, name: resumeName, template, data, saved_at: savedAt, synced: false })
+      addToast({
+        type: 'error',
+        title: 'Saved on this device only',
+        message: `${e instanceof Error ? e.message : 'Could not reach your account'}. Try Save draft again when you're back online.`,
+      })
+    } finally {
+      setSavingDraft(false)
+    }
+  }
+
+  const askAi = async (target: 'summary' | 'bullets', experienceId?: string) => {
+    setAiBusy(target === 'summary' ? 'summary' : experienceId || 'bullets')
+    try {
+      const res = await csrfFetch('/api/resumes/ai-summary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target, experienceId, data }),
+      })
+      const j = await res.json().catch(() => null)
+      if (!res.ok) {
+        addToast({ type: 'error', title: j?.error || 'AI writing is unavailable right now', ...(res.status === 402 ? { message: 'Top up credits from billing, or use Start from template.' } : {}) })
+        return
+      }
+      if (target === 'summary' && typeof j?.summary === 'string') {
+        setData(prev => ({ ...prev, summary: j.summary }))
+      } else if (target === 'bullets' && Array.isArray(j?.bullets) && experienceId) {
+        const text = (j.bullets as string[]).map(b => `• ${b}`).join('\n')
+        setData(prev => ({
+          ...prev,
+          experience: prev.experience.map(exp => exp.id === experienceId ? { ...exp, description: text } : exp),
+        }))
+      } else {
+        addToast({ type: 'error', title: 'AI writing is unavailable right now' })
+        return
+      }
+      addToast({
+        type: 'success',
+        title: target === 'summary' ? 'Summary written' : 'Bullets written',
+        message: `Check it matches your real experience. ${typeof j.balance === 'number' ? `${j.balance} credits left.` : ''}`.trim(),
+      })
     } catch {
-      addToast({ type: 'error', title: 'Could not save draft', message: 'Your browser blocked local storage.' })
+      addToast({ type: 'error', title: 'AI writing is unavailable right now', message: 'You were not charged.' })
+    } finally {
+      setAiBusy(null)
     }
   }
 
@@ -206,8 +307,14 @@ export default function ResumeBuilderPage() {
           <Input value={resumeName} onChange={e => setResumeName(e.target.value)} aria-label="Resume name" className="border-transparent hover:border-border focus-visible:border-border shadow-none w-40 sm:w-64 text-base sm:text-lg font-semibold text-foreground px-2 h-9" />
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={saveDraft}>
-            <Save className="w-4 h-4 mr-2" /> Save draft
+          {lastSavedAt && (
+            <span className="hidden lg:inline text-xs text-muted-foreground tabular-nums">
+              Saved {new Date(lastSavedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
+          )}
+          <Button variant="outline" size="sm" onClick={() => void saveDraft()} disabled={savingDraft}>
+            {savingDraft ? <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" aria-hidden /> : <Save className="w-4 h-4 mr-2" aria-hidden />}
+            {savingDraft ? 'Saving…' : 'Save draft'}
           </Button>
           <Button size="sm" onClick={downloadPdf}>
             <Download className="w-4 h-4 mr-2" /> Download PDF
@@ -236,12 +343,26 @@ export default function ResumeBuilderPage() {
 
             {/* Professional Summary */}
             <section className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-lg font-semibold text-foreground">Professional summary</h3>
-                <Button variant="secondary" size="sm" onClick={startFromTemplate} className="bg-primary/10 text-primary hover:bg-primary/15">
-                  <FileText className="w-4 h-4 mr-2" aria-hidden /> Start from template
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={startFromTemplate}>
+                    <FileText className="w-4 h-4 mr-2" aria-hidden /> Start from template
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => void askAi('summary')}
+                    disabled={aiBusy !== null}
+                    className="bg-primary/10 text-primary hover:bg-primary/15"
+                    title="Uses 1 AI credit, charged only if it works"
+                  >
+                    {aiBusy === 'summary' ? <Loader2 className="w-4 h-4 mr-2 animate-spin motion-reduce:animate-none" aria-hidden /> : <Sparkles className="w-4 h-4 mr-2" aria-hidden />}
+                    {aiBusy === 'summary' ? 'Writing…' : 'Write with AI'}
+                  </Button>
+                </div>
               </div>
+              <p className="text-xs text-muted-foreground">Write with AI uses 1 credit and only uses what you have entered. Template is free.</p>
               <Textarea 
                 aria-label="Professional summary"
                 className="min-h-30" 
@@ -268,7 +389,20 @@ export default function ResumeBuilderPage() {
                       <div className="space-y-1.5 sm:col-span-2"><Label>Dates</Label><Input aria-label="Dates" placeholder="e.g. Jan 2020 - Present" value={exp.dates} onChange={e => updateExperience(exp.id, 'dates', e.target.value)} /></div>
                     </div>
                     <div className="space-y-1.5">
-                      <Label>Description</Label>
+                      <div className="flex items-center justify-between gap-2">
+                        <Label>Description</Label>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 text-primary"
+                          disabled={aiBusy !== null || !(exp.role || exp.company)}
+                          onClick={() => void askAi('bullets', exp.id)}
+                          title="Uses 1 AI credit, charged only if it works"
+                        >
+                          {aiBusy === exp.id ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin motion-reduce:animate-none" aria-hidden /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" aria-hidden />}
+                          {aiBusy === exp.id ? 'Writing…' : 'Write bullets with AI'}
+                        </Button>
+                      </div>
                       <Textarea aria-label="Description" value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} rows={3} placeholder="Describe your achievements…" />
                     </div>
                   </div>
