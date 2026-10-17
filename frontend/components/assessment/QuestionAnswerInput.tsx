@@ -65,7 +65,7 @@ function parsePairs(value: string | string[] | undefined): Record<string, string
 
 function SavedBadge({ show }: { show?: boolean }) {
   if (!show) return null
-  return <span className="text-xs px-2 py-0.5 rounded-full border bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</span>
+  return <span className="text-xs px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">Saved locally</span>
 }
 
 const inputCls = 'w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm'
@@ -117,7 +117,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
           return (
             <label
               key={i}
-              className={`flex items-center gap-3 p-4 rounded-lg border transition-all ${readOnly ? '' : 'cursor-pointer'} ${checked ? 'bg-primary/10 border-primary shadow-xs' : 'bg-card hover:border-primary/50'}`}
+              className={`flex items-center gap-3 p-4 rounded-xl border transition-colors duration-150 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring ${readOnly ? '' : 'cursor-pointer'} ${checked ? 'bg-primary/10 border-primary shadow-xs' : 'bg-card border-border hover:border-primary/50'}`}
             >
               <input
                 type={isMulti ? 'checkbox' : 'radio'}
@@ -134,9 +134,9 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                     onChange(opt)
                   }
                 }}
-                className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                className="h-4 w-4 accent-primary text-primary focus:ring-primary border-input"
               />
-              <span className="text-sm font-medium">{opt}</span>
+              <span className="text-sm font-medium text-foreground">{opt}</span>
             </label>
           )
         })}
@@ -180,7 +180,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
+          <label className="text-sm font-medium text-muted-foreground">Your answer</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <input type="text" value={current} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder="Type your answer..." className={inputCls} autoComplete="off" />
@@ -231,13 +231,13 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         </div>
         <div className="space-y-2">
           {order.map((item, i) => (
-            <div key={`${item}-${i}`} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-              <span className="text-xs font-mono text-muted-foreground w-6">{i + 1}.</span>
+            <div key={`${item}-${i}`} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
+              <span className="text-xs font-medium tabular-nums text-muted-foreground w-6">{i + 1}.</span>
               <span className="flex-1 text-sm font-medium">{item}</span>
-              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1 rounded border disabled:opacity-30 hover:bg-muted" aria-label="Move up">
+              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label="Move up">
                 <ChevronUp className="h-4 w-4" />
               </button>
-              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1 rounded border disabled:opacity-30 hover:bg-muted" aria-label="Move down">
+              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label="Move down">
                 <ChevronDown className="h-4 w-4" />
               </button>
             </div>
@@ -427,7 +427,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
+        <label className="text-sm font-medium text-muted-foreground">Your answer</label>
         <SavedBadge show={showSavedBadge} />
       </div>
       <textarea

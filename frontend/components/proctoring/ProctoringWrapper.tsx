@@ -300,58 +300,58 @@ export function ProctoringWrapper({
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       {/* Top Proctoring Integrity Indicator Bar */}
-      <div className="sticky top-0 z-50 flex items-center justify-between border-b border-border/80 bg-card/90 px-4 py-2 text-xs backdrop-blur">
-        <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-50 flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 border-b border-border/80 bg-card/95 px-4 py-2 text-xs backdrop-blur">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <div className="flex items-center gap-1.5 font-bold text-foreground">
-            <ShieldAlert className="h-4 w-4 text-emerald-500" />
-            <span>AI Proctor Active</span>
+            <ShieldAlert className="h-4 w-4 text-primary" />
+            <span>Proctoring on</span>
           </div>
-          <span className="uppercase font-mono font-bold text-primary text-[10px] bg-primary/10 px-2 py-0.5 rounded">{proctoringLevel}</span>
+          <span className="font-semibold text-primary text-[11px] bg-primary/10 px-2 py-0.5 rounded-full inline-block first-letter:uppercase">{String(proctoringLevel).replace(/_/g, ' ')}</span>
 
           {gazeAnalysis && (
             <div className="flex items-center gap-2 border-l border-border/60 pl-3 text-[11px]">
-              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                <Eye className="h-3.5 w-3.5" /> Blinks: {gazeAnalysis.blinkCount}
+              <span className="flex items-center gap-1 text-muted-foreground font-medium">
+                <Eye className="h-3.5 w-3.5" /> Blinks: <span className="tabular-nums text-foreground">{gazeAnalysis.blinkCount}</span>
               </span>
-              <span className="text-muted-foreground">• Gaze:</span>
-              <span className="font-mono font-bold capitalize text-foreground">{gazeAnalysis.gazeDirection}</span>
+              <span className="text-muted-foreground">· Gaze:</span>
+              <span className="font-semibold capitalize text-foreground">{gazeAnalysis.gazeDirection}</span>
             </div>
           )}
 
           {hardwareAudit && hardwareAudit.isMultiMonitor && (
-            <div className="flex items-center gap-1 rounded bg-rose-500/10 px-2 py-0.5 font-bold text-rose-500 text-[11px]">
-              <Monitor className="h-3.5 w-3.5" /> Multi-Monitor ({hardwareAudit.screenCount})
+            <div className="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 font-bold text-red-600 dark:text-red-400 text-[11px]">
+              <Monitor className="h-3.5 w-3.5" /> Multiple monitors (<span className="tabular-nums">{hardwareAudit.screenCount}</span>)
             </div>
           )}
 
           {/* Face Match Status */}
           {idPhoto && faceMatchRef.current && (
-            <div className={`flex items-center gap-1 rounded px-2 py-0.5 font-bold text-[11px] ${faceMatchRef.current.matched ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-500'}`}>
-              <Camera className="h-3.5 w-3.5" /> Face: {faceMatchRef.current.matched ? 'Verified' : `Mismatch (${Math.round(faceMatchRef.current.score * 100)}%)`}
+            <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 font-bold text-[11px] ${faceMatchRef.current.matched ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
+              <Camera className="h-3.5 w-3.5" /> Face: {faceMatchRef.current.matched ? 'Verified' : `Doesn't match (${Math.round(faceMatchRef.current.score * 100)}%)`}
             </div>
           )}
 
           {/* Fingerprint Status */}
           {fingerprintRef.current && (
-            <div className="flex items-center gap-1 rounded bg-blue-500/10 px-2 py-0.5 text-blue-600 text-[11px] font-medium">
-              <Fingerprint className="h-3.5 w-3.5" /> Device Verified
+            <div className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary text-[11px] font-medium">
+              <Fingerprint className="h-3.5 w-3.5" /> Device verified
             </div>
           )}
         </div>
 
         <div className="flex items-center gap-3">
           {tabFocusLostCount > 0 && (
-            <div className="flex items-center gap-1 rounded bg-amber-500/10 px-2 py-0.5 text-amber-600 dark:text-amber-400 font-bold">
+            <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-bold">
               <AlertTriangle className="h-3 w-3" />
-              <span>{tabFocusLostCount} Tab Switch(es)</span>
+              <span><span className="tabular-nums">{tabFocusLostCount}</span> {tabFocusLostCount === 1 ? 'tab switch' : 'tab switches'}</span>
             </div>
           )}
           {kycVerified ? (
-            <div className="flex items-center gap-1 rounded bg-emerald-500/10 px-2 py-0.5 text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
-              <UserCheck className="h-3.5 w-3.5" /> Aadhaar KYC Verified
+            <div className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-green-700 dark:text-green-400 font-bold text-[11px]">
+              <UserCheck className="h-3.5 w-3.5" /> ID verified
             </div>
           ) : (
-            <button onClick={() => setShowIdKycModal(true)} className="flex items-center gap-1 rounded bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary hover:bg-primary/20">
+            <button onClick={() => setShowIdKycModal(true)} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <UserCheck className="h-3.5 w-3.5" /> Verify Aadhaar / ID
             </button>
           )}
@@ -364,13 +364,13 @@ export function ProctoringWrapper({
       <video ref={videoRef} autoPlay playsInline muted className="hidden" />
 
       {showWarningBanner && (
-        <div className="fixed top-12 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-300 shadow-lg backdrop-blur">
+        <div className="fixed top-12 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-50 dark:bg-amber-950/80 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-200 shadow-lg backdrop-blur">
           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
           <div>
-            <div className="font-bold">Proctor Warning Logged</div>
+            <div className="font-bold">Warning recorded</div>
             <div>{warningMessage}</div>
           </div>
-          <button onClick={() => setShowWarningBanner(false)} className="ml-2 font-bold text-amber-700 dark:text-amber-300 hover:underline">Dismiss</button>
+          <button onClick={() => setShowWarningBanner(false)} className="ml-2 rounded px-1.5 py-1 font-bold text-amber-800 dark:text-amber-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Dismiss</button>
         </div>
       )}
 

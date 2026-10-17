@@ -220,7 +220,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
         {hackathon.banner_url ? (
           <img src={hackathon.banner_url} alt="" className="w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-primary/20 via-background to-background" />
+          <div className="absolute inset-0 bg-linear-to-br from-primary/25 via-primary/5 to-background" />
         )}
         <div className="absolute inset-0 bg-linear-to-t from-background/90 via-background/20 to-transparent" />
         
@@ -230,12 +230,12 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
             const role = gate.user?.role
             if (role && isSuperAdmin(role)) { router.push('/dashboard/admin/hackathons'); return }
             router.push('/dashboard/hackathons')
-          }} className="px-4 py-2 bg-background/50 backdrop-blur-md border border-border/50 rounded-lg text-sm font-medium hover:bg-background/80 transition-colors">
+          }} className="px-4 py-2 bg-background/50 backdrop-blur-md border border-border/50 rounded-lg text-sm font-medium text-foreground hover:bg-background/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
             ← Back
           </button>
           
           <div className="flex items-center gap-2">
-            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase px-3 py-1 text-xs backdrop-blur-md bg-background/80">
+            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className={cn('px-3 py-1 text-xs backdrop-blur-md', isLive ? 'border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400' : isClosed ? '' : 'bg-background/80 text-foreground')}>
               {isLive ? 'Live' : isClosed ? 'Closed' : 'Open'}
             </Badge>
           </div>
@@ -248,8 +248,8 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
           <div className="space-y-6">
             
             {/* Event Header */}
-            <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/40 backdrop-blur-xl">
-              <h1 className="flex items-center gap-2 text-3xl md:text-4xl font-bold tracking-tight mb-2">
+            <div className="bg-card rounded-3xl p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none border border-border/70">
+              <h1 className="flex items-center gap-3 text-3xl md:text-4xl font-bold tracking-tight text-balance text-foreground mb-2">
                 <Trophy className="h-8 w-8 text-primary shrink-0" /> {hackathon.name}
               </h1>
               {hackathon.description && <p className="text-muted-foreground">{hackathon.description}</p>}
@@ -260,31 +260,31 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                   <span>{formatDateTime(starts)}</span>
                 </div>
                 {!isClosed && !isLive && (
-                  <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm font-medium text-yellow-600 dark:text-yellow-500">
+                  <div className="flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm font-medium text-amber-700 dark:text-amber-300">
                     <Timer className="h-4 w-4" />
                     <span>Starts in <Countdown targetIso={hackathon.starts_at} /></span>
                   </div>
                 )}
                 {isLive && !isClosed && (
-                  <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm font-medium text-green-600 dark:text-green-500">
+                  <div className="flex items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm font-medium text-green-700 dark:text-green-400">
                     <Timer className="h-4 w-4" />
                     <span>Ends in <Countdown targetIso={hackathon.ends_at} /></span>
                   </div>
                 )}
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
                   <Clock className="h-4 w-4 text-primary" />
-                  <span>{hackathon.timeout_minutes} min duration</span>
+                  <span className="tabular-nums">{hackathon.timeout_minutes} min</span>
                 </div>
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
                   <Users className="h-4 w-4 text-primary" />
-                  <span>{teams.length} / {hackathon.num_teams} teams</span>
+                  <span className="tabular-nums">{teams.length} / {hackathon.num_teams} teams</span>
                 </div>
               </div>
             </div>
 
             {/* Tabbed Navigation */}
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="w-full justify-start h-auto p-1 bg-card border border-border/40 mb-4 rounded-xl overflow-x-auto no-scrollbar">
+              <TabsList className="w-full justify-start h-auto p-1 bg-card border border-border/70 mb-4 rounded-2xl overflow-x-auto no-scrollbar">
                 <TabsTrigger value="overview" className="px-6 py-2.5 rounded-lg">Overview</TabsTrigger>
                 <TabsTrigger value="leaderboard" className="px-6 py-2.5 rounded-lg">
                   Leaderboard <Badge variant="secondary" className="ml-2 text-[10px]">{teams.length}</Badge>
@@ -295,23 +295,23 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6 mt-0">
-                <Card className="p-6">
+                <Card className="rounded-3xl p-6">
                   <h3 className="text-lg font-semibold mb-4">About this hackathon</h3>
                   <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
                     <p>{hackathon.description || 'No detailed description provided.'}</p>
                     <p className="mt-4">
-                      This hackathon features {hackathon.tasks?.length || 0} challenging problems with an automated evaluation system.
-                      Participants can register their teams and compete for the top rank on the leaderboard.
+                      This hackathon has {hackathon.tasks?.length || 0} problems, scored automatically.
+                      Register a team, solve as many as you can, and climb the leaderboard.
                     </p>
                   </div>
                 </Card>
               </TabsContent>
 
               <TabsContent value="leaderboard" className="mt-0">
-                <Card className="divide-y divide-border/60 overflow-hidden">
+                <Card className="rounded-3xl divide-y divide-border/60 overflow-hidden">
                   <div className="p-4 bg-muted/30">
-                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                      Current Standings
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Current standings
                     </h3>
                   </div>
                   {teams.length === 0 ? (
@@ -320,15 +320,15 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                         <Trophy className="h-6 w-6 text-muted-foreground opacity-50" />
                       </div>
                       <p className="text-sm font-medium text-muted-foreground">No teams have registered yet.</p>
-                      <p className="text-xs text-muted-foreground mt-1">Be the first to join the competition!</p>
+                      <p className="text-xs text-muted-foreground mt-1">Register a team to be first on the board.</p>
                     </div>
                   ) : (
                     teams.map((t, i) => (
                       <div key={t.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
                         <span className={cn(
                           "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold tabular-nums",
-                          i === 0 ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-500" :
-                          i === 1 ? "bg-slate-300/20 text-slate-600 dark:text-slate-300" :
+                          i === 0 ? "bg-amber-400/20 text-amber-700 dark:text-amber-300" :
+                          i === 1 ? "bg-muted text-foreground ring-1 ring-border" :
                           i === 2 ? "bg-amber-700/20 text-amber-700 dark:text-amber-500" :
                           "text-muted-foreground bg-muted"
                         )}>
@@ -341,7 +341,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                           </p>
                         </div>
                         <div className="flex flex-col items-end gap-1 shrink-0">
-                          <Badge className="font-bold gap-1"><Trophy className="h-3 w-3" /> {t.xp} XP</Badge>
+                          <Badge className="font-bold gap-1 tabular-nums"><Trophy className="h-3 w-3" /> {t.xp} XP</Badge>
                           {t.achievements.length > 0 && (
                             <div className="text-[10px] text-muted-foreground flex items-center gap-1">
                               <Sparkles className="h-3 w-3 text-primary" /> {t.achievements.length} badges
@@ -356,13 +356,13 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
 
               {hackathon.rules && hackathon.rules.length > 0 && (
                 <TabsContent value="rules" className="mt-0">
-                  <Card className="p-6 space-y-6">
+                  <Card className="rounded-3xl p-6 space-y-6">
                     <h3 className="flex items-center gap-2 text-lg font-semibold">
-                      <Shield className="h-5 w-5 text-primary" /> Rules & Regulations
+                      <Shield className="h-5 w-5 text-primary" /> Rules
                     </h3>
                     <div className="grid gap-6 md:grid-cols-2">
                       {hackathon.rules.map((r, i) => (
-                        <div key={i} className="flex gap-4 p-4 rounded-xl border border-border/50 bg-muted/20">
+                        <div key={i} className="flex gap-4 p-4 rounded-2xl border border-border/60 bg-muted/20">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
                             {i + 1}
                           </div>
@@ -384,7 +384,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
             <div className="sticky top-20 lg:top-24 space-y-4">
               
               {/* Main Registration Card */}
-              <Card className="overflow-hidden border-border/50 shadow-lg relative">
+              <Card className="rounded-3xl overflow-hidden border-border/70 shadow-lg dark:shadow-none relative">
                 {/* Decoration */}
                 <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                   <Trophy className="h-32 w-32" />
@@ -397,10 +397,10 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                         <div className="space-y-5">
                           <div className="flex items-center justify-between pb-4 border-b border-border/50">
                             <div>
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Your Team</p>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Your team</p>
                               <h2 className="text-xl font-bold truncate pr-4">{myTeam.name}</h2>
                             </div>
-                            <div className="bg-green-500/10 text-green-500 p-2 rounded-full">
+                            <div className="bg-green-500/10 text-green-600 dark:text-green-400 p-2 rounded-full">
                               <CheckCircle className="h-6 w-6" />
                             </div>
                           </div>
@@ -409,19 +409,19 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                           <div className="space-y-2">
                             {isLive && (
                               <Link href={`/hackathons/${slug}/workspace`} className="block">
-                                <Button className="w-full h-11 text-base shadow-sm"><ListChecks className="mr-2 h-4 w-4" /> Enter Workspace</Button>
+                                <Button className="w-full h-11 text-base shadow-sm"><ListChecks className="mr-2 h-4 w-4" /> Enter workspace</Button>
                               </Link>
                             )}
                             <Button variant="outline" className="w-full" onClick={() => setEmailInviteOpen(true)}>
-                              <Users className="mr-2 h-4 w-4" /> Manage Team
+                              <Users className="mr-2 h-4 w-4" /> Manage team
                             </Button>
                           </div>
 
                           {/* Team Roster */}
                           <div>
                             <div className="flex items-center justify-between mb-2">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Members</p>
-                              <Badge variant="secondary" className="text-[10px]">{myTeam.members.length}/{hackathon.max_per_team}</Badge>
+                              <p className="text-xs font-medium text-muted-foreground">Members</p>
+                              <Badge variant="secondary" className="text-[10px] tabular-nums">{myTeam.members.length}/{hackathon.max_per_team}</Badge>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {myTeam.members.map((m) => (
@@ -435,32 +435,32 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                           {/* Share Invite */}
                           <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
                             <p className="text-xs font-semibold text-primary mb-2 flex items-center gap-1">
-                              <Sparkles className="h-3 w-3" /> Invite Teammates
+                              <Sparkles className="h-3 w-3" /> Invite teammates
                             </p>
                             <div className="flex gap-2 mb-2">
                               <code className="flex-1 text-xs truncate rounded-md bg-background px-3 py-2 border border-border/50 shadow-sm">{getInviteUrl(myTeam)}</code>
-                              <Button size="icon" variant="outline" onClick={copyInvite} className="shrink-0 h-8 w-8">
-                                {copied ? <CheckCircle className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                              <Button size="icon" variant="outline" onClick={copyInvite} aria-label="Copy invite link" className="shrink-0 h-8 w-8">
+                                {copied ? <CheckCircle className="h-3 w-3 text-green-600 dark:text-green-400" /> : <Copy className="h-3 w-3" />}
                               </Button>
                             </div>
                             <Button size="sm" variant="secondary" className="w-full text-xs h-8" onClick={() => setEmailInviteOpen(true)}>
-                              Send Email Invite
+                              Send email invite
                             </Button>
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-5">
                           <div>
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Registration</p>
-                            <h2 className="text-2xl font-bold">Join Hackathon</h2>
+                            <p className="text-xs font-medium text-muted-foreground mb-2">Registration</p>
+                            <h2 className="text-2xl font-bold tracking-tight">Join this hackathon</h2>
                           </div>
 
                           {authUser?.uid ? (
                             <div className="space-y-4 pt-2">
                               <div className="space-y-2">
-                                <Label className="text-xs font-medium">Team Name</Label>
+                                <Label className="text-xs font-medium">Team name</Label>
                                 <Input 
-                                  placeholder="Leave blank for auto-generated name" 
+                                  placeholder="Leave blank and we'll pick a name" 
                                   value={newTeamName}
                                   onChange={(e) => setNewTeamName(e.target.value)} 
                                   className="h-11"
@@ -472,7 +472,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                                 className="w-full h-11 text-base shadow-sm font-semibold"
                               >
                                 {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                Register Team
+                                Register team
                               </Button>
                               {teams.length >= hackathon.num_teams && (
                                 <p className="text-xs text-destructive text-center font-medium">Event is at full capacity ({hackathon.num_teams} teams).</p>
@@ -485,10 +485,10 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                               </p>
                               <div className="grid gap-2">
                                 <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full">
-                                  <Button className="w-full h-11 gap-2"><LogIn className="h-4 w-4" /> Sign In</Button>
+                                  <Button className="w-full h-11 gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
                                 </Link>
                                 <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full">
-                                  <Button variant="outline" className="w-full h-11">Create Account</Button>
+                                  <Button variant="outline" className="w-full h-11">Create account</Button>
                                 </Link>
                               </div>
                             </div>
@@ -503,16 +503,16 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                         <Trophy className="h-8 w-8 text-muted-foreground" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold mb-1">Hackathon Closed</h2>
+                        <h2 className="text-xl font-bold mb-1">Hackathon closed</h2>
                         <p className="text-sm text-muted-foreground">This event has ended. Registration is no longer available.</p>
                       </div>
                       
                       {hackathon.results_released ? (
                         <Link href={`/hackathons/${slug}/results`} className="block mt-6">
-                          <Button className="w-full h-11"><Trophy className="mr-2 h-4 w-4" /> View Final Results</Button>
+                          <Button className="w-full h-11"><Trophy className="mr-2 h-4 w-4" /> View final results</Button>
                         </Link>
                       ) : (
-                        <Badge variant="outline" className="mt-4 py-1.5 px-3">Results Pending</Badge>
+                        <Badge variant="outline" className="mt-4 py-1.5 px-3">Results coming soon</Badge>
                       )}
                     </div>
                   )}
@@ -521,17 +521,17 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
 
               {/* Tasks Overview Card (for participants) */}
               {myTeam && hackathon.tasks && hackathon.tasks.length > 0 && (
-                <Card className="p-5 border-border/50 bg-card/50">
+                <Card className="rounded-3xl p-5 border-border/70">
                   <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <ListChecks className="h-4 w-4 text-primary" /> Problem Set
+                    <ListChecks className="h-4 w-4 text-primary" /> Problems
                   </h3>
                   <div className="space-y-2">
                     {hackathon.tasks.map((task) => (
-                      <div key={task.problem_slug} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 border border-border/30">
+                      <div key={task.problem_slug} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/50">
                         <span className="text-sm font-medium truncate pr-2">{task.problem_title}</span>
                         <div className="flex items-center gap-2 shrink-0">
-                          <Badge variant="outline" className="text-[10px] uppercase">{task.difficulty}</Badge>
-                          <span className="text-xs font-bold text-primary">{task.points} pts</span>
+                          <Badge variant="outline" className="text-[10px] capitalize">{task.difficulty}</Badge>
+                          <span className="text-xs font-bold tabular-nums text-primary">{task.points} pts</span>
                         </div>
                       </div>
                     ))}
@@ -559,11 +559,11 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       <Dialog open={emailInviteOpen} onOpenChange={setEmailInviteOpen}>
         <DialogContent className="sm:max-w-105">
           <DialogHeader>
-            <DialogTitle>Invite Teammate</DialogTitle>
+            <DialogTitle>Invite a teammate</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="invite-email" className="text-xs font-bold uppercase text-muted-foreground">Email address</Label>
+              <Label htmlFor="invite-email" className="text-xs font-medium text-muted-foreground">Email address</Label>
               <Input
                 id="invite-email"
                 type="email"
@@ -574,7 +574,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                 className="h-11"
               />
             </div>
-            <div className="bg-muted/50 p-3 rounded-lg flex gap-3 text-xs text-muted-foreground items-start">
+            <div className="bg-muted/50 p-3 rounded-xl flex gap-3 text-xs text-muted-foreground items-start">
               <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <p>
                 We'll send a direct invite link to this email address. They don't need a code — just sign in and click to join.
@@ -585,7 +585,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
             <Button variant="ghost" onClick={() => setEmailInviteOpen(false)}>Cancel</Button>
             <Button onClick={() => void sendEmailInvite()} disabled={sendingInvite || !inviteEmail.trim()}>
               {sendingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Send Invite
+              Send invite
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -594,11 +594,11 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Rename Team</DialogTitle>
+            <DialogTitle>Rename team</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <Label htmlFor="edit-team-name">New Team Name</Label>
+              <Label htmlFor="edit-team-name">New team name</Label>
               <Input
                 id="edit-team-name"
                 placeholder="e.g. PARADISE"
@@ -615,7 +615,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
             <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>Cancel</Button>
             <Button onClick={() => void handleRenameTeam()} disabled={renaming || !editTeamName.trim()}>
               {renaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
-              Save Name
+              Save name
             </Button>
           </DialogFooter>
         </DialogContent>

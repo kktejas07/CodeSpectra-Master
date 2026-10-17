@@ -70,14 +70,14 @@ export function ExtensionGate({ children, bypass = false, onVerified }: Extensio
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-w-lg w-full rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 text-foreground">
+      <div className="max-w-lg w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">Extension Required</h2>
-            <p className="text-xs text-muted-foreground">Device Audit extension must be installed to start this assessment.</p>
+            <h2 className="text-lg font-bold">Extension required</h2>
+            <p className="text-xs text-muted-foreground">Install the Device Audit extension to start this assessment.</p>
           </div>
         </div>
 
@@ -97,7 +97,7 @@ export function ExtensionGate({ children, bypass = false, onVerified }: Extensio
             href="https://chromewebstore.google.com/search/CodeSpectra%20Device%20Audit"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow hover:bg-primary/90"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <ExternalLink className="h-4 w-4" />
             Install from Chrome Web Store

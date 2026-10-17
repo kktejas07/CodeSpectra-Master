@@ -51,8 +51,8 @@ export function ExamAadhaarGate({
   if (!mode) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div className="flex items-center gap-2 rounded-xl bg-background p-6 text-sm">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading exam ID settings…
+        <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-6 text-sm text-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading ID check…
         </div>
       </div>
     )
@@ -64,16 +64,17 @@ export function ExamAadhaarGate({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="relative w-full max-w-lg space-y-4 rounded-xl border border-border bg-background p-6 shadow-xl">
+      <div className="relative w-full max-w-lg space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
         <button
           type="button"
-          className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+          aria-label="Close"
+          className="absolute right-3 top-3 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onCancel}
         >
           <X className="h-4 w-4" />
         </button>
         <div>
-          <h2 className="text-base font-bold">Exam identity (Anon Aadhaar)</h2>
+          <h2 className="text-base font-bold text-foreground">Exam identity (Anon Aadhaar)</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Privacy-preserving Aadhaar proof. Does not replace full KYC on Identity Verify.
           </p>

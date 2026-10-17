@@ -487,7 +487,7 @@ export default function CandidateAssessmentPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Preparing your environment...
+        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Preparing your assessment…
       </div>
     )
   }
@@ -497,11 +497,11 @@ export default function CandidateAssessmentPage() {
   if (windowState === 'closed' || windowState === 'not_started') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md w-full p-8 text-center border-destructive/30 space-y-4">
+        <Card className="max-w-md w-full rounded-3xl p-8 text-center border-destructive/30 space-y-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 mx-auto text-destructive">
             <ShieldX className="h-7 w-7" />
           </div>
-          <h1 className="text-xl font-bold">{windowState === 'closed' ? 'Assessment Closed' : 'Assessment Not Yet Open'}</h1>
+          <h1 className="text-xl font-bold">{windowState === 'closed' ? 'Assessment closed' : 'Assessment not open yet'}</h1>
           <p className="text-sm text-muted-foreground">
             {windowState === 'closed'
               ? `This assessment closed on ${exam.ends_at ? fmtDateTime(exam.ends_at) : 'its deadline'}. Please contact your administrator if you need access.`
@@ -509,7 +509,7 @@ export default function CandidateAssessmentPage() {
           </p>
           <div className="pt-2">
             <Link href="/">
-              <Button variant="outline" className="w-full">Return Home</Button>
+              <Button variant="outline" className="w-full">Return home</Button>
             </Link>
           </div>
         </Card>
@@ -520,15 +520,15 @@ export default function CandidateAssessmentPage() {
   if (accessError) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md w-full p-8 text-center border-destructive/30 space-y-4">
+        <Card className="max-w-md w-full rounded-3xl p-8 text-center border-destructive/30 space-y-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 mx-auto text-destructive">
             <ShieldX className="h-7 w-7" />
           </div>
-          <h1 className="text-xl font-bold">Access Denied</h1>
+          <h1 className="text-xl font-bold">Access denied</h1>
           <p className="text-sm text-muted-foreground">{accessError}</p>
           <div className="pt-2">
             <Link href="/">
-              <Button variant="outline" className="w-full">Return Home</Button>
+              <Button variant="outline" className="w-full">Return home</Button>
             </Link>
           </div>
         </Card>
@@ -545,7 +545,7 @@ export default function CandidateAssessmentPage() {
       const loginRedirect = `/assessment/${params.id}${fullQuery ? `?${fullQuery}` : ''}`
       return (
         <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4">
-          <Card className="max-w-md w-full p-8 text-center border-primary/20 space-y-6 shadow-xl">
+          <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-6 shadow-xl dark:shadow-none">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto">
               <User className="h-7 w-7 text-primary" />
             </div>
@@ -553,17 +553,17 @@ export default function CandidateAssessmentPage() {
               <h1 className="text-xl font-bold">{exam.title}</h1>
               <p className="text-sm text-muted-foreground mt-1">Sign in or create an account to take this assessment</p>
             </div>
-            <div className="bg-muted/30 rounded-lg p-4 text-sm text-left space-y-2">
-              <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span className="font-medium">{exam.duration} min</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Questions:</span><span className="font-medium">{exam.questionList.length}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Level:</span><span className="font-medium">{exam.level}</span></div>
+            <div className="bg-muted/40 border border-border rounded-2xl p-4 text-sm text-left space-y-2">
+              <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-medium tabular-nums">{exam.duration} min</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Questions</span><span className="font-medium tabular-nums">{exam.questionList.length}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Level</span><span className="font-medium capitalize">{exam.level}</span></div>
             </div>
             <div className="space-y-2">
               <Link href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}>
-                <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign In</Button>
+                <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
               </Link>
               <Link href={`/auth/signup?redirect=${encodeURIComponent(loginRedirect)}`}>
-                <Button variant="outline" className="w-full gap-2"><User className="h-4 w-4" /> Create Account</Button>
+                <Button variant="outline" className="w-full gap-2"><User className="h-4 w-4" /> Create account</Button>
               </Link>
             </div>
           </Card>
@@ -574,7 +574,7 @@ export default function CandidateAssessmentPage() {
     return (
       <ExtensionGate>
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-lg w-full p-8 border-primary/20 space-y-6">
+        <Card className="max-w-lg w-full rounded-3xl p-8 border-border/70 space-y-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-2">{exam.title}</h1>
             <p className="text-muted-foreground text-sm">
@@ -582,29 +582,29 @@ export default function CandidateAssessmentPage() {
             </p>
           </div>
 
-          <div className="bg-muted/30 border rounded-lg p-4 space-y-3 text-sm">
+          <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Duration:</span>
-              <span className="font-semibold">{exam.duration} Minutes</span>
+              <span className="text-muted-foreground">Duration</span>
+              <span className="font-semibold tabular-nums">{exam.duration} minutes</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Questions:</span>
-              <span className="font-semibold">{exam.questionList.length}</span>
+              <span className="text-muted-foreground">Questions</span>
+              <span className="font-semibold tabular-nums">{exam.questionList.length}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Format:</span>
-              <span className="font-semibold">Strict Timing, Auto-Submit</span>
+              <span className="text-muted-foreground">Format</span>
+              <span className="font-semibold">Timed, submits automatically at zero</span>
             </div>
           </div>
 
-          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 p-4 rounded-lg flex items-start gap-3 text-sm">
+          <div className="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 p-4 rounded-xl flex items-start gap-3 text-sm">
             <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
             <p>
-              <strong>Warning:</strong> Once you begin, the timer cannot be paused. If the timer reaches zero, your assessment will be automatically submitted regardless of completion. Ensure you have a stable internet connection and {exam.duration} minutes of uninterrupted time.
+              <strong>Before you start:</strong> once you begin, the timer cannot be paused. If the timer reaches zero, your assessment will be automatically submitted regardless of completion. Ensure you have a stable internet connection and {exam.duration} minutes of uninterrupted time.
             </p>
           </div>
 
-          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-border bg-muted/20">
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border border-border bg-muted/20 transition-colors hover:border-primary/40">
             <input
               type="checkbox"
               checked={recordingConsent}
@@ -617,18 +617,18 @@ export default function CandidateAssessmentPage() {
           </label>
 
           {user?.has_enrolled_face === false && exam.require_face_capture !== false && (
-            <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-lg text-xs flex items-center gap-2">
+            <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-xl text-xs flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>First time here? Your face biometrics will be enrolled during the identity verification step.</span>
             </div>
           )}
           {(exam.require_id_verification === false || exam.require_face_capture === false) && (
-            <div className="bg-muted/40 border border-border p-3 rounded-lg text-xs text-muted-foreground">
+            <div className="bg-muted/40 border border-border p-3 rounded-xl text-xs text-muted-foreground">
               Identity check for this assessment: {exam.require_id_verification === false && exam.require_face_capture === false ? 'consent only — no ID or face capture required' : exam.require_id_verification === false ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
             </div>
           )}
-          <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
-            Start Assessment Now
+          <Button onClick={() => setShowVerification(true)} className="w-full text-base font-semibold h-12 rounded-xl">
+            Start assessment
           </Button>
         </Card>
 
@@ -655,18 +655,18 @@ export default function CandidateAssessmentPage() {
   if (isSubmitted) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md w-full p-8 text-center border-primary/20 space-y-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mx-auto text-green-500 mb-4">
+        <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mx-auto text-green-600 dark:text-green-400 mb-4">
             <CheckCircle2 className="h-8 w-8" />
           </div>
-          <h1 className="text-2xl font-bold">Assessment Submitted</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
           <p className="text-muted-foreground">
-            Thank you for completing the {exam.title} assessment. Your results have been securely recorded and sent to the technical team for review. 
+            Thank you for completing the {exam.title} assessment. Your answers have been saved and sent to the hiring team for review.
             <br/><br/>
             <strong>Your final score will be released after the admin reviews and evaluates your answers.</strong>
           </p>
           <div className="pt-4">
-            <Button variant="outline" onClick={() => router.push('/')}>Return to Home</Button>
+            <Button variant="outline" onClick={() => router.push('/')}>Return to home</Button>
           </div>
         </Card>
       </div>
@@ -684,31 +684,31 @@ export default function CandidateAssessmentPage() {
       <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent} />
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
-        <header className="sticky top-0 z-30 border-b border-border bg-card px-6 py-3 flex items-center justify-between shadow-xs">
-        <div>
-          <h1 className="font-bold text-lg">{exam.title}</h1>
-          <p className="text-xs text-muted-foreground">Question {currentQIndex + 1} of {exam.questionList.length}</p>
+        <header className="sticky top-0 z-30 border-b border-border bg-card px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shadow-xs">
+        <div className="min-w-0">
+          <h1 className="font-bold text-lg tracking-tight text-foreground truncate">{exam.title}</h1>
+          <p className="text-xs text-muted-foreground tabular-nums">Question {currentQIndex + 1} of {exam.questionList.length}</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           {recordingConsent && hasStarted && (
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-red-500">
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
               <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
               </span>
               Recording
             </div>
           )}
-          <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold ${
-            (timeLeft || 0) < 300 ? 'bg-red-500/10 border-red-500/30 text-red-600' :
-            (timeLeft || 0) <= 1800 ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' : 'bg-muted/50 border-border'
+          <div role="timer" aria-label="Time remaining" className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold tabular-nums transition-colors duration-300 ${
+            (timeLeft || 0) < 300 ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
+            (timeLeft || 0) <= 1800 ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300' : 'bg-primary/5 border-primary/20 text-foreground'
           }`}>
             <Clock className="h-4 w-4" />
-            {formatTime(timeLeft || 0)} Remaining
+            {formatTime(timeLeft || 0)}<span className="hidden sm:inline font-sans font-medium text-xs opacity-80">left</span>
           </div>
           <Button onClick={handleManualSubmit} disabled={isSubmitting} variant="destructive" size="sm" className="gap-2">
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Submit Assessment
+            <span className="hidden sm:inline">Submit assessment</span><span className="sm:hidden">Submit</span>
           </Button>
         </div>
       </header>
@@ -716,8 +716,13 @@ export default function CandidateAssessmentPage() {
       {/* Main Content Workspace */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Side: Question List Sidebar */}
-        <aside className="w-64 border-r border-border bg-muted/10 p-4 overflow-y-auto hidden md:block">
-          <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Overview</h3>
+        <aside className="w-64 border-r border-border bg-muted/20 p-4 overflow-y-auto hidden md:block">
+          <div className="mb-4 flex items-baseline justify-between">
+            <h3 className="text-sm font-semibold text-foreground">Questions</h3>
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {exam.questionList.filter((q) => (Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).length > 0 : !!answers[q.id])).length}/{exam.questionList.length} answered
+            </span>
+          </div>
           <div className="space-y-2">
             {exam.questionList.map((q, idx) => {
               const isAnswered = Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).length > 0 : !!answers[q.id]
@@ -726,12 +731,13 @@ export default function CandidateAssessmentPage() {
                 <button
                   key={q.id}
                   onClick={() => setCurrentQIndex(idx)}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
-                    isActive ? 'bg-primary text-primary-foreground font-medium' :
-                    isAnswered ? 'bg-primary/10 text-foreground hover:bg-primary/20' : 'bg-card text-foreground border hover:bg-muted'
+                  aria-current={isActive ? 'step' : undefined}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors duration-150 flex items-center justify-between focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                    isActive ? 'bg-primary text-primary-foreground font-medium shadow-sm' :
+                    isAnswered ? 'bg-primary/10 text-foreground border border-primary/20 hover:bg-primary/15' : 'bg-card text-foreground border border-border hover:bg-muted'
                   }`}
                 >
-                  <span className="truncate pr-2" title={q.title}>Q{idx + 1}: {q.title}</span>
+                  <span className="truncate pr-2" title={q.title}><span className="tabular-nums">{idx + 1}.</span> {q.title}</span>
                   {isAnswered && !isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                 </button>
               )
@@ -740,12 +746,15 @@ export default function CandidateAssessmentPage() {
         </aside>
 
         {/* Right Side: Question Active Area */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-background/50">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 bg-background">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="space-y-4">
-              <Badge variant="outline" className="uppercase tracking-widest">{typeLabel(currentQ.type)}</Badge>
-              <h2 className="text-2xl font-bold">{currentQ.title}</h2>
-              <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg p-4 rounded-lg bg-card border">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{typeLabel(currentQ.type)}</Badge>
+                <span className="text-xs text-muted-foreground tabular-nums">Question {currentQIndex + 1} of {exam.questionList.length}</span>
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight text-foreground">{currentQ.title}</h2>
+              <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg p-5 sm:p-6 rounded-2xl bg-card border border-border/70 text-foreground">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeHighlight]}
@@ -777,7 +786,7 @@ export default function CandidateAssessmentPage() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="flex items-center justify-between pt-8 border-t mt-8 pb-12">
+            <div className="flex items-center justify-between gap-3 pt-8 border-t border-border mt-8 pb-12">
               <Button 
                 variant="outline" 
                 onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))}
@@ -788,11 +797,11 @@ export default function CandidateAssessmentPage() {
               
               {currentQIndex < exam.questionList.length - 1 ? (
                 <Button onClick={() => setCurrentQIndex(prev => Math.min(exam.questionList.length - 1, prev + 1))}>
-                  Next Question <ChevronRight className="h-4 w-4 ml-2" />
+                  Next question <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
                 <Button onClick={handleManualSubmit} variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Complete Assessment <Send className="h-4 w-4 ml-2" />
+                  Finish and submit <Send className="h-4 w-4 ml-2" />
                 </Button>
               )}
             </div>

@@ -133,28 +133,28 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
   return (
     <div
       data-testid="cert-canvas-modern"
-      className="cert-sheet bg-linear-to-br from-[#0f172a] via-[#1e293b] to-[#0a5d3b] text-white relative overflow-hidden"
+      className="cert-sheet bg-linear-to-br from-[#0f172a] via-[#1e293b] to-[#1E3FB8] text-white relative overflow-hidden"
     >
       {/* Geometric accents */}
-      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-emerald-400/20 blur-3xl" />
+      <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-[#2F5BE7]/25 blur-3xl" />
       <div className="absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-cyan-400/20 blur-3xl" />
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-emerald-500/5 [clip-path:polygon(40%_0,100%_0,100%_100%,0%_100%)]" />
+      <div className="absolute top-0 right-0 w-1/3 h-full bg-[#2F5BE7]/10 [clip-path:polygon(40%_0,100%_0,100%_100%,0%_100%)]" />
 
       <div className="relative h-full grid grid-cols-[2fr_1fr] gap-12 px-20 py-14">
         <div className="flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-3 text-emerald-300">
+            <div className="flex items-center gap-3 text-[#A9BCFF]">
               <img src="/icon.svg" alt="CodeSpectra logo" className="h-7 w-7 rounded-md" />
               <span className="text-xs uppercase tracking-[0.5em]">CodeSpectra</span>
             </div>
             <h1 className="text-5xl font-black mt-12 leading-none tracking-tight">
               Certificate
               <br />
-              <span className="text-emerald-300">of Excellence</span>
+              <span className="text-[#A9BCFF]">of Excellence</span>
             </h1>
             <p className="text-sm text-white/60 mt-6 uppercase tracking-widest">Awarded to</p>
             <p className="text-4xl font-bold mt-2" data-testid="cert-name">{data.candidateName}</p>
-            <div className="h-1 w-32 bg-emerald-400 mt-4 rounded" />
+            <div className="h-1 w-32 bg-[#5B7EF0] mt-4 rounded" />
           </div>
 
           <div>
@@ -168,7 +168,7 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
 
         <div className="flex flex-col items-end justify-between text-right">
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 w-full">
-            <div className="flex items-center justify-end gap-2 text-emerald-300 text-xs uppercase tracking-widest">
+            <div className="flex items-center justify-end gap-2 text-[#A9BCFF] text-xs uppercase tracking-widest">
               <CheckCircle2 className="w-4 h-4" />
               Verified level
             </div>
@@ -185,7 +185,7 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
               <p className="text-[11px] font-mono text-white/80 break-all">
                 {data.verifyUrl.replace(/^https?:\/\//, '')}
               </p>
-              <p className="text-[10px] mt-1 text-emerald-300">Issued {dateFmt(data.issuedAt)}</p>
+              <p className="text-[10px] mt-1 text-[#A9BCFF]">Issued {dateFmt(data.issuedAt)}</p>
             </div>
           </div>
         </div>
@@ -259,32 +259,32 @@ export function ProfessionalCertificate({ data }: { data: CertificateData }) {
       className="cert-sheet bg-linear-to-br from-[#f0f4ff] to-[#e8eeff] text-[#1a2744] relative overflow-hidden"
     >
       {/* Blue accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-3 bg-linear-to-r from-[#2563eb] via-[#3b82f6] to-[#2563eb]" />
-      <div className="absolute bottom-0 left-0 right-0 h-3 bg-linear-to-r from-[#2563eb] via-[#3b82f6] to-[#2563eb]" />
+      <div className="absolute top-0 left-0 right-0 h-3 bg-linear-to-r from-[#2F5BE7] via-[#5B7EF0] to-[#2F5BE7]" />
+      <div className="absolute bottom-0 left-0 right-0 h-3 bg-linear-to-r from-[#2F5BE7] via-[#5B7EF0] to-[#2F5BE7]" />
       {/* Side accent */}
-      <div className="absolute left-0 top-0 bottom-0 w-24 bg-linear-to-b from-[#2563eb] to-[#1d4ed8] opacity-90" />
+      <div className="absolute left-0 top-0 bottom-0 w-24 bg-linear-to-b from-[#2F5BE7] to-[#1E3FB8] opacity-90" />
 
       <div className="relative h-full flex flex-col items-center justify-center pl-20 pr-24 py-16 text-center">
         <div className="absolute top-16 right-20 flex items-center gap-3">
           <img src="/icon.svg" alt="CodeSpectra logo" className="h-9 w-9 rounded-lg" />
-          <span className="font-sans text-sm font-semibold tracking-wider uppercase text-[#2563eb]">CodeSpectra</span>
+          <span className="font-sans text-sm font-semibold tracking-wider uppercase text-[#2F5BE7]">CodeSpectra</span>
         </div>
 
         <div className="absolute left-8 top-1/2 -translate-y-1/2 -rotate-90 origin-center">
           <span className="text-white text-[10px] tracking-[0.5em] uppercase font-semibold">Professional Certificate</span>
         </div>
 
-        <p className="text-sm uppercase tracking-[0.4em] text-[#2563eb] font-semibold">Certificate of Completion</p>
-        <div className="w-16 h-0.5 bg-[#2563eb] mt-4 mb-6" />
+        <p className="text-sm uppercase tracking-[0.4em] text-[#2F5BE7] font-semibold">Certificate of Completion</p>
+        <div className="w-16 h-0.5 bg-[#2F5BE7] mt-4 mb-6" />
 
         <p className="text-sm text-[#1a2744]/60">This is to certify that</p>
         <p className="font-sans text-5xl font-bold mt-4 mb-2" data-testid="cert-name">{data.candidateName}</p>
-        <div className="w-1/2 border-b border-[#2563eb]/30 my-3" />
+        <div className="w-1/2 border-b border-[#2F5BE7]/30 my-3" />
 
         <p className="text-sm mt-6 max-w-2xl text-[#1a2744]/70 leading-relaxed">
           has successfully completed the professional assessment for
         </p>
-        <p className="font-sans text-2xl font-bold mt-3 text-[#2563eb]">{data.certificationTitle}</p>
+        <p className="font-sans text-2xl font-bold mt-3 text-[#2F5BE7]">{data.certificationTitle}</p>
         <p className="text-sm mt-2 text-[#1a2744]/60">
           Verified Level: <strong className="text-[#1a2744]">{data.level}</strong> · Score: {scoreText(data)}
         </p>
@@ -296,7 +296,7 @@ export function ProfessionalCertificate({ data }: { data: CertificateData }) {
           </div>
           <div className="text-center flex flex-col items-center">
             {data.qrDataUrl && (
-              <img src={data.qrDataUrl} alt="QR" className="w-20 h-20 border border-[#2563eb]/20 p-1 bg-white rounded" />
+              <img src={data.qrDataUrl} alt="QR" className="w-20 h-20 border border-[#2F5BE7]/20 p-1 bg-white rounded" />
             )}
             <p className="text-[9px] mt-1 text-[#1a2744]/40 font-mono">Scan to verify</p>
           </div>

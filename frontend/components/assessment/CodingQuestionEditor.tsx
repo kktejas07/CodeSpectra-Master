@@ -91,8 +91,8 @@ export function CodingQuestionEditor({
 
   if (!mounted) {
     return (
-      <div className="border border-border rounded-lg overflow-hidden bg-zinc-950 h-[400px] flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="border border-border rounded-2xl overflow-hidden bg-zinc-950 h-[400px] flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
       </div>
     )
   }
@@ -100,7 +100,7 @@ export function CodingQuestionEditor({
   return (
     <div className="space-y-4">
       {/* Editor */}
-      <div className="border border-border rounded-lg overflow-hidden bg-zinc-950">
+      <div className="border border-border rounded-2xl overflow-hidden bg-zinc-950">
         <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 bg-zinc-900 border-b border-zinc-800">
           <div className="flex items-center gap-2">
             <Terminal className="h-4 w-4 text-zinc-400" />
@@ -135,8 +135,8 @@ export function CodingQuestionEditor({
               variant="ghost"
               size="sm"
               onClick={copyCode}
-              title="Copy Code"
-              className="h-8 px-2 text-xs gap-1"
+              title="Copy code"
+              className="h-8 px-2 text-xs gap-1 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50"
             >
               <Copy className="h-3.5 w-3.5" />
               <span className="text-[10px]">Copy</span>
@@ -146,7 +146,7 @@ export function CodingQuestionEditor({
               size="sm"
               onClick={() => setEditorMode((m) => (m === 'monaco' ? 'plain' : 'monaco'))}
               title="Switch between the rich editor and a plain text box"
-              className="h-8 px-2 text-xs"
+              className="h-8 px-2 text-xs text-zinc-300 hover:bg-zinc-800 hover:text-zinc-50"
             >
               <span className="text-[10px]">{editorMode === 'monaco' ? 'Plain editor' : 'Rich editor'}</span>
             </Button>
@@ -187,14 +187,14 @@ export function CodingQuestionEditor({
 
       {/* Sample Test Cases Panel (reference only — no live execution) */}
       {hasTestCases && (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="border border-border rounded-2xl overflow-hidden bg-card">
           <button
             onClick={() => setShowTestCases(!showTestCases)}
-            className="w-full px-3 py-2 bg-muted/50 border-b border-border flex items-center justify-between text-sm font-medium hover:bg-muted transition-colors"
+            className="w-full px-4 py-2.5 bg-muted/40 border-b border-border flex items-center justify-between text-sm font-medium text-foreground hover:bg-muted transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="flex items-center gap-2">
               <Terminal className="h-3.5 w-3.5" />
-              Sample Test Cases ({sampleTestCases.length})
+              Sample test cases (<span className="tabular-nums">{sampleTestCases.length}</span>)
             </span>
             <span className="text-xs text-muted-foreground flex items-center gap-1">
               {showTestCases ? (
@@ -212,31 +212,31 @@ export function CodingQuestionEditor({
           </button>
 
           {showTestCases && (
-            <div className="p-3 space-y-3 max-h-72 overflow-y-auto bg-zinc-950/30">
+            <div className="p-3 space-y-3 max-h-72 overflow-y-auto">
               {sampleTestCases.map((tc, i) => (
                 <div
                   key={i}
-                  className="space-y-1.5 p-2 rounded border border-zinc-800 bg-zinc-950/50"
+                  className="space-y-1.5 p-3 rounded-xl border border-border bg-muted/20"
                 >
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-zinc-500 font-mono">Test Case {i + 1}</span>
+                    <span className="font-medium text-muted-foreground">Test case {i + 1}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[11px]">
                     <div>
-                      <span className="text-zinc-500 block mb-0.5">Input:</span>
-                      <pre className="font-mono text-zinc-300 whitespace-pre-wrap break-all bg-zinc-900 p-2 rounded max-h-24 overflow-auto">
+                      <span className="text-muted-foreground block mb-0.5">Input</span>
+                      <pre className="font-mono text-foreground whitespace-pre-wrap break-all bg-background border border-border/60 p-2 rounded-lg max-h-24 overflow-auto">
                         {tc.input}
                       </pre>
                     </div>
                     <div>
-                      <span className="text-zinc-500 block mb-0.5">Expected Output:</span>
-                      <pre className="font-mono text-zinc-300 whitespace-pre-wrap break-all bg-zinc-900 p-2 rounded max-h-24 overflow-auto">
+                      <span className="text-muted-foreground block mb-0.5">Expected output</span>
+                      <pre className="font-mono text-foreground whitespace-pre-wrap break-all bg-background border border-border/60 p-2 rounded-lg max-h-24 overflow-auto">
                         {tc.output}
                       </pre>
                     </div>
                   </div>
                   {tc.explanation && (
-                    <p className="text-[10px] text-zinc-500 italic">{tc.explanation}</p>
+                    <p className="text-[11px] text-muted-foreground italic">{tc.explanation}</p>
                   )}
                 </div>
               ))}

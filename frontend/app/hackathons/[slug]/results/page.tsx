@@ -169,7 +169,7 @@ function TeamCardExpanded({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Problems Solved</p>
+            <p className="text-xs text-muted-foreground">Problems solved</p>
             <div className="flex items-center gap-2">
               <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
                 <div
@@ -177,24 +177,24 @@ function TeamCardExpanded({
                   style={{ width: `${(solvedCount / (tasks?.length || 1)) * 100}%` }}
                 />
               </div>
-              <span className="text-sm font-medium">{solvedCount} / {tasks?.length || 0}</span>
+              <span className="text-sm font-medium tabular-nums">{solvedCount} / {tasks?.length || 0}</span>
             </div>
           </div>
           <div className="text-right">
-            <p className="text-xs text-muted-foreground">Total Submissions</p>
-            <p className="text-sm font-medium">{team.submissions}</p>
+            <p className="text-xs text-muted-foreground">Total submissions</p>
+            <p className="text-sm font-medium tabular-nums">{team.submissions}</p>
           </div>
         </div>
 
         {tasks && tasks.length > 0 && (
           <div className="border-t border-border/30 pt-3">
-            <p className="text-xs text-muted-foreground mb-2">Per-Problem Breakdown</p>
+            <p className="text-xs text-muted-foreground mb-2">By problem</p>
             <div className="grid gap-2">
               {tasks.map((task) => {
                 const sub = teamSubs.find((s) => s.problem_slug === task.problem_slug)
                 const solved = sub && sub.score !== null && sub.score > 0
                 return (
-                  <div key={task.problem_slug} className="flex items-center justify-between text-sm bg-background/50 rounded px-3 py-2">
+                  <div key={task.problem_slug} className="flex items-center justify-between text-sm bg-background/60 rounded-lg px-3 py-2">
                     <div className="flex items-center gap-2">
                       {solved ? (
                         <CheckCircle className="h-4 w-4 text-green-500" />
@@ -206,7 +206,7 @@ function TeamCardExpanded({
                     </div>
                     <div className="text-right">
                       {sub ? (
-                        <span className={solved ? 'text-green-600 font-medium' : ''}>
+                        <span className={`tabular-nums ${solved ? 'text-green-700 dark:text-green-400 font-medium' : ''}`}>
                           {sub.score ?? '-'} / {sub.max_score}
                         </span>
                       ) : (
@@ -241,11 +241,11 @@ function MyTeamResults({
   const captain = myTeam.members.find((m) => m.role === 'captain') || myTeam.members[0]
 
   return (
-    <Card className="p-6 border-primary/30 bg-primary/5">
-      <div className="flex items-start justify-between mb-4">
+    <Card className="rounded-3xl p-6 border-primary/30 bg-primary/5">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
           <div className="flex items-center gap-2">
-            <Medal className={`h-8 w-8 ${myRank === 1 ? 'text-yellow-500' : myRank === 2 ? 'text-gray-400' : myRank === 3 ? 'text-amber-600' : 'text-primary'}`} />
+            <Medal className={`h-8 w-8 ${myRank === 1 ? 'text-amber-500' : myRank === 2 ? 'text-muted-foreground' : myRank === 3 ? 'text-amber-700 dark:text-amber-600' : 'text-primary'}`} />
             <div>
               <h2 className="text-2xl font-bold">{myTeam.name}</h2>
               <p className="text-sm text-muted-foreground">
@@ -254,14 +254,14 @@ function MyTeamResults({
             </div>
           </div>
         </div>
-        <Badge variant="default" className="text-lg px-4 py-1">
+        <Badge variant="default" className="text-lg px-4 py-1 tabular-nums">
           Rank #{myRank} of {teams.length}
         </Badge>
       </div>
 
       {tasks && tasks.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-medium text-muted-foreground">Your Performance by Problem</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">How you did on each problem</h3>
           {tasks.map((task) => {
             const sub = teamSubs.find((s) => s.problem_slug === task.problem_slug)
             const solved = sub && sub.score !== null && sub.score > 0
@@ -274,7 +274,7 @@ function MyTeamResults({
             const rankForTask = sub ? allScoresForTask.indexOf(sub.score!) + 1 : null
 
             return (
-              <div key={task.problem_slug} className={`flex items-center justify-between p-3 rounded-lg ${solved ? 'bg-green-500/10' : 'bg-muted/30'}`}>
+              <div key={task.problem_slug} className={`flex items-center justify-between p-3 rounded-xl ${solved ? 'bg-green-500/10' : 'bg-muted/30'}`}>
                 <div className="flex items-center gap-3">
                   {solved ? (
                     <CheckCircle className="h-5 w-5 text-green-500" />
@@ -292,7 +292,7 @@ function MyTeamResults({
                 </div>
                 <div className="text-right">
                   {sub ? (
-                    <p className={`font-bold ${solved ? 'text-green-600' : ''}`}>
+                    <p className={`font-bold tabular-nums ${solved ? 'text-green-700 dark:text-green-400' : ''}`}>
                       {sub.score} / {sub.max_score}
                     </p>
                   ) : (
@@ -419,8 +419,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
     const captain = myTeam.members.find((m) => m.role === 'captain') || myTeam.members[0]
 
     const grad = ctx.createLinearGradient(0, 0, 800, 600)
-    grad.addColorStop(0, '#6366f1')
-    grad.addColorStop(1, '#8b5cf6')
+    grad.addColorStop(0, '#2F5BE7')
+    grad.addColorStop(1, '#1E3FB8')
     ctx.fillStyle = grad
     ctx.fillRect(0, 0, 800, 600)
 
@@ -507,7 +507,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
   if (!gate.allowed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+        <Card className="max-w-sm w-full rounded-3xl p-8 text-center border-border/70">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
             <Trophy className="h-6 w-6 text-primary" />
           </div>
@@ -536,8 +536,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/40 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+      <header className="border-b border-border bg-card/90 backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-4">
           <Link href={`/hackathons/${slug}`} className="text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="inline h-3 w-3 mr-1" /> Back to event
           </Link>
@@ -547,11 +547,11 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-8 px-6 py-10">
+      <main className="mx-auto max-w-5xl space-y-8 px-4 sm:px-6 py-10">
         <section className="text-center">
           <Trophy className="h-12 w-12 text-primary mx-auto mb-3" />
-          <h1 className="text-4xl font-bold">{hackathon.name}</h1>
-          <p className="text-muted-foreground mt-2">Final Results</p>
+          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-balance">{hackathon.name}</h1>
+          <p className="text-muted-foreground mt-2">Final results</p>
           {hackathon.released_at && (
             <p className="text-xs text-muted-foreground mt-1">
               Released {formatDateTime(hackathon.released_at)}
@@ -572,12 +572,12 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
         <div className="text-center">
           <Link href={`/hackathons/${slug}/report`}>
             <Button variant="outline" className="gap-1.5 text-sm">
-              <FileText className="h-4 w-4" /> View Detailed Performance Report
+              <FileText className="h-4 w-4" /> View detailed report
             </Button>
           </Link>
         </div>
 
-        <Card className="p-6 border-primary/30 bg-primary/5">
+        <Card className="rounded-3xl p-6 border-primary/30 bg-primary/5">
           <div className="flex flex-wrap justify-center gap-3">
             {linkedinShareUrl && (
               <Button onClick={shareResults} variant="default">
@@ -592,7 +592,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
             </Button>
             {myTeam && (
               <Button onClick={downloadCert} variant="outline">
-                <Download className="h-4 w-4 mr-1" /> Download Certificate
+                <Download className="h-4 w-4 mr-1" /> Download certificate
               </Button>
             )}
           </div>
@@ -602,9 +602,9 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
         <section>
           <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary" /> Final Leaderboard
+            <Trophy className="h-5 w-5 text-primary" /> Final leaderboard
           </h2>
-          <Card className="overflow-hidden">
+          <Card className="rounded-3xl overflow-hidden">
             {teams.map((t, i) => {
               const teamSubs = submissions.filter((s) => s.team_id === t.id && s.status === 'released')
               const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
@@ -616,7 +616,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                     className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors ${myTeam?.id === t.id ? 'bg-primary/5' : ''}`}
                     onClick={() => toggleTeamExpand(t.id)}
                   >
-                    <span className={`w-10 text-2xl font-bold tabular-nums text-center ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : i === 2 ? 'text-amber-600' : 'text-muted-foreground'}`}>
+                    <span className={`w-10 text-2xl font-bold tabular-nums text-center ${i === 0 ? 'text-amber-500' : i === 1 ? 'text-foreground/60' : i === 2 ? 'text-amber-700 dark:text-amber-600' : 'text-muted-foreground'}`}>
                       {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
                     </span>
                     <div className="flex-1">
@@ -637,8 +637,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg">{t.xp} <span className="text-xs font-normal text-muted-foreground">XP</span></p>
-                      <p className="text-xs text-muted-foreground">Lv.{t.level}</p>
+                      <p className="font-bold text-lg tabular-nums">{t.xp} <span className="text-xs font-normal text-muted-foreground">XP</span></p>
+                      <p className="text-xs text-muted-foreground tabular-nums">Level {t.level}</p>
                     </div>
                     {t.achievements.length > 0 && (
                       <div className="flex gap-1">
@@ -672,7 +672,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
         {submissions.length > 0 && hackathon.tasks && hackathon.tasks.length > 0 && (
           <section>
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" /> Submission Breakdown
+              <FileText className="h-5 w-5 text-primary" /> Submissions by problem
             </h2>
             <div className="space-y-6">
               {hackathon.tasks.map((task) => {
@@ -688,7 +688,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
                 const medals = ['🥇', '🥈', '🥉']
 
                 return (
-                  <Card key={task.problem_slug} className="overflow-hidden">
+                  <Card key={task.problem_slug} className="rounded-3xl overflow-hidden">
                     <div className="p-4 bg-muted/30 border-b border-border/40">
                       <div className="flex items-center justify-between">
                         <div>
@@ -778,7 +778,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
           )}
           {myTeam && (
             <Button onClick={downloadCert}>
-              <Award className="h-4 w-4 mr-1" /> Download Certificate
+              <Award className="h-4 w-4 mr-1" /> Download certificate
             </Button>
           )}
         </section>

@@ -167,17 +167,17 @@ export default function CertVerifyPage() {
       <div className="max-w-6xl mx-auto mb-6 print:hidden" data-testid="cert-verify-header">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <Award className="w-7 h-7 text-emerald-500" />
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Award className="w-5 h-5" /></span>
             <div>
-              <Badge variant="outline" className="border-emerald-500/40 text-emerald-500 mb-1">
+              <Badge variant="outline" className="border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400 mb-1">
                 Verified by CodeSpectra
               </Badge>
-              <h1 className="text-2xl font-bold leading-tight" data-testid="cert-verify-title">
+              <h1 className="text-2xl font-bold tracking-tight leading-tight text-foreground" data-testid="cert-verify-title">
                 {certData.certificationTitle}
               </h1>
               <p className="text-sm text-muted-foreground">
                 Awarded to <span className="font-semibold text-foreground" data-testid="cert-verify-name">{certData.candidateName}</span> · score{' '}
-                <span className="font-semibold text-foreground" data-testid="cert-verify-score">{certData.score}%</span> · issued{' '}
+                <span className="font-semibold tabular-nums text-foreground" data-testid="cert-verify-score">{certData.score}%</span> · issued{' '}
                 {formatDate(certData.issuedAt)}
               </p>
             </div>
@@ -207,7 +207,7 @@ export default function CertVerifyPage() {
 
       {/* Certificate canvas — this is what prints */}
       <div className="max-w-6xl mx-auto" data-testid="cert-canvas-wrapper">
-        <div className="cert-print-area shadow-2xl rounded-lg overflow-hidden border border-border/40">
+        <div className="cert-print-area shadow-2xl dark:shadow-none rounded-2xl overflow-hidden border border-border/60">
           <CertificateRenderer data={certData} template={template} />
         </div>
         <p className="text-[11px] text-center text-muted-foreground mt-4 print:hidden">

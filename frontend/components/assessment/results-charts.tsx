@@ -26,7 +26,8 @@ export interface QuestionStat {
 }
 
 const BUCKET_LABELS = ['0-10', '10-20', '20-30', '30-40', '40-50', '50-60', '60-70', '70-80', '80-90', '90-100']
-const DONUT_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#64748b']
+// Released = success green, graded-unreleased = brand, awaiting = amber, none = slate.
+const DONUT_COLORS = ['#16a34a', 'hsl(var(--primary))', '#f59e0b', '#64748b']
 
 const tooltipStyle = {
   backgroundColor: 'hsl(var(--card))',
@@ -49,7 +50,7 @@ export function ScoreHistogram({ rows }: { rows: ChartRow[] }) {
   const total = data.reduce((s, d) => s + d.candidates, 0)
   if (total === 0) return null
   return (
-    <Card className="p-4">
+    <Card className="rounded-2xl p-5">
       <p className="text-sm font-semibold mb-1">Score distribution</p>
       <p className="text-xs text-muted-foreground mb-3">{total} submitted · % score</p>
       <div className="h-52">
@@ -59,7 +60,7 @@ export function ScoreHistogram({ rows }: { rows: ChartRow[] }) {
             <XAxis dataKey="range" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval={1} />
             <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
             <Tooltip contentStyle={tooltipStyle} />
-            <Bar dataKey="candidates" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="candidates" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -81,23 +82,23 @@ export function StatusDonut({ rows }: { rows: ChartRow[] }) {
       else gradedPending++
     }
     return [
-      { name: 'Released', value: gradedReleased },
-      { name: 'Graded · unreleased', value: gradedPending },
-      { name: 'Awaiting grading', value: awaiting },
-      { name: 'No submission', value: noSubmit },
+      { name: 'Released', value: gradedReleased, color: DONUT_COLORS[0] },
+      { name: 'Graded · unreleased', value: gradedPending, color: DONUT_COLORS[1] },
+      { name: 'Awaiting grading', value: awaiting, color: DONUT_COLORS[2] },
+      { name: 'No submission', value: noSubmit, color: DONUT_COLORS[3] },
     ].filter((d) => d.value > 0)
   }, [rows])
   if (data.length === 0) return null
   return (
-    <Card className="p-4">
+    <Card className="rounded-2xl p-5">
       <p className="text-sm font-semibold mb-1">Candidate funnel</p>
       <p className="text-xs text-muted-foreground mb-3">{rows.length} total invited</p>
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie data={data} dataKey="value" nameKey="name" innerRadius={52} outerRadius={80} paddingAngle={2}>
-              {data.map((_, i) => (
-                <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+              {data.map((d, i) => (
+                <Cell key={i} fill={d.color} />
               ))}
             </Pie>
             <Tooltip contentStyle={tooltipStyle} />
@@ -123,7 +124,7 @@ export function QuestionBars({ stats }: { stats: QuestionStat[] }) {
   )
   if (data.length === 0 || data.every((d) => d.avg == null)) return null
   return (
-    <Card className="p-4 md:col-span-2">
+    <Card className="rounded-2xl p-5 md:col-span-2">
       <p className="text-sm font-semibold mb-1">Question difficulty</p>
       <p className="text-xs text-muted-foreground mb-3">Average score per question (graded answers only · hover for title)</p>
       <div className="h-52">
@@ -143,7 +144,7 @@ export function QuestionBars({ stats }: { stats: QuestionStat[] }) {
               {data.map((d, i) => (
                 <Cell
                   key={i}
-                  fill={d.avg == null ? '#64748b' : d.avg < 40 ? '#f43f5e' : d.avg < 70 ? '#f59e0b' : '#10b981'}
+                  fill={d.avg == null ? '#64748b' : d.avg < 40 ? '#f43f5e' : d.avg < 70 ? '#f59e0b' : '#16a34a'}
                 />
               ))}
             </Bar>

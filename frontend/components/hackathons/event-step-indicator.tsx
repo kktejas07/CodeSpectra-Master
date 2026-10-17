@@ -27,7 +27,7 @@ export function EventStepIndicator({ steps, currentStep, onStepClick }: EventSte
           return (
             <div key={s.n} className="flex items-center gap-2">
               {isCompleted ? (
-                <CheckCircle className="w-4 h-4 text-emerald-500" />
+                <CheckCircle className="w-4 h-4 text-primary" />
               ) : (
                 <Icon className="w-4 h-4 text-primary" />
               )}
@@ -53,11 +53,11 @@ export function EventStepIndicator({ steps, currentStep, onStepClick }: EventSte
               <button
                 onClick={() => onStepClick?.(s.n)}
                 disabled={!onStepClick}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   isCurrent
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : isCompleted
-                    ? 'bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20'
+                    ? 'bg-primary/10 text-primary hover:bg-primary/15'
                     : 'bg-muted text-muted-foreground hover:bg-muted/80'
                 } ${onStepClick ? 'cursor-pointer' : 'cursor-default'}`}
               >
@@ -71,7 +71,7 @@ export function EventStepIndicator({ steps, currentStep, onStepClick }: EventSte
               </button>
               {i < steps.length - 1 && (
                 <div className={`w-6 lg:w-10 h-px mx-1 transition-colors ${
-                  isCompleted ? 'bg-emerald-500' : 'bg-border'
+                  isCompleted ? 'bg-primary/60' : 'bg-border'
                 }`} />
               )}
             </div>

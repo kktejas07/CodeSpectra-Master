@@ -40,11 +40,11 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md p-8 text-center space-y-4">
+      <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center space-y-4">
         {data?.valid ? (
           <>
-            <CheckCircle className="mx-auto h-12 w-12 text-green-500" />
-            <h1 className="text-xl font-bold">Certificate Verified</h1>
+            <CheckCircle className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" />
+            <h1 className="text-xl font-bold">Certificate verified</h1>
             <div className="space-y-1 text-sm text-muted-foreground">
               <p><strong>Event:</strong> {data.event}</p>
               <p><strong>Team:</strong> {data.team}</p>
@@ -54,17 +54,17 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
               </div>
               <div className="flex items-center justify-center gap-2">
                 <Award className="h-4 w-4" />
-                <span>{data.xp} XP</span>
+                <span className="tabular-nums">{data.xp} XP</span>
               </div>
             </div>
-            <Badge variant="outline" className="text-green-400 border-green-400/40">
+            <Badge variant="outline" className="text-green-700 dark:text-green-400 border-green-500/40 bg-green-500/10">
               Verified on CodeSpectra
             </Badge>
           </>
         ) : (
           <>
             <XCircle className="mx-auto h-12 w-12 text-destructive" />
-            <h1 className="text-xl font-bold">Certificate Not Found</h1>
+            <h1 className="text-xl font-bold">Certificate not found</h1>
             <p className="text-sm text-muted-foreground">
               {data?.error || 'This certificate could not be verified.'}
             </p>

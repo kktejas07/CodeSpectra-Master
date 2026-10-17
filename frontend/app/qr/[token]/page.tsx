@@ -73,13 +73,13 @@ interface TeamResp {
 type ScanResp = UserResp | TeamResp
 
 const VARIANT_GRADIENT: Record<string, string> = {
-  user: 'from-emerald-500/20 via-emerald-500/10 to-transparent',
+  user: 'from-primary/20 via-primary/10 to-transparent',
   admin: 'from-fuchsia-500/20 via-fuchsia-500/10 to-transparent',
   tenant: 'from-sky-500/20 via-sky-500/10 to-transparent',
 }
 
 const VARIANT_RING: Record<string, string> = {
-  user: 'ring-emerald-500/60',
+  user: 'ring-primary/60',
   admin: 'ring-fuchsia-500/60',
   tenant: 'ring-sky-500/60',
 }
@@ -127,7 +127,7 @@ export default function QrScanPage({
   if (!data && !error) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Resolving QR…
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening QR code…
       </div>
     )
   }
@@ -135,7 +135,7 @@ export default function QrScanPage({
   if (!gate.allowed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-8">
-        <div className="max-w-md space-y-3 rounded-2xl border border-border bg-card p-8 text-center">
+        <div className="max-w-md space-y-3 rounded-3xl border border-border bg-card p-8 text-center">
           <AlertTriangle className="mx-auto h-10 w-10 text-primary" />
           <h1 className="text-xl font-bold">Sign in required</h1>
           <p className="text-sm text-muted-foreground">
@@ -161,7 +161,7 @@ export default function QrScanPage({
     const isRevoked = status === 410
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-8">
-        <div className="max-w-md space-y-3 rounded-2xl border border-border bg-card p-8 text-center">
+        <div className="max-w-md space-y-3 rounded-3xl border border-border bg-card p-8 text-center">
           <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
           <h1 className="text-xl font-bold">
             {isRevoked ? 'This QR has been revoked' : 'QR not recognised'}
@@ -183,18 +183,18 @@ export default function QrScanPage({
       <main className="mx-auto max-w-2xl px-6 py-12">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <button onClick={() => router.back()} className="rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               ← Back
             </button>
-            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs uppercase tracking-wider text-muted-foreground">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
               <ScanLine className="h-3 w-3" /> Scanned
             </span>
           </div>
         </div>
 
         {data.kind === 'team' && !authUser?.uid ? (
-          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-primary/40 shadow-xl">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-primary/40 shadow-xl dark:shadow-none">
+            <p className="text-sm font-medium text-muted-foreground">
               {teamData?.hackathon?.name || 'Hackathon team'}
             </p>
             <h1 className="mt-1 text-2xl font-bold" data-testid="qr-team-name">
@@ -204,7 +204,7 @@ export default function QrScanPage({
               <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
                 <p className="text-sm font-medium">Event is {teamData.hackathon.status === 'live' ? 'in progress' : 'closed'}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {teamData.hackathon.status === 'live' ? 'Cannot join — the event is already running.' : 'Cannot join — the event has ended.'}
+                  {teamData.hackathon.status === 'live' ? 'You can\'t join while the event is running.' : 'You can\'t join because the event has ended.'}
                 </p>
               </div>
             ) : (
@@ -228,8 +228,8 @@ export default function QrScanPage({
             )}
           </article>
         ) : data.kind === 'team' && !isMember ? (
-          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-amber-500/40 shadow-xl">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-amber-500/40 shadow-xl dark:shadow-none">
+            <p className="text-sm font-medium text-muted-foreground">
               {teamData?.hackathon?.name || 'Hackathon team'}
             </p>
             <h1 className="mt-1 text-2xl font-bold">{teamData!.team.name}</h1>
@@ -249,13 +249,13 @@ export default function QrScanPage({
               <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
                 <p className="text-sm font-medium">Event is {teamData.hackathon.status === 'live' ? 'in progress' : 'closed'}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {teamData.hackathon.status === 'live' ? 'Cannot join — the event is already running.' : 'Cannot join — the event has ended.'}
+                  {teamData.hackathon.status === 'live' ? 'You can\'t join while the event is running.' : 'You can\'t join because the event has ended.'}
                 </p>
               </div>
             ) : (
               <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                 <p className="text-sm font-medium flex items-center gap-2">
-                  <UserPlus className="h-4 w-4 text-amber-500" />
+                  <UserPlus className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                   You&apos;re not on this team yet
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -284,7 +284,7 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
   const u = data.user
   return (
     <article
-      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-xl`}
+      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-xl dark:shadow-none`}
       data-testid="qr-user-card"
     >
       <header className="mb-6 flex items-start gap-4">
@@ -294,7 +294,7 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
           className="h-20 w-20 rounded-2xl border-4 border-border/60"
         />
         <div className="flex-1 space-y-1">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+          <p className="text-sm font-medium text-muted-foreground">
             {data.theme.label} ID
           </p>
           <h1 className="text-2xl font-bold" data-testid="qr-user-name">
@@ -302,7 +302,7 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
           </h1>
           <p className="text-sm text-muted-foreground">{u.email}</p>
         </div>
-        <Badge variant="outline" className="uppercase">
+        <Badge variant="outline" className="capitalize">
           {u.role}
         </Badge>
       </header>
@@ -333,11 +333,11 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
 
   return (
     <article
-      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-xl`}
+      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-xl dark:shadow-none`}
       data-testid="qr-team-card"
     >
       <header className="mb-6">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+        <p className="text-sm font-medium text-muted-foreground">
           {data.hackathon?.name || 'Hackathon team'}
         </p>
         <div className="flex items-center gap-3">
@@ -347,7 +347,7 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
           {data.hackathon?.status && (
             <Badge
               variant={live ? 'default' : 'secondary'}
-              className="uppercase"
+              className={live ? 'capitalize border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400' : 'capitalize'}
             >
               {data.hackathon.status}
             </Badge>
@@ -370,12 +370,12 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
       )}
 
       <div className="mt-6 space-y-3">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Roster</p>
+        <p className="text-sm font-medium text-muted-foreground">Roster</p>
         <ul className="space-y-1 text-sm">
           {t.members.map((m, i) => (
             <li key={i} className="flex items-center gap-2">
               <span className={m.role === 'captain' ? 'text-primary' : ''}>{m.name}</span>
-              <span className="text-[10px] uppercase text-muted-foreground">{m.role}</span>
+              <span className="text-[11px] capitalize text-muted-foreground">{m.role}</span>
             </li>
           ))}
         </ul>
@@ -383,7 +383,7 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
 
       {t.achievements.length > 0 && (
         <div className="mt-6 space-y-2">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Achievements</p>
+          <p className="text-sm font-medium text-muted-foreground">Achievements</p>
           <div className="flex flex-wrap gap-2">
             {t.achievements.map((a) => (
               <Badge key={a.id} variant="outline" className="gap-1">
@@ -413,8 +413,8 @@ function Stat({
   value: string | number
 }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/30 p-3">
-      <p className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-2xl border border-border/60 bg-muted/30 p-3">
+      <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
         {icon}
         {label}
       </p>

@@ -35,7 +35,7 @@ export default function AssessmentPage() {
   if (!gate.allowed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+        <Card className="max-w-sm w-full rounded-3xl p-8 text-center border-border/70">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
             <Code2 className="h-6 w-6 text-primary" />
           </div>
@@ -98,7 +98,7 @@ export default function AssessmentPage() {
         <div className="mx-auto max-w-7xl px-4 py-16 lg:py-24">
           <div className="max-w-3xl">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary mb-5">
-              <Sparkles className="h-3 w-3" /> AI-Powered Assessments
+              <Sparkles className="h-3 w-3" /> AI-powered assessments
             </span>
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
               Streamline your recruitment with{' '}
@@ -145,7 +145,7 @@ export default function AssessmentPage() {
             {ecosystem.map((f) => (
               <div
                 key={f.title}
-                className="group rounded-xl border border-border/60 bg-card/40 p-5 hover:border-primary/40 hover:bg-card/60 transition"
+                className="group rounded-2xl border border-border/70 bg-card p-5 transition-[transform,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary/40 motion-reduce:hover:translate-y-0"
                 data-testid={f.testid}
               >
                 <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -169,10 +169,10 @@ export default function AssessmentPage() {
             {steps.map((s) => (
               <div
                 key={s.n}
-                className="rounded-xl border border-border/60 bg-background p-5"
+                className="rounded-2xl border border-border/70 bg-card p-5"
                 data-testid={`step-${s.n}`}
               >
-                <div className="text-3xl font-bold text-primary/90">{s.n}.</div>
+                <div className="text-3xl font-bold tabular-nums text-primary">{s.n}.</div>
                 <h3 className="mt-1 font-semibold">{s.title}</h3>
                 <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
               </div>
@@ -207,7 +207,7 @@ export default function AssessmentPage() {
             {faq.map((q, i) => (
               <div
                 key={q.q}
-                className="rounded-xl border border-border/60 bg-background overflow-hidden"
+                className="rounded-2xl border border-border/70 bg-card overflow-hidden"
               >
                 <button
                   type="button"

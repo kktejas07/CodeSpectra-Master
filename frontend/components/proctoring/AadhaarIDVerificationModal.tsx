@@ -113,13 +113,13 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-      <div className="max-w-md w-full rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 text-foreground">
+      <div className="max-w-md w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground">
         <div className="flex items-center justify-between border-b border-border/60 pb-3">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold">Aadhaar Mudra KYC & Face Match</h2>
+            <h2 className="text-base font-bold">Verify your ID and face</h2>
           </div>
-          <span className="text-[10px] uppercase font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded">
+          <span className="text-[11px] font-semibold tabular-nums bg-primary/10 text-primary px-2 py-0.5 rounded-full">
             Step {step === 'upload_id' ? '1/3' : step === 'face_match' ? '2/3' : '3/3'}
           </span>
         </div>
@@ -133,7 +133,7 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
 
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
               <Upload className="h-8 w-8 text-primary mb-2" />
-              <div className="font-semibold text-foreground">Upload Aadhaar / Govt ID Card</div>
+              <div className="font-semibold text-foreground">Upload your Aadhaar or government ID</div>
               <div className="text-[11px] text-muted-foreground mt-0.5">JPG, PNG, or PDF up to 10MB</div>
 
               <input
@@ -147,22 +147,22 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
               />
               <label
                 htmlFor="aadhaar-input"
-                className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90"
+                className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
               >
-                Select ID File
+                Choose ID file
               </label>
             </div>
 
             {isProcessingOcr && (
               <div className="flex items-center justify-center gap-2 py-2 text-primary font-medium">
-                <RefreshCw className="h-4 w-4 animate-spin" /> Performing Aadhaar Mudra OCR & Extraction...
+                <RefreshCw className="h-4 w-4 animate-spin" /> Reading your ID…
               </div>
             )}
 
             {ocrResult && (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 space-y-1.5 text-xs">
-                <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-bold">
-                  <CheckCircle2 className="h-4 w-4" /> Aadhaar OCR Extraction Verified
+              <div className="rounded-xl border border-green-500/40 bg-green-500/10 p-3 space-y-1.5 text-xs">
+                <div className="flex items-center gap-1.5 text-green-700 dark:text-green-400 font-bold">
+                  <CheckCircle2 className="h-4 w-4" /> ID details read
                 </div>
                 <div className="text-foreground">Name: <strong>{ocrResult.name}</strong></div>
                 <div className="text-foreground">Aadhaar Number: <strong>{ocrResult.idNumberMasked}</strong></div>
@@ -180,9 +180,9 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
               <button
                 onClick={startCamera}
                 disabled={!ocrResult}
-                className="rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50"
+                className="rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
               >
-                Next: Live Face Match ➔
+                Next: face check →
               </button>
             </div>
           </div>
@@ -202,16 +202,16 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
 
             {isComparing && (
               <div className="flex items-center justify-center gap-2 text-primary font-medium py-1">
-                <RefreshCw className="h-4 w-4 animate-spin" /> Comparing face against Aadhaar photo...
+                <RefreshCw className="h-4 w-4 animate-spin" /> Comparing your face with your ID photo…
               </div>
             )}
 
             {similarityScore && (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 space-y-1 text-center">
-                <div className="text-emerald-600 dark:text-emerald-400 font-bold text-sm">
-                  Face Match Confirmed: {similarityScore}%
+              <div className="rounded-xl border border-green-500/40 bg-green-500/10 p-3 space-y-1 text-center">
+                <div className="text-green-700 dark:text-green-400 font-bold text-sm tabular-nums">
+                  Face matches your ID: {similarityScore}%
                 </div>
-                <div className="text-[11px] text-muted-foreground">Biometric similarity threshold satisfied (&gt;85.0%)</div>
+                <div className="text-[11px] text-muted-foreground">Above the 85% match threshold</div>
               </div>
             )}
 
@@ -219,16 +219,16 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
               {!similarityScore ? (
                 <button
                   onClick={captureSelfieAndMatch}
-                  className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90"
+                  className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                 >
-                  Capture & Verify Face
+                  Capture and verify face
                 </button>
               ) : (
                 <button
                   onClick={startLivenessRecording}
-                  className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90"
+                  className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                 >
-                  Next: 3s Liveness Video ➔
+                  Next: short liveness check →
                 </button>
               )}
             </div>
@@ -239,10 +239,10 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
         {step === 'liveness_video' && (
           <div className="space-y-4 text-xs text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Video className="h-6 w-6 animate-pulse" />
+              <Video className="h-6 w-6 animate-pulse motion-reduce:animate-none" />
             </div>
             <div>
-              <h3 className="font-bold text-foreground text-sm">Recording 3.5-Second Liveness Verification</h3>
+              <h3 className="font-bold text-foreground text-sm">Recording a short liveness check</h3>
               <p className="text-muted-foreground mt-1">Please blink twice and keep your head centered.</p>
             </div>
 
@@ -252,20 +252,20 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
                 style={{ width: `${recordingProgress}%` }}
               />
             </div>
-            <div className="font-mono text-muted-foreground font-semibold">{recordingProgress}% Complete</div>
+            <div className="tabular-nums text-muted-foreground font-semibold">{recordingProgress}% complete</div>
           </div>
         )}
 
         {/* Complete */}
         {step === 'complete' && (
           <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-700 dark:text-green-400">
               <UserCheck className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="font-bold text-foreground text-base">KYC Identity Verified</h3>
+              <h3 className="font-bold text-foreground text-base">Identity verified</h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Aadhaar card match ({similarityScore}%) and live video liveness confirmed.
+                ID photo match ({similarityScore}%) and liveness check passed.
               </p>
             </div>
 
@@ -280,9 +280,9 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
                   })
                 }
               }}
-              className="w-full rounded-lg bg-emerald-600 py-2.5 text-xs font-semibold text-white shadow hover:bg-emerald-700"
+              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
             >
-              Continue to Assessment ➔
+              Continue to assessment →
             </button>
           </div>
         )}

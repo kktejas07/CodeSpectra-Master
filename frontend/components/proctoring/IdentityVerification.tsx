@@ -222,19 +222,20 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-      <Card className="max-w-xl w-full p-6 border-primary/20 space-y-6 bg-card text-card-foreground shadow-2xl relative">
+      <Card className="max-w-xl w-full max-h-[92vh] overflow-y-auto rounded-3xl p-6 border-border/70 space-y-6 bg-card text-card-foreground shadow-2xl dark:shadow-none relative">
         <button 
           onClick={onCancel}
-          className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+          className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           title="Close"
+          aria-label="Close"
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Wizard Header */}
         <div className="border-b border-border pb-4">
-          <h2 className="text-xl font-bold text-foreground">Identity Verification</h2>
-          <p className="text-xs text-muted-foreground mt-1">Required for starting: <strong className="text-foreground">{examTitle}</strong></p>
+          <h2 className="text-xl font-bold text-foreground">Identity check</h2>
+          <p className="text-xs text-muted-foreground mt-1">Required before you start <strong className="text-foreground">{examTitle}</strong></p>
           
           {/* Steps Indicator — skipped steps render muted so the bar matches the active flow */}
           <div className="flex items-center gap-2 mt-4">
@@ -252,10 +253,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
         {/* Step 1: Consent */}
         {step === 'consent' && (
           <div className="space-y-4">
-            <div className="flex items-start gap-3 p-4 bg-muted/40 rounded-lg border text-sm leading-relaxed">
-              <ShieldAlert className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 p-4 bg-muted/40 rounded-2xl border border-border text-sm leading-relaxed">
+              <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-2">
-                <p className="font-semibold text-foreground">Strict Examination Policy</p>
+                <p className="font-semibold text-foreground">Exam rules</p>
                 <ul className="list-disc pl-4 space-y-1.5 text-muted-foreground text-xs">
                   <li><strong>Proctored Environment:</strong> We monitor your camera stream, eye movements, and active browser tab.</li>
                   <li><strong>Zero Cheating Tolerance:</strong> Switching tabs, copy-pasting, or using external AI resources will flag your assessment.</li>
@@ -299,7 +300,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
                 disabled={!agreedTerms || !agreedPrivacy}
                 className="gap-2"
               >
-                {(!needId && !needFace) ? (<>Start Assessment <ArrowRight className="h-4 w-4" /></>) : (<>Proceed <ArrowRight className="h-4 w-4" /></>)}
+                {(!needId && !needFace) ? (<>Start assessment <ArrowRight className="h-4 w-4" /></>) : (<>Continue <ArrowRight className="h-4 w-4" /></>)}
               </Button>
             </div>
           </div>
@@ -310,7 +311,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base flex items-center justify-center gap-2">
-                <FileText className="h-5 w-5 text-primary" /> Hold Up Your Government ID
+                <FileText className="h-5 w-5 text-primary" /> Hold up your government ID
               </h3>
               <p className="text-xs text-muted-foreground">
                 Place your ID (Aadhaar, Passport, Driver's License, etc.) within the frame. Ensure all text and details are readable.
@@ -324,7 +325,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
               </div>
             )}
 
-            <div className="relative mx-auto max-w-sm aspect-4/3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 overflow-hidden flex items-center justify-center">
+            <div className="relative mx-auto max-w-sm aspect-4/3 rounded-2xl border-2 border-dashed border-muted-foreground/30 bg-muted/20 overflow-hidden flex items-center justify-center">
               {idPhoto ? (
                 <img src={idPhoto} alt="Captured ID" className="w-full h-full object-cover" />
               ) : (
@@ -348,7 +349,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
               <div className="flex justify-center gap-3">
                 {idPhoto ? (
                   <Button variant="outline" onClick={() => retakePhoto('id')} className="gap-2">
-                    <RefreshCw className="h-4 w-4" /> Retake Photo
+                    <RefreshCw className="h-4 w-4" /> Retake photo
                   </Button>
                 ) : (
                   <Button 
@@ -356,7 +357,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
                     disabled={isCameraLoading || !!cameraError}
                     className="gap-2"
                   >
-                    <Camera className="h-4 w-4" /> Capture ID Photo
+                    <Camera className="h-4 w-4" /> Capture ID photo
                   </Button>
                 )}
               </div>
@@ -364,14 +365,14 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
               {!idPhoto && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground w-full max-w-sm">
                   <div className="flex-1 border-b border-border"></div>
-                  <span className="text-xs uppercase">or upload</span>
+                  <span className="text-xs">or upload</span>
                   <div className="flex-1 border-b border-border"></div>
                 </div>
               )}
 
               {!idPhoto && (
-                <label className="flex items-center justify-center w-full max-w-sm cursor-pointer h-10 border rounded-md hover:bg-muted/50 transition-colors">
-                  <span className="text-sm font-medium">Upload ID Document</span>
+                <label className="flex items-center justify-center w-full max-w-sm cursor-pointer h-11 border border-border rounded-lg hover:bg-muted/50 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
+                  <span className="text-sm font-medium">Upload ID document</span>
                   <input
                     type="file"
                     accept="image/*"
@@ -391,7 +392,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
 
             <div className="flex flex-col gap-3 border-t pt-4">
               {idError && (
-                <div className="flex items-center gap-2 text-sm text-red-500 bg-red-500/10 p-3 rounded-md">
+                <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 bg-red-500/10 p-3 rounded-lg">
                   <AlertCircle className="h-4 w-4 shrink-0" />
                   <p>{idError}</p>
                 </div>
@@ -400,11 +401,11 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
                 <Button variant="outline" onClick={() => { stopCamera(); setStep('consent'); }} disabled={isIdVerifying}>Back</Button>
                 <Button onClick={handleNextFromId} disabled={!idPhoto || isIdVerifying} className="gap-2">
                   {isIdVerifying ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Verifying...</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</>
                   ) : needFace ? (
-                    <>Next: Face Capture <ArrowRight className="h-4 w-4" /></>
+                    <>Next: face photo <ArrowRight className="h-4 w-4" /></>
                   ) : (
-                    <>Next: Review <ArrowRight className="h-4 w-4" /></>
+                    <>Next: review <ArrowRight className="h-4 w-4" /></>
                   )}
                 </Button>
               </div>
@@ -417,7 +418,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base flex items-center justify-center gap-2">
-                <User className="h-5 w-5 text-primary" /> Biometric Identity Verification
+                <User className="h-5 w-5 text-primary" /> Face check
               </h3>
               <p className="text-xs text-muted-foreground">
                 Look directly into the camera to capture and verify your face.
@@ -455,7 +456,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
         {step === 'confirm' && (
           <div className="space-y-4">
             <div className="text-center space-y-1">
-              <h3 className="font-semibold text-base">Review Verification Photos</h3>
+              <h3 className="font-semibold text-base">Review your photos</h3>
               <p className="text-xs text-muted-foreground">
                 Verify that {needId && needFace ? 'both images are' : 'the image is'} clear and readable. If correct, submit to start the assessment.
               </p>
@@ -465,7 +466,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
               {needId && (
               <div className="space-y-1.5">
                 <span className="text-xs font-semibold text-muted-foreground block text-center">Government ID</span>
-                <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted">
+                <div className="aspect-4/3 rounded-xl border border-border overflow-hidden bg-muted">
                   {idPhoto && <img src={idPhoto} alt="ID Preview" className="w-full h-full object-cover" />}
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => { setStep('capture_id'); startCamera(); }} className="w-full text-xs">
@@ -476,8 +477,8 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
 
               {needFace && (
               <div className="space-y-1.5">
-                <span className="text-xs font-semibold text-muted-foreground block text-center">Live Face Selfie</span>
-                <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted">
+                <span className="text-xs font-semibold text-muted-foreground block text-center">Live selfie</span>
+                <div className="aspect-4/3 rounded-xl border border-border overflow-hidden bg-muted">
                   {facePhoto && <img src={facePhoto} alt="Face Preview" className="w-full h-full object-cover" />}
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => { setStep('capture_face'); }} className="w-full text-xs">
@@ -488,7 +489,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
             </div>
 
             {needFace && (
-            <label className="flex items-start gap-3 cursor-pointer p-3 bg-muted/40 rounded-lg border text-sm">
+            <label className="flex items-start gap-3 cursor-pointer p-3 bg-muted/40 rounded-xl border border-border text-sm">
                 <input
                   type="checkbox"
                   checked={useAsProfile}
@@ -503,8 +504,8 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
 
             <div className="flex justify-end gap-3 border-t pt-4">
               <Button variant="outline" onClick={() => { if (needFace) { setStep('capture_face'); } else if (needId) { setStep('capture_id'); startCamera(); } else { setStep('consent'); } }}>Back</Button>
-              <Button onClick={handleFinish} disabled={isVerifying} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                {isVerifying ? 'Verifying...' : <><Check className="h-4 w-4" /> Start Assessment Now</>}
+              <Button onClick={handleFinish} disabled={isVerifying} className="gap-2">
+                {isVerifying ? 'Verifying…' : <><Check className="h-4 w-4" /> Start assessment</>}
               </Button>
             </div>
           </div>

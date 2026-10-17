@@ -29,9 +29,9 @@ interface DeviceAuditModalProps {
 }
 
 function verdictColor(verdict: DetectedDevice['verdict']) {
-  if (verdict === 'safe') return { badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30', icon: <CheckCircle2 className="h-4 w-4 text-emerald-500" />, label: 'Safe' }
-  if (verdict === 'warn') return { badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30', icon: <AlertTriangle className="h-4 w-4 text-amber-500" />, label: 'Review' }
-  return { badge: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30', icon: <XCircle className="h-4 w-4 text-rose-500" />, label: 'Blocked' }
+  if (verdict === 'safe') return { badge: 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30', icon: <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />, label: 'Safe' }
+  if (verdict === 'warn') return { badge: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30', icon: <AlertTriangle className="h-4 w-4 text-amber-500" />, label: 'Review' }
+  return { badge: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30', icon: <XCircle className="h-4 w-4 text-red-500" />, label: 'Blocked' }
 }
 
 function deviceIcon(dev: DetectedDevice) {
@@ -162,13 +162,13 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-w-2xl w-full rounded-2xl border border-border bg-card p-6 shadow-2xl space-y-5 text-foreground max-h-[90vh] overflow-y-auto">
+      <div className="max-w-2xl w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <ShieldCheck className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">Device & Port Audit</h2>
+            <h2 className="text-lg font-bold">Device check</h2>
             <div className="text-xs text-muted-foreground">
               Scanning connected USB devices before your proctored session starts.
             </div>
@@ -189,17 +189,17 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
           <div className="space-y-4">
             {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
-                <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{safe.length}</div>
-                <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">Safe</div>
+              <div className="rounded-2xl border border-green-500/30 bg-green-500/10 p-3 text-center">
+                <div className="text-2xl font-bold tabular-nums text-green-700 dark:text-green-400">{safe.length}</div>
+                <div className="text-[11px] font-medium text-green-700 dark:text-green-300">Safe</div>
               </div>
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-center">
-                <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{warns.length}</div>
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3 text-center">
+                <div className="text-2xl font-bold tabular-nums text-amber-700 dark:text-amber-400">{warns.length}</div>
                 <div className="text-[11px] font-medium text-amber-700 dark:text-amber-300">Review</div>
               </div>
-              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-center">
-                <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{blocked.length}</div>
-                <div className="text-[11px] font-medium text-rose-700 dark:text-rose-300">Blocked</div>
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-center">
+                <div className="text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{blocked.length}</div>
+                <div className="text-[11px] font-medium text-red-700 dark:text-red-300">Blocked</div>
               </div>
             </div>
 
@@ -235,14 +235,14 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
             )}
 
             {/* Notices */}
-            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-[11px] leading-relaxed text-muted-foreground space-y-1.5">
+            <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 text-[11px] leading-relaxed text-muted-foreground space-y-1.5">
               <div className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                <span>Power cable, mouse &amp; keyboard are automatically accepted and flagged green.</span>
+                <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
+                <span>Power cable, mouse &amp; keyboard are accepted automatically.</span>
               </div>
               <div className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 text-amber-500 shrink-0" />
-                <span>Pen drives (mass storage) or unrecognized peripherals are blocked and reported to the proctor log.</span>
+                <span>Pen drives (mass storage) and unrecognised devices are blocked and reported to the proctor.</span>
               </div>
             </div>
           </div>
@@ -255,15 +255,15 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
           >
             {scanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Grant &amp; Scan More
+            Allow access and scan again
           </button>
           <button
             onClick={() => void handleComplete()}
             disabled={scanning || completing}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow hover:bg-primary/90 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
           >
             {completing ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            Continue to Assessment
+            Continue to assessment
           </button>
         </div>
       </div>

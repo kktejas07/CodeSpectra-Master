@@ -3,7 +3,7 @@ import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
-import { Loader2, ArrowLeft, Trophy, Code2, CheckCircle2, XCircle, LogIn, User, Clock, Eye, Edit2, MapPin, Building2, Link as LinkIcon, Briefcase, GraduationCap } from 'lucide-react'
+import { Loader2, ArrowLeft, Trophy, Code2, CheckCircle2, XCircle, LogIn, User, Clock, Eye, Edit2, MapPin, Link as LinkIcon, Briefcase } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -42,8 +42,8 @@ interface ProfileResponse {
 }
 
 const DIFF_TONE: Record<Difficulty, string> = {
-  easy: 'border-primary/40 bg-primary/10 text-primary',
-  medium: 'border-amber-400/40 bg-amber-400/10 text-amber-400',
+  easy: 'border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400',
+  medium: 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-400',
   hard: 'border-destructive/40 bg-destructive/10 text-destructive',
 }
 
@@ -190,20 +190,20 @@ export default function UserProfilePage({
   return (
     <div className="min-h-screen bg-background w-full">
       {isPreview && (
-        <div className="bg-slate-900 text-slate-100 px-4 py-3 flex items-center justify-between text-sm sticky top-0 z-50">
+        <div className="bg-primary text-primary-foreground px-4 py-3 flex flex-wrap items-center justify-between gap-2 text-sm sticky top-0 z-50">
           <div className="flex items-center gap-2">
-            <Eye className="w-4 h-4 text-slate-400" />
-            <span className="font-medium">This is how your profile will be visible to others. Some buttons are disabled as you cannot access them in Preview Mode.</span>
+            <Eye className="w-4 h-4 opacity-80" />
+            <span className="font-medium">This is how others see your profile. Some buttons are turned off in preview.</span>
           </div>
           <Link href="/dashboard/profile">
-            <Button size="sm" variant="ghost" className="h-8 text-slate-300 hover:text-white hover:bg-slate-800">Exit Preview</Button>
+            <Button size="sm" variant="ghost" className="h-8 text-primary-foreground hover:text-primary-foreground hover:bg-white/15">Exit preview</Button>
           </Link>
         </div>
       )}
 
       {/* Full Width Banner */}
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <div className="h-48 lg:h-64 w-full rounded-2xl relative overflow-hidden shadow-sm bg-linear-to-r from-blue-700 via-blue-600 to-indigo-800">
+        <div className="h-48 lg:h-64 w-full rounded-3xl relative overflow-hidden shadow-sm bg-linear-to-r from-[#1E3FB8] via-primary to-[#3A4FC4]">
           <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]" />
           <div className="absolute left-0 right-0 top-0 -z-1 m-auto h-77.5 w-77.5 rounded-full bg-white opacity-20 blur-[100px]" />
         </div>
@@ -214,11 +214,10 @@ export default function UserProfilePage({
           
           {/* Left Sidebar */}
           <aside className="space-y-6 -mt-24 relative z-10">
-            <Card className="border-border/60 p-6 text-center shadow-2xl bg-card/70 backdrop-blur-xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none opacity-70" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none opacity-70" />
+            <Card className="rounded-3xl border-border/70 p-6 text-center shadow-2xl dark:shadow-none bg-card relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/15 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none opacity-70" />
               
-              <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-blue-500 to-purple-500 p-0.75 shadow-lg">
+              <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-primary to-[#6E8CF5] p-0.75 shadow-lg">
                 <div className="rounded-full bg-background p-1">
                   <UserAvatar seed={user.email || user.id} name={user.name} className="h-28 w-28" />
                 </div>
@@ -227,68 +226,48 @@ export default function UserProfilePage({
               <h1 className="mt-5 text-2xl font-extrabold text-foreground tracking-tight">{user.name}</h1>
               <p className="mt-1 text-sm text-muted-foreground font-medium">@{user.email?.split('@')[0] || slug}</p>
               
-              {/* Fake organization/location for demonstration like Unstop */}
-              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Building2 className="w-4 h-4" />
-                <span>AI Axiss Inc</span>
-              </div>
-              
               <div className="mt-6 flex justify-center gap-6 text-sm">
                 <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-20">
-                  <span className="font-bold text-foreground text-xl">Lvl {level}</span>
-                  <span className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mt-1">Level</span>
+                  <span className="font-bold text-foreground text-xl tabular-nums">{level}</span>
+                  <span className="text-xs text-muted-foreground font-medium mt-1">Level</span>
                 </div>
                 <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-20">
-                  <span className="font-bold text-foreground text-xl">{stats.xp.toLocaleString()}</span>
-                  <span className="text-[10px] uppercase text-emerald-500 tracking-wider font-bold mt-1">XP</span>
+                  <span className="font-bold text-foreground text-xl tabular-nums">{stats.xp.toLocaleString()}</span>
+                  <span className="text-xs text-muted-foreground font-medium mt-1">XP</span>
                 </div>
               </div>
               
               {isOwner && !isPreview && (
                 <Link href="/dashboard/profile">
                   <Button size="sm" className="mt-6 w-full gap-2 rounded-xl h-10 font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all">
-                    <Edit2 className="h-4 w-4" /> Edit Profile
+                    <Edit2 className="h-4 w-4" /> Edit profile
                   </Button>
                 </Link>
               )}
             </Card>
 
-            <Card className="border-border/60 p-5 shadow-sm bg-card">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-foreground">Rankings</h3>
-                <span className="text-xs font-medium text-blue-500 hover:underline cursor-pointer">How it works?</span>
-              </div>
-              
-              <div className="rounded-xl bg-linear-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-5 text-center border border-blue-100 dark:border-blue-900/50 relative overflow-hidden">
-                <p className="text-xs font-medium text-muted-foreground text-left">Global Rank</p>
-                <div className="mt-2 flex items-center gap-3">
-                  <Trophy className="h-7 w-7 text-amber-500 drop-shadow-sm" />
-                  <span className="text-3xl font-extrabold text-foreground tracking-tight">1</span>
-                </div>
-              </div>
-              
-              <div className="mt-5 space-y-3 pt-2">
+            <Card className="rounded-3xl border-border/70 p-5 bg-card">
+              <h3 className="mb-4 flex items-center gap-2 font-semibold text-foreground">
+                <Trophy className="h-4 w-4 text-primary" /> Stats
+              </h3>
+              <div className="space-y-3">
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground font-medium">Total Points</span>
-                  <span className="font-bold">{stats.xp}</span>
+                  <span className="text-muted-foreground font-medium">Total points</span>
+                  <span className="font-bold tabular-nums">{stats.xp}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground font-medium">Total Badges</span>
-                  <span className="font-bold">1</span>
-                </div>
-                <div className="flex justify-between items-center text-sm">
-                  <span className="text-muted-foreground font-medium">Problems Solved</span>
-                  <span className="font-bold">{stats.solved}</span>
+                  <span className="text-muted-foreground font-medium">Problems solved</span>
+                  <span className="font-bold tabular-nums">{stats.solved}</span>
                 </div>
               </div>
             </Card>
 
             {/* Social Links */}
-            <Card className="border-border/60 p-5 shadow-sm bg-card">
+            <Card className="rounded-3xl border-border/70 p-5 bg-card">
               <h3 className="font-semibold text-foreground mb-4">Connect</h3>
               <div className="flex gap-3">
                 <Button variant="outline" size="icon" className="rounded-full w-10 h-10 bg-muted/30" disabled={isPreview}>
-                  <Briefcase className="w-4 h-4 text-blue-600" />
+                  <Briefcase className="w-4 h-4 text-primary" />
                 </Button>
                 <Button variant="outline" size="icon" className="rounded-full w-10 h-10 bg-muted/30" disabled={isPreview}>
                   <Code2 className="w-4 h-4 text-foreground" />
@@ -303,91 +282,45 @@ export default function UserProfilePage({
           {/* Right Main Content */}
           <div className="space-y-6 min-w-0">
             
-            {/* About Section */}
-            <Card className="border-border/60 p-6 shadow-sm">
-              <h2 className="text-lg font-bold text-foreground tracking-tight mb-3">About</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                As a dedicated professional, I'm always on the lookout for opportunities to grow and develop in my field. My goal is to discover a role that matches my expertise, experience, and career goals.
-              </p>
-            </Card>
-
             {/* Streaks / Heatmap Section */}
-            <Card className="border-border/60 p-6 shadow-sm">
+            <Card className="rounded-3xl border-border/70 p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-foreground tracking-tight">Streaks</h2>
+                <h2 className="text-lg font-bold text-foreground tracking-tight">Activity</h2>
               </div>
               <div className="bg-card w-full overflow-x-auto">
                 <div className="min-w-[800px]">
                   <ContributionGraph cells={heatmap.cells} tooltipData={heatmap.tooltipData} totalContributions={heatmap.totalContributions} />
                 </div>
               </div>
-              <div className="mt-4 flex items-center gap-4 text-sm font-medium">
-                <div className="text-muted-foreground">Current Streak <strong className="text-foreground">1 Days</strong></div>
-                <div className="text-muted-foreground">Max Streak <strong className="text-foreground">12 Days</strong></div>
-              </div>
             </Card>
 
             {/* Skills & Stats */}
             <div className="grid gap-4 sm:grid-cols-3">
               {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
-                <Card key={d} className="p-5 bg-card/40 border-border/60">
-                  <p className="text-xs uppercase text-muted-foreground">{d}</p>
+                <Card key={d} className="rounded-2xl p-5 bg-card border-border/70">
+                  <p className="text-sm font-medium capitalize text-muted-foreground">{d}</p>
                   <p className="mt-1 text-3xl font-bold tabular-nums text-foreground">{stats.byDifficulty[d]}</p>
                   <p className="text-xs text-muted-foreground">unique problems solved</p>
                 </Card>
               ))}
             </div>
 
-            {/* Experience & Education placeholders like Unstop */}
-            <div className="grid gap-6 md:grid-cols-2">
-              <Card className="border-border/60 p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-foreground tracking-tight mb-4 flex items-center gap-2">
-                  <Briefcase className="w-5 h-5 text-blue-500" /> Work Experience
-                </h2>
-                <div className="space-y-4">
-                  <div className="relative pl-6 border-l-2 border-muted">
-                    <div className="absolute w-3 h-3 bg-blue-500 rounded-full -left-[7px] top-1.5 ring-4 ring-background" />
-                    <h4 className="font-semibold text-sm">Senior Developer</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">AI Axiss Inc · 2022 - Present</p>
-                  </div>
-                  <div className="relative pl-6 border-l-2 border-muted">
-                    <div className="absolute w-3 h-3 bg-muted-foreground rounded-full -left-[7px] top-1.5 ring-4 ring-background" />
-                    <h4 className="font-semibold text-sm">Software Engineer</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">TechCorp · 2019 - 2022</p>
-                  </div>
-                </div>
-              </Card>
-
-              <Card className="border-border/60 p-6 shadow-sm">
-                <h2 className="text-lg font-bold text-foreground tracking-tight mb-4 flex items-center gap-2">
-                  <GraduationCap className="w-5 h-5 text-purple-500" /> Education
-                </h2>
-                <div className="space-y-4">
-                  <div className="relative pl-6 border-l-2 border-muted">
-                    <div className="absolute w-3 h-3 bg-purple-500 rounded-full -left-[7px] top-1.5 ring-4 ring-background" />
-                    <h4 className="font-semibold text-sm">B.S. Computer Science</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">University of Technology · 2015 - 2019</p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-
             {/* Recent Activity */}
-            <Card className="border-border/60 shadow-sm overflow-hidden">
-              <div className="border-b border-border/60 px-6 py-5 bg-muted/10">
+            <Card className="rounded-3xl border-border/70 overflow-hidden">
+              <div className="border-b border-border/60 px-6 py-5 bg-muted/20">
                 <h2 className="text-lg font-bold text-foreground tracking-tight">Recent activity</h2>
                 <p className="text-xs text-muted-foreground mt-1">Last {recent.length} submissions</p>
               </div>
               <div className="divide-y divide-border/40">
                 {recent.length === 0 && (
                   <div className="px-6 py-12 text-center text-sm text-muted-foreground">
-                    No submissions yet.
+                    No submissions yet. Solved problems will show up here.
                   </div>
                 )}
                 {recent.map((r) => (
                   <div key={r.id} className="flex items-center gap-4 px-6 py-4 transition-colors hover:bg-muted/30">
                     {r.status === 'accepted' ? (
-                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                     ) : (
                       <XCircle className="h-5 w-5 text-destructive" />
                     )}
@@ -399,10 +332,10 @@ export default function UserProfilePage({
                       ) : (
                         <span className="text-muted-foreground font-medium">Deleted problem</span>
                       )}
-                      <p className="text-xs uppercase tracking-wider text-muted-foreground mt-1 flex items-center gap-2">
+                      <p className="text-xs text-muted-foreground mt-1 flex flex-wrap items-center gap-2">
                         <span>{r.language}</span>
                         <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
-                        <span className={r.status === 'accepted' ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : ''}>{r.status}</span>
+                        <span className={`capitalize ${r.status === 'accepted' ? 'text-green-700 dark:text-green-400 font-semibold' : ''}`}>{r.status}</span>
                         <span className="w-1 h-1 rounded-full bg-muted-foreground/30" />
                         <span>{formatDate(r.created_at)}</span>
                       </p>

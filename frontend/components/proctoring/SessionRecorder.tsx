@@ -199,15 +199,15 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
       {recording ? (
         <>
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
           </span>
-          <span className="text-red-500">Recording</span>
+          <span className="text-red-600 dark:text-red-400">Recording</span>
         </>
       ) : (
         <>
           <VideoOff className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Recording Off</span>
+          <span className="text-muted-foreground">Recording off</span>
         </>
       )}
     </div>

@@ -117,9 +117,9 @@ export function AssignProblems({
 
   const difficultyColor = (d: string) => {
     switch (d) {
-      case 'easy': return 'text-emerald-500 border-emerald-500/30'
-      case 'medium': return 'text-amber-500 border-amber-500/30'
-      case 'hard': return 'text-rose-500 border-rose-500/30'
+      case 'easy': return 'text-green-700 dark:text-green-400 border-green-500/30'
+      case 'medium': return 'text-amber-700 dark:text-amber-400 border-amber-500/30'
+      case 'hard': return 'text-red-600 dark:text-red-400 border-red-500/30'
       default: return 'text-muted-foreground'
     }
   }
@@ -134,7 +134,7 @@ export function AssignProblems({
             problemSource === 'pick' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-muted/50'
           }`}
         >
-          <Search className="h-4 w-4" /> Pick from Library
+          <Search className="h-4 w-4" /> Pick from library
         </button>
         <button
           onClick={() => setProblemSource('own')}
@@ -142,7 +142,7 @@ export function AssignProblems({
             problemSource === 'own' ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-card hover:bg-muted/50'
           }`}
         >
-          <BookOpen className="h-4 w-4" /> Create Custom
+          <BookOpen className="h-4 w-4" /> Create your own
         </button>
         <button
           onClick={() => setProblemSource('ai')}
@@ -192,16 +192,16 @@ export function AssignProblems({
       {/* Assigned problems list */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h4 className="text-sm font-semibold">Assigned Problems ({assigned.length})</h4>
+          <h4 className="text-sm font-semibold">Assigned problems (<span className="tabular-nums">{assigned.length}</span>)</h4>
           {assigned.length > 0 && (
             <Button size="sm" variant="outline" onClick={() => setShowAddForm(true)}>
-              <Plus className="h-3.5 w-3.5 mr-1" /> Quick Add
+              <Plus className="h-3.5 w-3.5 mr-1" /> Quick add
             </Button>
           )}
         </div>
 
         {assigned.length === 0 ? (
-          <Card className="p-8 text-center border-dashed">
+          <Card className="rounded-2xl p-8 text-center border-dashed">
             <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
             <p className="text-sm text-muted-foreground">No problems assigned yet</p>
             <p className="text-xs text-muted-foreground mt-1">Use the options above to add problems</p>
@@ -277,12 +277,12 @@ function PickFromLibrary({ searchQuery, onSearch, results, searching, assigned, 
 
       {searching && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="h-3 w-3 animate-spin" /> Searching...
+          <Loader2 className="h-3 w-3 animate-spin" /> Searching…
         </div>
       )}
 
       {results.length > 0 && (
-        <div className="space-y-1 max-h-64 overflow-y-auto border rounded-lg">
+        <div className="space-y-1 max-h-64 overflow-y-auto border border-border rounded-xl">
           {results.map((p) => {
             const isAdded = assigned.some(a => a.slug === p.slug)
             return (
@@ -329,9 +329,9 @@ function CreateCustomProblem({ form, setForm, testCases, setTestCases, onAdd }: 
   const [expanded, setExpanded] = useState(false)
 
   return (
-    <div className="rounded-lg border bg-card/40 p-4 space-y-4">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold">Create Custom Problem</h4>
+        <h4 className="text-sm font-semibold">Create a problem</h4>
         <Button size="sm" variant="ghost" onClick={() => setExpanded(!expanded)}>
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </Button>
@@ -383,7 +383,7 @@ function CreateCustomProblem({ form, setForm, testCases, setTestCases, onAdd }: 
 
       <Button onClick={() => onAdd({ slug: `custom-${Date.now()}`, title: form.title, difficulty: form.difficulty })}
         disabled={!form.title.trim()} className="w-full">
-        <Plus className="h-4 w-4 mr-1" /> Add Problem
+        <Plus className="h-4 w-4 mr-1" /> Add problem
       </Button>
     </div>
   )
@@ -397,9 +397,9 @@ function AIGenerate({ config, setConfig, onGenerate }: {
   const [generating, setGenerating] = useState(false)
 
   return (
-    <div className="rounded-lg border bg-card/40 p-4 space-y-4">
+    <div className="rounded-2xl border border-border bg-card p-4 space-y-4">
       <h4 className="text-sm font-semibold flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-primary" /> AI Problem Generator
+        <Sparkles className="h-4 w-4 text-primary" /> Generate with AI
       </h4>
       <div className="grid gap-3 md:grid-cols-2">
         <div className="space-y-1.5">
@@ -441,13 +441,13 @@ function ProblemCard({ problem, index, total, isExpanded, onToggleExpand, onUpda
   difficultyColor: (d: string) => string
 }) {
   return (
-    <Card className={`p-3 transition-all ${isExpanded ? 'ring-2 ring-primary/20' : ''}`}>
+    <Card className={`rounded-2xl p-3 transition-shadow duration-200 ${isExpanded ? 'ring-2 ring-primary/20' : ''}`}>
       <div className="flex items-center gap-3">
         <div className="flex flex-col gap-0.5 shrink-0">
-          <button onClick={onMoveUp} disabled={index === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer">
+          <button onClick={onMoveUp} disabled={index === 0} aria-label="Move up" className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer">
             <ArrowUp className="h-3 w-3" />
           </button>
-          <button onClick={onMoveDown} disabled={index === total - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer">
+          <button onClick={onMoveDown} disabled={index === total - 1} aria-label="Move down" className="rounded p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 cursor-pointer">
             <ArrowDown className="h-3 w-3" />
           </button>
         </div>
@@ -583,9 +583,9 @@ function Loader2(props: any) {
 
 function difficultyColor(d: string) {
   switch (d) {
-    case 'easy': return 'text-emerald-500 border-emerald-500/30'
-    case 'medium': return 'text-amber-500 border-amber-500/30'
-    case 'hard': return 'text-rose-500 border-rose-500/30'
+    case 'easy': return 'text-green-700 dark:text-green-400 border-green-500/30'
+    case 'medium': return 'text-amber-700 dark:text-amber-400 border-amber-500/30'
+    case 'hard': return 'text-red-600 dark:text-red-400 border-red-500/30'
     default: return 'text-muted-foreground'
   }
 }

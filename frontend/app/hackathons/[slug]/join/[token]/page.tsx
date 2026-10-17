@@ -93,11 +93,11 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md p-8 text-center space-y-4">
+      <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center space-y-4">
         {status === 'loading' && (
           <>
             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
-            <h2 className="text-lg font-semibold">Joining Team...</h2>
+            <h2 className="text-lg font-semibold">Joining team…</h2>
             <p className="text-sm text-muted-foreground">Processing your invitation</p>
           </>
         )}
@@ -105,9 +105,9 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
         {status === 'success' && (
           <>
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-              <CheckCircle className="h-8 w-8 text-green-500" />
+              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="text-lg font-semibold">Joined Successfully!</h2>
+            <h2 className="text-lg font-semibold">You&apos;re on the team</h2>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
               <Users className="h-3 w-3" />
@@ -115,7 +115,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
             </Badge>
             <div className="flex gap-3 pt-4">
               <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
-                Go to Workspace <ArrowRight className="h-4 w-4" />
+                Go to workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </>
@@ -123,14 +123,14 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'already_this_team' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-500/10">
-              <Users className="h-8 w-8 text-blue-500" />
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+              <Users className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-lg font-semibold">Already on this Team</h2>
+            <h2 className="text-lg font-semibold">Already on this team</h2>
             <p className="text-sm text-muted-foreground">You&apos;re already a member of this team.</p>
             <div className="flex gap-3 pt-4">
               <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
-                Go to Workspace <ArrowRight className="h-4 w-4" />
+                Go to workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </>
@@ -139,9 +139,9 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
         {status === 'error' && errorMeta === 'already_other_team' && (
           <>
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <ShieldAlert className="h-8 w-8 text-amber-500" />
+              <ShieldAlert className="h-8 w-8 text-amber-600 dark:text-amber-400" />
             </div>
-            <h2 className="text-lg font-semibold">Already Registered</h2>
+            <h2 className="text-lg font-semibold">Already registered</h2>
             <p className="text-sm text-muted-foreground">
               You&apos;re already on <strong>{otherTeamName}</strong> for this event.
             </p>
@@ -156,7 +156,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
                 Event Details
               </Button>
               <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
-                Your Workspace <ArrowRight className="h-4 w-4" />
+                Your workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
           </>
@@ -165,9 +165,9 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
         {status === 'error' && errorMeta === 'team_full' && (
           <>
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-              <XCircle className="h-8 w-8 text-red-500" />
+              <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
             </div>
-            <h2 className="text-lg font-semibold">Team is Full</h2>
+            <h2 className="text-lg font-semibold">This team is full</h2>
             <p className="text-sm text-muted-foreground">{message}</p>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
@@ -180,10 +180,10 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
         {status === 'error' && errorMeta === 'event_in_progress' && (
           <>
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <ShieldAlert className="h-8 w-8 text-amber-500" />
+              <ShieldAlert className="h-8 w-8 text-amber-600 dark:text-amber-400" />
             </div>
-            <h2 className="text-lg font-semibold">Event in Progress</h2>
-            <p className="text-sm text-muted-foreground">Cannot join — the event is already running.</p>
+            <h2 className="text-lg font-semibold">Event in progress</h2>
+            <p className="text-sm text-muted-foreground">You can&apos;t join once the event has started.</p>
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
                 View Event
@@ -199,7 +199,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                   <LogIn className="h-8 w-8 text-primary" />
                 </div>
-                <h2 className="text-lg font-semibold">Sign in Required</h2>
+                <h2 className="text-lg font-semibold">Sign in required</h2>
                 <p className="text-sm text-muted-foreground">You need to sign in to join this team.</p>
                 <div className="flex flex-col gap-2 pt-4">
                   <Link href={loginUrl}>
@@ -217,9 +217,9 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
             ) : (
               <>
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-                  <XCircle className="h-8 w-8 text-red-500" />
+                  <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
                 </div>
-                <h2 className="text-lg font-semibold">Could Not Join</h2>
+                <h2 className="text-lg font-semibold">Couldn&apos;t join</h2>
                 <p className="text-sm text-muted-foreground">{message}</p>
                 <div className="flex gap-3 pt-4">
                   <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
