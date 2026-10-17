@@ -26,12 +26,16 @@ export default function ArticlesNewsroomPage() {
   const gate = usePageGuard('user')
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/blog?limit=48', { credentials: 'include' })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) => {
         setPosts(
           (d.items || []).map((p: Record<string, unknown>) => ({
@@ -44,9 +48,9 @@ export default function ArticlesNewsroomPage() {
           })),
         )
       })
-      .catch(() => setPosts([]))
+      .catch(() => { setPosts([]); setLoadError(true) })
       .finally(() => setLoading(false))
-  }, [gate.ready])
+  }, [gate.ready, reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -100,7 +104,15 @@ export default function ArticlesNewsroomPage() {
         }
       />
 
-      {posts.length === 0 ? (
+      {loadError ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load articles"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
+      ) : posts.length === 0 ? (
         <EmptyState illustration="courses"
           variant="default"
           title="No published articles yet"

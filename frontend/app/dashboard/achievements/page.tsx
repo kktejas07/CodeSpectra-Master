@@ -38,21 +38,25 @@ export default function AchievementsPage() {
   const [level, setLevel] = useState(1)
   const [solved, setSolved] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const { lockedFeatures } = useLockedFeatures()
   const badgesLocked = lockedFeatures.includes('achievements:badges')
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/achievements')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => {
         if (json.data) setAchievements(json.data)
         if (typeof json.xp === 'number') setXp(json.xp)
         if (typeof json.level === 'number') setLevel(json.level)
         if (json.stats && typeof json.stats.solved === 'number') setSolved(json.stats.solved)
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -116,7 +120,17 @@ export default function AchievementsPage() {
         />
       </div>
 
-      {achievements.length === 0 ? (
+      {loadError && achievements.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title="Couldn't load achievements"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
+      ) : achievements.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="leaderboard"
             title="No achievements yet"

@@ -78,15 +78,18 @@ export default function CodeathonsPage() {
   const { startTour, setTourSeen } = useTour()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [filter, setFilter] = useState({ status: '', difficulty: '' })
 
   useEffect(() => {
+    setLoadError(false)
     fetch('/api/codeathons')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => { if (json.data) setCodeathons(json.data) })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -213,7 +216,15 @@ export default function CodeathonsPage() {
         </select>
       </div>
 
-      {codeathons.length === 0 ? (
+      {loadError && codeathons.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load codeathons"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => setReloadKey(k => k + 1)}
+        />
+      ) : codeathons.length === 0 ? (
         <EmptyState illustration="hackathon"
           title="No codeathons yet"
           description="Upcoming competitions will show up here once they're announced. Practise problems in the meantime."

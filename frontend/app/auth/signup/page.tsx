@@ -1,4 +1,5 @@
 "use client";
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -84,7 +85,7 @@ function SignupInner() {
     const code = localStorage.getItem("referral_code");
     if (!code) return;
     try {
-      await fetch("/api/referral/apply", {
+      await csrfFetch("/api/referral/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),

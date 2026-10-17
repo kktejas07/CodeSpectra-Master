@@ -32,6 +32,7 @@ import { normalizeUserRole, type UserRole } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type TableUser = {
   id: string
@@ -68,6 +69,8 @@ export default function UsersManagement() {
   const addToast = useToast()
   const [rows, setRows] = useState<AdminUserListRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [tick, setTick] = useState(0)
   const [roleDialogOpen, setRoleDialogOpen] = useState(false)
   const [roleDialogMode, setRoleDialogMode] = useState<AdminUserDialogMode>('change-role')
@@ -109,11 +112,13 @@ export default function UsersManagement() {
     let cancelled = false
     ;(async () => {
       setLoading(true)
+      setLoadError(false)
       try {
         await loadUsers()
       } catch (e) {
         const msg = e instanceof Error ? e.message : 'Failed to load users'
         if (!cancelled) {
+          setLoadError(true)
           addToast({ type: 'error', title: 'Could not load users', message: msg })
         }
       } finally {
@@ -123,7 +128,7 @@ export default function UsersManagement() {
     return () => {
       cancelled = true
     }
-  }, [loadUsers, addToast])
+  }, [loadUsers, addToast, reloadKey])
 
   /** Recompute relative “last active” labels on an interval without refetching everything. */
   useEffect(() => {
@@ -134,7 +139,7 @@ export default function UsersManagement() {
   /** Poll full list periodically (picks up auth `last_sign_in_at` and other users’ heartbeats). */
   useEffect(() => {
     const t = window.setInterval(() => {
-      void loadUsers().catch(() => {
+      void loadUsers().then(() => setLoadError(false)).catch(() => {
         /* errors surfaced on first load */
       })
     }, 30_000)
@@ -205,7 +210,7 @@ export default function UsersManagement() {
   const handleSendResetEmail = async (userId: string) => {
     setSendingResetEmail(userId)
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await csrfFetch(`/api/admin/users/${userId}`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -389,6 +394,14 @@ export default function UsersManagement() {
 
       {loading ? (
         <SkeletonTable />
+      ) : loadError && rows.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load users"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
       ) : (
         <UserManagementTable
           users={displayUsers}

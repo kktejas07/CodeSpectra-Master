@@ -39,13 +39,17 @@ export default function MyResumesPage() {
   const [creationOption, setCreationOption] = useState<'profile' | 'new' | null>(null)
   const router = useRouter()
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchData = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/resumes', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load resumes (${res.status})`)
       const json = await res.json()
       setResumes(json.data || [])
-    } catch { /* ignore */ }
+      setLoadError(false)
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
 
@@ -276,6 +280,15 @@ export default function MyResumesPage() {
           <div className="flex-1 space-y-3">
             {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
+        ) : loadError && resumes.length === 0 ? (
+          <EmptyState
+            illustration="error"
+            title="Couldn't load your resumes"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => void fetchData()}
+            className="flex-1 border-0 bg-transparent"
+          />
         ) : resumes.length === 0 ? (
           <EmptyState illustration="resume"
             title="No resumes yet"

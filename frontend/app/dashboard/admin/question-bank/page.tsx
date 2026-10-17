@@ -246,7 +246,7 @@ export default function QuestionBankPage() {
     if (!importText.trim()) return
     setImportBusy(true)
     try {
-      const res = await fetch('/api/question-bank/import', {
+      const res = await csrfFetch('/api/question-bank/import', {
         method: 'POST', headers: { 'Content-Type': 'text/plain' }, credentials: 'include', body: importText,
       })
       const json = await res.json()

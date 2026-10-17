@@ -114,14 +114,16 @@ export default function HackathonsAdminPage() {
   const [editingSlug, setEditingSlug] = useState<string | null>(null)
   const [editLoading, setEditLoading] = useState(false)
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
-    setLoading(true); setError(null)
+    setLoading(true); setError(null); setLoadError(false)
     try {
       const res = await fetch('/api/hackathons', { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'failed')
       setItems(j.items as Hackathon[])
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    } catch (e) { setLoadError(true); setError(e instanceof Error ? e.message : String(e)) }
     finally { setLoading(false) }
   }, [])
 
@@ -985,6 +987,14 @@ export default function HackathonsAdminPage() {
             <SkeletonList count={4} />
           </div>
         </Panel>
+      ) : loadError && items.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load hackathons"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => void load()}
+        />
       ) : items.length === 0 ? (
         <EmptyState
           illustration="hackathon"

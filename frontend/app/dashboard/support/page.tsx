@@ -38,12 +38,16 @@ export default function SupportPage() {
   const [message, setMessage] = useState('')
   const [category, setCategory] = useState('general')
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchTickets = useCallback(async () => {
     try {
       const res = await fetch('/api/support/tickets', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load tickets (${res.status})`)
       const json = await res.json()
       setTickets(json.tickets || [])
-    } catch { /* ignore */ }
+      setLoadError(false)
+    } catch { setLoadError(true) }
     setLoading(false)
   }, [])
 
@@ -225,6 +229,7 @@ export default function SupportPage() {
 
       <div data-tour="support-list">
       {loading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}</div>
+        : loadError && tickets.length === 0 ? <EmptyState illustration="error" title="Couldn't load your tickets" description="Check your connection and try again." actionLabel="Try again" onAction={() => { setLoading(true); void fetchTickets() }} />
         : tickets.length === 0 ? <EmptyState illustration="inbox" variant="notifications" title="No tickets yet" description="Use “New ticket” to ask a question or report a problem." />
         : <div className="space-y-3">
           {tickets.map(t => (

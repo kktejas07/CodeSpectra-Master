@@ -78,13 +78,17 @@ export default function AdminJobsPage() {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchJobs = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/jobs?active=false')
+      if (!res.ok) throw new Error(`Failed to load jobs (${res.status})`)
       const json = await res.json()
       if (json.data) setJobs(json.data)
-    } catch (_e) { addToast({ type: 'error', title: 'Error', message: 'Failed to load jobs' }) } finally { setLoading(false) }
+      setLoadError(false)
+    } catch (_e) { setLoadError(true); addToast({ type: 'error', title: 'Error', message: 'Failed to load jobs' }) } finally { setLoading(false) }
   }
 
   useEffect(() => { if (gate.ready) fetchJobs() }, [gate.ready])
@@ -287,7 +291,15 @@ export default function AdminJobsPage() {
         <StatCard label="Applicants" value={jobs.reduce((s, j) => s + (j.applicants || 0), 0)} icon={<Users />} />
       </div>
 
-      {jobs.length === 0 && !loading ? (
+      {loadError && jobs.length === 0 && !loading ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load job postings"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => void fetchJobs()}
+        />
+      ) : jobs.length === 0 && !loading ? (
         <EmptyState
           illustration="jobs"
           title="No job postings yet"

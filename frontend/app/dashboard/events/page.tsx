@@ -172,15 +172,18 @@ export default function EventsPage() {
 
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [tab, setTab] = useState('all')
 
   const load = useCallback(async () => {
+    setLoadError(false)
     try {
       const [hRes, cRes, tRes] = await Promise.all([
         fetch('/api/hackathons', { cache: 'no-store' }),
         fetch('/api/codeathons', { cache: 'no-store' }),
         hasSession ? fetch('/api/hackathons/my-teams', { cache: 'no-store' }).catch(() => null) : Promise.resolve(null),
       ])
+      if (!hRes.ok && !cRes.ok) throw new Error('Failed to load events')
 
       const hData = hRes.ok ? await hRes.json() as { items: Hackathon[] } : { items: [] }
       const cData = cRes.ok ? await cRes.json() as { data: Codeathon[] } : { data: [] }
@@ -235,7 +238,7 @@ export default function EventsPage() {
 
       items.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime())
       setEvents(items)
-    } catch { /* ignore */ }
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }, [hasSession])
 
@@ -317,7 +320,15 @@ export default function EventsPage() {
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
-          {filtered.length === 0 ? (
+          {loadError && events.length === 0 ? (
+            <EmptyState
+              illustration="error"
+              title="Couldn't load events"
+              description="Check your connection and try again."
+              actionLabel="Try again"
+              onAction={() => { setLoading(true); void load() }}
+            />
+          ) : filtered.length === 0 ? (
             <EmptyState illustration="calendar" 
               title={tab === 'my' ? 'No events joined' : 'No events found'} 
               description={tab === 'my' ? "You haven't joined any events yet. Browse upcoming hackathons and codeathons to take part." : 'Nothing here right now. Check the other tabs or come back later.'}

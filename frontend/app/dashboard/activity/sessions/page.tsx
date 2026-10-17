@@ -28,15 +28,19 @@ export default function MySessionsPage() {
   const { startTour, setTourSeen } = useTour()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/user/my-sessions', { credentials: 'include' })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) => setSessions(d.sessions || []))
-      .catch(() => setSessions([]))
+      .catch(() => { setSessions([]); setLoadError(true) })
       .finally(() => setLoading(false))
-  }, [gate.ready])
+  }, [gate.ready, reloadKey])
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
@@ -90,7 +94,15 @@ export default function MySessionsPage() {
         />
       </div>
       <div data-tour="sessions-list">
-      {sessions.length === 0 ? (
+      {loadError ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load your sessions"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
+      ) : sessions.length === 0 ? (
         <EmptyState
           variant="sessions"
           title="No sessions yet"

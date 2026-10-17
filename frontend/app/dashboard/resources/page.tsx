@@ -59,11 +59,15 @@ export default function ResourcesPage() {
   const gate = usePageGuard('user')
   const [ebooks, setEbooks] = useState<EbookCardData[]>([])
   const [loadingEbooks, setLoadingEbooks] = useState(true)
+  const [ebooksError, setEbooksError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoadingEbooks(true)
+    setEbooksError(false)
     fetch('/api/resources/ebooks', { credentials: 'include' })
-      .then((r) => (r.ok ? r.json() : { items: [] }))
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) =>
         setEbooks(
           (d.items || []).map((e: Record<string, unknown>) => ({
@@ -80,9 +84,9 @@ export default function ResourcesPage() {
           })),
         ),
       )
-      .catch(() => setEbooks([]))
+      .catch(() => { setEbooks([]); setEbooksError(true) })
       .finally(() => setLoadingEbooks(false))
-  }, [gate.ready])
+  }, [gate.ready, reloadKey])
 
   if (!gate.ready) {
     return (
@@ -116,6 +120,14 @@ export default function ResourcesPage() {
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading ebooks…
           </div>
+        ) : ebooksError ? (
+          <EmptyState
+            illustration="error"
+            title="Couldn't load ebooks"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey((k) => k + 1)}
+          />
         ) : ebooks.length === 0 ? (
           <EmptyState illustration="courses"
             variant="default"

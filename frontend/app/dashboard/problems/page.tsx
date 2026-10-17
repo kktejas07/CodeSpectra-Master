@@ -45,7 +45,7 @@ function FilterAccordion({ title, items, selected, onToggle }: { title: string, 
 
 export default function ProblemsListPage() {
   const gate = usePageGuard('user')
-  const { loading, error, q, setQ, difficulty, setDifficulty, filtered } = useProblemsViewModel()
+  const { loading, error, q, setQ, difficulty, setDifficulty, filtered, load } = useProblemsViewModel()
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
 
@@ -360,7 +360,7 @@ export default function ProblemsListPage() {
                  {loading ? (
                     <div className="p-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                  ) : error ? (
-                    <div className="p-6 text-center text-destructive text-sm font-medium">{error}</div>
+                    <EmptyState illustration="error" title="Couldn't load problems" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} className="rounded-none border-0 bg-transparent" />
                  ) : visible.length === 0 ? (
                     <EmptyState variant="search" title="No problems match" description="Try a different word or clear the filters." className="rounded-none border-0 bg-transparent" />
                  ) : (

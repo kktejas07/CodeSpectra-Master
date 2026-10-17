@@ -28,13 +28,17 @@ export default function AdminResumesPage() {
   const [resumes, setResumes] = useState<Resume[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchData = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/resumes', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load resumes (${res.status})`)
       const json = await res.json()
       setResumes(json.data || [])
-    } catch { /* ignore */ }
+      setLoadError(false)
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
 
@@ -97,7 +101,7 @@ export default function AdminResumesPage() {
           searchKeys={['file_name']}
           bulkActions={bulkActions}
           loading={loading}
-          emptyState={{ illustration: 'resume' }} emptyMessage="No resumes yet. They appear here when candidates upload one."
+          emptyState={loadError ? { illustration: 'error', title: "Couldn't load resumes", description: 'Check your connection and try again.', actionLabel: 'Try again', onAction: () => void fetchData() } : { illustration: 'resume' }} emptyMessage="No resumes yet. They appear here when candidates upload one."
         />
       )}
     </div>

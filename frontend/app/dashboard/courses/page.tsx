@@ -108,13 +108,16 @@ function LearningPageInner() {
 
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [savedCourses, setSavedCourses] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState(searchQuery)
 
   useEffect(() => {
     setLoading(true)
+    setLoadError(false)
     fetch('/api/courses', { credentials: 'include' })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(j => {
         if (!j.data) return
         // Belt-and-suspenders: collapse same-title cards if API ever returns both seed + generated
@@ -132,9 +135,9 @@ function LearningPageInner() {
         }
         setCourses([...best.values()])
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // Initialize tour on first visit (outer LearningPage already gates on auth).
   // autoPlayPageTour registers steps on every mount (so Guide can replay)
@@ -363,7 +366,19 @@ function LearningPageInner() {
         </div>
       )}
 
-      {!loading && filteredCourses.length === 0 && (
+      {!loading && loadError && courses.length === 0 && (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title="Couldn't load courses"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
+      )}
+
+      {!loading && !(loadError && courses.length === 0) && filteredCourses.length === 0 && (
         <Panel className="p-4">
           <EmptyState
             variant="search"

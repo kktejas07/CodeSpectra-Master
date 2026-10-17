@@ -88,14 +88,17 @@ export default function TenantsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchTenants = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/tenants', { credentials: 'include' })
       const json = await res.json()
-      if (res.ok) setTenants(json.data || [])
-      else addToast({ type: 'error', title: 'Failed', message: json.error })
+      if (res.ok) { setTenants(json.data || []); setLoadError(false) }
+      else { setLoadError(true); addToast({ type: 'error', title: 'Failed', message: json.error }) }
     } catch {
+      setLoadError(true)
       addToast({ type: 'error', title: 'Error', message: 'Failed to load organizations' })
     } finally {
       setLoading(false)
@@ -466,6 +469,14 @@ export default function TenantsPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : loadError && tenants.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load organizations"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => void fetchTenants()}
+        />
       ) : filtered.length === 0 ? (
         search ? (
           <EmptyState variant="search" title="No organizations match your search" description="Try a different name or slug." />

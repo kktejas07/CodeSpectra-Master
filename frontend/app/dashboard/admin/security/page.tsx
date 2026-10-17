@@ -274,7 +274,7 @@ export default function Security() {
     setToggling(name)
     const newStatus = currentStatus === 'enabled' ? 'disabled' : 'enabled'
     try {
-      const res = await fetch('/api/admin/security', {
+      const res = await csrfFetch('/api/admin/security', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, status: newStatus }),

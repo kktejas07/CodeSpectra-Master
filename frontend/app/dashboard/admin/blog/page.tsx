@@ -112,13 +112,18 @@ export default function AdminBlogPage() {
     }
   }
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/blog?status=all&limit=100', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Failed to load posts (${res.status})`)
       const data = await res.json()
       setItems(data.items || [])
+      setLoadError(false)
     } catch {
+      setLoadError(true)
       addToast({ type: 'error', title: 'Failed to load posts' })
     } finally {
       setLoading(false)
@@ -355,6 +360,8 @@ export default function AdminBlogPage() {
 
       {loading ? (
         <SkeletonList count={3} />
+      ) : loadError && items.length === 0 ? (
+        <EmptyState illustration="error" title="Couldn't load posts" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} />
       ) : items.length === 0 ? (
         <EmptyState illustration="inbox" title="No posts yet" description="Use New post to write your first article." />
       ) : (

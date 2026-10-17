@@ -130,16 +130,18 @@ export default function AdminBillingPage() {
     }
   }
 
+  const [statsError, setStatsError] = useState(false)
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/billing-stats', { cache: 'no-store' })
-      if (res.ok) {
-        const j = await res.json()
-        setStats(j.stats)
-        setPlans(j.orders_by_plan || [])
-        setRevenueByDay(j.revenue_by_day || {})
-      }
-    } catch {} finally { setLoading(false) }
+      if (!res.ok) throw new Error(`Failed to load billing stats (${res.status})`)
+      const j = await res.json()
+      setStats(j.stats)
+      setPlans(j.orders_by_plan || [])
+      setRevenueByDay(j.revenue_by_day || {})
+      setStatsError(false)
+    } catch { setStatsError(true) } finally { setLoading(false) }
   }, [])
 
   const loadCurrency = async () => {
@@ -200,7 +202,9 @@ export default function AdminBillingPage() {
       {/* Revenue Chart (bar chart) */}
       <Panel>
         <h2 className="mb-4 text-base font-semibold text-foreground">Revenue, last 30 days</h2>
-        {revDays.length === 0 ? (
+        {statsError ? (
+          <EmptyState compact illustration="error" title="Couldn't load billing stats" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} />
+        ) : revDays.length === 0 ? (
           <p className="text-sm text-muted-foreground">No revenue yet. Paid orders will show here day by day.</p>
         ) : (
           <div className="flex items-end gap-1 h-32">
@@ -222,7 +226,9 @@ export default function AdminBillingPage() {
         {/* Orders by Plan */}
         <Panel>
           <h2 className="mb-4 text-base font-semibold text-foreground">Orders by plan</h2>
-          {plans.length === 0 ? (
+          {statsError ? (
+            <p className="text-sm text-muted-foreground">Couldn&apos;t load orders by plan. Check your connection and try again.</p>
+          ) : plans.length === 0 ? (
             <p className="text-sm text-muted-foreground">No orders yet.</p>
           ) : (
             <div className="space-y-2">

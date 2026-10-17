@@ -59,10 +59,13 @@ export default function AdminResourcesPage() {
     }
   }
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(() => {
     setLoading(true)
+    setLoadError(false)
     fetch('/api/resources/ebooks?all=1', { credentials: 'include', cache: 'no-store' })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) =>
         setItems(
           (d.items || []).map((e: Record<string, unknown>) => ({
@@ -79,7 +82,7 @@ export default function AdminResourcesPage() {
           })),
         ),
       )
-      .catch(() => setItems([]))
+      .catch(() => { setItems([]); setLoadError(true) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -270,7 +273,10 @@ export default function AdminResourcesPage() {
         </div>
       )}
 
-      {items.length === 0 && (
+      {loadError && items.length === 0 && (
+        <EmptyState illustration="error" title="Couldn't load ebooks" description="Check your connection and try again." actionLabel="Try again" onAction={load} />
+      )}
+      {!loadError && items.length === 0 && (
         <EmptyState illustration="courses" variant="courses" title="No ebooks yet" description="Enter a topic above to generate your first one." />
       )}
 

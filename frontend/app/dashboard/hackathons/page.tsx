@@ -41,14 +41,17 @@ export default function UserHackathonsPage() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
   const [myTeams, setMyTeams] = useState<Record<string, Team>>({})
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const load = useCallback(async () => {
+    setLoadError(false)
     try {
       const [hRes, tRes] = await Promise.all([
         fetch('/api/hackathons', { cache: 'no-store' }),
         hasSession ? fetch('/api/hackathons/my-teams', { cache: 'no-store' }).catch(() => null) : Promise.resolve(null),
       ])
-      const hData = hRes.ok ? await hRes.json() as { items: Hackathon[] } : { items: [] }
+      if (!hRes.ok) throw new Error(`Failed to load hackathons (${hRes.status})`)
+      const hData = await hRes.json() as { items: Hackathon[] }
       setHackathons(hData.items || [])
 
       if (tRes?.ok) {
@@ -61,7 +64,7 @@ export default function UserHackathonsPage() {
         }
         setMyTeams(map)
       }
-    } catch { /* ignore */ }
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }, [hasSession])
 
@@ -155,7 +158,17 @@ export default function UserHackathonsPage() {
         />
       </div>
 
-      {liveHackathons.length === 0 && upcomingHackathons.length === 0 && (
+      {loadError && hackathons.length === 0 && (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load hackathons"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => { setLoading(true); void load() }}
+        />
+      )}
+
+      {!loadError && liveHackathons.length === 0 && upcomingHackathons.length === 0 && (
         <EmptyState scene="hackathon-team"
           title="No hackathons open right now"
           description="New events will appear here as soon as they're announced. Meanwhile, keep practising problems."

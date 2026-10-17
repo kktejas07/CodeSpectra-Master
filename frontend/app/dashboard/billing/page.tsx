@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/ui/empty-state'
 import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
@@ -89,6 +90,7 @@ function BillingContent() {
   const searchParams = useSearchParams()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [invoices, setInvoices] = useState<InvoiceRow[]>([])
+  const [invoicesError, setInvoicesError] = useState(false)
   const [plans, setPlans] = useState<Plan[]>([])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [loading, setLoading] = useState(true)
@@ -162,6 +164,7 @@ function BillingContent() {
         userEmail: typeof d.user_email === 'string' ? d.user_email : '',
       })
     }
+    setInvoicesError(!invRes.ok)
     if (invRes.ok) {
       // API returns { invoices: InvoiceView[] } (see lib/billing/invoice.ts).
       const d = await invRes.json()
@@ -453,7 +456,20 @@ function BillingContent() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.length === 0 ? (
+                {invoicesError && invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={5}>
+                      <EmptyState
+                        compact
+                        illustration="error"
+                        title="Couldn't load invoices"
+                        description="Check your connection and try again."
+                        actionLabel="Try again"
+                        onAction={() => setReloadKey((k) => k + 1)}
+                      />
+                    </td>
+                  </tr>
+                ) : invoices.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                       No invoices yet. Complete a plan change to generate a receipt.

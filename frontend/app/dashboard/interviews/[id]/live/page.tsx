@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -35,7 +36,7 @@ export default function LiveInterviewPage() {
         const userId = authJson?.user?.id || authJson?.uid || 'anonymous'
         const userName = authJson?.user?.name || authJson?.user?.fullName || undefined
 
-        const res = await fetch(`/api/interviews/${id}/live/token`, {
+        const res = await csrfFetch(`/api/interviews/${id}/live/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

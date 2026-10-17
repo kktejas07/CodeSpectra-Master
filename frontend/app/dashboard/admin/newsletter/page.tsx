@@ -131,18 +131,22 @@ export default function NewsletterPage() {
   // Polling for sending campaigns
   const pollRef = useRef<NodeJS.Timeout | null>(null)
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
     try {
       const [campaignsRes, countRes] = await Promise.all([
         fetch('/api/newsletter/admin/campaigns', { cache: 'no-store' }),
         fetch('/api/newsletter/admin/recipient-count', { cache: 'no-store' }),
       ])
+      if (!campaignsRes.ok) throw new Error(`Failed to load campaigns (${campaignsRes.status})`)
       const campaignsData = await campaignsRes.json()
-      const countData = await countRes.json()
+      const countData = await countRes.json().catch(() => ({}))
+      setLoadError(false)
       setCampaigns(campaignsData.campaigns || [])
       setStats(campaignsData.stats || { totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0, totalWhatsAppSent: 0 })
       setRecipientCount(countData.count || 0)
-    } catch { /* ignore */ }
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }, [])
 
@@ -512,6 +516,8 @@ export default function NewsletterPage() {
           <h2 className="font-semibold mb-4 flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> Campaign history</h2>
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin" /></div>
+          ) : loadError && campaigns.length === 0 ? (
+            <EmptyState illustration="error" title="Couldn't load campaigns" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} className="border-0 bg-transparent py-6 md:py-8" />
           ) : campaigns.length === 0 ? (
             <EmptyState variant="notifications" title="No campaigns yet" description="Switch to Compose to write and send your first newsletter." className="border-0 bg-transparent py-6 md:py-8" />
           ) : (

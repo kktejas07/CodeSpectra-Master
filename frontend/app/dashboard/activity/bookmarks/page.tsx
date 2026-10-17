@@ -39,12 +39,16 @@ function BookmarksInner() {
   const [problems, setProblems] = useState<ProblemItem[]>([])
   const [quizzes, setQuizzes] = useState<QuizItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const load = () => {
     setLoading(true)
+    setLoadError(false)
+    const getJson = (url: string) =>
+      fetch(url, { credentials: 'include' }).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
     Promise.all([
-      fetch('/api/user/problem-bookmarks', { credentials: 'include' }).then((r) => r.json()),
-      fetch('/api/user/quiz-bookmarks', { credentials: 'include' }).then((r) => r.json()),
+      getJson('/api/user/problem-bookmarks'),
+      getJson('/api/user/quiz-bookmarks'),
     ])
       .then(([p, q]) => {
         setProblems(p.items || [])
@@ -53,6 +57,7 @@ function BookmarksInner() {
       .catch(() => {
         setProblems([])
         setQuizzes([])
+        setLoadError(true)
       })
       .finally(() => setLoading(false))
   }
@@ -164,7 +169,15 @@ function BookmarksInner() {
       </div>
 
       <div data-tour="bookmarks-list">
-      {tab === 'problems' ? (
+      {loadError ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load your bookmarks"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={load}
+        />
+      ) : tab === 'problems' ? (
         emptyProblems ? (
           <EmptyState
             variant="bookmarks"

@@ -41,17 +41,21 @@ export default function TracksPage() {
   const [tracks, setTracks] = useState<TrackDef[]>([])
   const [problemTopics, setProblemTopics] = useState<string[][]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     Promise.all([
-      fetch('/api/tracks').then(r => r.json()),
+      fetch('/api/tracks').then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() }),
       fetch('/api/problems', { cache: 'no-store' }).then(r => r.json()),
     ]).then(([tracksJson, problemsJson]) => {
       if (tracksJson.data) setTracks(tracksJson.data)
       const all: { topics?: string[] }[] = problemsJson.data || []
       setProblemTopics(all.map(p => (p.topics || []).map(t => t.toLowerCase())))
-    }).catch(() => null).finally(() => setLoading(false))
-  }, [])
+    }).catch(() => setLoadError(true)).finally(() => setLoading(false))
+  }, [reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -101,6 +105,16 @@ export default function TracksPage() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : loadError && tracks.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title="Couldn't load tracks"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
       ) : tracks.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="courses"

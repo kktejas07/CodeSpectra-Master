@@ -37,11 +37,13 @@ export default function JudgeDashboardPage() {
 
   const [hackathons, setHackathons] = useState<(Hackathon & { awaiting: number })[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const load = useCallback(async () => {
+    setLoadError(false)
     try {
       const res = await fetch('/api/hackathons?judge=1', { cache: 'no-store' })
-      if (!res.ok) return
+      if (!res.ok) throw new Error(`Failed to load judging events (${res.status})`)
       const data = await res.json() as { items: Hackathon[] }
 
       const withCounts = await Promise.all((data.items || []).map(async (h) => {
@@ -55,7 +57,7 @@ export default function JudgeDashboardPage() {
       }))
 
       setHackathons(withCounts.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()))
-    } catch { /* ignore */ }
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }, [])
 
@@ -113,7 +115,15 @@ export default function JudgeDashboardPage() {
       </div>
 
       <div data-tour="judge-list">
-      {hackathons.length === 0 ? (
+      {loadError && hackathons.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load your judging events"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => { setLoading(true); void load() }}
+        />
+      ) : hackathons.length === 0 ? (
         <EmptyState illustration="hackathon"
           title="No hackathons assigned to you yet"
           description="An admin adds judges on the event's Judges tab. Events you're assigned to will show up here."

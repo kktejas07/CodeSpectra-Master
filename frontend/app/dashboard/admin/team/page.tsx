@@ -31,11 +31,15 @@ export default function TeamManagement() {
   const [password, setPassword] = useState('')
   const [stats, setStats] = useState({ total: 0, active: 0 })
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchMembers = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/teams/members', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load members (${res.status})`)
       const json = await res.json()
+      setLoadError(false)
       if (json.data) {
         setMembers(json.data)
         setStats({
@@ -43,7 +47,7 @@ export default function TeamManagement() {
           active: json.data.filter((x: TeamMember) => x.status === 'active').length,
         })
       }
-    } catch { /* ignore */ }
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
 
@@ -130,7 +134,15 @@ export default function TeamManagement() {
           </h2>
           <Badge variant="secondary" className="tabular-nums">{stats.total} total</Badge>
         </div>
-        {members.length === 0 ? (
+        {loadError && members.length === 0 ? (
+          <EmptyState
+            illustration="error"
+            title="Couldn't load team members"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => void fetchMembers()}
+          />
+        ) : members.length === 0 ? (
           <EmptyState
             illustration="team"
             title="No members yet"

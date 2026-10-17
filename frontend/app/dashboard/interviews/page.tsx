@@ -116,10 +116,13 @@ export default function InterviewsPage() {
           <SkeletonList count={4} />
         </div>
       ) : loadError ? (
-        <Panel role="alert" className="p-8 text-center text-sm text-muted-foreground space-y-3">
-          <p>We couldn&apos;t load your interviews. Check your connection and try again.</p>
-          <Button variant="outline" size="sm" onClick={() => void load()}>Try again</Button>
-        </Panel>
+        <EmptyState
+          illustration="error"
+          title="Couldn't load interviews"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => void load()}
+        />
       ) : interviews.length === 0 ? (
         <EmptyState illustration="interview"
           variant="sessions"

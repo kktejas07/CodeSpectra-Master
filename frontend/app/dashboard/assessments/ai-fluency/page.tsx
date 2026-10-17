@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -80,7 +81,7 @@ export default function AiFluencySessionPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/assessments/ai-fluency/answer', {
+      const res = await csrfFetch('/api/assessments/ai-fluency/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,7 +138,7 @@ export default function AiFluencySessionPage() {
     setCompleting(true)
 
     try {
-      const res = await fetch('/api/assessments/ai-fluency/complete', {
+      const res = await csrfFetch('/api/assessments/ai-fluency/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),

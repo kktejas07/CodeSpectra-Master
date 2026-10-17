@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { formatDate } from '@/lib/format-datetime'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
@@ -202,7 +203,7 @@ export default function AiMockSetupPage() {
     setError('')
 
     try {
-      const res = await fetch('/api/interviews/ai-mock/start', {
+      const res = await csrfFetch('/api/interviews/ai-mock/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

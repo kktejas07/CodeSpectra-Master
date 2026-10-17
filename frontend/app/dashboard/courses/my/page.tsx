@@ -25,15 +25,19 @@ export default function MyCoursesPage() {
   const { startTour, setTourSeen } = useTour()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/user/my-courses', { credentials: 'include' })
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((d) => setCourses(d.courses || []))
-      .catch(() => setCourses([]))
+      .catch(() => { setCourses([]); setLoadError(true) })
       .finally(() => setLoading(false))
-  }, [gate.ready])
+  }, [gate.ready, reloadKey])
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
@@ -95,7 +99,17 @@ export default function MyCoursesPage() {
       </div>
 
       <div data-tour="my-courses-list">
-      {courses.length === 0 ? (
+      {loadError ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title="Couldn't load your courses"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey((k) => k + 1)}
+          />
+        </Panel>
+      ) : courses.length === 0 ? (
         <Panel className="p-4">
           <EmptyState
             variant="courses"

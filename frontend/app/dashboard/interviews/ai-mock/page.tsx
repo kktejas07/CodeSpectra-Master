@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
@@ -122,7 +123,7 @@ export default function AiMockSessionPage() {
     addTranscriptEntry({ role: 'candidate', text: answerText })
 
     try {
-      const res = await fetch('/api/interviews/ai-mock/answer', {
+      const res = await csrfFetch('/api/interviews/ai-mock/answer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -186,7 +187,7 @@ export default function AiMockSessionPage() {
     voiceRef.current?.stop()
 
     try {
-      const res = await fetch('/api/interviews/ai-mock/complete', {
+      const res = await csrfFetch('/api/interviews/ai-mock/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),

@@ -32,6 +32,8 @@ export default function ChallengesPage() {
 
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
   const { startTour, setTourSeen } = useTour()
@@ -56,12 +58,14 @@ export default function ChallengesPage() {
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/challenges')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => { if (json.data) setChallenges(json.data) })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   const filteredChallenges = challenges.filter((c) => {
     if (selectedType && c.type !== selectedType) return false
@@ -96,6 +100,16 @@ export default function ChallengesPage() {
           <SkeletonStats />
           <SkeletonList count={6} />
         </div>
+      ) : loadError && challenges.length === 0 ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title="Couldn't load challenges"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey(k => k + 1)}
+          />
+        </Panel>
       ) : challenges.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="coding"

@@ -78,13 +78,16 @@ export default function CouponsAdminPage() {
     setCreateOpen(true)
   }
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchCoupons = async () => {
     try { setLoading(true)
       const res = await fetch('/api/admin/coupons', { credentials: 'include' })
       if (!res.ok) throw new Error('Failed to fetch coupons')
       const data = await res.json()
       setCoupons(data.coupons || [])
-    } catch (err: any) { addToast({ type: 'error', title: 'Error', message: err.message }) }
+      setLoadError(false)
+    } catch (err: any) { setLoadError(true); addToast({ type: 'error', title: 'Error', message: err.message }) }
     finally { setLoading(false) }
   }
 
@@ -261,7 +264,7 @@ export default function CouponsAdminPage() {
         </DialogContent>
       </Dialog>
 
-      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyState={{ illustration: 'billing' }} emptyMessage="No coupons yet. Use New coupon to create your first code." pageSize={20} />
+      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyState={loadError ? { illustration: 'error', title: "Couldn't load coupons", description: 'Check your connection and try again.', actionLabel: 'Try again', onAction: () => void fetchCoupons() } : { illustration: 'billing' }} emptyMessage="No coupons yet. Use New coupon to create your first code." pageSize={20} />
 
       <Dialog open={!!viewRedemptions} onOpenChange={(o) => { if (!o) setViewRedemptions(null) }}>
         <DialogContent className="sm:max-w-[550px]">

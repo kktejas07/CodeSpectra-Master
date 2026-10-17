@@ -25,13 +25,17 @@ export default function SMEReviewPage() {
   const [tasks, setTasks] = useState<ReviewTask[]>([])
   const [loading, setLoading] = useState(true)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchData = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/sme-reviews', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load review tasks (${res.status})`)
       const json = await res.json()
       setTasks(json.data || [])
-    } catch { /* ignore */ }
+      setLoadError(false)
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
 
@@ -70,7 +74,7 @@ export default function SMEReviewPage() {
       {loading ? (
         <SkeletonTable />
       ) : (
-        <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyState={{ illustration: 'assessment' }} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
+        <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyState={loadError ? { illustration: 'error', title: "Couldn't load review tasks", description: 'Check your connection and try again.', actionLabel: 'Try again', onAction: () => void fetchData() } : { illustration: 'assessment' }} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
       )}
     </div>
   )

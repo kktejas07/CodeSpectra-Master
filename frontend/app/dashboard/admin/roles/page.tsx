@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/ui/empty-state'
 
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -42,13 +43,17 @@ export default function RolesPage() {
   const [bulkRoleOpen, setBulkRoleOpen] = useState(false)
   const pageSize = 20
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchUsers = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/users', { credentials: 'include' })
       const data = await res.json()
-      if (res.ok) setUsers(data.users || [])
-    } catch { /* ignore */ }
+      if (!res.ok) throw new Error(`Failed to load users (${res.status})`)
+      setUsers(data.users || [])
+      setLoadError(false)
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
 
@@ -275,7 +280,9 @@ export default function RolesPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredUsers.length === 0 ? (
+            {loadError && users.length === 0 ? (
+              <tr><td colSpan={8}><EmptyState compact illustration="error" title="Couldn't load users" description="Check your connection and try again." actionLabel="Try again" onAction={() => void fetchUsers()} /></td></tr>
+            ) : filteredUsers.length === 0 ? (
               <tr><td colSpan={8} className="py-8 text-center text-muted-foreground text-xs">No users match. Try a different search or role.</td></tr>
             ) : (
               paginatedUsers.map(u => (

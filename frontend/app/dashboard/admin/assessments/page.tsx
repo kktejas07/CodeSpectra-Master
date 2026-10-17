@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/ui/empty-state'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -165,6 +166,8 @@ export default function AdminExamsPage() {
 
   const visibleExams = exams.filter(filterByDate)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchExams = async () => {
     setLoading(true)
     try {
@@ -172,11 +175,13 @@ export default function AdminExamsPage() {
         fetch('/api/exams', { credentials: 'include' }),
         fetch('/api/admin/tenants', { credentials: 'include' }),
       ])
+      if (!examsRes.ok) throw new Error(`Failed to load assessments (${examsRes.status})`)
       const examsJson = await examsRes.json()
-      const tenantsJson = await tenantsRes.json()
+      const tenantsJson = await tenantsRes.json().catch(() => ({}))
       setExams(examsJson.data || [])
       setTenants(tenantsJson.data || [])
-    } catch { /* ignore */ }
+      setLoadError(false)
+    } catch { setLoadError(true) }
     finally { setLoading(false) }
   }
 
@@ -631,6 +636,14 @@ export default function AdminExamsPage() {
 
       {loading ? (
         <SkeletonTable rows={5} />
+      ) : loadError && exams.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load assessments"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => void fetchExams()}
+        />
       ) : (
         <DataTable
           columns={columns}

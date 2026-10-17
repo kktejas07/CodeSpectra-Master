@@ -43,15 +43,19 @@ export default function DashboardJobsPage() {
   const addToast = useToast()
   const [applications, setApplications] = useState<AppliedJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready || !user) return
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/jobs/applications', { credentials: 'include' })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(data => { if (Array.isArray(data)) setApplications(data) })
-      .catch(() => addToast({ type: 'error', title: 'Error', message: 'Failed to load applications' }))
+      .catch(() => { setLoadError(true); addToast({ type: 'error', title: 'Error', message: 'Failed to load applications' }) })
       .finally(() => setLoading(false))
-  }, [gate.ready, user])
+  }, [gate.ready, user, reloadKey])
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
@@ -114,6 +118,14 @@ export default function DashboardJobsPage() {
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : loadError ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load your applications"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => setReloadKey(k => k + 1)}
+        />
       ) : applications.length === 0 ? (
         <EmptyState illustration="jobs"
           title="No applications yet"

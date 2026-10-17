@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/ui/empty-state'
 import { formatDateTime } from '@/lib/format-datetime'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -69,12 +70,17 @@ export default function CalendarPage() {
       autoPlayPageTour('calendar', calendarTour)}
   }, [gate.ready, startTour, setTourSeen])
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/user/calendar', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Failed to load calendar (${res.status})`)
       const json = await res.json()
       setItems(Array.isArray(json.items) ? json.items : [])
+      setLoadError(false)
     } catch {
+      setLoadError(true)
       addToast({ type: 'error', title: 'Could not load calendar' })
     } finally {
       setLoading(false)
@@ -245,7 +251,16 @@ export default function CalendarPage() {
 
           <Card className="space-y-3 rounded-3xl border-border/70 p-5">
             <h2 className="text-lg font-semibold text-foreground">Upcoming</h2>
-            {items.length === 0 ? (
+            {loadError && items.length === 0 ? (
+              <EmptyState
+                compact
+                illustration="error"
+                title="Couldn't load your calendar"
+                description="Check your connection and try again."
+                actionLabel="Try again"
+                onAction={() => void load()}
+              />
+            ) : items.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No events yet. Add one here, or use “Add to calendar” on a course.
               </p>

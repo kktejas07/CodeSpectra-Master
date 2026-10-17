@@ -433,14 +433,18 @@ export default function AdminCodeathonsPage() {
   const [shareTarget, setShareTarget] = useState<Codeathon | null>(null)
   const [copiedLink, setCopiedLink] = useState(false)
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchData = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/codeathons', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load codeathons (${res.status})`)
       const json = await res.json()
       setCodeathons(json.data || [])
+      setLoadError(false)
     } catch {
-      /* ignore */
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -1170,6 +1174,14 @@ export default function AdminCodeathonsPage() {
 
       {loading ? (
         <SkeletonTable rows={5} />
+      ) : loadError && codeathons.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load codeathons"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => void fetchData()}
+        />
       ) : (
         <DataTable
           columns={columns}

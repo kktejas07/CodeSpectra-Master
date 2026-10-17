@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -52,7 +53,7 @@ function JoinPage() {
     }
     setJoining(true)
     try {
-      const res = await fetch('/api/hackathons/invites', {
+      const res = await csrfFetch('/api/hackathons/invites', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

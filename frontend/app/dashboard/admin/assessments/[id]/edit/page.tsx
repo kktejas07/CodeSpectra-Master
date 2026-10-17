@@ -447,7 +447,7 @@ export default function ExamReviewPage() {
     if (!exam) return
     setRegeneratingId(qId)
     try {
-      const res = await fetch('/api/ai/generate-problem', {
+      const res = await csrfFetch('/api/ai/generate-problem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

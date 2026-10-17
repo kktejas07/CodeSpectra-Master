@@ -147,15 +147,19 @@ export default function NotificationsPage() {
   const [newsletter, setNewsletter] = useState<NewsletterPayload | null>(null)
   const [newsletterError, setNewsletterError] = useState('')
 
+  const [loadError, setLoadError] = useState(false)
+
   const load = useCallback(async () => {
     try {
       const res = await fetch('/api/notifications', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`Failed to load notifications (${res.status})`)
       const data = await res.json()
       if (data.items) {
         setItems(data.items)
         setUnreadCount(data.unread || 0)
       }
-    } catch {} finally { setLoading(false) }
+      setLoadError(false)
+    } catch { setLoadError(true) } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { void load() }, [load])
@@ -274,6 +278,14 @@ export default function NotificationsPage() {
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
+      ) : loadError && items.length === 0 ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load notifications"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => { setLoading(true); void load() }}
+        />
       ) : filtered.length === 0 ? (
         <EmptyState
           variant="notifications"

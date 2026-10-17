@@ -1,4 +1,5 @@
 'use client'
+import { EmptyState } from '@/components/ui/empty-state'
 
 import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -57,14 +58,18 @@ export default function AdminCoursesPage() {
     category: 'Coding'
   })
 
+  const [loadError, setLoadError] = useState(false)
+
   const fetchData = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/admin/courses', { credentials: 'include' })
+      if (!res.ok) throw new Error(`Failed to load courses (${res.status})`)
       const json = await res.json()
       setCourses(json.data || [])
+      setLoadError(false)
     } catch {
-      // ignore
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -180,6 +185,14 @@ export default function AdminCoursesPage() {
         <TabsContent value="manage" className="space-y-6">
           {loading ? (
             <SkeletonTable rows={5} />
+          ) : loadError && courses.length === 0 ? (
+            <EmptyState
+              illustration="error"
+              title="Couldn't load courses"
+              description="Check your connection and try again."
+              actionLabel="Try again"
+              onAction={() => void fetchData()}
+            />
           ) : (
         <DataTable
           columns={columns}

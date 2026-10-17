@@ -46,11 +46,13 @@ export default function TeamsManagement() {
   const [formError, setFormError] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
 
+  const [loadError, setLoadError] = useState(false)
+
   const loadTeams = () =>
     fetch('/api/admin/teams')
-      .then(r => r.json())
-      .then(json => { if (json.data) setTeams(json.data) })
-      .catch(() => {})
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
+      .then(json => { if (json.data) setTeams(json.data); setLoadError(false) })
+      .catch(() => setLoadError(true))
 
   useEffect(() => {
     loadTeams().finally(() => setLoading(false))
@@ -147,7 +149,9 @@ export default function TeamsManagement() {
         <StatCard label="Active teams" value={safeTeams.filter(t => t.status === 'active').length} icon={<Activity />} />
       </div>
 
-      {safeTeams.length === 0 ? (
+      {loadError && safeTeams.length === 0 ? (
+        <EmptyState illustration="error" title="Couldn't load teams" description="Check your connection and try again." actionLabel="Try again" onAction={() => { setLoading(true); void loadTeams().finally(() => setLoading(false)) }} />
+      ) : safeTeams.length === 0 ? (
         <EmptyState illustration="team" title="No teams yet" description="Teams created inside an organization will show up here." />
       ) : (
         <Panel>
