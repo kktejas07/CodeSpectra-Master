@@ -32,7 +32,7 @@ function BentoVisual({ v, className }: { v: Visual; className?: string }) {
   return v.svg ? <ThemeIllustration name={v.svg} alt={v.alt} width={v.w ?? 480} height={v.h ?? 360} className={className} /> : null
 }
 
-function Card({
+export function BentoCard({
   className,
   children,
   href,
@@ -79,7 +79,7 @@ function Card({
   )
 }
 
-function Icon({ children }: { children: React.ReactNode }) {
+export function BentoIcon({ children }: { children: React.ReactNode }) {
   return (
     <span className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl border border-cs-accent/25 bg-cs-accent/10 text-cs-accent-text">
       {children}
@@ -87,19 +87,19 @@ function Icon({ children }: { children: React.ReactNode }) {
   )
 }
 
-function Title({ children }: { children: React.ReactNode }) {
+export function BentoTitle({ children }: { children: React.ReactNode }) {
   return <h3 className="text-xl font-bold tracking-tight text-cs-ink">{children}</h3>
 }
 
-function Body({ children, className }: { children: React.ReactNode; className?: string }) {
+export function BentoBody({ children, className }: { children: React.ReactNode; className?: string }) {
   return <p className={cn('mt-2 max-w-[46ch] text-[15px] leading-relaxed text-cs-ink-soft', className)}>{children}</p>
 }
 
 const ROLES = ['Java', 'Python', 'JavaScript', 'SQL', 'QA automation', 'Mechanical CAD', 'Drawing review', 'Aptitude', 'Written answers']
 
-export function BentoGrid() {
+/** Grid wrapper that runs the centre-out stagger reveal for every BentoCard inside it. */
+export function BentoShell({ className, children }: { className?: string; children: React.ReactNode }) {
   const gridRef = useRef<HTMLDivElement>(null)
-
   // Reveal: stagger outward from the centre of the grid, once, when it scrolls into view.
   useEffect(() => {
     const grid = gridRef.current
@@ -133,15 +133,23 @@ export function BentoGrid() {
   }, [])
 
   return (
-    <div ref={gridRef} className="cs-bento-grid grid auto-rows-[minmax(220px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+    <div ref={gridRef} className={cn('cs-bento-grid grid auto-rows-[minmax(200px,auto)] grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5', className)}>
+      {children}
+    </div>
+  )
+}
+
+export function BentoGrid() {
+  return (
+    <BentoShell className="auto-rows-[minmax(220px,auto)]">
       {/* A — 2×2: any role */}
-      <Card className="sm:col-span-2 lg:row-span-2">
-        <Icon><Layers className="h-5 w-5" aria-hidden /></Icon>
-        <Title>Assess any role, not only developers</Title>
-        <Body>
+      <BentoCard className="sm:col-span-2 lg:row-span-2">
+        <BentoIcon><Layers className="h-5 w-5" aria-hidden /></BentoIcon>
+        <BentoTitle>Assess any role, not only developers</BentoTitle>
+        <BentoBody>
           Coding with hidden test cases, CAD design tasks, test-automation scripts, written answers and aptitude,
           in one assessment and one score.
-        </Body>
+        </BentoBody>
         {/* sliding role chips */}
         <div className="relative mt-6 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
           <div className="cs-marquee flex w-max gap-2">
@@ -157,15 +165,15 @@ export function BentoGrid() {
             <BentoVisual v={{ photo: PHOTOS.code, svg: 'binary-brackets', alt: 'Code brackets filled with streaming binary digits', w: 360, h: 240 }} className="mx-auto h-full" />
           </div>
         </div>
-      </Card>
+      </BentoCard>
 
       {/* B — 2×1: proctoring */}
-      <Card className="sm:col-span-2">
+      <BentoCard className="sm:col-span-2">
         <div className="grid h-full gap-6 sm:grid-cols-[1.1fr_1fr] sm:items-center">
           <div>
-            <Icon><ScanFace className="h-5 w-5" aria-hidden /></Icon>
-            <Title>Proctoring that leaves a record</Title>
-            <Body>Every event is timestamped on the candidate’s report, so a reviewer decides what it means.</Body>
+            <BentoIcon><ScanFace className="h-5 w-5" aria-hidden /></BentoIcon>
+            <BentoTitle>Proctoring that leaves a record</BentoTitle>
+            <BentoBody>Every event is timestamped on the candidate’s report, so a reviewer decides what it means.</BentoBody>
             <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Checks during the test">
               {['Fullscreen lock', 'Tab switches', 'Face match', 'Copy-paste', 'Second screen'].map((c) => (
                 <li key={c} className="rounded-md bg-cs-accent/10 px-2 py-1 text-xs font-semibold text-cs-accent-text">{c}</li>
@@ -176,12 +184,12 @@ export function BentoGrid() {
             <BentoVisual v={{ photo: PHOTOS.proctor, svg: 'integrity-shield', alt: 'Proctoring radar logging events', w: 300, h: 220 }} className="h-full" />
           </div>
         </div>
-      </Card>
+      </BentoCard>
 
       {/* C — 1×1: weighted points */}
-      <Card>
-        <Icon><ClipboardCheck className="h-5 w-5" aria-hidden /></Icon>
-        <Title>Weighted by difficulty</Title>
+      <BentoCard>
+        <BentoIcon><ClipboardCheck className="h-5 w-5" aria-hidden /></BentoIcon>
+        <BentoTitle>Weighted by difficulty</BentoTitle>
         <div className="mt-auto flex items-end gap-3 pt-4" aria-label="Easy 3 points, medium 4 points, hard 5 points">
           {[
             ['Easy', 3, 'h-10'],
@@ -195,25 +203,25 @@ export function BentoGrid() {
             </div>
           ))}
         </div>
-      </Card>
+      </BentoCard>
 
       {/* D — 1×1: CAD */}
-      <Card>
-        <Icon><Cog className="h-5 w-5" aria-hidden /></Icon>
-        <Title>CAD design tasks</Title>
-        <Body className="text-sm">Model a valve or pump part, then review drawings.</Body>
+      <BentoCard>
+        <BentoIcon><Cog className="h-5 w-5" aria-hidden /></BentoIcon>
+        <BentoTitle>CAD design tasks</BentoTitle>
+        <BentoBody className="text-sm">Model a valve or pump part, then review drawings.</BentoBody>
         <div className="mt-auto h-36 w-full pt-3">
           <BentoVisual v={{ photo: PHOTOS.cad, svg: 'domain-cad', alt: 'CAD model of a valve with a turning handwheel', w: 96, h: 96 }} className="mx-auto h-full max-h-32" />
         </div>
-      </Card>
+      </BentoCard>
 
       {/* E — 2×1: ranked shortlist */}
-      <Card className="sm:col-span-2">
+      <BentoCard className="sm:col-span-2">
         <div className="grid h-full gap-6 sm:grid-cols-[1fr_1.1fr] sm:items-center">
           <div>
-            <Icon><Trophy className="h-5 w-5" aria-hidden /></Icon>
-            <Title>A ranked shortlist, not a pile of PDFs</Title>
-            <Body>Everyone is scored the same way. Review the top 20 of 100 and skip the rest.</Body>
+            <BentoIcon><Trophy className="h-5 w-5" aria-hidden /></BentoIcon>
+            <BentoTitle>A ranked shortlist, not a pile of PDFs</BentoTitle>
+            <BentoBody>Everyone is scored the same way. Review the top 20 of 100 and skip the rest.</BentoBody>
           </div>
           <div className="space-y-2" aria-label="Sample shortlist">
             {[
@@ -233,13 +241,13 @@ export function BentoGrid() {
             ))}
           </div>
         </div>
-      </Card>
+      </BentoCard>
 
       {/* F — 1×1: plagiarism */}
-      <Card>
-        <Icon><GitCompare className="h-5 w-5" aria-hidden /></Icon>
-        <Title>Plagiarism check</Title>
-        <Body className="text-sm">Code answers are compared across everyone who took the test.</Body>
+      <BentoCard>
+        <BentoIcon><GitCompare className="h-5 w-5" aria-hidden /></BentoIcon>
+        <BentoTitle>Plagiarism check</BentoTitle>
+        <BentoBody className="text-sm">Code answers are compared across everyone who took the test.</BentoBody>
         <div className="mt-auto flex items-center gap-2 pt-4 font-mono text-xs" aria-hidden>
           <span className="rounded-md bg-cs-paper px-2 py-1 text-cs-ink-soft">#14</span>
           <span className="h-px flex-1 bg-cs-flag/50" />
@@ -247,39 +255,39 @@ export function BentoGrid() {
           <span className="h-px flex-1 bg-cs-flag/50" />
           <span className="rounded-md bg-cs-paper px-2 py-1 text-cs-ink-soft">#31</span>
         </div>
-      </Card>
+      </BentoCard>
 
       {/* G — 1×1: export */}
-      <Card>
-        <Icon><Download className="h-5 w-5" aria-hidden /></Icon>
-        <Title>Release or export</Title>
-        <Body className="text-sm">Publish scores to candidates, or download the results as CSV.</Body>
+      <BentoCard>
+        <BentoIcon><Download className="h-5 w-5" aria-hidden /></BentoIcon>
+        <BentoTitle>Release or export</BentoTitle>
+        <BentoBody className="text-sm">Publish scores to candidates, or download the results as CSV.</BentoBody>
         <div className="mt-auto flex gap-2 pt-4" aria-hidden>
           <span className="rounded-lg border border-cs-grid px-3 py-1.5 text-xs font-semibold text-cs-ink">Export CSV</span>
           <span className="rounded-lg bg-cs-accent px-3 py-1.5 text-xs font-semibold text-cs-accent-ink">Release results</span>
         </div>
-      </Card>
+      </BentoCard>
 
       {/* H — 3×1: hackathons */}
-      <Card className="sm:col-span-2 lg:col-span-3" href="/hackathons" label="Run hackathons — see upcoming hackathons">
+      <BentoCard className="sm:col-span-2 lg:col-span-3" href="/hackathons" label="Run hackathons — see upcoming hackathons">
         <div className="grid h-full gap-6 md:grid-cols-[1fr_1.2fr] md:items-center">
           <div>
-            <Icon><Users className="h-5 w-5" aria-hidden /></Icon>
-            <Title>Run hackathons on the same platform</Title>
-            <Body>Teams of up to five join with one link and submit a repository. Judges score every entry out of 100 on one rubric.</Body>
+            <BentoIcon><Users className="h-5 w-5" aria-hidden /></BentoIcon>
+            <BentoTitle>Run hackathons on the same platform</BentoTitle>
+            <BentoBody>Teams of up to five join with one link and submit a repository. Judges score every entry out of 100 on one rubric.</BentoBody>
             <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-cs-accent-text group-hover:underline">See upcoming hackathons</span>
           </div>
           <div className="aspect-[2/1] w-full">
             <BentoVisual v={{ photo: PHOTOS.team, svg: 'hackathon-team', alt: 'A team of five submits a repository that judges score out of 100', w: 420, h: 210 }} className="h-full" />
           </div>
         </div>
-      </Card>
+      </BentoCard>
 
       {/* I — 1×1: question bank */}
-      <Card>
-        <Icon><FileStack className="h-5 w-5" aria-hidden /></Icon>
-        <Title>Editable question bank</Title>
-        <Body className="text-sm">Start from a generated set, then change any question before it goes out.</Body>
+      <BentoCard>
+        <BentoIcon><FileStack className="h-5 w-5" aria-hidden /></BentoIcon>
+        <BentoTitle>Editable question bank</BentoTitle>
+        <BentoBody className="text-sm">Start from a generated set, then change any question before it goes out.</BentoBody>
         <div className="mt-auto space-y-1.5 pt-4" aria-hidden>
           {['Hard', 'Medium', 'Easy'].map((l, i) => (
             <div key={l} className="cs-slide-in flex items-center justify-between rounded-lg border border-cs-grid bg-cs-paper px-3 py-1.5 text-xs" style={{ ['--gd' as string]: `${i * 120}ms` }}>
@@ -288,7 +296,7 @@ export function BentoGrid() {
             </div>
           ))}
         </div>
-      </Card>
-    </div>
+      </BentoCard>
+    </BentoShell>
   )
 }

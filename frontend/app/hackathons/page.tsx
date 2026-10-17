@@ -7,7 +7,9 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, Trophy, Users, Clock, CalendarDays, ArrowRight, ListChecks } from 'lucide-react'
+import { Loader2, Users, Clock, CalendarDays, ArrowRight, ListChecks } from 'lucide-react'
+import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { ThemeIllustration } from '@/components/landing/theme-illustration'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -22,8 +24,8 @@ function formatDate(iso: string) {
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'active') return <Badge className="bg-green-500/20 text-green-700 border-green-500/30">Live</Badge>
-  if (status === 'upcoming') return <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30">Upcoming</Badge>
+  if (status === 'active') return <Badge className="border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400">Live</Badge>
+  if (status === 'upcoming') return <Badge className="border-cs-accent/30 bg-cs-accent/10 text-cs-accent-text">Upcoming</Badge>
   return <Badge variant="outline" className="text-muted-foreground">Ended</Badge>
 }
 
@@ -41,46 +43,42 @@ export default function PublicHackathonsPage() {
 
   return (
     <PublicPageWrapper>
-      {/* Hero */}
-      <div className="relative overflow-hidden border-b border-border/40">
-        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className="relative max-w-5xl mx-auto px-6 py-16 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-6">
-            <Trophy className="h-3 w-3" />
-            Compete & Build
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-            Hackathons
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Join coding competitions, build projects with your team, and win prizes. Open to all skill levels.
-          </p>
-        </div>
-      </div>
+      <PageHero
+        title="Hackathons"
+        lead="Teams of up to five build against real problems. Judges score every submission out of 100 on one rubric: correctness, code quality, efficiency, documentation and edge cases."
+        actions={
+          <>
+            <a href="#listings" className={btnPrimary}>See hackathons</a>
+            <Link href="/contact?topic=pilot" className={btnSecondary}>Host one on CodeSpectra</Link>
+          </>
+        }
+        art={<ThemeIllustration name="hackathon-team" alt="" width={420} height={210} priority className="w-full" />}
+      />
 
       {/* Listings */}
-      <div className="max-w-5xl mx-auto px-6 py-12">
+      <div id="listings" className="mx-auto max-w-[1200px] scroll-mt-24 px-4 py-14 sm:px-6 lg:px-8">
         {loading ? (
           <div className="flex justify-center py-20">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
         ) : hackathons.length === 0 ? (
-          <div className="text-center py-20">
-            <Trophy className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
-            <h2 className="text-xl font-semibold mb-2">No hackathons yet</h2>
-            <p className="text-muted-foreground">Check back soon for upcoming events.</p>
+          <div className="mx-auto max-w-xl rounded-3xl border border-cs-grid bg-cs-sheet p-10 text-center">
+            <ThemeIllustration name="binary-brackets" alt="" width={360} height={240} className="mx-auto w-48" />
+            <h2 className="cs-heading mt-6 text-3xl">No hackathons open right now</h2>
+            <p className="mt-2 text-cs-ink-soft">Create a free account and you’ll see new hackathons on your dashboard as soon as they open.</p>
+            <Link href="/auth/signup" className={`${btnPrimary} mt-6`}>Create a free account</Link>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-5 md:grid-cols-2">
             {hackathons.map(h => (
-              <Card key={h.id} className="border-border/60 overflow-hidden hover:border-primary/30 transition-colors">
-                <div className="p-6">
+              <Card key={h.id} className="group overflow-hidden rounded-3xl border-cs-grid bg-cs-sheet py-0 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
+                <div className="p-7">
                   <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <StatusBadge status={h.status} />
                       </div>
-                      <h2 className="text-xl font-bold truncate">{h.name}</h2>
+                      <h2 className="truncate text-xl font-bold text-cs-ink">{h.name}</h2>
                     </div>
                     <Link href={`/hackathons/${h.slug}`}>
                       <Button size="sm" className="gap-1.5 shrink-0">

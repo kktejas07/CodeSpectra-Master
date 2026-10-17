@@ -6,6 +6,7 @@ import { Check, ArrowRight, Loader2 } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { useCurrency } from '@/lib/use-currency'
+import { PageHero } from '@/components/landing/page-hero'
 
 type PublicPlan = {
   id: string
@@ -75,25 +76,24 @@ export default function PricingPage() {
 
   return (
     <PublicPageWrapper>
-      <div className="space-y-20">
-        <div className="text-center">
-          <p className="mb-3 text-sm text-muted-foreground">Pricing</p>
-          <h1 className="mb-4 text-5xl font-bold sm:text-6xl">
-            Simple, transparent
-            <br />
-            <span className="text-muted-foreground">pricing</span>
-          </h1>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            Start free and scale as you grow. Amounts update from your team&apos;s catalog in the admin console.
-          </p>
-        </div>
+      <PageHero
+        title="Pricing that starts free"
+        lead={
+          <>
+            Candidates practise for free. Hiring teams pick a plan for the assessments they run, or{' '}
+            <Link href="/contact?topic=sales" className="font-semibold text-cs-accent-text underline underline-offset-4">talk to us</Link> about a campus or company licence.
+          </>
+        }
+      />
+      <div className="mx-auto max-w-[1200px] space-y-20 px-4 py-16 sm:px-6 lg:px-8">
 
-        <div className="flex items-center justify-center gap-4">
+        <div role="group" aria-label="Billing period" className="mx-auto flex w-fit items-center gap-1 rounded-full border border-cs-grid bg-cs-sheet p-1">
           <button
             type="button"
             onClick={() => setAnnual(false)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              !annual ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            aria-pressed={!annual}
+            className={`rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
+              !annual ? 'bg-cs-accent text-cs-accent-ink' : 'text-cs-ink-soft hover:text-cs-ink'
             }`}
           >
             Monthly
@@ -101,19 +101,20 @@ export default function PricingPage() {
           <button
             type="button"
             onClick={() => setAnnual(true)}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-              annual ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            aria-pressed={annual}
+            className={`flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition-colors ${
+              annual ? 'bg-cs-accent text-cs-accent-ink' : 'text-cs-ink-soft hover:text-cs-ink'
             }`}
           >
             Annual
-            <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-xs text-green-600 dark:text-green-400">
+            <span className={`rounded-full px-2 py-0.5 text-xs ${annual ? 'bg-white/20 text-current' : 'bg-green-500/15 text-green-700 dark:text-green-400'}`}>
               Save ~{annualSavingsPct}%
             </span>
           </button>
         </div>
 
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
-          {plans.map((plan, index) => {
+          {plans.map((plan) => {
             const isCustom =
               plan.id === 'enterprise' && plan.price <= 0 && plan.yearlyPrice <= 0
             const monthlyDisplay = plan.price
@@ -123,26 +124,23 @@ export default function PricingPage() {
             return (
               <div
                 key={plan.id}
-                className={`relative flex flex-col rounded-xl border p-8 transition-all duration-300 ${
+                className={`cs-bento is-in relative flex flex-col rounded-3xl border bg-cs-sheet p-8 shadow-[0_8px_24px_-12px_rgba(15,23,41,0.10)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 ${
                   plan.popular
-                    ? 'border-primary bg-primary/5 ring-1 ring-primary/20'
-                    : 'border-border/40 hover:border-primary/40'
+                    ? 'border-cs-accent ring-1 ring-cs-accent'
+                    : 'border-cs-grid hover:border-cs-accent/40'
                 }`}
               >
                 {plan.popular ? (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                    <span className="rounded-full bg-cs-accent px-3 py-1 text-xs font-semibold text-cs-accent-ink">
                       Most popular
                     </span>
                   </div>
                 ) : null}
 
                 <div className="mb-6">
-                  <span className="font-mono text-sm text-muted-foreground">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
-                  <h3 className="mt-2 text-2xl font-bold">{plan.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
+                  <h3 className="text-2xl font-bold text-cs-ink">{plan.name}</h3>
+                  <p className="mt-1 text-sm text-cs-ink-soft">{plan.description}</p>
                 </div>
 
                 <div className="mb-8">
@@ -171,7 +169,7 @@ export default function PricingPage() {
                 <ul className="mb-8 flex-1 space-y-3">
                   {plan.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-3">
-                      <Check className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+                      <Check className="mt-0.5 h-5 w-5 shrink-0 text-cs-accent-text" aria-hidden />
                       <span className="text-sm text-muted-foreground">{feature}</span>
                     </li>
                   ))}
@@ -185,7 +183,7 @@ export default function PricingPage() {
                   <Link
                     href={
                       isCustom
-                        ? '/support'
+                        ? '/contact?topic=sales'
                         : `/auth/signup?plan=${encodeURIComponent(plan.id)}`
                     }
                   >
@@ -200,12 +198,7 @@ export default function PricingPage() {
 
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">
-            <p className="mb-3 text-sm text-muted-foreground">FAQ</p>
-            <h2 className="text-4xl font-bold">
-              Frequently asked
-              <br />
-              <span className="text-muted-foreground">questions</span>
-            </h2>
+            <h2 className="cs-heading text-4xl sm:text-5xl">Questions about pricing</h2>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
@@ -229,7 +222,7 @@ export default function PricingPage() {
             ].map((faq, i) => (
               <div
                 key={i}
-                className="rounded-xl border border-border/40 p-6 transition-colors hover:border-primary/40"
+                className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 transition-colors hover:border-cs-accent/40"
               >
                 <h3 className="mb-2 font-semibold">{faq.q}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
@@ -238,20 +231,20 @@ export default function PricingPage() {
           </div>
         </div>
 
-        <div className="border-t border-border/40 py-12 text-center">
-          <h2 className="mb-4 text-3xl font-bold">Ready to get started?</h2>
-          <p className="mx-auto mb-8 max-w-xl text-muted-foreground">
-            Join thousands of developers who are already using CodeSpectra to improve their code quality.
+        <div className="border-t border-cs-grid py-12 text-center">
+          <h2 className="cs-heading mb-4 text-4xl">Not sure which plan fits?</h2>
+          <p className="mx-auto mb-8 max-w-xl text-cs-ink-soft">
+            Run a pilot on one open role first, then choose a plan from what you actually used.
           </p>
           <div className="flex justify-center gap-4">
             <Button size="lg" asChild className="gap-2">
-              <Link href="/auth/signup">
-                Start free trial
+              <Link href="/contact">
+                Book a pilot
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/support">Contact sales</Link>
+              <Link href="/contact?topic=sales">Contact sales</Link>
             </Button>
           </div>
         </div>

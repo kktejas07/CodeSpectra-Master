@@ -1,113 +1,122 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
-import { Users, Zap, Target, Award } from 'lucide-react'
+import Link from 'next/link'
+import { Building2, Compass, MapPin, Scale, ShieldCheck, Users } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
+import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
+import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+
+/*
+ * Company facts on this page come from the founder (AXISS Group, Hyderabad +
+ * Princeton NJ, founder name). No invented team members or usage numbers —
+ * add real figures here only when they can be stated publicly.
+ */
+
+const PRINCIPLES = [
+  {
+    icon: Scale,
+    title: 'Fair by design',
+    body: 'Every candidate in a screening is scored the same way, with harder questions worth more, so nobody is penalised for the level they were assessed at.',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Evidence over suspicion',
+    body: 'Proctoring logs events with timestamps instead of auto-rejecting people. A reviewer decides what a flag means.',
+  },
+  {
+    icon: Compass,
+    title: 'Beyond software',
+    body: 'Hiring for a plant, a design office or a test team deserves the same rigour as hiring developers.',
+  },
+]
 
 export default function AboutPage() {
-  const team = [
-    { name: 'Alice Chen', role: 'CEO & Founder', initials: 'AC' },
-    { name: 'Bob Kumar', role: 'CTO', initials: 'BK' },
-    { name: 'Carol Davis', role: 'Head of Product', initials: 'CD' },
-    { name: 'David Wilson', role: 'Lead Engineer', initials: 'DW' },
-  ]
-
-  const values = [
-    {
-      icon: Zap,
-      title: 'Innovation',
-      description: 'We constantly push the boundaries of what\'s possible in code analysis.',
-    },
-    {
-      icon: Users,
-      title: 'Community',
-      description: 'Our platform thrives on collaboration and shared learning.',
-    },
-    {
-      icon: Target,
-      title: 'Quality',
-      description: 'We maintain the highest standards in accuracy and reliability.',
-    },
-    {
-      icon: Award,
-      title: 'Excellence',
-      description: 'Excellence is not a goal, it\'s our standard in everything we do.',
-    },
-  ]
-
   return (
     <PublicPageWrapper>
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
-        <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
-          About CodeSpectra
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Empowering developers worldwide to write better, more secure, and more efficient code.
-        </p>
-      </div>
+      <PageHero
+        title="We help teams hire on proven skills"
+        lead={
+          <>
+            CodeSpectra is a skills-assessment and hackathon platform for companies and colleges. It turns a long list
+            of applicants into a <strong className="font-semibold text-cs-ink">ranked shortlist</strong> backed by work
+            each candidate actually did.
+          </>
+        }
+        art={<ThemeIllustration name="code-visor" alt="" width={240} height={200} priority className="mx-auto w-full max-w-[300px]" />}
+      />
 
-      {/* Mission */}
-      <div className="px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto py-12">
-        <Card className="p-12 bg-primary/5 border-primary/20">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Our Mission</h2>
-          <p className="text-lg text-muted-foreground leading-relaxed">
-            CodeSpectra is dedicated to revolutionizing code quality analysis. We believe that every developer deserves access to advanced tools that help them write cleaner, more secure, and more maintainable code. Our mission is to make professional-grade code analysis accessible to everyone.
-          </p>
-        </Card>
-      </div>
+      <section className="border-b border-cs-grid">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <BentoShell>
+            <BentoCard className="sm:col-span-2 lg:row-span-2">
+              <BentoIcon><Users className="h-5 w-5" aria-hidden /></BentoIcon>
+              <BentoTitle>Why we built it</BentoTitle>
+              <BentoBody className="max-w-[60ch]">
+                Résumés and keyword filters say little about whether someone can do the work. Interviews are expensive
+                to spend on the wrong people. We built CodeSpectra so hiring teams can give every applicant the same
+                practical test, then spend interview time on the strongest.
+              </BentoBody>
+              <BentoBody className="max-w-[60ch]">
+                It started with coding assessments and grew to cover CAD and mechanical design, QA automation, aptitude
+                and written answers, because most hiring isn’t only for developers.
+              </BentoBody>
+            </BentoCard>
 
-      {/* Values */}
-      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-20">
-        <h2 className="text-3xl font-bold text-foreground mb-12 text-center">Our Values</h2>
-        <div className="grid md:grid-cols-4 gap-8">
-          {values.map((value, idx) => {
-            const Icon = value.icon
-            return (
-              <Card key={idx} className="p-6 text-center">
-                <Icon className="w-12 h-12 text-primary mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-foreground mb-2">{value.title}</h3>
-                <p className="text-sm text-muted-foreground">{value.description}</p>
-              </Card>
-            )
-          })}
-        </div>
-      </div>
+            <BentoCard className="sm:col-span-2">
+              <BentoIcon><Building2 className="h-5 w-5" aria-hidden /></BentoIcon>
+              <BentoTitle>Part of AXISS Group</BentoTitle>
+              <BentoBody>
+                CodeSpectra is one of the products of AXISS Group, founded by Krishna Chintakayala, which builds hiring,
+                education and workforce software for India and the US.
+              </BentoBody>
+            </BentoCard>
 
-      {/* Team */}
-      <div className="bg-muted/30 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-20">
-        <h2 className="text-3xl font-bold text-foreground mb-12 text-center">Leadership Team</h2>
-        <div className="grid md:grid-cols-4 gap-8">
-          {team.map((member, idx) => (
-            <Card key={idx} className="p-6 text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full border border-border/60 bg-primary/10 text-sm font-semibold text-primary">
-                {member.initials}
+            <BentoCard className="sm:col-span-2">
+              <BentoIcon><MapPin className="h-5 w-5" aria-hidden /></BentoIcon>
+              <BentoTitle>Where we are</BentoTitle>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="font-semibold text-cs-ink">Hyderabad, India</p>
+                  <p className="text-sm text-cs-ink-soft">India</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-cs-ink">Princeton, New Jersey</p>
+                  <p className="text-sm text-cs-ink-soft">United States</p>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-foreground">{member.name}</h3>
-              <p className="text-sm text-muted-foreground">{member.role}</p>
-            </Card>
-          ))}
+            </BentoCard>
+          </BentoShell>
         </div>
-      </div>
+      </section>
 
-      {/* Stats */}
-      <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-20">
-        <div className="grid md:grid-cols-4 gap-8 text-center">
-          {[
-            { label: 'Active Users', value: '50K+' },
-            { label: 'Code Scans', value: '5M+' },
-            { label: 'Issues Found', value: '10M+' },
-            { label: 'Countries', value: '120+' },
-          ].map((stat, idx) => (
-            <div key={idx}>
-              <p className="text-4xl font-bold text-primary mb-2">{stat.value}</p>
-              <p className="text-muted-foreground">{stat.label}</p>
-            </div>
-          ))}
+      <section className="border-b border-cs-grid">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">
+          <h2 className="cs-heading mb-10 text-4xl sm:text-5xl">What we hold to</h2>
+          <BentoShell className="lg:grid-cols-3">
+            {PRINCIPLES.map(({ icon: Icon, title, body }) => (
+              <BentoCard key={title}>
+                <BentoIcon><Icon className="h-5 w-5" aria-hidden /></BentoIcon>
+                <BentoTitle>{title}</BentoTitle>
+                <BentoBody>{body}</BentoBody>
+              </BentoCard>
+            ))}
+          </BentoShell>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section>
+        <div className="mx-auto flex max-w-[1200px] flex-col items-start gap-6 px-4 py-16 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
+          <div>
+            <h2 className="cs-heading text-3xl sm:text-4xl">Want to see it on one of your roles?</h2>
+            <p className="mt-2 text-cs-ink-soft">We’ll set up a pilot assessment with you and show you the ranked shortlist.</p>
+          </div>
+          <div className="flex gap-3">
+            <Link href="/contact" className={btnPrimary}>Book a pilot</Link>
+            <Link href="/features" className={btnSecondary}>Explore features</Link>
+          </div>
+        </div>
+      </section>
     </PublicPageWrapper>
   )
 }

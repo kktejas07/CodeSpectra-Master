@@ -6,6 +6,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Trophy, Users, Clock, CalendarDays, ArrowRight, Code, Timer } from 'lucide-react'
+import { PageHero, btnPrimary } from '@/components/landing/page-hero'
+import { ThemeIllustration } from '@/components/landing/theme-illustration'
 
 export const metadata: Metadata = {
   title: 'Events — CodeSpectra',
@@ -33,9 +35,9 @@ function EventCard({ event }: { event: any }) {
   const isClosed = now > ends || event.status === 'closed'
   const isUpcoming = now < starts
 
-  const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+  const statusColor = isLive ? 'bg-green-500/15 text-green-700 border-green-500/30 dark:text-green-400'
     : isClosed ? 'bg-muted text-muted-foreground'
-    : 'bg-blue-500/10 text-blue-600 border-blue-500/30'
+    : 'bg-cs-accent/10 text-cs-accent-text border-cs-accent/30'
   const statusLabel = isLive ? 'Live Now' : isClosed ? 'Ended' : 'Upcoming'
 
   const detailUrl = event.type === 'hackathon'
@@ -43,13 +45,13 @@ function EventCard({ event }: { event: any }) {
     : `/dashboard/codeathons/${event.id}`
 
   return (
-    <Card className="overflow-hidden hover:border-primary/40 transition-colors group">
+    <Card className="group overflow-hidden rounded-3xl border-cs-grid bg-cs-sheet py-0 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
       {event.banner_url && (
         <div className="h-32 w-full overflow-hidden bg-muted">
-          <img src={event.banner_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+          <img src={event.banner_url} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
         </div>
       )}
-      <div className="p-4 space-y-3">
+      <div className="space-y-3 p-6">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
@@ -59,7 +61,7 @@ function EventCard({ event }: { event: any }) {
                 {event.type === 'hackathon' ? 'Hackathon' : 'Codeathon'}
               </Badge>
             </div>
-            <h3 className="font-semibold text-sm truncate">{event.title}</h3>
+            <h3 className="truncate text-base font-bold text-cs-ink">{event.title}</h3>
             {event.description && (
               <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
             )}
@@ -82,7 +84,7 @@ function EventCard({ event }: { event: any }) {
         </div>
 
         {isLive && (
-          <div className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+          <div className="flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
             <Timer className="w-3 h-3" /> Live — join now!
           </div>
         )}
@@ -103,33 +105,20 @@ export default async function PublicEventsPage() {
 
   return (
     <PublicPageWrapper>
-      {/* Hero */}
-      <div className="relative overflow-hidden border-b border-border/40">
-        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
-        <div className="relative max-w-5xl mx-auto px-6 py-16 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-6">
-            <CalendarDays className="h-3 w-3" />
-            Learn & Connect
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
-            Events
-          </h1>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            Hackathons, codeathons, and coding competitions.
-          </p>
-        </div>
-      </div>
+      <PageHero
+        title="Events"
+        lead="Hackathons, codeathons and coding competitions on CodeSpectra. Join one live, or browse results from past events."
+        art={<ThemeIllustration name="binary-brackets" alt="" width={360} height={240} priority className="w-full" />}
+      />
 
-      <div className="mx-auto max-w-5xl px-6 py-12">
+      <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 lg:px-8">
         {events.length === 0 ? (
-          <Card className="p-8 text-center border-border/60">
-            <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
-            <h2 className="text-xl font-semibold mb-2">No events available yet</h2>
-            <p className="text-sm text-muted-foreground">Sign up to get notified when new events are added.</p>
-            <Link href="/auth/signup">
-              <Button size="sm" className="mt-4">Get Started</Button>
-            </Link>
-          </Card>
+          <div className="mx-auto max-w-xl rounded-3xl border border-cs-grid bg-cs-sheet p-10 text-center">
+            <ThemeIllustration name="hackathon-team" alt="" width={420} height={210} className="mx-auto w-64" />
+            <h2 className="cs-heading mt-6 text-3xl">No events open right now</h2>
+            <p className="mt-2 text-cs-ink-soft">Create a free account to see new events on your dashboard as soon as they’re announced.</p>
+            <Link href="/auth/signup" className={`${btnPrimary} mt-6`}>Create a free account</Link>
+          </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {events.map((event: any) => (
