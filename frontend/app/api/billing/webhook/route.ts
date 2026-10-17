@@ -62,30 +62,41 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         if (existingPayment) {
           return NextResponse.json({ ok: true, duplicate: true })
         }
-        if (status === 'captured' && order.status === 'paid') {
-          // Order already paid (e.g. verify route raced the webhook) — still record payment if new.
-        }
+        // Atomic claim so the verify route and this webhook can't both apply the
+        // order (double subscription extension). A failure never un-pays an order.
+        // A captured amount below the order total never activates the order.
+        const shortPaid = status === 'captured' && amount < order.amount_paise
+        if (shortPaid) console.error('[billing/webhook] short payment', { order: order.id, amount })
+        const claim = shortPaid
+          ? null
+          : await orders.updateOne(
+              { id: order.id, status: { $ne: 'paid' } },
+              {
+                $set: {
+                  status: status === 'captured' ? 'paid' : 'failed',
+                  updated_at: nowIso(),
+                },
+              },
+            )
+        const claimed = (claim?.modifiedCount ?? 0) > 0
 
-        await orders.updateOne(
-          { id: order.id },
+        await paymentsCol.updateOne(
+          { razorpay_payment_id: payment_id },
           {
-            $set: {
-              status: status === 'captured' ? 'paid' : 'failed',
-              updated_at: nowIso(),
+            $setOnInsert: {
+              id: newId(),
+              user_id: order.user_id,
+              order_id: order.id,
+              razorpay_payment_id: payment_id,
+              status,
+              amount_paise: amount,
+              method: String(pay.method || ''),
+              created_at: nowIso(),
+              raw_event: pay,
             },
           },
+          { upsert: true },
         )
-        await paymentsCol.insertOne({
-          id: newId(),
-          user_id: order.user_id,
-          order_id: order.id,
-          razorpay_payment_id: payment_id,
-          status,
-          amount_paise: amount,
-          method: String(pay.method || ''),
-          created_at: nowIso(),
-          raw_event: pay,
-        })
         const sym = getCurrencySymbol(await getPlatformCurrency())
         notify({
           user_id: order.user_id,
@@ -98,7 +109,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           link: '/dashboard/billing',
         }).catch(() => {})
         // Issue / extend / reactivate subscription on captured event.
-        if (status === 'captured') {
+        // Only the claimer applies the order's effects.
+        if (status === 'captured' && claimed) {
           const plan = BILLING_PLANS[order.plan_id]
           if (plan?.kind === 'subscription' && plan.duration_days) {
             const subs = await billingSubscriptions()

@@ -29,6 +29,7 @@ import {
 import { CreditCard, Check, Download, Eye, Loader2, RefreshCw } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { completeCheckout } from '@/lib/razorpay-checkout'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/app/page-kit'
 import { findPlan } from '@/lib/billing-catalog'
@@ -159,14 +160,6 @@ function BillingContent() {
       setLoadError(null)
       try {
         await load()
-        if (!cancelled && searchParams.get('paid') === '1') {
-          addToast({
-            type: 'success',
-            title: 'Payment recorded',
-            message: 'Your plan is updated. Check your email for the receipt link.',
-            duration: 6000,
-          })
-        }
         if (!cancelled && searchParams.get('session_id')) {
           addToast({
             type: 'success',
@@ -245,8 +238,14 @@ function BillingContent() {
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Checkout failed')
-      setUpgradeOpen(false)
-      window.location.href = typeof j.redirect_url === 'string' ? j.redirect_url : '/dashboard/billing?paid=1'
+      // Redirect gateways leave the page; Razorpay opens its modal and resolves
+      // 'paid' only after /api/billing/verify confirms the payment server-side.
+      const outcome = await completeCheckout(j)
+      if (outcome.status === 'paid') {
+        setUpgradeOpen(false)
+        addToast({ type: 'success', title: 'Payment confirmed', message: 'Your plan is updated.', duration: 6000 })
+        await load()
+      }
     } catch (e) {
       addToast({
         type: 'error',
@@ -258,30 +257,12 @@ function BillingContent() {
     }
   }
 
-  const changeCycle = async (interval: 'month' | 'year') => {
-    setBusy('cycle')
-    try {
-      const res = await csrfFetch('/api/billing/subscription', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ billingInterval: interval }),
-      })
-      const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Update failed')
-      setSubscription(j)
-      setCycleOpen(false)
-      addToast({ type: 'success', title: 'Billing cycle updated', message: `Renewal is now ${interval === 'year' ? 'annual' : 'monthly'}.` })
-      await load()
-    } catch (e) {
-      addToast({
-        type: 'error',
-        title: 'Could not update',
-        message: e instanceof Error ? e.message : 'Failed',
-      })
-    } finally {
-      setBusy(null)
-    }
+  // Switching monthly <-> annual is a new paid purchase, so it goes through
+  // checkout (the server no longer lets the client set a paid plan directly).
+  const changeCycle = (interval: 'month' | 'year') => {
+    setPickInterval(interval)
+    setCycleOpen(false)
+    setUpgradeOpen(true)
   }
 
   const cancelSub = async () => {
@@ -547,7 +528,7 @@ function BillingContent() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Change plan</DialogTitle>
-            <DialogDescription>Pick a plan and billing interval. We&apos;ll record payment and email your receipt.</DialogDescription>
+            <DialogDescription>Pick a plan and billing interval. Your plan changes once the payment is confirmed.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -601,10 +582,10 @@ function BillingContent() {
             <DialogDescription>Switch between monthly and annual renewal.</DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap gap-2 py-2">
-            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => void changeCycle('month')}>
+            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => changeCycle('month')}>
               Monthly
             </Button>
-            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => void changeCycle('year')}>
+            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => changeCycle('year')}>
               Annual
             </Button>
           </div>

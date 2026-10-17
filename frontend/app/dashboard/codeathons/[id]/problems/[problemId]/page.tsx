@@ -85,7 +85,9 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
     try {
       const [codeathonRes, problemRes] = await Promise.all([
         csrfFetch(`/api/codeathons/${id}`, { credentials: 'include' }),
-        csrfFetch(`/api/codeathons/${id}/problems/${problemId}`, { credentials: 'include' }),
+        // No per-problem GET route exists; the problems list applies the
+        // contest-visibility rule and strips hidden test cases.
+        fetch(`/api/codeathons/${id}/problems`, { credentials: 'include' }),
       ])
 
       if (codeathonRes.ok) {
@@ -94,9 +96,12 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
       }
 
       if (problemRes.ok) {
-        const data = await problemRes.json() as Problem
-        setProblem(data)
-        setCode(LANGUAGE_TEMPLATES[language])
+        const data = await problemRes.json() as { problems?: Problem[] }
+        const found = (data.problems || []).find((p) => String(p.id) === String(problemId))
+        if (found) {
+          setProblem(found)
+          setCode(LANGUAGE_TEMPLATES[language])
+        }
       }
     } catch { /* ignore */ }
     setLoading(false)

@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
     const msg = (error as Error).message
     console.error('[billing/checkout]', msg)
     if (msg.includes('No payment provider configured')) {
-      return NextResponse.json({ error: msg }, { status: 503 })
+      return NextResponse.json(
+        { error: "Payments aren't set up yet. Contact us to upgrade your plan.", code: 'payments_not_configured' },
+        { status: 503 },
+      )
     }
     return NextResponse.json({ error: msg }, { status: 500 })
   }

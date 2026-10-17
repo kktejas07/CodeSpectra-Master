@@ -120,23 +120,16 @@ export default function ExamPage() {
             setResults(data.submission)
             setSubmitted(true)
           } else {
-            // Restore draft answers from local storage
-            if (typeof window !== 'undefined') {
-              try {
-                const draft = localStorage.getItem(`codespectra_exam_draft_${examId}`)
-                if (draft) {
-                  setAnswers(JSON.parse(draft))
-                }
-              } catch (e) {
-                console.error('Failed to load draft:', e)
-              }
-            }
+            // Results-only page. Taking the test always goes through the main
+            // runner, which carries the invite/link token the server requires.
+            router.replace(`/assessment/${examId}${typeof window !== 'undefined' ? window.location.search : ''}`)
+            return
           }
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [examId])
+  }, [examId, router])
 
   useEffect(() => {
     if (exam && Object.keys(answers).length > 0 && !submitted) {
@@ -268,7 +261,8 @@ export default function ExamPage() {
             const maxPoints = questionData?.points || 10
             
             // Get correct answer value
-            const correctAnswer = questionData ? ((questionData as any).answer || (questionData as any).correct_answer || 'N/A') : 'N/A'
+            // Sent by the server only after scores are released.
+            const correctAnswer = (d as any).correct_answer || 'N/A'
             const selectedAnswer = d.answer || '(No answer provided)'
 
             return (

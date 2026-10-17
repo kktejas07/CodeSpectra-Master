@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { verifyPaymentSignature } from '@/lib/razorpay-server'
+import { verifyPaymentSignature, getRazorpay } from '@/lib/razorpay-server'
 import {
   BILLING_PLANS,
   billingOrders,
@@ -16,6 +16,8 @@ interface VerifyReq {
   razorpay_order_id: string
   razorpay_payment_id: string
   razorpay_signature: string
+  /** Optional: the plan the client thinks it bought; must match the order. */
+  plan_id?: string
 }
 
 /**
@@ -25,6 +27,10 @@ interface VerifyReq {
  *   - marks the order as `paid`
  *   - inserts a `billing_payments` row
  *   - (for subscription plans) creates/extends a `billing_subscriptions` row
+ *
+ * Idempotent: the order is claimed atomically (`status != 'paid'` → `paid`), so a
+ * replayed handler payload (or a webhook that got there first) returns success
+ * without extending the subscription again.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
@@ -58,10 +64,48 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'order_not_found' }, { status: 404 })
   }
 
-  await ordersCol.updateOne(
-    { id: order.id },
+  if (body.plan_id && body.plan_id !== order.plan_id) {
+    return NextResponse.json({ error: 'plan_mismatch' }, { status: 400 })
+  }
+
+  const alreadyProcessed = async () => {
+    const subs = await billingSubscriptions()
+    const active = await subs.findOne({ user_id: user.id, status: 'active' })
+    return NextResponse.json({
+      ok: true,
+      already_processed: true,
+      order_id: order.id,
+      plan_id: order.plan_id,
+      subscription: active ? { id: active.id, ends_at: active.ends_at } : null,
+    })
+  }
+  if (order.status === 'paid') return alreadyProcessed()
+
+  // Confirm with Razorpay that this payment belongs to this order and covers
+  // the amount we charged (the signature alone doesn't prove the amount).
+  try {
+    const rp = await getRazorpay()
+    const pay = await rp.payments.fetch(body.razorpay_payment_id)
+    if (
+      pay.order_id !== body.razorpay_order_id ||
+      Number(pay.amount) !== order.amount_paise ||
+      String(pay.currency).toUpperCase() !== String(order.currency).toUpperCase() ||
+      !['captured', 'authorized'].includes(String(pay.status))
+    ) {
+      return NextResponse.json({ error: 'payment_mismatch' }, { status: 400 })
+    }
+  } catch (e) {
+    console.error('[billing/verify] payment fetch failed:', e)
+    return NextResponse.json({ error: 'Could not confirm payment with the gateway. Try again shortly.' }, { status: 502 })
+  }
+
+  // Atomic claim: only one caller (verify replay, concurrent verify, or webhook)
+  // gets to apply the order's effects.
+  const claim = await ordersCol.updateOne(
+    { id: order.id, status: { $ne: 'paid' } },
     { $set: { status: 'paid', updated_at: nowIso() } },
   )
+  if (claim.modifiedCount === 0) return alreadyProcessed()
 
   const paymentsCol = await billingPayments()
   const paymentDoc = {
@@ -74,7 +118,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     amount_paise: order.amount_paise,
     created_at: nowIso(),
   }
-  await paymentsCol.insertOne(paymentDoc)
+  // Upsert on the gateway payment id so a webhook-inserted row isn't duplicated.
+  await paymentsCol.updateOne(
+    { razorpay_payment_id: body.razorpay_payment_id },
+    { $setOnInsert: paymentDoc },
+    { upsert: true },
+  )
 
   // If this plan is a subscription, create/extend a subscription record.
   const plan = BILLING_PLANS[order.plan_id]

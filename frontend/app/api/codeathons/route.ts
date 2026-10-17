@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
+import { isTenantStaff, publicCodeathonView } from '@/lib/exam-access'
 
 export async function GET() {
   const gate = await requireAuth()
@@ -11,7 +12,9 @@ export async function GET() {
     const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
       ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
       : {}
-    const data = await db.collection('codeathons').find(filter).toArray()
+    const docs = await db.collection('codeathons').find(filter).toArray()
+    // Participants never get hidden test cases (they are the grading key).
+    const data = docs.map((d) => (isTenantStaff(gate.user, d) ? d : publicCodeathonView(d)))
     return NextResponse.json({ data })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }
@@ -19,6 +22,9 @@ export async function GET() {
 export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const body = await request.json()
     const db = await getMongoDb()
@@ -60,6 +66,9 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
     const db = await getMongoDb()
+    const existing = await db.collection('codeathons').findOne({ id })
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!isTenantStaff(gate.user, existing)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     await db.collection('codeathons').deleteOne({ id })
     return NextResponse.json({ ok: true })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }

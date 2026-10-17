@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireAuth } from '@/lib/route-auth'
+import { isTenantStaff, publicCodeathonProblem } from '@/lib/exam-access'
 
 export async function GET(
   request: NextRequest,
@@ -20,7 +21,9 @@ export async function GET(
       return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     }
 
-    const problems = (codeathon.problems as any[]) || []
+    const rawProblems = (codeathon.problems as any[]) || []
+    // Participants never get hidden test cases (they are the grading key).
+    const problems = isTenantStaff(gate.user, codeathon) ? rawProblems : rawProblems.map(publicCodeathonProblem)
     const now = new Date()
     const startDate = codeathon.startDate ? new Date(codeathon.startDate as string) : null
 

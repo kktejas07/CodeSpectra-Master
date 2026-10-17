@@ -211,6 +211,14 @@ export default function CandidateAssessmentPage() {
           return
         }
 
+        // One attempt per candidate (enforced by the submit route too).
+        if (found.submission && !found.allow_retake) {
+          setExam(found)
+          setIsSubmitted(true)
+          setLoading(false)
+          return
+        }
+
         // Availability-window entry gate (displayed before any access logic;
         // hard enforcement happens server-side in the submit route).
         const nowMs = Date.now()
@@ -266,7 +274,9 @@ export default function CandidateAssessmentPage() {
         // Hard guarantee: exams with require_token_links reject bare
         // ?share=true — a validated ?link= token (above) or invite is mandatory.
         if (isShareLink && !linkToken) {
-          const needsToken = (found as { require_token_links?: boolean }).require_token_links === true
+          // The submit route only accepts a bare ?share=true link on open
+          // assessments; invite-only ones need an invite or a ?link= token.
+          const needsToken = (found as { require_token_links?: boolean }).require_token_links === true || accType !== 'open'
           if (needsToken) {
             setAccessError('This assessment requires a personal link. Legacy share links are disabled — ask your administrator for an invite link.')
             setLoading(false)
@@ -428,6 +438,7 @@ export default function CandidateAssessmentPage() {
           idPhoto,
           facePhoto,
           inviteToken: searchParams.get('inviteToken'),
+          linkToken: searchParams.get('link'),
           // Timing data
           question_timings: questionTimingsRef.current,
           total_time_ms: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
@@ -530,6 +541,28 @@ export default function CandidateAssessmentPage() {
             <Link href="/">
               <Button variant="outline" className="w-full">Return home</Button>
             </Link>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  // Submitted Screen
+  if (isSubmitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mx-auto text-green-600 dark:text-green-400 mb-4">
+            <CheckCircle2 className="h-8 w-8" />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
+          <p className="text-muted-foreground">
+            Thank you for completing the {exam.title} assessment. Your answers have been saved and sent to the hiring team for review.
+            <br/><br/>
+            <strong>Your final score will be released after the admin reviews and evaluates your answers.</strong>
+          </p>
+          <div className="pt-4">
+            <Button variant="outline" onClick={() => router.push('/')}>Return to home</Button>
           </div>
         </Card>
       </div>
@@ -648,28 +681,6 @@ export default function CandidateAssessmentPage() {
         )}
       </div>
       </ExtensionGate>
-    )
-  }
-
-  // Submitted Screen
-  if (isSubmitted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mx-auto text-green-600 dark:text-green-400 mb-4">
-            <CheckCircle2 className="h-8 w-8" />
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
-          <p className="text-muted-foreground">
-            Thank you for completing the {exam.title} assessment. Your answers have been saved and sent to the hiring team for review.
-            <br/><br/>
-            <strong>Your final score will be released after the admin reviews and evaluates your answers.</strong>
-          </p>
-          <div className="pt-4">
-            <Button variant="outline" onClick={() => router.push('/')}>Return to home</Button>
-          </div>
-        </Card>
-      </div>
     )
   }
 

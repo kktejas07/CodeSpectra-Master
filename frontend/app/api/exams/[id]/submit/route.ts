@@ -6,6 +6,7 @@ import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
+import { checkExamEntry } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,6 +22,8 @@ export async function POST(
     idPhoto?: string
     facePhoto?: string
     inviteToken?: string
+    /** ?link= token from a DB-backed share link (assessment_links). */
+    linkToken?: string
     question_timings?: Record<string, number>
     total_time_ms?: number
     started_at?: string | null
@@ -37,35 +40,7 @@ export async function POST(
     const db = await getMongoDb()
 
     const inviteToken = body.inviteToken || req.headers.get('x-invite-token')
-
-    // If an invite token is provided, validate it and ensure the signed-in
-    // account owns it. The invite is marked used only AFTER the submission
-    // is saved (see below) — marking it before the save permanently locks
-    // the candidate out if anything later in this handler fails.
-    let inviteDoc: Record<string, unknown> | null = null
-    if (inviteToken) {
-      inviteDoc = (await db.collection('candidate_invites').findOne({ token: inviteToken })) as Record<string, unknown> | null
-      if (!inviteDoc) {
-        return NextResponse.json({ error: 'Invalid invitation token' }, { status: 403 })
-      }
-      if ((String(inviteDoc.email || '')).toLowerCase() !== (email || '').toLowerCase()) {
-        return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different account.' }, { status: 403 })
-      }
-      if (inviteDoc.status === 'used') {
-        // Recovery: a previous attempt may have marked the invite used but
-        // failed before saving. If no submission exists for this exam+email,
-        // allow the submit through instead of locking the candidate out.
-        const prior = await db.collection('exam_submissions').countDocuments({
-          exam_id: examId,
-          $or: [{ user_id: userId }, { email: String(inviteDoc.email || '') }],
-        })
-        if (!prior) {
-          console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: invite already used but no submission found — allowing recovery submit`)
-        } else {
-          return NextResponse.json({ error: 'This invitation has already been used' }, { status: 403 })
-        }
-      }
-    }
+    const linkToken = body.linkToken || req.headers.get('x-link-token')
 
     // IP blocking check (supports CIDR notation) — reuse shared matcher from
     // lib/db/security.ts instead of duplicating the bit-math inline.
@@ -96,11 +71,12 @@ export async function POST(
     const exam = await exams.findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
-    // Availability-window enforcement: must SUBMIT by ends_at (UTC ISO).
-    const endsAt = (exam as { ends_at?: string | null }).ends_at
-    if (endsAt && new Date(endsAt).getTime() < Date.now()) {
-      return NextResponse.json({ error: 'Assessment window has closed' }, { status: 403 })
-    }
+    // Server-side entry gate (the page's checks are UX only): published,
+    // starts_at/ends_at window, invite-only (valid invite for this exam + account,
+    // or a valid ?link= token), and no retake. See lib/exam-access.ts.
+    const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken })
+    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+    const inviteDoc = access.invite
 
     // Extension check: log if no hardware_port_audit event exists, but
     // don't block submission — the extension is a proctoring aid, not a
@@ -184,7 +160,7 @@ export async function POST(
       exam_id: examId,
       user_id: userId,
       email: email,
-      source: inviteToken ? 'invite' : 'public_link',
+      source: access.source === 'invite' ? 'invite' : 'public_link',
       extension_detected: extensionDetected,
       answers,
       score: totalScore,
@@ -213,7 +189,7 @@ export async function POST(
     // and link it to the submitting account so the results page can join
     // submissions to invites even when the invite was created with an
     // empty user_id (invited-link flow).
-    if (inviteToken) {
+    if (inviteDoc && inviteToken) {
       await db.collection('candidate_invites').updateOne(
         { token: inviteToken },
         { $set: { status: 'used', updatedAt: nowIso(), user_id: userId, email } }
@@ -240,12 +216,13 @@ export async function POST(
       }
     }
 
+    // Score and per-question correctness stay server-side until the organiser
+    // releases them (GET /api/exams/[id] returns them once score_released).
     return NextResponse.json({
-      score: totalScore,
-      total: maxScore,
-      has_pending_review: hasPendingReview,
-      details,
+      ok: true,
       submission_id: submission.id,
+      has_pending_review: hasPendingReview,
+      released: false,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Submit failed'

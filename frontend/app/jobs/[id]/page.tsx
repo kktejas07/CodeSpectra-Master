@@ -14,6 +14,7 @@ import {
   CheckCircle, Loader2, AlertCircle, ExternalLink, Users, Calendar,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { useCurrency } from '@/lib/use-currency'
 
 interface JobPosting {
@@ -71,15 +72,14 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     if (!authUser) { router.push('/login'); return }
     setApplying(true); setApplyError(null)
     try {
-      const csrfRes = await fetch('/api/auth/csrf', { credentials: 'include' })
-      const { csrfToken } = await csrfRes.json()
-      const res = await fetch(`/api/jobs/${id}/apply`, {
+      // csrfFetch attaches (and if needed bootstraps) the CSRF token.
+      const res = await csrfFetch(`/api/jobs/${id}/apply`, {
         method: 'POST',
         credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ coverLetter }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (data.alreadyApplied) {
         setAlreadyApplied(true)
       } else if (data.success) {

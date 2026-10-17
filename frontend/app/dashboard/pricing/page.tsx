@@ -9,6 +9,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader } from '@/components/app/page-kit'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { completeCheckout } from '@/lib/razorpay-checkout'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
@@ -98,32 +99,17 @@ export default function PricingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan_id: checkoutPlan.plan, coupon_code: discountInfo?.valid ? couponCode : undefined }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      if (data.razorpay_order_id && (window as any).Razorpay) {
-        const rzp = new (window as any).Razorpay({
-          key: data.razorpay_key_id,
-          amount: data.amount,
-          currency: data.currency || 'USD',
-          order_id: data.razorpay_order_id,
-          handler: async (response: any) => {
-            const verify = await csrfFetch('/api/billing/verify', {
-              method: 'POST', credentials: 'include',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(response),
-            })
-            if (verify.ok) {
-              addToast({ type: 'success', title: 'Subscribed!', message: `You are now on the ${checkoutPlan.plan} plan.` })
-              setCheckoutPlan(null)
-            }
-          },
-        })
-        rzp.open()
-      } else if (data.redirect_url) {
-        window.location.href = data.redirect_url
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Checkout failed')
+      // Opens Razorpay (or redirects) and only reports success after server verification.
+      const outcome = await completeCheckout(data, { description: checkoutPlan.name })
+      if (outcome.status === 'paid') {
+        addToast({ type: 'success', title: 'Subscribed!', message: `You are now on the ${checkoutPlan.name} plan.` })
+        setCheckoutPlan(null)
+        setCurrentPlanId(checkoutPlan.plan)
       }
     } catch (e: any) {
-      addToast({ type: 'error', title: 'Payment failed', message: e.message })
+      addToast({ type: 'error', title: 'Checkout', message: e.message })
     } finally {
       setCheckoutLoading(false)
     }

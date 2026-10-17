@@ -6,6 +6,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
+import { isExamStaff, pickFields, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
 import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 
@@ -362,14 +363,14 @@ export async function PATCH(request: Request) {
   }
   try {
     const body = await request.json()
-    const { id, ...updates } = body
+    const id = typeof body?.id === 'string' ? body.id : ''
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    // Allow-list: never id/_id/tenant_id/created_by or stats from the body.
+    const updates = pickFields(body, EXAM_EDITABLE_FIELDS)
     const db = await getMongoDb()
-    if (user.role === 'tenant_admin' && user.tenantId) {
-      const exam = await db.collection('exams').findOne({ id })
-      if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    const exam = await db.collection('exams').findOne({ id })
+    if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!isExamStaff(user, exam)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     // Harden the generic passthrough (see lib/grading.ts sanitizeExamQuestionList):
     // a crafted PATCH must not smuggle operator keys or blobs into the exam doc.
     if (Array.isArray(updates.questionList)) {
