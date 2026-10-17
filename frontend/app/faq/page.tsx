@@ -1,79 +1,111 @@
 'use client'
 
 import { useState } from 'react'
-import { Card } from '@/components/ui/card'
+import Link from 'next/link'
 import { ChevronDown } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
+import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 
+/*
+ * Answers here must match what the product actually does (see /features,
+ * /about, /terms and /privacy). Don't add language counts, integrations,
+ * discounts or certifications that aren't real.
+ */
 export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState<string | null>(null)
 
   const faqs = [
     {
-      category: 'Getting Started',
+      category: 'Getting started',
       items: [
         {
-          q: 'How do I get started with CodeSpectra?',
-          a: 'Sign up for a free account, connect your repository, and start your first code scan in minutes. No credit card required.',
+          q: 'What is CodeSpectra?',
+          a: 'A skills-assessment and hackathon platform for hiring teams and colleges. It turns a long list of applicants into a ranked shortlist based on work each candidate actually did. Candidates also get free practice on the same platform.',
         },
         {
-          q: 'What languages does CodeSpectra support?',
-          a: 'We support 40+ programming languages including JavaScript, Python, Java, C++, Go, Rust, TypeScript, PHP, and many more.',
+          q: 'How do I get started?',
+          a: 'Candidates can create an account and start practising for free. Hiring teams and colleges can book a pilot from the contact page.',
         },
         {
-          q: 'How often should I run code scans?',
-          a: 'We recommend running scans on every commit or at least once daily for best results.',
+          q: 'What kinds of questions can an assessment include?',
+          a: 'Coding with hidden test cases, multiple choice, true or false, fill-in-the-blank, written answers and CAD design tasks, all in one test.',
+        },
+        {
+          q: 'Is it only for software developers?',
+          a: 'No. Besides coding roles such as Java, Python, JavaScript and SQL, you can assess QA automation, mechanical CAD, drawing review, aptitude and written answers.',
         },
       ],
     },
     {
-      category: 'Integrations',
+      category: 'Scoring and proctoring',
       items: [
         {
-          q: 'Can I integrate CodeSpectra with my GitHub repository?',
-          a: 'Yes! GitHub integration is available for all plans. Simply authorize and select your repositories.',
+          q: 'How are candidates scored?',
+          a: 'Questions are weighted by difficulty: easy questions score 3 points, medium 4 and hard 5. Everyone in a screening is scored the same way and ranked on one list.',
         },
         {
-          q: 'Do you support GitLab and Bitbucket?',
-          a: 'Yes, we support GitHub, GitLab, Bitbucket, and Gitea. Integration setup is quick and easy.',
+          q: 'What does proctoring check?',
+          a: 'Fullscreen lock, tab-switch detection, webcam face matching against the ID photo, copy-paste blocking and second-screen detection. Every event is timestamped on the report and a reviewer decides what it means.',
         },
         {
-          q: 'Can I integrate with Slack?',
-          a: 'Yes, get real-time notifications about your code scans and issues directly in Slack.',
+          q: 'Do you check for plagiarism?',
+          a: 'Yes. Code answers are compared across everyone who took the same test.',
+        },
+        {
+          q: 'Can we share results with candidates?',
+          a: 'Yes. You can release scores to candidates or download the results as a CSV file.',
         },
       ],
     },
     {
-      category: 'Billing & Pricing',
+      category: 'Hackathons',
       items: [
         {
-          q: 'Can I cancel my subscription anytime?',
-          a: 'Yes, you can cancel anytime with no lock-in contracts. Your access continues until the end of your billing period.',
+          q: 'How do hackathons work?',
+          a: 'Teams of up to five join with one link, claim problems and submit a repository. Judges score each entry out of 100 on a shared rubric, then release results.',
+        },
+      ],
+    },
+    {
+      category: 'Accounts and integrations',
+      items: [
+        {
+          q: 'Can I connect GitHub?',
+          a: 'Yes. GitHub is connected through OAuth, so CodeSpectra never asks for your GitHub password.',
         },
         {
-          q: 'Do you offer discounts for nonprofits?',
-          a: 'Yes! Nonprofits and open-source projects get 50% off all plans. Contact our sales team.',
+          q: 'Can our organization use single sign-on?',
+          a: 'Yes. Organizations can sign in through their own SAML or OIDC identity provider, such as Okta, Azure AD or Google Workspace.',
+        },
+      ],
+    },
+    {
+      category: 'Billing',
+      items: [
+        {
+          q: 'Where can I see prices?',
+          a: 'The pricing page always shows the current plans and prices.',
+        },
+        {
+          q: 'Can I cancel my subscription?',
+          a: 'Yes, from the Billing settings in your dashboard at any time.',
         },
         {
           q: 'What is your refund policy?',
-          a: 'We offer a 30-day money-back guarantee if you\'re not satisfied.',
+          a: 'Fees are non-refundable except where required by law. The Terms of Service have the details.',
         },
       ],
     },
     {
-      category: 'Security & Privacy',
+      category: 'Security and privacy',
       items: [
         {
-          q: 'Is my code secure with CodeSpectra?',
-          a: 'Yes, we use bank-level encryption and never store your source code. We only analyze and report findings.',
+          q: 'How is my data protected?',
+          a: 'Data is encrypted in transit and at rest, and dashboards use role-based access. The Security page explains more.',
         },
         {
-          q: 'Do you comply with GDPR?',
-          a: 'Yes, CodeSpectra is fully GDPR compliant and SOC 2 certified.',
-        },
-        {
-          q: 'Can I export my data?',
-          a: 'Yes, you can export all your reports and data anytime in multiple formats.',
+          q: 'Can I export or delete my data?',
+          a: 'Yes. Email privacy@codespectra.ai to access, export or delete your personal data. The Privacy Policy lists your rights and how long each kind of data is kept.',
         },
       ],
     },
@@ -81,67 +113,85 @@ export default function FAQPage() {
 
   return (
     <PublicPageWrapper>
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto text-center">
-        <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
-          Frequently Asked Questions
-        </h1>
-        <p className="text-lg text-muted-foreground">
-          Find answers to common questions about CodeSpectra.
-        </p>
-      </div>
+      <PageHero
+        title="Frequently asked questions"
+        lead="Quick answers about assessments, proctoring, hackathons, billing and your data."
+        actions={
+          <>
+            <Link href="/contact" className={btnPrimary}>Ask us something else</Link>
+            <Link href="/docs" className={btnSecondary}>Read the docs</Link>
+          </>
+        }
+      />
 
-      {/* FAQs */}
-      <div className="px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto pb-20">
-        {faqs.map((section, sectionIdx) => (
-          <div key={sectionIdx} className="mb-12">
-            <h2 className="text-2xl font-bold text-foreground mb-6">{section.category}</h2>
-            <div className="space-y-4">
-              {section.items.map((item, itemIdx) => (
-                <Card
-                  key={itemIdx}
-                  className="p-6 cursor-pointer hover:bg-muted/30 transition-colors"
-                  onClick={() =>
-                    setOpenIndex(
-                      openIndex === `${sectionIdx}-${itemIdx}` ? null : `${sectionIdx}-${itemIdx}`
-                    )
-                  }
-                >
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-foreground pr-4">{item.q}</h3>
-                    <ChevronDown
-                      className={`w-5 h-5 text-muted-foreground shrink-0 transition-transform ${
-                        openIndex === `${sectionIdx}-${itemIdx}` ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </div>
-                  {openIndex === `${sectionIdx}-${itemIdx}` && (
-                    <p className="text-muted-foreground mt-4">{item.a}</p>
-                  )}
-                </Card>
+      <section className="border-b border-cs-grid">
+        <div className="mx-auto grid max-w-[1200px] gap-10 px-4 py-16 sm:px-6 lg:grid-cols-[220px_1fr] lg:gap-16 lg:px-8 lg:py-20">
+          <nav aria-label="FAQ topics" className="hidden lg:block">
+            <ul className="sticky top-24 space-y-1">
+              {faqs.map((section, sectionIdx) => (
+                <li key={section.category}>
+                  <a
+                    href={`#faq-${sectionIdx}`}
+                    className="block rounded-lg px-3 py-2 text-sm font-medium text-cs-ink-soft transition-colors hover:bg-cs-accent/10 hover:text-cs-accent-text"
+                  >
+                    {section.category}
+                  </a>
+                </li>
               ))}
-            </div>
-          </div>
-        ))}
-      </div>
+            </ul>
+          </nav>
 
-      {/* Contact */}
-      <div className="bg-muted/30 py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-4">Still have questions?</h2>
-          <p className="text-muted-foreground mb-6">
-            Can&apos;t find the answer you&apos;re looking for? Contact our support team.
-          </p>
-          <a
-            href="mailto:support@codespectra.ai"
-            className="text-primary hover:underline font-semibold"
-          >
-            support@codespectra.ai
-          </a>
+          <div className="max-w-3xl space-y-12">
+            {faqs.map((section, sectionIdx) => (
+              <div key={sectionIdx} id={`faq-${sectionIdx}`} className="scroll-mt-24">
+                <h2 className="cs-heading mb-5 text-3xl">{section.category}</h2>
+                <div className="space-y-3">
+                  {section.items.map((item, itemIdx) => {
+                    const key = `${sectionIdx}-${itemIdx}`
+                    const open = openIndex === key
+                    return (
+                      <div key={itemIdx} className="overflow-hidden rounded-2xl border border-cs-grid bg-cs-sheet">
+                        <button
+                          type="button"
+                          aria-expanded={open}
+                          aria-controls={`faq-answer-${key}`}
+                          onClick={() => setOpenIndex(open ? null : key)}
+                          className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors duration-200 hover:bg-cs-accent/5"
+                        >
+                          <h3 className="font-semibold text-cs-ink">{item.q}</h3>
+                          <ChevronDown
+                            aria-hidden
+                            className={`h-5 w-5 shrink-0 text-cs-ink-soft transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                        {open && (
+                          <p id={`faq-answer-${key}`} className="max-w-[65ch] px-5 pb-5 text-[15px] leading-relaxed text-cs-ink-soft">
+                            {item.a}
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
-    </div>
+      </section>
+
+      <section>
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8">
+          <div className="flex flex-col items-start gap-4 rounded-3xl border border-cs-grid bg-cs-sheet p-8 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-cs-ink">Still have questions?</h2>
+              <p className="mt-1 text-cs-ink-soft">Can&apos;t find the answer you&apos;re looking for? Email our support team.</p>
+            </div>
+            <a href="mailto:support@codespectra.ai" className={btnSecondary}>
+              support@codespectra.ai
+            </a>
+          </div>
+        </div>
+      </section>
     </PublicPageWrapper>
   )
 }

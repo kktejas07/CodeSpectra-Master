@@ -14,6 +14,8 @@ import { useToast } from '@/lib/toast-context'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { Users } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -133,27 +135,27 @@ export default function AdminKycPage() {
   const columns: DataTableColumn<KycRecord>[] = [
     { key: 'user_name', header: 'User', cell: (r) => (
       <div>
-        <p className="font-medium">{r.user_name || 'Unknown'}</p>
+        <p className="font-medium text-foreground">{r.user_name || 'Unknown'}</p>
         <p className="text-xs text-muted-foreground">{r.user_email}</p>
       </div>
     )},
     { key: 'status', header: 'Status', cell: (r) => getStatusBadge(r.status) },
     { key: 'document_type', header: 'Document', cell: (r) => r.document_type || '—' },
-    { key: 'liveness_score', header: 'Liveness', cell: (r) => r.liveness_score ? `${r.liveness_score}/100` : '—' },
-    { key: 'face_match_similarity', header: 'Face Match', cell: (r) => r.face_match_similarity ? `${r.face_match_similarity}%` : '—' },
+    { key: 'liveness_score', header: 'Liveness', cell: (r) => <span className="tabular-nums">{r.liveness_score ? `${r.liveness_score}/100` : '—'}</span> },
+    { key: 'face_match_similarity', header: 'Face match', cell: (r) => <span className="tabular-nums">{r.face_match_similarity ? `${r.face_match_similarity}%` : '—'}</span> },
     { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? formatDate(r.created_at) : '—' },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center justify-end gap-1">
-        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View Details">
+        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View details" aria-label="View details">
           <Eye className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reminder')} title="Send Reminder">
-          <Mail className="h-4 w-4 text-blue-500" />
+        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reminder')} title="Send reminder" aria-label="Send reminder email">
+          <Mail className="h-4 w-4 text-primary" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reverify')} title="Request Re-verify">
-          <ShieldCheck className="h-4 w-4 text-amber-500" />
+        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reverify')} title="Ask to verify again" aria-label="Ask to verify again">
+          <ShieldCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} title="Delete Record">
+        <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} title="Delete record" aria-label="Delete record">
           <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
@@ -164,23 +166,19 @@ export default function AdminKycPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-          <ShieldCheck className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">KYC Verification</h1>
-          <p className="text-muted-foreground text-sm">Monitor identity verification across your organization</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Identity checks (KYC)"
+        description="ID document, liveness and face-match results for people who verified their identity."
+        icon={<ShieldCheck />}
+      />
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Total</p><p className="text-2xl font-bold">{stats.total}</p></Card>
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Approved</p><p className="text-2xl font-bold text-emerald-500">{stats.approved}</p></Card>
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Rejected</p><p className="text-2xl font-bold text-destructive">{stats.rejected}</p></Card>
-        <Card className="p-4"><p className="text-xs text-muted-foreground">Pending</p><p className="text-2xl font-bold text-blue-500">{stats.pending}</p></Card>
-        <Card className="p-4"><p className="text-xs text-muted-foreground">In Review</p><p className="text-2xl font-bold text-amber-500">{stats.manual_review}</p></Card>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatCard label="All checks" value={stats.total} icon={<Users />} />
+        <StatCard label="Approved" value={<span className="text-green-600 dark:text-green-400">{stats.approved}</span>} icon={<CheckCircle2 />} />
+        <StatCard label="Rejected" value={<span className="text-destructive">{stats.rejected}</span>} icon={<XCircle />} />
+        <StatCard label="Pending" value={stats.pending} icon={<Clock />} />
+        <StatCard label="Needs review" value={<span className="text-amber-600 dark:text-amber-400">{stats.manual_review}</span>} icon={<Eye />} />
       </div>
 
       {loading ? (
@@ -189,45 +187,45 @@ export default function AdminKycPage() {
           <SkeletonTable />
         </div>
       ) : (
-        <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyMessage="No KYC records yet." />
+        <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyMessage="No identity checks yet. They appear here when candidates verify their ID." />
       )}
 
       {/* Detail Modal — Full Didit-style view */}
       {selectedRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setSelectedRecord(null)}>
-          <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+          <Card role="dialog" aria-modal="true" aria-label="Identity check details" className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-6" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-semibold">{selectedRecord.full_name || selectedRecord.user_name || 'User'}</h3>
+                <h3 className="text-lg font-semibold text-foreground">{selectedRecord.full_name || selectedRecord.user_name || 'User'}</h3>
                 <p className="text-sm text-muted-foreground">{selectedRecord.user_email}</p>
               </div>
               <div className="flex items-center gap-2">
                 {getStatusBadge(selectedRecord.status)}
-                <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)}>×</Button>
+                <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)} aria-label="Close">×</Button>
               </div>
             </div>
 
             <div className="space-y-4">
               {/* Document Information */}
-              <div className="p-4 rounded-lg border border-border/50 bg-background/50">
-                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <FileCheck className="h-4 w-4 text-primary" /> Document Information
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <FileCheck className="h-4 w-4 text-primary" /> Document
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div><p className="text-xs text-muted-foreground">Full Name</p><p className="font-medium">{selectedRecord.full_name || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Document Type</p><p className="font-medium">{selectedRecord.document_type || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Document Number</p><p className="font-medium font-mono text-xs">{selectedRecord.document_number || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Issuing Country</p><p className="font-medium">{selectedRecord.issuing_state || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Full name</p><p className="font-medium">{selectedRecord.full_name || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Document type</p><p className="font-medium">{selectedRecord.document_type || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Document number</p><p className="font-medium font-mono text-xs">{selectedRecord.document_number || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Issuing country</p><p className="font-medium">{selectedRecord.issuing_state || '—'}</p></div>
                 </div>
               </div>
 
               {/* Document Images */}
               {(selectedRecord.front_image || selectedRecord.back_image || selectedRecord.portrait_image) && (
-                <div className="p-4 rounded-lg border border-border/50 bg-background/50">
-                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-primary" /> Submitted Documents
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                  <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <CreditCard className="h-4 w-4 text-primary" /> Submitted images
                   </h4>
-                  <p className="text-xs text-muted-foreground mb-2">Note: Document images expire 4 hours after verification.</p>
+                  <p className="text-xs text-muted-foreground mb-2">Images are deleted 4 hours after verification.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.front_image && (
                       <div>
@@ -252,13 +250,13 @@ export default function AdminKycPage() {
               )}
 
               {/* Biometric Verification */}
-              <div className="p-4 rounded-lg border border-border/50 bg-background/50">
-                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" /> Biometric Verification
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <ShieldCheck className="h-4 w-4 text-primary" /> Liveness and face match
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div><p className="text-xs text-muted-foreground">Liveness Score</p><p className="font-medium">{selectedRecord.liveness_score ?? '—'}/100</p></div>
-                  <div><p className="text-xs text-muted-foreground">Face Match Similarity</p><p className="font-medium">{selectedRecord.face_match_similarity ?? '—'}%</p></div>
+                  <div><p className="text-xs text-muted-foreground">Liveness score</p><p className="font-medium tabular-nums">{selectedRecord.liveness_score ?? '—'}/100</p></div>
+                  <div><p className="text-xs text-muted-foreground">Face match</p><p className="font-medium tabular-nums">{selectedRecord.face_match_similarity ?? '—'}%</p></div>
                 </div>
                 {/* Face match images */}
                 {(selectedRecord.face_match_source || selectedRecord.face_match_target) && (
@@ -280,35 +278,35 @@ export default function AdminKycPage() {
               </div>
 
               {/* Device & Location */}
-              <div className="p-4 rounded-lg border border-border/50 bg-background/50">
-                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-primary" /> Device & Location
+              <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Globe className="h-4 w-4 text-primary" /> Device and location
                 </h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                  <div><p className="text-xs text-muted-foreground">IP Address</p><p className="font-medium font-mono text-xs">{selectedRecord.ip_address || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">IP address</p><p className="font-medium font-mono text-xs">{selectedRecord.ip_address || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Location</p><p className="font-medium">{selectedRecord.ip_city || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Device</p><p className="font-medium">{selectedRecord.device || '—'}</p></div>
                   <div><p className="text-xs text-muted-foreground">Browser</p><p className="font-medium">{selectedRecord.browser || '—'}</p></div>
-                  <div><p className="text-xs text-muted-foreground">VPN Detected</p><p className="font-medium">{selectedRecord.vpn_detected ? 'Yes' : 'No'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">VPN detected</p><p className="font-medium">{selectedRecord.vpn_detected ? 'Yes' : 'No'}</p></div>
                 </div>
               </div>
 
               {/* Full Didit Details (loaded from API) */}
               {loadingDetails && (
-                <div className="p-4 rounded-lg border border-border/50 bg-background/50 flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" aria-hidden />
                   <span className="text-sm text-muted-foreground">Loading full details from Didit...</span>
                 </div>
               )}
               {diditDetails && (
-                <div className="p-4 rounded-lg border border-border/50 bg-background/50 space-y-3">
-                  <h4 className="text-sm font-semibold flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-primary" /> Full Verification Details
+                <div className="rounded-2xl border border-border/70 bg-muted/20 p-4 space-y-3">
+                  <h4 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Full verification details
                   </h4>
                   {/* User Info */}
                   {diditDetails.vendor_data && (
                     <div className="text-xs">
-                      <p className="text-muted-foreground">Vendor Data (User ID)</p>
+                      <p className="text-muted-foreground">User ID sent to provider</p>
                       <p className="font-mono">{diditDetails.vendor_data}</p>
                     </div>
                   )}
@@ -328,7 +326,7 @@ export default function AdminKycPage() {
                   {diditDetails.decision && (
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground hover:text-foreground">View raw decision data</summary>
-                      <pre className="mt-2 p-2 rounded bg-muted text-[10px] overflow-x-auto max-h-40">
+                      <pre className="mt-2 max-h-40 overflow-x-auto rounded-lg bg-muted p-2 font-mono text-[11px]">
                         {JSON.stringify(diditDetails.decision, null, 2)}
                       </pre>
                     </details>

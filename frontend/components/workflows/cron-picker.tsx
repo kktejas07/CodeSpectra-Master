@@ -133,9 +133,10 @@ export default function CronPicker({ value, onChange }: Props) {
   return (
     <div className="space-y-3" data-testid="cron-picker">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Preset</p>
+        <label htmlFor="cron-preset" className="text-xs font-medium text-muted-foreground">Preset</label>
         <select
-          className="h-7 rounded border border-border/80 bg-background px-2 text-xs"
+          id="cron-preset"
+          className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           value={value}
           onChange={(e) => onChange(e.target.value)}
           data-testid="cron-preset"
@@ -151,17 +152,19 @@ export default function CronPicker({ value, onChange }: Props) {
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {FIELDS.map((f) => (
           <div key={f.key}>
-            <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <label htmlFor={`cron-field-${f.key}`} className="text-xs font-medium text-muted-foreground">
               {f.label}
             </label>
             <Input
+              id={`cron-field-${f.key}`}
               value={local[f.key]}
               onChange={(e) => emit({ ...local, [f.key]: e.target.value })}
-              className="h-7 font-mono text-xs"
+              className="h-8 font-mono text-xs"
               data-testid={`cron-field-${f.key}`}
             />
             <select
-              className="mt-1 h-6 w-full rounded border border-border/60 bg-background text-[10px]"
+              className="mt-1 h-7 w-full rounded-lg border border-input bg-background text-[11px] text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={`${f.label} presets`}
               value=""
               onChange={(e) =>
                 e.target.value && emit({ ...local, [f.key]: e.target.value })
@@ -178,8 +181,8 @@ export default function CronPicker({ value, onChange }: Props) {
         ))}
       </div>
 
-      <p className="rounded bg-muted/40 p-2 font-mono text-[11px] text-muted-foreground">
-        <span className="font-semibold text-foreground">
+      <p className="rounded-lg bg-muted/40 p-2 text-[11px] text-muted-foreground">
+        <span className="font-mono font-semibold text-foreground">
           {`${local.min} ${local.hour} ${local.dom} ${local.month} ${local.dow}`}
         </span>{' '}
         — {describe(local)}

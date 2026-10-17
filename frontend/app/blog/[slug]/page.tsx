@@ -88,46 +88,46 @@ export default async function BlogArticlePage({
   return (
     <PublicPageWrapper>
       {/* Full-bleed cover */}
-      <div className="relative w-full border-b border-border/60">
-        <div className="relative aspect-21/9 min-h-55 w-full max-h-105 overflow-hidden bg-muted sm:min-h-70">
+      <div className="relative w-full border-b border-cs-grid">
+        <div className="relative aspect-21/9 min-h-55 w-full max-h-105 overflow-hidden bg-cs-paper sm:min-h-70">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={cover} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-linear-to-t from-background via-background/20 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-cs-paper via-cs-paper/20 to-transparent" />
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl w-full min-w-0 px-6 py-8 sm:px-8 lg:px-10 xl:px-12">
-        <nav className="mb-6 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
-          <Link href="/" className="hover:text-foreground">
+      <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
+        <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-1 text-sm text-cs-ink-soft">
+          <Link href="/" className="hover:text-cs-ink">
             Home
           </Link>
-          <ChevronRight className="h-3 w-3" />
-          <Link href="/blog" className="hover:text-foreground">
+          <ChevronRight className="h-3 w-3" aria-hidden />
+          <Link href="/blog" className="hover:text-cs-ink">
             Newsroom
           </Link>
-          <ChevronRight className="h-3 w-3" />
-          <Link href={`/blog?category=${post.category}`} className="hover:text-foreground">
+          <ChevronRight className="h-3 w-3" aria-hidden />
+          <Link href={`/blog?category=${post.category}`} className="hover:text-cs-ink">
             {categoryLabel(post.category)}
           </Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="line-clamp-1 max-w-56 text-foreground sm:max-w-xs">{post.title}</span>
+          <ChevronRight className="h-3 w-3" aria-hidden />
+          <span className="line-clamp-1 max-w-56 text-cs-ink sm:max-w-xs" aria-current="page">{post.title}</span>
         </nav>
 
-        <div className="grid gap-10 xl:grid-cols-[1fr_minmax(0,48rem)_1fr]">
+        <div className="grid gap-10 xl:grid-cols-[1fr_minmax(0,46rem)_1fr]">
           <aside className="hidden xl:block">
             <div className="sticky top-28 space-y-3 pr-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-sm font-semibold text-cs-ink">
                 On this page
               </p>
               {toc.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No sections</p>
+                <p className="text-sm text-cs-ink-soft">No sections</p>
               ) : (
-                <ul className="space-y-2 border-l border-border pl-3">
+                <ul className="space-y-2 border-l border-cs-grid pl-3">
                   {toc.map((t) => (
                     <li key={t.id}>
                       <a
                         href={`#${t.id}`}
-                        className="text-xs text-muted-foreground hover:text-teal-600 dark:hover:text-teal-400"
+                        className="text-sm text-cs-ink-soft hover:text-cs-accent-text"
                       >
                         {t.text}
                       </a>
@@ -139,31 +139,31 @@ export default async function BlogArticlePage({
           </aside>
 
           <article className="min-w-0">
-            <p className="mb-3 text-sm font-semibold text-teal-600 dark:text-teal-400">
+            <p className="mb-3 text-sm font-semibold text-cs-accent-text">
               {categoryLabel(post.category)}
             </p>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">{post.title}</h1>
+            <h1 className="cs-display max-w-[22ch] text-4xl sm:text-5xl lg:text-6xl">{post.title}</h1>
             {post.excerpt ? (
-              <p className="mt-4 text-lg text-muted-foreground">{post.excerpt}</p>
+              <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-cs-ink-soft">{post.excerpt}</p>
             ) : null}
-            <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-b border-cs-grid pb-6 text-sm text-cs-ink-soft">
               <span>
                 {post.author_name}
                 {post.author_role ? ` · ${post.author_role}` : ''}
               </span>
               <span className="inline-flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" /> {post.read_minutes} min read
+                <Clock className="h-3.5 w-3.5" aria-hidden /> <span className="tabular-nums">{post.read_minutes}</span> min read
               </span>
               <span>{formatDate(post.published_at)}</span>
             </div>
 
             <div
-              className="prose prose-zinc mt-10 max-w-none dark:prose-invert prose-headings:scroll-mt-28 prose-a:text-teal-600 dark:prose-a:text-teal-400"
+              className="prose prose-zinc mt-10 max-w-[72ch] dark:prose-invert prose-headings:scroll-mt-28 prose-headings:tracking-tight prose-headings:text-cs-ink prose-p:text-[17px] prose-p:leading-8 prose-p:text-cs-ink-soft prose-li:text-cs-ink-soft prose-strong:text-cs-ink prose-a:font-medium prose-a:text-cs-accent-text prose-img:rounded-2xl"
               dangerouslySetInnerHTML={{ __html: safeBody }}
             />
 
             {showSources ? (
-              <div className="mt-10 rounded-xl border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
+              <div className="mt-10 max-w-[72ch] rounded-2xl border border-cs-grid bg-cs-sheet p-4 text-sm text-cs-ink-soft">
                 {post.source_note && !/editorial synthesis|rewritten for codespectra/i.test(post.source_note) ? (
                   <p className="mb-2">{post.source_note}</p>
                 ) : null}
@@ -173,12 +173,12 @@ export default async function BlogArticlePage({
                       <li key={u}>
                         <a
                           href={u}
-                          className="inline-flex items-center gap-1 text-teal-600 underline dark:text-teal-400"
+                          className="inline-flex items-center gap-1 break-all text-cs-accent-text underline"
                           rel="noopener noreferrer"
                           target="_blank"
                         >
                           {u.replace(/^https?:\/\//, '')}
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
                         </a>
                       </li>
                     ))}
@@ -188,21 +188,21 @@ export default async function BlogArticlePage({
             ) : null}
 
             <p className="mt-10">
-              <Link href="/blog" className="text-sm text-teal-600 hover:underline dark:text-teal-400">
+              <Link href="/blog" className="text-sm font-semibold text-cs-accent-text hover:underline">
                 ← Back to Newsroom
               </Link>
             </p>
           </article>
 
           <aside className="space-y-6 xl:pl-4">
-            <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold">Newsletters</h2>
-              <p className="mt-1 text-xs text-muted-foreground">
+            <div className="rounded-3xl border border-cs-grid bg-cs-sheet p-5">
+              <h2 className="text-base font-bold text-cs-ink">Newsletters</h2>
+              <p className="mt-1 text-sm text-cs-ink-soft">
                 Product and campus updates in your inbox.
               </p>
               <Link
                 href="/newsletter"
-                className="mt-4 inline-flex rounded-lg bg-teal-600 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-500"
+                className="mt-4 inline-flex min-h-10 items-center rounded-full bg-cs-accent px-4 py-2 text-sm font-semibold text-cs-accent-ink transition-[filter] hover:brightness-110"
               >
                 View newsletters
               </Link>
@@ -210,7 +210,7 @@ export default async function BlogArticlePage({
 
             {related.length > 0 ? (
               <div>
-                <h2 className="mb-3 text-sm font-semibold text-teal-700 dark:text-teal-400">
+                <h2 className="mb-3 text-base font-bold text-cs-ink">
                   Related
                 </h2>
                 <ul className="space-y-3">
@@ -218,7 +218,7 @@ export default async function BlogArticlePage({
                     <li key={r.id}>
                       <Link
                         href={`/blog/${r.slug}`}
-                        className="block rounded-xl border border-border p-3 text-sm font-medium hover:border-teal-500/40 hover:text-teal-600 dark:hover:text-teal-400"
+                        className="block rounded-2xl border border-cs-grid bg-cs-sheet p-3 text-sm font-medium text-cs-ink transition-colors duration-200 hover:border-cs-accent/40 hover:text-cs-accent-text"
                       >
                         {r.title}
                       </Link>

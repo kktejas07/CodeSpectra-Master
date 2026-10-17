@@ -37,37 +37,38 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
     <PublicPageWrapper>
       {/* Header bar if no hero image (fallback style) */}
       {!campaign.hero_image && (
-        <div className="w-full border-b border-border/60 bg-linear-to-br from-teal-700/30 via-emerald-600/10 to-cyan-700/20 px-4 py-16 sm:px-6">
-          <div className="mx-auto max-w-7xl">
-            <p className="text-xs font-semibold uppercase tracking-wider text-teal-300">Newsletter</p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
+        <div className="relative isolate w-full overflow-hidden border-b border-cs-grid px-4 py-16 sm:px-6 lg:py-20">
+          <div aria-hidden className="absolute -top-32 right-[-10%] -z-10 h-[420px] w-[520px] rounded-full bg-[#2f5be7]/10 blur-3xl" />
+          <div className="mx-auto max-w-[1200px] lg:px-2">
+            <p className="text-sm font-semibold text-cs-accent-text">Newsletter</p>
+            <h1 className="cs-display mt-3 max-w-[22ch] text-4xl sm:text-5xl lg:text-6xl">
               {campaign.subject}
             </h1>
           </div>
         </div>
       )}
 
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         <div className="flex flex-col lg:flex-row gap-10">
           <article className="flex-1 min-w-0">
             {campaign.hero_image ? (
               <>
-                <p className="text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                <p className="text-sm font-semibold text-cs-accent-text">
                   Newsletter · {dateLabel}
                 </p>
-                <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{campaign.subject}</h1>
+                <h1 className="cs-display mt-3 max-w-[22ch] text-4xl sm:text-5xl">{campaign.subject}</h1>
               </>
             ) : (
-              <p className="text-xs text-muted-foreground">{dateLabel}</p>
+              <p className="text-sm text-cs-ink-soft">{dateLabel}</p>
             )}
 
             {campaign.intro ? (
-              <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{campaign.intro}</p>
+              <p className="mt-5 max-w-[60ch] text-lg leading-relaxed text-cs-ink-soft">{campaign.intro}</p>
             ) : null}
 
             {safeBody ? (
               <div
-                className="prose prose-zinc mt-8 max-w-none dark:prose-invert prose-img:rounded-xl"
+                className="prose prose-zinc mt-8 max-w-[72ch] dark:prose-invert prose-headings:text-cs-ink prose-p:text-cs-ink-soft prose-li:text-cs-ink-soft prose-strong:text-cs-ink prose-a:text-cs-accent-text prose-img:rounded-2xl"
                 dangerouslySetInnerHTML={{ __html: safeBody }}
               />
             ) : null}
@@ -76,23 +77,23 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
               <div className="mt-10">
                 <a
                   href={campaign.cta_url}
-                  className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-500"
+                  className="inline-flex h-12 items-center justify-center rounded-full bg-cs-accent px-7 text-[15px] font-semibold text-cs-accent-ink shadow-lg shadow-[#2f5be7]/25 transition-[filter] hover:brightness-110"
                 >
                   {campaign.cta_text}
                 </a>
               </div>
             ) : null}
 
-            <p className="mt-12 flex flex-wrap gap-4 border-t border-border pt-6 text-sm text-muted-foreground">
-              <Link href="/newsletter" className="text-teal-600 hover:underline dark:text-teal-400">
+            <p className="mt-12 flex max-w-[72ch] flex-wrap gap-4 border-t border-cs-grid pt-6 text-sm text-cs-ink-soft">
+              <Link href="/newsletter" className="font-medium text-cs-accent-text hover:underline">
                 ← All newsletters
               </Link>
-              <Link href="/blog" className="text-teal-600 hover:underline dark:text-teal-400">
+              <Link href="/blog" className="font-medium text-cs-accent-text hover:underline">
                 Newsroom
               </Link>
               <Link
                 href="/dashboard/notifications"
-                className="text-teal-600 hover:underline dark:text-teal-400"
+                className="font-medium text-cs-accent-text hover:underline"
               >
                 Open in dashboard
               </Link>
@@ -101,12 +102,12 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
           
           {campaign.hero_image && (
             <aside className="w-full lg:w-100 xl:w-125 shrink-0">
-              <div className="sticky top-24 rounded-2xl border border-border/50 bg-muted/20 p-2">
+              <div className="sticky top-24 rounded-3xl border border-cs-grid bg-cs-sheet p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={campaign.hero_image}
                   alt={campaign.subject}
-                  className="max-h-150 w-full rounded-xl object-contain shadow-sm"
+                  className="max-h-150 w-full rounded-2xl object-contain shadow-sm"
                 />
               </div>
             </aside>

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 
 type Diff = (typeof DIFFICULTY_LEVELS)[number]
@@ -58,29 +59,34 @@ export default function QuestionGeneratorPage() {
 
   return (
     <div className="space-y-6" data-testid="qgen-page">
-      <div>
-        <h1 className="text-2xl font-bold">AI Question Generator
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Generate fresh coding interview problems on demand &mdash; tuned for the role you&apos;re hiring for. Optionally publish straight to the Problems library.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </h1>
-      </div>
+      <PageHeader
+        title={
+          <>
+            AI question generator
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label="About the question generator" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-62.5">Generate fresh coding interview problems on demand &mdash; tuned for the role you&apos;re hiring for. Optionally publish straight to the Problems library.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        }
+        description="Describe the role and topics, and get a new coding problem with test cases and starter code."
+        icon={<Sparkles />}
+      />
 
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-border/60 bg-card/40 p-5 space-y-3">
+      <div className="grid lg:grid-cols-2 gap-5">
+        <Panel className="space-y-4 p-5">
           <Field label="Role / job title">
             <input
               value={role}
               onChange={(e) => setRole(e.target.value)}
               data-testid="qgen-role"
-              className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </Field>
           <Field label="Difficulty">
@@ -88,7 +94,7 @@ export default function QuestionGeneratorPage() {
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value as Diff)}
               data-testid="qgen-difficulty"
-              className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm"
+              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {DIFFICULTY_LEVELS.map((lv) => (
                 <option key={lv} value={lv}>{DIFFICULTY_LABELS[lv]}</option>
@@ -100,7 +106,7 @@ export default function QuestionGeneratorPage() {
               value={topics}
               onChange={(e) => setTopics(e.target.value)}
               data-testid="qgen-topics"
-              className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm"
+              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               placeholder="arrays, dynamic programming, trees"
             />
           </Field>
@@ -109,7 +115,7 @@ export default function QuestionGeneratorPage() {
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               data-testid="qgen-language"
-              className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm"
+              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {['python', 'javascript', 'typescript', 'java', 'cpp', 'go'].map((l) => (
                 <option key={l}>{l}</option>
@@ -122,8 +128,9 @@ export default function QuestionGeneratorPage() {
               checked={publish}
               onChange={(e) => setPublish(e.target.checked)}
               data-testid="qgen-publish"
+              className="h-4 w-4 accent-primary"
             />
-            Publish to /problems immediately
+            Publish to the Problems library right away
           </label>
           <Button onClick={generate} disabled={busy} data-testid="qgen-run" className="w-full">
             {busy ? (
@@ -137,27 +144,27 @@ export default function QuestionGeneratorPage() {
             )}
           </Button>
           {err && (
-            <div className="rounded border border-destructive/40 bg-destructive/10 text-destructive p-2 text-xs">
+            <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
               {err}
             </div>
           )}
-        </div>
+        </Panel>
 
-        <div className="rounded-xl border border-border/60 bg-card/40 p-5 overflow-hidden">
-          <div className="text-sm font-semibold mb-3">Result</div>
+        <Panel className="overflow-hidden p-5">
+          <h2 className="mb-3 text-base font-semibold text-foreground">Result</h2>
           {!result ? (
-            <p className="text-xs text-muted-foreground">
-              Generated problem will appear here. Publish to push it live to all candidates.
+            <p className="text-sm text-muted-foreground">
+              Your generated problem shows up here. If publishing is on, candidates can see it straight away.
             </p>
           ) : (
             <div className="space-y-4">
               {result.published_problem_id && (
-                <div className="rounded-md border border-primary/30 bg-primary/10 text-primary p-2 text-xs flex items-center gap-2">
-                  <FileCheck2 className="h-4 w-4" />
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-xs text-green-800 dark:text-green-300">
+                  <FileCheck2 className="h-4 w-4" aria-hidden />
                   Published — open it at{' '}
                   <a
                     href={`/dashboard/problems/${(result.problem as { slug?: string }).slug || ''}`}
-                    className="underline"
+                    className="font-mono underline"
                     data-testid="qgen-open-link"
                   >
                     /dashboard/problems/{(result.problem as { slug?: string }).slug || '...'}
@@ -168,7 +175,7 @@ export default function QuestionGeneratorPage() {
               <div className="space-y-3">
                 {(result.problem as { title?: string }).title && (
                   <div>
-                    <h3 className="text-lg font-bold">{(result.problem as { title?: string }).title}</h3>
+                    <h3 className="text-lg font-bold text-foreground">{(result.problem as { title?: string }).title}</h3>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {(result.problem as { difficulty?: string }).difficulty && (() => {
                         const dl = toDifficultyLevel((result.problem as { difficulty?: string }).difficulty)
@@ -188,8 +195,8 @@ export default function QuestionGeneratorPage() {
                 )}
 
                 {(result.problem as { description?: string }).description && (
-                  <div className="rounded-lg border border-border/60 p-3">
-                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">Description</p>
+                  <div className="rounded-xl border border-border/70 p-3">
+                    <p className="mb-1.5 text-xs font-semibold text-muted-foreground">Description</p>
                     <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                       {(result.problem as { description?: string }).description}
                     </p>
@@ -198,8 +205,8 @@ export default function QuestionGeneratorPage() {
 
                 {Array.isArray((result.problem as { test_cases?: Array<{ input: string; output: string; explanation?: string }> }).test_cases) &&
                   (result.problem as { test_cases?: Array<{ input: string; output: string; explanation?: string }> }).test_cases!.length > 0 && (
-                  <div className="rounded-lg border border-border/60 overflow-hidden">
-                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-3 py-2 bg-muted/30 border-b border-border/60">Test Cases</p>
+                  <div className="overflow-hidden rounded-xl border border-border/70">
+                    <p className="border-b border-border/60 bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">Test cases</p>
                     <div className="divide-y divide-border/60">
                       {(result.problem as { test_cases?: Array<{ input: string; output: string; explanation?: string }> }).test_cases!.map((tc: { input: string; output: string; explanation?: string }, i: number) => (
                         <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-3 px-3 py-2 text-xs">
@@ -225,18 +232,18 @@ export default function QuestionGeneratorPage() {
                   const isMap = typeof sc === 'object' && sc !== null
                   if (!sc || (typeof sc === 'string' && !sc.trim()) || (isMap && Object.keys(sc).length === 0)) return null
                   return (
-                    <div className="rounded-lg border border-border/60 overflow-hidden">
-                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-3 py-2 bg-muted/30 border-b border-border/60">
-                        Starter Code
+                    <div className="overflow-hidden rounded-xl border border-border/70">
+                      <p className="border-b border-border/60 bg-muted/30 px-3 py-2 text-xs font-semibold text-muted-foreground">
+                        Starter code
                         {!isMap && (result.problem as unknown as { language?: string }).language && (
-                          <span className="ml-2 normal-case tracking-normal">{(result.problem as unknown as { language?: string }).language}</span>
+                          <span className="ml-2 font-mono font-normal">{(result.problem as unknown as { language?: string }).language}</span>
                         )}
                       </p>
                       {isMap ? (
                         <div className="divide-y divide-border/60">
                           {Object.entries(sc as Record<string, string>).map(([lang, code]) => (
                             <div key={lang}>
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2">{lang}</p>
+                              <p className="px-3 pt-2 font-mono text-xs font-semibold text-muted-foreground">{lang}</p>
                               <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap wrap-break-word">{code || '(no starter)'}</pre>
                             </div>
                           ))}
@@ -259,7 +266,7 @@ export default function QuestionGeneratorPage() {
               </div>
             </div>
           )}
-        </div>
+        </Panel>
       </div>
     </div>
   )
@@ -268,7 +275,7 @@ export default function QuestionGeneratorPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5">{label}</div>
+      <div className="mb-1.5 text-sm font-medium text-foreground">{label}</div>
       {children}
     </label>
   )

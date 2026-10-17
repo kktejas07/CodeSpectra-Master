@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -23,6 +22,8 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { FileText, CheckCircle2 } from 'lucide-react'
 
 type Post = {
   id: string
@@ -195,19 +196,19 @@ export default function AdminBlogPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Newspaper className="h-6 w-6 text-teal-600" /> Newsroom
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Public articles at{' '}
-            <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
-              /blog
+      <PageHeader
+        title="Newsroom"
+        description={
+          <>
+            Articles on the public{' '}
+            <Link href="/blog" className="font-medium text-primary hover:underline" target="_blank">
+              blog
             </Link>
-            . Prefer publishing newsletters here when they should live forever.
-          </p>
-        </div>
+            . Publish newsletters here too when they should stay readable for good.
+          </>
+        }
+        icon={<Newspaper />}
+        actions={
         <Button onClick={() => {
           setEditingSlug(null)
           setTitle('')
@@ -218,14 +219,22 @@ export default function AdminBlogPage() {
         }}>
           <Plus className="mr-1 h-4 w-4" /> New post
         </Button>
-      </div>
+        }
+      />
+
+      {!loading && items.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard label="Published" value={items.filter((p) => p.status === 'published').length} icon={<CheckCircle2 />} />
+          <StatCard label="Drafts" value={items.filter((p) => p.status !== 'published').length} icon={<FileText />} />
+        </div>
+      )}
 
       {showForm && (
-        <Card className="space-y-4 p-5">
+        <Panel className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Title</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+              <Label htmlFor="post-title">Title</Label>
+              <Input id="post-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
             </div>
             <div className="space-y-1.5">
               <Label>Category</Label>
@@ -243,17 +252,18 @@ export default function AdminBlogPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Author</Label>
-              <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+              <Label htmlFor="post-author">Author</Label>
+              <Input id="post-author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Excerpt</Label>
-              <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
+              <Label htmlFor="post-excerpt">Excerpt</Label>
+              <Textarea id="post-excerpt" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Cover image</Label>
+              <Label htmlFor="post-cover">Cover image</Label>
               <div className="flex gap-2">
                 <Input
+                  id="post-cover"
                   value={coverImage}
                   onChange={(e) => setCoverImage(e.target.value)}
                   placeholder="https://… (or generate AI art from the title)"
@@ -267,7 +277,7 @@ export default function AdminBlogPage() {
                   {aiSlug === '__form' ? (
                     <Loader2 className="mr-1 h-4 w-4 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-4 w-4 text-teal-500" />
+                    <Sparkles className="mr-1 h-4 w-4 text-primary" />
                   )}
                   Generate
                 </Button>
@@ -277,19 +287,19 @@ export default function AdminBlogPage() {
                 <img
                   src={coverImage}
                   alt="Cover preview"
-                  className="mt-1 h-32 w-full rounded-md border object-cover"
+                  className="mt-1 h-32 w-full rounded-xl border border-border object-cover"
                 />
               ) : null}
             </div>
-            <div className="space-y-1.5 sm:col-span-2 mt-4 pt-4 border-t">
+            <div className="space-y-1.5 sm:col-span-2 mt-4 pt-4 border-t border-border">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <Label className="text-base flex items-center gap-2">
-                    <Globe className="h-4 w-4" /> Live Web Research
+                    <Globe className="h-4 w-4" aria-hidden /> Live web research
                   </Label>
                   <p className="text-sm text-muted-foreground">Search the web for the latest breaking news on this topic before writing.</p>
                 </div>
-                <Switch checked={doResearch} onCheckedChange={setDoResearch} />
+                <Switch checked={doResearch} onCheckedChange={setDoResearch} aria-label="Live web research" />
               </div>
             </div>
 
@@ -306,9 +316,9 @@ export default function AdminBlogPage() {
                   {aiSlug === '__body' ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                    <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                   )}
-                  {aiSlug === '__body' && doResearch ? 'Researching & Drafting...' : 'AI Draft'}
+                  {aiSlug === '__body' && doResearch ? 'Researching and drafting…' : 'AI draft'}
                 </Button>
               </div>
               <RichTextEditor
@@ -322,7 +332,7 @@ export default function AdminBlogPage() {
           <div className="flex flex-wrap gap-2">
             <Button disabled={saving} onClick={() => void savePost(true)}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              {editingSlug ? 'Update & Publish' : 'Publish'}
+              {editingSlug ? 'Update and publish' : 'Publish'}
             </Button>
             <Button variant="outline" disabled={saving} onClick={() => void savePost(false)}>
               Save draft
@@ -338,42 +348,42 @@ export default function AdminBlogPage() {
               Cancel
             </Button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">No posts yet.</Card>
+        <Panel className="p-10 text-center text-sm text-muted-foreground">No posts yet. Use New post to write your first article.</Panel>
       ) : (
         <div className="space-y-2">
           {items.map((p) => (
-            <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
+            <Panel key={p.id} className="flex flex-col justify-between gap-4 p-4 sm:flex-row sm:items-center">
               <div className="flex flex-1 min-w-0 items-start sm:items-center gap-4">
                 {p.cover_image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={p.cover_image}
                     alt=""
-                    className="h-14 w-24 shrink-0 rounded-md border object-cover"
+                    className="h-14 w-24 shrink-0 rounded-lg border border-border object-cover"
                   />
                 ) : (
-                  <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-md border bg-muted/40">
+                  <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/40">
                     <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate font-medium">{p.title}</p>
+                    <p className="truncate font-medium text-foreground">{p.title}</p>
                     <Badge variant="secondary">{p.category}</Badge>
-                    <Badge variant={p.status === 'published' ? 'default' : 'outline'}>{p.status}</Badge>
+                    <Badge variant={p.status === 'published' ? 'default' : 'outline'} className="capitalize">{p.status}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground truncate">
                     /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+              <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-auto">
                 <Button
                   variant="outline"
                   size="sm"
@@ -384,7 +394,7 @@ export default function AdminBlogPage() {
                   {aiSlug === p.slug ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                    <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                   )}
                   AI cover
                 </Button>
@@ -396,11 +406,11 @@ export default function AdminBlogPage() {
                 <Button variant="outline" size="sm" onClick={() => editPost(p)}>
                   Edit
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)}>
+                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)} aria-label={`Delete ${p.title}`} title="Delete">
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}

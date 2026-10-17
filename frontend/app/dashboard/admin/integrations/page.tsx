@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { HelpCircle, KeyRound, Plug, ShieldAlert } from 'lucide-react'
 import { Github } from '@/components/ui/brand-icons'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { GitHubIntegrationSetup } from '@/components/integrations/github-setup-dialog'
@@ -11,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 type SecretsMap = Record<string, string | null | boolean>
 
@@ -99,47 +99,53 @@ export default function IntegrationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <h1 className="text-3xl font-bold">Integrations</h1>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p className="text-xs max-w-62.5">Connect external services as optional bridges. Scanner, interviews, and dashboards are native and require no plugins.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
+      <PageHeader
+        title={
+          <>
+            Integrations
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label="About integrations" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-62.5">Connect outside services if you need them. The scanner, interviews and dashboards are built in and need no plugins.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </>
+        }
+        description="Optional connections to outside services."
+        icon={<Plug />}
+      />
 
       {githubConnected && (
-        <Card className="border-red-500/40 bg-red-500/5 p-4">
+        <Panel className="border-amber-500/40 bg-amber-500/5 p-4">
           <div className="flex items-start gap-3">
-            <ShieldAlert className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />
+            <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" aria-hidden />
             <div>
-              <p className="font-semibold text-red-700 dark:text-red-400">GitHub token stored in server secrets</p>
+              <p className="font-semibold text-amber-800 dark:text-amber-300">A GitHub token is saved on the server</p>
               <p className="text-sm text-muted-foreground">
                 A GitHub personal access token is configured. Disconnect below to remove it if the token is no longer valid.
               </p>
             </div>
           </div>
-        </Card>
+        </Panel>
       )}
 
       <div className="space-y-4">
         {integrations.map(integration => (
-          <Card key={integration.id} className="border-border/60 p-6">
+          <Panel key={integration.id}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="flex min-w-0 flex-1 gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
                   {integration.icon}
                 </div>
                 <div className="min-w-0">
                   <div className="mb-1 flex items-center gap-2">
-                    <h3 className="text-lg font-semibold">{integration.name}</h3>
+                    <h3 className="text-lg font-semibold text-foreground">{integration.name}</h3>
                     <Badge variant={integration.connected ? 'default' : 'secondary'} className="text-xs">
-                      {integration.connected ? 'Connected' : 'Disconnected'}
+                      {integration.connected ? 'Connected' : 'Not connected'}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{integration.description}</p>
@@ -167,7 +173,7 @@ export default function IntegrationsPage() {
                 )}
               </div>
             </div>
-          </Card>
+          </Panel>
         ))}
       </div>
 

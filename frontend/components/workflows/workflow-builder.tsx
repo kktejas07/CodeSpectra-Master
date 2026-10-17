@@ -34,6 +34,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Plus, Trash2, LayoutGrid } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
 export interface WorkflowDsl {
   nodes: Array<{
@@ -59,9 +60,11 @@ const NODE_TYPES = [
   'delay',
 ] as const
 
+// Category accents for node borders; edges use the brand blue.
+const EDGE_COLOR = '#2f5be7'
 const NODE_COLOR: Record<string, string> = {
-  'trigger.manual': '#22c55e',
-  'http.request': '#3b82f6',
+  'trigger.manual': '#2f5be7',
+  'http.request': '#0ea5e9',
   'ai.complete': '#a855f7',
   'mongo.find': '#f59e0b',
   log: '#94a3b8',
@@ -94,8 +97,8 @@ function dslToFlow(dsl: WorkflowDsl): { nodes: Node[]; edges: Edge[] } {
       __node: n,
     },
     style: {
-      background: '#0b0f14',
-      color: '#e5e7eb',
+      background: 'hsl(var(--card))',
+      color: 'hsl(var(--card-foreground))',
       border: `2px solid ${NODE_COLOR[n.type] || '#64748b'}`,
       borderRadius: 10,
       padding: 8,
@@ -109,7 +112,7 @@ function dslToFlow(dsl: WorkflowDsl): { nodes: Node[]; edges: Edge[] } {
     source: e.from,
     target: e.to,
     animated: true,
-    style: { stroke: '#22c55e' },
+    style: { stroke: EDGE_COLOR },
   }))
   return { nodes, edges }
 }
@@ -209,6 +212,7 @@ export default function WorkflowBuilder({ value, onChange }: Props) {
 }
 
 function BuilderInner({ value, onChange }: Props) {
+  const { resolvedTheme } = useTheme()
   const initial = useMemo(() => dslToFlow(value), [value])
   const [nodes, setNodes] = useState<Node[]>(initial.nodes)
   const [edges, setEdges] = useState<Edge[]>(initial.edges)
@@ -253,7 +257,7 @@ function BuilderInner({ value, onChange }: Props) {
   const onConnect = useCallback(
     (conn: Connection) => {
       setEdges((prev) => {
-        const next = addEdge({ ...conn, animated: true, style: { stroke: '#22c55e' } }, prev)
+        const next = addEdge({ ...conn, animated: true, style: { stroke: EDGE_COLOR } }, prev)
         emit(nodes, next)
         return next
       })
@@ -276,8 +280,8 @@ function BuilderInner({ value, onChange }: Props) {
       position: pos,
       data: { label: `${type}\n${type}`, __node: node },
       style: {
-        background: '#0b0f14',
-        color: '#e5e7eb',
+        background: 'hsl(var(--card))',
+        color: 'hsl(var(--card-foreground))',
         border: `2px solid ${NODE_COLOR[type] || '#64748b'}`,
         borderRadius: 10,
         padding: 8,
@@ -348,8 +352,8 @@ function BuilderInner({ value, onChange }: Props) {
   }
 
   return (
-    <div className="grid h-[520px] grid-cols-[1fr_280px] gap-3" data-testid="workflow-builder">
-      <div className="relative rounded-lg border border-border/60 bg-card">
+    <div className="grid gap-3 md:h-[520px] md:grid-cols-[1fr_280px]" data-testid="workflow-builder">
+      <div className="relative h-[420px] overflow-hidden rounded-2xl border border-border/70 bg-card md:h-auto">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -359,7 +363,7 @@ function BuilderInner({ value, onChange }: Props) {
           onNodeClick={(_, n) => setSelectedId(n.id)}
           onPaneClick={() => setSelectedId(null)}
           fitView
-          colorMode="dark"
+          colorMode={resolvedTheme === 'light' ? 'light' : 'dark'}
         >
           <Background gap={16} size={1} />
           <Controls />
@@ -372,7 +376,7 @@ function BuilderInner({ value, onChange }: Props) {
               size="sm"
               variant="secondary"
               onClick={() => addNode(t)}
-              className="h-7 px-2 text-[10px]"
+              className="h-7 px-2 font-mono text-[11px]"
               data-testid={`add-node-${t}`}
             >
               <Plus className="mr-0.5 h-3 w-3" /> {t}
@@ -382,7 +386,7 @@ function BuilderInner({ value, onChange }: Props) {
             size="sm"
             variant="default"
             onClick={autoArrange}
-            className="h-7 px-2 text-[10px]"
+            className="h-7 px-2 text-[11px]"
             data-testid="builder-auto-arrange"
           >
             <LayoutGrid className="mr-0.5 h-3 w-3" /> Auto arrange
@@ -390,17 +394,17 @@ function BuilderInner({ value, onChange }: Props) {
         </div>
       </div>
 
-      <aside className="overflow-y-auto rounded-lg border border-border/60 bg-card p-3">
+      <aside className="overflow-y-auto rounded-2xl border border-border/70 bg-card p-3">
         {!selectedDsl ? (
           <p className="text-xs text-muted-foreground">
-            Select a node to edit, or click <strong>+ trigger.manual</strong> to begin.
+            Select a step to edit it, or click <strong className="font-mono text-foreground">+ trigger.manual</strong> to begin.
             Drag from a node’s right edge onto another node to wire them.
           </p>
         ) : (
           <div className="space-y-3 text-xs">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Node
+              <p className="text-xs font-semibold text-foreground">
+                Step
               </p>
               <Button
                 onClick={removeSelected}
@@ -409,17 +413,19 @@ function BuilderInner({ value, onChange }: Props) {
                 className="h-6 px-2 text-destructive"
                 data-testid="builder-delete-node"
                 title="Delete"
+                aria-label="Delete step"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
             </div>
             <div>
-              <label className="text-[10px] uppercase text-muted-foreground">type</label>
+              <p className="text-xs font-medium text-muted-foreground">Type</p>
               <p className="font-mono">{selectedDsl.type}</p>
             </div>
             <div>
-              <label className="text-[10px] uppercase text-muted-foreground">label</label>
+              <label htmlFor="builder-node-label" className="text-xs font-medium text-muted-foreground">Label</label>
               <Input
+                id="builder-node-label"
                 value={selectedDsl.label || ''}
                 onChange={(e) => patchSelected({ label: e.target.value })}
                 className="h-7 text-xs"
@@ -427,8 +433,9 @@ function BuilderInner({ value, onChange }: Props) {
               />
             </div>
             <div>
-              <label className="text-[10px] uppercase text-muted-foreground">config (JSON)</label>
+              <label htmlFor="builder-node-config" className="text-xs font-medium text-muted-foreground">Config (JSON)</label>
               <Textarea
+                id="builder-node-config"
                 rows={8}
                 value={JSON.stringify(selectedDsl.config || {}, null, 2)}
                 onChange={(e) => {
@@ -439,7 +446,7 @@ function BuilderInner({ value, onChange }: Props) {
                     /* ignore until valid */
                   }
                 }}
-                className="font-mono text-[10px]"
+                className="font-mono text-[11px]"
                 data-testid="builder-node-config"
               />
             </div>

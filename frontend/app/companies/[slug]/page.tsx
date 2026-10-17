@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { COMPANY_CATALOG, getCompanyBySlug, getAllSlugs } from '@/lib/companies/company-catalog'
 import { CompanyDetail } from './company-detail'
+import { PublicPageWrapper } from '@/app/public-layout'
 
 export function generateStaticParams() {
   return getAllSlugs().map(slug => ({ slug }))
@@ -27,5 +28,9 @@ export default async function CompanyPage({ params }: Props) {
   const { slug } = await params
   const company = getCompanyBySlug(slug)
   if (!company) notFound()
-  return <CompanyDetail company={company} />
+  return (
+    <PublicPageWrapper>
+      <CompanyDetail company={company} />
+    </PublicPageWrapper>
+  )
 }

@@ -5,6 +5,7 @@ import { BLOG_CATEGORIES, blogPosts, categoryLabel, type BlogPostDoc } from '@/l
 import { ensureBlogSeed } from '@/lib/blog-seed'
 import { coverForPost } from '@/lib/blog-covers'
 import { Clock, Newspaper, Search } from 'lucide-react'
+import { PageHero } from '@/components/landing/page-hero'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,20 +58,12 @@ export default async function BlogIndexPage({
 
   return (
     <PublicPageWrapper>
-      <div className="w-full min-w-0 px-6 py-10 sm:px-8 lg:px-10 xl:px-12 mx-auto max-w-7xl">
-        <div className="mb-10 max-w-3xl">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-            Newsroom
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-            Explore <span className="text-teal-600 dark:text-teal-400">Articles</span>
-          </h1>
-          <p className="mt-3 text-muted-foreground">
-            Product updates, engineering notes, campus stories, and career Signals for builders.
-          </p>
-        </div>
-
-        <div className="mb-8 flex flex-wrap gap-2">
+      <PageHero
+        title="Newsroom"
+        lead="Product updates, engineering notes, campus stories, and career Signals for builders."
+      />
+      <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        <nav aria-label="Article categories" className="mb-6 flex flex-wrap gap-2">
           <Chip href="/blog" active={!category} label="All" />
           {BLOG_CATEGORIES.map((c) => (
             <Chip
@@ -80,30 +73,36 @@ export default async function BlogIndexPage({
               label={c.label}
             />
           ))}
-        </div>
+        </nav>
 
-        <form action="/blog" className="mb-10 max-w-md">
+        <form action="/blog" role="search" className="mb-10 max-w-md">
           {category ? <input type="hidden" name="category" value={category} /> : null}
           <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <span className="sr-only">Search articles</span>
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-cs-ink-soft" aria-hidden />
             <input
+              type="search"
               name="q"
               defaultValue={sp.q || ''}
               placeholder="Search articles"
-              className="w-full rounded-full border border-border bg-background py-2.5 pl-10 pr-4 text-sm outline-none ring-teal-500/40 focus:ring-2"
+              className="h-11 w-full rounded-full border border-cs-grid bg-cs-sheet pl-11 pr-4 text-sm text-cs-ink outline-none ring-cs-accent/30 placeholder:text-cs-ink-soft/70 focus:border-cs-accent/50 focus:ring-2"
             />
           </label>
         </form>
 
         {posts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-12 text-center text-muted-foreground">
-            <Newspaper className="mx-auto mb-3 h-10 w-10 opacity-40" />
-            <p>No articles in this view yet.</p>
+          <div className="rounded-3xl border border-dashed border-cs-grid bg-cs-sheet p-12 text-center text-cs-ink-soft">
+            <Newspaper className="mx-auto mb-3 h-10 w-10 opacity-40" aria-hidden />
+            <p className="font-medium text-cs-ink">No articles here yet.</p>
+            <p className="mt-1 text-sm">
+              Try another category, or{' '}
+              <Link href="/blog" className="font-medium text-cs-accent-text hover:underline">see all articles</Link>.
+            </p>
           </div>
         ) : (
           <div className="space-y-8">
             {featured ? <FeaturedCard post={featured} /> : null}
-            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {rest.map((p) => (
                 <ArticleCard key={p.id} post={p} />
               ))}
@@ -119,10 +118,11 @@ function Chip({ href, label, active }: { href: string; label: string; active: bo
   return (
     <Link
       href={href}
-      className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+      aria-current={active ? 'page' : undefined}
+      className={`inline-flex min-h-9 items-center rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors duration-200 ${
         active
-          ? 'border-teal-500 bg-teal-500/15 text-teal-700 dark:text-teal-300'
-          : 'border-border text-muted-foreground hover:border-teal-500/40 hover:text-foreground'
+          ? 'border-cs-accent bg-cs-accent text-cs-accent-ink'
+          : 'border-cs-grid bg-cs-sheet text-cs-ink-soft hover:border-cs-accent/40 hover:text-cs-ink'
       }`}
     >
       {label}
@@ -146,28 +146,28 @@ function FeaturedCard({ post }: { post: BlogPostDoc }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group grid overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40 lg:grid-cols-2"
+      className="group grid overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 dark:shadow-none lg:grid-cols-2"
     >
       <div className="relative aspect-video lg:aspect-auto lg:min-h-80">
         <Cover post={post} />
       </div>
       <div className="flex flex-col justify-center space-y-3 p-6 sm:p-8">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="rounded-full bg-teal-500/10 px-2 py-0.5 font-medium text-teal-700 dark:text-teal-300">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-cs-ink-soft">
+          <span className="rounded-full bg-cs-accent/10 px-2 py-0.5 font-semibold text-cs-accent-text">
             {categoryLabel(post.category)}
           </span>
           <span className="inline-flex items-center gap-1">
-            <Clock className="h-3 w-3" /> {post.read_minutes} min read
+            <Clock className="h-3 w-3" aria-hidden /> <span className="tabular-nums">{post.read_minutes}</span> min read
           </span>
           <span>{formatDate(post.published_at)}</span>
         </div>
-        <h2 className="text-2xl font-bold tracking-tight group-hover:text-teal-600 dark:group-hover:text-teal-400 sm:text-3xl">
+        <h2 className="cs-heading text-3xl text-cs-ink group-hover:text-cs-accent-text sm:text-4xl">
           {post.title}
         </h2>
         {post.excerpt ? (
-          <p className="line-clamp-3 text-sm text-muted-foreground sm:text-base">{post.excerpt}</p>
+          <p className="line-clamp-3 text-[15px] leading-relaxed text-cs-ink-soft">{post.excerpt}</p>
         ) : null}
-        <p className="text-sm font-medium text-teal-600 dark:text-teal-400">Read more →</p>
+        <p className="text-sm font-semibold text-cs-accent-text group-hover:underline">Read more →</p>
       </div>
     </Link>
   )
@@ -177,25 +177,25 @@ function ArticleCard({ post }: { post: BlogPostDoc }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
+      className="group flex min-w-0 flex-col overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 dark:shadow-none"
     >
-      <div className="aspect-video overflow-hidden bg-muted">
-        <Cover post={post} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+      <div className="aspect-video overflow-hidden bg-cs-paper">
+        <Cover post={post} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02] motion-reduce:group-hover:scale-100" />
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="rounded-full bg-teal-500/10 px-2 py-0.5 font-medium text-teal-700 dark:text-teal-300">
+      <div className="flex flex-1 flex-col gap-2 p-5">
+        <div className="flex items-center gap-2 text-xs text-cs-ink-soft">
+          <span className="rounded-full bg-cs-accent/10 px-2 py-0.5 font-semibold text-cs-accent-text">
             {categoryLabel(post.category)}
           </span>
-          <span>{post.read_minutes} min</span>
+          <span className="tabular-nums">{post.read_minutes} min</span>
         </div>
-        <h3 className="line-clamp-2 text-base font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400">
+        <h3 className="line-clamp-2 text-lg font-bold tracking-tight text-cs-ink group-hover:text-cs-accent-text">
           {post.title}
         </h3>
         {post.excerpt ? (
-          <p className="line-clamp-2 text-xs text-muted-foreground">{post.excerpt}</p>
+          <p className="line-clamp-2 text-sm text-cs-ink-soft">{post.excerpt}</p>
         ) : null}
-        <p className="mt-auto pt-2 text-[11px] text-muted-foreground">
+        <p className="mt-auto pt-2 text-xs text-cs-ink-soft">
           {post.author_name}
           {post.published_at ? ` · ${formatDate(post.published_at)}` : ''}
         </p>

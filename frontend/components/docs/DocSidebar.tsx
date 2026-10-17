@@ -69,39 +69,39 @@ export function DocSidebar({ sections }: DocSidebarProps) {
 
   const nav = (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
-        <Link href="/docs" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400">
-            <BookOpen className="h-4 w-4" />
+      <div className="flex items-center justify-between gap-2 border-b border-cs-grid px-4 py-3">
+        <Link href="/docs" className="flex items-center gap-2 font-semibold tracking-tight text-cs-ink">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cs-accent/25 bg-cs-accent/10 text-cs-accent-text">
+            <BookOpen className="h-4 w-4" aria-hidden />
           </span>
           <span className="text-sm">Docs</span>
         </Link>
         <button
           type="button"
           onClick={() => setMobileOpen(false)}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted lg:hidden"
+          className="rounded-lg p-2 text-cs-ink-soft hover:bg-cs-accent/10 lg:hidden"
           aria-label="Close docs menu"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
-      <div className="border-b border-border/40 px-3 py-3">
+      <div className="border-b border-cs-grid px-3 py-3">
         <label className="relative block">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-cs-ink-soft" aria-hidden />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search docs…"
-            className="w-full rounded-lg border border-border/60 bg-background py-2 pl-9 pr-9 text-sm outline-none ring-teal-500/30 placeholder:text-muted-foreground/70 focus:border-teal-500/50 focus:ring-2"
+            className="w-full rounded-xl border border-cs-grid bg-cs-sheet py-2 pl-9 pr-9 text-sm text-cs-ink outline-none ring-cs-accent/30 placeholder:text-cs-ink-soft/70 focus:border-cs-accent/50 focus:ring-2"
             aria-label="Search documentation"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-cs-ink-soft hover:text-cs-ink"
               aria-label="Clear search"
             >
               <XCircle className="h-4 w-4" />
@@ -112,7 +112,7 @@ export function DocSidebar({ sections }: DocSidebarProps) {
 
       <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Documentation">
         {filtered.length === 0 ? (
-          <p className="px-2 text-sm text-muted-foreground">No matches.</p>
+          <p className="px-2 text-sm text-cs-ink-soft">No pages match. Try a shorter search.</p>
         ) : (
           filtered.map((section) => {
             const Icon = ICON_MAP[section.icon] || FileText
@@ -122,9 +122,10 @@ export function DocSidebar({ sections }: DocSidebarProps) {
                 <button
                   type="button"
                   onClick={() => toggle(section.id)}
-                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+                  aria-expanded={open}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm font-semibold text-cs-ink hover:text-cs-accent-text"
                 >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <Icon className="h-3.5 w-3.5 shrink-0 text-cs-ink-soft" aria-hidden />
                   <span className="flex-1">{section.label}</span>
                   {open ? (
                     <ChevronDown className="h-3.5 w-3.5" />
@@ -133,16 +134,17 @@ export function DocSidebar({ sections }: DocSidebarProps) {
                   )}
                 </button>
                 {open ? (
-                  <ul className="mt-1 space-y-0.5 border-l border-border/50 ml-3 pl-2">
+                  <ul className="ml-3 mt-1 space-y-0.5 border-l border-cs-grid pl-2">
                     {section.docs.map((doc) => (
                       <li key={`${doc.section}-${doc.slug}`}>
                         <Link
                           href={docHref(doc)}
+                          aria-current={isActive(doc) ? 'page' : undefined}
                           className={cn(
-                            'block rounded-md px-2.5 py-1.5 text-[13px] leading-snug transition-colors',
+                            'block rounded-lg px-2.5 py-1.5 text-[13px] leading-snug transition-colors duration-200',
                             isActive(doc)
-                              ? 'bg-teal-500/10 font-medium text-teal-700 dark:text-teal-300'
-                              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                              ? 'bg-cs-accent/10 font-semibold text-cs-accent-text'
+                              : 'text-cs-ink-soft hover:bg-cs-accent/5 hover:text-cs-ink',
                           )}
                         >
                           {doc.title}
@@ -157,8 +159,8 @@ export function DocSidebar({ sections }: DocSidebarProps) {
         )}
       </nav>
 
-      <div className="border-t border-border/50 px-4 py-3 text-xs text-muted-foreground">
-        <Link href="/" className="hover:text-foreground">
+      <div className="border-t border-cs-grid px-4 py-3 text-xs text-cs-ink-soft">
+        <Link href="/" className="hover:text-cs-ink">
           ← CodeSpectra home
         </Link>
       </div>
@@ -170,9 +172,9 @@ export function DocSidebar({ sections }: DocSidebarProps) {
       <button
         type="button"
         onClick={() => setMobileOpen(true)}
-        className="fixed bottom-5 left-4 z-40 inline-flex items-center gap-2 rounded-full bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/30 lg:hidden"
+        className="fixed bottom-5 left-4 z-40 inline-flex min-h-11 items-center gap-2 rounded-full bg-cs-accent px-4 py-2.5 text-sm font-semibold text-cs-accent-ink shadow-lg shadow-[#2f5be7]/30 lg:hidden"
       >
-        <Menu className="h-4 w-4" />
+        <Menu className="h-4 w-4" aria-hidden />
         Docs menu
       </button>
 
@@ -187,7 +189,7 @@ export function DocSidebar({ sections }: DocSidebarProps) {
       {/* Mobile drawer */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 flex w-[min(20rem,88vw)] flex-col border-r border-border bg-background transition-transform duration-200 lg:hidden',
+          'fixed inset-y-0 left-0 z-50 flex w-[min(20rem,88vw)] flex-col border-r border-cs-grid bg-cs-paper transition-transform duration-200 motion-reduce:transition-none lg:hidden',
           mobileOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -195,7 +197,7 @@ export function DocSidebar({ sections }: DocSidebarProps) {
       </aside>
 
       {/* Desktop sticky sidebar — offset under marketing header */}
-      <aside className="sticky top-20 hidden h-[calc(100vh-5rem)] w-64 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-background/80 lg:flex xl:w-72">
+      <aside className="sticky top-20 hidden h-[calc(100vh-5rem)] w-64 shrink-0 flex-col overflow-hidden border-r border-cs-grid bg-cs-paper/80 lg:flex xl:w-72">
         {nav}
       </aside>
     </>

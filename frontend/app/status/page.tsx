@@ -2,7 +2,9 @@
 import { formatTime } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
-import { Activity, CheckCircle2, AlertTriangle, XCircle, Info, RefreshCw } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, XCircle, RefreshCw } from 'lucide-react'
+import { PublicPageWrapper } from '@/app/public-layout'
+import { PageHero, btnSecondary } from '@/components/landing/page-hero'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { cn } from '@/lib/utils'
 
@@ -48,25 +50,48 @@ export default function StatusPage() {
     fetchStatus()
   }, [])
 
+  const refreshButton = (
+    <button type="button" onClick={fetchStatus} disabled={loading} className={btnSecondary}>
+      <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin motion-reduce:animate-none')} aria-hidden />
+      Refresh status
+    </button>
+  )
+
   if (loading && !data) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <PublicPageWrapper>
+        <PageHero title="CodeSpectra status" lead="Live checks and recent history for every part of the platform." />
+        <div className="flex h-64 items-center justify-center">
+          <RefreshCw className="h-6 w-6 animate-spin text-cs-ink-soft motion-reduce:animate-none" aria-label="Loading status" />
+        </div>
+      </PublicPageWrapper>
     )
   }
 
   if (!data) {
-    return <div className="text-center p-10 text-red-500">Failed to load status.</div>
+    return (
+      <PublicPageWrapper>
+        <PageHero title="CodeSpectra status" lead="Live checks and recent history for every part of the platform." actions={refreshButton} />
+        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+          <div role="alert" className="rounded-3xl border border-cs-flag/30 bg-cs-flag/5 p-8 text-center text-cs-flag">
+            Status couldn&apos;t be loaded. Try refreshing in a moment.
+          </div>
+        </div>
+      </PublicPageWrapper>
+    )
   }
 
-  // Calculate 90d Uptime %
+  // Uptime = share of recorded checks (last 90 days, see /api/status) that were fully operational.
   const totalLogs = data.historical_logs.length
   const upLogs = data.historical_logs.filter((l) => l.status === 'operational').length
-  const uptimeStr = totalLogs > 0 ? ((upLogs / totalLogs) * 100).toFixed(2) + '%' : '100.00%'
+  const uptimeStr = totalLogs > 0 ? ((upLogs / totalLogs) * 100).toFixed(2) + '%' : '—'
+  const dayAgo = Date.now() - 24 * 60 * 60 * 1000
+  const dayLogs = data.historical_logs.filter((l) => new Date(l.timestamp).getTime() >= dayAgo)
+  const dayUptimeStr = dayLogs.length > 0
+    ? ((dayLogs.filter((l) => l.status === 'operational').length / dayLogs.length) * 100).toFixed(2) + '%'
+    : '—'
 
-  // Group historical logs into a nice timeseries for the chart (Availability over 24h)
-  // For simplicity since we just started logging, we'll plot the latencies of "Database (MongoDB)" or an average.
+  // Database latency per recorded check, for the chart.
   const chartData = data.historical_logs.map((log) => {
     const db = log.components.find((c) => c.name.includes('Database'))
     return {
@@ -76,198 +101,178 @@ export default function StatusPage() {
     }
   })
 
-  // To build the little uptime bars, we'll map the historical logs for each component
-  // Let's take the last 40 entries for the component bars
+  // Uptime bars: the most recent checks per component. Slots with no check yet stay grey.
   const BARS_COUNT = 40
   const recentLogs = data.historical_logs.slice(-BARS_COUNT)
 
   const getStatusColor = (status?: string) => {
-    if (status === 'operational') return 'bg-emerald-500'
-    if (status === 'degraded') return 'bg-yellow-500'
+    if (status === 'operational') return 'bg-green-500'
+    if (status === 'degraded') return 'bg-amber-500'
+    if (status === 'none') return 'bg-cs-grid'
     return 'bg-red-500'
   }
 
+  const statusText = (status?: string) =>
+    status === 'operational' ? 'Operational' : status === 'degraded' ? 'Degraded' : status === 'none' ? 'No check' : 'Down'
+
+  const dbLatency = data.components.find((c) => c.name.includes('Database'))?.latency
+
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12 space-y-10 animate-in fade-in-50 duration-700">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-extrabold flex items-center gap-3 text-foreground tracking-tight">
-            <Activity className="h-10 w-10 text-primary" />
-            CodeSpectra Status
-          </h1>
-          <p className="text-muted-foreground mt-2 text-lg">
-            Real-time and historical data on system performance and uptime.
-          </p>
-        </div>
-        <button
-          onClick={fetchStatus}
-          disabled={loading}
-          className="flex items-center gap-2 rounded-full border border-border bg-card px-5 py-2.5 text-sm font-medium text-foreground hover:bg-muted transition-colors shadow-sm"
+    <PublicPageWrapper>
+      <PageHero
+        title="CodeSpectra status"
+        lead="Live checks and recent history for every part of the platform."
+        actions={refreshButton}
+      />
+
+      <div className="mx-auto max-w-[1200px] space-y-8 px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
+        {/* Global status banner */}
+        <div
+          role="status"
+          className={cn(
+            'flex items-center gap-4 rounded-3xl border p-6',
+            data.status === 'operational' ? 'border-green-500/25 bg-green-500/10 text-green-800 dark:text-green-300' :
+            data.status === 'degraded' ? 'border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-300' :
+            'border-red-500/25 bg-red-500/10 text-red-800 dark:text-red-300'
+          )}
         >
-          <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-          Refresh Status
-        </button>
-      </div>
+          {data.status === 'operational' ? <CheckCircle2 className="h-8 w-8 shrink-0" aria-hidden /> :
+           data.status === 'degraded' ? <AlertTriangle className="h-8 w-8 shrink-0" aria-hidden /> :
+           <XCircle className="h-8 w-8 shrink-0" aria-hidden />}
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight">
+              {data.status === 'operational' ? 'All systems operational' :
+               data.status === 'degraded' ? 'Some services are degraded' : 'Major outage'}
+            </h2>
+            <p className="mt-1 text-sm opacity-85">
+              Last checked at <span className="tabular-nums">{formatTime(data.updated_at, undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </p>
+          </div>
+        </div>
 
-      {/* Global Status Banner */}
-      <div className={cn(
-        "rounded-2xl border p-6 flex items-center gap-4 shadow-sm",
-        data.status === 'operational' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' :
-        data.status === 'degraded' ? 'bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400' :
-        'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
-      )}>
-        {data.status === 'operational' ? <CheckCircle2 className="h-8 w-8" /> : 
-         data.status === 'degraded' ? <AlertTriangle className="h-8 w-8" /> : 
-         <XCircle className="h-8 w-8" />}
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">
-            {data.status === 'operational' ? 'All Systems Operational' :
-             data.status === 'degraded' ? 'Partial System Outage' : 'Major System Outage'}
-          </h2>
-          <p className="text-sm opacity-80 mt-1">
-            Last updated at {formatTime(data.updated_at, undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </p>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-3 text-sm font-medium">
-            Uptime (90d) <Info className="h-4 w-4" />
-          </div>
-          <div className="text-3xl font-bold text-foreground">{uptimeStr}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-3 text-sm font-medium">
-            Availability (24h) <Info className="h-4 w-4" />
-          </div>
-          <div className="text-3xl font-bold text-foreground">{uptimeStr}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-3 text-sm font-medium">
-            Active Components <Info className="h-4 w-4" />
-          </div>
-          <div className="text-3xl font-bold text-foreground">{data.components.length}</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="flex items-center gap-2 text-muted-foreground mb-3 text-sm font-medium">
-            Avg DB Latency <Info className="h-4 w-4" />
-          </div>
-          <div className="text-3xl font-bold text-foreground">
-            {data.components.find(c => c.name.includes('Database'))?.latency || '< 10'}ms
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          {/* Components List */}
-          <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
-            <div className="px-6 py-5 border-b border-border bg-muted/20">
-              <h2 className="font-semibold text-lg">Services Availability</h2>
+        {/* Summary */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Uptime (90 days)', value: uptimeStr },
+            { label: 'Uptime (24 hours)', value: dayUptimeStr },
+            { label: 'Services checked', value: String(data.components.length) },
+            { label: 'Database response', value: dbLatency != null ? `${dbLatency}ms` : '—' },
+          ].map((m) => (
+            <div key={m.label} className="rounded-3xl border border-cs-grid bg-cs-sheet p-5 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
+              <p className="text-sm font-medium text-cs-ink-soft">{m.label}</p>
+              <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-cs-ink">{m.value}</p>
             </div>
-            <div className="divide-y divide-border">
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Components */}
+          <section className="overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet lg:col-span-2" aria-labelledby="status-services">
+            <div className="border-b border-cs-grid px-6 py-5">
+              <h2 id="status-services" className="text-lg font-bold text-cs-ink">Services</h2>
+              <p className="text-sm text-cs-ink-soft">Each bar is one check, oldest on the left.</p>
+            </div>
+            <div className="divide-y divide-cs-grid">
               {data.components.map((c) => {
-                const compHistory = recentLogs.map((log) => {
+                const compHistory: string[] = recentLogs.map((log) => {
                   const match = log.components.find((lc) => lc.name === c.name)
                   return match?.status || 'down'
                 })
+                const checked = compHistory.length
+                const upCount = compHistory.filter((h) => h === 'operational').length
                 while (compHistory.length < BARS_COUNT) {
-                  compHistory.unshift('operational')
+                  compHistory.unshift('none')
                 }
 
                 return (
-                  <div key={c.name} className="px-6 py-5 space-y-4 hover:bg-muted/10 transition-colors">
-                    <div className="flex justify-between items-center">
-                      <div className="font-medium text-foreground">{c.name}</div>
+                  <div key={c.name} className="space-y-4 px-6 py-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="font-medium text-cs-ink">{c.name}</div>
                       <div className={cn(
-                        "font-semibold text-sm",
-                        c.status === 'operational' ? "text-emerald-500" :
-                        c.status === 'degraded' ? "text-yellow-500" : "text-red-500"
+                        'text-sm font-semibold',
+                        c.status === 'operational' ? 'text-green-700 dark:text-green-400' :
+                        c.status === 'degraded' ? 'text-amber-700 dark:text-amber-400' : 'text-red-700 dark:text-red-400'
                       )}>
-                        {c.status === 'operational' ? 'Operational' : 
-                         c.status === 'degraded' ? 'Degraded' : 'Down'}
+                        {statusText(c.status)}
                       </div>
                     </div>
-                    
-                    {/* Uptime Bars */}
-                    <div className="flex gap-0.5 h-10 w-full">
+                    {c.message ? <p className="-mt-2 text-xs text-cs-ink-soft">{c.message}</p> : null}
+
+                    {/* Uptime bars */}
+                    <div className="flex h-10 w-full gap-0.5" role="img" aria-label={`${c.name}: ${upCount} of ${checked} recent checks operational`}>
                       {compHistory.map((hStatus, i) => (
-                        <div 
-                          key={i} 
-                          className={cn("flex-1 rounded-[2px] opacity-90 hover:opacity-100 transition-opacity", getStatusColor(hStatus))}
-                          title={`${hStatus}`}
+                        <div
+                          key={i}
+                          className={cn('flex-1 rounded-[2px]', getStatusColor(hStatus))}
+                          title={statusText(hStatus)}
                         />
                       ))}
                     </div>
-                    
-                    <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                      <span>90 days ago</span>
-                      <span className="text-emerald-500">99.99% uptime</span>
-                      <span>Today</span>
+
+                    <div className="flex justify-between text-xs font-medium text-cs-ink-soft">
+                      <span>Earlier</span>
+                      <span className="tabular-nums text-cs-ink">
+                        {checked > 0 ? `${((upCount / checked) * 100).toFixed(1)}% of last ${checked} checks` : 'No checks yet'}
+                      </span>
+                      <span>Now</span>
                     </div>
                   </div>
                 )
               })}
             </div>
-          </div>
-        </div>
+          </section>
 
-        <div className="space-y-8">
-          {/* Metrics Chart */}
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-border bg-muted/20">
-              <h2 className="font-semibold">System Latency (24h)</h2>
-            </div>
-            <div className="p-5 h-64">
-              {chartData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <XAxis dataKey="time" stroke="#888888" fontSize={11} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#888888" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}ms`} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: 'rgba(9, 9, 11, 0.95)', border: '1px solid #27272a', borderRadius: '8px' }}
-                      itemStyle={{ color: '#fff' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="latency"
-                      stroke="#3b82f6"
-                      strokeWidth={3}
-                      dot={false}
-                      activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-                  Insufficient data for chart.
+          <div className="space-y-6">
+            {/* Latency chart */}
+            <section className="overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet" aria-labelledby="status-latency">
+              <div className="border-b border-cs-grid px-5 py-4">
+                <h2 id="status-latency" className="font-bold text-cs-ink">Database response time</h2>
+              </div>
+              <div className="h-64 p-5">
+                {chartData.length > 1 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <XAxis dataKey="time" stroke="currentColor" className="text-cs-ink-soft" fontSize={11} tickLine={false} axisLine={false} />
+                      <YAxis stroke="currentColor" className="text-cs-ink-soft" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}ms`} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: '12px', color: 'hsl(var(--popover-foreground))' }}
+                        itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                        labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="latency"
+                        stroke="#2f5be7"
+                        strokeWidth={2.5}
+                        dot={false}
+                        isAnimationActive={false}
+                        activeDot={{ r: 5, fill: '#2f5be7', stroke: '#fff', strokeWidth: 2 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-center text-sm text-cs-ink-soft">
+                    Not enough checks yet to draw a chart.
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {/* Incidents */}
+            <section className="overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet" aria-labelledby="status-incidents">
+              <div className="border-b border-cs-grid px-5 py-4">
+                <h2 id="status-incidents" className="font-bold text-cs-ink">Incidents</h2>
+              </div>
+              <div className="p-5">
+                <div className="space-y-1 border-l-2 border-cs-grid pl-4">
+                  <p className="text-sm font-semibold text-cs-ink">No incidents posted.</p>
+                  <p className="text-xs text-cs-ink-soft">If something goes wrong, updates will appear here.</p>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Past Incidents (Mocked for detailed UI) */}
-          <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-border bg-muted/20">
-              <h2 className="font-semibold">Past Incidents</h2>
-            </div>
-            <div className="p-5 space-y-6">
-              <div className="relative pl-4 border-l-2 border-emerald-500 space-y-1">
-                <div className="font-semibold text-sm">No incidents reported today.</div>
-                <div className="text-xs text-muted-foreground">This is currently an active period of high stability.</div>
               </div>
-              <div className="relative pl-4 border-l-2 border-muted space-y-1">
-                <div className="font-semibold text-sm">Aug 18, 2026 - Maintenance</div>
-                <div className="text-xs text-muted-foreground">Scheduled database optimization completed successfully.</div>
-              </div>
-            </div>
+            </section>
           </div>
         </div>
       </div>
-    </div>
+    </PublicPageWrapper>
   )
 }

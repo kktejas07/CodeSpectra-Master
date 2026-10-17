@@ -6,7 +6,6 @@ import { Loader2, Plus, Eye, Trash2, Check, Sparkles } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +14,8 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 import { EbookOutlineReview } from '@/components/resources/ebook-outline-review'
 import { SkeletonCard, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { BookOpen, FileText } from 'lucide-react'
 
 type AdminEbook = EbookCardData & { id: string; status: string }
 
@@ -189,17 +190,22 @@ export default function AdminResourcesPage() {
   }
 
   return (
-    <div className="w-full space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Resources / Ebooks</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Generate original CodeSpectra pocket guides. Daily cron creates drafts — publish here.
-        </p>
+    <div className="w-full space-y-6">
+      <PageHeader
+        title="Resources and ebooks"
+        description="Short CodeSpectra guides for candidates. A new draft is created every day; review and publish them here."
+        icon={<BookOpen />}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Ebooks" value={items.length} icon={<BookOpen />} />
+        <StatCard label="Published" value={items.filter((e) => e.status === 'published').length} icon={<Check />} />
+        <StatCard label="Drafts" value={items.filter((e) => e.status === 'draft').length} icon={<FileText />} />
       </div>
 
-      <Card className="space-y-4 p-4 md:p-6">
-        <h2 className="flex items-center gap-2 font-semibold">
-          <Plus className="h-4 w-4" /> Generate ebook
+      <Panel className="space-y-4">
+        <h2 className="flex items-center gap-2 font-semibold text-foreground">
+          <Plus className="h-4 w-4 text-primary" aria-hidden /> Generate an ebook
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5">
@@ -222,16 +228,17 @@ export default function AdminResourcesPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="pageCount">Pages</Label>
-            <div className="flex gap-1">
+            <div className="flex flex-wrap gap-1" role="group" aria-label="Number of pages">
               {[6, 12, 16, 24, 50].map((n) => (
                 <button
                   key={n}
                   type="button"
                   onClick={() => setPageCount(n)}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  aria-pressed={pageCount === n}
+                  className={`min-w-10 rounded-lg px-3 py-2 text-xs font-medium tabular-nums transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-primary ${
                     pageCount === n
                       ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                      : 'border border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
                   }`}
                 >
                   {n}
@@ -244,7 +251,7 @@ export default function AdminResourcesPage() {
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
           {busy ? `Generating outline...` : `Generate ${pageCount}-page ebook`}
         </Button>
-      </Card>
+      </Panel>
 
       {/* Outline Review Modal */}
       {outlineReview?.show && (
@@ -261,7 +268,13 @@ export default function AdminResourcesPage() {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {items.length === 0 && (
+        <Panel className="p-10 text-center text-sm text-muted-foreground">
+          No ebooks yet. Enter a topic above to generate your first one.
+        </Panel>
+      )}
+
+      <div className="cs-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((e) => (
           <div key={e.id || e.slug} className="space-y-2">
             <EbookCoverCard ebook={e} href={`/dashboard/resources/${e.slug}`} showStatus />
@@ -269,7 +282,7 @@ export default function AdminResourcesPage() {
               <Badge variant="outline" className="capitalize">
                 {e.status}
               </Badge>
-              {e.pageCount != null ? <Badge variant="secondary">{e.pageCount} pages</Badge> : null}
+              {e.pageCount != null ? <Badge variant="secondary" className="tabular-nums">{e.pageCount} pages</Badge> : null}
             </div>
             <div className="flex flex-wrap gap-1">
               <Button
@@ -283,7 +296,7 @@ export default function AdminResourcesPage() {
                 {coverBusy === e.slug ? (
                   <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                  <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                 )}
                 AI cover
               </Button>
@@ -297,11 +310,11 @@ export default function AdminResourcesPage() {
                 </Button>
               )}
               <Button type="button" size="sm" variant="ghost" asChild>
-                <Link href={`/dashboard/resources/${e.slug}`}>
+                <Link href={`/dashboard/resources/${e.slug}`} aria-label={`Open ${e.title}`} title="Open">
                   <Eye className="h-3.5 w-3.5" />
                 </Link>
               </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => confirmDelete(e.slug)}>
+              <Button type="button" size="sm" variant="ghost" onClick={() => confirmDelete(e.slug)} aria-label={`Delete ${e.title}`} title="Delete">
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </Button>
             </div>
@@ -311,7 +324,7 @@ export default function AdminResourcesPage() {
 
       <ConfirmDialog
         open={deleteDialog.open}
-        title="Delete Ebook"
+        title="Delete ebook?"
         message={`Are you sure you want to delete "${deleteDialog.slug}"? This action cannot be undone.`}
         confirmLabel="Delete"
         cancelLabel="Cancel"

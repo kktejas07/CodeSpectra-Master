@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { COMPANY_CATALOG, getIndustries } from '@/lib/companies/company-catalog'
 import { CompaniesDirectory } from './companies-directory'
+import { PublicPageWrapper } from '@/app/public-layout'
+import { PageHero } from '@/components/landing/page-hero'
 
 export const metadata: Metadata = {
   title: 'Company Interview Prep | CodeSpectra',
@@ -16,21 +18,17 @@ export const metadata: Metadata = {
 export default function CompaniesPage() {
   const industries = getIndustries()
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-8 lg:px-6">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Company Interview Prep
-          </h1>
-          <p className="mt-3 text-muted-foreground">
-            Company-specific problem sets, interview process breakdowns, and tips for top tech companies.
-          </p>
-        </div>
+    <PublicPageWrapper>
+      <PageHero
+        title="Company interview prep"
+        lead="Company-specific problem sets, interview process breakdowns, and tips for top tech companies."
+      />
+      <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
         <CompaniesDirectory
           companies={COMPANY_CATALOG}
           industries={industries}
         />
       </div>
-    </div>
+    </PublicPageWrapper>
   )
 }

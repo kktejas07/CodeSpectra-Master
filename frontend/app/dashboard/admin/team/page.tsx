@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -13,6 +12,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 
 interface TeamMember {
   id: string; name: string; email: string; role: string; joinedAt: string; status: string
@@ -88,63 +88,50 @@ export default function TeamManagement() {
   )
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-1.5 text-3xl font-bold text-foreground">
+    <div className="space-y-6">
+      <PageHeader
+        title={
+          <>
             Organization
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label="About your organization" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Members of your organization. Add users here — they are scoped to your org automatically.</p>
+                  <p className="text-xs max-w-62.5">Members of your organization. Anyone you add here joins your organization automatically.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </h1>
-          <p className="text-sm text-muted-foreground">Manage your team and monitor organization activity</p>
-        </div>
-        <Button onClick={() => setAddOpen(true)} className="gap-2">
-          <UserPlus className="h-4 w-4" /> Add member
-        </Button>
-      </div>
+          </>
+        }
+        description="Manage your team and keep an eye on organization activity."
+        icon={<Building2 />}
+        actions={
+          <Button onClick={() => setAddOpen(true)} className="gap-2">
+            <UserPlus className="h-4 w-4" /> Add member
+          </Button>
+        }
+      />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10"><Users className="h-5 w-5 text-blue-500" /></div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Team members</p>
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10"><Building2 className="h-5 w-5 text-green-500" /></div>
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Active members</p>
-              <p className="text-2xl font-bold text-foreground">{stats.active}</p>
-            </div>
-          </div>
-        </Card>
+        <StatCard label="Team members" value={stats.total} icon={<Users />} />
+        <StatCard label="Active members" value={stats.active} icon={<Building2 />} />
       </div>
 
       {/* Team members */}
-      <Card className="border-border/60 p-6">
+      <Panel>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" /> Team members
+            <Users className="h-5 w-5 text-primary" aria-hidden /> Team members
           </h2>
-          <Badge variant="secondary">{stats.total} total</Badge>
+          <Badge variant="secondary" className="tabular-nums">{stats.total} total</Badge>
         </div>
         {members.length === 0 ? (
-          <div className="text-center py-10">
-            <Users className="h-12 w-12 text-muted-foreground/30" />
-            <p className="mt-3 text-muted-foreground">No members in your organization yet.</p>
+          <div className="flex flex-col items-center py-10 text-center">
+            <Users className="h-12 w-12 text-muted-foreground/30" aria-hidden />
+            <p className="mt-3 text-muted-foreground">No members yet. Add the people who will create and review assessments.</p>
             <Button className="mt-4 gap-2" size="sm" onClick={() => setAddOpen(true)}>
               <UserPlus className="h-4 w-4" /> Add member
             </Button>
@@ -152,20 +139,20 @@ export default function TeamManagement() {
         ) : (
           <div className="space-y-2 max-h-[350px] overflow-y-auto">
             {members.map(m => (
-              <div key={m.id} className="flex items-center justify-between rounded-md border border-border/50 p-3 hover:bg-muted/20 transition-colors">
+              <div key={m.id} className="flex items-center justify-between rounded-xl border border-border/70 p-3 transition-colors duration-200 hover:bg-muted/30">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">{m.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{m.email}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
-                  <Badge variant="outline" className="text-[10px] capitalize">{(m.role || '').replace(/_/g, ' ')}</Badge>
-                  <Badge variant={(m.status || '') === 'active' ? 'default' : 'secondary'} className="text-[10px]">{m.status || 'active'}</Badge>
+                  <Badge variant="outline" className="text-[11px] capitalize">{(m.role || '').replace(/_/g, ' ')}</Badge>
+                  <Badge variant={(m.status || '') === 'active' ? 'default' : 'secondary'} className="text-[11px] capitalize">{m.status || 'active'}</Badge>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </Card>
+      </Panel>
 
       <Dialog open={addOpen} onOpenChange={setAddOpen}>
         <DialogContent className="sm:max-w-md">
@@ -173,7 +160,7 @@ export default function TeamManagement() {
             <DialogHeader>
               <DialogTitle>Add member</DialogTitle>
               <DialogDescription>
-                Creates a user in your organization. They will be scoped to your org automatically.
+                Creates an account for this person inside your organization.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 text-xs">

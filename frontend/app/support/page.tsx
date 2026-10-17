@@ -1,8 +1,9 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { MessageSquare, AlertCircle, Clock, Search, ChevronDown, Mail, Phone, Building } from 'lucide-react'
+import { MessageSquare, Activity, ShieldCheck, Search, ChevronDown, Mail, Building } from 'lucide-react'
+import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { useState } from 'react'
 import { PublicPageWrapper } from '@/app/public-layout'
 
@@ -16,15 +17,15 @@ export default function SupportPortalPage() {
       questions: [
         {
           q: 'How do I upgrade my plan?',
-          a: 'You can upgrade your plan at any time from the Billing settings. The change will take effect immediately with prorated pricing.',
+          a: 'You can upgrade your plan at any time from the Billing settings in your dashboard.',
         },
         {
           q: 'Can I cancel my subscription anytime?',
-          a: "Yes, you can cancel anytime. Your access will continue until the end of the current billing period.",
+          a: 'Yes, you can cancel from the Billing settings at any time. The Terms of Service explain what happens to fees.',
         },
         {
           q: 'Do you offer refunds?',
-          a: "We offer refunds within 30 days of purchase if you're not satisfied.",
+          a: 'Fees are non-refundable except where required by law. See the Terms of Service for details.',
         },
       ],
     },
@@ -33,15 +34,15 @@ export default function SupportPortalPage() {
       questions: [
         {
           q: 'What are the system requirements?',
-          a: 'CodeSpectra works on all modern browsers. We support Chrome, Firefox, Safari, and Edge.',
+          a: 'CodeSpectra runs in current versions of Chrome, Firefox, Safari and Edge. Proctored assessments also need a webcam.',
         },
         {
           q: 'Is my data secure?',
-          a: 'Yes, all data is encrypted in transit and at rest. We comply with GDPR and SOC 2 standards.',
+          a: 'Data is encrypted in transit and at rest. The Security page explains how accounts and assessment data are protected.',
         },
         {
-          q: 'How often is data backed up?',
-          a: 'We perform automated backups every hour. Your data is distributed across multiple geographic regions.',
+          q: 'How long is my data kept?',
+          a: 'Retention periods for each kind of data are listed in the Privacy Policy. For anything specific to your organization, contact us.',
         },
       ],
     },
@@ -50,11 +51,11 @@ export default function SupportPortalPage() {
       questions: [
         {
           q: 'Can I use CodeSpectra for personal projects?',
-          a: 'Yes, our Starter plan is perfect for individuals and personal projects.',
+          a: 'Yes. Candidates can practise for free, and the Pricing page lists the paid plans.',
         },
         {
           q: 'How many team members can I invite?',
-          a: 'It depends on your plan. Starter: 5, Professional: 50, Enterprise: Unlimited',
+          a: 'It depends on your plan. The Pricing page shows the current limits for each one.',
         },
       ],
     },
@@ -78,118 +79,110 @@ export default function SupportPortalPage() {
 
   return (
     <PublicPageWrapper>
-      <div className="space-y-16">
-        {/* Header */}
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground mb-3">Support</p>
-          <h1 className="text-5xl sm:text-6xl font-bold mb-4">
-            How can we
-            <br />
-            <span className="text-muted-foreground">help you?</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Get help and find answers to common questions. Our team is here 24/7.
-          </p>
+      <PageHero
+        title="How can we help?"
+        lead="Find answers to common questions, check whether everything is running, or open a ticket with our team."
+        actions={
+          <>
+            <Link href="/dashboard/support" className={btnPrimary}>Create a ticket</Link>
+            <Link href="/status" className={btnSecondary}>System status</Link>
+          </>
+        }
+      />
+
+      {/* Support cards */}
+      <section className="border-b border-cs-grid">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8">
+          <BentoShell className="auto-rows-auto lg:grid-cols-3">
+            {[
+              {
+                icon: MessageSquare,
+                title: 'Create a ticket',
+                desc: 'Sign in and send our support team the details. You can follow the reply in your dashboard.',
+                href: '/dashboard/support',
+                cta: 'Submit ticket',
+              },
+              {
+                icon: Activity,
+                title: 'System status',
+                desc: 'See whether every part of CodeSpectra is up right now.',
+                href: '/status',
+                cta: 'View status',
+              },
+              {
+                icon: ShieldCheck,
+                title: 'Security',
+                desc: 'How accounts and assessment data are protected, and how to report a vulnerability.',
+                href: '/security',
+                cta: 'Read security',
+              },
+            ].map((item) => {
+              const Icon = item.icon
+              return (
+                <BentoCard key={item.title} href={item.href} label={`${item.title} — ${item.cta}`}>
+                  <BentoIcon><Icon className="h-5 w-5" aria-hidden /></BentoIcon>
+                  <BentoTitle>{item.title}</BentoTitle>
+                  <BentoBody className="text-sm">{item.desc}</BentoBody>
+                  <span className="mt-auto pt-4 text-sm font-semibold text-cs-accent-text group-hover:underline">{item.cta}</span>
+                </BentoCard>
+              )
+            })}
+          </BentoShell>
         </div>
+      </section>
 
-        {/* Support Cards */}
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {[
-            {
-              icon: MessageSquare,
-              title: 'Create a ticket',
-              desc: 'Get help from our support team',
-              href: '/dashboard/support',
-              cta: 'Submit ticket',
-            },
-            {
-              icon: AlertCircle,
-              title: 'System status',
-              desc: 'Security posture and operational notes',
-              href: '/security',
-              cta: 'Read security',
-            },
-            {
-              icon: Clock,
-              title: 'Response times',
-              desc: 'Typical turnaround for priority issues',
-              href: '/terms',
-              cta: 'View terms',
-            },
-          ].map((item, i) => {
-            const Icon = item.icon
-            return (
-              <div
-                key={i}
-                className="p-6 border border-border/40 rounded-xl hover:border-primary/40 hover:bg-primary/5 transition-all duration-300"
-              >
-                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mb-4">
-                  <Icon className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <h3 className="font-semibold mb-2">{item.title}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{item.desc}</p>
-                <Button variant="outline" size="sm" asChild className="w-full">
-                  <Link href={item.href}>{item.cta}</Link>
-                </Button>
-              </div>
-            )
-          })}
-        </div>
+      {/* FAQs */}
+      <section className="border-b border-cs-grid" aria-labelledby="support-faq">
+        <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-20">
+          <h2 id="support-faq" className="cs-heading mb-8 text-4xl sm:text-5xl">Frequently asked questions</h2>
 
-        {/* FAQs */}
-        <div className="max-w-3xl mx-auto">
-          <div className="text-center mb-8">
-            <p className="text-sm text-muted-foreground mb-3">FAQ</p>
-            <h2 className="text-4xl font-bold mb-6">
-              Frequently asked
-              <br />
-              <span className="text-muted-foreground">questions</span>
-            </h2>
-          </div>
-
-          <div className="mb-8">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <div className="mb-6">
+            <label className="relative block">
+              <span className="sr-only">Search FAQs</span>
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cs-ink-soft" aria-hidden />
               <input
-                type="text"
+                type="search"
                 placeholder="Search FAQs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 border border-border/40 rounded-xl bg-background hover:border-primary/40 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-12 w-full rounded-2xl border border-cs-grid bg-cs-sheet pl-12 pr-4 text-cs-ink transition-colors placeholder:text-cs-ink-soft/70 hover:border-cs-accent/40 focus:border-cs-accent focus:outline-none focus:ring-2 focus:ring-cs-accent/20"
               />
-            </div>
+            </label>
           </div>
 
           {filteredQuestions.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground border border-border/40 rounded-xl">
-              No FAQs matching your search
+            <div className="rounded-2xl border border-cs-grid bg-cs-sheet p-8 text-center text-cs-ink-soft">
+              No questions match that search. Try a shorter word, or create a ticket.
             </div>
           ) : (
             <div className="space-y-3">
               {filteredQuestions.map((faq, i) => (
                 <div
                   key={faq.id}
-                  className="border border-border/40 rounded-xl overflow-hidden"
+                  className="overflow-hidden rounded-2xl border border-cs-grid bg-cs-sheet"
                 >
                   <button
                     onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+                    aria-expanded={openFaq === i}
+                    aria-controls={`faq-panel-${faq.id}`}
+                    className="flex w-full items-center justify-between gap-3 p-4 text-left transition-colors duration-200 hover:bg-cs-accent/5"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="rounded-md bg-cs-accent/10 px-2 py-1 text-xs font-semibold text-cs-accent-text">
                         {faq.category}
                       </span>
-                      <span className="font-medium">{faq.q}</span>
+                      <span className="font-medium text-cs-ink">{faq.q}</span>
                     </div>
                     <ChevronDown
-                      className={`w-5 h-5 text-muted-foreground transition-transform ${
+                      aria-hidden
+                      className={`h-5 w-5 shrink-0 text-cs-ink-soft transition-transform duration-200 motion-reduce:transition-none ${
                         openFaq === i ? 'rotate-180' : ''
                       }`}
                     />
                   </button>
                   {openFaq === i && (
-                    <div className="px-4 pb-4">
-                      <p className="text-sm text-muted-foreground leading-relaxed pl-[calc(0.5rem+4ch+0.75rem)]">
+                    <div id={`faq-panel-${faq.id}`} className="px-4 pb-4">
+                      <p className="max-w-[65ch] text-[15px] leading-relaxed text-cs-ink-soft">
                         {faq.a}
                       </p>
                     </div>
@@ -199,45 +192,46 @@ export default function SupportPortalPage() {
             </div>
           )}
         </div>
+      </section>
 
-        {/* Contact Section */}
-        <div className="border-t border-border/40 pt-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Other ways to reach us</h2>
-            <p className="text-muted-foreground">Choose the best option for your needs</p>
+      {/* Contact */}
+      <section className="border-b border-cs-grid">
+        <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="mb-10 grid gap-4 lg:grid-cols-[1fr_1.2fr] lg:items-end lg:gap-16">
+            <h2 className="cs-heading text-4xl sm:text-5xl">Other ways to reach us</h2>
+            <p className="max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">
+              Email works for anything that doesn&apos;t fit a ticket.
+            </p>
           </div>
+          <BentoShell className="auto-rows-auto">
+            <BentoCard className="sm:col-span-2">
+              <BentoIcon><Mail className="h-5 w-5" aria-hidden /></BentoIcon>
+              <BentoTitle>Email</BentoTitle>
+              <BentoBody>
+                <a href="mailto:support@codespectra.ai" className="font-medium text-cs-accent-text hover:underline">support@codespectra.ai</a>
+              </BentoBody>
+            </BentoCard>
+            <BentoCard className="sm:col-span-2">
+              <BentoIcon><Building className="h-5 w-5" aria-hidden /></BentoIcon>
+              <BentoTitle>Offices</BentoTitle>
+              <BentoBody>Hyderabad, India · Princeton, New Jersey</BentoBody>
+            </BentoCard>
+          </BentoShell>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { icon: Mail, title: 'Email', value: 'support@codespectra.ai' },
-              { icon: Phone, title: 'Phone', value: '+1 (555) 123-4567' },
-              { icon: Building, title: 'Office', value: 'San Francisco, CA' },
-            ].map((item) => {
-              const Icon = item.icon
-              return (
-                <div key={item.title} className="text-center p-6 border border-border/40 rounded-xl">
-                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center mx-auto mb-4">
-                    <Icon className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                  <h3 className="font-semibold mb-1">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground">{item.value}</p>
-                </div>
-              )
-            })}
+          <div className="mt-10 flex flex-col items-start gap-4 rounded-3xl bg-cs-accent p-8 text-cs-accent-ink sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-2xl font-bold">Still need help?</h3>
+              <p className="mt-1 text-cs-accent-ink/90">Open a ticket and our support team will get back to you.</p>
+            </div>
+            <Link
+              href="/dashboard/support"
+              className="inline-flex h-12 items-center justify-center rounded-full bg-white px-7 text-[15px] font-semibold text-[#1e40af] transition-[filter] hover:brightness-95"
+            >
+              Contact support
+            </Link>
           </div>
         </div>
-
-        {/* CTA */}
-        <div className="text-center p-8 border border-primary/20 rounded-xl bg-primary/5 max-w-3xl mx-auto">
-          <h3 className="text-2xl font-bold mb-2">Still need help?</h3>
-          <p className="text-muted-foreground mb-6">
-            Our support team is available 24/7 to assist you with any questions or issues.
-          </p>
-          <Button size="lg" asChild>
-            <Link href="/dashboard/support">Contact Support Team</Link>
-          </Button>
-        </div>
-      </div>
+      </section>
     </PublicPageWrapper>
   )
 }

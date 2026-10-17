@@ -41,7 +41,7 @@ export default function GitHubConnectButton() {
   }, [])
 
   async function disconnect() {
-    if (!await confirmDialog({ title: 'Confirmation', description: 'Disconnect your GitHub account?' })) return
+    if (!await confirmDialog({ title: 'Disconnect GitHub?', description: 'Disconnect your GitHub account?' })) return
     setBusy(true)
     try {
       await csrfFetch('/api/github/integrations/me', { method: 'DELETE' })
@@ -59,25 +59,25 @@ export default function GitHubConnectButton() {
   if (!status) {
     return (
       <p className="text-xs text-muted-foreground" data-testid="github-connect-loading">
-        <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> Checking GitHub connection…
+        <Loader2 className="mr-1 inline h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden /> Checking GitHub connection…
       </p>
     )
   }
 
   return (
     <div
-      className="rounded-md border border-border/60 bg-muted/30 p-3"
+      className="rounded-2xl border border-border/70 bg-muted/30 p-4"
       data-testid={`github-connect-${status.connected ? 'connected' : 'disconnected'}`}
     >
       {status.connected ? (
         <div className="flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-primary" />
+          <CheckCircle2 className="h-5 w-5 shrink-0 text-green-600 dark:text-green-400" aria-hidden />
           <div className="flex-1">
-            <p className="text-sm font-semibold">
+            <p className="text-sm font-semibold text-foreground">
               Connected as <span className="text-primary">@{status.github_login || 'unknown'}</span>
             </p>
             <p className="text-[11px] text-muted-foreground">
-              Scopes: <code>{status.scope || 'n/a'}</code>
+              Scopes: <code className="font-mono">{status.scope || 'n/a'}</code>
             </p>
           </div>
           <Button
@@ -92,10 +92,10 @@ export default function GitHubConnectButton() {
           </Button>
         </div>
       ) : (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
-            Not connected. The OAuth App credentials above must be saved before
-            clicking <strong>Connect</strong>.
+            Not connected yet. Save the GitHub OAuth app details above first, then click{' '}
+            <strong className="text-foreground">Connect GitHub</strong>.
           </p>
           <Button onClick={connect} disabled={busy} data-testid="github-connect-btn">
             {busy ? (

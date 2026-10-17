@@ -4,7 +4,7 @@ import { formatDate } from '@/lib/format-datetime'
 import { use, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
+import { PublicPageWrapper } from '@/app/public-layout'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
@@ -92,59 +92,65 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   }
 
   if (loading) return (
-    <div className="flex justify-center py-20">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
+    <PublicPageWrapper>
+      <div className="flex justify-center py-24">
+        <Loader2 className="h-6 w-6 animate-spin text-cs-ink-soft motion-reduce:animate-none" aria-label="Loading job" />
+      </div>
+    </PublicPageWrapper>
   )
 
   if (error || !job) return (
-    <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-      <AlertCircle className="mx-auto h-12 w-12 text-muted-foreground/40" />
-      <p className="mt-3 text-lg font-medium">{error || 'Job not found'}</p>
-      <Button variant="outline" className="mt-4" onClick={() => router.push('/jobs')}>
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Jobs
-      </Button>
-    </div>
+    <PublicPageWrapper>
+      <div className="mx-auto max-w-2xl px-4 py-24 text-center">
+        <AlertCircle className="mx-auto h-12 w-12 text-cs-ink-soft/40" aria-hidden />
+        <p className="mt-3 text-lg font-semibold text-cs-ink">{error || 'Job not found'}</p>
+        <p className="mt-1 text-sm text-cs-ink-soft">It may have been filled or removed. The job board has every open role.</p>
+        <Button variant="outline" className="mt-5 rounded-full" onClick={() => router.push('/jobs')}>
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to jobs
+        </Button>
+      </div>
+    </PublicPageWrapper>
   )
 
   const salary = formatSalary(job.salary, symbol)
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <Button variant="ghost" size="sm" asChild className="mb-2 -ml-2">
-            <Link href="/jobs"><ArrowLeft className="h-4 w-4 mr-1" /> All Jobs</Link>
-          </Button>
+    <PublicPageWrapper>
+      <div className="relative isolate overflow-hidden border-b border-cs-grid">
+        <div aria-hidden className="absolute -top-32 right-[-10%] -z-10 h-[420px] w-[520px] rounded-full bg-[#2f5be7]/10 blur-3xl" />
+        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
+          <Link href="/jobs" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-cs-ink-soft hover:text-cs-accent-text">
+            <ArrowLeft className="h-4 w-4" aria-hidden /> All jobs
+          </Link>
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold">{job.title}</h1>
-              <div className="flex flex-wrap items-center gap-3 mt-2 text-sm text-muted-foreground">
+              <h1 className="cs-display max-w-[24ch] text-4xl sm:text-5xl">{job.title}</h1>
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-cs-ink-soft">
                 {job.company && (
                   <span className="flex items-center gap-1.5">
-                    <Building2 className="h-4 w-4" />{job.company}
+                    <Building2 className="h-4 w-4" aria-hidden />{job.company}
                   </span>
                 )}
                 {job.location && (
                   <span className="flex items-center gap-1.5">
-                    <MapPinIcon className="h-4 w-4" />{job.location}
+                    <MapPinIcon className="h-4 w-4" aria-hidden />{job.location}
                   </span>
                 )}
                 {job.job_type && (
                   <span className="flex items-center gap-1.5">
-                    <Briefcase className="h-4 w-4" />{job.job_type}
+                    <Briefcase className="h-4 w-4" aria-hidden />{job.job_type}
                   </span>
                 )}
                 {job.experience_level && (
                   <span className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4" />{job.experience_level}
+                    <Clock className="h-4 w-4" aria-hidden />{job.experience_level}
                   </span>
                 )}
                 <span className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4" />{job.applicants} applicant{job.applicants !== 1 ? 's' : ''}
+                  <Users className="h-4 w-4" aria-hidden /><span className="tabular-nums">{job.applicants}</span> applicant{job.applicants !== 1 ? 's' : ''}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4" aria-hidden />
                   Posted {formatDate(job.created_at)}
                 </span>
               </div>
@@ -153,79 +159,80 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <div className="space-y-6">
             {job.description && (
-              <Card className="p-6">
-                <h2 className="text-base font-semibold mb-3">About the Role</h2>
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
+                <h2 className="mb-3 text-lg font-bold text-cs-ink">About the role</h2>
+                <div className="max-w-[72ch] whitespace-pre-wrap text-[15px] leading-7 text-cs-ink-soft">
                   {job.description}
                 </div>
-              </Card>
+              </section>
             )}
 
             {job.requirements && (
-              <Card className="p-6">
-                <h2 className="text-base font-semibold mb-3">Requirements</h2>
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
+                <h2 className="mb-3 text-lg font-bold text-cs-ink">Requirements</h2>
+                <div className="max-w-[72ch] whitespace-pre-wrap text-[15px] leading-7 text-cs-ink-soft">
                   {job.requirements}
                 </div>
-              </Card>
+              </section>
             )}
 
             {job.benefits && (
-              <Card className="p-6">
-                <h2 className="text-base font-semibold mb-3">Benefits</h2>
-                <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
+                <h2 className="mb-3 text-lg font-bold text-cs-ink">Benefits</h2>
+                <div className="max-w-[72ch] whitespace-pre-wrap text-[15px] leading-7 text-cs-ink-soft">
                   {job.benefits}
                 </div>
-              </Card>
+              </section>
             )}
 
             {job.skills && job.skills.length > 0 && (
-              <Card className="p-6">
-                <h2 className="text-base font-semibold mb-3">Required Skills</h2>
+              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
+                <h2 className="mb-3 text-lg font-bold text-cs-ink">Skills</h2>
                 <div className="flex flex-wrap gap-2">
                   {job.skills.map(s => (
-                    <Badge key={s} variant="secondary">{s}</Badge>
+                    <Badge key={s} variant="secondary" className="bg-cs-accent/10 text-cs-accent-text">{s}</Badge>
                   ))}
                 </div>
-              </Card>
+              </section>
             )}
           </div>
 
           <div className="space-y-4">
-            <Card className="p-5 sticky top-20">
+            <div className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none sticky top-20 p-5">
               {salary && (
-                <div className="flex items-center gap-2 mb-4 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
-                  <DollarSign className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-semibold text-green-700 dark:text-green-400">{salary}</span>
+                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-cs-accent/20 bg-cs-accent/5 p-3">
+                  <DollarSign className="h-4 w-4 text-cs-accent-text" aria-hidden />
+                  <span className="text-sm font-semibold tabular-nums text-cs-ink">{salary}</span>
                 </div>
               )}
 
               {applySuccess ? (
-                <div className="text-center py-4">
-                  <CheckCircle className="mx-auto h-10 w-10 text-green-500 mb-2" />
-                  <p className="font-semibold">Application submitted!</p>
-                  <p className="text-sm text-muted-foreground mt-1">Good luck with your application.</p>
+                <div className="py-4 text-center" role="status">
+                  <CheckCircle className="mx-auto mb-2 h-10 w-10 text-green-600 dark:text-green-400" aria-hidden />
+                  <p className="font-semibold text-cs-ink">Application submitted!</p>
+                  <p className="mt-1 text-sm text-cs-ink-soft">Good luck with your application.</p>
                 </div>
               ) : alreadyApplied ? (
                 <div className="text-center py-4">
-                  <CheckCircle className="mx-auto h-10 w-10 text-muted-foreground mb-2" />
-                  <p className="font-semibold">Already applied</p>
-                  <p className="text-sm text-muted-foreground mt-1">Your application is under review.</p>
+                  <CheckCircle className="mx-auto mb-2 h-10 w-10 text-cs-ink-soft" aria-hidden />
+                  <p className="font-semibold text-cs-ink">Already applied</p>
+                  <p className="mt-1 text-sm text-cs-ink-soft">Your application is under review.</p>
                 </div>
               ) : (
                 <>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  <p className="mb-3 text-base font-bold text-cs-ink">
                     Apply for this position
                   </p>
                   {authUser ? (
                     <div className="space-y-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Cover letter (optional)</Label>
+                        <Label htmlFor="cover-letter" className="text-xs text-cs-ink">Cover letter (optional)</Label>
                         <Textarea
+                          id="cover-letter"
                           rows={3}
                           value={coverLetter}
                           onChange={e => setCoverLetter(e.target.value)}
@@ -234,48 +241,48 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                         />
                       </div>
                       {applyError && (
-                        <p className="text-xs text-red-500 flex items-center gap-1">
-                          <AlertCircle className="h-3 w-3" />{applyError}
+                        <p role="alert" className="flex items-center gap-1 text-xs text-cs-flag">
+                          <AlertCircle className="h-3 w-3" aria-hidden />{applyError}
                         </p>
                       )}
-                      <Button className="w-full" onClick={handleApply} disabled={applying}>
+                      <Button className="h-11 w-full rounded-full" onClick={handleApply} disabled={applying}>
                         {applying ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                        {applying ? 'Submitting…' : 'Submit Application'}
+                        {applying ? 'Submitting…' : 'Submit application'}
                       </Button>
                     </div>
                   ) : (
                     <div className="space-y-2 text-center">
-                      <p className="text-sm text-muted-foreground">Sign in to apply for this position</p>
-                      <Button className="w-full" onClick={() => router.push('/login')}>
-                        Sign in to Apply
+                      <p className="text-sm text-cs-ink-soft">Sign in to apply for this position</p>
+                      <Button className="h-11 w-full rounded-full" onClick={() => router.push('/login')}>
+                        Sign in to apply
                       </Button>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-cs-ink-soft">
                         Don&apos;t have an account?{' '}
-                        <Link href="/signup" className="text-primary hover:underline">Sign up free</Link>
+                        <Link href="/signup" className="font-medium text-cs-accent-text hover:underline">Sign up free</Link>
                       </p>
                     </div>
                   )}
                 </>
               )}
 
-              <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground text-center">
+              <div className="mt-4 border-t border-cs-grid pt-4 text-center text-xs text-cs-ink-soft">
                 <span className="flex items-center justify-center gap-1">
                   <Clock className="h-3 w-3" />
                   Posted {formatDate(job.created_at)}
                 </span>
                 <span className="flex items-center justify-center gap-1 mt-1">
-                  <Users className="h-3 w-3" />
-                  {job.applicants} applicant{job.applicants !== 1 ? 's' : ''}
+                  <Users className="h-3 w-3" aria-hidden />
+                  <span className="tabular-nums">{job.applicants}</span> applicant{job.applicants !== 1 ? 's' : ''}
                 </span>
               </div>
-            </Card>
+            </div>
 
-            <Button variant="outline" className="w-full gap-1.5" asChild>
-              <Link href="/jobs"><ArrowLeft className="h-4 w-4" /> Back to Jobs</Link>
+            <Button variant="outline" className="w-full gap-1.5 rounded-full" asChild>
+              <Link href="/jobs"><ArrowLeft className="h-4 w-4" /> Back to jobs</Link>
             </Button>
           </div>
         </div>
       </div>
-    </div>
+    </PublicPageWrapper>
   )
 }

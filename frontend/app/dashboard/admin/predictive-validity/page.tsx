@@ -6,6 +6,8 @@ import { BarChart3, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { RefreshCw, Users } from 'lucide-react'
 
 interface ValidityStudy {
   id: string
@@ -37,26 +39,30 @@ export default function PredictiveValidityPage() {
     { key: 'assessmentName', header: 'Assessment', cell: (r) => <span className="font-medium">{r.assessmentName}</span> },
     { key: 'discipline', header: 'Discipline', cell: (r) => r.discipline },
     { key: 'region', header: 'Region', cell: (r) => r.region ?? 'Global' },
-    { key: 'correlation', header: 'Correlation', cell: (r) => <span className="font-bold">{r.correlation?.toFixed(2)}</span> },
-    { key: 'sampleSize', header: 'Sample Size', cell: (r) => r.sampleSize },
+    { key: 'correlation', header: 'Correlation', cell: (r) => <span className="font-semibold tabular-nums">{r.correlation?.toFixed(2)}</span> },
+    { key: 'sampleSize', header: 'Sample size', cell: (r) => <span className="tabular-nums">{r.sampleSize}</span> },
   ]
 
   if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Predictive Validity & Adverse Impact</h1>
-          <p className="text-muted-foreground text-sm mt-1">{data.length} studies</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchData}>Refresh</Button>
+      <PageHeader
+        title="Predictive validity and adverse impact"
+        description="How well assessment scores predict on-the-job results, by discipline and region."
+        icon={<BarChart3 />}
+        actions={<Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StatCard label="Studies" value={data.length} icon={<BarChart3 />} />
+        <StatCard label="People in all studies" value={data.reduce((a, d) => a + (Number(d.sampleSize) || 0), 0).toLocaleString()} icon={<Users />} />
       </div>
 
       {loading ? (
         <SkeletonTable rows={6} />
       ) : (
-        <DataTable columns={columns} data={data} searchKeys={['assessmentName', 'discipline']} loading={loading} emptyMessage="No studies. Data is populated from assessment analytics." />
+        <DataTable columns={columns} data={data} searchKeys={['assessmentName', 'discipline']} loading={loading} emptyMessage="No studies yet. They appear once enough assessment results are linked to hiring outcomes." />
       )}
     </div>
   )

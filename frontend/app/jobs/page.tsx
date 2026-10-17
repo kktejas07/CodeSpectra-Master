@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -13,6 +12,7 @@ import {
   Filter, X, Loader2, ArrowRight, Building2,
 } from 'lucide-react'
 import { useCurrency } from '@/lib/use-currency'
+import { PageHero } from '@/components/landing/page-hero'
 
 interface JobPosting {
   id: string
@@ -88,19 +88,20 @@ export default function JobsPage() {
 
   return (
     <PublicPageWrapper>
-      <div className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-2xl font-bold">Job Board</h1>
-              <p className="text-sm text-muted-foreground">
-                {loading ? 'Loading…' : `${filtered.length} open position${filtered.length !== 1 ? 's' : ''}`}
-              </p>
-            </div>
-            <Button variant="outline" size="sm" onClick={() => setShowFilters(f => !f)} className="gap-1.5">
-              <Filter className="h-3.5 w-3.5" /> Filters
+      <PageHero
+        title="Job board"
+        lead="Open roles posted on CodeSpectra. Search by title, company or skill, then open a role to read the details and apply."
+      />
+      <div className="sticky top-16 z-30 border-b border-cs-grid bg-cs-paper/90 backdrop-blur">
+        <div className="mx-auto max-w-[1200px] px-4 py-4 sm:px-6 lg:px-8">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-sm font-medium text-cs-ink-soft" aria-live="polite">
+              {loading ? 'Loading…' : <><span className="tabular-nums text-cs-ink">{filtered.length}</span> open position{filtered.length !== 1 ? 's' : ''}</>}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => setShowFilters(f => !f)} className="gap-1.5 rounded-full" aria-expanded={showFilters} aria-controls="job-filters">
+              <Filter className="h-3.5 w-3.5" aria-hidden /> Filters
               {(filterType || filterLevel || filterLocation) && (
-                <Badge variant="default" className="ml-1 text-[10px] h-4 px-1">
+                <Badge variant="default" className="ml-1 h-4 px-1 text-[10px] tabular-nums">
                   {[filterType, filterLevel, filterLocation].filter(Boolean).length}
                 </Badge>
               )}
@@ -108,38 +109,42 @@ export default function JobsPage() {
           </div>
 
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-cs-ink-soft" aria-hidden />
             <Input
               placeholder="Search by title, company, or skill…"
+              aria-label="Search jobs"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-9"
+              className="h-11 rounded-full border-cs-grid bg-cs-sheet pl-11 text-cs-ink"
             />
           </div>
 
           {showFilters && (
-            <div className="mt-3 flex flex-wrap gap-3">
+            <div id="job-filters" className="mt-3 flex flex-wrap gap-3">
               <select
                 value={filterType}
                 onChange={e => setFilterType(e.target.value)}
-                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                aria-label="Job type"
+                className="h-9 rounded-full border border-cs-grid bg-cs-sheet px-3 text-sm text-cs-ink"
               >
-                <option value="">Job Type</option>
+                <option value="">Job type</option>
                 {JOB_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
               <select
                 value={filterLevel}
                 onChange={e => setFilterLevel(e.target.value)}
-                className="h-9 rounded-lg border border-border bg-background px-3 text-sm"
+                aria-label="Experience level"
+                className="h-9 rounded-full border border-cs-grid bg-cs-sheet px-3 text-sm text-cs-ink"
               >
                 <option value="">Experience</option>
                 {EXPERIENCE_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
               <Input
                 placeholder="Location…"
+                aria-label="Location"
                 value={filterLocation}
                 onChange={e => setFilterLocation(e.target.value)}
-                className="h-9 w-40 text-sm"
+                className="h-9 w-40 rounded-full border-cs-grid bg-cs-sheet text-sm text-cs-ink"
               />
               {(filterType || filterLevel || filterLocation) && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 gap-1">
@@ -151,58 +156,62 @@ export default function JobsPage() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
         {loading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <Loader2 className="h-6 w-6 animate-spin text-cs-ink-soft motion-reduce:animate-none" aria-label="Loading jobs" />
           </div>
         ) : filtered.length === 0 ? (
-          <Card className="border-border/60 p-12 text-center">
-            <Briefcase className="mx-auto h-12 w-12 text-muted-foreground/30" />
-            <p className="mt-3 text-lg font-medium">No jobs found</p>
-            <p className="mt-1 text-sm text-muted-foreground">
+          <div className="rounded-3xl border border-dashed border-cs-grid bg-cs-sheet p-12 text-center">
+            <Briefcase className="mx-auto h-12 w-12 text-cs-ink-soft/40" aria-hidden />
+            <p className="mt-3 text-lg font-semibold text-cs-ink">No jobs found</p>
+            <p className="mt-1 text-sm text-cs-ink-soft">
               {search || filterType || filterLevel || filterLocation
                 ? 'Try adjusting your search or filters.'
                 : 'No open positions right now — check back soon.'}
             </p>
             {(search || filterType || filterLevel || filterLocation) && (
-              <Button variant="outline" className="mt-4" onClick={() => { setSearch(''); clearFilters() }}>
+              <Button variant="outline" className="mt-4 rounded-full" onClick={() => { setSearch(''); clearFilters() }}>
                 Clear search
               </Button>
             )}
-          </Card>
+          </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
             {filtered.map(job => (
-              <Link key={job.id} href={`/jobs/${job.id}`} className="group">
-                <Card className="border-border/60 p-5 h-full hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer">
+              <Link
+                key={job.id}
+                href={`/jobs/${job.id}`}
+                className="group block h-full rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 dark:shadow-none"
+              >
+                <div className="flex h-full flex-col">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
+                      <h3 className="line-clamp-1 text-lg font-bold tracking-tight text-cs-ink transition-colors group-hover:text-cs-accent-text">
                         {job.title || 'Untitled'}
                       </h3>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
-                        <Building2 className="h-3 w-3 shrink-0" />
+                      <div className="mt-0.5 flex items-center gap-1.5 text-sm text-cs-ink-soft">
+                        <Building2 className="h-3 w-3 shrink-0" aria-hidden />
                         <span className="truncate">{job.company || 'Company'}</span>
                       </div>
                     </div>
                     {job.job_type && (
-                      <Badge variant="secondary" className="text-[10px] shrink-0">
+                      <Badge variant="secondary" className="shrink-0 bg-cs-accent/10 text-[11px] text-cs-accent-text">
                         {job.job_type}
                       </Badge>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                  <div className="mb-3 flex items-center gap-3 text-xs text-cs-ink-soft">
                     {job.location && (
                       <span className="flex items-center gap-1 truncate">
-                        <MapPinIcon className="h-3 w-3 shrink-0" />
+                        <MapPinIcon className="h-3 w-3 shrink-0" aria-hidden />
                         {job.location}
                       </span>
                     )}
                     {job.experience_level && (
                       <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 shrink-0" />
+                        <Clock className="h-3 w-3 shrink-0" aria-hidden />
                         {job.experience_level}
                       </span>
                     )}
@@ -211,34 +220,34 @@ export default function JobsPage() {
                   {job.skills && job.skills.length > 0 && (
                      <div className="flex flex-wrap gap-1 mb-3">
                       {job.skills.slice(0, 4).map(s => (
-                        <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
+                        <Badge key={s} variant="outline" className="border-cs-grid text-[11px] text-cs-ink">{s}</Badge>
                       ))}
                       {job.skills.length > 4 && (
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                        <Badge variant="outline" className="border-cs-grid text-[11px] text-cs-ink-soft">
                           +{job.skills.length - 4}
                         </Badge>
                       )}
                     </div>
                   )}
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <div className="mt-auto flex items-center justify-between border-t border-cs-grid pt-3">
                     <div className="flex items-center gap-3 text-xs">
                       {job.salary && (
-                        <span className="flex items-center gap-1 text-green-600 font-medium">
-                          <DollarSign className="h-3 w-3" />
+                        <span className="flex items-center gap-1 font-semibold tabular-nums text-cs-ink">
+                          <DollarSign className="h-3 w-3" aria-hidden />
                           {formatSalary(job.salary, symbol)}
                         </span>
                       )}
-                      <span className="text-muted-foreground">
+                      <span className="tabular-nums text-cs-ink-soft">
                         {job.applicants} applicant{job.applicants !== 1 ? 's' : ''}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1 text-xs text-cs-ink-soft">
                       {timeAgo(job.created_at)}
-                      <ArrowRight className="h-3 w-3 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                      <ArrowRight className="h-3 w-3 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-cs-accent-text motion-reduce:group-hover:translate-x-0" aria-hidden />
                     </div>
                   </div>
-                </Card>
+                </div>
               </Link>
             ))}
           </div>

@@ -1,12 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, DollarSign, Users, TrendingUp, Activity } from 'lucide-react'
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { getCurrencySymbol } from '@/lib/currency'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 
 interface BillingStats {
   active_subscriptions: number
@@ -68,100 +68,93 @@ export default function AdminBillingPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold flex items-center gap-2">
-        <DollarSign className="h-7 w-7 text-primary" /> Billing Analytics
-      </h1>
+      <PageHeader
+        title="Billing analytics"
+        description="Subscriptions, recurring revenue and cancellations across all organizations."
+        icon={<DollarSign />}
+      />
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Users className="h-4 w-4" /> Active Subscriptions
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard label="Active subscriptions" value={stats?.active_subscriptions || 0} icon={<Users />} />
+        <StatCard label="Monthly recurring revenue" value={fmt(stats?.mrr_paise || 0)} icon={<TrendingUp />} />
+        <Panel className="flex items-center gap-4 p-5">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <DollarSign className="h-5 w-5" aria-hidden />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-muted-foreground">Total revenue</p>
+            <p className="text-lg font-bold tabular-nums text-foreground">{fmt(stats?.usd_revenue_paise || 0)} <span className="text-xs font-normal text-muted-foreground">USD</span></p>
+            <p className="text-lg font-bold tabular-nums text-foreground">{fmt(stats?.inr_revenue_paise || 0, 'INR')} <span className="text-xs font-normal text-muted-foreground">INR</span></p>
           </div>
-          <p className="text-3xl font-bold">{stats?.active_subscriptions || 0}</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <TrendingUp className="h-4 w-4" /> MRR
-          </div>
-          <p className="text-3xl font-bold">{fmt(stats?.mrr_paise || 0)}</p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <DollarSign className="h-4 w-4" /> Total Revenue
-          </div>
-          <p className="text-lg font-bold">{fmt(stats?.usd_revenue_paise || 0)} <span className="text-xs text-muted-foreground font-normal">USD</span></p>
-          <p className="text-lg font-bold">{fmt(stats?.inr_revenue_paise || 0, 'INR')} <span className="text-xs text-muted-foreground font-normal">INR</span></p>
-        </Card>
-        <Card className="p-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
-            <Activity className="h-4 w-4" /> Churn
-          </div>
-          <p className="text-3xl font-bold">
-            {stats && (stats.active_subscriptions + stats.cancelled_subscriptions) > 0
-              ? `${Math.round(stats.cancelled_subscriptions / (stats.active_subscriptions + stats.cancelled_subscriptions) * 100)}%`
-              : '0%'}
-          </p>
-        </Card>
+        </Panel>
+        <StatCard
+          label="Churn"
+          value={stats && (stats.active_subscriptions + stats.cancelled_subscriptions) > 0
+            ? `${Math.round(stats.cancelled_subscriptions / (stats.active_subscriptions + stats.cancelled_subscriptions) * 100)}%`
+            : '0%'}
+          hint="Cancelled out of all subscriptions"
+          icon={<Activity />}
+        />
       </div>
 
       {/* Revenue Chart (bar chart) */}
-      <Card className="p-6">
-        <h2 className="text-sm font-semibold mb-4">Revenue — Last 30 Days</h2>
+      <Panel>
+        <h2 className="mb-4 text-base font-semibold text-foreground">Revenue, last 30 days</h2>
         {revDays.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No revenue data yet.</p>
+          <p className="text-sm text-muted-foreground">No revenue yet. Paid orders will show here day by day.</p>
         ) : (
           <div className="flex items-end gap-1 h-32">
             {revDays.map(([day, amount]) => (
               <div key={day} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[9px] text-muted-foreground">{fmt(amount)}</span>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{fmt(amount)}</span>
                 <div
-                  className="w-full rounded-t bg-primary/60 hover:bg-primary transition-colors min-h-[4px]"
+                  className="w-full min-h-[4px] rounded-t-md bg-primary/60 transition-colors duration-200 hover:bg-primary"
                   style={{ height: `${(amount / maxRev) * 100}%` }}
                 />
-                <span className="text-[8px] text-muted-foreground">{day.slice(5)}</span>
+                <span className="text-[10px] tabular-nums text-muted-foreground">{day.slice(5)}</span>
               </div>
             ))}
           </div>
         )}
-      </Card>
+      </Panel>
 
       <div className="grid gap-4 md:grid-cols-2">
         {/* Orders by Plan */}
-        <Card className="p-6">
-          <h2 className="text-sm font-semibold mb-4">Orders by Plan</h2>
+        <Panel>
+          <h2 className="mb-4 text-base font-semibold text-foreground">Orders by plan</h2>
           {plans.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No plan data yet.</p>
+            <p className="text-sm text-muted-foreground">No orders yet.</p>
           ) : (
             <div className="space-y-2">
               {plans.map((p) => (
                 <div key={p._id} className="flex items-center justify-between text-sm">
                   <Badge variant="outline">{p._id || 'unknown'}</Badge>
-                  <span>{p.count} orders · {fmt(p.total)}</span>
+                  <span className="tabular-nums text-foreground">{p.count} orders · {fmt(p.total)}</span>
                 </div>
               ))}
             </div>
           )}
-        </Card>
+        </Panel>
 
         {/* Subscription Status */}
-        <Card className="p-6">
-          <h2 className="text-sm font-semibold mb-4">Subscription Status</h2>
+        <Panel>
+          <h2 className="mb-4 text-base font-semibold text-foreground">Subscription status</h2>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
               <span>Active</span>
-              <span className="font-bold text-green-500">{stats?.active_subscriptions || 0}</span>
+              <span className="font-bold tabular-nums text-green-600 dark:text-green-400">{stats?.active_subscriptions || 0}</span>
             </div>
             <div className="flex items-center justify-between text-sm">
               <span>Cancelled</span>
-              <span className="font-bold text-destructive">{stats?.cancelled_subscriptions || 0}</span>
+              <span className="font-bold tabular-nums text-destructive">{stats?.cancelled_subscriptions || 0}</span>
             </div>
-            <div className="flex items-center justify-between text-sm border-t pt-2">
+            <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
               <span>Total</span>
-              <span className="font-bold">{stats?.total_subscriptions || 0}</span>
+              <span className="font-bold tabular-nums">{stats?.total_subscriptions || 0}</span>
             </div>
           </div>
-        </Card>
+        </Panel>
       </div>
     </div>
   )

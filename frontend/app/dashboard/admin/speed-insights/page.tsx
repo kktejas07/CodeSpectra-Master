@@ -1,9 +1,10 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { Gauge, Loader2 } from 'lucide-react'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel } from '@/components/app/page-kit'
+import Link from 'next/link'
 
 export default function SpeedInsightsPage() {
   const gate = usePageGuard('superadmin')
@@ -12,18 +13,18 @@ export default function SpeedInsightsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-          <Gauge className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Speed Insights</h1>
-          <p className="text-sm text-muted-foreground">Core Web Vitals and performance metrics</p>
-        </div>
-      </div>
-      <Card className="p-6 border-border/60">
-        <p className="text-sm text-muted-foreground">Speed insights data is available in the <a href="/dashboard/admin/system" className="text-primary hover:underline">System Overview</a> page under Web Vitals.</p>
-      </Card>
+      <PageHeader
+        title="Speed insights"
+        description="How fast pages load for real visitors (Core Web Vitals)."
+        icon={<Gauge />}
+      />
+      <Panel>
+        <p className="text-sm text-muted-foreground">
+          Page-speed numbers live on the{' '}
+          <Link href="/dashboard/admin/system" className="font-medium text-primary hover:underline">System overview</Link>{' '}
+          page, under Web Vitals.
+        </p>
+      </Panel>
     </div>
   )
 }

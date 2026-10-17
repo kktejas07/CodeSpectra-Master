@@ -10,6 +10,8 @@ import { DataTable, type DataTableColumn, type BulkAction } from '@/components/u
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { CheckCircle2, Clock } from 'lucide-react'
 
 interface Resume {
   id: string
@@ -50,15 +52,15 @@ export default function AdminResumesPage() {
 
   const columns: DataTableColumn<Resume>[] = [
     { key: 'name', header: 'File', cell: (r) => <span className="font-medium">{r.file_name}</span> },
-    { key: 'size', header: 'Size', cell: (r) => <span className="text-xs text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
+    { key: 'size', header: 'Size', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
     { key: 'status', header: 'Status', cell: (r) => (
-      <Badge className={r.status === 'processed' ? 'bg-green-500/20 text-green-700' : 'bg-yellow-500/20 text-yellow-700'}>
+      <Badge variant="outline" className={r.status === 'processed' ? 'border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'}>
         {r.status || 'pending'}
       </Badge>
     )},
     { key: 'skills', header: 'Skills', cell: (r) => (
       <div className="flex flex-wrap gap-1">
-        {(r.skills || []).slice(0, 4).map(s => <Badge key={s} className="text-[10px] bg-muted">{s}</Badge>)}
+        {(r.skills || []).slice(0, 4).map(s => <Badge key={s} variant="secondary" className="text-[11px]">{s}</Badge>)}
       </div>
     )},
     { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? formatDate(r.created_at) : '—'}</span> },
@@ -72,16 +74,16 @@ export default function AdminResumesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <FileText className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Resume Analysis</h1>
-            <p className="text-muted-foreground text-sm">{resumes.length} resumes</p>
-          </div>
-        </div>
+      <PageHeader
+        title="Resume analysis"
+        description="Resumes people have uploaded and the skills found in each one."
+        icon={<FileText />}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard label="Resumes" value={resumes.length} icon={<FileText />} />
+        <StatCard label="Processed" value={resumes.filter((r) => r.status === 'processed').length} icon={<CheckCircle2 />} />
+        <StatCard label="Waiting" value={resumes.filter((r) => r.status !== 'processed').length} icon={<Clock />} />
       </div>
 
       {loading ? (
@@ -94,7 +96,7 @@ export default function AdminResumesPage() {
           searchKeys={['file_name']}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No resumes yet."
+          emptyMessage="No resumes yet. They appear here when candidates upload one."
         />
       )}
     </div>

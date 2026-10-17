@@ -12,6 +12,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Loader2, Plus, Tag, Trash2, Pencil, Power, PowerOff, Users } from 'lucide-react'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { CheckCircle2, Ticket } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
@@ -117,7 +119,9 @@ export default function CouponsAdminPage() {
     try {
       const res = await fetch('/api/admin/platform-settings', { credentials: 'include' })
       const data = await res.json()
-      if (data?.platform_currency) setCurrency(data.platform_currency)
+      // settings live under `settings` (same as plans/billing); keep the old top-level read as a fallback
+      const cur = data?.settings?.platform_currency || data?.platform_currency
+      if (cur) setCurrency(cur)
     } catch { /* ignore */ }
   }
 
@@ -163,21 +167,21 @@ export default function CouponsAdminPage() {
   }
 
   const columns: DataTableColumn<Coupon>[] = [
-    { key: 'code', header: 'Code', cell: (r) => <span className="font-mono font-bold">{r.code}</span> },
+    { key: 'code', header: 'Code', cell: (r) => <span className="font-mono font-semibold text-foreground">{r.code}</span> },
     { key: 'discount', header: 'Discount',
       cell: (r) => r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `${CURRENCY_MAP[currency] || currency}${r.discount_value}` },
-    { key: 'usage', header: 'Usage', cell: (r) => <span>{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
+    { key: 'usage', header: 'Usage', cell: (r) => <span className="tabular-nums">{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
     { key: 'status', header: 'Status',
-      cell: (r) => r.active ? <Badge className="bg-green-500/10 text-green-600">Active</Badge> : <Badge variant="secondary">Inactive</Badge> },
+      cell: (r) => r.active ? <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">Active</Badge> : <Badge variant="secondary">Inactive</Badge> },
     { key: 'expiry', header: 'Expiry', cell: (r) => <span className="text-muted-foreground text-xs">{r.valid_until ? formatDate(r.valid_until) : 'Never'}</span> },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title="View users"><Users className="h-3 w-3" /></Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openEdit(r)}><Pencil className="h-3 w-3" /></Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleActive(r)} title={r.active ? 'Deactivate' : 'Activate'}>
-          {r.active ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title="View users" aria-label={`Who used ${r.code}`}><Users className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openEdit(r)} title="Edit" aria-label={`Edit ${r.code}`}><Pencil className="h-3.5 w-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleActive(r)} title={r.active ? 'Deactivate' : 'Activate'} aria-label={r.active ? `Deactivate ${r.code}` : `Activate ${r.code}`}>
+          {r.active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
         </Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => setConfirmDeleteCoupon({ id: r.id, code: r.code })}><Trash2 className="h-3 w-3" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" title="Delete" aria-label={`Delete ${r.code}`} onClick={() => setConfirmDeleteCoupon({ id: r.id, code: r.code })}><Trash2 className="h-3.5 w-3.5" /></Button>
       </div>
     )},
   ]
@@ -190,18 +194,25 @@ export default function CouponsAdminPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2"><Tag className="h-8 w-8" /> Coupons</h1>
-          <p className="text-muted-foreground mt-1">Create and manage discount codes.</p>
+      <PageHeader
+        title="Coupons"
+        description="Create and manage discount codes and free-trial codes."
+        icon={<Tag />}
+        actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> New coupon</Button>}
+      />
+
+      {!loading && (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <StatCard label="Coupons" value={coupons.length} icon={<Tag />} />
+          <StatCard label="Active" value={coupons.filter((c) => c.active).length} icon={<CheckCircle2 />} />
+          <StatCard label="Times redeemed" value={coupons.reduce((a, c) => a + (Number(c.current_uses) || 0), 0)} icon={<Ticket />} />
         </div>
-        <Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> New Coupon</Button>
-      </div>
+      )}
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editCoupon ? 'Edit Coupon' : 'Create Coupon'}</DialogTitle>
+            <DialogTitle>{editCoupon ? 'Edit coupon' : 'Create coupon'}</DialogTitle>
             <DialogDescription>{editCoupon ? `Editing ${editCoupon.code}` : 'Generate a new discount code.'}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -215,8 +226,8 @@ export default function CouponsAdminPage() {
                 <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percentage">Percentage (%)</SelectItem>
-                  <SelectItem value="flat">Flat Amount ({currency})</SelectItem>
-                  <SelectItem value="trial">Free Trial (Days)</SelectItem>
+                  <SelectItem value="flat">Flat amount ({currency})</SelectItem>
+                  <SelectItem value="trial">Free trial (days)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -227,11 +238,11 @@ export default function CouponsAdminPage() {
             </div>)}
             {type === 'trial' && (
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="days" className="text-right">Duration (Days)</Label>
+              <Label htmlFor="days" className="text-right">Duration (days)</Label>
               <Input id="days" type="number" value={trialDays} onChange={e => setTrialDays(e.target.value)} className="col-span-3" placeholder="90" />
             </div>)}
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="uses" className="text-right">Max Uses</Label>
+              <Label htmlFor="uses" className="text-right">Max uses</Label>
               <Input id="uses" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="col-span-3" placeholder="Unlimited" />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
@@ -249,7 +260,7 @@ export default function CouponsAdminPage() {
         </DialogContent>
       </Dialog>
 
-      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyMessage="No coupons yet." pageSize={20} />
+      <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyMessage="No coupons yet. Use New coupon to create your first code." pageSize={20} />
 
       <Dialog open={!!viewRedemptions} onOpenChange={(o) => { if (!o) setViewRedemptions(null) }}>
         <DialogContent className="sm:max-w-[550px]">
@@ -263,7 +274,7 @@ export default function CouponsAdminPage() {
             {(viewRedemptions as any)?.redemptions && (viewRedemptions as any).redemptions.length > 0 ? (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs text-muted-foreground">
+                  <tr className="border-b border-border text-left text-xs text-muted-foreground">
                     <th className="py-2 pr-2">User</th>
                     <th className="py-2 pr-2">Email</th>
                     <th className="py-2 pr-2">Plan</th>
@@ -276,7 +287,7 @@ export default function CouponsAdminPage() {
                     const displayName = u?.name || r.user_name || r.user_id?.slice(0, 12) + '…'
                     const displayEmail = u?.email || r.user_email || '—'
                     return (
-                    <tr key={i} className="border-b last:border-0">
+                    <tr key={i} className="border-b border-border/60 last:border-0">
                       <td className="py-2 pr-2 font-medium">{displayName}</td>
                       <td className="py-2 pr-2 text-xs text-muted-foreground">{displayEmail}</td>
                       <td className="py-2 text-xs">{r.plan_id || '—'}</td>
@@ -296,7 +307,7 @@ export default function CouponsAdminPage() {
       <AlertDialog open={!!confirmDeleteCoupon} onOpenChange={(open) => !open && setConfirmDeleteCoupon(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Coupon?</AlertDialogTitle>
+            <AlertDialogTitle>Delete coupon?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete the coupon code "{confirmDeleteCoupon?.code}"? This action cannot be undone.
             </AlertDialogDescription>

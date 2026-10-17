@@ -10,7 +10,6 @@ import { useConfirm } from '@/lib/confirm-context'
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -30,12 +29,13 @@ import CronPicker from '@/components/workflows/cron-picker'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 const WorkflowBuilder = dynamic(
   () => import('@/components/workflows/workflow-builder'),
   { ssr: false, loading: () => (
-    <div className="flex h-[520px] items-center justify-center rounded-lg border border-border/60 bg-card text-muted-foreground">
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading visual builder…
+    <div className="flex h-[520px] items-center justify-center rounded-2xl border border-border/70 bg-card text-muted-foreground">
+      <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> Loading visual builder…
     </div>
   ) },
 )
@@ -208,45 +208,49 @@ export default function WorkflowsPage() {
 
   return (
     <div className="space-y-6" data-testid="workflows-page">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <WorkflowIcon className="h-7 w-7 text-primary" />
+      <PageHeader
+        title={
+          <>
             Workflow automation
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+                  <HelpCircle className="ml-1.5 inline-block h-4 w-4 cursor-help align-middle text-muted-foreground" aria-label="About workflows" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Compose pipelines visually or via JSON. Built-in node types: trigger.manual, http.request, ai.complete, mongo.find, log, delay.</p>
+                  <p className="text-xs max-w-62.5">Build steps visually or as JSON. Available steps: manual trigger, HTTP request, AI completion, database lookup, log and delay.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-          </h1>
-        </div>
-        <Button
-          onClick={() => {
-            setCreating(true)
-            setNewName('')
-          }}
-          data-testid="workflow-new-btn"
-        >
-          <Plus className="mr-1 h-4 w-4" /> New workflow
-        </Button>
-      </div>
+          </>
+        }
+        description="Chain steps together and run them by hand, on a schedule or from a webhook."
+        icon={<WorkflowIcon />}
+        actions={
+          <Button
+            onClick={() => {
+              setCreating(true)
+              setNewName('')
+            }}
+            data-testid="workflow-new-btn"
+          >
+            <Plus className="mr-1 h-4 w-4" /> New workflow
+          </Button>
+        }
+      />
 
       {error && (
-        <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
+        <Panel role="alert" className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">
           {error}
-        </Card>
+        </Panel>
       )}
 
       {creating && (
-        <Card className="p-4">
-          <p className="mb-2 text-sm font-medium">Name your workflow</p>
+        <Panel className="p-4">
+          <label htmlFor="workflow-new-name" className="mb-2 block text-sm font-medium text-foreground">Name your workflow</label>
           <div className="flex gap-2">
             <Input
+              id="workflow-new-name"
               autoFocus
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -258,13 +262,13 @@ export default function WorkflowsPage() {
             </Button>
             <Button variant="ghost" onClick={() => setCreating(false)}>Cancel</Button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       <div className="grid gap-4 md:grid-cols-[260px_1fr]">
-        <Card className="overflow-hidden">
-          <div className="border-b border-border px-3 py-2 text-xs uppercase text-muted-foreground">
-            Workflows ({items.length})
+        <Panel className="overflow-hidden p-0">
+          <div className="border-b border-border px-4 py-3 text-sm font-semibold text-foreground">
+            Workflows <span className="font-normal tabular-nums text-muted-foreground">({items.length})</span>
           </div>
           {loading && (
             <div className="py-4">
@@ -272,8 +276,8 @@ export default function WorkflowsPage() {
             </div>
           )}
           {!loading && items.length === 0 && (
-            <p className="px-3 py-6 text-xs text-muted-foreground">
-              No workflows yet. Click <strong>New workflow</strong> to begin.
+            <p className="px-4 py-6 text-sm text-muted-foreground">
+              No workflows yet. Click <strong className="text-foreground">New workflow</strong> to begin.
             </p>
           )}
           <ul className="divide-y divide-border/60">
@@ -282,12 +286,13 @@ export default function WorkflowsPage() {
                 <button
                   type="button"
                   onClick={() => setSelected(w.id)}
-                  className={`w-full px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40 ${
-                    selected === w.id ? 'bg-muted/60' : ''
+                  aria-current={selected === w.id ? 'true' : undefined}
+                  className={`w-full border-l-2 px-4 py-2.5 text-left text-sm transition-colors duration-200 hover:bg-muted/40 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ${
+                    selected === w.id ? 'border-primary bg-primary/5' : 'border-transparent'
                   }`}
                   data-testid={`workflow-item-${w.id}`}
                 >
-                  <p className="font-medium">{w.name}</p>
+                  <p className="font-medium text-foreground">{w.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {w.is_active ? 'Active' : 'Paused'} · {w.trigger}
                     {w.trigger === 'schedule' && w.cron_expression
@@ -298,9 +303,9 @@ export default function WorkflowsPage() {
               </li>
             ))}
           </ul>
-        </Card>
+        </Panel>
 
-        <Card className="p-4">
+        <Panel className="p-5">
           {!current ? (
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>Select a workflow on the left, or create a new one to begin.</p>
@@ -308,16 +313,17 @@ export default function WorkflowsPage() {
           ) : (
             <>
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-semibold">{current.name}</h2>
+                <h2 className="text-lg font-semibold text-foreground">{current.name}</h2>
                 <Badge variant={current.is_active ? 'default' : 'secondary'}>
                   {current.is_active ? 'Active' : 'Paused'}
                 </Badge>
                 <Badge variant="outline" className="capitalize">{current.trigger}</Badge>
-                <div className="ml-auto flex gap-2">
+                <div className="ml-auto flex flex-wrap gap-2">
                   <Button
                     variant={tab === 'visual' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setTab('visual')}
+                    aria-pressed={tab === 'visual'}
                     data-testid="workflow-tab-visual"
                   >
                     Visual
@@ -326,6 +332,7 @@ export default function WorkflowsPage() {
                     variant={tab === 'json' ? 'default' : 'ghost'}
                     size="sm"
                     onClick={() => setTab('json')}
+                    aria-pressed={tab === 'json'}
                     data-testid="workflow-tab-json"
                   >
                     JSON
@@ -341,22 +348,23 @@ export default function WorkflowsPage() {
                     )}
                     Run
                   </Button>
-                  <Button onClick={remove} variant="ghost" disabled={busy} data-testid="workflow-delete-btn" title="Delete">
+                  <Button onClick={remove} variant="ghost" disabled={busy} data-testid="workflow-delete-btn" title="Delete" aria-label="Delete workflow">
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
               </div>
 
               {/* Trigger config */}
-              <div className="mb-4 grid gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 md:grid-cols-[140px_1fr]">
+              <div className="mb-4 grid gap-3 rounded-2xl border border-border/70 bg-muted/20 p-3 md:grid-cols-[160px_1fr]">
                 <div>
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <label htmlFor="workflow-trigger" className="text-xs font-medium text-muted-foreground">
                     Trigger
                   </label>
                   <select
+                    id="workflow-trigger"
                     value={parsedDraft?.trigger || 'manual'}
                     onChange={(e) => patchDraft({ trigger: e.target.value as WorkflowSummary['trigger'] })}
-                    className="mt-1 h-8 w-full rounded border border-border/80 bg-background px-2 text-xs"
+                    className="mt-1 h-9 w-full rounded-lg border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     data-testid="workflow-trigger-select"
                   >
                     <option value="manual">Manual</option>
@@ -374,7 +382,7 @@ export default function WorkflowsPage() {
                     <p className="text-xs text-muted-foreground">
                       {parsedDraft?.trigger === 'webhook'
                         ? 'POST to /api/workflows/{id}/run to trigger this workflow programmatically.'
-                        : 'Manual workflows run when you click ▶ Run.'}
+                        : 'Manual workflows run when you click Run.'}
                     </p>
                   )}
                 </div>
@@ -392,6 +400,7 @@ export default function WorkflowsPage() {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   rows={20}
+                  aria-label="Workflow JSON"
                   className="font-mono text-xs"
                   data-testid="workflow-json-editor"
                 />
@@ -400,7 +409,7 @@ export default function WorkflowsPage() {
               {run && (
                 <div className="mt-4 border-t border-border pt-4">
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-semibold">Last run</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Last run</h3>
                     <Badge
                       variant={
                         run.status === 'success' ? 'default' :
@@ -408,27 +417,27 @@ export default function WorkflowsPage() {
                         'secondary'
                       }
                     >
-                      {run.status} · {run.duration_ms}ms
+                      <span className="capitalize">{run.status}</span>&nbsp;·&nbsp;<span className="tabular-nums">{run.duration_ms}ms</span>
                     </Badge>
                   </div>
                   <ul className="mt-2 space-y-2">
                     {run.steps.map((s) => (
                       <li
                         key={s.node_id}
-                        className="rounded border border-border/60 bg-muted/30 p-2 text-xs"
+                        className="rounded-xl border border-border/70 bg-muted/30 p-2.5 text-xs"
                       >
                         <div className="flex items-center gap-2">
                           {s.ok ? (
-                            <CheckCircle2 className="h-4 w-4 text-primary" />
+                            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" aria-label="Passed" />
                           ) : (
-                            <XCircle className="h-4 w-4 text-destructive" />
+                            <XCircle className="h-4 w-4 text-destructive" aria-label="Failed" />
                           )}
-                          <span className="font-medium">{s.label}</span>
-                          <span className="ml-auto text-muted-foreground">{s.duration_ms}ms</span>
+                          <span className="font-medium text-foreground">{s.label}</span>
+                          <span className="ml-auto tabular-nums text-muted-foreground">{s.duration_ms}ms</span>
                         </div>
                         {s.error && <p className="mt-1 text-destructive">{s.error}</p>}
                         {s.output != null && (
-                          <pre className="mt-1 whitespace-pre-wrap break-all text-[10px] text-muted-foreground">
+                          <pre className="mt-1 whitespace-pre-wrap break-all font-mono text-[11px] text-muted-foreground">
                             {typeof s.output === 'string'
                               ? s.output.slice(0, 600)
                               : JSON.stringify(s.output, null, 2).slice(0, 600)}
@@ -441,7 +450,7 @@ export default function WorkflowsPage() {
               )}
             </>
           )}
-        </Card>
+        </Panel>
       </div>
     </div>
   )

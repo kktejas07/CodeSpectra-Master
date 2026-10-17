@@ -88,7 +88,7 @@ export function ListingTrustFooter({
     <div className="mt-12 space-y-3 border-t border-border/60 pt-6 text-xs text-muted-foreground">
       {updatedLabel ? (
         <p>
-          <span className="font-medium text-foreground/80">Updated On:</span> {updatedLabel}
+          <span className="font-medium text-foreground/80">Updated:</span> {updatedLabel}
         </p>
       ) : null}
       <p>The data on this page gets updated every 15 minutes.</p>
@@ -103,27 +103,27 @@ export function ListingTrustFooter({
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 px-2 text-xs text-sky-600 hover:text-sky-700"
+          className="h-8 gap-1.5 px-2 text-xs text-primary hover:text-primary"
           onClick={() => {
             setDone(false)
             setOpen('complaint')
           }}
         >
-          <Search className="h-3.5 w-3.5" />
-          Raise a Complaint
+          <Search className="h-3.5 w-3.5" aria-hidden />
+          Raise a complaint
         </Button>
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 gap-1.5 px-2 text-xs text-red-600 hover:text-red-700"
+          className="h-8 gap-1.5 px-2 text-xs text-destructive hover:text-destructive"
           onClick={() => {
             setDone(false)
             setOpen('issue')
           }}
         >
-          <Flag className="h-3.5 w-3.5" />
-          Report An Issue
+          <Flag className="h-3.5 w-3.5" aria-hidden />
+          Report an issue
         </Button>
       </div>
 
@@ -131,14 +131,14 @@ export function ListingTrustFooter({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {open === 'complaint' ? 'Raise a Complaint' : 'Report an Issue'}
+              {open === 'complaint' ? 'Raise a complaint' : 'Report an issue'}
             </DialogTitle>
             <DialogDescription>
               Tell us what looks wrong with “{entityTitle}”. Our team will review it.
             </DialogDescription>
           </DialogHeader>
           {done ? (
-            <p className="text-sm text-emerald-600">Thanks — your report was submitted.</p>
+            <p role="status" className="text-sm text-green-700 dark:text-green-400">Thanks — your report was submitted.</p>
           ) : (
             <div className="space-y-3">
               <div>
@@ -163,7 +163,7 @@ export function ListingTrustFooter({
                   placeholder="you@example.com"
                 />
               </div>
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
             </div>
           )}
           <DialogFooter>

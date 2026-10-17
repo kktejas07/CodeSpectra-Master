@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Radio, Check, X, RefreshCw, ExternalLink, Eye, Trash2, Undo } from 'lucide-react'
@@ -18,6 +17,8 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { Clock, FileText } from 'lucide-react'
 
 type Draft = {
   id: string
@@ -103,57 +104,64 @@ export default function AdminSignalsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Radio className="h-6 w-6 text-teal-600" /> Signals
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Public RSS → research pages → fact pack → draft → humanize → your approval →{' '}
-            <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
-              /blog
-            </Link>
-            . Fetch is free; LLM uses your platform AI keys. We do not scrape Unstop.
-          </p>
+      <PageHeader
+        title="Signals"
+        description={
+          <>
+            Draft news posts written from public RSS feeds and checked against their sources. Nothing goes live on the{' '}
+            <Link href="/blog" className="font-medium text-primary hover:underline" target="_blank">
+              blog
+            </Link>{' '}
+            until you approve it. Reading feeds is free; writing uses your platform AI keys. Unstop is never scraped.
+          </>
+        }
+        icon={<Radio />}
+        actions={
+          <Button
+            onClick={() => void run('ingest')}
+            disabled={busy === 'ingest'}
+          >
+            {busy === 'ingest' ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="mr-1 h-4 w-4" />
+            )}
+            Run ingest
+          </Button>
+        }
+      />
+
+      {!loading && items.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard label="Waiting for review" value={pending.length} icon={<Clock />} />
+          <StatCard label="All drafts" value={items.length} icon={<FileText />} />
         </div>
-        <Button
-          onClick={() => void run('ingest')}
-          disabled={busy === 'ingest'}
-        >
-          {busy === 'ingest' ? (
-            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-          ) : (
-            <RefreshCw className="mr-1 h-4 w-4" />
-          )}
-          Run ingest
-        </Button>
-      </div>
+      )}
 
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          No drafts yet. Click <strong>Run ingest</strong> to pull public feeds.
-        </Card>
+        <Panel className="p-10 text-center text-sm text-muted-foreground">
+          No drafts yet. Click <strong className="text-foreground">Run ingest</strong> to pull the latest public feeds.
+        </Panel>
       ) : (
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">{pending.length} pending · {items.length} total</p>
           {items.map((d) => (
-            <Card key={d.id} className="space-y-2 p-4">
+            <Panel key={d.id} className="space-y-2 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 {d.cover_image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={d.cover_image}
                     alt=""
-                    className="h-20 w-36 shrink-0 rounded-md border object-cover"
+                    className="h-20 w-36 shrink-0 rounded-xl border border-border object-cover"
                   />
                 ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{d.title}</p>
+                    <p className="font-medium text-foreground">{d.title}</p>
                     <Badge variant="secondary">{d.category}</Badge>
-                    <Badge variant={d.status === 'pending' ? 'default' : 'outline'}>{d.status}</Badge>
+                    <Badge variant={d.status === 'pending' ? 'default' : 'outline'} className="capitalize">{d.status}</Badge>
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.excerpt}</p>
                   {d.angle ? (
@@ -180,10 +188,10 @@ export default function AdminSignalsPage() {
                           href={u}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-0.5 text-teal-600 hover:underline"
+                          className="inline-flex items-center gap-0.5 text-primary hover:underline"
                         >
                           source{d.source_urls && d.source_urls.length > 1 ? ` ${i + 1}` : ''}{' '}
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="h-3 w-3" aria-hidden />
                         </a>
                       </span>
                     ))}
@@ -191,7 +199,7 @@ export default function AdminSignalsPage() {
                       <>
                         {' '}
                         ·{' '}
-                        <Link href={`/blog/${d.blog_slug}`} className="text-teal-600 hover:underline">
+                        <Link href={`/blog/${d.blog_slug}`} className="text-primary hover:underline">
                           /blog/{d.blog_slug}
                         </Link>
                       </>
@@ -199,7 +207,7 @@ export default function AdminSignalsPage() {
                   </p>
                 </div>
                 {d.status === 'pending' ? (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="outline"
@@ -233,7 +241,7 @@ export default function AdminSignalsPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {d.status === 'published' && (
                       <Button
                         size="sm"
@@ -255,7 +263,7 @@ export default function AdminSignalsPage() {
                   </div>
                 )}
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}
@@ -283,7 +291,7 @@ export default function AdminSignalsPage() {
 
       <ConfirmDialog
         open={!!confirmAction}
-        title="Confirm Action"
+        title="Are you sure?"
         message={confirmAction?.message || ''}
         confirmLabel="Confirm"
         onConfirm={() => {

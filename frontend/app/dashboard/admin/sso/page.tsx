@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
@@ -11,6 +10,7 @@ import { Loader2, Plus, Shield, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 
 interface SSOProvider {
   id: string; name: string; provider_type: string; issuer: string
@@ -62,73 +62,75 @@ export default function AdminSSOPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Shield className="h-7 w-7 text-primary" /> SSO / Enterprise Auth
-        </h1>
-        <Button onClick={() => setShowForm(true)} disabled={showForm}>
-          <Plus className="mr-1 h-4 w-4" /> Add Provider
-        </Button>
-      </div>
+      <PageHeader
+        title="Single sign-on"
+        description="Let organizations sign in through their own identity provider (SAML or OIDC)."
+        icon={<Shield />}
+        actions={
+          <Button onClick={() => setShowForm(true)} disabled={showForm}>
+            <Plus className="mr-1 h-4 w-4" /> Add provider
+          </Button>
+        }
+      />
 
-      <Card className="p-5 bg-primary/5 border-primary/20">
-        <p className="text-sm">
-          Configure SAML or OIDC providers for Single Sign-On. Users with email domains matching
-          a provider will be prompted to sign in via SSO. SSO users are auto-provisioned on first login.
+      <Panel className="border-primary/20 bg-primary/5 p-5">
+        <p className="text-sm text-foreground">
+          People whose email domain matches a provider are asked to sign in with SSO. Their account is created
+          automatically the first time they sign in.
         </p>
-      </Card>
+      </Panel>
 
       {/* Add form */}
       {showForm && (
-        <Card className="p-6 space-y-4">
-          <h2 className="font-semibold">New SSO Provider</h2>
+        <Panel className="space-y-4">
+          <h2 className="font-semibold text-foreground">New SSO provider</h2>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <Label>Provider Name</Label>
-              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Okta / Azure AD / Google Workspace" />
+              <Label htmlFor="sso-name">Provider name</Label>
+              <Input id="sso-name" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Okta / Azure AD / Google Workspace" />
             </div>
             <div>
-              <Label>Type</Label>
-              <select value={form.provider_type} onChange={(e) => setForm((f) => ({ ...f, provider_type: e.target.value }))}
-                className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm">
+              <Label htmlFor="sso-type">Type</Label>
+              <select id="sso-type" value={form.provider_type} onChange={(e) => setForm((f) => ({ ...f, provider_type: e.target.value }))}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="oidc">OIDC / Azure AD</option>
                 <option value="saml">SAML 2.0</option>
               </select>
             </div>
             <div>
-              <Label>Issuer URL</Label>
-              <Input value={form.issuer} onChange={(e) => setForm((f) => ({ ...f, issuer: e.target.value }))} placeholder="https://accounts.google.com" />
+              <Label htmlFor="sso-issuer">Issuer URL</Label>
+              <Input id="sso-issuer" value={form.issuer} onChange={(e) => setForm((f) => ({ ...f, issuer: e.target.value }))} placeholder="https://accounts.google.com" />
             </div>
             <div>
-              <Label>Client ID</Label>
-              <Input value={form.client_id} onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))} />
+              <Label htmlFor="sso-client-id">Client ID</Label>
+              <Input id="sso-client-id" value={form.client_id} onChange={(e) => setForm((f) => ({ ...f, client_id: e.target.value }))} />
             </div>
             <div>
-              <Label>Client Secret</Label>
-              <PasswordInput value={form.client_secret} onChange={(e) => setForm((f) => ({ ...f, client_secret: e.target.value }))} />
+              <Label htmlFor="sso-client-secret">Client secret</Label>
+              <PasswordInput id="sso-client-secret" value={form.client_secret} onChange={(e) => setForm((f) => ({ ...f, client_secret: e.target.value }))} />
             </div>
             <div>
-              <Label>Metadata / Discovery URL</Label>
-              <Input value={form.metadata_url} onChange={(e) => setForm((f) => ({ ...f, metadata_url: e.target.value }))} />
+              <Label htmlFor="sso-metadata">Metadata or discovery URL</Label>
+              <Input id="sso-metadata" value={form.metadata_url} onChange={(e) => setForm((f) => ({ ...f, metadata_url: e.target.value }))} />
             </div>
             <div>
-              <Label>Domains (comma-separated)</Label>
-              <Input value={form.domains} onChange={(e) => setForm((f) => ({ ...f, domains: e.target.value }))} placeholder="company.com, myorg.org" />
+              <Label htmlFor="sso-domains">Email domains (comma-separated)</Label>
+              <Input id="sso-domains" value={form.domains} onChange={(e) => setForm((f) => ({ ...f, domains: e.target.value }))} placeholder="company.com, myorg.org" />
             </div>
             <div>
-              <Label>Default Role</Label>
-              <select value={form.default_role} onChange={(e) => setForm((f) => ({ ...f, default_role: e.target.value }))}
-                className="w-full rounded-md border border-border/40 bg-background px-3 py-2 text-sm">
+              <Label htmlFor="sso-role">Default role</Label>
+              <select id="sso-role" value={form.default_role} onChange={(e) => setForm((f) => ({ ...f, default_role: e.target.value }))}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="user">User</option>
-                <option value="tenant_admin">Tenant Admin</option>
+                <option value="tenant_admin">Organization admin</option>
               </select>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={create} disabled={busy}>{busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}Create Provider</Button>
+            <Button onClick={create} disabled={busy}>{busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}Create provider</Button>
             <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
           </div>
-        </Card>
+        </Panel>
       )}
 
       {/* Provider list */}
@@ -137,16 +139,16 @@ export default function AdminSSOPage() {
           {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : providers.length === 0 ? (
-        <Card className="p-10 text-center text-sm text-muted-foreground">
-          No SSO providers configured. Add one above.
-        </Card>
+        <Panel className="p-10 text-center text-sm text-muted-foreground">
+          No SSO providers yet. Use <span className="font-medium text-foreground">Add provider</span> to connect Okta, Azure AD or Google Workspace.
+        </Panel>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           {providers.map((p) => (
-            <Card key={p.id} className="p-5 space-y-3">
+            <Panel key={p.id} className="space-y-3 p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold">{p.name}</h3>
+                  <h3 className="font-semibold text-foreground">{p.name}</h3>
                   <p className="text-xs text-muted-foreground">{p.provider_type?.toUpperCase()} · {p.issuer}</p>
                 </div>
                 <Badge variant={p.enabled ? 'default' : 'secondary'}>{p.enabled ? 'Enabled' : 'Disabled'}</Badge>
@@ -157,10 +159,10 @@ export default function AdminSSOPage() {
                 ))}
               </div>
               <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Client: {p.client_id?.slice(0, 16)}…</span>
+                <span>Client: <span className="font-mono">{p.client_id?.slice(0, 16)}…</span></span>
                 <span>Role: {p.default_role}</span>
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}

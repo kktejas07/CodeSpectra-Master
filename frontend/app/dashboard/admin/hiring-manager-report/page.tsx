@@ -7,6 +7,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import type { APIUser } from '@/lib/route-auth'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { RefreshCw, Users, Trophy } from 'lucide-react'
 
 interface Candidate {
   id: string
@@ -37,7 +39,7 @@ export default function HiringManagerReportPage() {
   const columns: DataTableColumn<Candidate>[] = [
     { key: 'name', header: 'Candidate', cell: (r) => <span className="font-medium">{r.name}</span> },
     { key: 'role', header: 'Role', cell: (r) => r.role },
-    { key: 'composite', header: 'Score', cell: (r) => <span className="font-bold">{r.composite}%</span> },
+    { key: 'composite', header: 'Score', cell: (r) => <span className="font-semibold tabular-nums">{r.composite}%</span> },
     { key: 'status', header: 'Status', cell: (r) => r.status },
   ]
 
@@ -45,18 +47,26 @@ export default function HiringManagerReportPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Hiring Manager Report</h1>
-          <p className="text-muted-foreground text-sm mt-1">{candidates.length} candidates</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchData}>Refresh</Button>
+      <PageHeader
+        title="Hiring manager report"
+        description="Candidates and their combined assessment score, ready to share with the hiring manager."
+        icon={<FileText />}
+        actions={<Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <StatCard label="Candidates" value={candidates.length} icon={<Users />} />
+        <StatCard
+          label="Average score"
+          value={candidates.length ? `${Math.round(candidates.reduce((a, c) => a + (Number(c.composite) || 0), 0) / candidates.length)}%` : '—'}
+          icon={<Trophy />}
+        />
       </div>
 
       {loading ? (
         <SkeletonTable rows={6} />
       ) : (
-        <DataTable columns={columns} data={candidates} searchKeys={['name', 'role']} loading={loading} emptyMessage="No candidates. Data is populated from assessment results." />
+        <DataTable columns={columns} data={candidates} searchKeys={['name', 'role']} loading={loading} emptyMessage="No candidates yet. They appear here once people finish an assessment." />
       )}
     </div>
   )
