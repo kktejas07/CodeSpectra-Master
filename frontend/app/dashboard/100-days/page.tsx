@@ -174,6 +174,7 @@ export default function HundredDaysPage() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="launch"
             title="100-day coding sprint"
             description="One theme a day, a few problems each. Days unlock in order as you finish them."
             icon={<Flame />}

@@ -9,7 +9,7 @@ import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap 
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Panel, Section, BentoGrid } from '@/components/app/page-kit'
-import { AppBanner, BannerChip, DeviceShowcase, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { AppBanner, Illustration, DeviceShowcase, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 
 export default function CertificationsPage() {
@@ -66,10 +66,7 @@ export default function CertificationsPage() {
             </>
           }
           art={
-            <div className="flex flex-col items-end gap-3">
-              <BannerChip icon={<BookOpen />} label="Free study paths" sub="Official vendor material" />
-              <BannerChip icon={<CheckCircle2 />} label="Practice exams" sub="Then book the real one" className="mr-8" delay="0.6s" />
-            </div>
+            <Illustration name="certificate" inverse className="w-44" />
           }
         />
       </div>

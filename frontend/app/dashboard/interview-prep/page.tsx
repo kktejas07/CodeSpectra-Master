@@ -185,6 +185,7 @@ export default function InterviewPrepPage() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="interview"
             className="mb-0"
             title="Interview prep"
             description="Practice for frontend interviews with 300+ questions and AI-generated quizzes."

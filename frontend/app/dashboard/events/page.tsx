@@ -299,6 +299,7 @@ export default function EventsPage() {
     <div className="space-y-6">
       <div data-tour="events-header">
         <PageHeader
+          illustration="calendar"
           className="mb-0"
           title="Events"
           description="Hackathons, codeathons and coding competitions you can join or follow."
@@ -317,7 +318,7 @@ export default function EventsPage() {
 
         <TabsContent value={tab} className="mt-4">
           {filtered.length === 0 ? (
-            <EmptyState 
+            <EmptyState illustration="calendar" 
               title={tab === 'my' ? 'No events joined' : 'No events found'} 
               description={tab === 'my' ? "You haven't joined any events yet. Browse upcoming hackathons and codeathons to take part." : 'Nothing here right now. Check the other tabs or come back later.'}
               actionLabel={tab === 'my' ? 'Explore events' : undefined}

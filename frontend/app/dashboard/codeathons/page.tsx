@@ -167,6 +167,7 @@ export default function CodeathonsPage() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="hackathon"
             className="mb-0"
             icon={<Trophy />}
             description="Join live coding competitions and prove your skills."
@@ -213,7 +214,7 @@ export default function CodeathonsPage() {
       </div>
 
       {codeathons.length === 0 ? (
-        <EmptyState
+        <EmptyState illustration="hackathon"
           title="No codeathons yet"
           description="Upcoming competitions will show up here once they're announced. Practise problems in the meantime."
           actionLabel="Practise problems"

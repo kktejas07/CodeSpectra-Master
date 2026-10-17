@@ -236,6 +236,7 @@ export default function NotificationsPage() {
     <div className="space-y-6">
       <div data-tour="notifications-header">
         <PageHeader
+          illustration="notifications"
           className="mb-0"
           icon={<Bell aria-hidden />}
           title={

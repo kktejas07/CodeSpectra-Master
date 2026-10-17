@@ -960,7 +960,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Problems Tab */}
         <TabsContent value="problems" className="mt-4 space-y-3">
           {(!event.tasks || event.tasks.length === 0) ? (
-            <EmptyState variant="default" title="No problems yet" description="The organizer hasn’t added problems to this event yet." />
+            <EmptyState illustration="coding" variant="default" title="No problems yet" description="The organizer hasn’t added problems to this event yet." />
           ) : (
             event.tasks.sort((a, b) => (a.order || 0) - (b.order || 0)).map((task, i) => (
               <Card key={task.problem_slug} className="gap-0 rounded-2xl p-4">
@@ -994,7 +994,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-muted-foreground">Join a team to see your submissions here.</p>
             </Card>
           ) : submissions.length === 0 ? (
-            <EmptyState variant="sessions" title="No submissions yet" description="Your team’s entries will appear here." />
+            <EmptyState illustration="upload" variant="sessions" title="No submissions yet" description="Your team’s entries will appear here." />
           ) : (
             submissions.map(sub => {
               const statusConfig = STATUS_CONFIG[sub.status] || STATUS_CONFIG.submitted
@@ -1022,7 +1022,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Leaderboard Tab */}
         <TabsContent value="leaderboard" className="mt-4 space-y-3">
           {leaderboard.length === 0 ? (
-            <EmptyState variant="default" title="No teams on the leaderboard yet" description="Teams show up here once they start scoring." />
+            <EmptyState illustration="leaderboard" variant="default" title="No teams on the leaderboard yet" description="Teams show up here once they start scoring." />
           ) : (
             <>
               {/* Top 3 Podium */}
@@ -1071,7 +1071,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-muted-foreground">Loading submissions…</p>
             </Card>
           ) : judgeSubmissions.length === 0 ? (
-            <EmptyState variant="sessions" title="No submissions to review yet" description="They’ll appear here as teams submit." />
+            <EmptyState illustration="upload" variant="sessions" title="No submissions to review yet" description="They’ll appear here as teams submit." />
           ) : (
             <div className="space-y-4">
               {/* 4-step judging workflow — counts derived from existing state */}

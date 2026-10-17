@@ -15,10 +15,10 @@ import {
   Plus,
   ArrowRight,
   Loader2,
-  AlertTriangle,
   LayoutDashboard,
 } from 'lucide-react'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { Illustration } from '@/components/illustrations/spot'
 import { EmptyState } from '@/components/ui/empty-state'
 
 interface OrgOverview {
@@ -71,9 +71,7 @@ export function OrganizationDashboard() {
     return (
       <Panel className="mx-auto mt-8 max-w-lg p-8">
         <div className="flex flex-col items-center gap-3 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-            <AlertTriangle className="h-6 w-6" aria-hidden />
-          </span>
+          <Illustration name="error" className="w-36" />
           <h2 className="text-lg font-semibold text-foreground">Organization not linked</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" className="mt-2" asChild>
@@ -94,6 +92,7 @@ export function OrganizationDashboard() {
   return (
     <div className="space-y-8">
       <PageHeader
+        illustration="team"
         className="mb-0"
         icon={<Building2 />}
         title={data?.org?.name || 'Organization'}
@@ -146,7 +145,7 @@ export function OrganizationDashboard() {
               </Button>
             </div>
             {(data?.recent?.length ?? 0) === 0 ? (
-              <EmptyState
+              <EmptyState illustration="assessment"
                 title="No assessments yet"
                 description="Create your first one to start screening candidates."
                 actionLabel="Add assessment"

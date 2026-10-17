@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Panel } from '@/components/app/page-kit'
-import { SoftGlow } from '@/components/visuals'
-import { Building2, Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { Illustration, SoftGlow } from '@/components/visuals'
+import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -84,7 +84,7 @@ export default function TeamInvitePage() {
       <div className="relative isolate flex min-h-[60vh] items-center justify-center px-4">
         <SoftGlow />
         <Panel className="w-full max-w-md p-8 text-center">
-          <XCircle className="mx-auto h-10 w-10 text-destructive" aria-hidden />
+          <Illustration name="error" className="mx-auto w-36" />
           <h1 className="mt-3 text-lg font-semibold text-foreground">Invitation unavailable</h1>
           <p className="mt-1 text-sm text-muted-foreground">{info?.error || 'This invite may have expired or already been used.'}</p>
           <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>
@@ -99,18 +99,14 @@ export default function TeamInvitePage() {
       <Panel className="w-full max-w-md p-8 text-center">
         {done ? (
           <>
-            {done.ok
-              ? <CheckCircle2 className="mx-auto h-10 w-10 text-green-600 dark:text-green-400" aria-hidden />
-              : <XCircle className="mx-auto h-10 w-10 text-destructive" aria-hidden />}
+            <Illustration name={done.ok ? 'success' : 'error'} className="mx-auto w-36" />
             <h1 className="mt-3 text-lg font-semibold text-foreground">{done.ok ? 'Welcome!' : 'Could not join'}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{done.message}</p>
             {!done.ok && <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>}
           </>
         ) : (
           <>
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
-              <Building2 className="h-6 w-6 text-primary" aria-hidden />
-            </div>
+            <Illustration name="team" className="mx-auto w-36" />
             <h1 className="mt-4 text-lg font-semibold text-foreground">Join {info.org_name || 'your organization'}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               You've been invited to join an organization on CodeSpectra.

@@ -19,6 +19,7 @@ import {
   CheckCircle, XCircle, ChevronRight,
 } from 'lucide-react'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
+import { Illustration } from '@/components/illustrations/spot'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -214,9 +215,7 @@ export default function ExamPage() {
       return (
         <div className="mx-auto mt-10 max-w-xl p-6">
           <Card className="rounded-3xl border-border/70 p-8 text-center space-y-6">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
-              <CheckCircle className="h-8 w-8" />
-            </div>
+            <Illustration name="success" className="mx-auto w-40" />
             <div className="space-y-2">
               <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
               <p className="text-muted-foreground text-sm leading-relaxed">

@@ -120,6 +120,7 @@ export default function MyResumesPage() {
   return (
     <div className="space-y-6 w-full pb-10">
       <PageHeader
+        illustration="resume"
         className="mb-0"
         icon={<FileText aria-hidden />}
         title="Resumes"
@@ -276,7 +277,7 @@ export default function MyResumesPage() {
             {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : resumes.length === 0 ? (
-          <EmptyState
+          <EmptyState illustration="resume"
             title="No resumes yet"
             description="Create one from a template above — it will show up here."
             className="flex-1 border-0 bg-transparent"

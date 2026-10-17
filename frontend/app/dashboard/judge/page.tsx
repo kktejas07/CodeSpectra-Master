@@ -104,6 +104,7 @@ export default function JudgeDashboardPage() {
       <div data-tour="judge-header" className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="hackathon"
           className="mb-0"
           title="Judge desk"
           description="Hackathons assigned to you. Open one to score the submissions waiting for review."
@@ -113,7 +114,7 @@ export default function JudgeDashboardPage() {
 
       <div data-tour="judge-list">
       {hackathons.length === 0 ? (
-        <EmptyState
+        <EmptyState illustration="hackathon"
           title="No hackathons assigned to you yet"
           description="An admin adds judges on the event's Judges tab. Events you're assigned to will show up here."
         />

@@ -83,6 +83,7 @@ export default function InterviewsPage() {
     <div className="space-y-6">
       <div data-tour="interviews-header">
         <PageHeader
+          illustration="interview"
           className="mb-0"
           icon={<Video aria-hidden />}
           title="Interviews"
@@ -120,7 +121,7 @@ export default function InterviewsPage() {
           <Button variant="outline" size="sm" onClick={() => void load()}>Try again</Button>
         </Panel>
       ) : interviews.length === 0 ? (
-        <EmptyState
+        <EmptyState illustration="interview"
           variant="sessions"
           title="No interviews yet"
           description="Schedule one above, or start an AI mock interview to practise."

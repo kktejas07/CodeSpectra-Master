@@ -197,6 +197,7 @@ export default function MyAssessmentsPage() {
     <div className="space-y-6">
       <div data-tour="assessments-header">
         <PageHeader
+          illustration="assessment"
           title="My assessments"
           description="Tests you're invited to, plus your past attempts, scores and certificates."
           icon={<FileText />}
@@ -271,7 +272,7 @@ export default function MyAssessmentsPage() {
       <div data-tour="assessments-table">
       {attempts.length === 0 ? (
         <Panel className="p-4">
-          <EmptyState
+          <EmptyState illustration="assessment"
             title="No attempts yet"
             description="When you finish an assessment, your score and certificate will show up here."
             actionLabel="Browse assessments"

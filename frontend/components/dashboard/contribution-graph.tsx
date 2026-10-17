@@ -158,7 +158,7 @@ export function ContributionGraph({
           <p className="mt-0.5 text-xs text-muted-foreground">Solve a problem to start filling this in.</p>
         </div>
       ) : !hasData ? (
-        <EmptyState
+        <EmptyState illustration="analytics"
           variant="sessions"
           title="No activity yet"
           description="Solve a problem or run a scan, and your activity will show up here."

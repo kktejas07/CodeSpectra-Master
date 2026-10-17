@@ -182,6 +182,7 @@ export default function SupportPage() {
     <div className="space-y-6">
       <div data-tour="support-header">
         <PageHeader
+          illustration="inbox"
           className="mb-0"
           icon={<MessageSquare aria-hidden />}
           title="Support tickets"
@@ -224,7 +225,7 @@ export default function SupportPage() {
 
       <div data-tour="support-list">
       {loading ? <div className="space-y-3">{Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}</div>
-        : tickets.length === 0 ? <EmptyState variant="notifications" title="No tickets yet" description="Use “New ticket” to ask a question or report a problem." />
+        : tickets.length === 0 ? <EmptyState illustration="inbox" variant="notifications" title="No tickets yet" description="Use “New ticket” to ask a question or report a problem." />
         : <div className="space-y-3">
           {tickets.map(t => (
             <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} key={t.id} className="cursor-pointer rounded-2xl border-border/70 p-4 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/30" onClick={() => openTicket(t)}>

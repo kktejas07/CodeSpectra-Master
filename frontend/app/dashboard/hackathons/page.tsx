@@ -156,7 +156,7 @@ export default function UserHackathonsPage() {
       </div>
 
       {liveHackathons.length === 0 && upcomingHackathons.length === 0 && (
-        <EmptyState
+        <EmptyState illustration="hackathon"
           title="No hackathons open right now"
           description="New events will appear here as soon as they're announced. Meanwhile, keep practising problems."
           actionLabel="Practise problems"

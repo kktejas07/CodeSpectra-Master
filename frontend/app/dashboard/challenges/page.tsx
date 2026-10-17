@@ -81,6 +81,7 @@ export default function ChallengesPage() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="coding"
             title="Challenges"
             description="Practise coding, system design and behavioural interview questions."
             icon={<Trophy />}
@@ -97,7 +98,7 @@ export default function ChallengesPage() {
         </div>
       ) : challenges.length === 0 ? (
         <Panel className="p-4">
-          <EmptyState
+          <EmptyState illustration="coding"
             title="No challenges yet"
             description="New interview challenges will appear here. Meanwhile, try the coding problems."
             actionLabel="Go to problems"

@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { MOCK_TESTS } from '@/lib/mock-tests'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface Question {
   id: string
@@ -170,7 +171,7 @@ export default function TakeMockTestPage() {
   if (error || questions.length === 0) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-4">
-        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <Illustration name="error" className="w-40" />
         <h2 className="text-xl font-bold">Failed to load test</h2>
         <p className="text-muted-foreground">{error || 'No questions received.'}</p>
         <Button onClick={() => router.back()}>Go back</Button>
@@ -234,13 +235,9 @@ export default function TakeMockTestPage() {
         <Card className="rounded-3xl border-border/70 text-center p-8">
           <div className="mb-6 flex justify-center">
             {percentage >= 70 ? (
-              <div className="h-24 w-24 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
-              </div>
+              <Illustration name="success" className="w-40" />
             ) : (
-              <div className="h-24 w-24 rounded-full bg-amber-500/10 flex items-center justify-center">
-                <AlertCircle className="h-12 w-12 text-amber-600 dark:text-amber-400" />
-              </div>
+              <Illustration name="mock-test" className="w-40" />
             )}
           </div>
           <h2 className="text-3xl font-bold mb-2">Test complete</h2>

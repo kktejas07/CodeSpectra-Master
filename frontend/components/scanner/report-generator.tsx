@@ -96,7 +96,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
 
   if (!loading && !reportData) {
     return (
-      <EmptyState
+      <EmptyState illustration="scanner"
         title="No report yet"
         description="Run a scan first. Your report will use the results from your scans."
         actionLabel="Run a scan"

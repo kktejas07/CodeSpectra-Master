@@ -132,6 +132,7 @@ function BookmarksInner() {
     <div className="w-full space-y-6">
       <div data-tour="bookmarks-header">
         <PageHeader
+          illustration="bookmarks"
           className="mb-0"
           icon={<Bookmark aria-hidden />}
           title="Bookmarked questions"

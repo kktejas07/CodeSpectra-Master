@@ -77,6 +77,7 @@ export default function MySessionsPage() {
     <div className="w-full space-y-6">
       <div data-tour="sessions-header">
         <PageHeader
+          illustration="calendar"
           className="mb-0"
           icon={<Video aria-hidden />}
           title="My sessions"

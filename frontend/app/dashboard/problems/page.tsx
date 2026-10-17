@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Search, ChevronDown, ChevronUp, CheckCircle2, Flame, Target, Trophy, ArrowRight, Loader2, Play, Code, Award
+  Search, ChevronDown, ChevronUp, CheckCircle2, Target, Trophy, ArrowRight, Loader2, Play, Award
 } from 'lucide-react'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Button } from '@/components/ui/button'
@@ -16,7 +16,7 @@ import { useProblemsViewModel, type ProblemSummary } from './use-problems-viewmo
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Panel } from '@/components/app/page-kit'
-import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { AppBanner, Illustration, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
 function FilterAccordion({ title, items, selected, onToggle }: { title: string, items: {id: string, label: string}[], selected: string[], onToggle: (id: string) => void }) {
@@ -221,10 +221,7 @@ export default function ProblemsListPage() {
           </>
         }
         art={
-          <div className="flex flex-col items-end gap-3">
-            <BannerChip icon={<Code />} label="Write in the browser" sub="Run sample tests" />
-            <BannerChip icon={<Flame />} label="Daily practice" sub="Build a streak" className="mr-8" delay="0.6s" />
-          </div>
+          <Illustration name="coding" inverse className="w-44" />
         }
       />
 

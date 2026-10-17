@@ -166,6 +166,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
     <div className="space-y-6">
       <div data-tour="pricing-header">
         <PageHeader
+          illustration="billing"
           className="mb-0"
           icon={<Crown aria-hidden />}
           title="Choose your plan"

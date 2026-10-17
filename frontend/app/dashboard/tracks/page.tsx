@@ -88,6 +88,7 @@ export default function TracksPage() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="courses"
             title="Tech-stack tracks"
             description="Pick a stack and work through problems picked for it."
             icon={<Layers />}
@@ -102,7 +103,7 @@ export default function TracksPage() {
         </div>
       ) : tracks.length === 0 ? (
         <Panel className="p-4">
-          <EmptyState
+          <EmptyState illustration="courses"
             title="No tracks yet"
             description="Tracks will appear here soon. Until then, browse all coding problems."
             actionLabel="Go to problems"

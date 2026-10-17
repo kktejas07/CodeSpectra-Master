@@ -86,6 +86,7 @@ export default function ArticlesNewsroomPage() {
   return (
     <div className="w-full space-y-6">
       <PageHeader
+        illustration="courses"
         className="mb-0"
         icon={<Newspaper aria-hidden />}
         title={<span data-tour="articles-header">Articles</span>}
@@ -100,7 +101,7 @@ export default function ArticlesNewsroomPage() {
       />
 
       {posts.length === 0 ? (
-        <EmptyState
+        <EmptyState illustration="courses"
           variant="default"
           title="No published articles yet"
           description="New articles will show up here as soon as they are published. Check back soon."

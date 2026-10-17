@@ -89,6 +89,7 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
   return (
     <div className="space-y-6">
       <PageHeader
+        illustration="interview"
         title="Choose your mock interview"
         description="Start with a ready-made role, or build your own from a specific job description."
         className="mb-0"

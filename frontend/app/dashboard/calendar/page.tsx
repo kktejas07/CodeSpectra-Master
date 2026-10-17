@@ -151,6 +151,7 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div data-tour="calendar-header">
         <PageHeader
+          illustration="calendar"
           className="mb-0"
           icon={<CalendarDays aria-hidden />}
           title="Calendar"

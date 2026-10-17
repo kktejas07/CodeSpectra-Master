@@ -79,6 +79,7 @@ export default function QuizzesPage() {
     <div className="w-full space-y-6">
       <div data-tour="quizzes-header">
         <PageHeader
+          illustration="assessment"
           title="Quizzes"
           description="Role-based quizzes and company mock tests. Pick one to start practising."
           icon={<HelpCircle />}

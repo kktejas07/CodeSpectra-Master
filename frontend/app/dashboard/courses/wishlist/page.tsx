@@ -107,6 +107,7 @@ export default function CourseWishlistPage() {
     <div className="w-full space-y-6">
       <div data-tour="wishlist-header">
         <PageHeader
+          illustration="bookmarks"
           title="Wishlist"
           description={<>Courses you saved for later · <span className="tabular-nums">{ids.length}</span> saved</>}
           icon={<Heart />}

@@ -108,6 +108,7 @@ export default function AchievementsPage() {
     <div className="space-y-6">
       <div data-tour="achievements-header">
         <PageHeader
+          illustration="leaderboard"
           title="Achievements and badges"
           description="Your level, XP and the achievements and skill badges you've earned."
           icon={<Trophy />}
@@ -117,7 +118,7 @@ export default function AchievementsPage() {
 
       {achievements.length === 0 ? (
         <Panel className="p-4">
-          <EmptyState
+          <EmptyState illustration="leaderboard"
             title="No achievements yet"
             description="Solve problems and finish challenges to start earning achievements."
             actionLabel="Go to problems"
@@ -172,7 +173,7 @@ export default function AchievementsPage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState title="No badges yet" description="Solve problems to earn your first one." actionLabel="Go to problems" actionHref="/dashboard/problems" className="border-0 bg-transparent" />
+                <EmptyState illustration="leaderboard" title="No badges yet" description="Solve problems to earn your first one." actionLabel="Go to problems" actionHref="/dashboard/problems" className="border-0 bg-transparent" />
               )}
             </TabsContent>}
           </Tabs>

@@ -11,13 +11,14 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  ArrowLeft, Download, AlertCircle, Lock, Play, Pause,
+  ArrowLeft, Download, AlertCircle, Play, Pause,
   Volume2, CheckCircle, Clock, MessageSquare, BarChart3,
 } from 'lucide-react'
 import { SkeletonCard, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard, useLockedFeatures } from '@/lib/use-page-guard'
 import { useFeedbackReport } from '@/lib/use-feedback-report'
 import type { InterviewSessionDoc } from '@/lib/db/interviews'
+import { Illustration } from '@/components/illustrations/spot'
 
 function scoreCategory(score: number) {
   if (score >= 80) return { label: 'Strong', color: 'bg-green-500/15 text-green-800 dark:text-green-300' }
@@ -79,7 +80,7 @@ export default function InterviewFeedbackPage() {
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to interviews
         </Link>
-        <EmptyState
+        <EmptyState illustration="interview"
           variant="sessions"
           title="No interview selected"
           description="Pick an interview from your list to see its feedback."
@@ -130,8 +131,8 @@ export default function InterviewFeedbackPage() {
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to interviews
         </Link>
-        <Card className="flex flex-col items-center justify-center h-64 rounded-3xl text-amber-700 dark:text-amber-400">
-          <Lock className="h-10 w-10 mb-3" />
+        <Card className="flex flex-col items-center justify-center min-h-64 rounded-3xl p-6 text-center text-amber-700 dark:text-amber-400">
+          <Illustration name="locked" className="mb-3 w-36" />
           <p className="text-sm font-medium">Access denied</p>
           <p className="text-xs mt-1 text-muted-foreground">You do not have permission to view this interview.</p>
         </Card>

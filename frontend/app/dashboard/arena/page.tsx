@@ -135,6 +135,7 @@ export default function ArenaPage() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="coding"
             title="Coding arena"
             description="Solve timed challenges to earn points and climb the leaderboard."
             icon={<Trophy />}
@@ -151,7 +152,7 @@ export default function ArenaPage() {
         </div>
       ) : challenges.length === 0 ? (
         <Panel className="p-4">
-          <EmptyState
+          <EmptyState illustration="coding"
             title="No arena challenges yet"
             description="Check back soon. In the meantime, warm up with the coding problems."
             actionLabel="Go to problems"

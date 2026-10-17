@@ -39,6 +39,7 @@ import { detectLanguage } from '@/lib/local-code-analyzer'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface AnalysisResult {
   id: string
@@ -338,6 +339,7 @@ function CodeScannerPageInner() {
     <div className="space-y-6">
       {/* Page Header - visible for all modes */}
       <PageHeader
+        illustration="scanner"
         className="mb-0"
         icon={isModeLocked(mode) ? <Lock /> : <Code2 />}
         title={<>
@@ -391,9 +393,7 @@ function CodeScannerPageInner() {
 
       {isModeLocked(mode) && (
         <Panel className="flex flex-col items-center justify-center p-12 text-center">
-          <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-            <Lock className="h-6 w-6" aria-hidden />
-          </span>
+          <Illustration name="locked" className="mb-3 w-36" />
           <p className="font-semibold text-foreground">This tool is turned off</p>
           <p className="mt-1 text-sm text-muted-foreground">An admin has disabled this scanner mode. Ask them to turn it on, or pick another tool from the sidebar.</p>
         </Panel>
@@ -672,9 +672,7 @@ function CodeScannerPageInner() {
             ) : !analysis ? (
               <Panel className="flex h-full min-h-[280px] items-center justify-center border-dashed">
                 <div className="flex flex-col items-center p-6 text-center">
-                  <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                    <Code2 className="h-6 w-6" aria-hidden />
-                  </span>
+                  <Illustration name="scanner" className="mb-3 w-36" />
                   <p className="font-medium text-foreground">
                     Paste your code and press <strong>Scan code</strong> to see the analysis
                   </p>
@@ -857,7 +855,7 @@ function CodeScannerPageInner() {
 
       {/* Metrics Trend Mode — no per-scan history is stored yet, so no chart. */}
       {mode === 'trends' && !isModeLocked('trends') && (
-        <EmptyState
+        <EmptyState illustration="analytics"
           title="Quality trends aren't available yet"
           description="We don't keep a history of scan scores yet, so there's nothing to chart. Run scans from Manual analysis or GitHub repos to see each result."
           actionLabel="Run a scan"
@@ -870,7 +868,7 @@ function CodeScannerPageInner() {
 
       {/* Code Review Mode */}
       {mode === 'review' && !isModeLocked('review') && (
-        <EmptyState
+        <EmptyState illustration="scanner"
           title="Code review isn't available yet"
           description="Comments and approvals on scan issues aren't saved yet. Use AI review on a scan result in Manual analysis for now."
           actionLabel="Go to manual analysis"
@@ -880,7 +878,7 @@ function CodeScannerPageInner() {
 
       {/* Configuration Mode */}
       {mode === 'config' && !isModeLocked('config') && (
-        <EmptyState
+        <EmptyState illustration="settings"
           title="Scanner settings aren't available yet"
           description="Custom thresholds and scan rules can't be saved yet. Scans use the default rules."
           actionLabel="Go to manual analysis"

@@ -36,6 +36,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
+import { Illustration } from '@/components/illustrations/spot'
 
 type InvoiceRow = {
   id: string
@@ -297,6 +298,7 @@ function BillingContent() {
       <div className="space-y-6">
         <PageHeader title="Billing" icon={<CreditCard aria-hidden />} />
         <Card role="alert" className="rounded-3xl border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
+          <Illustration name="error" className="mx-auto w-36" />
           <h2 className="text-lg font-semibold text-foreground">We couldn&apos;t load your billing details</h2>
           <p className="text-sm text-muted-foreground">
             {loadError ? `${loadError}. ` : ''}Check your connection and try again. Nothing has been changed on your account.
@@ -329,6 +331,7 @@ function BillingContent() {
     <div className="space-y-6">
       <div data-tour="billing-header">
       <PageHeader
+        illustration="billing"
         className="mb-0"
         icon={<CreditCard aria-hidden />}
         title="Billing & subscriptions"

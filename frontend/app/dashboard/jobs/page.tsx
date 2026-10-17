@@ -96,6 +96,7 @@ export default function DashboardJobsPage() {
     <div className="space-y-6">
       <div data-tour="jobs-header">
         <PageHeader
+          illustration="jobs"
           className="mb-0"
           icon={<Briefcase aria-hidden />}
           title="My applications"
@@ -114,7 +115,7 @@ export default function DashboardJobsPage() {
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : applications.length === 0 ? (
-        <EmptyState
+        <EmptyState illustration="jobs"
           title="No applications yet"
           description="Browse open positions and apply to ones that interest you. Your applications will show up here."
           actionLabel="Browse open jobs"

@@ -11,6 +11,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface ReferralStats {
   code: string | null
@@ -101,6 +102,7 @@ export default function ReferralsPage() {
     <div className="space-y-6">
       <div data-tour="referrals-header">
         <PageHeader
+          illustration="team"
           className="mb-0"
           icon={<Users aria-hidden />}
           title="Referrals"
@@ -111,9 +113,7 @@ export default function ReferralsPage() {
       <div data-tour="referrals-action" className="space-y-6">
       {!stats?.code ? (
         <Panel className="p-10 text-center">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Users className="h-6 w-6" aria-hidden />
-          </span>
+          <Illustration name="team" className="mx-auto w-36" />
           <p className="mt-4 text-muted-foreground">Generate your referral code to start inviting friends.</p>
           <Button onClick={handleGenerate} disabled={generating} className="mt-4">
             {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}

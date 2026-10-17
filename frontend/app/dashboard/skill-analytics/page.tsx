@@ -115,7 +115,7 @@ export default function SkillAnalyticsPage() {
   }
   if (!data || !data.totals) {
     return (
-      <EmptyState
+      <EmptyState illustration="analytics"
         title="No skill data yet"
         description="Solve a few problems and your skill fingerprint will build up here."
         actionLabel="Go to problems"
@@ -171,6 +171,7 @@ export default function SkillAnalyticsPage() {
     <div className="space-y-6" data-testid="skill-analytics-page">
       <div data-tour="skill-analytics-header">
         <PageHeader
+          illustration="analytics"
           className="mb-0"
           icon={<Activity />}
           title="Skill analytics"

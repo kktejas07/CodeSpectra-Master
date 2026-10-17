@@ -249,6 +249,7 @@ export default function RecentlyViewedPage() {
       {/* Header */}
       <div data-tour="recent-header">
         <PageHeader
+          illustration="analytics"
           className="mb-0"
           icon={<History aria-hidden />}
           title={
@@ -280,7 +281,7 @@ export default function RecentlyViewedPage() {
           </Button>
         </Card>
       ) : items.length === 0 ? (
-        <EmptyState
+        <EmptyState illustration="analytics"
           variant="default"
           title="Nothing viewed yet"
           description="Open a course, lesson, or problem and it will show up here automatically."

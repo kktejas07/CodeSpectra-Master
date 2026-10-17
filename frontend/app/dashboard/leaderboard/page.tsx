@@ -169,6 +169,7 @@ export default function LeaderboardPage() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="leaderboard"
             title={`${activeTab} leaderboard`}
             description={`${activeCategory} rankings by points earned from practice, quizzes and events.`}
             icon={<BarChart3 />}
@@ -199,7 +200,7 @@ export default function LeaderboardPage() {
             </Card>
           </div>
         ) : entries.length === 0 ? (
-          <EmptyState
+          <EmptyState illustration="leaderboard"
             title="Nobody's on this leaderboard yet"
             description="Solve a problem to earn points and be the first name here."
             actionLabel="Practise problems"

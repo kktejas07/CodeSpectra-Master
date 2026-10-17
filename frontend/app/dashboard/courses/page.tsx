@@ -285,6 +285,7 @@ function LearningPageInner() {
         <div className="relative isolate">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
+            illustration="courses"
             title="Explore courses"
             description="Short, structured courses on the skills interviews test. Save the ones you like to your wishlist."
             icon={<BookOpen />}

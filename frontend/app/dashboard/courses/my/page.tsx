@@ -74,6 +74,7 @@ export default function MyCoursesPage() {
     <div className="w-full space-y-6">
       <div data-tour="my-courses-header">
         <PageHeader
+          illustration="courses"
           title="My courses"
           description="Courses you're enrolled in. Pick one to carry on where you left off."
           icon={<BookOpen />}

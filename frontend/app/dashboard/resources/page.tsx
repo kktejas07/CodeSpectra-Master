@@ -103,6 +103,7 @@ export default function ResourcesPage() {
       <div className="relative isolate">
         <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
         <PageHeader
+          illustration="courses"
           className="mb-0"
           icon={<Library aria-hidden />}
           title="Explore resources"
@@ -116,7 +117,7 @@ export default function ResourcesPage() {
             <Loader2 className="h-4 w-4 animate-spin" /> Loading ebooks…
           </div>
         ) : ebooks.length === 0 ? (
-          <EmptyState
+          <EmptyState illustration="courses"
             variant="default"
             title="No published ebooks yet"
             description="New pocket guides will show up here when published. Check back soon."

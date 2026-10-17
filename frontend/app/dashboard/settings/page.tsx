@@ -275,6 +275,7 @@ export default function SettingsPage() {
     <div className="w-full space-y-6">
       <div data-tour="settings-header">
         <PageHeader
+          illustration="settings"
           className="mb-0"
           icon={<Settings aria-hidden />}
           title="Settings"

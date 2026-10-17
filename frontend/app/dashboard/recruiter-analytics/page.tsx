@@ -139,7 +139,7 @@ export default function RecruiterAnalyticsPage() {
           />
         </div>
         <div className="grid items-stretch gap-6 lg:grid-cols-2">
-          <EmptyState
+          <EmptyState illustration="interview"
             title="No interview data yet"
             description="Create interviews and invite candidates — scores, rankings and proctoring flags will show up here."
             actionLabel="Go to interviews"
@@ -166,6 +166,7 @@ export default function RecruiterAnalyticsPage() {
       <div data-tour="recruiter-analytics-header" className="relative isolate">
         <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
+          illustration="analytics"
           className="mb-0"
           title="Recruiter analytics"
           description="Candidate performance and interview insights for hiring managers."
@@ -258,7 +259,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="analytics" title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
       </div>
@@ -283,7 +284,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState title="No proctoring flags recorded" description="Flags from proctored interviews are grouped here by type." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="proctoring" title="No proctoring flags recorded" description="Flags from proctored interviews are grouped here by type." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
 
@@ -303,7 +304,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="analytics" title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
       </div>
@@ -369,7 +370,7 @@ export default function RecruiterAnalyticsPage() {
             </table>
           </div>
         ) : (
-          <EmptyState title="No candidates yet" description="Candidates are ranked here once they finish an interview." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+          <EmptyState illustration="team" title="No candidates yet" description="Candidates are ranked here once they finish an interview." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Panel>
 
@@ -438,7 +439,7 @@ export default function RecruiterAnalyticsPage() {
             </table>
           </div>
         ) : (
-          <EmptyState variant="sessions" title="No interviews yet" description="Your most recent interviews will be listed here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+          <EmptyState illustration="interview" variant="sessions" title="No interviews yet" description="Your most recent interviews will be listed here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Panel>
     </div>

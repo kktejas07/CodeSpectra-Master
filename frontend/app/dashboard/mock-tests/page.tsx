@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
-  Building2, 
   ChevronRight, 
   Search,
   Sparkles,
@@ -17,7 +16,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge'
 import { AiCreditsWidget } from '@/components/ui/ai-credits-widget'
 import { EmptyState } from '@/components/ui/empty-state'
-import { AppBanner, BannerChip, bannerBtnPrimary } from '@/components/visuals'
+import { AppBanner, Illustration, bannerBtnPrimary } from '@/components/visuals'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/lib/toast-context'
@@ -119,10 +118,7 @@ export default function MockTestsPage() {
             </button>
           }
           art={
-            <div className="flex flex-col items-end gap-3">
-              <BannerChip icon={<Building2 />} label="Company and role" sub="Pick what you're applying for" />
-              <BannerChip icon={<Sparkles />} label="Fresh questions" sub="Written by AI each time" className="mr-8" delay="0.6s" />
-            </div>
+            <Illustration name="mock-test" inverse className="w-44" />
           }
         />
       </div>
@@ -198,7 +194,7 @@ export default function MockTestsPage() {
         ) : history === null ? (
           <p className="text-sm text-muted-foreground">Loading your attempts…</p>
         ) : history.length === 0 ? (
-          <EmptyState
+          <EmptyState illustration="mock-test"
             title="No attempts yet"
             description="Finish a mock test and your score will be saved here."
           />

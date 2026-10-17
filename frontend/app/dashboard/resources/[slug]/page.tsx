@@ -205,7 +205,7 @@ export default function EbookReaderPage() {
   if (error || !ebook) {
     return (
       <div className="w-full py-8">
-        <EmptyState
+        <EmptyState illustration="error"
           variant="search"
           title="We couldn't open this guide"
           description={error && error !== 'Not found' ? error : 'It may have been moved or removed. Pick another guide from the resource library.'}
