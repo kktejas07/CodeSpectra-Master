@@ -141,11 +141,11 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
     return (
       <div className="p-8 text-center">
         <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2">Results not available yet</h1>
+        <h1 className="text-xl font-semibold text-foreground mb-2">Results not available yet</h1>
         <p className="text-muted-foreground mb-4">{error}</p>
-        <Link href={`/hackathons/${slug}`} className="inline-block">
-          <Button variant="outline" className="gap-1"><ArrowLeft className="h-4 w-4" /> Back to event</Button>
-        </Link>
+        <Button variant="outline" className="gap-1" asChild>
+          <Link href={`/hackathons/${slug}`} className="inline-block"><ArrowLeft className="h-4 w-4" /> Back to event</Link>
+        </Button>
       </div>
     )
   }
@@ -154,11 +154,11 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
     return (
       <div className="p-8 text-center">
         <AlertCircle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2">No team found</h1>
+        <h1 className="text-xl font-semibold text-foreground mb-2">No team found</h1>
         <p className="text-muted-foreground mb-4">You weren't part of a team in this event.</p>
-        <Link href={`/hackathons/${slug}`} className="inline-block">
-          <Button variant="outline">Back to event</Button>
-        </Link>
+        <Button variant="outline" asChild>
+          <Link href={`/hackathons/${slug}`} className="inline-block">Back to event</Link>
+        </Button>
       </div>
     )
   }
@@ -221,9 +221,9 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
           description="How your team did on each problem, with time taken and attempts."
           actions={
             <>
-              <Link href={`/hackathons/${slug}/results`}>
-                <Button variant="ghost" size="sm" className="gap-1.5" title="Back" aria-label="Back to results"><ArrowLeft className="h-4 w-4" /> Results</Button>
-              </Link>
+              <Button variant="ghost" size="sm" className="gap-1.5" title="Back" aria-label="Back to results" asChild>
+                <Link href={`/hackathons/${slug}/results`}><ArrowLeft className="h-4 w-4" /> Results</Link>
+              </Button>
               <Button variant="outline" size="sm" className="gap-1.5" onClick={exportReport}>
                 <Download className="h-3.5 w-3.5" /> Export CSV
               </Button>
@@ -353,11 +353,11 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
         )}
 
         <div className="text-center">
-          <Link href={`/hackathons/${slug}/results`}>
-            <Button variant="outline" className="gap-1">
+          <Button variant="outline" className="gap-1" asChild>
+            <Link href={`/hackathons/${slug}/results`}>
               <Trophy className="h-4 w-4" /> View full leaderboard
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
     </div>

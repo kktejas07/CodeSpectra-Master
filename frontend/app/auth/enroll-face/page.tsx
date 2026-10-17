@@ -69,13 +69,13 @@ function EnrollFaceInner() {
       <div aria-hidden className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
       <SoftGlow />
 
-      <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-2xl rounded-2xl p-8 space-y-8">
+      <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-sm dark:shadow-none rounded-3xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Shield className="h-6 w-6" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Secure Your Account</h2>
+            <h2 className="text-2xl font-bold tracking-tight">Secure your account</h2>
             <p className="text-sm text-muted-foreground mt-2">
               Enroll your face for passwordless login and secure identity verification during assessments.
             </p>

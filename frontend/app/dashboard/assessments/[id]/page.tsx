@@ -69,19 +69,19 @@ export default function ExamPage() {
       const assessmentDetailTour: TourStep[] = [
         {
           target: '[data-tour="assessment-detail-header"]',
-          title: 'Timed Test For Candidates',
+          title: 'Timed test for candidates',
           description: 'This page runs a timed assessment for candidates to answer and submit.',
           position: 'bottom',
         },
         {
           target: '[data-tour="assessment-detail-nav"]',
-          title: 'Move Between Questions',
+          title: 'Move between questions',
           description: 'Click Next, Previous, or a number to jump questions and submit last.',
           position: 'top',
         },
         {
           target: '[data-tour="assessment-detail-question"]',
-          title: 'Drafts Save Automatically Here',
+          title: 'Drafts save automatically',
           description: 'Pro tip: answers draft to this device, so finish all questions before submitting.',
           position: 'top',
         },
@@ -402,7 +402,7 @@ export default function ExamPage() {
           <Button variant="ghost" size="sm" aria-label="Back to assessments" onClick={() => router.push('/dashboard/assessments')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="font-semibold truncate">{exam.title}</h1>
+          <h1 className="text-base font-semibold truncate">{exam.title}</h1>
           <Badge variant="outline">{currentQ + 1}/{exam.questions.length}</Badge>
         </div>
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${

@@ -355,7 +355,7 @@ const handleEnroll = async () => {
     <div className="flex flex-col items-center justify-center py-32 gap-4">
       <BookOpen className="h-12 w-12 text-muted-foreground/40" />
       <h2 className="text-xl font-semibold">Course not found</h2>
-      <Link href="/dashboard/courses"><Button variant="outline">Browse courses</Button></Link>
+      <Button variant="outline" asChild><Link href="/dashboard/courses">Browse courses</Link></Button>
     </div>
   )
 
@@ -388,35 +388,35 @@ const handleEnroll = async () => {
   // Career outcomes based on tags
   const careerMap: Record<string, { title: string; color: string }[]> = {
     CPP: [
-      { title: 'Software engineer', color: 'from-blue-500/20 to-blue-600/5' },
-      { title: 'Systems programmer', color: 'from-indigo-500/20 to-indigo-600/5' },
+      { title: 'Software engineer', color: 'from-primary/15 to-primary/5' },
+      { title: 'Systems programmer', color: 'from-primary/15 to-primary/5' },
     ],
     Python: [
       { title: 'Data scientist', color: 'from-yellow-500/20 to-yellow-600/5' },
       { title: 'ML engineer', color: 'from-orange-500/20 to-orange-600/5' },
     ],
     Web: [
-      { title: 'Frontend engineer', color: 'from-cyan-500/20 to-cyan-600/5' },
-      { title: 'Full stack developer', color: 'from-teal-500/20 to-teal-600/5' },
+      { title: 'Frontend engineer', color: 'from-primary/15 to-primary/5' },
+      { title: 'Full stack developer', color: 'from-primary/15 to-primary/5' },
     ]
   }
   const careerTag = (course.tags || []).find(t => careerMap[t])
   const careers = careerTag ? careerMap[careerTag] : [
-    { title: 'Software engineer', color: 'from-blue-500/20 to-blue-600/5' },
-    { title: 'Tech lead', color: 'from-purple-500/20 to-purple-600/5' },
+    { title: 'Software engineer', color: 'from-primary/15 to-primary/5' },
+    { title: 'Tech lead', color: 'from-primary/15 to-primary/5' },
   ]
 
   return (
     <div className="space-y-6">
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary via-blue-700 to-blue-950 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
         {/* soft dot field + glow */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-30 [mask-image:radial-gradient(70%_90%_at_85%_20%,#000_20%,transparent_75%)]"
           style={{ backgroundImage: 'radial-gradient(rgba(255,255,255,0.55) 1px, transparent 1px)', backgroundSize: '18px 18px' }}
         />
-        <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-72 w-72 rounded-full bg-[#38bdf8]/30 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-72 w-72 rounded-full bg-blue-300/25 blur-3xl" />
 
         <div className="px-6 py-8 sm:px-8 lg:px-10 lg:py-10 relative z-10" data-tour="course-detail-header">
           {/* Breadcrumb */}
@@ -474,7 +474,7 @@ const handleEnroll = async () => {
               <div className="flex flex-wrap items-center gap-3 pt-2" data-tour="course-detail-enroll">
                 {enrolled ? (
                   <Button
-                    className="bg-white text-[#2448c9] hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
+                    className="bg-white text-primary hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
                     onClick={() => {
                       if (continueLesson) {
                         router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)
@@ -486,7 +486,7 @@ const handleEnroll = async () => {
                 ) : (
                   <Button
                     onClick={handleEnroll}
-                    className="bg-white text-[#2448c9] hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
+                    className="bg-white text-primary hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
                   >
                     <Zap className="h-5 w-5 mr-2" /> Enroll for free
                   </Button>
@@ -551,22 +551,22 @@ const handleEnroll = async () => {
 
             {/* Right: thumbnail preview */}
             <div className="lg:col-span-2">
-              <div className="rounded-2xl overflow-hidden border border-white/20 shadow-2xl shadow-[#17224d]/50 bg-[#17224d]">
-                <div className="relative aspect-video bg-linear-to-br from-[#2f5be7] to-[#17224d] flex items-center justify-center">
+              <div className="rounded-2xl overflow-hidden border border-white/20 shadow-lg shadow-blue-950/40 bg-blue-950">
+                <div className="relative aspect-video bg-linear-to-br from-primary to-blue-950 flex items-center justify-center">
                   <img
                     src={course.image || '/courses/cpp.jpg'}
                     alt={course.title}
                     className="absolute inset-0 w-full h-full object-cover opacity-40"
                   />
-                  <div className="relative z-10 flex flex-col items-center gap-3 text-white cursor-pointer" onClick={() => continueLesson && router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)}>
+                  <button type="button" disabled={!continueLesson} className="relative z-10 flex flex-col items-center gap-3 rounded-2xl text-white focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white disabled:cursor-default" onClick={() => continueLesson && router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)}>
                     <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 transition-transform duration-200 hover:scale-110 motion-reduce:hover:scale-100">
                       <Play className="h-8 w-8 fill-white ml-1" aria-hidden />
                     </div>
                     <p className="text-sm font-medium text-white/90">Start course</p>
-                  </div>
+                  </button>
                 </div>
                 {/* Course title bar below video */}
-                <div className="px-5 py-4 bg-[#17224d]/90 backdrop-blur-sm">
+                <div className="px-5 py-4 bg-blue-950/90 backdrop-blur-sm">
                   <p className="font-semibold text-white text-sm truncate">{course.title}</p>
                   <p className="text-xs text-white/75 mt-0.5">Learn at your own pace</p>
                 </div>
@@ -953,8 +953,8 @@ const handleEnroll = async () => {
         </div>
 
         {/* ── Certificate Section ── */}
-        <div className="mt-16 rounded-3xl overflow-hidden relative bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] text-white px-6 sm:px-8 md:px-14 py-12 md:py-14 shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
-          <div aria-hidden className="absolute -top-16 -right-10 w-80 h-80 bg-[#38bdf8]/30 rounded-full blur-3xl pointer-events-none" />
+        <div className="mt-16 rounded-3xl overflow-hidden relative bg-linear-to-br from-primary via-blue-700 to-blue-950 text-white px-6 sm:px-8 md:px-14 py-12 md:py-14 shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
+          <div aria-hidden className="absolute -top-16 -right-10 w-80 h-80 bg-blue-300/25 rounded-full blur-3xl pointer-events-none" />
 
           <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
             <div className="space-y-6">
@@ -976,18 +976,18 @@ const handleEnroll = async () => {
                 ))}
               </ul>
               {!enrolled ? (
-                <Button onClick={handleEnroll} className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">
+                <Button onClick={handleEnroll} className="h-12 px-8 font-semibold rounded-xl bg-white text-primary hover:bg-white/90">
                   Get certified for free
                 </Button>
               ) : certificate ? (
-                <Button asChild className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">
+                <Button asChild className="h-12 px-8 font-semibold rounded-xl bg-white text-primary hover:bg-white/90">
                   <Link href={certificate.verifyUrl}>View your certificate</Link>
                 </Button>
               ) : progressPercent >= 100 ? (
                 <Button
                   onClick={() => void claimCertificate()}
                   disabled={claiming}
-                  className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90"
+                  className="h-12 px-8 font-semibold rounded-xl bg-white text-primary hover:bg-white/90"
                 >
                   {claiming ? 'Issuing…' : 'Get your certificate'}
                 </Button>

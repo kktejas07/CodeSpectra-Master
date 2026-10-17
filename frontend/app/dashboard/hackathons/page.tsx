@@ -246,11 +246,11 @@ function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon
               View details <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
           ) : (
-            <Link href={`/hackathons/${hk.slug}`}>
-              <Button size="sm" variant="outline">
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/hackathons/${hk.slug}`}>
                 View details <ArrowRight className="ml-1 h-3 w-3" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
           {myTeam && (
             locked ? (
@@ -258,17 +258,17 @@ function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon
                 <Trophy className="h-3 w-3" /> Enter workspace
               </Button>
             ) : (
-              <Link href={`/hackathons/${hk.slug}/workspace`}>
-                <Button size="sm" className="gap-1">
+              <Button size="sm" className="gap-1" asChild>
+                <Link href={`/hackathons/${hk.slug}/workspace`}>
                   <Trophy className="h-3 w-3" /> Enter workspace
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )
           )}
           {hasSession && !myTeam && !isClosed && (
-            <Link href={`/hackathons/${hk.slug}`}>
-              <Button size="sm" variant="outline">Register</Button>
-            </Link>
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/hackathons/${hk.slug}`}>Register</Link>
+            </Button>
           )}
         </div>
       </div>

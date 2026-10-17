@@ -5,6 +5,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
+import { PageHeader } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -77,11 +79,13 @@ export default function InterviewFeedbackPage() {
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to interviews
         </Link>
-        <Card className="flex flex-col items-center justify-center h-64 rounded-3xl text-muted-foreground">
-          <MessageSquare className="h-10 w-10 mb-3 opacity-50" aria-hidden />
-          <p className="text-sm font-medium">No interview selected</p>
-          <p className="text-xs mt-1">Select an interview from the list to view feedback.</p>
-        </Card>
+        <EmptyState
+          variant="sessions"
+          title="No interview selected"
+          description="Pick an interview from your list to see its feedback."
+          actionLabel="Go to interviews"
+          actionHref="/dashboard/interviews"
+        />
       </div>
     )
   }
@@ -180,10 +184,12 @@ export default function InterviewFeedbackPage() {
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to interviews
         </Link>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">{session.title}</h1>
-            <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
+        <PageHeader
+          className="mb-0"
+          icon={<MessageSquare />}
+          title={session.title}
+          description={
+            <span className="flex flex-wrap items-center gap-2">
               <span>{session.type} interview</span>
               <span>·</span>
               <span>{session.role}</span>
@@ -191,15 +197,15 @@ export default function InterviewFeedbackPage() {
               {session.completed_at && (
                 <span className="ml-2">Completed {formatDate(session.completed_at)}</span>
               )}
-            </div>
-          </div>
-          {hasFeedback && (
+            </span>
+          }
+          actions={hasFeedback ? (
             <Button variant="outline" className="gap-2" onClick={handleDownload}>
               <Download className="w-4 h-4" />
               Download report
             </Button>
-          )}
-        </div>
+          ) : undefined}
+        />
       </div>
 
       {/* Overall Recommendation */}
@@ -212,7 +218,7 @@ export default function InterviewFeedbackPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-foreground mb-2">Overall recommendation</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-2">Overall recommendation</h2>
                 {cat && <Badge className={cat.color}>{cat.label}</Badge>}
               </div>
               <div className="text-right">
@@ -335,7 +341,7 @@ export default function InterviewFeedbackPage() {
                   <Card key={f.dimension} className="rounded-3xl border-border/70 p-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-foreground">{f.dimension}</h3>
+                        <h3 className="text-lg font-semibold text-foreground">{f.dimension}</h3>
                         <span className="text-sm font-semibold tabular-nums text-foreground">{f.score}%</span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2.5">
@@ -360,7 +366,7 @@ export default function InterviewFeedbackPage() {
                 <Card className="rounded-3xl p-6 border-primary/20 bg-primary/5">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-bold text-foreground">Overall score</h3>
+                      <h3 className="text-lg font-semibold text-foreground">Overall score</h3>
                       <span className="text-2xl font-bold tabular-nums text-foreground">{Math.round(overallScore)}%</span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-3">
@@ -436,12 +442,27 @@ function AudioPlayer({ url }: { url: string }) {
     <Card className="rounded-3xl border-border/70 p-6">
       <audio ref={audioRef} src={url} preload="metadata" />
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-foreground">Audio recording</h3>
+        <h3 className="text-lg font-semibold text-foreground">Audio recording</h3>
         <div className="flex items-center gap-4">
           <Button size="sm" className="rounded-full w-10 h-10 p-0" onClick={togglePlay} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
             {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </Button>
-          <div className="flex-1 cursor-pointer" onClick={seek}>
+          <div
+            className="flex-1 cursor-pointer rounded py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={seek}
+            role="slider"
+            tabIndex={0}
+            aria-label="Seek"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress * 100)}
+            onKeyDown={(e) => {
+              const el = audioRef.current
+              if (!el || !el.duration) return
+              if (e.key === 'ArrowRight') { e.preventDefault(); el.currentTime = Math.min(el.duration, el.currentTime + 5) }
+              if (e.key === 'ArrowLeft') { e.preventDefault(); el.currentTime = Math.max(0, el.currentTime - 5) }
+            }}
+          >
             <div className="bg-muted rounded h-1.5 relative">
               <div className="absolute h-full bg-primary rounded" style={{ width: `${progress * 100}%` }} />
             </div>

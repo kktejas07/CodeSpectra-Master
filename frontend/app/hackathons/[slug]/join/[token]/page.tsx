@@ -205,16 +205,16 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
                 <h2 className="text-lg font-semibold">Sign in required</h2>
                 <p className="text-sm text-muted-foreground">You need to sign in to join this team.</p>
                 <div className="flex flex-col gap-2 pt-4">
-                  <Link href={loginUrl}>
-                    <Button className="w-full gap-2">
+                  <Button className="w-full gap-2" asChild>
+                    <Link href={loginUrl}>
                       <LogIn className="h-4 w-4" /> Sign in
-                    </Button>
-                  </Link>
-                  <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}/join/${token}`)}`}>
-                    <Button variant="outline" className="w-full">
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}/join/${token}`)}`}>
                       Create account
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
               </>
             ) : (

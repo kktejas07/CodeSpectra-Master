@@ -245,7 +245,7 @@ export default function DayPage() {
             <div className="space-y-2">
               <h3 className="font-semibold text-foreground text-sm">Examples</h3>
               {problem.examples.map((ex, i) => (
-                <div key={i} className="rounded-md border border-border/60 bg-muted/30 p-3 font-mono text-xs space-y-1">
+                <div key={i} className="rounded-xl border border-border/60 bg-muted/30 p-3 font-mono text-xs space-y-1">
                   <p className="text-foreground/80">Input: <span className="text-foreground">{ex.input || '(empty)'}</span></p>
                   <p className="text-foreground/80">Output: <span className="text-foreground">{ex.output || '(empty)'}</span></p>
                   {ex.explanation && <p className="text-muted-foreground mt-1">{ex.explanation}</p>}
@@ -365,7 +365,7 @@ function TestCasesPanel({ examples }: { examples: HundredDayProblem['examples'] 
   return (
     <div className="space-y-2">
       {examples.map((ex, i) => (
-        <div key={i} className="rounded-md border border-border/60 bg-card/40 p-3 text-xs">
+        <div key={i} className="rounded-xl border border-border/60 bg-card/40 p-3 text-xs">
           <div className="flex items-center justify-between mb-2">
             <span className="text-muted-foreground font-medium">Test case {i + 1} of {examples.length}</span>
           </div>
@@ -423,7 +423,7 @@ function ResultsPanel({ result, running }: { result: RunResponse | null; running
       {result.results.length > 0 && (
         <div className="space-y-2">
           {result.results.map((r, i) => (
-            <div key={i} className={`rounded-md border p-3 text-xs ${
+            <div key={i} className={`rounded-xl border p-3 text-xs ${
               r.passed ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'
             }`}>
               <div className="flex items-center gap-1.5 font-medium mb-1.5">
@@ -448,7 +448,7 @@ function ResultsPanel({ result, running }: { result: RunResponse | null; running
       )}
 
       {result.stderr_excerpt && !result.results.some(r => r.stderr) && (
-        <pre className="text-xs text-red-700 dark:text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">{result.stderr_excerpt}</pre>
+        <pre className="text-xs text-red-700 dark:text-red-400 bg-red-500/5 rounded-lg p-3 overflow-auto max-h-24 font-mono">{result.stderr_excerpt}</pre>
       )}
     </div>
   )

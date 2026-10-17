@@ -5,6 +5,7 @@ import { use, useCallback, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -668,7 +669,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {screening && typeof screening.total === 'number' && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-400"
+                      className="text-[10px] bg-primary/10 text-primary border-primary/30"
                       title={screening.notes || 'AI screening total'}
                     >
                       AI {screening.total}/{screening.maxTotal ?? '?'}
@@ -678,12 +679,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 <details className="text-xs">
                   <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Full evidence</summary>
                   <dl className="mt-1 space-y-1 rounded-lg border border-border/70 bg-muted/30 p-2">
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Repo</dt><dd className="font-mono text-right">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Commits</dt><dd className="font-mono text-right">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Contributors</dt><dd className="font-mono text-right">{a.effort?.contributors ?? 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Files</dt><dd className="font-mono text-right">{a.files?.count ?? 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">CI</dt><dd className="font-mono text-right">{a.docs ? (a.docs.ci ? `yes (${(a.docs.ciFiles || []).length})` : 'no') : 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">License</dt><dd className="font-mono text-right">{a.docs ? (a.docs.license ? 'yes' : 'no') : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Repo</dt><dd className="text-right tabular-nums">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Commits</dt><dd className="text-right tabular-nums">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Contributors</dt><dd className="text-right tabular-nums">{a.effort?.contributors ?? 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Files</dt><dd className="text-right tabular-nums">{a.files?.count ?? 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">CI</dt><dd className="text-right tabular-nums">{a.docs ? (a.docs.ci ? `yes (${(a.docs.ciFiles || []).length})` : 'no') : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">License</dt><dd className="text-right tabular-nums">{a.docs ? (a.docs.license ? 'yes' : 'no') : 'n/a'}</dd></div>
                     <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Freshness</dt><dd className="text-right">{a.freshness?.reason || 'n/a'}</dd></div>
                     {(a.limitations || []).length > 0 && (
                       <div><dt className="text-muted-foreground">Gaps</dt>{(a.limitations || []).map((l: string, i: number) => <dd key={i} className="text-muted-foreground">• {l}</dd>)}</div>
@@ -959,10 +960,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Problems Tab */}
         <TabsContent value="problems" className="mt-4 space-y-3">
           {(!event.tasks || event.tasks.length === 0) ? (
-            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
-              <Target className="h-8 w-8 text-primary/60" aria-hidden />
-              <p className="text-sm text-muted-foreground">No problems added yet</p>
-            </Card>
+            <EmptyState variant="default" title="No problems yet" description="The organizer hasn’t added problems to this event yet." />
           ) : (
             event.tasks.sort((a, b) => (a.order || 0) - (b.order || 0)).map((task, i) => (
               <Card key={task.problem_slug} className="gap-0 rounded-2xl p-4">
@@ -996,10 +994,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-muted-foreground">Join a team to see your submissions here.</p>
             </Card>
           ) : submissions.length === 0 ? (
-            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
-              <Send className="h-8 w-8 text-primary/60" aria-hidden />
-              <p className="text-sm text-muted-foreground">No submissions yet. Your team&apos;s entries will appear here.</p>
-            </Card>
+            <EmptyState variant="sessions" title="No submissions yet" description="Your team’s entries will appear here." />
           ) : (
             submissions.map(sub => {
               const statusConfig = STATUS_CONFIG[sub.status] || STATUS_CONFIG.submitted
@@ -1027,10 +1022,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Leaderboard Tab */}
         <TabsContent value="leaderboard" className="mt-4 space-y-3">
           {leaderboard.length === 0 ? (
-            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
-              <Trophy className="h-8 w-8 text-primary/60" aria-hidden />
-              <p className="text-sm text-muted-foreground">No teams on the leaderboard yet.</p>
-            </Card>
+            <EmptyState variant="default" title="No teams on the leaderboard yet" description="Teams show up here once they start scoring." />
           ) : (
             <>
               {/* Top 3 Podium */}
@@ -1079,10 +1071,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-sm text-muted-foreground">Loading submissions…</p>
             </Card>
           ) : judgeSubmissions.length === 0 ? (
-            <Card className="items-center gap-2 rounded-3xl p-10 text-center">
-              <Shield className="h-8 w-8 text-primary/60" aria-hidden />
-              <p className="text-sm text-muted-foreground">No submissions to review yet. They&apos;ll appear here as teams submit.</p>
-            </Card>
+            <EmptyState variant="sessions" title="No submissions to review yet" description="They’ll appear here as teams submit." />
           ) : (
             <div className="space-y-4">
               {/* 4-step judging workflow — counts derived from existing state */}
@@ -1385,10 +1374,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </Card>
                   )}
                   {screenBoard.length > 0 && (
-                    <Card id="judge-screen-board" className="space-y-3 rounded-3xl border-violet-500/20 bg-violet-500/5 p-5 scroll-mt-4">
+                    <Card id="judge-screen-board" className="space-y-3 rounded-3xl border-primary/20 bg-primary/5 p-5 scroll-mt-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-violet-700 dark:text-violet-400">
+                          <h3 className="flex items-center gap-1.5 text-sm font-semibold text-primary">
                             <Sparkles className="w-4 h-4" /> Screening leaderboard
                           </h3>
                           <p className="text-xs text-muted-foreground">AI scores over repo evidence — advisory only, human judges decide. {screenedJudgeCount} of {totalJudgeSubs} screened.</p>
@@ -1406,7 +1395,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               <div className="flex items-center gap-2">
                                 <span className="w-6 text-center font-mono text-xs tabular-nums text-muted-foreground">#{i + 1}</span>
                                 <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{name}</span>
-                                <Badge variant="outline" className="font-mono text-xs tabular-nums bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-400">
+                                <Badge variant="outline" className="font-mono text-xs tabular-nums bg-primary/10 text-primary border-primary/30">
                                   AI {r.total ?? '?'}/{r.maxTotal ?? '?'}
                                 </Badge>
                               </div>
@@ -1558,19 +1547,19 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {/* Links */}
                   <div className="flex flex-wrap gap-2">
                     {selectedSub.repo_url && (
-                      <a href={selectedSub.repo_url} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="outline" className="gap-1.5"><Code className="w-3.5 h-3.5" /> GitHub repo</Button>
-                      </a>
+                      <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                        <a href={selectedSub.repo_url} target="_blank" rel="noopener noreferrer"><Code className="w-3.5 h-3.5" /> GitHub repo</a>
+                      </Button>
                     )}
                     {selectedSub.video_url && (
-                      <a href={selectedSub.video_url} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="outline" className="gap-1.5"><Eye className="w-3.5 h-3.5" /> Video demo</Button>
-                      </a>
+                      <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                        <a href={selectedSub.video_url} target="_blank" rel="noopener noreferrer"><Eye className="w-3.5 h-3.5" /> Video demo</a>
+                      </Button>
                     )}
                     {selectedSub.live_url && (
-                      <a href={selectedSub.live_url} target="_blank" rel="noopener noreferrer">
-                        <Button size="sm" variant="outline" className="gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> Live URL</Button>
-                      </a>
+                      <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                        <a href={selectedSub.live_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5" /> Live URL</a>
+                      </Button>
                     )}
                   </div>
 
@@ -1776,11 +1765,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <Card className="space-y-4 rounded-3xl p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground">Event settings</h4>
-              <Link href={`/dashboard/admin/hackathons/edit/${event.id}`}>
-                <Button size="sm" variant="outline" className="gap-1.5">
+              <Button size="sm" variant="outline" className="gap-1.5" asChild>
+                <Link href={`/dashboard/admin/hackathons/edit/${event.id}`}>
                   <Settings className="w-3.5 h-3.5" /> Edit event
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>

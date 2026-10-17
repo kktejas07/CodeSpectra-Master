@@ -76,9 +76,9 @@ export function OrganizationDashboard() {
           </span>
           <h2 className="text-lg font-semibold text-foreground">Organization not linked</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
-          <Link href="/dashboard/support">
-            <Button variant="outline" size="sm" className="mt-2">Contact support</Button>
-          </Link>
+          <Button variant="outline" size="sm" className="mt-2" asChild>
+            <Link href="/dashboard/support">Contact support</Link>
+          </Button>
         </div>
       </Panel>
     )
@@ -139,11 +139,11 @@ export function OrganizationDashboard() {
               <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                 <ClipboardList className="h-5 w-5 text-primary" aria-hidden /> Recent assessments
               </h2>
-              <Link href="/dashboard/admin/assessments">
-                <Button variant="ghost" size="sm" className="gap-1 text-sm">
+              <Button variant="ghost" size="sm" className="gap-1 text-sm" asChild>
+                <Link href="/dashboard/admin/assessments">
                   Manage all <ArrowRight className="h-3 w-3" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             {(data?.recent?.length ?? 0) === 0 ? (
               <EmptyState
@@ -185,11 +185,11 @@ export function OrganizationDashboard() {
               <h2 className="text-sm font-semibold text-foreground">Team</h2>
             </div>
             <p className="text-sm text-muted-foreground">Manage your organization&apos;s members and roles.</p>
-            <Link href="/dashboard/admin/team">
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+            <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
+              <Link href="/dashboard/admin/team">
                 <Users className="h-3.5 w-3.5" /> Manage team
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </Card>
 
           <Card className="space-y-3 rounded-3xl border-border/70 p-6">
@@ -198,11 +198,11 @@ export function OrganizationDashboard() {
               <h2 className="text-sm font-semibold text-foreground">Hiring insights</h2>
             </div>
             <p className="text-sm text-muted-foreground">Track candidate performance and screening effectiveness.</p>
-            <Link href="/dashboard/recruiter-analytics">
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+            <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
+              <Link href="/dashboard/recruiter-analytics">
                 <TrendingUp className="h-3.5 w-3.5" /> Recruiter analytics
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </Card>
         </div>
       </div>

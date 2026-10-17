@@ -101,7 +101,7 @@ export function CloudflareSettingsSection() {
             <Globe2 className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Cloudflare</h2>
+            <h2 className="text-lg font-semibold">Cloudflare</h2>
             <p className="text-sm text-muted-foreground">CDN cache purge &amp; analytics integration</p>
           </div>
         </div>
@@ -149,6 +149,7 @@ export function CloudflareSettingsSection() {
             <button
               type="button"
               onClick={handleRevealToggle}
+              aria-label={showToken ? 'Hide value' : 'Show value'}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
             >
               {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -352,7 +353,7 @@ function ObjectStorageCard() {
         </div>
         {provider === 'r2' ? (
           <div className="space-y-1.5">
-            <Label htmlFor="r2_account_id">R2 Account ID</Label>
+            <Label htmlFor="r2_account_id">R2 account ID</Label>
             <input id="r2_account_id" value={accountId} onChange={(e) => {
               setAccountId(e.target.value)
               setEndpoint(presetFor('r2', e.target.value).endpoint)
@@ -373,7 +374,7 @@ function ObjectStorageCard() {
           <input id="s3_bucket" value={bucket} onChange={(e) => setBucket(e.target.value)} className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm" placeholder="codespectra-courses" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="s3_access_key_id">Access Key ID</Label>
+          <Label htmlFor="s3_access_key_id">Access key ID</Label>
           <input id="s3_access_key_id" value={accessKeyId} onChange={(e) => setAccessKeyId(e.target.value)} className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm" placeholder="Access key" />
         </div>
         <div className="space-y-1.5 md:col-span-2">
@@ -393,6 +394,7 @@ function ObjectStorageCard() {
             <button
               type="button"
               onClick={handleRevealToggle}
+              aria-label={showSecret ? 'Hide value' : 'Show value'}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
             >
               {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

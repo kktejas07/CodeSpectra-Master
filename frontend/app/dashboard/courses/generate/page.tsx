@@ -199,7 +199,7 @@ export default function GenerateCoursePage() {
                   </div>
                   <div className="flex flex-wrap gap-3 mb-6">
                     {subjectNames.map(tech => (
-                      <div 
+                      <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={technology === tech} 
                         key={tech}
                         onClick={() => setTechnology(tech)}
                         className={`px-4 py-3 rounded-xl border-2 cursor-pointer transition-all ${technology === tech ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
@@ -210,7 +210,7 @@ export default function GenerateCoursePage() {
                   </div>
                   <div className="space-y-3 mb-8">
                     <Label>Or enter a custom topic</Label>
-                    <Input 
+                    <Input aria-label="Or enter a custom topic" 
                       placeholder="e.g. Quantum Computing with Qiskit" 
                       value={!subjectNames.includes(technology) ? technology : ''}
                       onChange={(e) => setTechnology(e.target.value)}
@@ -236,7 +236,7 @@ export default function GenerateCoursePage() {
                       <Label className="mb-3 block text-base">Current experience level</Label>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {LEVELS.map(l => (
-                          <div 
+                          <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={level === l} 
                             key={l}
                             onClick={() => setLevel(l)}
                             className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all ${level === l ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
@@ -251,7 +251,7 @@ export default function GenerateCoursePage() {
                       <Label className="mb-3 block text-base">Course duration (hours)</Label>
                       <div className="grid grid-cols-4 gap-3">
                         {DURATIONS.map(d => (
-                          <div 
+                          <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={duration === d} 
                             key={d}
                             onClick={() => setDuration(d)}
                             className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all ${duration === d ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
@@ -277,7 +277,7 @@ export default function GenerateCoursePage() {
                   <div className="space-y-6 mb-8">
                     <div>
                       <Label className="mb-3 block">Describe what you want to achieve (Optional)</Label>
-                      <Input 
+                      <Input aria-label="Describe what you want to achieve (Optional)" 
                         placeholder="e.g. I want to build a full-stack SaaS app" 
                         value={goal}
                         onChange={(e) => setGoal(e.target.value)}

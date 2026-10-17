@@ -1,7 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/card'
+import { Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, ArrowLeft } from 'lucide-react'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -19,11 +20,12 @@ export default function InterviewResultsPage() {
   )
 
   return (
-    <div className="flex items-center justify-center min-h-[60vh]">
-      <Card className="rounded-3xl border-border/70 p-10 text-center max-w-md w-full space-y-6">
+    <div className="relative isolate flex items-center justify-center min-h-[60vh]">
+      <SoftGlow />
+      <Panel className="p-10 text-center max-w-md w-full space-y-6">
         <CheckCircle className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" aria-hidden />
         <div>
-          <h2 className="text-xl font-bold text-foreground">Interview complete</h2>
+          <h1 className="text-xl font-semibold text-foreground">Interview complete</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Your results are being processed. We&apos;ll notify you once they&apos;re ready.
           </p>
@@ -36,7 +38,7 @@ export default function InterviewResultsPage() {
           <ArrowLeft className="h-4 w-4" />
           Back to interviews
         </Button>
-      </Card>
+      </Panel>
     </div>
   )
 }

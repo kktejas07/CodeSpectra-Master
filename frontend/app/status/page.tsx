@@ -226,7 +226,7 @@ export default function StatusPage() {
             {/* Latency chart */}
             <section className="overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet" aria-labelledby="status-latency">
               <div className="border-b border-cs-grid px-5 py-4">
-                <h2 id="status-latency" className="font-bold text-cs-ink">Database response time</h2>
+                <h2 id="status-latency" className="text-lg font-semibold text-cs-ink">Database response time</h2>
               </div>
               <div className="h-64 p-5">
                 {chartData.length > 1 ? (
@@ -261,7 +261,7 @@ export default function StatusPage() {
             {/* Incidents */}
             <section className="overflow-hidden rounded-3xl border border-cs-grid bg-cs-sheet" aria-labelledby="status-incidents">
               <div className="border-b border-cs-grid px-5 py-4">
-                <h2 id="status-incidents" className="font-bold text-cs-ink">Incidents</h2>
+                <h2 id="status-incidents" className="text-lg font-semibold text-cs-ink">Incidents</h2>
               </div>
               <div className="p-5">
                 <div className="space-y-1 border-l-2 border-cs-grid pl-4">

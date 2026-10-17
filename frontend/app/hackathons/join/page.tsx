@@ -73,11 +73,11 @@ function JoinPage() {
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Card className="max-w-md w-full rounded-3xl border-border/70 p-8 text-center">
         <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2">This invite isn&apos;t valid</h1>
+        <h1 className="text-xl font-semibold text-foreground mb-2">This invite isn&apos;t valid</h1>
         <p className="text-muted-foreground text-sm mb-4">{error}</p>
-        <Link href="/dashboard/hackathons">
-          <Button variant="outline" className="gap-1"><Trophy className="h-4 w-4" /> Browse hackathons</Button>
-        </Link>
+        <Button variant="outline" className="gap-1" asChild>
+          <Link href="/dashboard/hackathons"><Trophy className="h-4 w-4" /> Browse hackathons</Link>
+        </Button>
       </Card>
     </div>
   )
@@ -86,7 +86,7 @@ function JoinPage() {
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Card className="max-w-md w-full rounded-3xl border-border/70 p-8 text-center">
         <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400 mx-auto mb-4" />
-        <h1 className="text-xl font-bold mb-2">You're in!</h1>
+        <h1 className="text-xl font-semibold text-foreground mb-2">You're in!</h1>
         <p className="text-muted-foreground text-sm mb-4">Taking you to the workspace…</p>
         <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
       </Card>
@@ -148,18 +148,18 @@ function JoinPage() {
             {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
             {user ? 'Join team' : 'Sign in to join'}
           </Button>
-          <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
-            <Button variant="outline" className="w-full gap-1">
+          <Button variant="outline" className="w-full gap-1" asChild>
+            <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
               View event details
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
         ) : (
-        <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
-          <Button variant="outline" className="w-full gap-1">
+        <Button variant="outline" className="w-full gap-1" asChild>
+          <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
             View event details
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         )}
       </Card>
     </div>

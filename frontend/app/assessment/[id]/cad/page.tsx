@@ -175,23 +175,23 @@ export default function CandidateCADAssessmentPage() {
             </div>
 
             <div className="space-y-2 rounded-xl border border-border/80 bg-muted/20 p-3">
-              <h3 className="font-bold text-foreground">Target constraints</h3>
+              <h3 className="text-base font-semibold text-foreground">Target constraints</h3>
               <ul className="space-y-1.5">
                 <li className="flex items-center justify-between text-muted-foreground">
                   <span>Outer mounting hole OD</span>
-                  <span className="font-mono font-semibold text-foreground">50.0 ± 0.05 mm</span>
+                  <span className="font-semibold tabular-nums text-foreground">50.0 ± 0.05 mm</span>
                 </li>
                 <li className="flex items-center justify-between text-muted-foreground">
                   <span>Target mass</span>
-                  <span className="font-mono font-semibold text-foreground">&lt; 1.30 kg</span>
+                  <span className="font-semibold tabular-nums text-foreground">&lt; 1.30 kg</span>
                 </li>
                 <li className="flex items-center justify-between text-muted-foreground">
                   <span>Minimum yield stress</span>
-                  <span className="font-mono font-semibold text-foreground">&gt; 250 MPa</span>
+                  <span className="font-semibold tabular-nums text-foreground">&gt; 250 MPa</span>
                 </li>
                 <li className="flex items-center justify-between text-muted-foreground">
                   <span>Parting line draft</span>
-                  <span className="font-mono font-semibold text-foreground">3.0 deg</span>
+                  <span className="font-semibold tabular-nums text-foreground">3.0 deg</span>
                 </li>
               </ul>
             </div>
@@ -213,7 +213,7 @@ export default function CandidateCADAssessmentPage() {
             </div>
 
             <div className="rounded-lg border border-border p-3 space-y-2">
-              <h3 className="font-bold text-foreground">Starter file</h3>
+              <h3 className="text-base font-semibold text-foreground">Starter file</h3>
               <p className="text-muted-foreground">Download base starter geometry before modifying:</p>
               <button
                 onClick={handleDownloadStarter}

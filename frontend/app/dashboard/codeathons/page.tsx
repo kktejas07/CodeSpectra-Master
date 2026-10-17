@@ -128,7 +128,7 @@ export default function CodeathonsPage() {
   const getDifficultyColor = (d: string) => {
     if (d === 'Hard') return 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400'
     if (d === 'Easy') return 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400'
-    if (d === 'Mixed') return 'bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-400'
+    if (d === 'Mixed') return 'bg-primary/10 text-primary border-primary/30'
     return 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400'
   }
 

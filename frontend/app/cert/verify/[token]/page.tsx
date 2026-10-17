@@ -116,12 +116,12 @@ export default function CertVerifyPage() {
             Please sign in to verify certificates.
           </p>
           <div className="flex flex-col gap-2">
-            <Link href={`/auth/login?redirect=${encodeURIComponent(`/cert/verify/${token}`)}`}>
-              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline" className="w-full">Create account</Button>
-            </Link>
+            <Button className="w-full gap-2" asChild>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(`/cert/verify/${token}`)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/auth/signup">Create account</Link>
+            </Button>
           </div>
         </Card>
       </main>
@@ -212,7 +212,7 @@ export default function CertVerifyPage() {
 
       {/* Certificate canvas — this is what prints */}
       <div className="max-w-6xl mx-auto" data-testid="cert-canvas-wrapper">
-        <div className="cert-print-area shadow-2xl dark:shadow-none rounded-2xl overflow-hidden border border-border/60">
+        <div className="cert-print-area shadow-lg dark:shadow-none rounded-2xl overflow-hidden border border-border/60">
           <CertificateRenderer data={certData} template={template} />
         </div>
         <p className="text-[11px] text-center text-muted-foreground mt-4 print:hidden">

@@ -194,7 +194,7 @@ export default function AgentPage() {
             <Bot className="h-5 w-5" aria-hidden />
           </span>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-foreground">AI agent workspace</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">AI agent workspace</h1>
             <p className="text-sm text-muted-foreground">Give the agent a goal — it plans the steps and rewrites the code in the editor.</p>
           </div>
         </div>
@@ -338,7 +338,7 @@ export default function AgentPage() {
                 type="button"
                 onClick={() => setDiffView(!diffView)}
                 className={cn(
-                  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-md border transition-colors',
+                  'inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium rounded-lg border transition-colors',
                   diffView
                     ? 'bg-primary/10 text-primary border-primary/40'
                     : 'text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 border-border/50'
@@ -353,7 +353,7 @@ export default function AgentPage() {
               <button
                 type="button"
                 onClick={handleCopy}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 rounded-md border border-border/50 transition-colors"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 rounded-lg border border-border/50 transition-colors"
                 title="Copy code"
               >
                 {copied ? (
@@ -371,7 +371,7 @@ export default function AgentPage() {
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 rounded-md border border-border/50 transition-colors"
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 rounded-lg border border-border/50 transition-colors"
                 title="Reset starter template"
                 aria-label="Reset starter template"
               >
@@ -433,13 +433,13 @@ export default function AgentPage() {
                 <div className="z-10 flex h-44 flex-col border-t border-slate-800 bg-slate-950 font-mono text-xs text-slate-300">
                   <div className="flex items-center justify-between border-b border-slate-800 px-3 py-1.5">
                     <div className="flex items-center gap-2 font-sans text-[11px] font-semibold text-slate-400">
-                      <SquareTerminal className="h-3.5 w-3.5 text-sky-400" aria-hidden />
+                      <SquareTerminal className="h-3.5 w-3.5 text-blue-400" aria-hidden />
                       <span>Console</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowConsole(false)}
-                      className="rounded p-0.5 text-slate-400 hover:text-white focus-visible:outline-2 focus-visible:outline-sky-400"
+                      className="rounded p-0.5 text-slate-400 hover:text-white focus-visible:outline-2 focus-visible:outline-blue-400"
                       title="Close console"
                       aria-label="Close console"
                     >
@@ -449,7 +449,7 @@ export default function AgentPage() {
                   <div className="flex-1 p-3 overflow-y-auto space-y-1">
                     {runningCode && (
                       <div className="flex items-center gap-2 text-slate-400">
-                        <Loader2 className="h-3 w-3 animate-spin text-sky-400 motion-reduce:animate-none" />
+                        <Loader2 className="h-3 w-3 animate-spin text-blue-400 motion-reduce:animate-none" />
                         <span>Running in the sandbox…</span>
                       </div>
                     )}
@@ -457,10 +457,10 @@ export default function AgentPage() {
                       <pre className="whitespace-pre-wrap text-slate-100">{consoleOutput.stdout}</pre>
                     )}
                     {consoleOutput?.stderr && (
-                      <pre className="text-rose-400 whitespace-pre-wrap">{consoleOutput.stderr}</pre>
+                      <pre className="text-red-400 whitespace-pre-wrap">{consoleOutput.stderr}</pre>
                     )}
                     {consoleOutput?.error && (
-                      <pre className="text-rose-400 whitespace-pre-wrap">{consoleOutput.error}</pre>
+                      <pre className="text-red-400 whitespace-pre-wrap">{consoleOutput.error}</pre>
                     )}
                     {!runningCode && !consoleOutput?.stdout && !consoleOutput?.stderr && !consoleOutput?.error && (
                       <span className="text-slate-400">Finished with no output.</span>

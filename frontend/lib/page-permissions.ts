@@ -106,7 +106,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Events', firstRoute: '/dashboard/events' },
   { label: 'Courses', firstRoute: '/dashboard/courses' },
   { label: 'Discover', firstRoute: '/dashboard/quizzes' },
-  { label: 'My Activity', firstRoute: '/dashboard/courses/my' },
+  { label: 'My activity', firstRoute: '/dashboard/courses/my' },
   { label: 'Career', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats', firstRoute: '/dashboard/leaderboard' },

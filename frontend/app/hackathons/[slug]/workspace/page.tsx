@@ -558,7 +558,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           <Card className="rounded-3xl p-5">
             <div className="flex flex-wrap items-center gap-3 mb-4">
               <Trophy className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-bold">{team.name}</h2>
+              <h2 className="text-lg font-semibold">{team.name}</h2>
               {(team.members.some(m => m.user_id === hasSession && m.role === 'captain') || ['admin', 'superadmin', 'tenant_admin'].includes((authUser as any)?.role || '')) && (
                 <Button
                   size="sm"
@@ -816,7 +816,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           <Card className="rounded-3xl p-5">
             <p className="text-sm font-semibold text-foreground mb-2">Invite teammates</p>
             <div className="flex gap-2 mb-2">
-              <Input readOnly value={inviteUrl} className="text-xs font-mono" />
+              <Input readOnly value={inviteUrl} aria-label="Team invite link" className="text-xs font-mono" />
               <Button size="sm" variant="outline" onClick={copyInvite} aria-label="Copy invite link">
                 {copied ? <CheckCircle className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
@@ -886,9 +886,10 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 <div className="space-y-2">
                   <Label htmlFor="lang">Language</Label>
                   <select
+                    id="lang"
                     value={editorLanguage}
                     onChange={(e) => setEditorLanguage(e.target.value)}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
                 </select>
@@ -984,7 +985,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 {viewingSubmission.code && (
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Code</p>
-                    <Textarea readOnly rows={10} value={viewingSubmission.code} className="font-mono text-xs" />
+                    <Textarea readOnly rows={10} value={viewingSubmission.code} aria-label="Submitted code" className="font-mono text-xs" />
                   </div>
                 )}
               </div>
@@ -1002,7 +1003,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <>
               <div className="shrink-0 border-b border-border px-6 py-5 sm:px-8 flex items-start justify-between bg-muted/30 text-foreground">
                 <div className="min-w-0 flex-1">
-                  <SheetTitle className="text-xl font-bold truncate pr-4">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
+                  <SheetTitle className="text-lg font-semibold truncate pr-4">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge variant="outline" className="text-[10px] capitalize font-semibold">{selectedProblem.difficulty}</Badge>
                     <span className="text-xs font-medium tabular-nums text-muted-foreground">{selectedProblem.points} pts</span>
@@ -1087,8 +1088,9 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     </h4>
                     <select
                       value={sheetLang}
+                    aria-label="Solution language"
                       onChange={(e) => setSheetLang(e.target.value)}
-                      className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="rounded-lg border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
                     >
                       {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
                     </select>

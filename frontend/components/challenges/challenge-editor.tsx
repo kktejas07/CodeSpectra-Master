@@ -347,7 +347,7 @@ export function ChallengeEditor({
         {/* Header */}
         <div className="border-b border-border/40 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2 min-w-0">
-            <Badge className="shrink-0">Coding Challenge</Badge>
+            <Badge className="shrink-0">Coding challenge</Badge>
             <h1 className="text-base font-bold text-foreground truncate">{title}</h1>
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -359,6 +359,7 @@ export function ChallengeEditor({
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={() => setShowHelp(!showHelp)}
+                    aria-label="How to solve challenges"
                   >
                     <HelpCircle className="w-4 h-4 text-muted-foreground" />
                   </Button>
@@ -377,7 +378,7 @@ export function ChallengeEditor({
                 <Star className="w-3.5 h-3.5 text-primary" />
                 How to solve challenges
               </p>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowHelp(false)}>
+              <Button aria-label="Close help" variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => setShowHelp(false)}>
                 <ChevronUp className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -682,7 +683,7 @@ export function ChallengeEditor({
                 {/* Stats grid */}
                 <div className="grid grid-cols-3 gap-2">
                   <Card className="p-3 bg-muted/30 border-border/40 text-center">
-                    <p className="text-[10px] text-muted-foreground mb-0.5">Tests Passed</p>
+                    <p className="text-[10px] text-muted-foreground mb-0.5">Tests passed</p>
                     <p className={`text-lg font-bold ${testResults.testsPassed === testResults.totalTests && testResults.totalTests > 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {testResults.testsPassed}/{testResults.totalTests}
                     </p>
@@ -702,7 +703,7 @@ export function ChallengeEditor({
                 {/* Test case details */}
                 {testResults.results?.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-foreground">Test Case Results</p>
+                    <p className="text-xs font-semibold text-foreground">Test case results</p>
                     {testResults.results.map((r: any, i: number) => (
                       <Card
                         key={i}

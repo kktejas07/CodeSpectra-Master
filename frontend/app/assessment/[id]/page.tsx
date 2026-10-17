@@ -519,9 +519,9 @@ export default function CandidateAssessmentPage() {
               : `This assessment opens on ${exam.starts_at ? fmtDateTime(exam.starts_at) : 'its scheduled start time'}. Please check back then.`}
           </p>
           <div className="pt-2">
-            <Link href="/">
-              <Button variant="outline" className="w-full">Return home</Button>
-            </Link>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/">Return home</Link>
+            </Button>
           </div>
         </Card>
       </div>
@@ -538,9 +538,9 @@ export default function CandidateAssessmentPage() {
           <h1 className="text-xl font-bold">Access denied</h1>
           <p className="text-sm text-muted-foreground">{accessError}</p>
           <div className="pt-2">
-            <Link href="/">
-              <Button variant="outline" className="w-full">Return home</Button>
-            </Link>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/">Return home</Link>
+            </Button>
           </div>
         </Card>
       </div>
@@ -578,7 +578,7 @@ export default function CandidateAssessmentPage() {
       const loginRedirect = `/assessment/${params.id}${fullQuery ? `?${fullQuery}` : ''}`
       return (
         <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4">
-          <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-6 shadow-xl dark:shadow-none">
+          <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-6 shadow-sm dark:shadow-none">
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto">
               <User className="h-7 w-7 text-primary" />
             </div>
@@ -592,12 +592,12 @@ export default function CandidateAssessmentPage() {
               <div className="flex justify-between"><span className="text-muted-foreground">Level</span><span className="font-medium capitalize">{exam.level}</span></div>
             </div>
             <div className="space-y-2">
-              <Link href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}>
-                <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-              </Link>
-              <Link href={`/auth/signup?redirect=${encodeURIComponent(loginRedirect)}`}>
-                <Button variant="outline" className="w-full gap-2"><User className="h-4 w-4" /> Create account</Button>
-              </Link>
+              <Button className="w-full gap-2" asChild>
+                <Link href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
+              </Button>
+              <Button variant="outline" className="w-full gap-2" asChild>
+                <Link href={`/auth/signup?redirect=${encodeURIComponent(loginRedirect)}`}><User className="h-4 w-4" /> Create account</Link>
+              </Button>
             </div>
           </Card>
         </div>

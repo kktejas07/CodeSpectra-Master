@@ -370,7 +370,7 @@ function BillingContent() {
 
         <div className="mt-8 grid gap-8 md:grid-cols-2">
           <div>
-            <h3 className="font-semibold text-foreground mb-3">Included</h3>
+            <h3 className="text-base font-semibold text-foreground mb-3">Included</h3>
             <ul className="space-y-2">
               {subscription.features.map((feature, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -499,7 +499,7 @@ function BillingContent() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Plan</Label>
-              <select
+              <select aria-label="Plan"
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={pickPlan}
                 onChange={(e) => setPickPlan(e.target.value)}

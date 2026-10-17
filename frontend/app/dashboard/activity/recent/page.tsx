@@ -43,10 +43,10 @@ type RecentItem = {
 
 const TYPE_META: Record<string, { label: string; icon: typeof BookOpen; color: string }> = {
   course: { label: 'Course', icon: BookOpen, color: 'text-primary bg-primary/10' },
-  lesson: { label: 'Lesson', icon: Video, color: 'text-violet-600 dark:text-violet-400 bg-violet-500/10' },
-  problem: { label: 'Problem', icon: Code2, color: 'text-rose-600 dark:text-rose-400 bg-rose-500/10' },
+  lesson: { label: 'Lesson', icon: Video, color: 'text-primary bg-primary/10' },
+  problem: { label: 'Problem', icon: Code2, color: 'text-foreground bg-muted' },
   article: { label: 'Article', icon: Newspaper, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10' },
-  quiz: { label: 'Quiz', icon: ListChecks, color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-500/10' },
+  quiz: { label: 'Quiz', icon: ListChecks, color: 'text-foreground bg-muted' },
 }
 
 function typeMeta(type: string) {
@@ -125,14 +125,14 @@ export default function RecentlyViewedPage() {
       const recentTour: TourStep[] = [
         {
           target: '[data-tour="recent-header"]',
-          title: 'Recently Viewed History',
+          title: 'Recently viewed',
           description:
             'This page lists everything you opened so you can resume courses, lessons, and problems.',
           position: 'bottom',
         },
         {
           target: '[data-tour="recent-stats"]',
-          title: 'Quick Stats',
+          title: 'Quick stats',
           description:
             'See your total views, recent activity, and most-viewed content type at a glance.',
           position: 'bottom',

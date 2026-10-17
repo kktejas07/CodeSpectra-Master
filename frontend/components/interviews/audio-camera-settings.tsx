@@ -164,7 +164,7 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
     <Card className="w-full max-w-2xl mx-auto rounded-3xl border-border/70 p-6 sm:p-8">
       <div className="space-y-8">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground flex items-center gap-3">
+          <h2 className="text-xl font-semibold tracking-tight text-foreground flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
               <Sliders className="w-5 h-5" aria-hidden />
             </span>

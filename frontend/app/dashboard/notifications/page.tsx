@@ -177,7 +177,7 @@ export default function NotificationsPage() {
         },
         {
           target: '[data-tour="notifications-filters"]',
-          title: 'Filter Inbox by Category',
+          title: 'Filter your inbox by category',
           description: 'Filter inbox by category to find billing, security, or learning updates fast.',
           position: 'bottom',
         },
@@ -291,7 +291,7 @@ export default function NotificationsPage() {
               <div key={n.id} className={`rounded-2xl border transition-colors duration-200 ${
                 n.is_read ? 'border-border/70 bg-card hover:border-primary/30 hover:bg-muted/30' : 'border-primary/30 bg-primary/5 hover:bg-primary/10'
               }`}>
-                <div className="flex items-start gap-3 p-4 cursor-pointer"
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} className="flex items-start gap-3 p-4 cursor-pointer"
                   onClick={async () => {
                     if (!n.is_read) await markRead(n.id)
                     if (isNewsletter(n)) {

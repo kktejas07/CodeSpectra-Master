@@ -152,12 +152,19 @@ export default function ChallengesPage() {
                     Requires: {c.prerequisites.join(', ')}
                   </p>
                 )}
-                <Link href={c.locked ? '#' : `/dashboard/challenges/${c.id}`} className="mt-auto">
-                  <Button variant="outline" size="sm" className="w-full gap-2" disabled={c.locked}>
-                    {c.completed ? 'Retry' : c.locked ? 'Locked' : 'Start'}
+                {c.locked ? (
+                  <Button variant="outline" size="sm" className="mt-auto w-full gap-2" disabled>
+                    Locked
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
-                </Link>
+                ) : (
+                  <Button variant="outline" size="sm" className="mt-auto w-full gap-2" asChild>
+                    <Link href={`/dashboard/challenges/${c.id}`}>
+                      {c.completed ? 'Retry' : 'Start'}
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                )}
               </Panel>
             ))}
           </BentoGrid>

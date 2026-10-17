@@ -407,7 +407,7 @@ export default function EditProfileWizard() {
           {/* Create Resume Promo */}
           <Link
             href="/dashboard/resumes/builder"
-            className="group relative block overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary via-primary to-indigo-700 p-4 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 dark:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="group relative block overflow-hidden rounded-3xl border border-primary/30 bg-linear-to-br from-primary via-primary to-blue-800 p-4 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)] transition-[transform,box-shadow] duration-300 hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 dark:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl transition group-hover:bg-white/20" />
             <div className="relative flex items-center justify-between gap-3">
@@ -440,7 +440,7 @@ export default function EditProfileWizard() {
               const isActive = step === s.id
               const isCompleted = step > s.id
               return (
-                <div 
+                <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-current={isActive ? "step" : undefined} 
                   key={s.id} 
                   onClick={() => setStep(s.id)}
                   className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition-colors duration-200 ${isActive ? 'bg-primary/10 border-l-4 border-primary' : 'hover:bg-muted border-l-4 border-transparent'}`}
@@ -469,13 +469,13 @@ export default function EditProfileWizard() {
                 <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                   <div className="flex items-center gap-3">
                     <User className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl font-bold text-foreground">Basic details</h2>
+                    <h2 className="text-lg font-semibold text-foreground">Basic details</h2>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    <Button aria-label="View profile" variant="ghost" size="icon" className="h-8 w-8 rounded-full" asChild>
+                      <Link href="/dashboard/profile"><Eye className="h-4 w-4 text-muted-foreground" /></Link>
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setShowTips(true)}>
+                    <Button aria-label="Show tips" variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setShowTips(true)}>
                       <Lightbulb className="h-4 w-4 text-muted-foreground" />
                     </Button>
                   </div>
@@ -504,15 +504,15 @@ export default function EditProfileWizard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label>First name <span className="text-destructive">*</span></Label>
-                    <Input placeholder="Enter first name" value={basic.firstName} onChange={e => setBasic({...basic, firstName: e.target.value})} />
+                    <Input aria-label="First name" placeholder="Enter first name" value={basic.firstName} onChange={e => setBasic({...basic, firstName: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <Label>Last name <span className="text-destructive">*</span></Label>
-                    <Input placeholder="Enter last name" value={basic.lastName} onChange={e => setBasic({...basic, lastName: e.target.value})} />
+                    <Input aria-label="Last name" placeholder="Enter last name" value={basic.lastName} onChange={e => setBasic({...basic, lastName: e.target.value})} />
                   </div>
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Username <span className="text-destructive">*</span></Label>
-                    <Input placeholder="username" value={basic.username} readOnly className="bg-muted text-muted-foreground cursor-not-allowed" title="Username is auto-generated" />
+                    <Input aria-label="Username" placeholder="username" value={basic.username} readOnly className="bg-muted text-muted-foreground cursor-not-allowed" title="Username is auto-generated" />
                   </div>
                   
                   <div className="space-y-2">
@@ -625,7 +625,7 @@ export default function EditProfileWizard() {
                     <Label>Gender <span className="text-destructive">*</span></Label>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {['Male', 'Female', 'Other'].map((g) => (
-                        <div 
+                        <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={basic.gender === g} 
                           key={g}
                           onClick={() => setBasic({...basic, gender: g})}
                           className={`px-5 py-2 rounded-full border text-sm cursor-pointer transition-colors ${basic.gender === g ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border hover:bg-muted text-muted-foreground'}`}
@@ -643,7 +643,7 @@ export default function EditProfileWizard() {
                     <Label>User type <span className="text-destructive">*</span></Label>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {['College Students', 'Professional', 'School Student', 'Fresher'].map((type) => (
-                        <div 
+                        <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={basic.userType === type} 
                           key={type}
                           onClick={() => setBasic({...basic, userType: type})}
                           className={`px-5 py-2 rounded-full border border-dashed text-sm cursor-pointer transition-all ${basic.userType === type ? 'border-primary bg-primary/5 text-primary font-semibold border-solid' : 'border-border hover:border-primary/50 text-muted-foreground'}`}
@@ -658,7 +658,7 @@ export default function EditProfileWizard() {
                     <Label>Purpose <span className="text-destructive">*</span></Label>
                     <div className="flex flex-wrap gap-3 mt-1">
                       {['To find a Job', 'Compete & Upskill', 'To Host an Event', 'To be a Mentor'].map((p) => (
-                        <div 
+                        <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={basic.purpose === p} 
                           key={p}
                           onClick={() => setBasic({...basic, purpose: p})}
                           className={`px-5 py-2 flex items-center gap-2 rounded-full border text-sm cursor-pointer transition-all ${basic.purpose === p ? 'border-primary bg-primary/10 text-primary font-semibold' : 'border-border hover:bg-muted text-muted-foreground'}`}
@@ -672,7 +672,7 @@ export default function EditProfileWizard() {
 
                   <div className="space-y-2 sm:col-span-2 mt-6">
                     <Label>Designation <span className="text-destructive">*</span></Label>
-                    <select 
+                    <select aria-label="Designation" 
                       value={basic.designation} 
                       onChange={e => setBasic({...basic, designation: e.target.value})}
                       className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -728,7 +728,7 @@ export default function EditProfileWizard() {
 
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Work experience <span className="text-destructive">*</span></Label>
-                    <select 
+                    <select aria-label="Work experience" 
                       value={basic.workExperience} 
                       onChange={e => setBasic({...basic, workExperience: e.target.value})}
                       className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -755,7 +755,7 @@ export default function EditProfileWizard() {
 
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Organisation/college <span className="text-destructive">*</span></Label>
-                    <Input className="h-11" placeholder="Enter your current organisation or college" value={basic.organisation} onChange={e => setBasic({...basic, organisation: e.target.value})} />
+                    <Input aria-label="Organisation/college" className="h-11" placeholder="Enter your current organisation or college" value={basic.organisation} onChange={e => setBasic({...basic, organisation: e.target.value})} />
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
@@ -847,7 +847,7 @@ export default function EditProfileWizard() {
                     <Label>Current location <span className="text-destructive">*</span></Label>
                     <div className="relative">
                       <Input className="h-11 pr-12" placeholder="Hyderabad, Telangana, India" value={basic.location} onChange={e => setBasic({...basic, location: e.target.value})} />
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-accent rounded-md cursor-pointer transition-colors" title="Use live location" onClick={handleLiveLocation}>
+                      <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-label="Use live location" className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-accent rounded-md cursor-pointer transition-colors" title="Use live location" onClick={handleLiveLocation}>
                         <MapPinIcon className="w-4 h-4 text-primary" />
                       </div>
                     </div>
@@ -861,7 +861,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <FileText className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold text-foreground">Resume</h2>
+                  <h2 className="text-lg font-semibold text-foreground">Resume</h2>
                 </div>
                 
                 <div className="space-y-4">
@@ -885,7 +885,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <Sparkles className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold text-foreground">About you</h2>
+                  <h2 className="text-lg font-semibold text-foreground">About you</h2>
                 </div>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
@@ -912,11 +912,11 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <Code2 className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold text-foreground">Skills</h2>
+                  <h2 className="text-lg font-semibold text-foreground">Skills</h2>
                 </div>
                 <div className="space-y-4">
                   <Label>Core skills (comma separated)</Label>
-                  <Textarea 
+                  <Textarea aria-label="Core skills (comma separated)" 
                     rows={4} 
                     placeholder="e.g. JavaScript, React, Node.js, System Design, Agile Methodologies"
                     value={skills}
@@ -939,7 +939,7 @@ export default function EditProfileWizard() {
                 <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                   <div className="flex items-center gap-3">
                     <GraduationCap className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl font-bold text-foreground">Education</h2>
+                    <h2 className="text-lg font-semibold text-foreground">Education</h2>
                   </div>
                   <Button variant="outline" size="sm" onClick={addEdu}><Plus className="w-4 h-4 mr-2" /> Add</Button>
                 </div>
@@ -948,14 +948,14 @@ export default function EditProfileWizard() {
                   {education.map((edu) => (
                     <div key={edu.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                       {education.length > 1 && (
-                        <Button variant="ghost" size="icon" onClick={() => rmEdu(edu.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button aria-label="Remove education" variant="ghost" size="icon" onClick={() => rmEdu(edu.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label>Qualification <span className="text-destructive">*</span></Label>
-                          <select className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          <select aria-label="Qualification" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             value={edu.qualification} onChange={e => updateEdu(edu.id, 'qualification', e.target.value)}>
                             <option value="">Select qualification</option>
                             <option value="Degree">Degree</option>
@@ -963,16 +963,16 @@ export default function EditProfileWizard() {
                             <option value="High School">High school</option>
                           </select>
                         </div>
-                        <div className="space-y-2"><Label>Course <span className="text-destructive">*</span></Label><Input placeholder="e.g. B.Tech" value={edu.course} onChange={e => updateEdu(edu.id, 'course', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Specialization <span className="text-destructive">*</span></Label><Input placeholder="e.g. Computer Science" value={edu.specialization} onChange={e => updateEdu(edu.id, 'specialization', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>College/university <span className="text-destructive">*</span></Label><Input placeholder="e.g. IIT" value={edu.college} onChange={e => updateEdu(edu.id, 'college', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Course <span className="text-destructive">*</span></Label><Input aria-label="Course" placeholder="e.g. B.Tech" value={edu.course} onChange={e => updateEdu(edu.id, 'course', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Specialization <span className="text-destructive">*</span></Label><Input aria-label="Specialization" placeholder="e.g. Computer Science" value={edu.specialization} onChange={e => updateEdu(edu.id, 'specialization', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>College/university <span className="text-destructive">*</span></Label><Input aria-label="College/university" placeholder="e.g. IIT" value={edu.college} onChange={e => updateEdu(edu.id, 'college', e.target.value)} /></div>
                         
-                        <div className="space-y-2"><Label>Start date</Label><Input type="month" value={edu.start} onChange={e => updateEdu(edu.id, 'start', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>End date</Label><Input type="month" value={edu.end} onChange={e => updateEdu(edu.id, 'end', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Start date</Label><Input aria-label="Start date" type="month" value={edu.start} onChange={e => updateEdu(edu.id, 'start', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>End date</Label><Input aria-label="End date" type="month" value={edu.end} onChange={e => updateEdu(edu.id, 'end', e.target.value)} /></div>
                         
                         <div className="space-y-2">
                           <Label>Course type</Label>
-                          <select className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          <select aria-label="Course type" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             value={edu.courseType} onChange={e => updateEdu(edu.id, 'courseType', e.target.value)}>
                             <option value="">Select type</option>
                             <option value="Full Time">Full time</option>
@@ -980,19 +980,19 @@ export default function EditProfileWizard() {
                             <option value="Distance">Distance</option>
                           </select>
                         </div>
-                        <div className="space-y-2"><Label>Percentage/CGPA</Label><Input placeholder="e.g. 8.5 or 85%" value={edu.percentage} onChange={e => updateEdu(edu.id, 'percentage', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Roll number</Label><Input value={edu.rollNumber} onChange={e => updateEdu(edu.id, 'rollNumber', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Percentage/CGPA</Label><Input aria-label="Percentage/CGPA" placeholder="e.g. 8.5 or 85%" value={edu.percentage} onChange={e => updateEdu(edu.id, 'percentage', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Roll number</Label><Input aria-label="Roll number" value={edu.rollNumber} onChange={e => updateEdu(edu.id, 'rollNumber', e.target.value)} /></div>
                         
                         <div className="space-y-2 sm:col-span-2 flex items-center gap-2 mt-4">
                           <input type="checkbox" id={`lateral-${edu.id}`} className="w-4 h-4 rounded border-border accent-primary" checked={edu.lateralEntry} onChange={e => updateEdu(edu.id, 'lateralEntry', e.target.checked)} />
                           <Label htmlFor={`lateral-${edu.id}`} className="cursor-pointer">Lateral entry</Label>
                         </div>
 
-                        <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={edu.skills} onChange={e => updateEdu(edu.id, 'skills', e.target.value)} /></div>
+                        <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input aria-label="Skills" placeholder="Add skills (comma separated)" value={edu.skills} onChange={e => updateEdu(edu.id, 'skills', e.target.value)} /></div>
                         
                         <div className="space-y-2 sm:col-span-2">
                           <Label>Description</Label>
-                          <Textarea rows={3} placeholder="Describe your education..." value={edu.description} onChange={e => updateEdu(edu.id, 'description', e.target.value)} />
+                          <Textarea aria-label="Description" rows={3} placeholder="Describe your education..." value={edu.description} onChange={e => updateEdu(edu.id, 'description', e.target.value)} />
                           <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `edu-${edu.id}`} onClick={() => generateDescription(`edu-${edu.id}`, 'education entry', `${edu.course || ''} ${edu.specialization || ''} at ${edu.college || ''}${edu.skills ? `, skills: ${edu.skills}` : ''}`, (text) => updateEdu(edu.id, 'description', text))}>
                             <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `edu-${edu.id}` ? 'Generating...' : 'Generate with AI'}
                           </Button>
@@ -1010,7 +1010,7 @@ export default function EditProfileWizard() {
                 <div className="flex items-center justify-between mb-6 border-b border-border pb-4">
                   <div className="flex items-center gap-3">
                     <Briefcase className="w-5 h-5 text-muted-foreground" />
-                    <h2 className="text-xl font-bold text-foreground">Work experience</h2>
+                    <h2 className="text-lg font-semibold text-foreground">Work experience</h2>
                   </div>
                   <Button variant="outline" size="sm" onClick={addExp}><Plus className="w-4 h-4 mr-2" /> Add</Button>
                 </div>
@@ -1019,17 +1019,17 @@ export default function EditProfileWizard() {
                   {experience.map((exp, index) => (
                     <div key={exp.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
                       {experience.length > 1 && (
-                        <Button variant="ghost" size="icon" onClick={() => rmExp(exp.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button aria-label="Remove experience" variant="ghost" size="icon" onClick={() => rmExp(exp.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                        <div className="space-y-2"><Label>Designation <span className="text-destructive">*</span></Label><Input placeholder="e.g. Software Engineer" value={exp.designation} onChange={e => updateExp(exp.id, 'designation', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>Organisation <span className="text-destructive">*</span></Label><Input placeholder="e.g. Google" value={exp.organisation} onChange={e => updateExp(exp.id, 'organisation', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Designation <span className="text-destructive">*</span></Label><Input aria-label="Designation" placeholder="e.g. Software Engineer" value={exp.designation} onChange={e => updateExp(exp.id, 'designation', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Organisation <span className="text-destructive">*</span></Label><Input aria-label="Organisation" placeholder="e.g. Google" value={exp.organisation} onChange={e => updateExp(exp.id, 'organisation', e.target.value)} /></div>
                         
                         <div className="space-y-2">
                           <Label>Employment type <span className="text-destructive">*</span></Label>
-                          <select className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                          <select aria-label="Employment type" className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                             value={exp.employmentType} onChange={e => updateExp(exp.id, 'employmentType', e.target.value)}>
                             <option value="">Select type</option>
                             <option value="Full Time">Full time</option>
@@ -1039,16 +1039,16 @@ export default function EditProfileWizard() {
                           </select>
                         </div>
                         
-                        <div className="space-y-2"><Label>Location</Label><Input placeholder="e.g. Remote, India" value={exp.location} onChange={e => updateExp(exp.id, 'location', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Location</Label><Input aria-label="Location" placeholder="e.g. Remote, India" value={exp.location} onChange={e => updateExp(exp.id, 'location', e.target.value)} /></div>
                         
-                        <div className="space-y-2"><Label>Start date <span className="text-destructive">*</span></Label><Input type="month" value={exp.start} onChange={e => updateExp(exp.id, 'start', e.target.value)} /></div>
-                        <div className="space-y-2"><Label>End date</Label><Input type="month" value={exp.end} onChange={e => updateExp(exp.id, 'end', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>Start date <span className="text-destructive">*</span></Label><Input aria-label="Start date" type="month" value={exp.start} onChange={e => updateExp(exp.id, 'start', e.target.value)} /></div>
+                        <div className="space-y-2"><Label>End date</Label><Input aria-label="End date" type="month" value={exp.end} onChange={e => updateExp(exp.id, 'end', e.target.value)} /></div>
                         
-                        <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={exp.skills} onChange={e => updateExp(exp.id, 'skills', e.target.value)} /></div>
+                        <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input aria-label="Skills" placeholder="Add skills (comma separated)" value={exp.skills} onChange={e => updateExp(exp.id, 'skills', e.target.value)} /></div>
                       </div>
                       <div className="space-y-2">
                         <Label>Description</Label>
-                        <Textarea rows={4} placeholder="Detail your responsibilities, the role you played, the skills you honed or acquired, and the key learnings or outcomes..." value={exp.description} onChange={e => updateExp(exp.id, 'description', e.target.value)} />
+                        <Textarea aria-label="Description" rows={4} placeholder="Detail your responsibilities, the role you played, the skills you honed or acquired, and the key learnings or outcomes..." value={exp.description} onChange={e => updateExp(exp.id, 'description', e.target.value)} />
                         <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `exp-${exp.id}`} onClick={() => generateDescription(`exp-${exp.id}`, 'work experience entry', `${exp.designation || ''} at ${exp.organisation || ''}${exp.skills ? `, skills: ${exp.skills}` : ''}`, (text) => updateExp(exp.id, 'description', text))}>
                           <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `exp-${exp.id}` ? 'Generating...' : 'Generate with AI'}
                         </Button>
@@ -1069,7 +1069,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <Trophy className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold text-foreground">Accomplishments and initiatives</h2>
+                  <h2 className="text-lg font-semibold text-foreground">Accomplishments and initiatives</h2>
                 </div>
                 
                 <div className="space-y-8 mt-6">
@@ -1082,19 +1082,19 @@ export default function EditProfileWizard() {
                     <div className="space-y-4">
                       {projects.map(proj => (
                         <div key={proj.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
-                          <Button variant="ghost" size="icon" onClick={() => rmProj(proj.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button aria-label="Remove project" variant="ghost" size="icon" onClick={() => rmProj(proj.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Project name <span className="text-destructive">*</span></Label><Input value={proj.name} onChange={e => updateProj(proj.id, 'name', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Project type <span className="text-destructive">*</span></Label><Input value={proj.type} onChange={e => updateProj(proj.id, 'type', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Start date</Label><Input type="month" value={proj.start} onChange={e => updateProj(proj.id, 'start', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>End date</Label><Input type="month" value={proj.end} onChange={e => updateProj(proj.id, 'end', e.target.value)} /></div>
-                            <div className="space-y-2 sm:col-span-2"><Label>Link this Project</Label><Input placeholder="https://..." value={proj.link} onChange={e => updateProj(proj.id, 'link', e.target.value)} /></div>
-                            <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={proj.skills} onChange={e => updateProj(proj.id, 'skills', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Project name <span className="text-destructive">*</span></Label><Input aria-label="Project name" value={proj.name} onChange={e => updateProj(proj.id, 'name', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Project type <span className="text-destructive">*</span></Label><Input aria-label="Project type" value={proj.type} onChange={e => updateProj(proj.id, 'type', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Start date</Label><Input aria-label="Start date" type="month" value={proj.start} onChange={e => updateProj(proj.id, 'start', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>End date</Label><Input aria-label="End date" type="month" value={proj.end} onChange={e => updateProj(proj.id, 'end', e.target.value)} /></div>
+                            <div className="space-y-2 sm:col-span-2"><Label>Link this project</Label><Input aria-label="Link this project" placeholder="https://..." value={proj.link} onChange={e => updateProj(proj.id, 'link', e.target.value)} /></div>
+                            <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input aria-label="Skills" placeholder="Add skills (comma separated)" value={proj.skills} onChange={e => updateProj(proj.id, 'skills', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2">
                               <Label>Description</Label>
-                              <Textarea rows={3} placeholder="Detail the project you worked on..." value={proj.description} onChange={e => updateProj(proj.id, 'description', e.target.value)} />
+                              <Textarea aria-label="Description" rows={3} placeholder="Detail the project you worked on..." value={proj.description} onChange={e => updateProj(proj.id, 'description', e.target.value)} />
                               <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `proj-${proj.id}`} onClick={() => generateDescription(`proj-${proj.id}`, 'project entry', `${proj.name || ''} (${proj.type || 'project'})${proj.skills ? `, skills: ${proj.skills}` : ''}`, (text) => updateProj(proj.id, 'description', text))}>
                                 <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `proj-${proj.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
@@ -1115,16 +1115,16 @@ export default function EditProfileWizard() {
                     <div className="space-y-4">
                       {achievements.map(ach => (
                         <div key={ach.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
-                          <Button variant="ghost" size="icon" onClick={() => rmAchieve(ach.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button aria-label="Remove achievement" variant="ghost" size="icon" onClick={() => rmAchieve(ach.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                           <div className="grid grid-cols-1 gap-4">
-                            <div className="space-y-2"><Label>Title <span className="text-destructive">*</span></Label><Input value={ach.title} onChange={e => updateAchieve(ach.id, 'title', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Link this Achievement</Label><Input placeholder="https://..." value={ach.link} onChange={e => updateAchieve(ach.id, 'link', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={ach.skills} onChange={e => updateAchieve(ach.id, 'skills', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Title <span className="text-destructive">*</span></Label><Input aria-label="Title" value={ach.title} onChange={e => updateAchieve(ach.id, 'title', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Link this achievement</Label><Input aria-label="Link this achievement" placeholder="https://..." value={ach.link} onChange={e => updateAchieve(ach.id, 'link', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Skills</Label><Input aria-label="Skills" placeholder="Add skills (comma separated)" value={ach.skills} onChange={e => updateAchieve(ach.id, 'skills', e.target.value)} /></div>
                             <div className="space-y-2">
                               <Label>Description</Label>
-                              <Textarea rows={3} placeholder="Describe your achievement here..." value={ach.description} onChange={e => updateAchieve(ach.id, 'description', e.target.value)} />
+                              <Textarea aria-label="Description" rows={3} placeholder="Describe your achievement here..." value={ach.description} onChange={e => updateAchieve(ach.id, 'description', e.target.value)} />
                               <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `ach-${ach.id}`} onClick={() => generateDescription(`ach-${ach.id}`, 'achievement entry', `${ach.title || ''}${ach.skills ? `, skills: ${ach.skills}` : ''}`, (text) => updateAchieve(ach.id, 'description', text))}>
                                 <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `ach-${ach.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
@@ -1145,19 +1145,19 @@ export default function EditProfileWizard() {
                     <div className="space-y-4">
                       {responsibilities.map(resp => (
                         <div key={resp.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
-                          <Button variant="ghost" size="icon" onClick={() => rmResp(resp.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button aria-label="Remove responsibility" variant="ghost" size="icon" onClick={() => rmResp(resp.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Position of responsibility <span className="text-destructive">*</span></Label><Input value={resp.position} onChange={e => updateResp(resp.id, 'position', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Organisation <span className="text-destructive">*</span></Label><Input value={resp.organisation} onChange={e => updateResp(resp.id, 'organisation', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Location</Label><Input value={resp.location} onChange={e => updateResp(resp.id, 'location', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={resp.skills} onChange={e => updateResp(resp.id, 'skills', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Start date <span className="text-destructive">*</span></Label><Input type="month" value={resp.start} onChange={e => updateResp(resp.id, 'start', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>End date</Label><Input type="month" value={resp.end} onChange={e => updateResp(resp.id, 'end', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Position of responsibility <span className="text-destructive">*</span></Label><Input aria-label="Position of responsibility" value={resp.position} onChange={e => updateResp(resp.id, 'position', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Organisation <span className="text-destructive">*</span></Label><Input aria-label="Organisation" value={resp.organisation} onChange={e => updateResp(resp.id, 'organisation', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Location</Label><Input aria-label="Location" value={resp.location} onChange={e => updateResp(resp.id, 'location', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Skills</Label><Input aria-label="Skills" placeholder="Add skills (comma separated)" value={resp.skills} onChange={e => updateResp(resp.id, 'skills', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Start date <span className="text-destructive">*</span></Label><Input aria-label="Start date" type="month" value={resp.start} onChange={e => updateResp(resp.id, 'start', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>End date</Label><Input aria-label="End date" type="month" value={resp.end} onChange={e => updateResp(resp.id, 'end', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2">
                               <Label>Description</Label>
-                              <Textarea rows={3} placeholder="Outline the specific duties and initiatives..." value={resp.description} onChange={e => updateResp(resp.id, 'description', e.target.value)} />
+                              <Textarea aria-label="Description" rows={3} placeholder="Outline the specific duties and initiatives..." value={resp.description} onChange={e => updateResp(resp.id, 'description', e.target.value)} />
                               <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `resp-${resp.id}`} onClick={() => generateDescription(`resp-${resp.id}`, 'position of responsibility entry', `${resp.position || ''} at ${resp.organisation || ''}${resp.skills ? `, skills: ${resp.skills}` : ''}`, (text) => updateResp(resp.id, 'description', text))}>
                                 <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `resp-${resp.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
@@ -1178,19 +1178,19 @@ export default function EditProfileWizard() {
                     <div className="space-y-4">
                       {certificates.map(cert => (
                         <div key={cert.id} className="p-4 border border-border/70 rounded-2xl bg-card relative group">
-                          <Button variant="ghost" size="icon" onClick={() => rmCert(cert.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button aria-label="Remove certificate" variant="ghost" size="icon" onClick={() => rmCert(cert.id)} className="absolute top-2 right-2 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2"><Label>Certificate name <span className="text-destructive">*</span></Label><Input value={cert.title} onChange={e => updateCert(cert.id, 'title', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Issuing organisation <span className="text-destructive">*</span></Label><Input value={cert.organisation} onChange={e => updateCert(cert.id, 'organisation', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Issue date <span className="text-destructive">*</span></Label><Input type="month" value={cert.issued} onChange={e => updateCert(cert.id, 'issued', e.target.value)} /></div>
-                            <div className="space-y-2"><Label>Expiration date</Label><Input type="month" value={cert.expiry} onChange={e => updateCert(cert.id, 'expiry', e.target.value)} /></div>
-                            <div className="space-y-2 sm:col-span-2"><Label>Link this Certificate</Label><Input placeholder="https://..." value={cert.link} onChange={e => updateCert(cert.id, 'link', e.target.value)} /></div>
-                            <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input placeholder="Add skills (comma separated)" value={cert.skills} onChange={e => updateCert(cert.id, 'skills', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Certificate name <span className="text-destructive">*</span></Label><Input aria-label="Certificate name" value={cert.title} onChange={e => updateCert(cert.id, 'title', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Issuing organisation <span className="text-destructive">*</span></Label><Input aria-label="Issuing organisation" value={cert.organisation} onChange={e => updateCert(cert.id, 'organisation', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Issue date <span className="text-destructive">*</span></Label><Input aria-label="Issue date" type="month" value={cert.issued} onChange={e => updateCert(cert.id, 'issued', e.target.value)} /></div>
+                            <div className="space-y-2"><Label>Expiration date</Label><Input aria-label="Expiration date" type="month" value={cert.expiry} onChange={e => updateCert(cert.id, 'expiry', e.target.value)} /></div>
+                            <div className="space-y-2 sm:col-span-2"><Label>Link this certificate</Label><Input aria-label="Link this certificate" placeholder="https://..." value={cert.link} onChange={e => updateCert(cert.id, 'link', e.target.value)} /></div>
+                            <div className="space-y-2 sm:col-span-2"><Label>Skills</Label><Input aria-label="Skills" placeholder="Add skills (comma separated)" value={cert.skills} onChange={e => updateCert(cert.id, 'skills', e.target.value)} /></div>
                             <div className="space-y-2 sm:col-span-2">
                               <Label>Description</Label>
-                              <Textarea rows={3} placeholder="Provide details about the certificate..." value={cert.description} onChange={e => updateCert(cert.id, 'description', e.target.value)} />
+                              <Textarea aria-label="Description" rows={3} placeholder="Provide details about the certificate..." value={cert.description} onChange={e => updateCert(cert.id, 'description', e.target.value)} />
                               <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `cert-${cert.id}`} onClick={() => generateDescription(`cert-${cert.id}`, 'certificate entry', `${cert.title || ''} issued by ${cert.organisation || ''}${cert.skills ? `, skills: ${cert.skills}` : ''}`, (text) => updateCert(cert.id, 'description', text))}>
                                 <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `cert-${cert.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
@@ -1210,7 +1210,7 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <UserCircle className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold text-foreground">Personal details</h2>
+                  <h2 className="text-lg font-semibold text-foreground">Personal details</h2>
                 </div>
                 
                 <div className="space-y-4">
@@ -1218,7 +1218,7 @@ export default function EditProfileWizard() {
                     <Label>Pronouns</Label>
                     <div className="flex gap-3 mt-1">
                       {['He/Him/his', 'She/Her', 'Them/They'].map(pronoun => (
-                        <div 
+                        <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} aria-pressed={personalDetails.pronouns === pronoun} 
                           key={pronoun}
                           onClick={() => setPersonalDetails({...personalDetails, pronouns: pronoun})}
                           className={`px-4 py-2 border rounded-full text-sm cursor-pointer transition-colors ${personalDetails.pronouns === pronoun ? 'border-primary bg-primary/10 text-primary' : 'border-border border-dashed hover:bg-muted'}`}
@@ -1238,7 +1238,7 @@ export default function EditProfileWizard() {
 
                   <div className="space-y-2 mt-4 p-4 border border-border rounded-xl bg-muted/20">
                     <Label>Current address</Label>
-                    <Input placeholder="Select location" value={personalDetails.currentAddress} onChange={e => setPersonalDetails({...personalDetails, currentAddress: e.target.value})} />
+                    <Input aria-label="Current address" placeholder="Select location" value={personalDetails.currentAddress} onChange={e => setPersonalDetails({...personalDetails, currentAddress: e.target.value})} />
                   </div>
 
                   <div className="space-y-2 mt-4 p-4 border border-border rounded-xl bg-muted/20">
@@ -1271,7 +1271,7 @@ export default function EditProfileWizard() {
 
                   <div className="space-y-2 mt-4">
                     <Label>Hobbies</Label>
-                    <Textarea placeholder="List your hobbies." value={personalDetails.hobbies} onChange={e => setPersonalDetails({...personalDetails, hobbies: e.target.value})} rows={3} />
+                    <Textarea aria-label="Hobbies" placeholder="List your hobbies." value={personalDetails.hobbies} onChange={e => setPersonalDetails({...personalDetails, hobbies: e.target.value})} rows={3} />
                   </div>
                 </div>
               </div>
@@ -1282,21 +1282,21 @@ export default function EditProfileWizard() {
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
                 <div className="flex items-center gap-3 mb-6 border-b border-border pb-4">
                   <LinkIcon className="w-5 h-5 text-muted-foreground" />
-                  <h2 className="text-xl font-bold text-foreground">Social links</h2>
+                  <h2 className="text-lg font-semibold text-foreground">Social links</h2>
                 </div>
                 
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
                     <Label>LinkedIn URL</Label>
-                    <Input placeholder="https://linkedin.com/in/username" value={links.linkedin} onChange={e => setLinks({...links, linkedin: e.target.value})} />
+                    <Input aria-label="LinkedIn URL" placeholder="https://linkedin.com/in/username" value={links.linkedin} onChange={e => setLinks({...links, linkedin: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <Label>GitHub URL</Label>
-                    <Input placeholder="https://github.com/username" value={links.github} onChange={e => setLinks({...links, github: e.target.value})} />
+                    <Input aria-label="GitHub URL" placeholder="https://github.com/username" value={links.github} onChange={e => setLinks({...links, github: e.target.value})} />
                   </div>
                   <div className="space-y-2">
                     <Label>Personal portfolio</Label>
-                    <Input placeholder="https://yourwebsite.com" value={links.portfolio} onChange={e => setLinks({...links, portfolio: e.target.value})} />
+                    <Input aria-label="Personal portfolio" placeholder="https://yourwebsite.com" value={links.portfolio} onChange={e => setLinks({...links, portfolio: e.target.value})} />
                   </div>
                 </div>
                 
@@ -1410,9 +1410,9 @@ export default function EditProfileWizard() {
               <div className="flex justify-between items-center mb-5">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{tipData.icon}</span>
-                  <h3 className="text-lg font-bold">{tipData.title}</h3>
+                  <h3 className="text-lg font-semibold">{tipData.title}</h3>
                 </div>
-                <Button variant="ghost" size="icon" onClick={() => setShowTips(false)}>
+                <Button aria-label="Close tips" variant="ghost" size="icon" onClick={() => setShowTips(false)}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -1441,17 +1441,17 @@ export default function EditProfileWizard() {
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold">Update email</h3>
-              <button type="button" onClick={() => setShowEmailUpdate(false)}><X className="h-4 w-4" /></button>
+              <button aria-label="Close" type="button" onClick={() => setShowEmailUpdate(false)}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">We will send a verification code to the new address. Your login email updates only after you verify.</p>
             <div className="space-y-2">
               <Label>New email</Label>
-              <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="you@example.com" disabled={emailOtpSent} />
+              <Input aria-label="New email" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="you@example.com" disabled={emailOtpSent} />
             </div>
             {emailOtpSent && (
               <div className="space-y-2">
                 <Label>Verification code</Label>
-                <Input value={emailOtp} onChange={e => setEmailOtp(e.target.value)} placeholder="6-digit code" />
+                <Input aria-label="Verification code" value={emailOtp} onChange={e => setEmailOtp(e.target.value)} placeholder="6-digit code" />
               </div>
             )}
             <div className="flex gap-2 justify-end">
@@ -1495,14 +1495,14 @@ export default function EditProfileWizard() {
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-base font-semibold">Verify mobile</h3>
-              <button type="button" onClick={() => setPhoneOtpSent(false)}><X className="h-4 w-4" /></button>
+              <button aria-label="Close" type="button" onClick={() => setPhoneOtpSent(false)}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">
               SMS OTP needs a paid gateway. For now we email a code to your current login email to confirm this number. SMS can be added later.
             </p>
             <div className="space-y-2">
               <Label>Code from email</Label>
-              <Input value={phoneOtp} onChange={e => setPhoneOtp(e.target.value)} placeholder="6-digit code" />
+              <Input aria-label="Code from email" value={phoneOtp} onChange={e => setPhoneOtp(e.target.value)} placeholder="6-digit code" />
             </div>
             <div className="flex gap-2 justify-end">
               <Button type="button" variant="outline" onClick={() => setPhoneOtpSent(false)}>Cancel</Button>

@@ -3,16 +3,14 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import {
-  CheckCircle2,
-  Code2,
-  Sparkles,
-  ArrowRight,
-  LogIn,
-} from 'lucide-react'
+import { Code2, ArrowRight, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { PublicPageWrapper } from '@/app/public-layout'
+import { PageHero } from '@/components/landing/page-hero'
+import { Panel } from '@/components/app/page-kit'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { useAssessmentViewModel } from './use-assessment-viewmodel'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
@@ -34,22 +32,23 @@ export default function AssessmentPage() {
 
   if (!gate.allowed) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="relative isolate min-h-screen flex items-center justify-center bg-background px-4">
+        <SoftGlow />
         <Card className="max-w-sm w-full rounded-3xl p-8 text-center border-border/70">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
             <Code2 className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Sign in required</h1>
           <p className="text-sm text-muted-foreground mb-6">
             Please sign in to access the assessment platform.
           </p>
           <div className="flex flex-col gap-2">
-            <Link href={`/auth/login?redirect=${encodeURIComponent('/assessment')}`}>
-              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline" className="w-full">Create account</Button>
-            </Link>
+            <Button className="w-full gap-2" asChild>
+              <Link href={`/auth/login?redirect=${encodeURIComponent('/assessment')}`}><LogIn className="h-4 w-4" /> Sign in</Link>
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/auth/signup">Create account</Link>
+            </Button>
           </div>
         </Card>
       </div>
@@ -57,204 +56,120 @@ export default function AssessmentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground" data-testid="assessment-page">
-      {/* Top nav */}
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur">
-        <div className="mx-auto max-w-7xl flex items-center justify-between px-4 py-3">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-primary to-primary/70">
-              <Code2 className="h-4 w-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold tracking-tight">CodeSpectra</span>
-          </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <Link href="/assessment" className="text-foreground">Assessment</Link>
-            <Link href="/dashboard/problems" className="hover:text-foreground">Problems</Link>
-            <Link href="/dashboard/agent" className="hover:text-foreground">Agent</Link>
-            <Link href="/dashboard" className="hover:text-foreground">Dashboard</Link>
-          </nav>
-          <div className="flex items-center gap-2">
-            {authUser?.uid ? (
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm">Dashboard</Button>
-              </Link>
-            ) : (
-              <>
-                <Link href="/auth/login">
-                  <Button variant="ghost" size="sm">Log in</Button>
+    <PublicPageWrapper>
+      <div className="bg-background text-foreground" data-testid="assessment-page">
+        <PageHero
+          title={<>Hire with <span className="text-primary">proctored, AI‑graded</span> assessments</>}
+          lead="Combine fresh talent with data-driven insight and verified technical work. Live AI proctoring, ready-to-use coding environments and skill analytics in one place."
+          actions={
+            <>
+              <Button size="lg" data-testid="hero-get-started" asChild>
+                <Link href={authUser?.uid ? '/dashboard' : '/auth/signup'}>
+                  {authUser?.uid ? 'Go to dashboard' : 'Get started'} <ArrowRight className="h-4 w-4 ml-1" />
                 </Link>
-                <Link href="/auth/signup">
-                  <Button size="sm" data-testid="cta-signup">Get started</Button>
-                </Link>
-              </>
-            )}
-          </div>
-        </div>
-      </header>
+              </Button>
+              <Button size="lg" variant="outline" data-testid="hero-try-ide" asChild>
+                <Link href="/dashboard/problems">Try the IDE</Link>
+              </Button>
+            </>
+          }
+          art={<DeviceShowcase variant="proctor" compact />}
+        />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-linear-to-b from-primary/8 via-background to-background" />
-        <div className="mx-auto max-w-7xl px-4 py-16 lg:py-24">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary mb-5">
-              <Sparkles className="h-3 w-3" /> AI-powered assessments
-            </span>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
-              Streamline your recruitment with{' '}
-              <span className="text-primary">intelligent assessments</span>
-            </h1>
-            <p className="mt-5 text-base text-muted-foreground max-w-2xl">
-              Build successful teams by combining fresh talent with data-driven insights and
-              verified technical execution. Real-time AI proctoring, automated environments,
-              and deep skill analytics — all in one platform.
+        {/* Ecosystem */}
+        <section className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="mb-10 max-w-2xl">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Everything an assessment needs</h2>
+            <p className="mt-2 text-muted-foreground">
+              From AI proctoring to detailed analytics, in one platform.
             </p>
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link href="/auth/signup">
-                <Button size="lg" data-testid="hero-get-started">
-                  Get started <ArrowRight className="h-4 w-4 ml-1" />
-                </Button>
-              </Link>
-              <Link href="/dashboard/problems">
-                <Button size="lg" variant="outline" data-testid="hero-try-ide">
-                  Try the IDE
-                </Button>
-              </Link>
-            </div>
-            <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-muted-foreground">
-              {['Precision', 'Scalability', 'Intelligence', 'Efficiency', 'Insight'].map((v) => (
-                <span key={v} className="inline-flex items-center gap-1">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> {v}
-                </span>
+          </div>
+          <div className="cs-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
+            {ecosystem.map((f) => (
+              <Panel key={f.title} interactive className="p-5" data-testid={f.testid}>
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                  <f.icon className="h-5 w-5" aria-hidden />
+                </div>
+                <h3 className="text-base font-semibold text-foreground">{f.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{f.desc}</p>
+              </Panel>
+            ))}
+          </div>
+        </section>
+
+        {/* How it works */}
+        <section className="border-t border-border/60 bg-muted/30">
+          <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+            <h2 className="mb-10 text-center text-2xl font-bold tracking-tight sm:text-3xl">How it works</h2>
+            <div className="cs-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+              {steps.map((s) => (
+                <Panel key={s.n} className="p-5" data-testid={`step-${s.n}`}>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-bold tabular-nums text-primary-foreground">{s.n}</span>
+                  <h3 className="mt-3 text-base font-semibold text-foreground">{s.title}</h3>
+                  <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{s.desc}</p>
+                </Panel>
               ))}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Ecosystem */}
-      <section className="border-t border-border/40">
-        <div className="mx-auto max-w-7xl px-4 py-16 lg:py-20">
-          <div className="mb-10 max-w-2xl">
-            <h2 className="text-2xl sm:text-3xl font-bold">Complete assessment ecosystem</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              From AI proctoring to detailed analytics, everything you need to hire the best.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {ecosystem.map((f) => (
-              <div
-                key={f.title}
-                className="group rounded-2xl border border-border/70 bg-card p-5 transition-[transform,border-color] duration-200 hover:-translate-y-0.5 hover:border-primary/40 motion-reduce:hover:translate-y-0"
-                data-testid={f.testid}
-              >
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  <f.icon className="h-4 w-4" />
-                </div>
-                <h3 className="font-semibold text-sm">{f.title}</h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{f.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="border-t border-border/40 bg-card/20">
-        <div className="mx-auto max-w-7xl px-4 py-16 lg:py-20">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-10 text-center">
-            How it works
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {steps.map((s) => (
-              <div
-                key={s.n}
-                className="rounded-2xl border border-border/70 bg-card p-5"
-                data-testid={`step-${s.n}`}
-              >
-                <div className="text-3xl font-bold tabular-nums text-primary">{s.n}.</div>
-                <h3 className="mt-1 font-semibold">{s.title}</h3>
-                <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{s.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Automated Technical Assessment */}
-      <section className="border-t border-border/40">
-        <div className="mx-auto max-w-3xl px-4 py-16 lg:py-20 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold">Automated technical assessment</h2>
-          <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-            Aligning fresh talent with corporate objectives requires more than a resume scan.
-            We provide a comprehensive evaluation ecosystem that navigates the complexities of
-            technical recruiting, giving you the data-driven insights needed to achieve lasting
-            business success.
-          </p>
-        </div>
-      </section>
-
-      {/* FAQ */}
-      <section className="border-t border-border/40 bg-card/10">
-        <div className="mx-auto max-w-3xl px-4 py-16 lg:py-20">
-          <div className="mb-8 text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold">Frequently asked questions</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Everything you need to know about the product and billing.
-            </p>
-          </div>
-          <div className="space-y-2">
-            {faq.map((q, i) => (
-              <div
-                key={q.q}
-                className="rounded-2xl border border-border/70 bg-card overflow-hidden"
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleFaq(i)}
-                  className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium"
-                  data-testid={`faq-toggle-${i}`}
-                >
-                  <span>{q.q}</span>
-                  <span
-                    className={cn(
-                      'inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-xs transition',
-                      openFaq === i ? 'rotate-45 bg-primary text-primary-foreground border-primary' : '',
-                    )}
+        {/* FAQ */}
+        <section className="border-t border-border/60">
+          <div className="mx-auto max-w-3xl px-4 py-16 lg:py-20">
+            <div className="mb-8 text-center">
+              <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Frequently asked questions</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                What to know about assessments and plans.
+              </p>
+            </div>
+            <div className="space-y-2">
+              {faq.map((q, i) => (
+                <div key={q.q} className="overflow-hidden rounded-2xl border border-border/70 bg-card">
+                  <button
+                    type="button"
+                    onClick={() => toggleFaq(i)}
+                    aria-expanded={openFaq === i}
+                    aria-controls={`assessment-faq-${i}`}
+                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                    data-testid={`faq-toggle-${i}`}
                   >
-                    +
-                  </span>
-                </button>
-                {openFaq === i && (
-                  <div className="px-4 pb-4 text-sm text-muted-foreground">{q.a}</div>
-                )}
-              </div>
-            ))}
+                    <span>{q.q}</span>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        'inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-xs transition-transform duration-200 motion-reduce:transition-none',
+                        openFaq === i ? 'rotate-45 border-primary bg-primary text-primary-foreground' : '',
+                      )}
+                    >
+                      +
+                    </span>
+                  </button>
+                  {openFaq === i && (
+                    <div id={`assessment-faq-${i}`} className="px-4 pb-4 text-sm text-muted-foreground">{q.a}</div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section className="border-t border-border/40">
-        <div className="mx-auto max-w-3xl px-4 py-14 text-center">
-          <h2 className="text-2xl sm:text-3xl font-bold">Still thinking about it?</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Sign up for free — no card required. Run your first assessment in under 5 minutes.
-          </p>
-          <div className="mt-6 flex justify-center gap-3">
-            <Link href="/auth/signup">
-              <Button size="lg" data-testid="footer-cta">
-                Book a free demo <ArrowRight className="h-4 w-4 ml-1" />
+        {/* CTA */}
+        <section className="mx-auto max-w-[1200px] px-4 pb-16 sm:px-6 lg:px-8">
+          <div className="relative isolate overflow-hidden rounded-3xl bg-primary px-6 py-12 text-center text-primary-foreground sm:px-10">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Ready to run your first assessment?</h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm text-primary-foreground/85">
+              Sign up for free — no card required.
+            </p>
+            <div className="mt-6 flex justify-center">
+              <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-white/90" data-testid="footer-cta" asChild>
+                <Link href={authUser?.uid ? '/dashboard' : '/auth/signup'}>
+                  Get started free <ArrowRight className="h-4 w-4 ml-1" />
+                </Link>
               </Button>
-            </Link>
+            </div>
           </div>
-        </div>
-      </section>
-
-      <footer className="border-t border-border/40 py-6 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} CodeSpectra · We care about your data — see our{' '}
-        <Link href="/privacy" className="underline">privacy policy</Link>.
-      </footer>
-    </div>
+        </section>
+      </div>
+    </PublicPageWrapper>
   )
 }

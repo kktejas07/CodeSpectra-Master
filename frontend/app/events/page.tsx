@@ -90,12 +90,12 @@ function EventCard({ event }: { event: any }) {
           </div>
         )}
 
-        <Link href={detailUrl}>
-          <Button size="sm" variant={isLive ? 'default' : 'outline'} className="w-full gap-1.5 text-xs">
+        <Button size="sm" variant={isLive ? 'default' : 'outline'} className="w-full gap-1.5 text-xs" asChild>
+          <Link href={detailUrl}>
             {isLive ? 'Join Event' : isClosed ? 'View Results' : 'Learn More'}
             <ArrowRight className="w-3 h-3" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     </Card>
   )

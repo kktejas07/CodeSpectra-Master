@@ -69,7 +69,7 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
     <Card className="w-full max-w-xl mx-auto rounded-3xl border-border/70 p-6 sm:p-8">
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">Upload your resume</h2>
+          <h2 className="text-xl font-semibold tracking-tight text-foreground">Upload your resume</h2>
           <p className="text-sm text-muted-foreground mt-1">
             Add your resume so the mock interviewer can refer to it during the conversation. {isOptional && '(Optional)'}
           </p>
@@ -79,8 +79,12 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
           <div
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleFileDrop}
-            className="border-2 border-dashed border-border rounded-2xl p-8 sm:p-12 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors duration-200 cursor-pointer"
+            className="border-2 border-dashed border-border rounded-2xl p-8 sm:p-12 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => fileInputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            aria-label="Upload your resume (PDF, up to 5 MB)"
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
           >
             <div className="flex flex-col items-center gap-3">
               <div className="p-3 bg-primary/10 rounded-xl">
@@ -98,6 +102,8 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
               accept=".pdf"
               onChange={handleInputChange}
               className="hidden"
+              tabIndex={-1}
+              aria-hidden
             />
           </div>
         ) : (

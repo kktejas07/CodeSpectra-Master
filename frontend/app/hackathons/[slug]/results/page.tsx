@@ -4,6 +4,7 @@ import { formatDateTime, formatDate } from '@/lib/format-datetime'
 import { use, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
+import { SoftGlow } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -93,7 +94,7 @@ function CountdownTimer({ targetDate, eventEnded }: { targetDate: string; eventE
         { value: timeLeft.seconds, label: 'Seconds' },
       ].map(({ value, label }) => (
         <div key={label} className="text-center">
-          <div className="bg-muted/50 rounded-lg px-3 py-2 min-w-[60px]">
+          <div className="bg-muted/50 rounded-xl px-3 py-2 min-w-[60px]">
             <p className="text-2xl font-bold tabular-nums">{value}</p>
           </div>
           <p className="text-xs text-muted-foreground mt-1">{label}</p>
@@ -107,12 +108,13 @@ function LockedState({ hackathon }: { hackathon: Hackathon }) {
   const eventEnded = new Date(hackathon.ends_at).getTime() < Date.now()
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <Card className="max-w-md w-full p-8 text-center border-primary/20">
+    <div className="relative isolate flex min-h-screen items-center justify-center bg-background px-4">
+      <SoftGlow />
+      <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mx-auto mb-6">
           <Lock className="h-10 w-10 text-muted-foreground" />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Results are not yet available</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Results aren’t available yet</h1>
         <p className="text-muted-foreground mb-6">
           The organizers have not released the results yet.
         </p>
@@ -244,7 +246,7 @@ function MyTeamResults({
           <div className="flex items-center gap-2">
             <Medal className={`h-8 w-8 ${myRank === 1 ? 'text-amber-500' : myRank === 2 ? 'text-muted-foreground' : myRank === 3 ? 'text-amber-700 dark:text-amber-600' : 'text-primary'}`} />
             <div>
-              <h2 className="text-2xl font-bold">{myTeam.name}</h2>
+              <h2 className="text-lg font-semibold">{myTeam.name}</h2>
               <p className="text-sm text-muted-foreground">
                 Captain: {captain?.name || 'Unknown'} · {myTeam.xp} XP · Level {myTeam.level}
               </p>
@@ -530,11 +532,11 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
         )}
 
         <div className="text-center">
-          <Link href={`/hackathons/${slug}/report`}>
-            <Button variant="outline" className="gap-1.5 text-sm">
+          <Button variant="outline" className="gap-1.5 text-sm" asChild>
+            <Link href={`/hackathons/${slug}/report`}>
               <FileText className="h-4 w-4" /> View detailed report
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
 
         <Card className="rounded-3xl p-6 border-primary/30 bg-primary/5">
@@ -573,7 +575,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
 
               return (
                 <div key={t.id}>
-                  <div
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }}
                     className={`flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/30 transition-colors ${myTeam?.id === t.id ? 'bg-primary/5' : ''}`}
                     onClick={() => toggleTeamExpand(t.id)}
                   >

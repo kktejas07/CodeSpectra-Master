@@ -68,19 +68,19 @@ export default function MyAssessmentsPage() {
       const assessmentsTour: TourStep[] = [
         {
           target: '[data-tour="assessments-header"]',
-          title: 'My Assessments',
+          title: 'My assessments',
           description: 'View your past assessment attempts, scores, and certificates.',
           position: 'bottom',
         },
         {
           target: '[data-tour="assessments-browse"]',
-          title: 'Browse Assessments',
+          title: 'Browse assessments',
           description: 'Explore available assessments to take and earn certificates.',
           position: 'bottom',
         },
         {
           target: '[data-tour="assessments-kpis"]',
-          title: 'Your Stats',
+          title: 'Your stats',
           description: 'See your total attempts, pass rate, and average score.',
           position: 'bottom',
         },
@@ -92,7 +92,7 @@ export default function MyAssessmentsPage() {
         },
         {
           target: '[data-tour="assessments-table"]',
-          title: 'Attempt History',
+          title: 'Attempt history',
           description: 'Review your detailed attempt history and track your progress.',
           position: 'bottom',
         },
@@ -202,11 +202,11 @@ export default function MyAssessmentsPage() {
           icon={<FileText />}
           className="mb-0"
           actions={
-            <Link href="/dashboard/assessments" data-tour="assessments-browse">
-              <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" asChild>
+              <Link href="/dashboard/assessments" data-tour="assessments-browse">
                 <BarChart3 className="h-4 w-4" /> Browse assessments
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           }
         />
       </div>
@@ -232,11 +232,11 @@ export default function MyAssessmentsPage() {
               </p>
             </div>
           </div>
-          <Link href="/dashboard/assessments/ai-fluency/setup">
-            <Button size="sm" className="gap-1">
+          <Button size="sm" className="gap-1" asChild>
+            <Link href="/dashboard/assessments/ai-fluency/setup">
               Start <BarChart3 className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </Panel>
 

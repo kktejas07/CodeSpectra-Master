@@ -94,11 +94,11 @@ export default function AiFluencySetupPage() {
         icon={<BrainCircuit />}
         className="mb-0"
         actions={
-          <Link href="/dashboard/assessments">
-            <Button variant="outline" size="sm" className="gap-2">
+          <Button variant="outline" size="sm" className="gap-2" asChild>
+            <Link href="/dashboard/assessments">
               <ArrowLeft className="h-4 w-4" /> Back to assessments
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         }
       />
 
@@ -153,7 +153,7 @@ export default function AiFluencySetupPage() {
           <label className="text-sm font-medium">
             Questions: <span className="text-primary tabular-nums">{questionCount}</span>
           </label>
-          <input
+          <input aria-label="Questions"
             type="range"
             min={5}
             max={15}

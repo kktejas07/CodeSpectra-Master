@@ -223,7 +223,7 @@ export default function AiFluencySessionPage() {
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{currentQuestion.scenario}</p>
             </div>
             <div className="border-t border-border pt-3">
-              <p className="text-xs font-medium text-muted-foreground mb-1">Your Task</p>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Your task</p>
               <p className="text-sm leading-relaxed whitespace-pre-wrap font-medium">{currentQuestion.task}</p>
             </div>
           </div>

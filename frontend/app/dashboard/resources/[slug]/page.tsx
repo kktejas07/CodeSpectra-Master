@@ -84,7 +84,7 @@ export default function EbookReaderPage() {
       html += `<h1 style="font-size:24px;font-weight:bold;margin-bottom:16px;">${ebook.title}</h1>`
 
       if (page.title && page.type !== 'cover') {
-        html += `<h2 style="font-size:20px;font-weight:600;margin-bottom:12px;color:#059669;">${page.title}</h2>`
+        html += `<h2 style="font-size:20px;font-weight:600;margin-bottom:12px;color:#2F5BE7;">${page.title}</h2>`
       }
 
       if (page.body) {
@@ -109,21 +109,21 @@ export default function EbookReaderPage() {
 
       if (page.steps?.length) {
         for (const s of page.steps) {
-          html += `<div style="margin-bottom:12px;"><strong style="color:#059669;">${s.n}. ${s.title}</strong><br/><span style="font-size:13px;color:#6b7280;">${s.text}</span></div>`
+          html += `<div style="margin-bottom:12px;"><strong style="color:#2F5BE7;">${s.n}. ${s.title}</strong><br/><span style="font-size:13px;color:#6b7280;">${s.text}</span></div>`
         }
       }
 
       if (page.stats?.length) {
         html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0;">`
         for (const s of page.stats) {
-          html += `<div style="text-align:center;padding:12px;border:1px solid #e5e7eb;border-radius:8px;"><div style="font-size:24px;font-weight:bold;color:#059669;">${s.value}</div><div style="font-size:12px;color:#6b7280;">${s.label}</div></div>`
+          html += `<div style="text-align:center;padding:12px;border:1px solid #e5e7eb;border-radius:8px;"><div style="font-size:24px;font-weight:bold;color:#2F5BE7;">${s.value}</div><div style="font-size:12px;color:#6b7280;">${s.label}</div></div>`
         }
         html += `</div>`
       }
 
       if (page.left && page.right) {
         html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;">`
-        html += `<div style="padding:12px;border:1px solid #d1fae5;border-radius:8px;background:#ecfdf5;"><strong style="color:#059669;">${page.left.title}</strong><ul style="margin-top:8px;padding-left:16px;">`
+        html += `<div style="padding:12px;border:1px solid #c5d4ff;border-radius:8px;background:#eef2fe;"><strong style="color:#2F5BE7;">${page.left.title}</strong><ul style="margin-top:8px;padding-left:16px;">`
         for (const pt of page.left.points) html += `<li style="font-size:13px;margin-bottom:4px;">${pt}</li>`
         html += `</ul></div>`
         html += `<div style="padding:12px;border:1px solid #fecdd3;border-radius:8px;background:#fff1f2;"><strong style="color:#e11d48;">${page.right.title}</strong><ul style="margin-top:8px;padding-left:16px;">`
@@ -132,7 +132,7 @@ export default function EbookReaderPage() {
       }
 
       if (page.quote) {
-        html += `<blockquote style="border-left:4px solid #059669;padding-left:16px;font-style:italic;color:#6b7280;margin:12px 0;">${page.quote}${page.quoteBy ? `<br/><cite style="font-size:12px;">— ${page.quoteBy}</cite>` : ''}</blockquote>`
+        html += `<blockquote style="border-left:4px solid #2F5BE7;padding-left:16px;font-style:italic;color:#6b7280;margin:12px 0;">${page.quote}${page.quoteBy ? `<br/><cite style="font-size:12px;">— ${page.quoteBy}</cite>` : ''}</blockquote>`
       }
 
       html += `</div>`

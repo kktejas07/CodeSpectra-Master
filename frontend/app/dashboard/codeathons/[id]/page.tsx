@@ -526,7 +526,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           ) : (
             <div className="space-y-2">
               {codeathon.problems?.map((p, i) => (
-                <Card key={p.id} className="cursor-pointer gap-0 rounded-2xl p-4 hover:border-primary/40"
+                <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} key={p.id} className="cursor-pointer gap-0 rounded-2xl p-4 hover:border-primary/40"
                   onClick={() => router.push(`/dashboard/codeathons/${id}/problems/${p.id}`)}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">

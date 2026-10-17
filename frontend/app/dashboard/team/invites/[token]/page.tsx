@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { Building2, Loader2, CheckCircle2, XCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -73,27 +74,29 @@ export default function TeamInvitePage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading invitation" />
       </div>
     )
   }
 
   if (!info || info.error) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center">
+      <div className="relative isolate flex min-h-[60vh] items-center justify-center px-4">
+        <SoftGlow />
+        <Panel className="w-full max-w-md p-8 text-center">
           <XCircle className="mx-auto h-10 w-10 text-destructive" aria-hidden />
           <h1 className="mt-3 text-lg font-semibold text-foreground">Invitation unavailable</h1>
           <p className="mt-1 text-sm text-muted-foreground">{info?.error || 'This invite may have expired or already been used.'}</p>
           <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>
-        </Card>
+        </Panel>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center">
+    <div className="relative isolate flex min-h-[60vh] items-center justify-center px-4">
+        <SoftGlow />
+      <Panel className="w-full max-w-md p-8 text-center">
         {done ? (
           <>
             {done.ok
@@ -138,7 +141,7 @@ export default function TeamInvitePage() {
             )}
           </>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }

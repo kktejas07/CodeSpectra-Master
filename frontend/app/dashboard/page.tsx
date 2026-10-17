@@ -62,14 +62,14 @@ export default function DashboardPage() {
       {
         id: 'daily-challenge',
         target: '[data-hint="daily-challenge"]',
-        title: 'Daily Challenge',
+        title: 'Daily challenge',
         description: 'A fresh challenge every day. Solve it to keep your streak alive and earn bonus XP.',
         position: 'bottom',
       },
       {
         id: 'contributions',
         target: '[data-hint="contribution-graph"]',
-        title: 'Your Activity Graph',
+        title: 'Your activity graph',
         description: 'Every scan, solution, and fix fills this in. Consistency beats intensity.',
         position: 'top',
       },
@@ -224,11 +224,11 @@ export default function DashboardPage() {
               <Calendar className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-semibold text-foreground">My events</h2>
             </div>
-            <Link href="/dashboard/hackathons">
-              <Button variant="ghost" size="sm" className="gap-1 text-sm">
+            <Button variant="ghost" size="sm" className="gap-1 text-sm" asChild>
+              <Link href="/dashboard/hackathons">
                 View all <ArrowRight className="h-3 w-3" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {myTeams.map((t: any) => {
@@ -280,12 +280,12 @@ export default function DashboardPage() {
               <h2 className="text-base font-semibold text-foreground">Learning progress</h2>
             </div>
             <p className="text-xs text-muted-foreground">Track your learning journey across tech stacks.</p>
-            <Link href="/dashboard/tracks">
-              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+            <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
+              <Link href="/dashboard/tracks">
                 <Layers className="h-3.5 w-3.5" />
                 Browse learning tracks
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </Panel>
         </div>
       </div>

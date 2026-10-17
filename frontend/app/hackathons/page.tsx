@@ -82,11 +82,11 @@ export default function PublicHackathonsPage() {
                       </div>
                       <h2 className="truncate text-xl font-bold text-cs-ink">{h.name}</h2>
                     </div>
-                    <Link href={`/hackathons/${h.slug}`}>
-                      <Button size="sm" className="gap-1.5 shrink-0">
+                    <Button size="sm" className="gap-1.5 shrink-0" asChild>
+                      <Link href={`/hackathons/${h.slug}`}>
                         View <ArrowRight className="h-3.5 w-3.5" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                   {h.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2 mb-4">{h.description}</p>

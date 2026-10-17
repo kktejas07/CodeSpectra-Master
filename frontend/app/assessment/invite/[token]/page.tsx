@@ -103,7 +103,7 @@ export default function CandidateInviteLandingPage() {
     return (
       <div className="relative isolate min-h-screen flex items-center justify-center bg-background p-4">
         <SoftGlow />
-        <Card className="max-w-md w-full rounded-3xl p-6 sm:p-8 text-center border-border/70 space-y-4 shadow-xl dark:shadow-none">
+        <Card className="max-w-md w-full rounded-3xl p-6 sm:p-8 text-center border-border/70 space-y-4 shadow-sm dark:shadow-none">
           {renewedMsg ? (
             <>
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mx-auto">
@@ -122,20 +122,20 @@ export default function CandidateInviteLandingPage() {
                 </ol>
               </div>
               <div className="pt-2 flex flex-col gap-2">
-                <a
+                <Button className="w-full gap-2" asChild>
+                  <a
                   href={`https://mail.google.com/mail/u/0/#inbox`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full"
                 >
-                  <Button className="w-full gap-2">
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
                     Open Gmail
-                  </Button>
-                </a>
-                <Link href="/auth/login" className="block">
-                  <Button variant="outline" className="w-full">Go to sign in</Button>
-                </Link>
+                  </a>
+                </Button>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/auth/login" className="block">Go to sign in</Link>
+                </Button>
               </div>
             </>
           ) : isUsed ? (
@@ -148,9 +148,9 @@ export default function CandidateInviteLandingPage() {
                 This invitation has already been used to complete the assessment. If you need to retake the assessment, please contact your administrator.
               </p>
               <div className="pt-2">
-                <Link href="/auth/login" className="block">
-                  <Button className="w-full">Go to sign in</Button>
-                </Link>
+                <Button className="w-full" asChild>
+                  <Link href="/auth/login" className="block">Go to sign in</Link>
+                </Button>
               </div>
             </>
           ) : isExpired ? (
@@ -174,9 +174,9 @@ export default function CandidateInviteLandingPage() {
                     'Request a new link'
                   )}
                 </Button>
-                <Link href="/auth/login" className="block">
-                  <Button variant="outline" className="w-full">Go to sign in</Button>
-                </Link>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/auth/login" className="block">Go to sign in</Link>
+                </Button>
               </div>
             </>
           ) : (
@@ -189,9 +189,9 @@ export default function CandidateInviteLandingPage() {
                 {error || 'This candidate assessment link is invalid or has already been used.'}
               </p>
               <div className="pt-2">
-                <Link href="/auth/login">
-                  <Button variant="outline" className="w-full">Go to sign in</Button>
-                </Link>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/auth/login">Go to sign in</Link>
+                </Button>
               </div>
             </>
           )}
@@ -215,7 +215,7 @@ export default function CandidateInviteLandingPage() {
     <div className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-linear-to-br from-background via-background to-primary/5 p-4 py-8 xl:gap-16">
       <SoftGlow />
       <DeviceShowcase variant="candidate" compact className="mx-0 hidden max-w-[400px] shrink-0 xl:block" />
-      <Card className="max-w-2xl w-full rounded-3xl p-6 sm:p-8 border-border/70 space-y-6 shadow-2xl dark:shadow-none">
+      <Card className="max-w-2xl w-full rounded-3xl p-6 sm:p-8 border-border/70 space-y-6 shadow-sm dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">

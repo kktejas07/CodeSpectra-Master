@@ -53,7 +53,7 @@ export default function CookiesPage() {
                   <td className="px-4 py-3 align-top">1 year</td>
                 </tr>
                 <tr>
-                  <td className="px-4 py-3 align-top">Admin Session</td>
+                  <td className="px-4 py-3 align-top">Admin session</td>
                   <td className="px-4 py-3 align-top">Essential</td>
                   <td className="px-4 py-3 align-top">Supports administrative impersonation for troubleshooting (admin accounts only)</td>
                   <td className="px-4 py-3 align-top">Session duration</td>

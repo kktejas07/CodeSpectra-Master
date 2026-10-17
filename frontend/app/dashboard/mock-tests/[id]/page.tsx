@@ -15,7 +15,7 @@ const DIFFICULTIES = [
   { id: 'basic', title: 'Basic', description: 'Standard interview questions and practical usage', icon: Target, color: 'text-primary', bg: 'bg-primary/10' },
   { id: 'intermediate', title: 'Intermediate', description: 'Complex scenarios and architectural decisions', icon: Zap, color: 'text-primary', bg: 'bg-primary/10' },
   { id: 'advanced', title: 'Advanced', description: 'Deep dives into internals and performance', icon: BrainCircuit, color: 'text-primary', bg: 'bg-primary/10' },
-  { id: 'expert', title: 'Expert', description: 'System design and highly specialized problems', icon: Sparkles, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+  { id: 'expert', title: 'Expert', description: 'System design and highly specialized problems', icon: Sparkles, color: 'text-primary', bg: 'bg-primary/10' },
 ]
 
 export default function MockTestSetupPage() {

@@ -227,7 +227,7 @@ export default function SupportPage() {
         : tickets.length === 0 ? <EmptyState variant="notifications" title="No tickets yet" description="Use “New ticket” to ask a question or report a problem." />
         : <div className="space-y-3">
           {tickets.map(t => (
-            <Card key={t.id} className="cursor-pointer rounded-2xl border-border/70 p-4 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/30" onClick={() => openTicket(t)}>
+            <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} key={t.id} className="cursor-pointer rounded-2xl border-border/70 p-4 transition-colors duration-200 hover:border-primary/30 hover:bg-muted/30" onClick={() => openTicket(t)}>
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-medium text-foreground">{t.subject}</p>

@@ -383,9 +383,9 @@ export default function ProfilePage() {
       {/* Banner */}
       <div className={`h-48 lg:h-64 w-full rounded-b-3xl relative overflow-hidden shadow-sm group ${
         (coverTheme.includes('-3d') || ['dark-tech','gradient-blue','emerald-code'].includes(coverTheme)) ? 'bg-slate-900' :
-        coverTheme === 'blue' ? 'bg-linear-to-r from-primary via-primary/90 to-indigo-800' :
-        coverTheme === 'purple' ? 'bg-linear-to-r from-purple-700 via-purple-600 to-indigo-800' :
-        coverTheme === 'green' ? 'bg-linear-to-r from-emerald-700 via-emerald-600 to-teal-800' :
+        coverTheme === 'blue' ? 'bg-linear-to-r from-primary via-primary/90 to-blue-900' :
+        coverTheme === 'navy' ? 'bg-linear-to-r from-blue-950 via-blue-900 to-slate-900' :
+        coverTheme === 'green' ? 'bg-linear-to-r from-green-700 via-green-600 to-green-800' :
         coverTheme === 'orange' ? 'bg-linear-to-r from-orange-600 via-amber-600 to-orange-800' :
         'bg-linear-to-r from-slate-800 via-slate-700 to-slate-900'
       }`}>
@@ -416,7 +416,7 @@ export default function ProfilePage() {
         {/* Left Column (Sidebar) */}
         <aside className="space-y-6 -mt-24 relative z-10">
           {/* Premium Profile Card */}
-          <Card data-tour="profile-header" className="rounded-3xl border-border/70 p-6 text-center shadow-xl dark:shadow-none bg-card/90 backdrop-blur-xl relative overflow-hidden group">
+          <Card data-tour="profile-header" className="rounded-3xl border-border/70 p-6 text-center shadow-sm dark:shadow-none bg-card/90 backdrop-blur-xl relative overflow-hidden group">
             {/* Glassmorphism gradient accents */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-primary/15 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
@@ -454,11 +454,11 @@ export default function ProfilePage() {
               >
                 <Share2 className="h-4 w-4" />
               </Button>
-              <Link href={`/users/${user?.email?.split('@')[0] || user?.id || 'preview'}?preview=true`}>
-                <Button size="icon" variant="outline" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground" aria-label="Preview public profile" title="Preview public profile">
+              <Button size="icon" variant="outline" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground" aria-label="Preview public profile" title="Preview public profile" asChild>
+                <Link href={`/users/${user?.email?.split('@')[0] || user?.id || 'preview'}?preview=true`}>
                   <Eye className="h-4 w-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             
             <div className="mt-6 flex justify-center gap-6 text-sm">
@@ -487,11 +487,11 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            <Link href="/dashboard/profile/edit" className="w-full mt-6 block" data-tour="profile-edit">
-              <Button size="sm" className="w-full gap-2 rounded-xl h-10 font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all">
+            <Button size="sm" className="w-full gap-2 rounded-xl h-10 font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all" asChild>
+              <Link href="/dashboard/profile/edit" className="w-full mt-6 block" data-tour="profile-edit">
                 <Edit2 className="h-4 w-4" /> Edit profile
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </Card>
 
           {/* Profile Completeness Widget */}
@@ -506,15 +506,15 @@ export default function ProfilePage() {
               <div className="bg-primary h-2.5 rounded-full transition-all duration-500 motion-reduce:transition-none" style={{ width: `${profileCompletion}%` }}></div>
             </div>
             <p className="text-xs text-muted-foreground mb-4">Complete your profile to stand out to recruiters and fill your resumes in automatically.</p>
-            <Link href="/dashboard/profile/edit">
-              <Button size="sm" variant="outline" className="w-full gap-2 border-primary/25 text-primary hover:bg-primary/10">
+            <Button size="sm" variant="outline" className="w-full gap-2 border-primary/25 text-primary hover:bg-primary/10" asChild>
+              <Link href="/dashboard/profile/edit">
                 <Sparkles className="w-3.5 h-3.5" /> Complete now
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </Card>
 
           {/* AI Credits Widget */}
-          <AiCreditsWidget className="shadow-lg" />
+          <AiCreditsWidget />
 
           {/* Rankings Card */}
           <Card className="rounded-3xl border-border/70 p-5 bg-card">
@@ -531,11 +531,11 @@ export default function ProfilePage() {
                 <Trophy className="h-7 w-7 text-amber-500 drop-shadow-sm" aria-hidden />
                 <span className="text-3xl font-extrabold tabular-nums text-foreground tracking-tight">{globalRank != null ? globalRank : '—'}</span>
               </div>
-              <Link href="/dashboard/leaderboard" className="block mt-5">
-                <Button size="sm" className="w-full rounded-full font-medium h-9 shadow-sm">
+              <Button size="sm" className="w-full rounded-full font-medium h-9 shadow-sm" asChild>
+                <Link href="/dashboard/leaderboard" className="block mt-5">
                   View leaderboard
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
             
             <div className="mt-5 grid grid-cols-2 gap-4 text-sm pt-2">
@@ -568,7 +568,7 @@ export default function ProfilePage() {
         <div className="space-y-6 min-w-0">
           <Card data-tour="profile-about" className="rounded-3xl border-border/70 p-6">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-bold text-foreground tracking-tight">About</h2>
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">About</h2>
               <Link href="/dashboard/profile/edit" className="text-xs font-medium text-primary hover:underline">Edit</Link>
             </div>
             {aboutBio?.trim() ? (
@@ -586,7 +586,7 @@ export default function ProfilePage() {
 
           <Card className="rounded-3xl border-border/70 p-6 overflow-hidden">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-foreground tracking-tight">Digital ID card</h2>
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">Digital ID card</h2>
             </div>
             <DigitalIdCard
               name={displayName}
@@ -603,11 +603,11 @@ export default function ProfilePage() {
             <div className="mb-5 flex items-center justify-between relative z-10">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" aria-hidden />
-                <h2 className="text-lg font-bold text-foreground tracking-tight">Suggested practice</h2>
+                <h2 className="text-lg font-semibold text-foreground tracking-tight">Suggested practice</h2>
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4 relative z-10">
-              <div className="rounded-2xl border border-border/70 bg-card p-4 hover:border-primary/30 transition-colors duration-200 cursor-pointer group">
+              <div className="rounded-2xl border border-border/70 bg-card p-4 hover:border-primary/30 transition-colors duration-200 group">
                 <div className="flex items-start justify-between mb-2">
                   <div className="p-2 rounded-lg bg-primary/10">
                     <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
@@ -616,11 +616,11 @@ export default function ProfilePage() {
                 </div>
                 <h4 className="text-base font-semibold text-foreground mb-1">System design: Scaling</h4>
                 <p className="text-xs text-muted-foreground mb-3">A core topic in most system design interviews</p>
-                <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  Practice now
+                <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors" asChild>
+                  <Link href="/dashboard/interview-prep">Practice now</Link>
                 </Button>
               </div>
-              <div className="rounded-2xl border border-border/70 bg-card p-4 hover:border-primary/30 transition-colors duration-200 cursor-pointer group">
+              <div className="rounded-2xl border border-border/70 bg-card p-4 hover:border-primary/30 transition-colors duration-200 group">
                 <div className="flex items-start justify-between mb-2">
                   <div className="p-2 rounded-lg bg-primary/10">
                     <FolderGit2 className="h-4 w-4 text-primary" aria-hidden />
@@ -628,15 +628,15 @@ export default function ProfilePage() {
                 </div>
                 <h4 className="text-base font-semibold text-foreground mb-1">React state management</h4>
                 <p className="text-xs text-muted-foreground mb-3">A frequent topic in frontend interviews</p>
-                <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                  Practice now
+                <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors" asChild>
+                  <Link href="/dashboard/problems">Practice now</Link>
                 </Button>
               </div>
             </div>
           </Card>
 
           <Card className="rounded-3xl border-border/70 p-6">
-            <h2 className="text-lg font-bold text-foreground tracking-tight mb-4">Social links</h2>
+            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">Social links</h2>
             {/* Saved links from the extended profile; nothing is shown when none are set. */}
             {socialLinks.linkedin || socialLinks.github || socialLinks.portfolio ? (
               <div className="flex gap-3">
@@ -664,7 +664,7 @@ export default function ProfilePage() {
           </Card>
 
           <Card className="rounded-3xl border-border/70 p-6">
-            <h2 className="text-lg font-bold text-foreground tracking-tight mb-5">Streaks</h2>
+            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-5">Streaks</h2>
             <ContributionGraph
               cells={heatmapData?.cells ?? null}
               dayLabels={heatmapData?.dayLabels}
@@ -675,13 +675,11 @@ export default function ProfilePage() {
             />
           </Card>
           
-          <Card className="rounded-3xl border-border/70 p-6">
-             <ActivityTimeline
-               activities={activity}
-               title="Recent activity"
-               subtitle="Your latest contributions and actions"
-             />
-          </Card>
+          <ActivityTimeline
+            activities={activity}
+            title="Recent activity"
+            subtitle="Your latest contributions and actions"
+          />
         </div>
       </div>
 
@@ -700,8 +698,8 @@ export default function ProfilePage() {
             <div className="flex flex-wrap gap-3 mb-6">
               {[
                 { id: 'blue', color: 'bg-primary' },
-                { id: 'purple', color: 'bg-purple-600' },
-                { id: 'green', color: 'bg-emerald-600' },
+                { id: 'navy', color: 'bg-blue-900' },
+                { id: 'green', color: 'bg-green-600' },
                 { id: 'orange', color: 'bg-orange-600' },
                 { id: 'dark', color: 'bg-slate-800' },
               ].map((t) => (
@@ -725,13 +723,16 @@ export default function ProfilePage() {
                  { id: 'gradient-blue', label: 'Ocean wave', file: 'gradient-blue.jpg' },
                  { id: 'emerald-code', label: 'Code dark', file: 'emerald-code.jpg' },
                ].map((t) => (
-                 <div
+                 <button
+                   type="button"
                    key={t.id}
                    onClick={() => setCoverTheme(t.id)}
-                   className={`relative h-24 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${coverTheme === t.id ? 'border-primary shadow-md' : 'border-transparent hover:border-border'}`}
+                   aria-pressed={coverTheme === t.id}
+                   aria-label={`${t.label} cover`}
+                   className={`relative h-24 rounded-xl overflow-hidden border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${coverTheme === t.id ? 'border-primary shadow-md' : 'border-transparent hover:border-border'}`}
                  >
-                   <Image src={`/covers/${t.file}`} alt={t.label} fill className="object-cover" />
-                 </div>
+                   <Image src={`/covers/${t.file}`} alt="" fill className="object-cover" />
+                 </button>
                ))}
             </div>
 
@@ -744,9 +745,9 @@ export default function ProfilePage() {
               <div className="mt-4">
                 <h4 className="text-sm font-medium text-foreground mb-1">Upload banner</h4>
                 <p className="text-xs text-muted-foreground mb-3">You can upload custom banners for your profile. We recommend uploading a 1920x480 image.</p>
-                <div className="border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-muted/30 transition-colors cursor-pointer">
+                <div className="border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center text-center">
                   <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium text-foreground">Click to upload image</p>
+                  <p className="text-sm font-medium text-foreground">Custom banner uploads aren’t available yet</p>
                   <p className="text-xs text-muted-foreground mt-1">SVG, PNG, JPG or GIF (max. 5MB)</p>
                 </div>
               </div>

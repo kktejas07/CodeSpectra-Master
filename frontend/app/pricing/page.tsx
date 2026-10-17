@@ -228,7 +228,7 @@ export default function PricingPage() {
                 key={i}
                 className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 transition-colors hover:border-cs-accent/40"
               >
-                <h3 className="mb-2 font-semibold">{faq.q}</h3>
+                <h3 className="mb-2 text-base font-semibold">{faq.q}</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">{faq.a}</p>
               </div>
             ))}

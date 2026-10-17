@@ -121,7 +121,7 @@ export function AddToCalendarButton({
                   Save on CodeSpectra (recommended), or optionally export .ics / Google.
                 </p>
               </div>
-              <button type="button" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
+              <button aria-label="Close" type="button" onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
                 <X className="h-4 w-4" />
               </button>
             </div>

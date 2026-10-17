@@ -546,7 +546,7 @@ export default function ProblemDetailPage() {
              <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="font-bold text-foreground">{problem.title}</div>
-          <button
+          <button aria-label="Toggle bookmark"
             type="button"
             className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
             title={bookmarked ? 'Remove bookmark' : 'Bookmark question'}
@@ -602,9 +602,9 @@ export default function ProblemDetailPage() {
         <section className="lg:w-[45%] flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0" data-tour="problem-detail-statement">
            {/* Tabs */}
            <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
-              <button onClick={() => setLeftTab('problem')} className={`pb-2 text-sm font-bold border-b-2 transition-colors ${leftTab === 'problem' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Problem</button>
-              <button onClick={() => setLeftTab('solution')} className={`pb-2 text-sm font-bold border-b-2 transition-colors ${leftTab === 'solution' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Solution</button>
-              <button onClick={() => setLeftTab('submissions')} className={`pb-2 text-sm font-bold border-b-2 transition-colors ${leftTab === 'submissions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Submissions</button>
+              <button onClick={() => setLeftTab('problem')} className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${leftTab === 'problem' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Problem</button>
+              <button onClick={() => setLeftTab('solution')} className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${leftTab === 'solution' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Solution</button>
+              <button onClick={() => setLeftTab('submissions')} className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${leftTab === 'submissions' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Submissions</button>
            </div>
            
            {/* Tab Content */}
@@ -621,7 +621,7 @@ export default function ProblemDetailPage() {
 
                   {problem.test_cases.length > 0 && (
                     <div className="space-y-4 mb-8">
-                       <h3 className="text-base font-bold text-foreground">Sample test cases</h3>
+                       <h3 className="text-base font-semibold text-foreground">Sample test cases</h3>
                        {problem.test_cases.filter(t => t.is_sample).map((t, i) => (
                          <div key={t.id} className="rounded-xl border border-border overflow-hidden bg-card/40">
                             <div className="bg-muted/40 px-4 py-2 border-b border-border flex justify-between items-center text-sm font-semibold">
@@ -630,11 +630,11 @@ export default function ProblemDetailPage() {
                             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4">
                                <div className="sm:pr-2">
                                   <div className="text-xs text-muted-foreground mb-1.5 font-semibold">Input</div>
-                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.stdin}</pre>
+                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-lg border border-border/50">{t.stdin}</pre>
                                </div>
                                <div className="sm:pl-4">
                                   <div className="text-xs text-muted-foreground mb-1.5 font-semibold">Output</div>
-                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.expected_stdout}</pre>
+                                  <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-lg border border-border/50">{t.expected_stdout}</pre>
                                </div>
                             </div>
                          </div>
@@ -687,7 +687,8 @@ export default function ProblemDetailPage() {
                               <textarea
                                 value={newDiscussion}
                                 onChange={(e) => setNewDiscussion(e.target.value)}
-                                placeholder="Start a discussion..."
+                                aria-label="Start a discussion"
+                                placeholder="Start a discussion…"
                                 className="w-full h-16 p-2 text-xs rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
                               />
                               <Button 
@@ -722,7 +723,7 @@ export default function ProblemDetailPage() {
                     submissionsList.length === 0 ? <p className="text-sm text-center text-muted-foreground mt-10">No submissions yet.</p> :
                     <div className="space-y-2">
                        {submissionsList.map(s => (
-                         <div key={s.id} className={`p-3 rounded-md border text-sm flex justify-between items-center ${s.status === 'accepted' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                         <div key={s.id} className={`p-3 rounded-xl border text-sm flex justify-between items-center ${s.status === 'accepted' ? 'bg-green-500/5 border-green-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
                             <div className="flex flex-col gap-1">
                                <div className={`font-bold flex items-center gap-1.5 ${s.status === 'accepted' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                  {s.status === 'accepted' ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
@@ -752,6 +753,7 @@ export default function ProblemDetailPage() {
                <select
                  value={language}
                  onChange={(e) => onChangeLanguage(e.target.value)}
+                 aria-label="Language"
                  className="bg-muted border border-border/50 rounded-md px-3 h-8 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
                >
                  {TOP_LANGUAGES.map((l) => (
@@ -760,7 +762,7 @@ export default function ProblemDetailPage() {
                </select>
              </div>
              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Maximize2 className="h-4 w-4" /></Button>
+                <Button aria-label="Expand editor" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Maximize2 className="h-4 w-4" /></Button>
              </div>
            </div>
 
@@ -789,13 +791,13 @@ export default function ProblemDetailPage() {
               
               <div className="flex items-center justify-between border-b border-border/50 px-2 bg-muted/20">
                  <div className="flex gap-1 pt-1">
-                    <button onClick={() => setRightBottomTab('test')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'test' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Test</button>
-                    <button onClick={() => setRightBottomTab('custom')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'custom' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Custom test</button>
-                    <button onClick={() => setRightBottomTab('results')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'results' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Results</button>
-                    <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" /> AI analysis</button>
+                    <button onClick={() => setRightBottomTab('test')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'test' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Test</button>
+                    <button onClick={() => setRightBottomTab('custom')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'custom' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Custom test</button>
+                    <button onClick={() => setRightBottomTab('results')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'results' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Results</button>
+                    <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" /> AI analysis</button>
                  </div>
                  <div className="flex items-center text-muted-foreground gap-2 pr-2">
-                    <button className="p-1 hover:bg-muted rounded"><Maximize2 className="h-3.5 w-3.5" /></button>
+                    <button aria-label="Expand panel" className="p-1 hover:bg-muted rounded"><Maximize2 className="h-3.5 w-3.5" /></button>
                  </div>
               </div>
 
@@ -859,27 +861,27 @@ export default function ProblemDetailPage() {
         {isInfoPanelOpen && (
            <div className="relative z-40 lg:z-auto w-full sm:w-[320px] lg:w-100 border-l border-border bg-card flex flex-col shrink-0 animate-in slide-in-from-right">
               <div className="flex items-center justify-between px-4 py-4 border-b border-border/50">
-                 <h2 className="text-lg font-bold text-foreground">Information</h2>
-                 <button onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
+                 <h2 className="text-lg font-semibold text-foreground">Information</h2>
+                 <button aria-label="Close information panel" onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
               </div>
               <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
-                 <button className="pb-2 text-sm font-bold border-b-2 border-primary text-primary">Shortcuts guide</button>
-                 <button className="pb-2 text-sm font-bold border-b-2 border-transparent text-muted-foreground hover:text-foreground">Execution environment</button>
+                 <button className="pb-2 text-sm font-semibold border-b-2 border-primary text-primary">Shortcuts guide</button>
+                 <button className="pb-2 text-sm font-semibold border-b-2 border-transparent text-muted-foreground hover:text-foreground">Execution environment</button>
               </div>
               <div className="p-4 overflow-y-auto">
                  <p className="text-xs font-semibold text-muted-foreground mb-4 leading-relaxed">
                    The options below will help you explore keyboard shortcuts. Master these keyboard shortcuts to navigate seamlessly and enhance your productivity throughout your workflow.
                  </p>
                  <div className="space-y-2">
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
                        <span className="text-xs font-semibold text-muted-foreground">1. Run / Save and run Code:</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Enter</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
                        <span className="text-xs font-semibold text-muted-foreground">2. Submit code:</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Shift + Enter</kbd>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
+                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
                        <span className="text-xs font-semibold text-muted-foreground">3. Open Shortcut Help Modal:</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + shift + H</kbd>
                     </div>
@@ -892,13 +894,14 @@ export default function ProblemDetailPage() {
           {feedbackOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
               <div className="bg-background rounded-3xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-bold mb-4">
+                <h3 className="text-lg font-semibold mb-4">
                   {feedbackType === 'bug' ? 'Report a bug' : feedbackType === 'feature' ? 'Request a feature' : 'Suggest an idea'}
                 </h3>
                 <textarea
                   value={feedbackContent}
                   onChange={(e) => setFeedbackContent(e.target.value)}
-                  placeholder="Describe your feedback..."
+                  aria-label="Your feedback"
+                  placeholder="Describe your feedback…"
                   className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background resize-none"
                 />
                 <div className="flex justify-end gap-2 mt-4">
@@ -917,7 +920,7 @@ export default function ProblemDetailPage() {
               <div className="bg-background rounded-3xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-bold">AI mentor</h3>
+                  <h3 className="text-lg font-semibold">AI mentor</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
                   Ask questions about the problem. The AI will guide you without giving the full solution.
@@ -938,11 +941,12 @@ export default function ProblemDetailPage() {
                     type="text"
                     value={aiMentorMessage}
                     onChange={(e) => setAiMentorMessage(e.target.value)}
+                    aria-label="Ask the AI mentor"
                     onKeyDown={(e) => e.key === 'Enter' && askAiMentor()}
                     placeholder="e.g. How should I approach this problem?"
                     className="flex-1 p-2 text-sm rounded-lg border border-input bg-background"
                   />
-                  <Button size="sm" onClick={askAiMentor} disabled={aiMentorLoading || !aiMentorMessage.trim()}>
+                  <Button aria-label="Ask the AI mentor" size="sm" onClick={askAiMentor} disabled={aiMentorLoading || !aiMentorMessage.trim()}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>

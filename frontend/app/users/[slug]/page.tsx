@@ -3,7 +3,7 @@ import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState, use } from 'react'
 import Link from 'next/link'
-import { Loader2, ArrowLeft, Trophy, Code2, CheckCircle2, XCircle, LogIn, User, Clock, Eye, Edit2, MapPin, Link as LinkIcon, Briefcase } from 'lucide-react'
+import { Loader2, ArrowLeft, Trophy, Code2, CheckCircle2, XCircle, LogIn, User, Clock, Eye, Edit2, MapPin } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -146,12 +146,12 @@ export default function UserProfilePage({
             Please sign in to view user profiles.
           </p>
           <div className="flex flex-col gap-2">
-            <Link href={`/auth/login?redirect=${encodeURIComponent(`/users/${slug}`)}`}>
-              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline" className="w-full">Create account</Button>
-            </Link>
+            <Button className="w-full gap-2" asChild>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(`/users/${slug}`)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/auth/signup">Create account</Link>
+            </Button>
           </div>
         </Card>
       </div>
@@ -195,9 +195,9 @@ export default function UserProfilePage({
             <Eye className="w-4 h-4 opacity-80" />
             <span className="font-medium">This is how others see your profile. Some buttons are turned off in preview.</span>
           </div>
-          <Link href="/dashboard/profile">
-            <Button size="sm" variant="ghost" className="h-8 text-primary-foreground hover:text-primary-foreground hover:bg-white/15">Exit preview</Button>
-          </Link>
+          <Button size="sm" variant="ghost" className="h-8 text-primary-foreground hover:text-primary-foreground hover:bg-white/15" asChild>
+            <Link href="/dashboard/profile">Exit preview</Link>
+          </Button>
         </div>
       )}
 
@@ -214,7 +214,7 @@ export default function UserProfilePage({
           
           {/* Left Sidebar */}
           <aside className="space-y-6 -mt-24 relative z-10">
-            <Card className="rounded-3xl border-border/70 p-6 text-center shadow-2xl dark:shadow-none bg-card relative overflow-hidden group">
+            <Card className="rounded-3xl border-border/70 p-6 text-center shadow-sm dark:shadow-none bg-card relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/15 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none opacity-70" />
               
               <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-primary to-[#6E8CF5] p-0.75 shadow-lg">
@@ -238,16 +238,16 @@ export default function UserProfilePage({
               </div>
               
               {isOwner && !isPreview && (
-                <Link href="/dashboard/profile">
-                  <Button size="sm" className="mt-6 w-full gap-2 rounded-xl h-10 font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all">
+                <Button size="sm" className="mt-6 w-full gap-2 rounded-xl h-10 font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all" asChild>
+                  <Link href="/dashboard/profile">
                     <Edit2 className="h-4 w-4" /> Edit profile
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               )}
             </Card>
 
             <Card className="rounded-3xl border-border/70 p-5 bg-card">
-              <h3 className="mb-4 flex items-center gap-2 font-semibold text-foreground">
+              <h3 className="mb-4 flex items-center gap-2 text-base font-semibold text-foreground">
                 <Trophy className="h-4 w-4 text-primary" /> Stats
               </h3>
               <div className="space-y-3">
@@ -262,21 +262,6 @@ export default function UserProfilePage({
               </div>
             </Card>
 
-            {/* Social Links */}
-            <Card className="rounded-3xl border-border/70 p-5 bg-card">
-              <h3 className="font-semibold text-foreground mb-4">Connect</h3>
-              <div className="flex gap-3">
-                <Button variant="outline" size="icon" className="rounded-full w-10 h-10 bg-muted/30" disabled={isPreview}>
-                  <Briefcase className="w-4 h-4 text-primary" />
-                </Button>
-                <Button variant="outline" size="icon" className="rounded-full w-10 h-10 bg-muted/30" disabled={isPreview}>
-                  <Code2 className="w-4 h-4 text-foreground" />
-                </Button>
-                <Button variant="outline" size="icon" className="rounded-full w-10 h-10 bg-muted/30" disabled={isPreview}>
-                  <LinkIcon className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              </div>
-            </Card>
           </aside>
 
           {/* Right Main Content */}

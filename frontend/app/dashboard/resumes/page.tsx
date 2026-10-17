@@ -137,7 +137,7 @@ export default function MyResumesPage() {
         
         <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar -mx-2 px-2">
           {/* Create New Card */}
-          <div onClick={handleTemplateClick} data-tour="resumes-create" className="shrink-0 w-[240px] h-[320px] rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-primary/50 transition-all duration-200 group">
+          <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} onClick={handleTemplateClick} data-tour="resumes-create" className="shrink-0 w-[240px] h-[320px] rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-primary/50 transition-all duration-200 group">
             <div className="h-14 w-14 rounded-full bg-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200 motion-reduce:group-hover:scale-100 shadow-md">
               <Plus className="h-7 w-7 text-primary-foreground" aria-hidden />
             </div>
@@ -146,7 +146,7 @@ export default function MyResumesPage() {
           </div>
           
           {/* Mock Template 1 */}
-          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border border-border bg-muted/20 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 p-4 shadow-sm group">
+          <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border border-border bg-muted/20 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 p-4 shadow-sm group">
               <div className="absolute top-4 right-4 h-8 w-8 rounded-full bg-muted overflow-hidden border">
                  <UserAvatar seed="Abhiram" name="Abhiram" className="h-full w-full" />
               </div>
@@ -180,7 +180,7 @@ export default function MyResumesPage() {
           </div>
 
           {/* Mock Template 2 (Selected) */}
-          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border-2 border-primary/60 bg-primary/5 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 p-3 shadow-md group flex">
+          <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border-2 border-primary/60 bg-primary/5 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 p-3 shadow-md group flex">
              {/* Two column layout mock */}
              <div className="w-1/3 border-r border-primary/20 pr-2 pt-2">
                 <div className="h-2 w-12 bg-primary rounded mb-4" />
@@ -217,7 +217,7 @@ export default function MyResumesPage() {
           </div>
 
           {/* Mock Template 3 (Dark Header) */}
-          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border border-border bg-card relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 shadow-sm group flex flex-col">
+          <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); (e.currentTarget as HTMLElement).click() } }} onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-2xl border border-border bg-card relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-all duration-200 shadow-sm group flex flex-col">
              <div className="h-16 bg-slate-800 p-3 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-white/20 overflow-hidden shrink-0">
                   <UserAvatar seed="ProductDesigner" name="Product Designer" className="h-full w-full" />

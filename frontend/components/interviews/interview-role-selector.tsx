@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { Laptop, Palette, Cog, Bot, Rocket, Pencil, Lock } from 'lucide-react'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -25,15 +25,15 @@ interface InterviewRoleSelectorProps {
 const INTERVIEW_ROLES: InterviewRole[] = [
   {
     id: 'software-engineer',
-    title: 'Software Engineer',
+    title: 'Software engineer',
     description: 'DSA, system design, coding patterns, and problem-solving',
-    skills: ['Algorithms', 'Data Structures', 'System Design'],
+    skills: ['Algorithms', 'Data structures', 'System design'],
     icon: Laptop,
     locked: false,
   },
   {
     id: 'frontend-developer',
-    title: 'Frontend Developer',
+    title: 'Frontend developer',
     description: 'React, Angular, Vue, and problem-solving',
     skills: ['React', 'CSS', 'JavaScript'],
     icon: Palette,
@@ -41,7 +41,7 @@ const INTERVIEW_ROLES: InterviewRole[] = [
   },
   {
     id: 'backend-developer',
-    title: 'Backend Developer',
+    title: 'Backend developer',
     description: 'Node, Python, Java, and problem-solving',
     skills: ['Node.js', 'Python', 'Java'],
     icon: Cog,
@@ -50,16 +50,16 @@ const INTERVIEW_ROLES: InterviewRole[] = [
   },
   {
     id: 'ai-engineer',
-    title: 'AI Engineer',
-    description: 'Machine Learning, Deep Learning, Generative AI, LLMs, and problem-solving',
-    skills: ['ML', 'Deep Learning', 'GenAI'],
+    title: 'AI engineer',
+    description: 'Machine learning, deep learning, generative AI, LLMs, and problem-solving',
+    skills: ['ML', 'Deep learning', 'GenAI'],
     icon: Bot,
     locked: true,
     prerequisite: 'software-engineer',
   },
   {
     id: 'forward-deployed',
-    title: 'Forward Deployed Engineer',
+    title: 'Forward deployed engineer',
     description: 'AWS, Azure, and problem-solving',
     skills: ['AWS', 'Azure', 'DevOps'],
     icon: Rocket,
@@ -68,7 +68,7 @@ const INTERVIEW_ROLES: InterviewRole[] = [
   },
   {
     id: 'custom-role',
-    title: '+ Custom Role',
+    title: 'Custom role',
     description: 'Paste a job description for a tailored interview',
     skills: ['Custom', 'Tailored'],
     icon: Pencil,
@@ -88,12 +88,11 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight text-balance text-foreground sm:text-[1.75rem]">Choose your mock interview</h2>
-        <p className="mt-1 max-w-[70ch] text-[15px] leading-relaxed text-muted-foreground">
-          Start with popular ready-made roles or build your own based on a specific job description.
-        </p>
-      </div>
+      <PageHeader
+        title="Choose your mock interview"
+        description="Start with a ready-made role, or build your own from a specific job description."
+        className="mb-0"
+      />
 
       <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
         {INTERVIEW_ROLES.map((role) => {
@@ -102,16 +101,16 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
           const RoleIcon = role.icon
 
           return (
-            <Card
+            <Panel
               key={role.id}
-              className={`rounded-3xl border-border/70 p-6 cursor-pointer transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 ${
+              interactive={!isLocked}
+              className={`${
                 selectedRole === role.id ? 'ring-2 ring-primary' : ''
               } ${
-                isLocked ? 'opacity-60 pointer-events-none' : ''
+                isLocked ? 'opacity-60' : ''
               } ${
-                isCompleted ? 'ring-2 ring-green-500/60 bg-green-500/5' : ''
+                isCompleted ? 'ring-2 ring-green-500/60 bg-green-50 dark:bg-green-950/40' : ''
               }`}
-              onClick={() => handleSelectRole(role.id, Boolean(isLocked))}
             >
               <div className="space-y-4">
                 {/* Header */}
@@ -133,7 +132,7 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
 
                 {/* Title and Description */}
                 <div>
-                  <h3 className="font-bold text-lg text-foreground">{role.title}</h3>
+                  <h3 className="text-lg font-semibold text-foreground">{role.title}</h3>
                   <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
                 </div>
 
@@ -158,23 +157,17 @@ export function InterviewRoleSelector({ onSelectRole, completedRoles = [] }: Int
                   className="w-full mt-2"
                   variant={selectedRole === role.id ? 'default' : 'outline'}
                   disabled={isLocked}
+                  onClick={() => handleSelectRole(role.id, Boolean(isLocked))}
+                  aria-label={isLocked ? `${role.title} (locked)` : `${isCompleted ? 'Retake' : 'Select'} ${role.title}`}
                 >
                   {isLocked ? 'Locked' : isCompleted ? 'Retake' : 'Select'}
                 </Button>
               </div>
-            </Card>
+            </Panel>
           )
         })}
       </div>
 
-      <div className="flex gap-3">
-        <Button variant="outline" className="flex-1">
-          Cancel
-        </Button>
-        <Button className="flex-1" disabled={!selectedRole}>
-          Continue
-        </Button>
-      </div>
     </div>
   )
 }

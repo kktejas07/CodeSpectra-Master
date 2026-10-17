@@ -28,22 +28,22 @@ type Item = { mode: ScannerMode; label: string; icon: ReactNode }
 // Trends, code review and configuration are hidden: they had no saved data
 // behind them (the page shows a "not available yet" state on direct links).
 const PRIMARY: Item[] = [
-  { mode: 'manual', label: 'Manual Analysis', icon: <Code2 className="h-4 w-4" /> },
-  { mode: 'github', label: 'GitHub Repos', icon: <Github className="h-4 w-4" /> },
-  { mode: 'dependencies', label: 'Dependency Scan', icon: <Package className="h-4 w-4" /> },
-  { mode: 'secrets', label: 'Secret Detection', icon: <Key className="h-4 w-4" /> },
-  { mode: 'quality-gates', label: 'Quality Gates', icon: <Plus className="h-4 w-4" /> },
-  { mode: 'chat', label: 'Codebase Chat', icon: <MessageSquare className="h-4 w-4" /> },
+  { mode: 'manual', label: 'Manual analysis', icon: <Code2 className="h-4 w-4" /> },
+  { mode: 'github', label: 'GitHub repos', icon: <Github className="h-4 w-4" /> },
+  { mode: 'dependencies', label: 'Dependency scan', icon: <Package className="h-4 w-4" /> },
+  { mode: 'secrets', label: 'Secret detection', icon: <Key className="h-4 w-4" /> },
+  { mode: 'quality-gates', label: 'Quality gates', icon: <Plus className="h-4 w-4" /> },
+  { mode: 'chat', label: 'Codebase chat', icon: <MessageSquare className="h-4 w-4" /> },
 ]
 
 const QUALITY: Item[] = [
-  { mode: 'metrics', label: 'Metrics Browser', icon: <Zap className="h-4 w-4" /> },
-  { mode: 'hotspots', label: 'Security Hotspots', icon: <Shield className="h-4 w-4" /> },
-  { mode: 'ratings', label: 'Quality Ratings', icon: <BarChart3 className="h-4 w-4" /> },
-  { mode: 'activity', label: 'Activity Timeline', icon: <Activity className="h-4 w-4" /> },
+  { mode: 'metrics', label: 'Metrics browser', icon: <Zap className="h-4 w-4" /> },
+  { mode: 'hotspots', label: 'Security hotspots', icon: <Shield className="h-4 w-4" /> },
+  { mode: 'ratings', label: 'Quality ratings', icon: <BarChart3 className="h-4 w-4" /> },
+  { mode: 'activity', label: 'Activity timeline', icon: <Activity className="h-4 w-4" /> },
   { mode: 'architecture', label: 'Architecture', icon: <GitBranch className="h-4 w-4" /> },
-  { mode: 'pr', label: 'PR Integration', icon: <GitPullRequest className="h-4 w-4" /> },
-  { mode: 'branches', label: 'Branch Analytics', icon: <GitBranch className="h-4 w-4" /> },
+  { mode: 'pr', label: 'PR integration', icon: <GitPullRequest className="h-4 w-4" /> },
+  { mode: 'branches', label: 'Branch analytics', icon: <GitBranch className="h-4 w-4" /> },
 ]
 
 const FOOTER: Item[] = [

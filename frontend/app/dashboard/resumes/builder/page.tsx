@@ -223,26 +223,27 @@ export default function ResumeBuilderPage() {
             
             {/* Personal Details */}
             <section className="space-y-4">
-              <h3 className="text-lg font-bold text-foreground flex items-center gap-2">Personal details</h3>
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">Personal details</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5"><Label>Full name</Label><Input value={data.personal.fullName} onChange={e => updatePersonal('fullName', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={data.personal.email} onChange={e => updatePersonal('email', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Phone</Label><Input value={data.personal.phone} onChange={e => updatePersonal('phone', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Location</Label><Input value={data.personal.location} onChange={e => updatePersonal('location', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>LinkedIn</Label><Input value={data.personal.linkedin} onChange={e => updatePersonal('linkedin', e.target.value)} /></div>
-                <div className="space-y-1.5"><Label>Portfolio</Label><Input value={data.personal.portfolio} onChange={e => updatePersonal('portfolio', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Full name</Label><Input aria-label="Full name" value={data.personal.fullName} onChange={e => updatePersonal('fullName', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Email</Label><Input aria-label="Email" type="email" value={data.personal.email} onChange={e => updatePersonal('email', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Phone</Label><Input aria-label="Phone" value={data.personal.phone} onChange={e => updatePersonal('phone', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Location</Label><Input aria-label="Location" value={data.personal.location} onChange={e => updatePersonal('location', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>LinkedIn</Label><Input aria-label="LinkedIn" value={data.personal.linkedin} onChange={e => updatePersonal('linkedin', e.target.value)} /></div>
+                <div className="space-y-1.5"><Label>Portfolio</Label><Input aria-label="Portfolio" value={data.personal.portfolio} onChange={e => updatePersonal('portfolio', e.target.value)} /></div>
               </div>
             </section>
 
             {/* Professional Summary */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground">Professional summary</h3>
+                <h3 className="text-lg font-semibold text-foreground">Professional summary</h3>
                 <Button variant="secondary" size="sm" onClick={startFromTemplate} className="bg-primary/10 text-primary hover:bg-primary/15">
                   <FileText className="w-4 h-4 mr-2" aria-hidden /> Start from template
                 </Button>
               </div>
               <Textarea 
+                aria-label="Professional summary"
                 className="min-h-30" 
                 placeholder="Write a brief summary of your professional background…" 
                 value={data.summary} 
@@ -253,7 +254,7 @@ export default function ResumeBuilderPage() {
             {/* Work Experience */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-foreground">Work experience</h3>
+                <h3 className="text-lg font-semibold text-foreground">Work experience</h3>
               </div>
               <div className="space-y-6">
                 {data.experience.map((exp, index) => (
@@ -262,13 +263,13 @@ export default function ResumeBuilderPage() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 pr-8">
-                      <div className="space-y-1.5"><Label>Company</Label><Input value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} /></div>
-                      <div className="space-y-1.5"><Label>Role</Label><Input value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} /></div>
-                      <div className="space-y-1.5 sm:col-span-2"><Label>Dates</Label><Input placeholder="e.g. Jan 2020 - Present" value={exp.dates} onChange={e => updateExperience(exp.id, 'dates', e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label>Company</Label><Input aria-label="Company" value={exp.company} onChange={e => updateExperience(exp.id, 'company', e.target.value)} /></div>
+                      <div className="space-y-1.5"><Label>Role</Label><Input aria-label="Role" value={exp.role} onChange={e => updateExperience(exp.id, 'role', e.target.value)} /></div>
+                      <div className="space-y-1.5 sm:col-span-2"><Label>Dates</Label><Input aria-label="Dates" placeholder="e.g. Jan 2020 - Present" value={exp.dates} onChange={e => updateExperience(exp.id, 'dates', e.target.value)} /></div>
                     </div>
                     <div className="space-y-1.5">
                       <Label>Description</Label>
-                      <Textarea value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} rows={3} placeholder="Describe your achievements…" />
+                      <Textarea aria-label="Description" value={exp.description} onChange={e => updateExperience(exp.id, 'description', e.target.value)} rows={3} placeholder="Describe your achievements…" />
                     </div>
                   </div>
                 ))}
@@ -280,16 +281,16 @@ export default function ResumeBuilderPage() {
 
             {/* Education */}
             <section className="space-y-4">
-              <h3 className="text-lg font-bold text-foreground">Education</h3>
+              <h3 className="text-lg font-semibold text-foreground">Education</h3>
               <div className="space-y-4">
                 {data.education.map((edu, index) => (
                   <div key={edu.id} className="p-4 rounded-2xl border border-border bg-muted/20 relative group grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-opacity text-destructive hover:bg-destructive/10" onClick={() => removeEducation(edu.id)} aria-label="Remove education">
                       <Trash2 className="w-4 h-4" />
                     </Button>
-                    <div className="space-y-1.5"><Label>Institution</Label><Input value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} /></div>
-                    <div className="space-y-1.5 pr-8"><Label>Degree</Label><Input value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} /></div>
-                    <div className="space-y-1.5 sm:col-span-2"><Label>Dates</Label><Input value={edu.dates} onChange={e => updateEducation(edu.id, 'dates', e.target.value)} /></div>
+                    <div className="space-y-1.5"><Label>Institution</Label><Input aria-label="Institution" value={edu.institution} onChange={e => updateEducation(edu.id, 'institution', e.target.value)} /></div>
+                    <div className="space-y-1.5 pr-8"><Label>Degree</Label><Input aria-label="Degree" value={edu.degree} onChange={e => updateEducation(edu.id, 'degree', e.target.value)} /></div>
+                    <div className="space-y-1.5 sm:col-span-2"><Label>Dates</Label><Input aria-label="Dates" value={edu.dates} onChange={e => updateEducation(edu.id, 'dates', e.target.value)} /></div>
                   </div>
                 ))}
                 <Button variant="outline" className="w-full border-dashed" onClick={addEducation}>
@@ -300,8 +301,9 @@ export default function ResumeBuilderPage() {
 
             {/* Skills */}
             <section className="space-y-4">
-              <h3 className="text-lg font-bold text-foreground">Skills</h3>
+              <h3 className="text-lg font-semibold text-foreground">Skills</h3>
               <Textarea 
+                aria-label="Skills"
                 value={data.skills} 
                 onChange={e => setData(prev => ({ ...prev, skills: e.target.value }))}
                 placeholder="React, TypeScript, Node.js, Design…"
@@ -478,7 +480,7 @@ export default function ResumeBuilderPage() {
 
               {/* --- Template: Elegant --- */}
               {template === 'elegant' && (
-                <div className="p-10 relative bg-snow">
+                <div className="p-10 relative bg-slate-50">
                   <div className="absolute top-0 left-0 w-2 h-full bg-[#1e40af]" />
                   <div className="pl-6">
                     <h1 className="text-5xl font-serif text-[#1e40af] mb-2 tracking-wide">{data.personal.fullName || 'Your name'}</h1>

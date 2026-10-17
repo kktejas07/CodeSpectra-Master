@@ -132,7 +132,7 @@ export function RedisSettingsSection() {
             <Database className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Redis / Rate Limiting</h2>
+            <h2 className="text-lg font-semibold">Redis and rate limiting</h2>
             <p className="text-sm text-muted-foreground">
               Distributed rate limiting for AI endpoints and API routes — works with your own Docker /
               Dokploy Redis (<code className="font-mono">redis://host:6379</code>) or Upstash REST (<code className="font-mono">https://…upstash.io</code>). Applied in real time after save.
@@ -189,6 +189,7 @@ export function RedisSettingsSection() {
             <button
               type="button"
               onClick={handleRevealToggle}
+              aria-label={showToken ? 'Hide value' : 'Show value'}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
             >
               {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -215,7 +216,7 @@ export function RedisSettingsSection() {
           <div className="flex gap-2">
             <Button variant="outline" onClick={testConnection} disabled={testing} className="gap-2">
               {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
-              Test Connection
+              Test connection
             </Button>
             <Button onClick={save} disabled={saving} className="gap-2">
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

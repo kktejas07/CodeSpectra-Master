@@ -146,7 +146,7 @@ export function KycSettingsSection() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label>Identity verification page</Label>
-                <select
+                <select aria-label="Identity verification page"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={settings.identity_kyc}
                   onChange={(e) =>
@@ -164,7 +164,7 @@ export function KycSettingsSection() {
               </div>
               <div className="space-y-2">
                 <Label>Exam / proctoring Aadhaar</Label>
-                <select
+                <select aria-label="Exam / proctoring Aadhaar"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={settings.exam_aadhaar}
                   onChange={(e) =>
@@ -182,7 +182,7 @@ export function KycSettingsSection() {
               </div>
               <div className="space-y-2">
                 <Label>Profile Aadhaar badge</Label>
-                <select
+                <select aria-label="Profile Aadhaar badge"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                   value={settings.profile_aadhaar}
                   onChange={(e) =>
@@ -236,11 +236,11 @@ export function KycSettingsSection() {
               </div>
               <div className="space-y-2">
                 <Label>Workflow ID</Label>
-                <Input value={settings.didit_workflow_id} onChange={e => setSettings({...settings, didit_workflow_id: e.target.value})} placeholder="b4c4c9b0-..." />
+                <Input aria-label="Workflow ID" value={settings.didit_workflow_id} onChange={e => setSettings({...settings, didit_workflow_id: e.target.value})} placeholder="b4c4c9b0-..." />
               </div>
               <div className="space-y-2">
                 <Label>Webhook URL</Label>
-                <Input value="https://codespectra.ai/api/kyc/didit/webhook" disabled className="bg-muted" />
+                <Input aria-label="Webhook URL" value="https://codespectra.ai/api/kyc/didit/webhook" disabled className="bg-muted" />
               </div>
             </div>
             <div className="mt-4 p-3 rounded-lg bg-muted/40 text-xs text-muted-foreground">
@@ -341,7 +341,7 @@ export function KycSettingsSection() {
             </div>
             <div className="space-y-2">
               <Label>Nullifier seed (numeric)</Label>
-              <Input
+              <Input aria-label="Nullifier seed (numeric)"
                 value={settings.anon_aadhaar_nullifier_seed}
                 onChange={(e) => setSettings({ ...settings, anon_aadhaar_nullifier_seed: e.target.value.replace(/\D/g, '') })}
                 placeholder="314159265358979"
@@ -358,7 +358,7 @@ export function KycSettingsSection() {
       <div className="flex justify-end">
         <Button onClick={saveSettings} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-          Save Settings
+          Save settings
         </Button>
       </div>
     </div>

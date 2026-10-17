@@ -258,6 +258,7 @@ export function QuizComponent({
         <div className="flex items-center gap-2">
           {bookmark ? (
             <Button
+              aria-label={bookmarkedIds.has(question.id) ? 'Remove bookmark' : 'Bookmark question'}
               type="button"
               size="sm"
               variant="ghost"

@@ -168,7 +168,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                   next[idx] = e.target.value
                   onChange(next.map((s) => (s || '').trim()).join(', '))
                 }}
-                placeholder={`Answer for blank ${idx + 1}...`}
+                placeholder={`Answer for blank ${idx + 1}…`}
+                aria-label={`Blank ${idx + 1}`}
                 className={inputCls}
                 autoComplete="off"
               />
@@ -183,7 +184,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
           <label className="text-sm font-medium text-muted-foreground">Your answer</label>
           <SavedBadge show={showSavedBadge} />
         </div>
-        <input type="text" value={current} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder="Type your answer..." className={inputCls} autoComplete="off" />
+        <input type="text" aria-label="Your answer" value={current} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder="Type your answer…" className={inputCls} autoComplete="off" />
       </div>
     )
   }
@@ -202,7 +203,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
           value={typeof value === 'string' ? value : ''}
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={kind === 'numeric' ? 'e.g. 42' : 'Type your answer...'}
+          placeholder={kind === 'numeric' ? 'e.g. 42' : 'Type your answer…'}
+          aria-label={kind === 'numeric' ? 'Your numeric answer' : 'Your answer'}
           className={inputCls}
           autoComplete="off"
         />
@@ -267,7 +269,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                 value={map[p.left] || ''}
                 disabled={readOnly}
                 onChange={(e) => onChange(JSON.stringify({ ...map, [p.left]: e.target.value }))}
-                className="w-48 px-3 py-2 rounded-lg border border-border bg-card text-sm"
+                aria-label={`Match for ${p.left}`}
+                className="w-36 sm:w-48 px-3 py-2 rounded-lg border border-border bg-card text-sm"
               >
                 <option value="">— select —</option>
                 {rights.map((r) => (
@@ -307,6 +310,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                     name={`matrix-${question.id}-${ri}`}
                     disabled={readOnly}
                     checked={arr[ri] === c}
+                    aria-label={`${row}: ${c}`}
                     onChange={() => {
                       const next = [...arr]
                       next[ri] = c
@@ -346,8 +350,9 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                   next[ri] = e.target.value
                   onChange(next.map((s) => (s || '').trim()).join(', '))
                 }}
-                placeholder="Answer..."
-                className="w-56 px-3 py-2 rounded-lg border border-border bg-card text-sm"
+                placeholder="Answer…"
+                aria-label={`Answer for ${row}`}
+                className="w-36 sm:w-56 px-3 py-2 rounded-lg border border-border bg-card text-sm"
               />
             </div>
           ))}
@@ -434,7 +439,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         value={typeof value === 'string' ? value : ''}
         disabled={readOnly}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Write your response here..."
+        placeholder="Write your response here…"
+        aria-label="Your answer"
         className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
         spellCheck={false}
       />

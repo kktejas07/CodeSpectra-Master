@@ -159,7 +159,7 @@ export default function FAQPage() {
                           onClick={() => setOpenIndex(open ? null : key)}
                           className="flex w-full items-center justify-between gap-4 p-5 text-left transition-colors duration-200 hover:bg-cs-accent/5"
                         >
-                          <h3 className="font-semibold text-cs-ink">{item.q}</h3>
+                          <h3 className="text-base font-semibold text-cs-ink">{item.q}</h3>
                           <ChevronDown
                             aria-hidden
                             className={`h-5 w-5 shrink-0 text-cs-ink-soft transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}

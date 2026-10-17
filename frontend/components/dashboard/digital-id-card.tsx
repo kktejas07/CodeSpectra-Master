@@ -47,7 +47,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
     return () => { cancelled = true }
   }, [qrPayload])
 
-  const roleBadge = role === 'superadmin' ? 'SUPERADMIN' : role === 'tenant_admin' ? 'ADMIN' : 'MEMBER'
+  const roleBadge = role === 'superadmin' ? 'Superadmin' : role === 'tenant_admin' ? 'Admin' : 'Member'
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(idNumber).then(() => {
@@ -84,9 +84,9 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
 
     ctx.fillStyle = '#fff'
     ctx.font = 'bold 12px system-ui'
-    ctx.fillText('CODESPECTRA', 32, 48)
+    ctx.fillText('CodeSpectra', 32, 48)
     ctx.font = 'bold 22px system-ui'
-    ctx.fillText('OFFICIAL ID', 32, 76)
+    ctx.fillText('Official ID', 32, 76)
 
     ctx.fillStyle = '#ffffff'
     ctx.font = 'bold 15px system-ui'
@@ -104,14 +104,14 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
 
     ctx.font = 'bold 10px system-ui'
     ctx.fillStyle = 'rgba(255,255,255,0.75)'
-    ctx.fillText('EMAIL', 32, 220)
+    ctx.fillText('Email', 32, 220)
     ctx.font = '12px system-ui'
     ctx.fillStyle = 'rgba(255,255,255,0.95)'
     ctx.fillText(email, 32, 236)
 
     ctx.font = 'bold 10px system-ui'
     ctx.fillStyle = 'rgba(255,255,255,0.75)'
-    ctx.fillText('ISSUED', 32, 264)
+    ctx.fillText('Issued', 32, 264)
     ctx.font = '11px system-ui'
     ctx.fillStyle = 'rgba(255,255,255,0.9)'
     ctx.fillText(now, 32, 280)
@@ -146,8 +146,8 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
             <div className="flex h-full flex-col rounded-2xl bg-white/12 p-5 backdrop-blur-sm" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/80">CodeSpectra</p>
-                  <p className="text-2xl font-bold text-white">OFFICIAL ID</p>
+                  <p className="text-xs font-semibold text-white/80">CodeSpectra</p>
+                  <p className="text-2xl font-bold text-white">Official ID</p>
                 </div>
                 <div className="rounded-lg border border-white/30 bg-white/15 px-3 py-1">
                   <span className="text-xs font-bold text-white">{roleBadge}</span>
@@ -160,28 +160,28 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
                 </div>
                 <div className="flex-1">
                   <p className="text-lg font-bold text-white">{name}</p>
-                  <p className="text-sm text-white/85">{role === 'superadmin' ? 'Super Admin · Full Access' : role === 'tenant_admin' ? 'Platform Admin · Full Access' : 'User · Limited Access'}</p>
+                  <p className="text-sm text-white/85">{role === 'superadmin' ? 'Superadmin · Full access' : role === 'tenant_admin' ? 'Platform admin · Full access' : 'User · Limited access'}</p>
                 </div>
               </div>
 
               <div className="mt-5 space-y-2.5">
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">ID</p>
+                  <p className="text-xs font-medium text-white/75">ID</p>
                   <p className="font-bold text-white">{idNumber}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">EMAIL</p>
+                  <p className="text-xs font-medium text-white/75">Email</p>
                   <p className="text-sm font-bold text-white/95">{email}</p>
                 </div>
                 <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">ISSUED</p>
+                  <p className="text-xs font-medium text-white/75">Issued</p>
                   <p className="text-xs font-bold text-white/90">{now}</p>
                 </div>
               </div>
 
               <div className="flex-1" />
               <div className="flex items-center justify-end">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/75">Tap for verification →</p>
+                <p className="text-xs font-medium text-white/80">Tap for verification →</p>
               </div>
             </div>
           </div>
@@ -194,30 +194,30 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
             <div className="flex h-full flex-col rounded-2xl bg-white/12 p-5 backdrop-blur-sm" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-white/80">CodeSpectra</p>
-                  <p className="text-2xl font-bold text-white">{kycVerified ? 'VERIFIED CREDENTIAL' : 'DIGITAL CREDENTIAL'}</p>
+                  <p className="text-xs font-semibold text-white/80">CodeSpectra</p>
+                  <p className="text-2xl font-bold text-white">{kycVerified ? 'Verified credential' : 'Digital credential'}</p>
                 </div>
                 <div className={`rounded-lg border px-3 py-1 ${kycVerified ? 'border-green-300/50 bg-green-500/30' : 'border-white/30 bg-white/15'}`}>
-                  <span className="text-xs font-bold text-white">{kycVerified ? 'VERIFIED' : 'NOT VERIFIED'}</span>
+                  <span className="text-xs font-bold text-white">{kycVerified ? 'Verified' : 'Not verified'}</span>
                 </div>
               </div>
 
               <div className="mt-4 flex items-start justify-between gap-4">
                 <div className="space-y-2.5 flex-1">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">EMAIL</p>
+                    <p className="text-xs font-medium text-white/75">Email</p>
                     <p className="text-sm font-bold text-white/95">{email}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">ROLE</p>
+                    <p className="text-xs font-medium text-white/75">Role</p>
                     <p className="text-sm font-bold text-white/95">{roleBadge}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">ACCESS LEVEL</p>
-                    <p className="text-sm font-bold text-white/95">{role === 'superadmin' || role === 'tenant_admin' ? 'Full Access' : 'Standard'}</p>
+                    <p className="text-xs font-medium text-white/75">Access level</p>
+                    <p className="text-sm font-bold text-white/95">{role === 'superadmin' || role === 'tenant_admin' ? 'Full access' : 'Standard'}</p>
                   </div>
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-white/75">EXPIRES</p>
+                    <p className="text-xs font-medium text-white/75">Expires</p>
                     <p className="text-xs font-bold text-white/90">{exp}</p>
                   </div>
                 </div>
@@ -242,7 +242,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
 
               <div className="flex-1" />
               <div className="flex items-center justify-end">
-                <p className="text-xs font-bold uppercase tracking-wider text-white/75">Tap to flip back →</p>
+                <p className="text-xs font-medium text-white/80">Tap to flip back →</p>
               </div>
             </div>
           </div>
@@ -251,15 +251,15 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
 
       {/* Action buttons */}
       <div className="flex flex-wrap justify-center gap-2">
-        <button onClick={(e) => { e.stopPropagation(); handleCopyId() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+        <button type="button" onClick={(e) => { e.stopPropagation(); handleCopyId() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
           {copied ? 'Copied' : 'Copy ID'}
         </button>
-        <button onClick={(e) => { e.stopPropagation(); handleShare() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+        <button type="button" onClick={(e) => { e.stopPropagation(); handleShare() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           Share profile
         </button>
-        <button onClick={(e) => { e.stopPropagation(); handleDownload() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90">
+        <button type="button" onClick={(e) => { e.stopPropagation(); handleDownload() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
           Download card
         </button>

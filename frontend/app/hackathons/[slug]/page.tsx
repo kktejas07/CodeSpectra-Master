@@ -182,17 +182,17 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
             <Trophy className="h-6 w-6 text-primary" />
           </div>
-          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
+          <h1 className="text-xl font-semibold text-foreground mb-2">Sign in required</h1>
           <p className="text-sm text-muted-foreground mb-6">
             Please sign in to view and join hackathon events.
           </p>
           <div className="flex flex-col gap-2">
-            <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}>
-              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline" className="w-full">Create account</Button>
-            </Link>
+            <Button className="w-full gap-2" asChild>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/auth/signup">Create account</Link>
+            </Button>
           </div>
         </Card>
       </div>
@@ -398,7 +398,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                           <div className="flex items-center justify-between pb-4 border-b border-border/50">
                             <div>
                               <p className="text-xs font-medium text-muted-foreground mb-1">Your team</p>
-                              <h2 className="text-xl font-bold truncate pr-4">{myTeam.name}</h2>
+                              <h2 className="text-lg font-semibold truncate pr-4">{myTeam.name}</h2>
                             </div>
                             <div className="bg-green-500/10 text-green-600 dark:text-green-400 p-2 rounded-full">
                               <CheckCircle className="h-6 w-6" />
@@ -408,9 +408,9 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                           {/* Action Buttons */}
                           <div className="space-y-2">
                             {isLive && (
-                              <Link href={`/hackathons/${slug}/workspace`} className="block">
-                                <Button className="w-full h-11 text-base shadow-sm"><ListChecks className="mr-2 h-4 w-4" /> Enter workspace</Button>
-                              </Link>
+                              <Button className="w-full h-11 text-base shadow-sm" asChild>
+                                <Link href={`/hackathons/${slug}/workspace`} className="block"><ListChecks className="mr-2 h-4 w-4" /> Enter workspace</Link>
+                              </Button>
                             )}
                             <Button variant="outline" className="w-full" onClick={() => setEmailInviteOpen(true)}>
                               <Users className="mr-2 h-4 w-4" /> Manage team
@@ -452,14 +452,15 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                         <div className="space-y-5">
                           <div>
                             <p className="text-xs font-medium text-muted-foreground mb-2">Registration</p>
-                            <h2 className="text-2xl font-bold tracking-tight">Join this hackathon</h2>
+                            <h2 className="text-lg font-semibold tracking-tight">Join this hackathon</h2>
                           </div>
 
                           {authUser?.uid ? (
                             <div className="space-y-4 pt-2">
                               <div className="space-y-2">
-                                <Label className="text-xs font-medium">Team name</Label>
-                                <Input 
+                                <Label htmlFor="new-team-name" className="text-xs font-medium">Team name</Label>
+                                <Input
+                                  id="new-team-name" 
                                   placeholder="Leave blank and we'll pick a name" 
                                   value={newTeamName}
                                   onChange={(e) => setNewTeamName(e.target.value)} 
@@ -484,12 +485,12 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                                 You must be signed in to create or join a team for this event.
                               </p>
                               <div className="grid gap-2">
-                                <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full">
-                                  <Button className="w-full h-11 gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-                                </Link>
-                                <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full">
-                                  <Button variant="outline" className="w-full h-11">Create account</Button>
-                                </Link>
+                                <Button className="w-full h-11 gap-2" asChild>
+                                  <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full"><LogIn className="h-4 w-4" /> Sign in</Link>
+                                </Button>
+                                <Button variant="outline" className="w-full h-11" asChild>
+                                  <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full">Create account</Link>
+                                </Button>
                               </div>
                             </div>
                           )}
@@ -503,14 +504,14 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                         <Trophy className="h-8 w-8 text-muted-foreground" />
                       </div>
                       <div>
-                        <h2 className="text-xl font-bold mb-1">Hackathon closed</h2>
+                        <h2 className="text-lg font-semibold mb-1">Hackathon closed</h2>
                         <p className="text-sm text-muted-foreground">This event has ended. Registration is no longer available.</p>
                       </div>
                       
                       {hackathon.results_released ? (
-                        <Link href={`/hackathons/${slug}/results`} className="block mt-6">
-                          <Button className="w-full h-11"><Trophy className="mr-2 h-4 w-4" /> View final results</Button>
-                        </Link>
+                        <Button className="w-full h-11" asChild>
+                          <Link href={`/hackathons/${slug}/results`} className="block mt-6"><Trophy className="mr-2 h-4 w-4" /> View final results</Link>
+                        </Button>
                       ) : (
                         <Badge variant="outline" className="mt-4 py-1.5 px-3">Results coming soon</Badge>
                       )}

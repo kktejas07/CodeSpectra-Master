@@ -33,11 +33,11 @@ interface ActivityTimelineProps {
 }
 
 const typeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
-  scan: { icon: Search, color: 'text-emerald-400', bg: 'bg-emerald-500' },
-  review: { icon: Code2, color: 'text-teal-400', bg: 'bg-teal-500' },
-  fix: { icon: Zap, color: 'text-cyan-400', bg: 'bg-cyan-500' },
-  challenge: { icon: Trophy, color: 'text-amber-400', bg: 'bg-amber-500' },
-  daily: { icon: Calendar, color: 'text-emerald-500', bg: 'bg-emerald-500' },
+  scan: { icon: Search, color: 'text-primary', bg: 'bg-primary' },
+  review: { icon: Code2, color: 'text-primary', bg: 'bg-primary' },
+  fix: { icon: Zap, color: 'text-primary', bg: 'bg-primary' },
+  challenge: { icon: Trophy, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500' },
+  daily: { icon: Calendar, color: 'text-primary', bg: 'bg-primary' },
   default: { icon: Sparkles, color: 'text-muted-foreground', bg: 'bg-muted-foreground' },
 }
 
@@ -67,7 +67,7 @@ export function ActivityTimeline({
   const displayActivities = limit ? activities.slice(0, limit) : activities
 
   return (
-    <Card className="border-border/60 p-6">
+    <Card className="rounded-3xl border-border/70 p-6">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />

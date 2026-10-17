@@ -154,11 +154,11 @@ export default function JudgeDashboardPage() {
                     {h.awaiting} submission{h.awaiting === 1 ? '' : 's'} awaiting review
                   </div>
                 )}
-                <Link href={`/dashboard/events/${h.id}?tab=judge`}>
-                  <Button size="sm" className="w-full gap-1.5 text-xs" variant={h.awaiting > 0 ? 'default' : 'outline'}>
+                <Button size="sm" className="w-full gap-1.5 text-xs" variant={h.awaiting > 0 ? 'default' : 'outline'} asChild>
+                  <Link href={`/dashboard/events/${h.id}?tab=judge`}>
                     Review submissions <ArrowRight className="w-3 h-3" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </Card>
             )
           })}

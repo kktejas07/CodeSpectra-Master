@@ -393,8 +393,8 @@ function LoginInner() {
 
       <p className="mt-10 text-sm text-cs-ink-soft">
         By signing in you agree to the{" "}
-        <Link href="/terms" className="underline hover:text-cs-ink">Terms</Link> and{" "}
-        <Link href="/privacy" className="underline hover:text-cs-ink">Privacy Policy</Link>.
+        <Link href="/terms" className="underline hover:text-cs-ink">terms</Link> and{" "}
+        <Link href="/privacy" className="underline hover:text-cs-ink">privacy policy</Link>.
       </p>
     </AuthShell>
   );

@@ -146,7 +146,7 @@ export function WhatsAppSettingsSection() {
       <div className="p-6 space-y-4">
         <div className="grid gap-2">
           <Label>OpenWA Base URL</Label>
-          <Input
+          <Input aria-label="OpenWA Base URL"
             value={config.openwa_base_url}
             onChange={e => setConfig(c => ({ ...c, openwa_base_url: e.target.value }))}
             placeholder="https://your-openwa-server.com"
@@ -164,18 +164,18 @@ export function WhatsAppSettingsSection() {
               className="flex-1"
             />
             {maskedApiKey && !config.openwa_api_key && (
-              <Button variant="outline" size="sm" onClick={handleRevealKey}>
+              <Button variant="outline" size="sm" onClick={handleRevealKey} aria-label="Reveal saved API key">
                 <Eye className="h-4 w-4" />
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => setShowApiKey(!showApiKey)}>
+            <Button variant="outline" size="sm" onClick={() => setShowApiKey(!showApiKey)} aria-label={showApiKey ? 'Hide API key' : 'Show API key'}>
               {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
         </div>
         <div className="grid gap-2">
           <Label>Session ID</Label>
-          <Input
+          <Input aria-label="Session ID"
             value={config.openwa_session_id}
             onChange={e => setConfig(c => ({ ...c, openwa_session_id: e.target.value }))}
             placeholder="your-whatsapp-session"
@@ -185,7 +185,7 @@ export function WhatsAppSettingsSection() {
         <div className="grid grid-cols-3 gap-4">
           <div className="grid gap-2">
             <Label>Default country code</Label>
-            <Input
+            <Input aria-label="Default country code"
               value={config.openwa_default_country_code}
               onChange={e => setConfig(c => ({ ...c, openwa_default_country_code: e.target.value }))}
               placeholder="91"
@@ -194,15 +194,15 @@ export function WhatsAppSettingsSection() {
           </div>
           <div className="grid gap-2">
             <Label>Max concurrency</Label>
-            <Input
+            <Input aria-label="Max concurrency"
               value={config.openwa_max_concurrency}
               onChange={e => setConfig(c => ({ ...c, openwa_max_concurrency: e.target.value }))}
               placeholder="3"
             />
           </div>
           <div className="grid gap-2">
-            <Label>Send Delay (ms)</Label>
-            <Input
+            <Label>Send delay (ms)</Label>
+            <Input aria-label="Send delay (ms)"
               value={config.openwa_send_delay_ms}
               onChange={e => setConfig(c => ({ ...c, openwa_send_delay_ms: e.target.value }))}
               placeholder="400"

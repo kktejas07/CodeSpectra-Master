@@ -44,7 +44,7 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
         {data?.valid ? (
           <>
             <CheckCircle className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" />
-            <h1 className="text-xl font-bold">Certificate verified</h1>
+            <h1 className="text-xl font-semibold text-foreground">Certificate verified</h1>
             <div className="space-y-1 text-sm text-muted-foreground">
               <p><strong>Event:</strong> {data.event}</p>
               <p><strong>Team:</strong> {data.team}</p>
@@ -64,7 +64,7 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
         ) : (
           <>
             <XCircle className="mx-auto h-12 w-12 text-destructive" />
-            <h1 className="text-xl font-bold">Certificate not found</h1>
+            <h1 className="text-xl font-semibold text-foreground">Certificate not found</h1>
             <p className="text-sm text-muted-foreground">
               {data?.error || 'This certificate could not be verified.'}
             </p>

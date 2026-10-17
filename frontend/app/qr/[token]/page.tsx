@@ -74,14 +74,14 @@ type ScanResp = UserResp | TeamResp
 
 const VARIANT_GRADIENT: Record<string, string> = {
   user: 'from-primary/20 via-primary/10 to-transparent',
-  admin: 'from-fuchsia-500/20 via-fuchsia-500/10 to-transparent',
-  tenant: 'from-sky-500/20 via-sky-500/10 to-transparent',
+  admin: 'from-primary/30 via-primary/15 to-transparent',
+  tenant: 'from-muted via-muted/60 to-transparent',
 }
 
 const VARIANT_RING: Record<string, string> = {
   user: 'ring-primary/60',
-  admin: 'ring-fuchsia-500/60',
-  tenant: 'ring-sky-500/60',
+  admin: 'ring-primary',
+  tenant: 'ring-border',
 }
 
 export default function QrScanPage({
@@ -142,12 +142,12 @@ export default function QrScanPage({
             Please sign in to scan this QR code and view the content.
           </p>
           <div className="flex flex-col gap-2 pt-2">
-            <Link href={`/auth/login?redirect=${encodeURIComponent(`/qr/${token}`)}`}>
-              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button variant="outline" className="w-full">Create account</Button>
-            </Link>
+            <Button className="w-full gap-2" asChild>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(`/qr/${token}`)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
+            </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/auth/signup">Create account</Link>
+            </Button>
           </div>
           <Link href="/" className="text-sm text-primary hover:underline pt-2 block">
             ← Back to CodeSpectra
@@ -193,7 +193,7 @@ export default function QrScanPage({
         </div>
 
         {data.kind === 'team' && !authUser?.uid ? (
-          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-primary/40 shadow-xl dark:shadow-none">
+          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-primary/40 shadow-sm dark:shadow-none">
             <p className="text-sm font-medium text-muted-foreground">
               {teamData?.hackathon?.name || 'Hackathon team'}
             </p>
@@ -213,22 +213,22 @@ export default function QrScanPage({
                 <p className="mt-1 text-xs text-muted-foreground">
                   Sign in or create an account to register and access the hackathon problems.
                 </p>
-                <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
-                  <Button className="mt-3 w-full gap-2">
+                <Button className="mt-3 w-full gap-2" asChild>
+                  <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
                     <LogIn className="h-4 w-4" />
                     Sign in to join team
-                  </Button>
-                </Link>
-                <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
-                  <Button variant="outline" className="mt-2 w-full gap-2">
+                  </Link>
+                </Button>
+                <Button variant="outline" className="mt-2 w-full gap-2" asChild>
+                  <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
                     Create account
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             )}
           </article>
         ) : data.kind === 'team' && !isMember ? (
-          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-amber-500/40 shadow-xl dark:shadow-none">
+          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-amber-500/40 shadow-sm dark:shadow-none">
             <p className="text-sm font-medium text-muted-foreground">
               {teamData?.hackathon?.name || 'Hackathon team'}
             </p>
@@ -261,12 +261,12 @@ export default function QrScanPage({
                 <p className="mt-1 text-xs text-muted-foreground">
                   Join this team to compete in the hackathon.
                 </p>
-                <Link href={`/hackathons/${teamData!.hackathon?.slug}/join/${token}`}>
-                  <Button className="mt-3 w-full gap-2">
+                <Button className="mt-3 w-full gap-2" asChild>
+                  <Link href={`/hackathons/${teamData!.hackathon?.slug}/join/${token}`}>
                     <UserPlus className="h-4 w-4" />
                     Join this team
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </div>
             )}
           </article>
@@ -284,7 +284,7 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
   const u = data.user
   return (
     <article
-      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-xl dark:shadow-none`}
+      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-sm dark:shadow-none`}
       data-testid="qr-user-card"
     >
       <header className="mb-6 flex items-start gap-4">
@@ -317,11 +317,11 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
         Member since {formatDate(u.joined_at)}
       </p>
 
-      <Link href={data.dashboard_url} className="mt-6 block">
-        <Button className="w-full" data-testid="qr-open-dashboard">
+      <Button className="w-full" data-testid="qr-open-dashboard" asChild>
+        <Link href={data.dashboard_url} className="mt-6 block">
           Open {data.theme.label} dashboard <ArrowRight className="ml-1 h-4 w-4" />
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     </article>
   )
 }
@@ -333,7 +333,7 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
 
   return (
     <article
-      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-xl dark:shadow-none`}
+      className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-sm dark:shadow-none`}
       data-testid="qr-team-card"
     >
       <header className="mb-6">
@@ -394,11 +394,11 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
         </div>
       )}
 
-      <Link href={data.dashboard_url} className="mt-6 block">
-        <Button className="w-full" data-testid="qr-open-team-dashboard">
+      <Button className="w-full" data-testid="qr-open-team-dashboard" asChild>
+        <Link href={data.dashboard_url} className="mt-6 block">
           Open team scoreboard <ArrowRight className="ml-1 h-4 w-4" />
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     </article>
   )
 }
