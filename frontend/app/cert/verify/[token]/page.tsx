@@ -8,7 +8,7 @@ import QRCode from 'qrcode'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Award, XCircle, Printer, Download, Sparkles, LogIn, Code2 } from 'lucide-react'
+import { Award, Printer, Download, Sparkles, LogIn, Code2 } from 'lucide-react'
 import {
   CertificateRenderer,
   TEMPLATES,
@@ -17,6 +17,7 @@ import {
 } from '@/components/cert/CertificateTemplates'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface VerifyResponse {
   valid: boolean
@@ -108,9 +109,7 @@ export default function CertVerifyPage() {
         <SoftGlow />
         <DeviceShowcase variant="certificate" compact className="mx-0 hidden max-w-[420px] lg:block" />
         <Card className="max-w-sm w-full p-8 text-center border-primary/20">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
-            <Award className="h-6 w-6 text-primary" />
-          </div>
+          <Illustration name="certificate" className="mx-auto mb-4 w-32" />
           <h1 className="text-xl font-bold mb-2">Sign in required</h1>
           <p className="text-sm text-muted-foreground mb-6">
             Please sign in to verify certificates.
@@ -141,7 +140,7 @@ export default function CertVerifyPage() {
       <main className="relative isolate min-h-screen flex items-center justify-center p-6" data-testid="cert-verify-invalid">
         <SoftGlow />
         <Card className="max-w-md w-full p-8 text-center border-destructive/40 bg-destructive/5">
-          <XCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
+          <Illustration name="not-found" className="mx-auto mb-4 w-40" />
           <h1 className="text-xl font-bold mb-2">Certificate not found</h1>
           <p className="text-sm text-muted-foreground">
             This token is invalid or the certificate has been revoked.

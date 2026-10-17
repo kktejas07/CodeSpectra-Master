@@ -1,6 +1,7 @@
 import { cn } from '@/lib/utils'
 import { SoftGlow } from '@/components/visuals/stage'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { Illustration, type IllustrationName } from '@/components/illustrations/spot'
 
 /** Shared header for public pages: condensed display title, lead text, optional actions and art. */
 export function PageHero({
@@ -36,14 +37,20 @@ export function PageHero({
   )
 }
 
-/** Lighter hero art for text-heavy pages: a theme illustration on a soft glow. Decorative. */
+/**
+ * Lighter hero art for text-heavy pages on a soft glow. Decorative.
+ * Pass `spot` for a subject-matched spot illustration (components/illustrations);
+ * otherwise `name` picks an animated theme SVG.
+ */
 export function HeroIllustration({
   name,
+  spot,
   width = 240,
   height = 200,
   className,
 }: {
-  name: string
+  name?: string
+  spot?: IllustrationName
   width?: number
   height?: number
   className?: string
@@ -51,7 +58,11 @@ export function HeroIllustration({
   return (
     <div className={cn('relative isolate py-6', className)}>
       <SoftGlow className="rounded-full" />
-      <ThemeIllustration name={name} alt="" width={width} height={height} priority className="mx-auto w-full max-w-[320px]" />
+      {spot ? (
+        <Illustration name={spot} className="mx-auto w-full max-w-[320px]" />
+      ) : name ? (
+        <ThemeIllustration name={name} alt="" width={width} height={height} priority className="mx-auto w-full max-w-[320px]" />
+      ) : null}
     </div>
   )
 }

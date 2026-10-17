@@ -6,10 +6,11 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Award, Download, Share2, ShieldCheck, XCircle } from 'lucide-react'
+import { Award, Download, Share2, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { BrandLogo } from '@/app/public-layout'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface VerifyResponse {
   valid: boolean
@@ -122,7 +123,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
           </div>
         ) : !data?.valid ? (
           <Card className="max-w-md w-full rounded-3xl p-8 text-center border-destructive/40 bg-destructive/5">
-            <XCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
+            <Illustration name="not-found" className="mx-auto mb-4 w-40" />
             <h1 className="text-xl font-bold mb-2">Certificate not found</h1>
             <p className="text-sm text-muted-foreground">
               This certificate id is invalid or the certificate has been revoked.

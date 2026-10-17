@@ -31,13 +31,14 @@ export default async function NewsletterIndexPage() {
       <PageHero
         title="Newsletters"
         lead="Recent product, campus, and community updates from CodeSpectra."
-        art={<HeroIllustration name="step-invite" width={160} height={120} />}
+        art={<HeroIllustration spot="inbox" />}
       />
       <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
 
         {list.length === 0 ? (
           <EmptyState
             variant="notifications"
+            illustration="inbox"
             title="No newsletters published yet"
             description="In the meantime, the Newsroom has the latest articles."
             actionLabel="Open the Newsroom"

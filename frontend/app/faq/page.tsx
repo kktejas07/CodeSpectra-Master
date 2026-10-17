@@ -122,7 +122,7 @@ export default function FAQPage() {
             <Link href="/docs" className={btnSecondary}>Read the docs</Link>
           </>
         }
-        art={<HeroIllustration name="auth-visor" />}
+        art={<HeroIllustration spot="search" />}
       />
 
       <section className="border-b border-cs-grid">

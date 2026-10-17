@@ -5,10 +5,11 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
+import { Code2, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useAuth } from '@/lib/auth-context'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface AssessmentStepData {
   id: string
@@ -106,9 +107,7 @@ export default function CandidateInviteLandingPage() {
         <Card className="max-w-md w-full rounded-3xl p-6 sm:p-8 text-center border-border/70 space-y-4 shadow-sm dark:shadow-none">
           {renewedMsg ? (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400 mx-auto">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
+              <Illustration name="inbox" className="mx-auto w-36" />
               <h1 className="text-xl font-bold text-foreground">New link requested</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {renewedMsg}
@@ -140,9 +139,7 @@ export default function CandidateInviteLandingPage() {
             </>
           ) : isUsed ? (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mx-auto">
-                <ShieldCheck className="h-6 w-6" />
-              </div>
+              <Illustration name="success" className="mx-auto w-36" />
               <h1 className="text-xl font-bold text-foreground">Assessment already completed</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 This invitation has already been used to complete the assessment. If you need to retake the assessment, please contact your administrator.
@@ -155,9 +152,7 @@ export default function CandidateInviteLandingPage() {
             </>
           ) : isExpired ? (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 mx-auto">
-                <AlertCircle className="h-6 w-6" />
-              </div>
+              <Illustration name="calendar" className="mx-auto w-36" />
               <h1 className="text-xl font-bold text-foreground">Invitation link expired</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 This candidate assessment link has expired. Request a fresh link and check your email to start the assessment.
@@ -181,9 +176,7 @@ export default function CandidateInviteLandingPage() {
             </>
           ) : (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mx-auto">
-                <AlertCircle className="h-6 w-6" />
-              </div>
+              <Illustration name="error" className="mx-auto w-36" />
               <h1 className="text-xl font-bold text-foreground">Invitation link not valid</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {error || 'This candidate assessment link is invalid or has already been used.'}

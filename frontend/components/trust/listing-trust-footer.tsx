@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Illustration } from '@/components/illustrations/spot'
 
 type Kind = 'complaint' | 'issue'
 
@@ -137,7 +138,10 @@ export function ListingTrustFooter({
             </DialogDescription>
           </DialogHeader>
           {done ? (
-            <p role="status" className="text-sm text-green-700 dark:text-green-400">Thanks — your report was submitted.</p>
+            <div role="status" className="py-2 text-center">
+              <Illustration name="success" className="mx-auto w-32" />
+              <p className="mt-2 text-sm text-green-700 dark:text-green-400">Thanks — your report was submitted.</p>
+            </div>
           ) : (
             <div className="space-y-3">
               <div>

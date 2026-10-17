@@ -3,12 +3,13 @@
 import { Suspense, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle2, Loader2, Mail, MapPin } from 'lucide-react'
+import { Loader2, Mail, MapPin } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { cn } from '@/lib/utils'
 import { DeviceShowcase } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
 
 const TOPICS = [
   { value: 'pilot', label: 'Book a pilot', hint: 'Try CodeSpectra on one open role.' },
@@ -124,7 +125,7 @@ function ContactInner() {
           <div className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_8px_30px_-16px_rgba(15,23,41,0.18)] sm:p-9">
             {sent ? (
               <div role="status" className="flex min-h-[420px] flex-col items-start justify-center">
-                <CheckCircle2 className="h-12 w-12 text-cs-accent-text" aria-hidden />
+                <Illustration name="success" className="w-40 sm:w-48" />
                 <h2 className="cs-heading mt-5 text-4xl">Message sent</h2>
                 <p className="mt-3 max-w-[42ch] text-cs-ink-soft">
                   Thanks, {form.name.split(' ')[0] || 'there'}. We’ll reply to <strong className="text-cs-ink">{form.email}</strong>.

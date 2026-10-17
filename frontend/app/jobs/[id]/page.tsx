@@ -16,6 +16,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useCurrency } from '@/lib/use-currency'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface JobPosting {
   id: string
@@ -102,7 +103,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
   if (error || !job) return (
     <PublicPageWrapper>
       <div className="mx-auto max-w-2xl px-4 py-24 text-center">
-        <AlertCircle className="mx-auto h-12 w-12 text-cs-ink-soft/40" aria-hidden />
+        <Illustration name="not-found" className="mx-auto w-40" />
         <p className="mt-3 text-lg font-semibold text-cs-ink">{error || 'Job not found'}</p>
         <p className="mt-1 text-sm text-cs-ink-soft">It may have been filled or removed. The job board has every open role.</p>
         <Button variant="outline" className="mt-5 rounded-full" onClick={() => router.push('/jobs')}>
@@ -212,7 +213,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
 
               {applySuccess ? (
                 <div className="py-4 text-center" role="status">
-                  <CheckCircle className="mx-auto mb-2 h-10 w-10 text-green-600 dark:text-green-400" aria-hidden />
+                  <Illustration name="success" className="mx-auto mb-2 w-32" />
                   <p className="font-semibold text-cs-ink">Application submitted!</p>
                   <p className="mt-1 text-sm text-cs-ink-soft">Good luck with your application.</p>
                 </div>

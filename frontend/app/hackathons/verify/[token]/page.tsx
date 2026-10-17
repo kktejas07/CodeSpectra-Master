@@ -6,7 +6,8 @@ import { Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals/stage'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Loader2, CheckCircle, XCircle, Trophy, Users, Award } from 'lucide-react'
+import { Loader2, Trophy, Users, Award } from 'lucide-react'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface Verification {
   valid: boolean
@@ -45,7 +46,7 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
       <Panel className="w-full max-w-md p-8 text-center space-y-4">
         {data?.valid ? (
           <>
-            <CheckCircle className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" />
+            <Illustration name="certificate" className="mx-auto w-40" />
             <h1 className="text-xl font-semibold text-foreground">Certificate verified</h1>
             <div className="space-y-1 text-sm text-muted-foreground">
               <p><span className="font-medium text-foreground">Event:</span> {data.event}</p>
@@ -65,7 +66,7 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
           </>
         ) : (
           <>
-            <XCircle className="mx-auto h-12 w-12 text-destructive" />
+            <Illustration name="not-found" className="mx-auto w-40" />
             <h1 className="text-xl font-semibold text-foreground">Certificate not found</h1>
             <p className="text-sm text-muted-foreground">
               {data?.error || 'This certificate could not be verified.'}

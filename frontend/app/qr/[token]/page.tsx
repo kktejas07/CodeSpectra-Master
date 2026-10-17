@@ -22,7 +22,6 @@ import {
   ArrowRight,
   Users,
   Clock,
-  AlertTriangle,
   LogIn,
   UserPlus,
 } from 'lucide-react'
@@ -33,6 +32,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals/stage'
+import { Illustration } from '@/components/illustrations/spot'
 
 type Variant = 'user' | 'admin' | 'tenant'
 
@@ -166,7 +166,7 @@ export default function QrScanPage({
       <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background p-8">
         <SoftGlow />
         <Panel className="max-w-md space-y-3 p-8 text-center">
-          <AlertTriangle aria-hidden className="mx-auto h-10 w-10 text-destructive" />
+          <Illustration name={isRevoked ? 'locked' : 'error'} className="mx-auto w-40" />
           <h1 className="text-xl font-semibold text-foreground">
             {isRevoked ? 'This QR has been revoked' : 'QR not recognised'}
           </h1>

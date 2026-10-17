@@ -174,7 +174,7 @@ export default function JobsPage() {
               onAction={() => { setSearch(''); clearFilters() }}
             />
           ) : (
-            <EmptyState title="No open positions right now" description="Check back soon. New roles appear here as soon as they’re posted." />
+            <EmptyState illustration="jobs" title="No open positions right now" description="Check back soon. New roles appear here as soon as they’re posted." />
           )
         ) : (
           <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">

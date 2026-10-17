@@ -6,10 +6,11 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, CheckCircle, XCircle, Users, ArrowRight, LogIn, UserPlus, ShieldAlert } from 'lucide-react'
+import { Loader2, Users, ArrowRight, LogIn, UserPlus } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
 
 export default function JoinHackathonPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
   const { slug, token } = use(params)
@@ -107,9 +108,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'success' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10">
-              <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
-            </div>
+            <Illustration name="success" className="mx-auto w-36" />
             <h2 className="text-lg font-semibold">You&apos;re on the team</h2>
             <p className="text-sm text-muted-foreground">{message}</p>
             <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
@@ -126,9 +125,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'already_this_team' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-              <Users className="h-8 w-8 text-primary" />
-            </div>
+            <Illustration name="team" className="mx-auto w-36" />
             <h2 className="text-lg font-semibold">Already on this team</h2>
             <p className="text-sm text-muted-foreground">You&apos;re already a member of this team.</p>
             <div className="flex gap-3 pt-4">
@@ -141,9 +138,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'already_other_team' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <ShieldAlert className="h-8 w-8 text-amber-600 dark:text-amber-400" />
-            </div>
+            <Illustration name="team" className="mx-auto w-36" />
             <h2 className="text-lg font-semibold">Already registered</h2>
             <p className="text-sm text-muted-foreground">
               You&apos;re already on <strong>{otherTeamName}</strong> for this event.
@@ -167,9 +162,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'team_full' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-              <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
-            </div>
+            <Illustration name="locked" className="mx-auto w-36" />
             <h2 className="text-lg font-semibold">This team is full</h2>
             <p className="text-sm text-muted-foreground">{message}</p>
             <div className="flex gap-3 pt-4">
@@ -182,9 +175,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
 
         {status === 'error' && errorMeta === 'event_in_progress' && (
           <>
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
-              <ShieldAlert className="h-8 w-8 text-amber-600 dark:text-amber-400" />
-            </div>
+            <Illustration name="locked" className="mx-auto w-36" />
             <h2 className="text-lg font-semibold">Event in progress</h2>
             <p className="text-sm text-muted-foreground">You can&apos;t join once the event has started.</p>
             <div className="flex gap-3 pt-4">
@@ -199,9 +190,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
           <>
             {!authUser?.uid ? (
               <>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-                  <LogIn className="h-8 w-8 text-primary" />
-                </div>
+                <Illustration name="locked" className="mx-auto w-36" />
                 <h2 className="text-lg font-semibold">Sign in required</h2>
                 <p className="text-sm text-muted-foreground">You need to sign in to join this team.</p>
                 <div className="flex flex-col gap-2 pt-4">
@@ -219,9 +208,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
               </>
             ) : (
               <>
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-                  <XCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
-                </div>
+                <Illustration name="error" className="mx-auto w-36" />
                 <h2 className="text-lg font-semibold">Couldn&apos;t join</h2>
                 <p className="text-sm text-muted-foreground">{message}</p>
                 <div className="flex gap-3 pt-4">

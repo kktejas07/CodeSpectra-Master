@@ -88,7 +88,7 @@ export default function SupportPortalPage() {
             <Link href="/status" className={btnSecondary}>System status</Link>
           </>
         }
-        art={<HeroIllustration name="code-visor" />}
+        art={<HeroIllustration spot="interview" />}
       />
 
       {/* Support cards */}

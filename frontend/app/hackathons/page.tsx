@@ -65,6 +65,7 @@ export default function PublicHackathonsPage() {
         ) : hackathons.length === 0 ? (
           <EmptyState
             className="mx-auto max-w-xl"
+            illustration="hackathon"
             title="No hackathons open right now"
             description="Create a free account and you’ll see new hackathons on your dashboard as soon as they open."
             actionLabel="Create a free account"

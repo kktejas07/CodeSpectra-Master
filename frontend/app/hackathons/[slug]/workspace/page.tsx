@@ -56,6 +56,7 @@ const TOP_LANGUAGES = [
 ];
 
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Illustration } from "@/components/illustrations/spot"
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -806,7 +807,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
         {(!hackathon.tasks || hackathon.tasks.length === 0) && (
           <Card className="rounded-3xl p-8 text-center">
-            <ListChecks className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <Illustration name="coding" className="mx-auto mb-2 w-32" />
             <p className="text-sm font-medium">No problems added yet</p>
             <p className="text-xs text-muted-foreground mt-1">The organizer hasn&apos;t added any problems to this hackathon.</p>
           </Card>

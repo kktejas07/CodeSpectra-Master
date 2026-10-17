@@ -32,6 +32,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface Question {
   id: string
@@ -532,9 +533,7 @@ export default function CandidateAssessmentPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full rounded-3xl p-8 text-center border-destructive/30 space-y-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 mx-auto text-destructive">
-            <ShieldX className="h-7 w-7" />
-          </div>
+          <Illustration name="locked" className="mx-auto w-40" />
           <h1 className="text-xl font-bold">Access denied</h1>
           <p className="text-sm text-muted-foreground">{accessError}</p>
           <div className="pt-2">
@@ -552,9 +551,7 @@ export default function CandidateAssessmentPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mx-auto text-green-600 dark:text-green-400 mb-4">
-            <CheckCircle2 className="h-8 w-8" />
-          </div>
+          <Illustration name="success" className="mx-auto w-40" />
           <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
           <p className="text-muted-foreground">
             Thank you for completing the {exam.title} assessment. Your answers have been saved and sent to the hiring team for review.
@@ -579,9 +576,7 @@ export default function CandidateAssessmentPage() {
       return (
         <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4">
           <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-6 shadow-sm dark:shadow-none">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto">
-              <User className="h-7 w-7 text-primary" />
-            </div>
+            <Illustration name="assessment" className="mx-auto w-36" />
             <div>
               <h1 className="text-xl font-bold">{exam.title}</h1>
               <p className="text-sm text-muted-foreground mt-1">Sign in or create an account to take this assessment</p>

@@ -7,8 +7,9 @@ import { Panel } from '@/components/app/page-kit'
 import { DeviceShowcase } from '@/components/visuals/device-showcase'
 import { SoftGlow } from '@/components/visuals/stage'
 import { Button } from '@/components/ui/button'
-import { Loader2, Trophy, Users, ArrowRight, Mail, CheckCircle, AlertCircle } from 'lucide-react'
+import { Loader2, Trophy, Users, ArrowRight, Mail, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface InviteInfo {
   token: string
@@ -87,7 +88,7 @@ function JoinPage() {
   if (joined) return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Panel className="max-w-md w-full p-8 text-center">
-        <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400 mx-auto mb-4" />
+        <Illustration name="success" className="mx-auto mb-4 w-36" />
         <h1 className="text-xl font-semibold text-foreground mb-2">You&apos;re in</h1>
         <p className="text-muted-foreground text-sm mb-4">Taking you to the workspace…</p>
         <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />

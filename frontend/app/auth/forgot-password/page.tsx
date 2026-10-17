@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
   ArrowLeft,
-  CheckCircle2,
   Code2,
   Loader2,
   Mail,
@@ -18,6 +17,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { SoftGlow } from "@/components/visuals";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
+import { Illustration } from "@/components/illustrations/spot";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
         <div className="bg-card border border-border/40 rounded-xl p-6">
           {sent ? (
             <div className="text-center space-y-4">
-              <CheckCircle2 className="w-12 h-12 text-primary mx-auto" />
+              <Illustration name="inbox" className="mx-auto w-40" />
               <p className="text-sm text-muted-foreground">
                 If an account exists with that email, you&apos;ll receive a password reset link shortly.
               </p>

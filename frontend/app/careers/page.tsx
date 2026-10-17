@@ -24,7 +24,7 @@ export default function CareersPage() {
             </Link>
           </>
         }
-        art={<HeroIllustration name="code-visor" />}
+        art={<HeroIllustration spot="jobs" />}
       />
 
       <section className="border-b border-cs-grid">

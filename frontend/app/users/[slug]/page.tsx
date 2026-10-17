@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth-context'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonAvatar, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { Illustration } from '@/components/illustrations/spot'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
 
@@ -176,7 +177,8 @@ export default function UserProfilePage({
         <Link href="/dashboard/leaderboard" className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> Back to leaderboard
         </Link>
-        <Card className="border-destructive/40 bg-destructive/5 p-6 text-destructive">
+        <Card className="border-destructive/40 bg-destructive/5 p-6 text-center text-destructive">
+          <Illustration name="not-found" className="mx-auto mb-3 w-36" />
           {error || 'Profile unavailable'}
         </Card>
       </div>
@@ -299,6 +301,7 @@ export default function UserProfilePage({
               <div className="divide-y divide-border/40">
                 {recent.length === 0 && (
                   <div className="px-6 py-12 text-center text-sm text-muted-foreground">
+                    <Illustration name="coding" className="mx-auto mb-3 w-32" />
                     No submissions yet. Solved problems will show up here.
                   </div>
                 )}

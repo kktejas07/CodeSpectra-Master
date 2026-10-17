@@ -6,11 +6,12 @@ import { safeRedirect } from "@/lib/safe-redirect";
 import Link from "next/link";
 import { FaceCamera } from "@/components/auth/face-camera";
 import { Button } from "@/components/ui/button";
-import { Shield, AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { csrfFetch } from "@/lib/csrf-fetch";
 import { SoftGlow } from "@/components/visuals";
+import { Illustration } from "@/components/illustrations/spot";
 
 function EnrollFaceInner() {
   const router = useRouter();
@@ -71,9 +72,7 @@ function EnrollFaceInner() {
 
       <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-sm dark:shadow-none rounded-3xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Shield className="h-6 w-6" />
-          </div>
+          <Illustration name="proctoring" className="w-28 sm:w-36" />
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Secure your account</h2>
             <p className="text-sm text-muted-foreground mt-2">

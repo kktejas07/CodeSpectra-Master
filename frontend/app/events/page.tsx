@@ -116,6 +116,7 @@ export default async function PublicEventsPage() {
         {events.length === 0 ? (
           <EmptyState
             className="mx-auto max-w-xl"
+            illustration="calendar"
             title="No events open right now"
             description="Create a free account to see new events on your dashboard as soon as they’re announced."
             actionLabel="Create a free account"

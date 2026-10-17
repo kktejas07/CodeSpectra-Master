@@ -8,14 +8,27 @@ import { SoftGlow } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  Loader2, Trophy, ArrowLeft, Users, Medal, Download,
-  Share2, FileText, Award, Sparkles, CheckCircle,
-  Lock, Clock, Copy, ChevronDown, ChevronUp,
+  Loader2,
+  Trophy,
+  ArrowLeft,
+  Users,
+  Medal,
+  Download,
+  Share2,
+  FileText,
+  Award,
+  Sparkles,
+  CheckCircle,
+  Clock,
+  Copy,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react'
 import { Linkedin, Twitter } from '@/components/ui/brand-icons'
 import { useAuth } from '@/lib/auth-context'
 import QRCode from 'qrcode'
 import { rankByScore } from '@/lib/hackathons/ranking'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -111,9 +124,7 @@ function LockedState({ hackathon }: { hackathon: Hackathon }) {
     <div className="relative isolate flex min-h-screen items-center justify-center bg-background px-4">
       <SoftGlow />
       <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70">
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mx-auto mb-6">
-          <Lock className="h-10 w-10 text-muted-foreground" />
-        </div>
+        <Illustration name="locked" className="mx-auto mb-6 w-40" />
         <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Results aren’t available yet</h1>
         <p className="text-muted-foreground mb-6">
           The organizers have not released the results yet.

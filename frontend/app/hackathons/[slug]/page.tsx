@@ -210,6 +210,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   if (!hackathon) return (
     <div className="mx-auto flex min-h-[60vh] max-w-xl items-center px-4 py-12">
       <EmptyState
+        illustration="not-found"
         title="We couldn't find this hackathon"
         description={error && error !== 'Event not found' ? error : 'The link may be wrong, or the event was removed. Browse the hackathons that are open now.'}
         actionLabel="Browse hackathons"
@@ -331,6 +332,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                   {teams.length === 0 ? (
                     <EmptyState
                       compact
+                      illustration="leaderboard"
                       title="No teams have registered yet"
                       description="Register a team to be first on the board."
                     />

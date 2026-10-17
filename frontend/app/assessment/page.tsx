@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { Code2, ArrowRight, LogIn } from 'lucide-react'
+import { ArrowRight, LogIn } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ import { useAssessmentViewModel } from './use-assessment-viewmodel'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { Illustration } from '@/components/illustrations/spot'
 
 export default function AssessmentPage() {
   const gate = usePageGuard('user')
@@ -35,9 +36,7 @@ export default function AssessmentPage() {
       <div className="relative isolate min-h-screen flex items-center justify-center bg-background px-4">
         <SoftGlow />
         <Card className="max-w-sm w-full rounded-3xl p-8 text-center border-border/70">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
-            <Code2 className="h-6 w-6 text-primary" />
-          </div>
+          <Illustration name="locked" className="mx-auto mb-4 w-36" />
           <h1 className="text-xl font-semibold text-foreground mb-2">Sign in required</h1>
           <p className="text-sm text-muted-foreground mb-6">
             Please sign in to access the assessment platform.

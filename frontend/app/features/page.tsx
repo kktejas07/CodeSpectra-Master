@@ -21,6 +21,7 @@ import {
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { Illustration } from '@/components/illustrations/spot'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 
@@ -91,9 +92,14 @@ export default function FeaturesPage() {
             </div>
           </BentoCard>
           <BentoCard className="sm:col-span-2">
-            <BentoIcon><Trophy className="h-5 w-5" aria-hidden /></BentoIcon>
-            <BentoTitle>Difficulty-weighted points</BentoTitle>
-            <BentoBody>Easy questions score 3, medium 4 and hard 5, so freshers and seniors are each assessed at the right level and still ranked fairly.</BentoBody>
+            <div className="grid h-full gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div>
+                <BentoIcon><Trophy className="h-5 w-5" aria-hidden /></BentoIcon>
+                <BentoTitle>Difficulty-weighted points</BentoTitle>
+                <BentoBody>Easy questions score 3, medium 4 and hard 5, so freshers and seniors are each assessed at the right level and still ranked fairly.</BentoBody>
+              </div>
+              <Illustration name="leaderboard" className="hidden w-36 sm:block" />
+            </div>
           </BentoCard>
           <BentoCard>
             <BentoIcon><Cog className="h-5 w-5" aria-hidden /></BentoIcon>
@@ -119,14 +125,24 @@ export default function FeaturesPage() {
             </div>
           </BentoCard>
           <BentoCard className="lg:col-span-2">
-            <BentoIcon><Timer className="h-5 w-5" aria-hidden /></BentoIcon>
-            <BentoTitle>Timed sessions</BentoTitle>
-            <BentoBody className="text-sm">Each invite opens a timed attempt with a visible countdown.</BentoBody>
+            <div className="grid h-full gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <BentoIcon><Timer className="h-5 w-5" aria-hidden /></BentoIcon>
+                <BentoTitle>Timed sessions</BentoTitle>
+                <BentoBody className="text-sm">Each invite opens a timed attempt with a visible countdown.</BentoBody>
+              </div>
+              <Illustration name="mock-test" className="hidden w-32 lg:block" />
+            </div>
           </BentoCard>
           <BentoCard className="lg:col-span-2">
-            <BentoIcon><GitCompare className="h-5 w-5" aria-hidden /></BentoIcon>
-            <BentoTitle>Plagiarism check</BentoTitle>
-            <BentoBody className="text-sm">Code answers are compared across everyone who took the test.</BentoBody>
+            <div className="grid h-full gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+              <div>
+                <BentoIcon><GitCompare className="h-5 w-5" aria-hidden /></BentoIcon>
+                <BentoTitle>Plagiarism check</BentoTitle>
+                <BentoBody className="text-sm">Code answers are compared across everyone who took the test.</BentoBody>
+              </div>
+              <Illustration name="scanner" className="hidden w-32 lg:block" />
+            </div>
           </BentoCard>
           <BentoCard className="sm:col-span-2 lg:col-span-4">
             <div className="grid h-full gap-6 md:grid-cols-[1fr_1.3fr] md:items-center">
@@ -153,9 +169,14 @@ export default function FeaturesPage() {
             </div>
           </BentoCard>
           <BentoCard className="sm:col-span-2">
-            <BentoIcon><Bot className="h-5 w-5" aria-hidden /></BentoIcon>
-            <BentoTitle>AI-assisted grading</BentoTitle>
-            <BentoBody>Grade written answers in bulk with AI, then review and adjust before releasing scores.</BentoBody>
+            <div className="grid h-full gap-4 sm:grid-cols-[1fr_auto] sm:items-center">
+              <div>
+                <BentoIcon><Bot className="h-5 w-5" aria-hidden /></BentoIcon>
+                <BentoTitle>AI-assisted grading</BentoTitle>
+                <BentoBody>Grade written answers in bulk with AI, then review and adjust before releasing scores.</BentoBody>
+              </div>
+              <Illustration name="ai" className="hidden w-36 sm:block" />
+            </div>
           </BentoCard>
           <BentoCard>
             <BentoIcon><FileDown className="h-5 w-5" aria-hidden /></BentoIcon>
