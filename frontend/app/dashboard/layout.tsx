@@ -757,11 +757,11 @@ export default function DashboardLayout({
       >
         <div
           className={cn(
-            'flex min-w-0 w-full items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-all',
+            'flex min-w-0 w-full items-center gap-3 rounded-xl px-3 py-2 text-[14px] transition-colors duration-150',
             sidebarCollapsed && 'lg:justify-center lg:px-2',
             active
-              ? 'bg-primary/15 font-semibold text-primary shadow-xs'
-              : 'font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+              ? 'relative bg-primary/10 font-semibold text-primary before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-primary'
+              : 'font-medium text-foreground/75 hover:bg-muted/60 hover:text-foreground'
           )}
         >
           <IconComponent className="h-4.5 w-4.5 shrink-0 opacity-90" />
@@ -809,7 +809,7 @@ export default function DashboardLayout({
       {!isLessonPlayer && (
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen w-64 border-r border-border/40 bg-card/95 backdrop-blur-md overflow-hidden transition-[width,transform] duration-200',
+          'fixed left-0 top-0 z-40 h-screen w-64 border-r border-border/70 bg-card/95 backdrop-blur-md overflow-hidden transition-[width,transform] duration-200',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0',
           sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
@@ -834,12 +834,12 @@ export default function DashboardLayout({
               )}
               title="Home"
             >
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary to-primary/70 shadow-sm">
-                <CodeIcon className="h-4 w-4 text-primary-foreground" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-primary/40 bg-primary/12">
+                <CodeIcon className="h-4 w-4 text-primary" />
               </div>
               <span
                 className={cn(
-                  'min-w-0 truncate text-sm font-semibold tracking-tight',
+                  'min-w-0 truncate text-base font-bold tracking-tight',
                   sidebarCollapsed && 'lg:sr-only'
                 )}
               >
@@ -925,11 +925,11 @@ export default function DashboardLayout({
                             onClick={() => toggleSection(label)}
                             aria-expanded={expanded}
                             className={cn(
-                              'flex w-full items-center justify-between gap-1 rounded-md px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground/80 transition-colors hover:bg-muted/50 hover:text-foreground',
+                              'mt-2 flex w-full items-center justify-between gap-1 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground',
                               sidebarCollapsed && 'lg:sr-only'
                             )}
                           >
-                            <span className="min-w-0 truncate text-xs font-bold tracking-wider">{label}</span>
+                            <span className="min-w-0 truncate">{label}</span>
                             <ChevronDown
                               className={cn(
                                 'h-3.5 w-3.5 shrink-0 transition-transform duration-200 opacity-80',
@@ -1109,23 +1109,23 @@ export default function DashboardLayout({
 
         {/* Face biometric enrollment warning */}
         {userRole === 'user' && fbUser?.has_enrolled_face === false && (
-          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm">
-            <div className="flex items-center gap-2 text-amber-600">
+          <div className="flex flex-col gap-2 border-b border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between lg:px-6">
+            <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
               <AlertCircle className="h-5 w-5 shrink-0" />
-              <p><strong>Action Required:</strong> Please complete your face biometric enrollment to take proctored assessments.</p>
+              <p><strong>Action needed:</strong> Enroll your face once so you can take proctored assessments.</p>
             </div>
             <Link 
               href="/auth/enroll-face?redirect=/dashboard" 
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md font-medium text-xs text-center whitespace-nowrap transition-colors"
+              className="whitespace-nowrap rounded-lg bg-amber-500 px-3.5 py-2 text-center text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-400"
             >
-              Enroll Now
+              Enroll now
             </Link>
           </div>
         )}
 
         {/* Breadcrumbs + mobile menu + tour guide (no top profile — account lives in sidebar footer) */}
         {!isLessonPlayer && (
-        <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
+        <div className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-border/60 bg-background/85 px-4 backdrop-blur-xl lg:px-8">
           <Breadcrumbs homeHref={homeHref} className="min-w-0" />
           <div className="flex items-center gap-2">
             <button
@@ -1157,8 +1157,8 @@ export default function DashboardLayout({
         />
 
         {/* Page Content — full width with proper padding */}
-        <main className={cn("w-full", isLessonPlayer ? "p-0" : "px-4 py-5 lg:px-6 lg:py-8")}>
-          <div className="w-full">
+        <main className={cn("w-full", isLessonPlayer ? "p-0" : "px-4 py-6 lg:px-8 lg:py-8")}>
+          <div className={cn("w-full", !isLessonPlayer && "mx-auto max-w-[1400px]")}>
             {currentPageLocked ? (
               <PageLocked routeName={lockedPageLabel || undefined} />
             ) : (
