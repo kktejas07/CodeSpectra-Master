@@ -235,7 +235,7 @@ function PageBody({ page }: { page: EbookPage }) {
     const colors = {
       tip: 'border-primary/20 bg-primary/5 text-primary',
       warning: 'border-amber-500/25 bg-amber-500/5 text-amber-700 dark:text-amber-400',
-      info: 'border-cyan-500/25 bg-cyan-500/5 text-cyan-700 dark:text-cyan-400',
+      info: 'border-border bg-muted/40 text-foreground',
       success: 'border-green-500/25 bg-green-500/5 text-green-700 dark:text-green-400',
     }
     const Icon = icons[page.calloutType || 'info']

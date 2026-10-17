@@ -31,6 +31,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { UserAvatar } from '@/components/ui/user-avatar'
+import { Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals/stage'
 
 type Variant = 'user' | 'admin' | 'tenant'
 
@@ -134,10 +136,11 @@ export default function QrScanPage({
 
   if (!gate.allowed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-8">
-        <div className="max-w-md space-y-3 rounded-3xl border border-border bg-card p-8 text-center">
-          <AlertTriangle className="mx-auto h-10 w-10 text-primary" />
-          <h1 className="text-xl font-bold">Sign in required</h1>
+      <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background p-8">
+        <SoftGlow />
+        <Panel className="max-w-md space-y-3 p-8 text-center">
+          <LogIn aria-hidden className="mx-auto h-10 w-10 text-primary" />
+          <h1 className="text-xl font-semibold text-foreground">Sign in required</h1>
           <p className="text-sm text-muted-foreground">
             Please sign in to scan this QR code and view the content.
           </p>
@@ -152,7 +155,7 @@ export default function QrScanPage({
           <Link href="/" className="text-sm text-primary hover:underline pt-2 block">
             ← Back to CodeSpectra
           </Link>
-        </div>
+        </Panel>
       </div>
     )
   }
@@ -160,17 +163,18 @@ export default function QrScanPage({
   if (error || !data) {
     const isRevoked = status === 410
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-8">
-        <div className="max-w-md space-y-3 rounded-3xl border border-border bg-card p-8 text-center">
-          <AlertTriangle className="mx-auto h-10 w-10 text-destructive" />
-          <h1 className="text-xl font-bold">
+      <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background p-8">
+        <SoftGlow />
+        <Panel className="max-w-md space-y-3 p-8 text-center">
+          <AlertTriangle aria-hidden className="mx-auto h-10 w-10 text-destructive" />
+          <h1 className="text-xl font-semibold text-foreground">
             {isRevoked ? 'This QR has been revoked' : 'QR not recognised'}
           </h1>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Link href="/" className="text-sm text-primary hover:underline">
             ← Back to CodeSpectra
           </Link>
-        </div>
+        </Panel>
       </div>
     )
   }
@@ -179,15 +183,16 @@ export default function QrScanPage({
   const ringClass = VARIANT_RING[data.role_variant] || VARIANT_RING.user
 
   return (
-    <div className="min-h-screen bg-background" data-testid="qr-scan-page">
-      <main className="mx-auto max-w-2xl px-6 py-12">
+    <div className="relative isolate min-h-screen overflow-hidden bg-background" data-testid="qr-scan-page">
+      <SoftGlow className="h-[480px]" />
+      <main className="mx-auto max-w-2xl px-4 py-12 sm:px-6">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <button type="button" onClick={() => router.back()} className="rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               ← Back
             </button>
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card px-3 py-1 text-xs font-medium text-muted-foreground">
-              <ScanLine className="h-3 w-3" /> Scanned
+              <ScanLine aria-hidden className="h-3 w-3" /> Scanned
             </span>
           </div>
         </div>
@@ -197,7 +202,7 @@ export default function QrScanPage({
             <p className="text-sm font-medium text-muted-foreground">
               {teamData?.hackathon?.name || 'Hackathon team'}
             </p>
-            <h1 className="mt-1 text-2xl font-bold" data-testid="qr-team-name">
+            <h1 className="mt-1 text-2xl font-bold text-foreground" data-testid="qr-team-name">
               {teamData!.team.name}
             </h1>
             {teamData?.hackathon?.status === 'live' || teamData?.hackathon?.status === 'closed' ? (
@@ -232,8 +237,8 @@ export default function QrScanPage({
             <p className="text-sm font-medium text-muted-foreground">
               {teamData?.hackathon?.name || 'Hackathon team'}
             </p>
-            <h1 className="mt-1 text-2xl font-bold">{teamData!.team.name}</h1>
-            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+            <h1 className="mt-1 text-2xl font-bold text-foreground">{teamData!.team.name}</h1>
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Stat icon={<Trophy className="h-4 w-4" />} label="XP" value={teamData!.team.xp.toLocaleString()} />
               <Stat icon={<Sparkles className="h-4 w-4" />} label="Level" value={`Lv ${teamData!.team.level}`} />
               <Stat icon={<Users className="h-4 w-4" />} label="Members" value={teamData!.team.members.length} />
@@ -287,20 +292,20 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
       className={`overflow-hidden rounded-3xl bg-card p-8 ring-2 ${ringClass} shadow-sm dark:shadow-none`}
       data-testid="qr-user-card"
     >
-      <header className="mb-6 flex items-start gap-4">
+      <header className="mb-6 flex flex-wrap items-start gap-4">
         <UserAvatar
           seed={u.email || u.id}
           name={u.name}
           className="h-20 w-20 rounded-2xl border-4 border-border/60"
         />
-        <div className="flex-1 space-y-1">
+        <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-medium text-muted-foreground">
             {data.theme.label} ID
           </p>
-          <h1 className="text-2xl font-bold" data-testid="qr-user-name">
+          <h1 className="text-2xl font-bold text-foreground" data-testid="qr-user-name">
             {u.name}
           </h1>
-          <p className="text-sm text-muted-foreground">{u.email}</p>
+          <p className="truncate text-sm text-muted-foreground">{u.email}</p>
         </div>
         <Badge variant="outline" className="capitalize">
           {u.role}
@@ -340,8 +345,8 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
         <p className="text-sm font-medium text-muted-foreground">
           {data.hackathon?.name || 'Hackathon team'}
         </p>
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold" data-testid="qr-team-name">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground" data-testid="qr-team-name">
             {t.name}
           </h1>
           {data.hackathon?.status && (
@@ -355,7 +360,7 @@ function TeamCard({ data, ringClass }: { data: TeamResp; ringClass: string }) {
         </div>
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Stat icon={<Trophy className="h-4 w-4" />} label="XP" value={t.xp.toLocaleString()} />
         <Stat icon={<Sparkles className="h-4 w-4" />} label="Level" value={`Lv ${t.level}`} />
         <Stat icon={<Users className="h-4 w-4" />} label="Members" value={t.members.length} />
@@ -418,7 +423,7 @@ function Stat({
         {icon}
         {label}
       </p>
-      <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
+      <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">{value}</p>
     </div>
   )
 }

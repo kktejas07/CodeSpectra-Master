@@ -264,7 +264,7 @@ export default function LeaderboardPage() {
             {/* My Rank Card */}
             <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] p-6 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)] flex flex-col sm:flex-row sm:items-center justify-between gap-4" data-tour="leaderboard-my-rank">
               {/* Decorative background */}
-              <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-[#38bdf8]/30 blur-3xl" />
+              <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-blue-300/25 blur-3xl" />
               
               <div className="relative z-10 flex items-center gap-4">
                 <div className="relative">

@@ -474,7 +474,7 @@ const handleEnroll = async () => {
               <div className="flex flex-wrap items-center gap-3 pt-2" data-tour="course-detail-enroll">
                 {enrolled ? (
                   <Button
-                    className="bg-white text-primary hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
+                    className="bg-white text-[#2448c9] hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
                     onClick={() => {
                       if (continueLesson) {
                         router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)
@@ -486,7 +486,7 @@ const handleEnroll = async () => {
                 ) : (
                   <Button
                     onClick={handleEnroll}
-                    className="bg-white text-primary hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
+                    className="bg-white text-[#2448c9] hover:bg-white/90 h-12 px-8 text-base font-semibold rounded-xl"
                   >
                     <Zap className="h-5 w-5 mr-2" /> Enroll for free
                   </Button>
@@ -976,18 +976,18 @@ const handleEnroll = async () => {
                 ))}
               </ul>
               {!enrolled ? (
-                <Button onClick={handleEnroll} className="h-12 px-8 font-semibold rounded-xl bg-white text-primary hover:bg-white/90">
+                <Button onClick={handleEnroll} className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">
                   Get certified for free
                 </Button>
               ) : certificate ? (
-                <Button asChild className="h-12 px-8 font-semibold rounded-xl bg-white text-primary hover:bg-white/90">
+                <Button asChild className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90">
                   <Link href={certificate.verifyUrl}>View your certificate</Link>
                 </Button>
               ) : progressPercent >= 100 ? (
                 <Button
                   onClick={() => void claimCertificate()}
                   disabled={claiming}
-                  className="h-12 px-8 font-semibold rounded-xl bg-white text-primary hover:bg-white/90"
+                  className="h-12 px-8 font-semibold rounded-xl bg-white text-[#2448c9] hover:bg-white/90"
                 >
                   {claiming ? 'Issuing…' : 'Get your certificate'}
                 </Button>

@@ -163,12 +163,12 @@ const GETTING_STARTED_STEPS = [
   {
     icon: <Play className="w-4 h-4 text-primary" />,
     title: 'Run your code',
-    desc: 'Click "Run Code" to test against sample inputs before submitting.',
+    desc: 'Click "Run code" to test against sample inputs before submitting.',
   },
   {
     icon: <Send className="w-4 h-4 text-primary" />,
     title: 'Submit for scoring',
-    desc: 'Click "Submit Code" to run against all test cases and get your score.',
+    desc: 'Click "Submit code" to run against all test cases and get your score.',
   },
 ]
 
@@ -407,7 +407,7 @@ export function ChallengeEditor({
           <div className="space-y-3">
             <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <BookOpen className="w-3.5 h-3.5 text-primary" />
-              Problem Statement
+              Problem statement
             </h2>
             {descriptionComponent ? (
               <div className="text-sm">{descriptionComponent}</div>
@@ -482,8 +482,8 @@ export function ChallengeEditor({
                   .map((c, i) => <li key={i}>{c.trim()}</li>)
               ) : (
                 <>
-                  <li>Time Limit: 1 second</li>
-                  <li>Memory Limit: 256 MB</li>
+                  <li>Time limit: 1 second</li>
+                  <li>Memory limit: 256 MB</li>
                   <li>Maximum input size: 10^5 elements</li>
                 </>
               )}
@@ -561,7 +561,7 @@ export function ChallengeEditor({
               className="flex-1 gap-1.5 h-9 text-xs font-medium"
             >
               {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-              {running ? 'Running...' : 'Run Code'}
+              {running ? 'Running…' : 'Run code'}
             </Button>
             <Button
               onClick={handleSubmit}
@@ -570,7 +570,7 @@ export function ChallengeEditor({
               className="flex-1 gap-1.5 h-9 text-xs font-medium"
             >
               {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-              {submitting ? 'Submitting...' : 'Submit Code'}
+              {submitting ? 'Submitting…' : 'Submit code'}
             </Button>
           </div>
         </div>
@@ -579,7 +579,7 @@ export function ChallengeEditor({
         <Tabs defaultValue="editor" className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="w-full rounded-none border-b border-border/40 shrink-0">
             <TabsTrigger value="editor" className="flex-1 text-xs gap-1.5">
-              <span className="font-mono">{'</>'}</span> Code Editor
+              <span aria-hidden className="font-mono">{"</>"}</span> Code editor
             </TabsTrigger>
             <TabsTrigger value="results" className="flex-1 text-xs gap-1.5">
               <Trophy className="w-3.5 h-3.5" />
@@ -637,7 +637,7 @@ export function ChallengeEditor({
                 </p>
                 <div className="flex gap-2 mt-4">
                   <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleRunTests} disabled={!codeRef.current.trim() || !problemSlug}>
-                    <Play className="w-3 h-3" /> Run Code
+                    <Play className="w-3 h-3" /> Run code
                   </Button>
                   <Button size="sm" className="text-xs gap-1.5" onClick={handleSubmit} disabled={!codeRef.current.trim() || !problemSlug}>
                     <Send className="w-3 h-3" /> Submit
@@ -717,7 +717,7 @@ export function ChallengeEditor({
                           ) : (
                             <AlertCircle className="w-3.5 h-3.5 text-red-500" />
                           )}
-                          <span className="text-xs font-medium text-foreground">Test Case {i + 1}</span>
+                          <span className="text-xs font-medium text-foreground">Test case {i + 1}</span>
                           <Badge
                             variant={r.passed ? 'secondary' : 'destructive'}
                             className="ml-auto text-[9px] h-4 px-1.5"
@@ -731,7 +731,7 @@ export function ChallengeEditor({
                               Expected: <span className="text-foreground">{String(r.expected)}</span>
                             </p>
                             <p className="text-muted-foreground">
-                              Got: <span className="text-red-400">{r.stdout || '(empty)'}</span>
+                              Got: <span className="text-red-600 dark:text-red-400">{r.stdout || '(empty)'}</span>
                             </p>
                           </div>
                         )}
@@ -837,12 +837,12 @@ export function ChallengeEditor({
                   className="flex-1 text-xs gap-1.5"
                   onClick={() => setShowSuccessModal(false)}
                 >
-                  Continue Editing
+                  Continue editing
                 </Button>
                 <Button size="sm" className="flex-1 text-xs gap-1.5" asChild>
                   <a href="/dashboard/challenges" onClick={() => setShowSuccessModal(false)}>
                     <Trophy className="w-3.5 h-3.5" />
-                    All Challenges
+                    All challenges
                   </a>
                 </Button>
               </div>

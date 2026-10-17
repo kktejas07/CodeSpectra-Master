@@ -2,7 +2,8 @@
 
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
+import { Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals/stage'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Loader2, CheckCircle, XCircle, Trophy, Users, Award } from 'lucide-react'
@@ -39,21 +40,22 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md rounded-3xl border-border/70 p-8 text-center space-y-4">
+    <div className="relative isolate flex min-h-screen items-center justify-center overflow-hidden bg-background p-6">
+      <SoftGlow />
+      <Panel className="w-full max-w-md p-8 text-center space-y-4">
         {data?.valid ? (
           <>
             <CheckCircle className="mx-auto h-12 w-12 text-green-600 dark:text-green-400" />
             <h1 className="text-xl font-semibold text-foreground">Certificate verified</h1>
             <div className="space-y-1 text-sm text-muted-foreground">
-              <p><strong>Event:</strong> {data.event}</p>
-              <p><strong>Team:</strong> {data.team}</p>
+              <p><span className="font-medium text-foreground">Event:</span> {data.event}</p>
+              <p><span className="font-medium text-foreground">Team:</span> {data.team}</p>
               <div className="flex items-center justify-center gap-2">
-                <Users className="h-4 w-4" />
+                <Users aria-hidden className="h-4 w-4" />
                 <span>{data.members?.join(', ') || 'N/A'}</span>
               </div>
               <div className="flex items-center justify-center gap-2">
-                <Award className="h-4 w-4" />
+                <Award aria-hidden className="h-4 w-4" />
                 <span className="tabular-nums">{data.xp} XP</span>
               </div>
             </div>
@@ -75,7 +77,7 @@ export default function VerifyCertPage({ params }: { params: Promise<{ token: st
             <Trophy className="mr-2 h-4 w-4" /> Powered by CodeSpectra
           </Link>
         </Button>
-      </Card>
+      </Panel>
     </div>
   )
 }

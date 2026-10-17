@@ -270,7 +270,7 @@ export default function HundredDaysPage() {
 
           {/* Current Progress Jar */}
           <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] p-6 text-white shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]" data-tour="100-days-progress">
-             <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-[#38bdf8]/30 blur-3xl" />
+             <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-blue-300/25 blur-3xl" />
              <div className="relative flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex-1">
                    <p className="text-sm font-medium text-white/80 mb-1">Current progress</p>
@@ -414,13 +414,13 @@ export default function HundredDaysPage() {
                 {leaderboard[0] && (
                 <div className="flex flex-col items-center gap-2 relative w-1/3">
                    <div className="absolute -top-3 text-amber-500"><Trophy className="h-5 w-5 fill-amber-500" /></div>
-                   <UserAvatar seed={leaderboard[0].name} name={leaderboard[0].name} className="h-12 w-12 bg-amber-100 ring-2 ring-amber-400" />
+                   <UserAvatar seed={leaderboard[0].name} name={leaderboard[0].name} className="h-12 w-12 bg-amber-100 dark:bg-amber-900/40 ring-2 ring-amber-400" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1 text-amber-700 dark:text-amber-400">{leaderboard[0].name}</div>
                      <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{leaderboard[0].points.toLocaleString()} pts</div>
                    </div>
                    <div className="w-full h-20 bg-amber-100 dark:bg-amber-900/40 rounded-t-lg flex items-start pt-2 justify-center border-t-4 border-amber-400 shadow-inner">
-                      <span className="text-3xl font-black text-amber-400">1</span>
+                      <span className="text-3xl font-black text-amber-600 dark:text-amber-400">1</span>
                    </div>
                 </div>
                 )}
@@ -434,7 +434,7 @@ export default function HundredDaysPage() {
                      <div className="text-[9px] text-muted-foreground whitespace-nowrap">{leaderboard[2].points.toLocaleString()} pts</div>
                    </div>
                    <div className="w-full h-12 bg-orange-100 dark:bg-orange-900/40 rounded-t-lg flex items-center justify-center border-t-4 border-orange-300">
-                      <span className="text-2xl font-black text-orange-300">3</span>
+                      <span className="text-2xl font-black text-orange-500 dark:text-orange-300">3</span>
                    </div>
                 </div>
                 )}

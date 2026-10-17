@@ -161,7 +161,7 @@ export default function AssessmentPage() {
               Sign up for free — no card required.
             </p>
             <div className="mt-6 flex justify-center">
-              <Button size="lg" variant="secondary" className="bg-white text-primary hover:bg-white/90" data-testid="footer-cta" asChild>
+              <Button size="lg" variant="secondary" className="bg-white text-[#2448c9] hover:bg-white/90" data-testid="footer-cta" asChild>
                 <Link href={authUser?.uid ? '/dashboard' : '/auth/signup'}>
                   Get started free <ArrowRight className="h-4 w-4 ml-1" />
                 </Link>

@@ -709,7 +709,7 @@ export default function ProfilePage() {
                   onClick={() => setCoverTheme(t.id)}
                   aria-label={`${t.id} cover`}
                   aria-pressed={coverTheme === t.id}
-                  className={`w-8 h-8 rounded-full ${t.color} ${coverTheme === t.id ? 'ring-2 ring-offset-2 ring-primary' : 'hover:opacity-80'}`}
+                  className={`w-8 h-8 rounded-full ${t.color} ${coverTheme === t.id ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : 'hover:opacity-80'}`}
                 />
               ))}
             </div>

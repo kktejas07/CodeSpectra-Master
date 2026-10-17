@@ -3,13 +3,16 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Loader2, HelpCircle } from 'lucide-react'
+import { ArrowLeft, BookOpen, HelpCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { FlipbookViewer } from '@/components/resources/flipbook-viewer'
 import { EbookQuiz } from '@/components/resources/ebook-quiz'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { PageHeader } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftGlow } from '@/components/visuals/stage'
 import type { EbookPage } from '@/lib/db/ebooks'
 
 type EbookDetail = {
@@ -201,13 +204,14 @@ export default function EbookReaderPage() {
 
   if (error || !ebook) {
     return (
-      <div className="flex w-full flex-col items-center space-y-4 py-16 text-center">
-        <p className="font-medium text-foreground">{error || 'Ebook not found'}</p>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/resources">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to resources
-          </Link>
-        </Button>
+      <div className="w-full py-8">
+        <EmptyState
+          variant="search"
+          title="We couldn't open this guide"
+          description={error && error !== 'Not found' ? error : 'It may have been moved or removed. Pick another guide from the resource library.'}
+          actionLabel="Back to resources"
+          actionHref="/dashboard/resources"
+        />
       </div>
     )
   }
@@ -246,16 +250,23 @@ export default function EbookReaderPage() {
             </div>
           </div>
         ) : (
-          <>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-[1.75rem]">{ebook.title}</h1>
-            {ebook.subtitle ? (
-              <p className="mt-1 text-sm text-muted-foreground">{ebook.subtitle}</p>
-            ) : null}
-            <p className="mt-2 text-xs text-muted-foreground">
-              {ebook.topic || 'Guide'}
-              {ebook.readMinutes ? ` · ${ebook.readMinutes} min read` : ''}
-            </p>
-          </>
+          <div className="relative isolate">
+            <SoftGlow className="-inset-x-6 -top-6" />
+            <PageHeader
+              className="mb-0"
+              icon={<BookOpen />}
+              title={ebook.title}
+              description={
+                <>
+                  {ebook.subtitle ? <span className="block">{ebook.subtitle}</span> : null}
+                  <span className="mt-1 block text-xs">
+                    {ebook.topic || 'Guide'}
+                    {ebook.readMinutes ? ` · ${ebook.readMinutes} min read` : ''}
+                  </span>
+                </>
+              }
+            />
+          </div>
         )}
       </div>
 
@@ -267,7 +278,7 @@ export default function EbookReaderPage() {
       {quizQuestions.length > 0 && !showQuiz && (
         <div className="text-center py-6">
           <Button onClick={() => setShowQuiz(true)} size="lg" className="gap-2">
-            <HelpCircle className="h-5 w-5" />
+            <HelpCircle aria-hidden className="h-5 w-5" />
             Take the quiz (<span className="tabular-nums">{quizQuestions.length}</span> questions)
           </Button>
           <p className="text-xs text-muted-foreground mt-2">Test your understanding of this ebook</p>

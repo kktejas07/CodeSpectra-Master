@@ -1,9 +1,11 @@
 'use client'
 
-import { Suspense, use, useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Card } from '@/components/ui/card'
+import { Panel } from '@/components/app/page-kit'
+import { DeviceShowcase } from '@/components/visuals/device-showcase'
+import { SoftGlow } from '@/components/visuals/stage'
 import { Button } from '@/components/ui/button'
 import { Loader2, Trophy, Users, ArrowRight, Mail, CheckCircle, AlertCircle } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
@@ -71,36 +73,38 @@ function JoinPage() {
 
   if (error) return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="max-w-md w-full rounded-3xl border-border/70 p-8 text-center">
+      <Panel className="max-w-md w-full p-8 text-center">
         <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-4" />
         <h1 className="text-xl font-semibold text-foreground mb-2">This invite isn&apos;t valid</h1>
         <p className="text-muted-foreground text-sm mb-4">{error}</p>
         <Button variant="outline" className="gap-1" asChild>
           <Link href="/dashboard/hackathons"><Trophy className="h-4 w-4" /> Browse hackathons</Link>
         </Button>
-      </Card>
+      </Panel>
     </div>
   )
 
   if (joined) return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
-      <Card className="max-w-md w-full rounded-3xl border-border/70 p-8 text-center">
+      <Panel className="max-w-md w-full p-8 text-center">
         <CheckCircle className="h-10 w-10 text-green-600 dark:text-green-400 mx-auto mb-4" />
-        <h1 className="text-xl font-semibold text-foreground mb-2">You're in!</h1>
+        <h1 className="text-xl font-semibold text-foreground mb-2">You&apos;re in</h1>
         <p className="text-muted-foreground text-sm mb-4">Taking you to the workspace…</p>
         <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-      </Card>
+      </Panel>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-      <Card className="max-w-md w-full rounded-3xl border-border/70 p-8">
+    <div className="relative isolate min-h-screen overflow-hidden bg-background">
+      <SoftGlow />
+      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-4 py-12 lg:grid-cols-2">
+      <Panel className="mx-auto max-w-md w-full p-8">
         <div className="text-center mb-6">
           <div className="w-14 h-14 bg-primary/10 border border-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Users className="h-7 w-7 text-primary" />
+            <Users aria-hidden className="h-7 w-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">You're invited</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">You&apos;re invited</h1>
         </div>
 
         <div className="space-y-4 mb-6">
@@ -161,7 +165,9 @@ function JoinPage() {
           </Link>
         </Button>
         )}
-      </Card>
+      </Panel>
+      <DeviceShowcase variant="hackathon" compact className="hidden lg:block" />
+      </div>
     </div>
   )
 }

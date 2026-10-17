@@ -4,7 +4,9 @@ import { formatDateTime } from '@/lib/format-datetime'
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Card } from '@/components/ui/card'
+import { Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftGlow } from '@/components/visuals/stage'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -178,7 +180,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   if (!gate.allowed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+        <Panel className="max-w-sm w-full p-8 text-center">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
             <Trophy className="h-6 w-6 text-primary" />
           </div>
@@ -194,7 +196,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
               <Link href="/auth/signup">Create account</Link>
             </Button>
           </div>
-        </Card>
+        </Panel>
       </div>
     )
   }
@@ -205,7 +207,17 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       <SkeletonCard />
     </div>
   )
-  if (!hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p><Link href="/" className="mt-3 inline-block text-sm text-primary hover:underline">← Home</Link></div>
+  if (!hackathon) return (
+    <div className="mx-auto flex min-h-[60vh] max-w-xl items-center px-4 py-12">
+      <EmptyState
+        title="We couldn't find this hackathon"
+        description={error && error !== 'Event not found' ? error : 'The link may be wrong, or the event was removed. Browse the hackathons that are open now.'}
+        actionLabel="Browse hackathons"
+        actionHref="/dashboard/hackathons"
+        variant="search"
+      />
+    </div>
+  )
 
   const ends = new Date(hackathon.ends_at)
   const starts = new Date(hackathon.starts_at)
@@ -220,13 +232,15 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
         {hackathon.banner_url ? (
           <img src={hackathon.banner_url} alt="" className="w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-linear-to-br from-primary/25 via-primary/5 to-background" />
+          <div className="absolute inset-0 isolate bg-linear-to-br from-primary/25 via-primary/5 to-background">
+            <SoftGlow />
+          </div>
         )}
         <div className="absolute inset-0 bg-linear-to-t from-background/90 via-background/20 to-transparent" />
         
         {/* Banner Overlay Controls */}
         <div className="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-start">
-          <button onClick={() => {
+          <button type="button" onClick={() => {
             const role = gate.user?.role
             if (role && isSuperAdmin(role)) { router.push('/dashboard/admin/hackathons'); return }
             router.push('/dashboard/hackathons')
@@ -248,7 +262,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
           <div className="space-y-6">
             
             {/* Event Header */}
-            <div className="bg-card rounded-3xl p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none border border-border/70">
+            <Panel>
               <h1 className="flex items-center gap-3 text-3xl md:text-4xl font-bold tracking-tight text-balance text-foreground mb-2">
                 <Trophy className="h-8 w-8 text-primary shrink-0" /> {hackathon.name}
               </h1>
@@ -280,7 +294,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                   <span className="tabular-nums">{teams.length} / {hackathon.num_teams} teams</span>
                 </div>
               </div>
-            </div>
+            </Panel>
 
             {/* Tabbed Navigation */}
             <Tabs defaultValue="overview" className="w-full">
@@ -295,8 +309,8 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6 mt-0">
-                <Card className="rounded-3xl p-6">
-                  <h3 className="text-lg font-semibold mb-4">About this hackathon</h3>
+                <Panel>
+                  <h2 className="text-lg font-semibold mb-4">About this hackathon</h2>
                   <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
                     <p>{hackathon.description || 'No detailed description provided.'}</p>
                     <p className="mt-4">
@@ -304,24 +318,22 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                       Register a team, solve as many as you can, and climb the leaderboard.
                     </p>
                   </div>
-                </Card>
+                </Panel>
               </TabsContent>
 
               <TabsContent value="leaderboard" className="mt-0">
-                <Card className="rounded-3xl divide-y divide-border/60 overflow-hidden">
+                <Panel className="divide-y divide-border/60 overflow-hidden p-0">
                   <div className="p-4 bg-muted/30">
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h2 className="text-base font-semibold text-foreground">
                       Current standings
-                    </h3>
+                    </h2>
                   </div>
                   {teams.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
-                        <Trophy className="h-6 w-6 text-muted-foreground opacity-50" />
-                      </div>
-                      <p className="text-sm font-medium text-muted-foreground">No teams have registered yet.</p>
-                      <p className="text-xs text-muted-foreground mt-1">Register a team to be first on the board.</p>
-                    </div>
+                    <EmptyState
+                      compact
+                      title="No teams have registered yet"
+                      description="Register a team to be first on the board."
+                    />
                   ) : (
                     teams.map((t, i) => (
                       <div key={t.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
@@ -351,15 +363,15 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                       </div>
                     ))
                   )}
-                </Card>
+                </Panel>
               </TabsContent>
 
               {hackathon.rules && hackathon.rules.length > 0 && (
                 <TabsContent value="rules" className="mt-0">
-                  <Card className="rounded-3xl p-6 space-y-6">
-                    <h3 className="flex items-center gap-2 text-lg font-semibold">
+                  <Panel className="space-y-6">
+                    <h2 className="flex items-center gap-2 text-lg font-semibold">
                       <Shield className="h-5 w-5 text-primary" /> Rules
-                    </h3>
+                    </h2>
                     <div className="grid gap-6 md:grid-cols-2">
                       {hackathon.rules.map((r, i) => (
                         <div key={i} className="flex gap-4 p-4 rounded-2xl border border-border/60 bg-muted/20">
@@ -373,7 +385,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                         </div>
                       ))}
                     </div>
-                  </Card>
+                  </Panel>
                 </TabsContent>
               )}
             </Tabs>
@@ -384,9 +396,10 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
             <div className="sticky top-20 lg:top-24 space-y-4">
               
               {/* Main Registration Card */}
-              <Card className="rounded-3xl overflow-hidden border-border/70 shadow-lg dark:shadow-none relative">
+              <Panel className="relative isolate overflow-hidden p-0">
+                <SoftGlow />
                 {/* Decoration */}
-                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                <div aria-hidden className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                   <Trophy className="h-32 w-32" />
                 </div>
                 
@@ -518,14 +531,14 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                     </div>
                   )}
                 </div>
-              </Card>
+              </Panel>
 
               {/* Tasks Overview Card (for participants) */}
               {myTeam && hackathon.tasks && hackathon.tasks.length > 0 && (
-                <Card className="rounded-3xl p-5 border-border/70">
-                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                <Panel className="p-5">
+                  <h2 className="text-base font-semibold mb-3 flex items-center gap-2">
                     <ListChecks className="h-4 w-4 text-primary" /> Problems
-                  </h3>
+                  </h2>
                   <div className="space-y-2">
                     {hackathon.tasks.map((task) => (
                       <div key={task.problem_slug} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/50">
@@ -537,7 +550,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                       </div>
                     ))}
                   </div>
-                </Card>
+                </Panel>
               )}
             </div>
           </div>
