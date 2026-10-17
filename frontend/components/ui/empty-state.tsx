@@ -63,7 +63,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-border/70 bg-muted/20 px-6 py-12 text-center md:py-16',
+        'flex w-full flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/30 px-6 py-12 text-center md:py-16',
         className,
       )}
       role="status"
