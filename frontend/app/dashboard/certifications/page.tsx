@@ -9,8 +9,9 @@ import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap 
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Panel, Section, BentoGrid } from '@/components/app/page-kit'
-import { AppBanner, Illustration, DeviceShowcase, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { AppBanner, Illustration, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
+import { Scene } from '@/components/illustrations/scenes'
 
 export default function CertificationsPage() {
   const gate = usePageGuard('user')
@@ -140,7 +141,7 @@ export default function CertificationsPage() {
             </Button>
           </div>
         </div>
-        <DeviceShowcase variant="certificate" compact className="hidden max-w-[320px] sm:block" />
+        <Scene name="certificate-win" className="hidden w-full max-w-[320px] sm:block" />
       </Panel>
     </div>
   )

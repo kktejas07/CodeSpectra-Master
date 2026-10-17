@@ -6,6 +6,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { Scene } from '@/components/illustrations/scenes'
 
 /*
  * Company facts on this page come from the founder (AXISS Group, Hyderabad +
@@ -61,6 +62,7 @@ export default function AboutPage() {
                 It started with coding assessments and grew to cover CAD and mechanical design, QA automation, aptitude
                 and written answers, because most hiring isn’t only for developers.
               </BentoBody>
+              <Scene name="hiring-team" className="mt-auto hidden w-full max-w-[420px] self-center pt-6 md:block" />
             </BentoCard>
 
             <BentoCard className="sm:col-span-2">

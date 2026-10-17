@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { MessageSquare, Activity, ShieldCheck, Search, ChevronDown, Mail, Building } from 'lucide-react'
-import { HeroIllustration, PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { Scene } from '@/components/illustrations/scenes'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { useState } from 'react'
 import { PublicPageWrapper } from '@/app/public-layout'
@@ -88,7 +89,7 @@ export default function SupportPortalPage() {
             <Link href="/status" className={btnSecondary}>System status</Link>
           </>
         }
-        art={<HeroIllustration spot="interview" />}
+        art={<Scene name="interview-call" className="w-full max-w-[420px]" />}
       />
 
       {/* Support cards */}

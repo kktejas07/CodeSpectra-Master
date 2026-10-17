@@ -8,6 +8,7 @@
  */
 import Link from 'next/link'
 import { Illustration, type IllustrationName } from '@/components/illustrations/spot'
+import { Scene, type SceneName } from '@/components/illustrations/scenes'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -31,6 +32,8 @@ const VARIANT_ART: Record<EmptyStateVariant, IllustrationName> = {
 type EmptyStateProps = {
   /** Subject-specific spot illustration; defaults from `variant`. */
   illustration?: IllustrationName
+  /** Larger scene with people — for page-level empty states only (ignored when compact). */
+  scene?: SceneName
   title: string
   description?: string
   actionLabel?: string
@@ -50,6 +53,7 @@ export function EmptyState({
   onAction,
   variant = 'default',
   illustration,
+  scene,
   compact = false,
   className,
 }: EmptyStateProps) {
@@ -65,7 +69,11 @@ export function EmptyState({
       role="status"
       aria-live="polite"
     >
-      <Illustration name={illustration ?? VARIANT_ART[variant] ?? 'inbox'} className={compact ? 'mb-2 w-28' : 'mb-5 w-48 md:w-56'} />
+      {scene && !compact ? (
+        <Scene name={scene} className="mb-4 w-full max-w-[360px]" />
+      ) : (
+        <Illustration name={illustration ?? VARIANT_ART[variant] ?? 'inbox'} className={compact ? 'mb-2 w-28' : 'mb-5 w-48 md:w-56'} />
+      )}
 
       <h3 className={cn('font-semibold tracking-tight text-foreground', compact ? 'text-base' : 'text-xl')}>{title}</h3>
       {description ? (

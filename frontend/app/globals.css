@@ -1091,3 +1091,14 @@
 .cs-illo .twinkle { animation: cs-twinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes cs-twinkle { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
 @media (prefers-reduced-motion: reduce) { .cs-illo .float, .cs-illo .float2, .cs-illo .twinkle { animation: none; } }
+
+/* Scene illustrations (components/illustrations/scenes.tsx): people + props. */
+.cs-illo { --i-ink: #1e2a4a; --i-hair: #1f2433; --i-hair2: #5b3a29; --i-desk: hsl(var(--primary) / 0.18); }
+.dark .cs-illo { --i-ink: #3b4a74; --i-hair: #0f1424; --i-hair2: #4a2e21; --i-desk: hsl(var(--primary) / 0.22); }
+.cs-illo .sk1 { fill: #f2c9a5; } .cs-illo .sk2 { fill: #c98e63; } .cs-illo .sk3 { fill: #8d5a3b; }
+.cs-illo .hr { fill: var(--i-hair); } .cs-illo .hr2 { fill: var(--i-hair2); }
+.cs-illo .ink { fill: var(--i-ink); }
+.cs-illo .desk { fill: var(--i-desk); }
+.cs-illo .arm { stroke-width: 9; stroke-linecap: round; fill: none; }
+.cs-illo .arm.a { stroke: var(--i-accent); fill: none; } .cs-illo .arm.m { stroke: var(--i-mid); fill: none; }
+.cs-illo .arm.ink { stroke: var(--i-ink); fill: none; } .cs-illo .arm.p { stroke: var(--i-soft); fill: none; }

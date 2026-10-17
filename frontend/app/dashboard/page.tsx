@@ -214,6 +214,7 @@ export default function DashboardPage() {
         tooltipData={heatmap?.tooltipData}
         totalContributions={heatmap?.totalContributions ?? 0}
         totalActiveDays={heatmap?.totalActiveDays ?? 0}
+        emptyScene="candidate-desk"
       />
       </div>
 

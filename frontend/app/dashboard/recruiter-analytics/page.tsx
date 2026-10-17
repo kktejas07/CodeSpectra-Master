@@ -7,7 +7,8 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { Badge } from '@/components/ui/badge'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
-import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { Scene } from '@/components/illustrations/scenes'
+import { SoftGlow } from '@/components/visuals'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
@@ -146,8 +147,8 @@ export default function RecruiterAnalyticsPage() {
             actionHref="/dashboard/interviews"
             className="h-full"
           />
-          <div className="hidden lg:block">
-            <DeviceShowcase variant="analytics" compact />
+          <div className="hidden items-center justify-center lg:flex">
+            <Scene name="analytics-review" className="w-full max-w-[420px]" />
           </div>
         </div>
       </div>

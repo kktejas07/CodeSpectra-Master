@@ -11,7 +11,7 @@ import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { csrfFetch } from "@/lib/csrf-fetch";
 import { SoftGlow } from "@/components/visuals";
-import { Illustration } from "@/components/illustrations/spot";
+import { Scene } from "@/components/illustrations/scenes";
 
 function EnrollFaceInner() {
   const router = useRouter();
@@ -72,7 +72,7 @@ function EnrollFaceInner() {
 
       <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-sm dark:shadow-none rounded-3xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
-          <Illustration name="proctoring" className="w-28 sm:w-36" />
+          <Scene name="proctored-test" className="w-full max-w-[200px] sm:max-w-[280px]" />
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Secure your account</h2>
             <p className="text-sm text-muted-foreground mt-2">

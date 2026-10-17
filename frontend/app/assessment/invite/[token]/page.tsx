@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Code2, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useAuth } from '@/lib/auth-context'
-import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { SoftGlow } from '@/components/visuals'
 import { Illustration } from '@/components/illustrations/spot'
+import { Scene } from '@/components/illustrations/scenes'
 
 interface AssessmentStepData {
   id: string
@@ -207,7 +208,7 @@ export default function CandidateInviteLandingPage() {
   return (
     <div className="relative isolate min-h-screen flex items-center justify-center gap-12 bg-linear-to-br from-background via-background to-primary/5 p-4 py-8 xl:gap-16">
       <SoftGlow />
-      <DeviceShowcase variant="candidate" compact className="mx-0 hidden max-w-[400px] shrink-0 xl:block" />
+      <Scene name="proctored-test" className="hidden w-full max-w-[400px] shrink-0 xl:block" />
       <Card className="max-w-2xl w-full rounded-3xl p-6 sm:p-8 border-border/70 space-y-6 shadow-sm dark:shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
           <div className="flex items-center gap-3">

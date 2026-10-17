@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { TrendingUp, Info } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Illustration } from '@/components/illustrations/spot'
+import type { SceneName } from '@/components/illustrations/scenes'
 
 interface DayData {
   date: string
@@ -29,6 +30,8 @@ interface ContributionGraphProps {
   weeks?: number
   /** Small inline empty state for use inside small cards. */
   compactEmpty?: boolean
+  /** Scene for the full-size empty state (page-level use, e.g. the dashboard). */
+  emptyScene?: SceneName
 }
 
 const LEVEL_COLORS = [
@@ -56,6 +59,7 @@ export function ContributionGraph({
   totalActiveDays = 0,
   weeks: inputWeeks = 52,
   compactEmpty = false,
+  emptyScene,
 }: ContributionGraphProps) {
   const [tooltip, setTooltip] = useState<{ date: string; level: number; x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -159,6 +163,7 @@ export function ContributionGraph({
         </div>
       ) : !hasData ? (
         <EmptyState illustration="analytics"
+          scene={emptyScene}
           variant="sessions"
           title="No activity yet"
           description="Solve a problem or run a scan, and your activity will show up here."

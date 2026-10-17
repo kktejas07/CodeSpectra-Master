@@ -367,6 +367,7 @@ function LearningPageInner() {
         <Panel className="p-4">
           <EmptyState
             variant="search"
+            scene="learning"
             title="No courses found"
             description="Try a different category or search term, or clear the filters to see every course."
             actionLabel="View all courses"

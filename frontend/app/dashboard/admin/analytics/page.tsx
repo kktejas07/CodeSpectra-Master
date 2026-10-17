@@ -4,7 +4,8 @@ import { formatTime } from '@/lib/format-datetime'
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
-import { DeviceShowcase, SoftGlow } from '@/components/visuals'
+import { Scene } from '@/components/illustrations/scenes'
+import { SoftGlow } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -732,8 +733,8 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
             description="Visitors, top pages, traffic sources and devices appear here as soon as people start using the site. Try a longer date range."
             className="h-full"
           />
-          <div className="hidden lg:block">
-            <DeviceShowcase variant="analytics" compact />
+          <div className="hidden items-center justify-center lg:flex">
+            <Scene name="analytics-review" className="w-full max-w-[420px]" />
           </div>
         </div>
       </div>

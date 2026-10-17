@@ -16,6 +16,7 @@ import { INTERVIEW_PREP_QUESTIONS, type InterviewPrepQuestion } from '@/lib/inte
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Scene } from '@/components/illustrations/scenes'
 
 type Tab = 'browse' | 'quiz'
 
@@ -182,15 +183,15 @@ export default function InterviewPrepPage() {
   return (
     <div className="space-y-6">
       <div data-tour="interview-prep-header">
-        <div className="relative isolate">
+        <div className="relative isolate flex items-center gap-6">
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
-            illustration="interview"
-            className="mb-0"
+            className="mb-0 min-w-0 flex-1"
             title="Interview prep"
             description="Practice for frontend interviews with 300+ questions and AI-generated quizzes."
             icon={<Brain aria-hidden />}
           />
+          <Scene name="interview-call" className="hidden w-full max-w-[260px] shrink-0 lg:block" />
         </div>
       </div>
 

@@ -2,7 +2,8 @@ import Link from 'next/link'
 import { Building2, Mail, MapPin } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
-import { HeroIllustration, PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { Scene } from '@/components/illustrations/scenes'
 
 /*
  * No open roles are listed. Do not add job openings here unless they are real
@@ -24,7 +25,7 @@ export default function CareersPage() {
             </Link>
           </>
         }
-        art={<HeroIllustration spot="jobs" />}
+        art={<Scene name="hackathon-team" className="w-full max-w-[420px]" />}
       />
 
       <section className="border-b border-cs-grid">
