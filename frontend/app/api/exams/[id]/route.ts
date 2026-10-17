@@ -4,7 +4,7 @@ import { exams } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { getMongoDb } from '@/lib/mongodb'
 import { sanitizeExamQuestionList } from '@/lib/grading'
-import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
+import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, normalizeRetakeFields, attemptSummary, examAttemptPolicy, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth().catch(() => ({ error: 'Unauthorized' }))
@@ -37,9 +37,17 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     )
     if (submission) {
       const released = !!submission.score_released
+      // Attempts: latest + best, released scores only (never leak unreleased ones).
+      const summary = attemptSummary(submission as Record<string, unknown>, doc, true)
+      const attempts = {
+        used: summary.attempt_no,
+        max: summary.max_attempts,
+        can_retake: examAttemptPolicy(doc).allowRetake && summary.attempt_no < summary.max_attempts,
+        best: summary.best ? { score: summary.best.score, total: summary.best.max_score, attempt_no: summary.best.attempt_no } : null,
+      }
       if (!released) {
         // Score and per-question correctness stay server-side until release.
-        return NextResponse.json({ ...view, submission: { released: false, submitted_at: submission.submitted_at ?? null } })
+        return NextResponse.json({ ...view, attempts, submission: { released: false, submitted_at: submission.submitted_at ?? null, attempt_no: summary.attempt_no } })
       }
       const qs = (Array.isArray(doc.questionList) ? doc.questionList : []) as Array<Record<string, unknown>>
       const keyById = new Map(qs.map((q) => [String(q.id), questionAnswerKey(q)]))
@@ -48,11 +56,13 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       )
       return NextResponse.json({
         ...view,
-        submission: { released: true, score: submission.score, total: submission.max_score, details },
+        attempts,
+        submission: { released: true, score: submission.score, total: submission.max_score, details, attempt_no: summary.attempt_no },
       })
     }
 
-    return NextResponse.json(view)
+    const { maxAttempts } = examAttemptPolicy(doc)
+    return NextResponse.json({ ...view, attempts: { used: 0, max: maxAttempts, can_retake: true, best: null } })
   } catch (error) {
     console.error('[CodeSpectra] exams GET[id]:', error)
     return NextResponse.json({ error: 'Failed to load exam' }, { status: 500 })
@@ -79,6 +89,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     // Allow-list: never id/_id/tenant_id/created_by or stats from the body.
     const data = pickFields(await request.json().catch(() => ({})), EXAM_EDITABLE_FIELDS)
     if (Object.keys(data).length === 0) return NextResponse.json({ error: 'No editable fields' }, { status: 400 })
+    normalizeRetakeFields(data)
     // Same injection guard as PATCH /api/exams (see lib/grading.ts).
     if (Array.isArray(data.questionList)) {
       data.questionList = sanitizeExamQuestionList(data.questionList)

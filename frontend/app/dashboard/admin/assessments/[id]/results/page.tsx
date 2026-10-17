@@ -62,6 +62,11 @@ interface CandidateResult {
   graded?: boolean
   needsReview?: boolean
   source?: string
+  attemptNo?: number
+  maxAttempts?: number
+  bestScore?: number | null
+  bestAttemptNo?: number | null
+  kind?: string
 }
 
 interface Exam {
@@ -114,6 +119,17 @@ interface ReviewData {
   }
   proctorEvents: Array<{ event_type: string; meta: Record<string, unknown>; created_at: string }>
   candidate: { name: string; email: string }
+  /** CAD task attempts: uploaded files + design rationale (graded as the 'cad' question). */
+  cad?: {
+    files: Array<{ id: string; kind: 'native' | 'step'; name: string; size: number; scan_status?: 'clean' | 'unscanned' }>
+    rationale: string
+    task_code: string | null
+  } | null
+  attempts?: {
+    attempt_no: number
+    max_attempts: number
+    best: { score: number; max_score: number; attempt_no: number } | null
+  }
 }
 
 const PROCTOR_LABELS: Record<string, string> = {
@@ -515,11 +531,13 @@ export default function ExamResultsPage() {
     const uid = reviewCandidate.userId || reviewCandidate.id
     // Grade whatever still needs review: pending questions, or any question the
     // candidate answered but that hasn't been awarded points yet.
-    const needsGrade = reviewData.questions.filter(q => {
+    // CAD submissions are files — a person scores them, never the AI.
+    const gradable = reviewData.questions.filter(q => q.type !== 'cad')
+    const needsGrade = gradable.filter(q => {
       const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
       return detail?.pending_review === true || (detail?.awarded === undefined && !detail?.correct)
     })
-    const questions = needsGrade.length > 0 ? needsGrade : reviewData.questions.filter(q => !!reviewData.submission.answers[q.id])
+    const questions = needsGrade.length > 0 ? needsGrade : gradable.filter(q => !!reviewData.submission.answers[q.id])
     const withAnswer = questions.filter(q => !!reviewData.submission.answers[q.id])
     const blank = questions.filter(q => !reviewData.submission.answers[q.id])
     // Unanswered questions are an automatic 0 — no LLM round-trip needed.
@@ -1271,8 +1289,16 @@ export default function ExamResultsPage() {
       header: 'Score',
       sortable: true,
       cell: (row: CandidateResult) => (
-        <div className="font-mono font-medium">
-          {row.score !== null ? `${row.score}%` : '--'}
+        <div>
+          <div className="font-mono font-medium">
+            {row.score !== null ? `${row.score}%` : '--'}
+          </div>
+          {row.maxAttempts !== undefined && row.maxAttempts > 1 && (
+            <div className="text-[11px] text-muted-foreground tabular-nums">
+              Attempt {row.attemptNo ?? 1} of {row.maxAttempts}
+              {row.bestScore !== null && row.bestScore !== undefined && (row.attemptNo ?? 1) > 1 ? ` · best ${row.bestScore}%` : ''}
+            </div>
+          )}
         </div>
       ),
     },
@@ -1671,6 +1697,14 @@ export default function ExamResultsPage() {
                           ? fmtDateTime(reviewData.submission.submitted_at)
                           : '--'}
                       </span>
+                      {reviewData.attempts && reviewData.attempts.max_attempts > 1 && (
+                        <span className="block text-xs text-muted-foreground mt-0.5 tabular-nums">
+                          Attempt {reviewData.attempts.attempt_no} of {reviewData.attempts.max_attempts}
+                          {reviewData.attempts.best && reviewData.attempts.best.max_score > 0 && reviewData.attempts.attempt_no > 1
+                            ? ` · best ${Math.round((reviewData.attempts.best.score / reviewData.attempts.best.max_score) * 100)}% (attempt ${reviewData.attempts.best.attempt_no})`
+                            : ''}
+                        </span>
+                      )}
                     </div>
                     <div>
                       <span className="text-muted-foreground block text-xs">Time used</span>
@@ -1857,6 +1891,34 @@ export default function ExamResultsPage() {
                                     <span className="text-xs text-muted-foreground italic">No answer provided</span>
                                   )}
                                 </div>
+                                {q.type === 'cad' && reviewData.cad && (
+                                  <div className="space-y-1.5">
+                                    <span className="text-xs font-medium text-muted-foreground block">Uploaded files:</span>
+                                    {reviewData.cad.files.length === 0 ? (
+                                      <span className="text-xs text-muted-foreground italic">No files were uploaded (time ran out).</span>
+                                    ) : (
+                                      <ul className="space-y-1">
+                                        {reviewData.cad.files.map((f) => (
+                                          <li key={f.id} className="flex flex-wrap items-center gap-2 text-xs">
+                                            <a
+                                              href={`/api/exams/${params.id}/cad-submission/files/${f.id}`}
+                                              className="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                                              download
+                                            >
+                                              <Download className="w-3.5 h-3.5" aria-hidden /> {f.name}
+                                            </a>
+                                            <span className="text-muted-foreground tabular-nums">
+                                              {f.kind === 'step' ? 'STEP export' : 'Native file'} · {f.size >= 1048576 ? `${(f.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(f.size / 1024))} KB`}
+                                            </span>
+                                            {f.scan_status === 'unscanned' && (
+                                              <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400 border-amber-500/30 bg-amber-500/10">Not virus-scanned</Badge>
+                                            )}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                )}
                                 {modelAnswer && (
                                   <div>
                                     <span className="text-xs font-medium text-green-600 dark:text-green-400 block mb-1">Model answer / rubric:</span>
@@ -1883,7 +1945,7 @@ export default function ExamResultsPage() {
                                         placeholder="0"
                                       />
                                       <span className="text-xs text-muted-foreground">/ {maxPoints}</span>
-                                      <Button
+                                      {q.type !== 'cad' && <Button
                                         size="sm"
                                         variant="outline"
                                         className="gap-1.5 text-xs h-8"
@@ -1892,7 +1954,7 @@ export default function ExamResultsPage() {
                                       >
                                         {aiGrading[q.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                                         {aiGrading[q.id] ? 'Grading…' : 'AI Grade'}
-                                      </Button>
+                                      </Button>}
                                     </div>
 
                                     {aiFeedback[q.id] && (

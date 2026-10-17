@@ -137,6 +137,8 @@ interface Exam {
   require_token_links?: boolean | null
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  allow_retake?: boolean
+  max_attempts?: number
   questions: number
   questionList: Question[]
   published: boolean
@@ -324,6 +326,8 @@ export default function ExamReviewPage() {
   const [metaRequireTokenLinks, setMetaRequireTokenLinks] = useState(false)
   const [metaRequireId, setMetaRequireId] = useState(true)
   const [metaRequireFace, setMetaRequireFace] = useState(true)
+  const [metaAllowRetake, setMetaAllowRetake] = useState(false)
+  const [metaMaxAttempts, setMetaMaxAttempts] = useState(1)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
@@ -350,6 +354,8 @@ export default function ExamReviewPage() {
         // Missing/null = true (strict, backward-compat for pre-flag assessments).
         setMetaRequireId((found as { require_id_verification?: boolean | null }).require_id_verification !== false)
         setMetaRequireFace((found as { require_face_capture?: boolean | null }).require_face_capture !== false)
+        setMetaAllowRetake(found.allow_retake === true)
+        setMetaMaxAttempts(found.allow_retake === true ? Math.max(1, Number(found.max_attempts) || 2) : 1)
         setMetaCertTemplate(found.cert_template || 'classic')
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
@@ -394,7 +400,7 @@ export default function ExamReviewPage() {
     }
     setSavingMeta(true)
     try {
-      await csrfFetch('/api/exams', {
+      const metaRes = await csrfFetch('/api/exams', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -410,13 +416,16 @@ export default function ExamReviewPage() {
           require_token_links: metaRequireTokenLinks,
           require_id_verification: metaRequireId,
           require_face_capture: metaRequireFace,
+          allow_retake: metaAllowRetake,
+          max_attempts: metaAllowRetake ? metaMaxAttempts : 1,
           cert_template: metaCertTemplate,
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
         })
       })
-      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
+      if (!metaRes.ok) throw new Error('update failed')
+      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -735,6 +744,33 @@ export default function ExamReviewPage() {
                   />
                   <span className="text-muted-foreground whitespace-nowrap">Require face</span>
                 </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Candidates can submit again; results keep their latest and best attempt">
+                  <input
+                    type="checkbox"
+                    checked={metaAllowRetake}
+                    onChange={(e) => {
+                      setMetaAllowRetake(e.target.checked)
+                      if (e.target.checked && metaMaxAttempts < 2) setMetaMaxAttempts(2)
+                    }}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Allow retakes</span>
+                </label>
+                {metaAllowRetake && (
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="meta-max-attempts" className="text-xs text-muted-foreground whitespace-nowrap">Max attempts:</Label>
+                    <Input
+                      id="meta-max-attempts"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={metaMaxAttempts}
+                      onChange={(e) => setMetaMaxAttempts(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                      className="h-8 w-16 text-sm"
+                      title="Total attempts per candidate, including the first (up to 20)"
+                    />
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Certificate template:</Label>
                   <select
@@ -799,6 +835,7 @@ export default function ExamReviewPage() {
                 {exam.screening_type && <Badge variant="outline">{SCREENING_TYPES.find(s => s.id === exam.screening_type)?.short || exam.screening_type}</Badge>}
                 <Badge variant="outline">{exam.level || 'N/A'}</Badge>
                 <Badge variant="outline">{exam.duration} mins</Badge>
+                {exam.allow_retake && <Badge variant="outline">Up to {Number(exam.max_attempts) || 2} attempts</Badge>}
                 <Badge variant={exam.published ? 'default' : 'secondary'}>
                   {exam.published ? 'Published' : 'Draft'}
                 </Badge>

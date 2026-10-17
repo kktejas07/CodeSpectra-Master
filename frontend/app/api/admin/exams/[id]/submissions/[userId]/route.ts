@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { attemptSummary } from '@/lib/exam-access'
+import { CAD_TASK_QID } from '@/lib/cad-submission'
 
 export async function GET(
   _request: Request,
@@ -21,7 +23,8 @@ export async function GET(
     }
     const exam = owned.doc
 
-    const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })
+    // Latest attempt (older attempts are archived; legacy rows may still have several).
+    const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId }, { sort: { created_at: -1 } })
     if (!submission) {
       // Exam exists but no submission — candidate may not have completed
       return NextResponse.json({
@@ -44,9 +47,27 @@ export async function GET(
       { projection: { name: 1, fullName: 1, email: 1 } },
     )
 
+    const baseQuestions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
+    // CAD attempts carry one manually graded item; show it as a question so
+    // the existing review + "Save manual grades" flow scores it.
+    const cad = submission.cad as { files?: unknown[]; rationale?: string; task_code?: string | null } | undefined
+    const cadDetail = (submission.details || []).find((d: { qId?: string }) => d?.qId === CAD_TASK_QID) as { points?: number } | undefined
+    const questions = cad
+      ? [...baseQuestions, {
+          id: CAD_TASK_QID,
+          type: 'cad',
+          title: 'CAD submission',
+          prompt: `CAD task${cad.task_code ? ` (${cad.task_code})` : ''}: review the uploaded files and the design rationale below, then award points.`,
+          points: cadDetail?.points,
+        }]
+      : baseQuestions
+    const attempts = attemptSummary(submission as Record<string, unknown>, exam as Record<string, unknown>)
+
     return NextResponse.json({
       examTitle: exam.title,
-      questions: Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : []),
+      questions,
+      cad: cad ? { files: Array.isArray(cad.files) ? cad.files : [], rationale: cad.rationale || '', task_code: cad.task_code ?? null } : null,
+      attempts,
       submission: {
         answers: submission.answers || {},
         details: submission.details || [],
@@ -106,7 +127,7 @@ export async function PATCH(
       return NextResponse.json({ error: owned.error }, { status: owned.status })
     }
 
-    const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })
+    const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId }, { sort: { created_at: -1 } })
     if (!submission) return NextResponse.json({ error: 'No submission found' }, { status: 404 })
 
     const details = (submission.details || []) as Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number }>
@@ -141,8 +162,9 @@ export async function PATCH(
       }
     }
 
+    // By _id: grade exactly the attempt that was read (never an older row).
     await db.collection('exam_submissions').updateOne(
-      { exam_id: examId, user_id: userId },
+      { _id: submission._id },
       { $set: { details: updatedDetails, score: newScore, has_pending_review: stillPending } }
     )
 

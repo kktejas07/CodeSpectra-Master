@@ -1,7 +1,11 @@
 'use client'
 
-import CandidateCADAssessmentPage from '@/app/assessment/[id]/cad/page'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { CadAssessmentWorkspace } from '@/components/cad/cad-assessment-workspace'
 
+/** Try-it CAD task: sample brief, no timer, nothing uploaded or scored. */
 export default function DemoCADPage() {
-  return <CandidateCADAssessmentPage />
+  const gate = usePageGuard('user')
+  if (!gate.ready || !gate.allowed) return null
+  return <CadAssessmentWorkspace mode="demo" examId="demo" />
 }

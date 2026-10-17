@@ -21,7 +21,10 @@ export interface KycPurposeConfig {
 
 export const DEFAULT_KYC_PURPOSES: KycPurposeConfig = {
   identity_kyc: 'didit',
-  exam_aadhaar: 'ocr_face',
+  // 'ocr_face' has no provider wired (the gate only says "not available"), so a
+  // platform that never picked a mode gets 'off'. A saved explicit mode is kept
+  // by mergeKycPurposes below.
+  exam_aadhaar: 'off',
   profile_aadhaar: 'anon_aadhaar',
   anon_aadhaar_test_mode: true,
   anon_aadhaar_nullifier_seed: '314159265358979',

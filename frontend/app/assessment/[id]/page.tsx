@@ -33,6 +33,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Illustration } from '@/components/illustrations/spot'
+import { INVITE_ONLY_MESSAGE } from '@/lib/exam-access'
 
 interface Question {
   id: string
@@ -91,6 +92,14 @@ interface Exam {
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
   questionList: Question[]
+  attempts?: AttemptInfo
+}
+
+interface AttemptInfo {
+  used: number
+  max: number
+  can_retake: boolean
+  best: { score: number; total: number; attempt_no: number } | null
 }
 
 export default function CandidateAssessmentPage() {
@@ -107,6 +116,8 @@ export default function CandidateAssessmentPage() {
   const [loading, setLoading] = useState(true)
   const [accessError, setAccessError] = useState<string | null>(null)
   const [windowState, setWindowState] = useState<'open' | 'not_started' | 'closed' | null>(null)
+  /** Attempts used / allowed after the latest submit (null = unknown or single attempt). */
+  const [attemptInfo, setAttemptInfo] = useState<AttemptInfo | null>(null)
 
   // Assessment State — all hooks declared unconditionally (React rule of hooks)
   const [hasStarted, setHasStarted] = useState(false)
@@ -212,8 +223,10 @@ export default function CandidateAssessmentPage() {
           return
         }
 
-        // One attempt per candidate (enforced by the submit route too).
-        if (found.submission && !found.allow_retake) {
+        // Attempt limit (enforced by the submit route too): show the submitted
+        // screen unless this exam allows another attempt.
+        if (found.attempts) setAttemptInfo(found.attempts)
+        if (found.submission && !found.attempts?.can_retake) {
           setExam(found)
           setIsSubmitted(true)
           setLoading(false)
@@ -277,9 +290,15 @@ export default function CandidateAssessmentPage() {
         if (isShareLink && !linkToken) {
           // The submit route only accepts a bare ?share=true link on open
           // assessments; invite-only ones need an invite or a ?link= token.
-          const needsToken = (found as { require_token_links?: boolean }).require_token_links === true || accType !== 'open'
-          if (needsToken) {
-            setAccessError('This assessment requires a personal link. Legacy share links are disabled — ask your administrator for an invite link.')
+          // Old ?share=true links stay blocked on invite-only tests (decision:
+          // no bypass) — just tell the candidate where the right link is.
+          if (accType !== 'open') {
+            setAccessError(INVITE_ONLY_MESSAGE)
+            setLoading(false)
+            return
+          }
+          if ((found as { require_token_links?: boolean }).require_token_links === true) {
+            setAccessError('This test needs a personal link. Use the link from your invite email, or ask the organiser for one.')
             setLoading(false)
             return
           }
@@ -288,7 +307,7 @@ export default function CandidateAssessmentPage() {
           csrfFetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
         } else if (accType === 'invite_only') {
           if (!inviteToken) {
-            setAccessError('This assessment is invite-only. A valid invitation link is required.')
+            setAccessError(INVITE_ONLY_MESSAGE)
             setLoading(false)
             return
           }
@@ -451,6 +470,12 @@ export default function CandidateAssessmentPage() {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || 'Failed to submit')
       }
+      const okJson = await res.json().catch(() => ({})) as { attempt_no?: number; max_attempts?: number }
+      if (typeof okJson.attempt_no === 'number' && typeof okJson.max_attempts === 'number') {
+        const used = okJson.attempt_no
+        const max = okJson.max_attempts
+        setAttemptInfo((prev) => ({ used, max, can_retake: used < max, best: prev?.best ?? null }))
+      }
       setIsSubmitted(true)
       if (typeof window !== 'undefined') {
         localStorage.removeItem(`codespectra_exam_draft_${exam.id}`)
@@ -534,7 +559,7 @@ export default function CandidateAssessmentPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full rounded-3xl p-8 text-center border-destructive/30 space-y-4">
           <Illustration name="locked" className="mx-auto w-40" />
-          <h1 className="text-xl font-bold">Access denied</h1>
+          <h1 className="text-xl font-bold">{accessError === INVITE_ONLY_MESSAGE ? 'Invite-only test' : 'Access denied'}</h1>
           <p className="text-sm text-muted-foreground">{accessError}</p>
           <div className="pt-2">
             <Button variant="outline" className="w-full" asChild>
@@ -558,7 +583,20 @@ export default function CandidateAssessmentPage() {
             <br/><br/>
             <strong>Your final score will be released after the admin reviews and evaluates your answers.</strong>
           </p>
-          <div className="pt-4">
+          {attemptInfo && attemptInfo.max > 1 && (
+            <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm text-left space-y-1.5">
+              <div className="flex justify-between"><span className="text-muted-foreground">Attempts used</span><span className="font-medium tabular-nums">{attemptInfo.used} of {attemptInfo.max}</span></div>
+              {attemptInfo.best && attemptInfo.best.total > 0 && (
+                <div className="flex justify-between"><span className="text-muted-foreground">Best released score</span><span className="font-medium tabular-nums">{Math.round((attemptInfo.best.score / attemptInfo.best.total) * 100)}% (attempt {attemptInfo.best.attempt_no})</span></div>
+              )}
+            </div>
+          )}
+          <div className="pt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            {attemptInfo?.can_retake && (
+              <Button onClick={() => window.location.reload()}>
+                Start attempt {attemptInfo.used + 1} of {attemptInfo.max}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => router.push('/')}>Return to home</Button>
           </div>
         </Card>
@@ -623,6 +661,12 @@ export default function CandidateAssessmentPage() {
               <span className="text-muted-foreground">Format</span>
               <span className="font-semibold">Timed, submits automatically at zero</span>
             </div>
+            {attemptInfo && attemptInfo.max > 1 && (
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Attempt</span>
+                <span className="font-semibold tabular-nums">{attemptInfo.used + 1} of {attemptInfo.max}</span>
+              </div>
+            )}
           </div>
 
           <div className="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 p-4 rounded-xl flex items-start gap-3 text-sm">

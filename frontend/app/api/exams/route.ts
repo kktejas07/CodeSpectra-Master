@@ -6,7 +6,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
-import { isExamStaff, pickFields, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
+import { isExamStaff, pickFields, normalizeRetakeFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP } from '@/lib/exam-access'
 import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 
@@ -292,6 +292,10 @@ export async function POST(request: Request) {
       require_token_links: body.require_token_links === true,
       require_id_verification: body.require_id_verification === false ? false : true,
       require_face_capture: body.require_face_capture === false ? false : true,
+      allow_retake: body.allow_retake === true,
+      max_attempts: body.allow_retake === true
+        ? Math.min(MAX_ATTEMPTS_CAP, Math.max(1, Math.floor(Number(body.max_attempts)) || 1))
+        : 1,
       questions: numQuestions,
       questionList,
       access_type: body.access_type || 'invite_only',
@@ -325,6 +329,7 @@ export async function PATCH(request: Request) {
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
     // Allow-list: never id/_id/tenant_id/created_by or stats from the body.
     const updates = pickFields(body, EXAM_EDITABLE_FIELDS)
+    normalizeRetakeFields(updates)
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id })
     if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -351,12 +356,40 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
     const db = await getMongoDb()
-    if (user.role === 'tenant_admin' && user.tenantId) {
-      const exam = await db.collection('exams').findOne({ id })
-      if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-      if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const exam = await db.collection('exams').findOne({ id })
+    if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    // Tenant-scoped: superadmin, or a tenant_admin of this exam's tenant (a
+    // missing tenantId never matches).
+    if (!isExamStaff(user, exam)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+    // No soft-delete pattern exists for exams, so delete the dependents in the
+    // same handler — before the exam itself, so a failure part-way leaves the
+    // exam in place and the delete can simply be retried.
+    const examUrl = new RegExp(`/assessment/${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[/?#]|$)`)
+    const examFilter = { exam_id: id }
+    const removed: Record<string, number> = {}
+    const del = async (col: string, filter: Record<string, unknown>) => {
+      removed[col] = (await db.collection(col).deleteMany(filter)).deletedCount
     }
+    await del('exam_submissions', examFilter)
+    await del('exam_submission_attempts', examFilter)
+    await del('exam_submission_files', examFilter)
+    await del('exam_drafts', examFilter)
+    await del('assessment_link_usage', examFilter)
+    await del('assessment_links', examFilter)
+    await del('proctor_events', { session_kind: 'exam', session_id: id })
+    // Invites for this exam only. Multi-step invites that also point at other
+    // assessments keep those steps; only this exam's step is pulled.
+    await del('candidate_invites', { $or: [{ exam_id: id }, { target_url: examUrl }] })
+    await db.collection('candidate_invites').updateMany(
+      { 'assigned_assessments.target_url': examUrl },
+      { $pull: { assigned_assessments: { target_url: examUrl } } } as never,
+    )
     await db.collection('exams').deleteOne({ id })
-    return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+    console.info(`[exams] DELETE ${id} by ${user.id}: removed`, removed)
+    return NextResponse.json({ ok: true, removed })
+  } catch (e) {
+    console.error('[exams] DELETE error:', e)
+    return NextResponse.json({ error: 'Failed to delete assessment' }, { status: 500 })
+  }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
+import { attemptSummary } from '@/lib/exam-access'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAdmin()
@@ -30,9 +31,11 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       exam_id: id,
     }).toArray()
 
+    // Latest attempt per user (legacy rows may hold several per user).
     const submissionsByUser: Record<string, typeof submissions[0]> = {}
     for (const sub of submissions) {
-      submissionsByUser[sub.user_id] = sub
+      const prev = submissionsByUser[sub.user_id]
+      if (!prev || String(sub.created_at || '') > String(prev.created_at || '')) submissionsByUser[sub.user_id] = sub
     }
 
     // Email fallback map — invited-link invites are created with an empty
@@ -93,6 +96,23 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       /** AI graded but a question is flagged for human review (pending_review). */
       needsReview: boolean
       source?: string
+      /** Attempt number of the latest attempt, attempts allowed, and best score (percent). */
+      attemptNo?: number
+      maxAttempts?: number
+      bestScore?: number | null
+      bestAttemptNo?: number | null
+      kind?: string
+    }
+    const attemptFields = (sub: Record<string, unknown> | undefined) => {
+      if (!sub) return {}
+      const a = attemptSummary(sub, exam as Record<string, unknown>)
+      return {
+        attemptNo: a.attempt_no,
+        maxAttempts: a.max_attempts,
+        bestScore: a.best ? toPercent(a.best.score, a.best.max_score) : null,
+        bestAttemptNo: a.best?.attempt_no ?? null,
+        ...(sub.kind ? { kind: String(sub.kind) } : {}),
+      }
     }
 
     // Score is stored as raw points (e.g. 121/166). The admin UI displays it
@@ -156,6 +176,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         deliveryStatus: sub && inv.delivery_status === 'sending' ? 'delivered' : (inv.delivery_status || null),
         graded: sub ? (sub.has_pending_review === false) : false,
         needsReview: sub ? (sub.has_pending_review === true) : false,
+        ...attemptFields(sub as Record<string, unknown> | undefined),
       })
     }
 
@@ -186,6 +207,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         graded: sub.has_pending_review === false,
         needsReview: sub.has_pending_review === true,
         source: sub.source || 'public_link',
+        ...attemptFields(sub as Record<string, unknown>),
       })
       seenEmails.add(email.toLowerCase())
     }

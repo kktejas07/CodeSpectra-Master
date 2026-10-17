@@ -37,6 +37,10 @@ interface Exam {
   ends_at?: string | null
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  require_token_links?: boolean | null
+  access_type?: 'invite_only' | 'open'
+  allow_retake?: boolean
+  max_attempts?: number
   questions: number
   published: boolean
   attempts: number
@@ -94,6 +98,8 @@ export default function AdminExamsPage() {
   const [requireTokenLinks, setRequireTokenLinks] = useState(false)
   const [requireIdVerification, setRequireIdVerification] = useState(true)
   const [requireFaceCapture, setRequireFaceCapture] = useState(true)
+  const [allowRetake, setAllowRetake] = useState(false)
+  const [maxAttempts, setMaxAttempts] = useState(1)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
   const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
@@ -205,6 +211,8 @@ export default function AdminExamsPage() {
     setRequireTokenLinks(false)
     setRequireIdVerification(true)
     setRequireFaceCapture(true)
+    setAllowRetake(false)
+    setMaxAttempts(1)
     setQuestions(0)
     setPublished(false)
     setAccessType('invite_only')
@@ -225,6 +233,10 @@ export default function AdminExamsPage() {
     setEndsAt(exam.ends_at ? toZonedDatetimeString(new Date(exam.ends_at), tz) : '')
     setRequireIdVerification(exam.require_id_verification !== false)
     setRequireFaceCapture(exam.require_face_capture !== false)
+    setRequireTokenLinks(exam.require_token_links === true)
+    setAccessType(exam.access_type === 'open' ? 'open' : 'invite_only')
+    setAllowRetake(exam.allow_retake === true)
+    setMaxAttempts(exam.allow_retake === true ? Math.max(1, Number(exam.max_attempts) || 2) : 1)
     setQuestions(exam.questions)
     setPublished(exam.published)
     setDegreeType(exam.degree_type || '')
@@ -257,6 +269,8 @@ export default function AdminExamsPage() {
       require_token_links: requireTokenLinks,
       require_id_verification: requireIdVerification,
       require_face_capture: requireFaceCapture,
+      allow_retake: allowRetake,
+      max_attempts: allowRetake ? maxAttempts : 1,
       questions, 
       published,
       access_type: accessType,
@@ -267,12 +281,13 @@ export default function AdminExamsPage() {
     
     try {
       if (editingExam) {
-        await csrfFetch('/api/exams', {
+        const patchRes = await csrfFetch('/api/exams', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ id: editingExam.id, ...payload })
         })
+        if (!patchRes.ok) throw new Error('update failed')
         addToast({ type: 'success', title: 'Assessment updated successfully' })
       } else {
         const createRes = await csrfFetch('/api/exams', {
@@ -715,6 +730,40 @@ export default function AdminExamsPage() {
                 <span className="block text-xs text-muted-foreground font-normal">Disable legacy ?share=true URLs — candidates must use token links or invites.</span>
               </span>
             </label>
+            <div className="grid gap-2">
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="allowRetake">
+                <input
+                  id="allowRetake"
+                  type="checkbox"
+                  checked={allowRetake}
+                  onChange={(e) => {
+                    setAllowRetake(e.target.checked)
+                    if (e.target.checked && maxAttempts < 2) setMaxAttempts(2)
+                  }}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Allow retakes
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates can submit again. Results keep their latest and best attempt.</span>
+                </span>
+              </label>
+              {allowRetake && (
+                <div className="grid gap-1.5 pl-6">
+                  <Label htmlFor="maxAttempts">Max attempts</Label>
+                  <Input
+                    id="maxAttempts"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={maxAttempts}
+                    onChange={(e) => setMaxAttempts(Math.min(20, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-24"
+                    aria-describedby="maxAttemptsHint"
+                  />
+                  <p id="maxAttemptsHint" className="text-xs text-muted-foreground">Total attempts per candidate, including the first (up to 20).</p>
+                </div>
+              )}
+            </div>
             <div className="sm:col-span-2 lg:col-span-3 rounded-lg border bg-muted/20 p-4 space-y-3">
               <div>
                 <p className="text-sm font-medium">Identity verification</p>

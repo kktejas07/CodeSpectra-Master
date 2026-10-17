@@ -45,7 +45,7 @@ export function KycSettingsSection() {
     apisetu_client_id: '',
     apisetu_client_secret: '',
     identity_kyc: 'didit',
-    exam_aadhaar: 'ocr_face',
+    exam_aadhaar: 'off',
     profile_aadhaar: 'anon_aadhaar',
     anon_aadhaar_test_mode: true,
     anon_aadhaar_nullifier_seed: '314159265358979',
@@ -174,11 +174,17 @@ export function KycSettingsSection() {
                     })
                   }
                 >
-                  <option value="ocr_face">OCR + face (current)</option>
-                  <option value="anon_aadhaar">Anon Aadhaar (ZK)</option>
-                  <option value="off">Off</option>
+                  <option value="off">Off (default)</option>
+                  <option value="anon_aadhaar">Anon Aadhaar proof</option>
+                  <option value="ocr_face">Aadhaar card + selfie (not available yet)</option>
                 </select>
-                <p className="text-[11px] text-muted-foreground">Exam gate only</p>
+                <p className="text-[11px] text-muted-foreground" aria-live="polite">
+                  {settings.exam_aadhaar === 'off'
+                    ? 'No extra Aadhaar step. Each exam’s own ID and face settings still apply.'
+                    : settings.exam_aadhaar === 'anon_aadhaar'
+                      ? 'Candidates prove they hold a valid Aadhaar with a privacy-preserving proof before the exam. No card image is stored.'
+                      : 'No provider is connected for this yet, so candidates would see “not available” and could not continue. Pick another option.'}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label>Profile Aadhaar badge</Label>

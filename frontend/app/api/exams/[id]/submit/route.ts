@@ -6,7 +6,7 @@ import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
-import { checkExamEntry } from '@/lib/exam-access'
+import { checkExamEntry, recordExamAttempt } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -183,7 +183,12 @@ export async function POST(
       submitted_at: nowIso(),
       created_at: nowIso(),
     }
-    await submissions.insertOne(submission)
+    // Atomic: a double submit (or two tabs) can't create two attempts — the
+    // second write hits the unique key / conditional replace and gets a 409.
+    const stored = await recordExamAttempt(db, access.current, submission, access.attemptNo)
+    if (!stored.ok) {
+      return NextResponse.json({ error: 'This attempt was already submitted.' }, { status: 409 })
+    }
 
     // Mark the invite used only now that the submission is safely stored,
     // and link it to the submitting account so the results page can join
@@ -198,7 +203,8 @@ export async function POST(
 
     // Award XP + real-time notification (invite-only candidates are real
     // accounts now that login is mandatory). Idempotent per submission.
-    if (maxScore > 0 && totalScore > 0) {
+    // XP only for the first attempt, so retakes can't farm it.
+    if (access.attemptNo === 1 && maxScore > 0 && totalScore > 0) {
       try {
         const { awardXpWithLevelUp } = await import('@/lib/xp-service')
         const { getXpRewards } = await import('@/lib/db/leaderboard')
@@ -223,6 +229,8 @@ export async function POST(
       submission_id: submission.id,
       has_pending_review: hasPendingReview,
       released: false,
+      attempt_no: access.attemptNo,
+      max_attempts: access.maxAttempts,
     })
   } catch (e: unknown) {
     const msg = 'Submit failed'

@@ -12,7 +12,7 @@ type ExamMode = 'anon_aadhaar' | 'ocr_face' | 'off'
  * Exam gate: uses SuperAdmin exam_aadhaar purpose setting.
  * - anon_aadhaar → ZK prove
  * - ocr_face → existing OCR + face modal
- * - off → auto-pass
+ * - off → auto-pass (the default when no mode has been saved)
  */
 export function ExamAadhaarGate({
   onVerified,
@@ -31,7 +31,7 @@ export function ExamAadhaarGate({
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return
-        const m = (d.exam_aadhaar || 'ocr_face') as ExamMode
+        const m = (d.exam_aadhaar || 'off') as ExamMode
         if (d.anon_aadhaar_nullifier_seed) setSeed(String(d.anon_aadhaar_nullifier_seed))
         if (typeof d.anon_aadhaar_test_mode === 'boolean') setTestMode(d.anon_aadhaar_test_mode)
         if (m === 'off') {
@@ -41,7 +41,8 @@ export function ExamAadhaarGate({
         setMode(m)
       })
       .catch(() => {
-        if (!cancelled) setMode('ocr_face')
+        // Settings unreachable: behave like the platform default ('off').
+        if (!cancelled) onVerified()
       })
     return () => {
       cancelled = true
