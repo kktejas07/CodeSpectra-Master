@@ -9,6 +9,7 @@ import { ResultsSheet } from '@/components/landing/results-sheet'
 import { HeroShowcase } from '@/components/landing/hero-showcase'
 import { BentoGrid } from '@/components/landing/bento-grid'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { PhoneMockup } from '@/components/landing/phone-mockup'
 
 /* Shared button styles for marketing pages. Kept here rather than in
    components/ui/button so the dashboard's mint button stays untouched. */
@@ -106,25 +107,36 @@ export default function Home() {
 
       {/* Candidates — secondary audience */}
       <section className="border-b border-cs-grid bg-cs-sheet">
-        <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <div className="flex max-w-[70ch] items-center gap-6">
-            <ThemeIllustration name="code-visor" width={240} height={200} className="hidden w-28 shrink-0 sm:block" />
-            <div>
-            <h2 className="text-2xl font-semibold">Taking a CodeSpectra assessment?</h2>
-            <p className="mt-2 leading-relaxed text-cs-ink-soft">
+        <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1fr_1.05fr] lg:gap-16 lg:px-8 lg:py-24">
+          <div>
+            <p className="text-sm font-semibold text-cs-accent-text">For candidates</p>
+            <h2 className="cs-heading mt-3 max-w-[16ch] text-4xl sm:text-5xl">Taking a CodeSpectra assessment?</h2>
+            <p className="mt-5 max-w-[52ch] text-lg leading-relaxed text-cs-ink-soft">
               Use the link from your invite. Before test day you can practise coding problems, try mock tests
               and earn certificates on your own free account.
             </p>
+            <ul className="mt-8 space-y-3 text-[15px] text-cs-ink">
+              {[
+                'Run your code against sample tests before you submit',
+                'Your answers save as you go',
+                'Certificates anyone can verify online',
+              ].map((t) => (
+                <li key={t} className="flex gap-3">
+                  <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-cs-accent" />
+                  {t}
+                </li>
+              ))}
+            </ul>
+            <div className="mt-9 flex flex-wrap gap-3">
+              <Link href="/auth/signup" className={btnPrimary}>
+                Start practising
+              </Link>
+              <Link href="/auth/login" className={btnSecondary}>
+                Sign in
+              </Link>
             </div>
           </div>
-          <div className="flex shrink-0 gap-3">
-            <Link href="/auth/login" className={btnSecondary}>
-              Sign in
-            </Link>
-            <Link href="/auth/signup" className={btnSecondary}>
-              Start practising
-            </Link>
-          </div>
+          <PhoneMockup />
         </div>
       </section>
 
