@@ -7,6 +7,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { useCurrency } from '@/lib/use-currency'
 import { PageHero } from '@/components/landing/page-hero'
+import { CONTACT_SALES_HREF, inAppPricingHref, planCheckoutMode } from '@/lib/billing-plan-mode'
 
 type PublicPlan = {
   id: string
@@ -115,8 +116,9 @@ export default function PricingPage() {
 
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3">
           {plans.map((plan) => {
-            const isCustom =
-              plan.id === 'enterprise' && plan.price <= 0 && plan.yearlyPrice <= 0
+            // Same classification checkout uses: enterprise / custom → contact sales.
+            const mode = planCheckoutMode({ id: plan.id, price: plan.price, yearlyPrice: plan.yearlyPrice })
+            const isCustom = mode === 'contact_sales'
             const monthlyDisplay = plan.price
             const yearlyDisplay = plan.yearlyPrice
             const perMonthIfAnnual = yearlyDisplay > 0 ? yearlyDisplay / 12 : 0
@@ -183,15 +185,19 @@ export default function PricingPage() {
                   <Link
                     href={
                       isCustom
-                        ? '/contact?topic=sales'
-                        : plan.price <= 0
+                        ? CONTACT_SALES_HREF
+                        : mode === 'free'
                           ? '/auth/signup'
-                          // Signup ignores ?plan, but honours ?redirect: land on the
-                          // in-app pricing page after signup to pick the plan. No trial exists.
-                          : `/auth/signup?redirect=${encodeURIComponent(`/dashboard/pricing?plan=${plan.id}`)}`
+                          // Carry the plan through signup: after signup the user lands on
+                          // the in-app pricing page with this plan preselected. No trial exists.
+                          : `/auth/signup?${new URLSearchParams({
+                              plan: plan.id,
+                              ...(annual ? { interval: 'year' } : {}),
+                              redirect: inAppPricingHref(plan.id, annual ? 'year' : 'month'),
+                            }).toString()}`
                     }
                   >
-                    {isCustom ? 'Contact sales' : plan.price <= 0 ? 'Start free' : 'Get started'}
+                    {isCustom ? 'Contact sales' : mode === 'free' ? 'Start free' : 'Get started'}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>

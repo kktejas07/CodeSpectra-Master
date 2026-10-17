@@ -32,8 +32,9 @@ export async function GET() {
     }
 
     return NextResponse.json({ plans })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/plans:', e)
+    return NextResponse.json({ error: 'Something went wrong with plans. Try again.' }, { status: 500 })
   }
 }
 
@@ -72,7 +73,8 @@ export async function POST(request: Request) {
 
     invalidatePlanCache()
     return NextResponse.json({ plan: doc })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/plans:', e)
+    return NextResponse.json({ error: 'Something went wrong with plans. Try again.' }, { status: 500 })
   }
 }

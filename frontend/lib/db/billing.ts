@@ -26,6 +26,20 @@ export interface BillingOrderDoc {
   status: 'created' | 'attempted' | 'paid' | 'failed' | 'refunded'
   notes?: Record<string, string>
   coupon_id?: string
+  /** Plan snapshot taken at checkout (lib/billing-plans.ts) so activation uses exactly what was paid for. */
+  plan_name?: string
+  plan_kind?: 'one_time' | 'subscription'
+  duration_days?: number
+  interval?: 'month' | 'year'
+  /** Window this order funded on the subscription (set on activation). */
+  subscription_id?: string
+  period_start?: string
+  period_end?: string
+  /** Manual refund record (admin "Mark as refunded"). */
+  refunded_at?: string
+  refunded_by?: string
+  refunded_by_email?: string
+  refund_note?: string
   created_at: string
   updated_at: string
 }
@@ -50,8 +64,10 @@ export interface BillingSubscriptionDoc {
   started_at: string
   ends_at: string
   last_payment_id?: string
+  last_order_id?: string
   trial_ends_at?: string
   created_at: string
+  updated_at?: string
 }
 
 export interface BillingCouponDoc {

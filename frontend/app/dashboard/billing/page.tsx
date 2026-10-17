@@ -31,7 +31,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { completeCheckout } from '@/lib/razorpay-checkout'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/app/page-kit'
-import { findPlan } from '@/lib/billing-catalog'
+import { CONTACT_SALES_HREF, planCheckoutMode, type PlanCheckoutMode } from '@/lib/billing-plan-mode'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -72,6 +72,7 @@ type Plan = {
   yearlyPrice: number
   features: string[]
   popular?: boolean
+  checkout_mode?: PlanCheckoutMode
 }
 
 type PaymentMethod = {
@@ -104,6 +105,7 @@ function BillingContent() {
     description: string | null
     createdAt: string
     downloadUrl: string
+    refundedAt?: string | null
   } | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -131,16 +133,33 @@ function BillingContent() {
       const j = await subRes.json().catch(() => ({}))
       throw new Error(typeof j.error === 'string' && subRes.status !== 500 ? j.error : `Billing service returned ${subRes.status}`)
     }
+    let planList: Plan[] = []
+    if (planRes.ok) { const d = await planRes.json(); planList = Array.isArray(d) ? d : []; setPlans(planList) }
     {
+      // GET /api/billing/subscription → { subscription: {...} | null, user_email }
       const d = await subRes.json()
-      const sub = d.subscription || d
-      const plan = findPlan((sub as any).plan_id || (sub as any).planId || 'free')
+      const sub = d.subscription as {
+        plan_id: string; plan_name?: string; status: string; starts_at?: string; ends_at?: string
+        interval?: 'month' | 'year'; amount?: number | null; currency?: string | null
+      } | null
+      const planId = sub?.plan_id || 'free'
+      const catalog = planList.find((p) => p.id === planId)
+      const iv = sub?.interval === 'year' ? 'year' : 'month'
+      if (sub?.currency) setCurrency(sub.currency)
       setSubscription({
-        ...sub,
-        planName: plan.name,
-        features: plan.features,
-        pricePerMonth: plan.monthlyUsd,
-        pricePerYear: plan.yearlyUsd,
+        planId,
+        planName: sub?.plan_name || catalog?.name || (sub ? planId : 'Free'),
+        status: sub?.status || 'free',
+        billingInterval: iv,
+        currentPeriodStart: sub?.starts_at || null,
+        currentPeriodEnd: sub?.ends_at || null,
+        canceledAt: null,
+        pricePerMonth: catalog?.price ?? 0,
+        pricePerYear: catalog?.yearlyPrice ?? 0,
+        currentPrice: sub?.amount ?? (iv === 'year' ? catalog?.yearlyPrice : catalog?.price) ?? 0,
+        features: catalog?.features ?? [],
+        autoRenew: false,
+        userEmail: typeof d.user_email === 'string' ? d.user_email : '',
       })
     }
     if (invRes.ok) {
@@ -157,7 +176,6 @@ function BillingContent() {
         downloadUrl: v.downloadUrl,
       })))
     }
-    if (planRes.ok) { const d = await planRes.json(); setPlans(Array.isArray(d) ? d : []) }
     if (pmRes.ok) { const d = await pmRes.json(); setPaymentMethods(Array.isArray(d) ? d : []) }
   }, [])
 
@@ -208,6 +226,19 @@ function BillingContent() {
   }, [load, addToast, searchParams, reloadKey])
 
   const defaultPm = paymentMethods.find((p) => p.is_default) || paymentMethods[0]
+  const modeOf = (p: Plan): PlanCheckoutMode =>
+    p.checkout_mode ?? planCheckoutMode({ id: p.id, price: p.price, yearlyPrice: p.yearlyPrice })
+  const pickedPlanRow = plans.find((p) => p.id === pickPlan)
+  const pickedMode: PlanCheckoutMode = pickedPlanRow ? modeOf(pickedPlanRow) : 'free'
+
+  // Default the plan picker to the first plan that can actually be bought.
+  useEffect(() => {
+    if (plans.length && !plans.some((p) => p.id === pickPlan && modeOf(p) === 'checkout')) {
+      const first = plans.find((p) => modeOf(p) === 'checkout')
+      if (first) setPickPlan(first.id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plans])
 
   const openInvoice = async (inv: InvoiceRow) => {
     setInvoiceView(inv)
@@ -232,19 +263,18 @@ function BillingContent() {
   const runCheckout = async () => {
     setBusy('checkout')
     try {
-      const serverPlanId = pickPlan === 'free'
-        ? 'free'
-        : pickPlan === 'enterprise'
-          ? 'problem_pack_50'
-          : pickInterval === 'year' ? 'pro_yearly' : 'pro_monthly'
-
+      // Every paid plan checks out as itself; free / contact-sales never reach checkout.
       const res = await csrfFetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ plan_id: serverPlanId }),
+        body: JSON.stringify({ plan_id: pickPlan, interval: pickInterval }),
       })
       const j = await res.json().catch(() => ({}))
+      if (res.status === 409 && j.code === 'contact_sales') {
+        window.location.href = CONTACT_SALES_HREF
+        return
+      }
       if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Checkout failed')
       // Redirect gateways leave the page; Razorpay opens its modal and resolves
       // 'paid' only after /api/billing/verify confirms the payment server-side.
@@ -438,7 +468,10 @@ function BillingContent() {
                           {getCurrencySymbol(inv.currency || currency)}{inv.amount.toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant="outline" className="capitalize">
+                        <Badge
+                          variant="outline"
+                          className={cn('capitalize', inv.status === 'refunded' && 'border-amber-500/40 text-amber-700 dark:text-amber-400')}
+                        >
                           {inv.status}
                         </Badge>
                       </td>
@@ -507,11 +540,18 @@ function BillingContent() {
                 value={pickPlan}
                 onChange={(e) => setPickPlan(e.target.value)}
               >
-                {plans.map((p) => (
-                  <option key={p.id} value={p.id} disabled={p.id === 'free'}>
-                    {p.name} — {getCurrencySymbol(currency)}{p.price}/mo ({getCurrencySymbol(currency)}{p.yearlyPrice}/yr)
-                  </option>
-                ))}
+                {plans.map((p) => {
+                  const mode = modeOf(p)
+                  return (
+                    <option key={p.id} value={p.id} disabled={mode === 'free'}>
+                      {mode === 'contact_sales'
+                        ? `${p.name} — contact sales`
+                        : mode === 'free'
+                          ? `${p.name} — free`
+                          : `${p.name} — ${getCurrencySymbol(currency)}${p.price}/mo (${getCurrencySymbol(currency)}${p.yearlyPrice}/yr)`}
+                    </option>
+                  )
+                })}
               </select>
             </div>
             <div className="space-y-2">
@@ -535,10 +575,16 @@ function BillingContent() {
             <Button variant="outline" onClick={() => setUpgradeOpen(false)}>
               Close
             </Button>
-            <Button onClick={() => void runCheckout()} disabled={Boolean(busy) || pickPlan === 'free'}>
-              {busy === 'checkout' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Pay & activate
-            </Button>
+            {pickedMode === 'contact_sales' ? (
+              <Button asChild>
+                <a href={CONTACT_SALES_HREF}>Contact sales</a>
+              </Button>
+            ) : (
+              <Button onClick={() => void runCheckout()} disabled={Boolean(busy) || pickedMode !== 'checkout'}>
+                {busy === 'checkout' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Pay & activate
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -590,8 +636,14 @@ function BillingContent() {
                 </strong>
               </p>
               <p>
-                <span className="text-muted-foreground">Status:</span> {invoiceDetail.status}
+                <span className="text-muted-foreground">Status:</span>{' '}
+                <span className="capitalize">{invoiceDetail.status}</span>
               </p>
+              {invoiceDetail.refundedAt ? (
+                <p>
+                  <span className="text-muted-foreground">Refunded on:</span> {formatDateTime(invoiceDetail.refundedAt)}
+                </p>
+              ) : null}
               <p>
                 <span className="text-muted-foreground">Date:</span>{' '}
                 {formatDateTime(invoiceDetail.createdAt)}

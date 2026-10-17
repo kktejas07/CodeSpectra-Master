@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { safeRedirect } from "@/lib/safe-redirect";
+import { inAppPricingHref, isValidPlanId, parseInterval } from "@/lib/billing-plan-mode";
 import { Github } from "@/components/ui/brand-icons";
 import { useAuth } from "@/lib/auth-context";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
@@ -40,7 +41,14 @@ const MIN_PASSWORD = 8;
 function SignupInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = safeRedirect(searchParams.get("redirect") || searchParams.get("redirectTo"));
+  // A plan picked on the public pricing page (?plan=pro&interval=year) lands on
+  // the in-app pricing page with that plan preselected after signup.
+  const pickedPlan = searchParams.get("plan");
+  const redirectTo = safeRedirect(
+    searchParams.get("redirect") ||
+      searchParams.get("redirectTo") ||
+      (isValidPlanId(pickedPlan) ? inAppPricingHref(pickedPlan, parseInterval(searchParams.get("interval"))) : null),
+  );
   const refCode = searchParams.get("ref");
 
   const [step, setStep] = useState<1 | 2>(1);

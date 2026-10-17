@@ -9,35 +9,13 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
-import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
-import { MOCK_TEST_SESSIONS } from '@/lib/mock-tests'
+import { mockTestSessions, type MockTestSessionDoc } from '../_sessions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-interface StoredQuestion {
-  id: string
-  question: string
-  options: string[]
-  correctIndex: number
-  explanation: string
-}
-
-interface SessionDoc {
-  id: string
-  user_id: string
-  company: string
-  role: string
-  difficulty: string
-  questions: StoredQuestion[]
-  created_at: string
-  submitted_at: string | null
-  answers?: Record<string, number>
-  score?: number
-  total?: number
-  percentage?: number
-}
+type SessionDoc = MockTestSessionDoc
 
 const submitSchema = z.object({
   session_id: z.string().min(1).max(100),
@@ -49,9 +27,7 @@ export async function GET() {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  const db = await getMongoDb()
-  const rows = await db
-    .collection<SessionDoc>(MOCK_TEST_SESSIONS)
+  const rows = await (await mockTestSessions())
     .find(
       { user_id: gate.user.id, submitted_at: { $ne: null } },
       { projection: { _id: 0, id: 1, company: 1, role: 1, difficulty: 1, score: 1, total: 1, percentage: 1, submitted_at: 1 } },
@@ -82,11 +58,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid submission' }, { status: 400 })
   }
 
-  const db = await getMongoDb()
-  const col = db.collection<SessionDoc>(MOCK_TEST_SESSIONS)
+  const col = await mockTestSessions()
   const session = await col.findOne({ id: parsed.session_id, user_id: gate.user.id }, { projection: { _id: 0 } })
   if (!session) return NextResponse.json({ error: 'Test not found' }, { status: 404 })
   if (session.submitted_at) return NextResponse.json({ error: 'This test was already submitted' }, { status: 409 })
+  if (session.abandoned_at || !session.questions?.length) {
+    return NextResponse.json({ error: 'This test was replaced by a newer one.' }, { status: 409 })
+  }
 
   const total = session.questions.length
   let score = 0
@@ -102,8 +80,12 @@ export async function POST(req: Request) {
 
   // Atomic: only the first submit for this session wins.
   const updated = await col.updateOne(
-    { id: session.id, user_id: gate.user.id, submitted_at: null },
-    { $set: { submitted_at: new Date().toISOString(), answers, score, total, percentage } },
+    { id: session.id, user_id: gate.user.id, submitted_at: null, abandoned_at: { $exists: false } },
+    {
+      $set: { submitted_at: new Date().toISOString(), answers, score, total, percentage },
+      // Frees the in-progress slot: the next start for this test is a new attempt.
+      $unset: { in_progress_key: '' },
+    },
   )
   if (updated.matchedCount === 0) {
     return NextResponse.json({ error: 'This test was already submitted' }, { status: 409 })

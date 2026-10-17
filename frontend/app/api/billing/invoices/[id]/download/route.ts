@@ -28,6 +28,9 @@ export async function GET(_req: Request, { params }: IdRouteContext) {
       ['Item', inv.description || 'Plan purchase'],
       ['Amount', amount],
       ['Status', inv.status === 'refunded' ? 'Refunded' : 'Paid'],
+      ...(inv.refundedAt
+        ? [['Refunded on', new Date(inv.refundedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })] as [string, string]]
+        : []),
       ...(inv.paymentId ? [['Payment reference', inv.paymentId] as [string, string]] : []),
       ...(inv.paymentMethod ? [['Payment method', inv.paymentMethod] as [string, string]] : []),
     ]
@@ -37,7 +40,7 @@ export async function GET(_req: Request, { params }: IdRouteContext) {
 h1{font-size:22px;margin:0 0 4px}p{color:#555;margin:0 0 24px}table{width:100%;border-collapse:collapse}
 td{padding:10px 0;border-bottom:1px solid #e5e7eb;vertical-align:top}td:first-child{color:#555;width:40%}
 .print{margin-top:24px}@media print{.print{display:none}}</style></head><body>
-<h1>CodeSpectra receipt</h1><p>Keep this for your records.</p>
+<h1>CodeSpectra receipt</h1><p>${inv.status === 'refunded' ? 'This payment was refunded.' : 'Keep this for your records.'}</p>
 <table>${rows.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>
 <button class="print" onclick="window.print()">Print or save as PDF</button>
 </body></html>`

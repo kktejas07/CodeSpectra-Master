@@ -17,9 +17,21 @@
 
 import { isRazorpayConfigured, getRazorpay, getPublishableKeyId } from '@/lib/razorpay-server'
 import { isPhonePeConfiguredAsync, createPhonePeOrder, getPhonePeMerchantId } from '@/lib/phonepe-server'
-import { BILLING_PLANS, billingOrders, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
+import { billingOrders, billingSubscriptions, newId, nowIso, type BillingOrderDoc } from '@/lib/db/billing'
+import { activatePaidOrder, orderPlanSnapshot, resolveBillingPlan, type ResolvedPlan } from '@/lib/billing-plans'
+import type { PlanInterval } from '@/lib/billing-plan-mode'
 
 export type PaymentProvider = 'razorpay' | 'stripe' | 'phonepe'
+
+/** A priced plan as resolved by lib/billing-plans.ts (amount after coupon). */
+export type CheckoutPlan = ResolvedPlan
+
+/** Expected checkout refusals with a user-safe message. */
+export class CheckoutError extends Error {
+  constructor(public code: 'unknown_plan' | 'free_plan' | 'contact_sales', message: string) {
+    super(message)
+  }
+}
 
 export interface CheckoutResult {
   provider: PaymentProvider
@@ -31,7 +43,7 @@ export interface CheckoutResult {
   key_id?: string
   amount_paise: number
   currency: string
-  plan: (typeof BILLING_PLANS)[string]
+  plan: CheckoutPlan
 }
 
 export interface SubscriptionResult {
@@ -52,7 +64,7 @@ export interface PaymentMethod {
 
 export interface PaymentGatewayAdapter {
   name: PaymentProvider
-  createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult>
+  createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string): Promise<CheckoutResult>
   getSubscription(userId: string): Promise<SubscriptionResult | null>
   cancelSubscription(userId: string): Promise<void>
   listPaymentMethods(userId: string, email: string): Promise<PaymentMethod[]>
@@ -119,47 +131,25 @@ export class PaymentService {
     return this.getAdapter()
   }
 
+  /**
+   * Create a checkout for exactly the plan asked for. Free and contact-sales
+   * plans never reach a gateway (see lib/billing-plan-mode.ts). The plan
+   * snapshot (id, name, kind, duration, amount) is stored on the order so the
+   * verified payment activates exactly that plan.
+   */
   async createCheckout(
     userId: string,
     email: string,
     planId: string,
     countryCode?: string | null,
     couponId?: string,
+    interval: PlanInterval = 'month',
   ): Promise<CheckoutResult> {
-    // Map pricing-catalog plan IDs (free/pro/enterprise) to billing-plan keys
-    const PLAN_ID_MAP: Record<string, string> = {
-      free: 'pro_monthly', pro: 'pro_monthly', enterprise: 'pro_monthly',
-    }
-    const resolvedPlanId = PLAN_ID_MAP[planId] || planId
-    let plan = BILLING_PLANS[resolvedPlanId]
-    if (!plan) {
-      try {
-        const { getMongoDb } = await import('@/lib/mongodb')
-        const db = await getMongoDb()
-        const dbPlan = await db.collection('plans').findOne({ $or: [{ plan: planId }, { id: planId }] })
-        if (dbPlan) {
-          let usd = 29
-          if (typeof dbPlan.price === 'number') usd = dbPlan.price
-          else if (typeof dbPlan.price === 'string') {
-            const m = dbPlan.price.match(/[\d.]+/)
-            if (m) usd = parseFloat(m[0])
-          }
-          const amount_paise = dbPlan.amount_paise || Math.round(usd * 83 * 100)
-          plan = {
-            id: planId,
-            name: dbPlan.name || planId,
-            amount_paise,
-            currency: dbPlan.currency || 'INR',
-            kind: 'subscription' as const,
-            duration_days: 30,
-            perks: Array.isArray(dbPlan.features) ? dbPlan.features.map((f: any) => typeof f === 'string' ? f : f.label || '') : [],
-          }
-        }
-      } catch (e) {
-        console.warn('[CodeSpectra] Could not look up dynamic plan from DB:', e)
-      }
-    }
-    if (!plan) throw new Error(`Unknown plan: ${resolvedPlanId}`)
+    const resolved = await resolveBillingPlan(planId, interval)
+    if (!resolved) throw new CheckoutError('unknown_plan', 'That plan is not available.')
+    if (resolved.mode === 'free') throw new CheckoutError('free_plan', 'The free plan does not need checkout.')
+    if (resolved.mode === 'contact_sales') throw new CheckoutError('contact_sales', 'Contact sales to set up this plan.')
+    let plan: CheckoutPlan = resolved
 
     if (couponId) {
       const { billingCoupons } = await import('@/lib/db/billing')
@@ -171,63 +161,35 @@ export class PaymentService {
       }
     }
 
-    if (plan.amount_paise === 0) {
-      // 100% discount, bypass gateway and immediately activate subscription
-      const { billingSubscriptions, billingOrders, nowIso, newId, recordCouponRedemption } = await import('@/lib/db/billing')
-      const subs = await billingSubscriptions()
-      const existing = await subs.findOne({ user_id: userId, status: 'active' })
-      const startsAt = nowIso()
-      const endsAt = new Date(Date.now() + (plan.duration_days || 30) * 86400000).toISOString()
-
-      const orders = await billingOrders()
-      const receipt = `${userId}_${resolvedPlanId}_${Date.now()}`
-      await orders.insertOne({
+    if (plan.amount_paise <= 0) {
+      // 100% discount: no gateway. Record a paid zero-amount order and activate it.
+      const order: BillingOrderDoc = {
         id: newId(),
         user_id: userId,
         amount_paise: 0,
         currency: plan.currency,
-        plan_id: resolvedPlanId,
-        receipt,
+        ...orderPlanSnapshot(plan),
+        receipt: `${userId}_${plan.id}_${Date.now()}`,
         coupon_id: couponId,
-        status: 'paid', // immediately paid
+        status: 'paid',
         created_at: nowIso(),
         updated_at: nowIso(),
-      })
-
-      if (existing) {
-        await subs.updateOne(
-          { _id: existing._id },
-          { $set: { plan_id: resolvedPlanId, ends_at: endsAt, updated_at: nowIso() } }
-        )
-      } else {
-        await subs.insertOne({
-          id: newId(),
-          user_id: userId,
-          plan_id: resolvedPlanId,
-          status: 'active',
-          started_at: startsAt,
-          ends_at: endsAt,
-          created_at: nowIso(),
-          updated_at: nowIso(),
-        } as any)
       }
-
-      if (couponId) {
-        await recordCouponRedemption(couponId, userId, undefined, resolvedPlanId).catch(() => {})
-      }
+      await (await billingOrders()).insertOne(order)
+      await activatePaidOrder(order)
 
       return {
         provider: 'stripe', // Placeholder
-        gateway_id: 'free_' + Date.now(),
+        gateway_id: 'free_' + order.id,
         redirect_url: '/dashboard/pricing?payment=free&status=success',
         amount_paise: 0,
         currency: plan.currency,
-        plan
+        plan,
       }
     }
 
     const adapter = await this.getAdapterForCountry(countryCode)
-    return adapter.createCheckout(userId, email, resolvedPlanId, plan, couponId)
+    return adapter.createCheckout(userId, email, plan.id, plan, couponId)
   }
 
   async getSubscription(userId: string): Promise<SubscriptionResult | null> {
@@ -256,7 +218,7 @@ export class PaymentService {
 class PhonePeAdapter implements PaymentGatewayAdapter {
   name = 'phonepe' as const
 
-  async createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult> {
+  async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string): Promise<CheckoutResult> {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const callbackUrl = `${baseUrl}/api/billing/phonepe-callback`
     const redirectUrl = `${baseUrl}/dashboard/billing?payment=phonepe&status=success`
@@ -294,7 +256,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
       phonepe_transaction_id: merchantTransactionId,
       amount_paise: plan.amount_paise,
       currency: plan.currency,
-      plan_id: planId,
+      ...orderPlanSnapshot(plan),
       receipt,
       coupon_id: couponId,
       status: 'created',
@@ -338,7 +300,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
 class RazorpayAdapter implements PaymentGatewayAdapter {
   name = 'razorpay' as const
 
-  async createCheckout(userId: string, _email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult> {
+  async createCheckout(userId: string, _email: string, planId: string, plan: CheckoutPlan, couponId?: string): Promise<CheckoutResult> {
     const rp = await getRazorpay()
     const receipt = `${userId}_${planId}_${Date.now()}`
     const order = await rp.orders.create({
@@ -355,7 +317,7 @@ class RazorpayAdapter implements PaymentGatewayAdapter {
       razorpay_order_id: order.id,
       amount_paise: plan.amount_paise,
       currency: plan.currency,
-      plan_id: planId,
+      ...orderPlanSnapshot(plan),
       receipt,
       coupon_id: couponId,
       status: 'created',

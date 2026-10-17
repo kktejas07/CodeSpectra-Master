@@ -6,7 +6,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyPhonePeWebhook } from '@/lib/phonepe-server'
-import { billingOrders, billingPayments, billingSubscriptions, BILLING_PLANS, nowIso, newId } from '@/lib/db/billing'
+import { billingOrders, billingPayments, nowIso, newId } from '@/lib/db/billing'
+import { activatePaidOrder, ensureBillingIndexes, storedPlanLabel } from '@/lib/billing-plans'
 import { notify } from '@/lib/notifications'
 import { getCurrencySymbol } from '@/lib/currency'
 import { getPlatformCurrency } from '@/lib/server-currency'
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
   logger.webhook(`[PhonePe] Webhook: ${merchantTransactionId} -> ${state}`)
 
   try {
+    await ensureBillingIndexes()
     const orders = await billingOrders()
 
     // Find the order by PhonePe transaction ID
@@ -62,97 +64,69 @@ export async function POST(req: NextRequest) {
     }
 
     if (state === 'COMPLETED' || state === 'SUCCESS') {
-      // Idempotency: PhonePe retries webhooks — never double-activate.
-      if (order.status === 'paid') {
+      if (amount && amount < order.amount_paise) {
+        console.error('[PhonePe] short payment', { order: order.id, amount })
         return NextResponse.json({ success: true })
       }
-      // Payment successful
-      await orders.updateOne(
-        { id: order.id },
-        { $set: { status: 'paid', updated_at: nowIso() } }
+      // Idempotency: PhonePe retries webhooks and the redirect callback may get
+      // here first — only the atomic claimer applies the order. A refunded
+      // order is never revived.
+      const claim = await orders.updateOne(
+        { id: order.id, status: { $in: ['created', 'attempted', 'failed'] } },
+        { $set: { status: 'paid', updated_at: nowIso() } },
       )
+      if (claim.modifiedCount === 0) {
+        return NextResponse.json({ success: true })
+      }
 
-      // Create payment record
-      const payments = await billingPayments()
-      await payments.insertOne({
-        id: newId(),
-        user_id: order.user_id,
-        order_id: order.id,
-        razorpay_payment_id: '',
-        phonepe_payment_id: transactionId,
-        status: 'captured',
-        amount_paise: amount,
-        created_at: nowIso(),
-      })
+      const finalAmount = amount || order.amount_paise
+      const paymentRowId = newId()
+      try {
+        await (await billingPayments()).updateOne(
+          { phonepe_payment_id: transactionId },
+          {
+            $setOnInsert: {
+              id: paymentRowId,
+              user_id: order.user_id,
+              order_id: order.id,
+              razorpay_payment_id: '',
+              phonepe_payment_id: transactionId,
+              status: 'captured',
+              amount_paise: finalAmount,
+              created_at: nowIso(),
+            },
+          },
+          { upsert: true },
+        )
+      } catch (e) {
+        if ((e as { code?: number })?.code !== 11000) throw e
+      }
+
+      // Activate exactly the plan snapshotted on the order (static or admin-created).
+      const { subscription } = await activatePaidOrder({ ...order, status: 'paid' }, paymentRowId)
+      if (subscription) {
+        logger.webhook(`[PhonePe] Subscription active for user ${order.user_id}, ends ${subscription.ends_at}`)
+      }
 
       const sym = getCurrencySymbol(await getPlatformCurrency())
       notify({
         user_id: order.user_id,
         type: 'billing.payment_success',
         title: 'Payment successful',
-        message: `Payment of ${sym}${(amount / 100).toFixed(2)} completed via PhonePe.`,
+        message: `Payment of ${sym}${(finalAmount / 100).toFixed(2)} completed via PhonePe.`,
         icon: 'credit-card',
         link: '/dashboard/billing',
       }).catch(() => {})
 
-      // Send confirmation email
-      const plan = BILLING_PLANS[order.plan_id]
-      const { getMongoDb } = await import('@/lib/mongodb')
+      // Confirmation email
+      const planName = storedPlanLabel(order) || 'CodeSpectra plan'
       const db = await getMongoDb()
       const user = await db.collection('user').findOne({ id: order.user_id })
-      if (user?.email && plan) {
-        const template = plan.kind === 'subscription'
-          ? emailTemplates.subscriptionConfirmation(plan.name, amount, plan.currency)
-          : emailTemplates.invoiceNotification(order.receipt, amount, plan.name, plan.currency)
+      if (user?.email) {
+        const template = order.plan_kind === 'one_time'
+          ? emailTemplates.invoiceNotification(order.receipt, finalAmount, planName, order.currency)
+          : emailTemplates.subscriptionConfirmation(planName, finalAmount, order.currency)
         await sendEmail(user.email, template).catch(console.error)
-      }
-
-      // Create or extend subscription
-      const subs = await billingSubscriptions()
-      const planInfo = plan?.kind === 'subscription' && plan.duration_days
-        ? { durationDays: plan.duration_days }
-        : { durationDays: 30 }
-      const now = new Date()
-      const durationMs = planInfo.durationDays * 24 * 60 * 60 * 1000
-
-      // Look for any existing subscription (active, expired, or cancelled) to reactivate/extend
-      const existingSub = await subs.findOne({
-        user_id: order.user_id,
-        status: { $in: ['active', 'expired', 'cancelled'] }
-      })
-
-      if (existingSub) {
-        // Extend or reactivate existing subscription
-        const currentEnd = new Date(existingSub.ends_at)
-        const base = currentEnd > now ? currentEnd : now
-        const newEnd = new Date(base.getTime() + durationMs)
-        await subs.updateOne(
-          { id: existingSub.id },
-          {
-            $set: {
-              status: 'active',
-              ends_at: newEnd.toISOString(),
-              plan_id: order.plan_id,
-              last_payment_id: transactionId,
-              updated_at: nowIso()
-            }
-          }
-        )
-        logger.webhook(`[PhonePe] Subscription reactivated/extended for user ${order.user_id}, ends ${newEnd.toISOString()}`)
-      } else {
-        // Create new subscription
-        const endsAt = new Date(now.getTime() + durationMs).toISOString()
-        await subs.insertOne({
-          id: newId(),
-          user_id: order.user_id,
-          plan_id: order.plan_id,
-          status: 'active',
-          started_at: nowIso(),
-          ends_at: endsAt,
-          last_payment_id: transactionId,
-          created_at: nowIso(),
-        })
-        logger.webhook(`[PhonePe] New subscription created for user ${order.user_id}, ends ${endsAt}`)
       }
 
       logger.webhook(`[PhonePe] Payment completed for order: ${merchantTransactionId}`)
@@ -160,7 +134,7 @@ export async function POST(req: NextRequest) {
 
     } else if (state === 'FAILED') {
       await orders.updateOne(
-        { id: order.id },
+        { id: order.id, status: { $in: ['created', 'attempted'] } },
         { $set: { status: 'failed', updated_at: nowIso() } }
       )
 

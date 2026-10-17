@@ -76,6 +76,6 @@ export async function GET() {
     })
   } catch (error) {
     console.error('[billing-stats]', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load billing stats' }, { status: 500 })
   }
 }

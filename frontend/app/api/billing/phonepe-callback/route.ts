@@ -8,14 +8,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getPhonePeTransactionStatus } from '@/lib/phonepe-server'
-import {
-  billingOrders,
-  billingPayments,
-  billingSubscriptions,
-  BILLING_PLANS,
-  newId,
-  nowIso,
-} from '@/lib/db/billing'
+import { billingOrders, billingPayments, newId, nowIso } from '@/lib/db/billing'
+import { activatePaidOrder, ensureBillingIndexes, storedPlanLabel } from '@/lib/billing-plans'
 import { getMongoDb } from '@/lib/mongodb'
 import { notify } from '@/lib/notifications'
 import { getCurrencySymbol } from '@/lib/currency'
@@ -74,29 +68,50 @@ export async function POST(req: NextRequest) {
 }
 
 async function processSuccessfulPayment(merchantTransactionId: string, amount: number, transactionId: string) {
+  await ensureBillingIndexes()
   const orders = await billingOrders()
   const order = await orders.findOne({ phonepe_transaction_id: merchantTransactionId })
   if (!order) return
 
-  if (order.status === 'paid') return // already processed
+  // Never activate a short payment.
+  if (amount && amount < order.amount_paise) {
+    console.error('[PhonePe callback] short payment', { order: order.id, amount })
+    return
+  }
 
-  await orders.updateOne(
-    { id: order.id },
+  // Atomic claim: the callback and the webhook can't both apply the order,
+  // and a refunded order is never revived.
+  const claim = await orders.updateOne(
+    { id: order.id, status: { $in: ['created', 'attempted', 'failed'] } },
     { $set: { status: 'paid', updated_at: nowIso() } },
   )
+  if (claim.modifiedCount === 0) return
 
   const finalAmount = amount || order.amount_paise
-  const payments = await billingPayments()
-  await payments.insertOne({
-    id: newId(),
-    user_id: order.user_id,
-    order_id: order.id,
-    razorpay_payment_id: '',
-    phonepe_payment_id: transactionId,
-    status: 'captured',
-    amount_paise: finalAmount,
-    created_at: nowIso(),
-  })
+  const paymentRowId = newId()
+  try {
+    await (await billingPayments()).updateOne(
+      { phonepe_payment_id: transactionId },
+      {
+        $setOnInsert: {
+          id: paymentRowId,
+          user_id: order.user_id,
+          order_id: order.id,
+          razorpay_payment_id: '',
+          phonepe_payment_id: transactionId,
+          status: 'captured',
+          amount_paise: finalAmount,
+          created_at: nowIso(),
+        },
+      },
+      { upsert: true },
+    )
+  } catch (e) {
+    if ((e as { code?: number })?.code !== 11000) throw e
+  }
+
+  // Activate exactly the plan snapshotted on the order (static or admin-created).
+  await activatePaidOrder({ ...order, status: 'paid' }, paymentRowId)
 
   const sym = getCurrencySymbol(await getPlatformCurrency())
   notify({
@@ -108,49 +123,14 @@ async function processSuccessfulPayment(merchantTransactionId: string, amount: n
     link: '/dashboard/billing',
   }).catch(() => {})
 
-  // Send confirmation email
-  const plan = BILLING_PLANS[order.plan_id]
-  if (plan) {
-    const db = await getMongoDb()
-    const user = await db.collection('user').findOne({ id: order.user_id })
-    if (user?.email) {
-      const template = plan.kind === 'subscription'
-        ? emailTemplates.subscriptionConfirmation(plan.name, finalAmount, plan.currency)
-        : emailTemplates.invoiceNotification(order.receipt, finalAmount, plan.name, plan.currency)
-      await sendEmail(user.email, template).catch(console.error)
-    }
-  }
-
-  // Create/extend subscription
-  const subPlan = BILLING_PLANS[order.plan_id]
-  if (subPlan?.kind === 'subscription' && subPlan.duration_days) {
-    const subs = await billingSubscriptions()
-    const existing = await subs.findOne({ user_id: order.user_id, status: 'active' })
-    const now = new Date()
-    const base = existing && new Date(existing.ends_at) > now ? new Date(existing.ends_at) : now
-    const ends_at = new Date(base.getTime() + subPlan.duration_days * 86400000).toISOString()
-
-    if (existing) {
-      await subs.updateOne(
-        { id: existing.id },
-        { $set: { ends_at, plan_id: subPlan.id } },
-      )
-    } else {
-      await subs.insertOne({
-        id: newId(),
-        user_id: order.user_id,
-        plan_id: subPlan.id,
-        status: 'active',
-        started_at: nowIso(),
-        ends_at,
-        created_at: nowIso(),
-      })
-    }
-  }
-
-  // Record coupon redemption if applicable
-  if (order.coupon_id) {
-    const { recordCouponRedemption } = await import('@/lib/db/billing')
-    await recordCouponRedemption(order.coupon_id, order.user_id, order.id, order.plan_id).catch(() => {})
+  // Confirmation email
+  const planName = storedPlanLabel(order) || 'CodeSpectra plan'
+  const db = await getMongoDb()
+  const user = await db.collection('user').findOne({ id: order.user_id })
+  if (user?.email) {
+    const template = order.plan_kind === 'one_time'
+      ? emailTemplates.invoiceNotification(order.receipt, finalAmount, planName, order.currency)
+      : emailTemplates.subscriptionConfirmation(planName, finalAmount, order.currency)
+    await sendEmail(user.email, template).catch(console.error)
   }
 }

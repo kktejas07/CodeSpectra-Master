@@ -3,7 +3,8 @@
  * billing_payments rows. Only paid or refunded orders count as invoices;
  * abandoned checkouts ("created"/"attempted"/"failed") are not shown.
  */
-import { billingOrders, billingPayments, BILLING_PLANS, type BillingOrderDoc, type BillingPaymentDoc } from '@/lib/db/billing'
+import { billingOrders, billingPayments, type BillingOrderDoc, type BillingPaymentDoc } from '@/lib/db/billing'
+import { storedPlanLabel } from '@/lib/billing-plans'
 
 export const INVOICE_STATUSES: BillingOrderDoc['status'][] = ['paid', 'refunded']
 
@@ -18,11 +19,10 @@ export interface InvoiceView {
   receipt: string
   paymentId: string | null
   paymentMethod: string | null
+  /** Set when an admin recorded a refund for this order. */
+  refundedAt: string | null
 }
 
-export function planLabel(planId: string): string | null {
-  return BILLING_PLANS[planId]?.name ?? (planId ? planId.replace(/_/g, ' ') : null)
-}
 
 export function toInvoiceView(order: BillingOrderDoc, payment: BillingPaymentDoc | null): InvoiceView {
   return {
@@ -30,12 +30,13 @@ export function toInvoiceView(order: BillingOrderDoc, payment: BillingPaymentDoc
     amount: (order.amount_paise || 0) / 100,
     currency: order.currency || 'INR',
     status: order.status,
-    description: planLabel(order.plan_id),
+    description: storedPlanLabel(order),
     createdAt: order.created_at,
     downloadUrl: `/api/billing/invoices/${encodeURIComponent(order.id)}/download`,
     receipt: order.receipt,
     paymentId: payment?.razorpay_payment_id || payment?.phonepe_payment_id || null,
     paymentMethod: payment?.method || null,
+    refundedAt: order.status === 'refunded' ? order.refunded_at || order.updated_at || null : null,
   }
 }
 

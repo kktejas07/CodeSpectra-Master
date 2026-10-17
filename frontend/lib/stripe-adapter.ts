@@ -5,7 +5,7 @@
 import Stripe from 'stripe'
 import { billingOrders, billingPayments, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
 import type { PaymentGatewayAdapter, CheckoutResult, SubscriptionResult, PaymentMethod } from './payment-service'
-import type { BILLING_PLANS } from '@/lib/db/billing'
+import type { CheckoutPlan } from './payment-service'
 
 function getClient(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY
@@ -16,7 +16,7 @@ function getClient(): Stripe {
 export class StripeAdapter implements PaymentGatewayAdapter {
   name = 'stripe' as const
 
-  async createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string]): Promise<CheckoutResult> {
+  async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan): Promise<CheckoutResult> {
     const stripe = getClient()
     const session = await stripe.checkout.sessions.create({
       mode: plan.kind === 'subscription' ? 'subscription' : 'payment',

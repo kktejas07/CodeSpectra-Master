@@ -6,8 +6,8 @@ import {
   billingSubscriptions,
   newId,
   nowIso,
-  BILLING_PLANS,
 } from '@/lib/db/billing'
+import { activatePaidOrder, ensureBillingIndexes } from '@/lib/billing-plans'
 import { notify } from '@/lib/notifications'
 import { getCurrencySymbol } from '@/lib/currency'
 import { getPlatformCurrency } from '@/lib/server-currency'
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const entities = payload.payload || {}
 
   try {
+    await ensureBillingIndexes()
     if (event === 'payment.captured' || event === 'payment.failed') {
       const pay = (entities.payment?.entity || {}) as Record<string, unknown>
       const order_id = String(pay.order_id || '')
@@ -63,14 +64,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           return NextResponse.json({ ok: true, duplicate: true })
         }
         // Atomic claim so the verify route and this webhook can't both apply the
-        // order (double subscription extension). A failure never un-pays an order.
+        // order (double subscription extension). A failure never un-pays an order
+        // and a retried event never revives a refunded one.
         // A captured amount below the order total never activates the order.
         const shortPaid = status === 'captured' && amount < order.amount_paise
         if (shortPaid) console.error('[billing/webhook] short payment', { order: order.id, amount })
         const claim = shortPaid
           ? null
           : await orders.updateOne(
-              { id: order.id, status: { $ne: 'paid' } },
+              {
+                id: order.id,
+                status: { $in: status === 'captured' ? ['created', 'attempted', 'failed'] : ['created', 'attempted'] },
+              },
               {
                 $set: {
                   status: status === 'captured' ? 'paid' : 'failed',
@@ -80,23 +85,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             )
         const claimed = (claim?.modifiedCount ?? 0) > 0
 
-        await paymentsCol.updateOne(
-          { razorpay_payment_id: payment_id },
-          {
-            $setOnInsert: {
-              id: newId(),
-              user_id: order.user_id,
-              order_id: order.id,
-              razorpay_payment_id: payment_id,
-              status,
-              amount_paise: amount,
-              method: String(pay.method || ''),
-              created_at: nowIso(),
-              raw_event: pay,
+        const paymentRowId = newId()
+        try {
+          await paymentsCol.updateOne(
+            { razorpay_payment_id: payment_id },
+            {
+              $setOnInsert: {
+                id: paymentRowId,
+                user_id: order.user_id,
+                order_id: order.id,
+                razorpay_payment_id: payment_id,
+                status,
+                amount_paise: amount,
+                method: String(pay.method || ''),
+                created_at: nowIso(),
+                raw_event: pay,
+              },
             },
-          },
-          { upsert: true },
-        )
+            { upsert: true },
+          )
+        } catch (e) {
+          if ((e as { code?: number })?.code !== 11000) throw e
+        }
         const sym = getCurrencySymbol(await getPlatformCurrency())
         notify({
           user_id: order.user_id,
@@ -111,47 +121,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         // Issue / extend / reactivate subscription on captured event.
         // Only the claimer applies the order's effects.
         if (status === 'captured' && claimed) {
-          const plan = BILLING_PLANS[order.plan_id]
-          if (plan?.kind === 'subscription' && plan.duration_days) {
-            const subs = await billingSubscriptions()
-            const existing = await subs.findOne({
-              user_id: order.user_id,
-              status: { $in: ['active', 'expired', 'cancelled'] },
-            })
-            const now = new Date()
-            const durationMs = plan.duration_days * 86400000
-            if (existing) {
-              const currentEnd = new Date(existing.ends_at)
-              const base = currentEnd > now ? currentEnd : now
-              const ends_at = new Date(base.getTime() + durationMs).toISOString()
-              await subs.updateOne(
-                { id: existing.id },
-                {
-                  $set: {
-                    status: 'active',
-                    ends_at,
-                    plan_id: plan.id,
-                    updated_at: nowIso(),
-                  },
-                },
-              )
-            } else {
-              const ends_at = new Date(now.getTime() + durationMs).toISOString()
-              await subs.insertOne({
-                id: newId(),
-                user_id: order.user_id,
-                plan_id: plan.id,
-                status: 'active',
-                started_at: nowIso(),
-                ends_at,
-                created_at: nowIso(),
-              })
-            }
-          }
-          if (order.coupon_id) {
-            const { recordCouponRedemption } = await import('@/lib/db/billing')
-            await recordCouponRedemption(order.coupon_id, order.user_id, order.id, order.plan_id).catch(() => {})
-          }
+          // Activate exactly the plan snapshotted on the order (static or admin-created).
+          await activatePaidOrder({ ...order, status: 'paid' }, paymentRowId)
         }
       }
     } else if (event === 'refund.created') {
