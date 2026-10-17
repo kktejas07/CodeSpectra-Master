@@ -38,6 +38,7 @@ export async function GET() {
       envApiToken: !!process.env.CLOUDFLARE_API_TOKEN,
     })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    console.error('[CodeSpectra] admin/cloudflare-debug:', e)
+    return NextResponse.json({ error: 'Cloudflare debug failed' }, { status: 500 })
   }
 }

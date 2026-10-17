@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ logs: result.logs, total: result.total, stats })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to load email logs'
+    const msg = 'Failed to load email logs'
     console.error('[email-logs] GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

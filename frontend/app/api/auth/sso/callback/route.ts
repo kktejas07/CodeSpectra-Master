@@ -152,29 +152,55 @@ export async function GET(req: NextRequest) {
     const users = db.collection('user')
 
     let user = await users.findOne({ email: { $regex: `^${userEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } })
+    // Tenant comes from the provider the user signed in through (never from
+    // the IdP's claims). A provider with no tenant can't mint company admins.
+    const providerRec = provider as unknown as { tenant_id?: unknown; org_id?: unknown }
+    const providerTenant =
+      (typeof providerRec.tenant_id === 'string' && providerRec.tenant_id.trim()) ||
+      (typeof providerRec.org_id === 'string' && providerRec.org_id.trim()) ||
+      null
+
     if (!user) {
-      // Create new user with SSO provisioning
-      const newUser = {
+      // Create new user with SSO provisioning. Only `user` / `tenant_admin`
+      // are ever assigned here, and tenant_admin only with a tenant.
+      const wanted = normalizeUserRole(provider.default_role || 'user')
+      const newRole = wanted === 'tenant_admin' && providerTenant ? 'tenant_admin' : 'user'
+      const nowDate = new Date()
+      const newUser: Record<string, unknown> = {
         id: randomUUID(),
         email: userEmail,
         name: userName,
-        role: normalizeUserRole(provider.default_role || 'user'),
+        role: newRole,
         provider: 'sso',
         sso_provider_id: provider.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: nowDate.toISOString(),
+        updated_at: nowDate.toISOString(),
+        createdAt: nowDate,
+        updatedAt: nowDate,
       }
+      if (providerTenant) newUser.tenantId = providerTenant
       const result = await users.insertOne(newUser)
-      user = { ...newUser, _id: result.insertedId }
+      user = { ...newUser, _id: result.insertedId } as typeof user & Record<string, unknown>
     } else {
+      const set: Record<string, unknown> = {}
       // Update existing user's SSO provider if not set
-      if (!user.sso_provider_id) {
-        await users.updateOne(
-          { _id: user._id },
-          { $set: { sso_provider_id: provider.id, updated_at: new Date().toISOString() } }
-        )
+      if (!user.sso_provider_id) set.sso_provider_id = provider.id
+      // One-off repair: company admins created by SSO before tenants were
+      // assigned have no tenant. Give them this provider's tenant.
+      if (
+        providerTenant &&
+        normalizeUserRole(user.role as string | undefined) === 'tenant_admin' &&
+        !user.tenantId && !user.organizationId
+      ) {
+        set.tenantId = providerTenant
+      }
+      if (Object.keys(set).length) {
+        set.updated_at = new Date().toISOString()
+        await users.updateOne({ _id: user._id }, { $set: set })
+        user = { ...user, ...set }
       }
     }
+    if (!user) return fail('unexpected')
 
     const uid = String(user.id || user._id)
     const role = normalizeUserRole(user.role as string | undefined)

@@ -40,7 +40,7 @@ export async function PATCH(
     const updated = await col.findOne({ id })
     return NextResponse.json({ data: updated })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to update tenant'
+    const msg = 'Failed to update tenant'
     console.error('[CodeSpectra] admin/tenants PATCH:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -73,7 +73,7 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to delete tenant'
+    const msg = 'Failed to delete tenant'
     console.error('[CodeSpectra] admin/tenants DELETE:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

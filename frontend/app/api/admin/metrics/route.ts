@@ -79,7 +79,7 @@ export async function GET() {
       activityTrend: submissionsByDay,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Metrics failed'
+    const msg = 'Metrics failed'
     console.error('[CodeSpectra] admin/metrics:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

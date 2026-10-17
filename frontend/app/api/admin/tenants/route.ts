@@ -26,7 +26,7 @@ export async function GET() {
 
     return NextResponse.json({ data: rows })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to list tenants'
+    const msg = 'Failed to list tenants'
     console.error('[CodeSpectra] admin/tenants GET:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ data: { ...doc, member_count: admin ? 1 : 0 }, admin }, { status: 201 })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to create tenant'
+    const msg = 'Failed to create tenant'
     console.error('[CodeSpectra] admin/tenants POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

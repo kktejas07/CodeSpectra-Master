@@ -46,7 +46,8 @@ export async function POST(request: Request) {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) })
       return NextResponse.json({ ok: res.ok, error: res.ok ? undefined : `HTTP ${res.status}` })
     }
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e.message })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/llm-test:', e)
+    return NextResponse.json({ ok: false, error: 'LLM test failed. See server logs for details.' })
   }
 }

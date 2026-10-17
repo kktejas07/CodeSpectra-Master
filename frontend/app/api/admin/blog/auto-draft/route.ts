@@ -240,7 +240,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('[auto-draft] Error:', e)
     return NextResponse.json(
-      { error: `Auto-draft failed: ${e instanceof Error ? e.message : 'Unknown error'}` },
+      { error: 'Auto-draft failed. Try again.' },
       { status: 502 }
     )
   }

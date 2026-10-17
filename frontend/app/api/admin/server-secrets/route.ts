@@ -200,7 +200,7 @@ export async function PATCH(request: Request) {
   } catch (e) {
     console.error('[server-secrets] PATCH error:', e)
     return NextResponse.json(
-      { error: 'Save failed: ' + (e instanceof Error ? e.message : String(e)) },
+      { error: 'Save failed. See server logs for details.' },
       { status: 500 },
     )
   }

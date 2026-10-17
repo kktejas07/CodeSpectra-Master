@@ -94,6 +94,7 @@ export async function POST() {
 
     return NextResponse.json({ ok: true, count: total })
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 500 })
+    console.error('[CodeSpectra] admin/rag/reindex:', e)
+    return NextResponse.json({ ok: false, error: 'Reindex failed' }, { status: 500 })
   }
 }

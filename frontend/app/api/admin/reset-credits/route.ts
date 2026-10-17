@@ -15,7 +15,8 @@ export async function GET() {
       { $set: { aiCredits: 100, creditsResetAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } }
     )
     return NextResponse.json({ success: true, updated: result.modifiedCount })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/reset-credits:', e)
+    return NextResponse.json({ error: 'Failed to reset credits' }, { status: 500 })
   }
 }

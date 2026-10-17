@@ -106,6 +106,11 @@ interface NotifyInput {
   send_whatsapp?: boolean
   /** WhatsApp phone number override (if not in user profile). */
   whatsapp_phone?: string
+  /**
+   * Bypass the user's quiet hours for email/push/WhatsApp. Defaults to true
+   * for `security` notifications, false otherwise (deferred to window end).
+   */
+  urgent?: boolean
 }
 
 /**
@@ -131,85 +136,85 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
     }
     await col.insertOne(doc)
 
-    // Real-time FCM push (fire-and-forget, best effort)
-    if (!input.skip_push) {
-      try {
-        const { sendPushToUser } = await import('@/lib/push-notifications')
-        void sendPushToUser(input.user_id, {
-          title: doc.title,
-          body: doc.message,
-          link: doc.link || undefined,
-          data: {
-            type: doc.type,
-            category: String(doc.category),
-            icon: String(doc.icon),
-            ...Object.fromEntries(
-              Object.entries(doc.metadata || {}).map(([k, v]) => [k, String(v)]),
-            ),
-          },
-        })
-      } catch { /* push is optional */ }
-    }
-
-    // Optional email delivery
-    if (input.send_email) {
-      try {
-        const { getMongoDb } = await import('@/lib/mongodb')
-        const db = await getMongoDb()
-        const pref = await db.collection('notification_preferences').findOne({
-          user_id: input.user_id,
-          type: input.type,
-        })
-        if (!pref || pref.enabled !== false) {
-          const user = await db.collection('user').findOne(
-            { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
-            { projection: { email: 1 } },
-          )
-          if (user?.email) {
-            const { sendEmail } = await import('@/lib/send-email')
-            await sendEmail(String(user.email), {
-              subject: doc.title,
-              html: `<div style="font-family:sans-serif;padding:24px;max-width:480px">
-                <h2 style="margin:0 0 8px">${doc.title}</h2>
-                <p style="color:#4b5563;margin:0 0 16px">${doc.message}</p>
-                ${doc.link ? `<a href="${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}${doc.link}" style="display:inline-block;background:#6366f1;color:white;padding:8px 16px;border-radius:6px;text-decoration:none">View</a>` : ''}
-                <p style="color:#9ca3af;font-size:12px;margin-top:24px">CodeSpectra Notification</p>
-              </div>`,
-            })
-          }
-        }
-      } catch { /* email is optional */ }
-    }
-
-    // Optional WhatsApp delivery
-    if (input.send_whatsapp || input.whatsapp_phone) {
-      try {
-        const { isWhatsAppConfigured, sendWhatsAppText, normalizePhone } = await import('@/lib/whatsapp')
-        if (await isWhatsAppConfigured()) {
-          let phone = input.whatsapp_phone || ''
-          if (!phone) {
-            const { getMongoDb } = await import('@/lib/mongodb')
-            const db = await getMongoDb()
-            const user = await db.collection('user').findOne(
-              { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
-              { projection: { phone: 1, phone_number: 1, whatsapp: 1 } },
-            )
-            phone = String(user?.phone || user?.phone_number || user?.whatsapp || '')
-          }
-          if (phone) {
-            const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-            let text = `*${doc.title}*\n\n${doc.message}`
-            if (doc.link) text += `\n\n${base}${doc.link}`
-            void sendWhatsAppText(phone, text) // fire-and-forget
-          }
-        }
-      } catch { /* whatsapp is optional */ }
-    }
+    // Out-of-app delivery (push / email / WhatsApp). Built up front, then sent
+    // now or deferred to the end of the user's quiet hours (see
+    // lib/notifications-delivery.ts). Fire-and-forget so callers never block.
+    void deliverOutOfApp(input, doc)
 
     return doc
   } catch (e) {
     console.error('[notifications] Failed: notifications', e)
     return null
+  }
+}
+
+const esc = (v: unknown) =>
+  String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promise<void> {
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const { deliverOrDefer } = await import('@/lib/notifications-delivery')
+    type Payload = import('@/lib/notifications-delivery').DeliveryPayload
+    const payload: Payload = {}
+    const wantsEmail = !!input.send_email
+    const wantsWhatsApp = !!(input.send_whatsapp || input.whatsapp_phone)
+    const db = wantsEmail || wantsWhatsApp ? await getMongoDb() : null
+    const user = db
+      ? await db.collection('user').findOne(
+          { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
+          { projection: { email: 1, phone: 1, phone_number: 1, whatsapp: 1 } },
+        )
+      : null
+    const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+    if (!input.skip_push) {
+      payload.push = {
+        title: doc.title,
+        body: doc.message,
+        link: doc.link || undefined,
+        data: {
+          type: doc.type,
+          category: String(doc.category),
+          icon: String(doc.icon),
+          ...Object.fromEntries(Object.entries(doc.metadata || {}).map(([k, v]) => [k, String(v)])),
+        },
+      }
+    }
+
+    if (wantsEmail && db && user?.email) {
+      // Honour both the per-type opt-out and the email channel switch.
+      const [typePref, channelPref] = await Promise.all([
+        db.collection('notification_preferences').findOne({ user_id: input.user_id, type: input.type }),
+        db.collection('notification_preferences').findOne({ user_id: input.user_id, type: 'email' }),
+      ])
+      if (typePref?.enabled !== false && channelPref?.enabled !== false) {
+        payload.email = {
+          to: String(user.email),
+          subject: doc.title,
+          html: `<div style="font-family:sans-serif;padding:24px;max-width:480px">
+                <h2 style="margin:0 0 8px">${esc(doc.title)}</h2>
+                <p style="color:#4b5563;margin:0 0 16px">${esc(doc.message)}</p>
+                ${doc.link ? `<a href="${esc(base + doc.link)}" style="display:inline-block;background:#6366f1;color:white;padding:8px 16px;border-radius:6px;text-decoration:none">View</a>` : ''}
+                <p style="color:#9ca3af;font-size:12px;margin-top:24px">CodeSpectra Notification</p>
+              </div>`,
+        }
+      }
+    }
+
+    if (wantsWhatsApp) {
+      const phone = input.whatsapp_phone || String(user?.phone || user?.phone_number || user?.whatsapp || '')
+      if (phone) {
+        let text = `*${doc.title}*\n\n${doc.message}`
+        if (doc.link) text += `\n\n${base}${doc.link}`
+        payload.whatsapp = { phone, text }
+      }
+    }
+
+    const urgent = input.urgent ?? doc.category === 'security'
+    await deliverOrDefer(input.user_id, payload, { urgent, notificationId: doc.id })
+  } catch (e) {
+    console.error('[notifications] out-of-app delivery failed:', e)
   }
 }
 

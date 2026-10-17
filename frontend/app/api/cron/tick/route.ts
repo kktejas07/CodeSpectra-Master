@@ -22,6 +22,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { runDueWorkflows, startSchedulerLoop } from '@/lib/scheduler'
 import { getMongoDb } from '@/lib/mongodb'
+import { flushDeferredDeliveries } from '@/lib/notifications-delivery'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -64,7 +65,14 @@ async function handle(req: NextRequest) {
   } catch {
     // Never fail the tick over housekeeping.
   }
-  return NextResponse.json({ ok: true, ...report, autoClosedExams: autoClosed })
+  // Send email/push held back by users' quiet hours once their window ends.
+  let deferredSent = 0
+  try {
+    deferredSent = await flushDeferredDeliveries(new Date())
+  } catch (e) {
+    console.error('[cron/tick] deferred notification flush failed:', e)
+  }
+  return NextResponse.json({ ok: true, ...report, autoClosedExams: autoClosed, deferredNotificationsSent: deferredSent })
 }
 
 const cronTick = withCronHeartbeat('tick', handle)

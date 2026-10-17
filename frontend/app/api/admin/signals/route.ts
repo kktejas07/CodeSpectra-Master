@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
             }
           } catch (e) {
             console.error(`[signals] Feed ${feed.id} error:`, e)
-            errors.push(`${feed.id}: ${e instanceof Error ? e.message : String(e)}`)
+            errors.push(`${feed.id}: feed could not be processed`)
           }
         }
         

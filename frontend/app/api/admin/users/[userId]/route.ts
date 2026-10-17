@@ -109,8 +109,8 @@ export async function PATCH(
     try {
       await updateUserById(userId, updates as any)
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Update failed'
-      return NextResponse.json({ error: msg }, { status: 500 })
+      console.error('[CodeSpectra] admin/users PATCH:', e)
+      return NextResponse.json({ error: 'Update failed' }, { status: 500 })
     }
   }
 
@@ -179,7 +179,7 @@ export async function DELETE(
     }
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Delete failed'
-    return NextResponse.json({ error: msg }, { status: 500 })
+    console.error('[CodeSpectra] admin/users DELETE:', e)
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
   }
 }

@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       errors,
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Bulk scheduling failed'
+    const msg = 'Bulk scheduling failed'
     console.error('[Bulk] POST error:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

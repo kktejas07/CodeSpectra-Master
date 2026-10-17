@@ -70,8 +70,9 @@ export async function POST(request: Request) {
         clearNextBuildCache()
         invalidateServerSecretsCache()
         return NextResponse.json({ message: 'Next.js build cache + secrets cache cleared' })
-      } catch (e: any) {
-        return NextResponse.json({ error: e.message }, { status: 500 })
+      } catch (e: unknown) {
+        console.error('[CodeSpectra] admin/system/cache next:', e)
+        return NextResponse.json({ error: 'Failed to clear the build cache' }, { status: 500 })
       }
     }
 
@@ -90,7 +91,10 @@ export async function POST(request: Request) {
         'docker restart codespectra-piston 2>&1',
         30000
       )
-      if (!ok) return NextResponse.json({ error: output }, { status: 500 })
+      if (!ok) {
+        console.error('[CodeSpectra] admin/system/cache docker command failed:', output)
+        return NextResponse.json({ error: 'The Docker command failed. See server logs for details.' }, { status: 500 })
+      }
       return NextResponse.json({ message: 'Piston restarted — packages re-indexing. Check piston-status in 15s.' })
     }
 
@@ -101,8 +105,9 @@ export async function POST(request: Request) {
       try {
         clearNextBuildCache()
         cleared.push('Next.js build cache')
-      } catch (e: any) {
-        return NextResponse.json({ error: `Failed to clear build cache: ${e.message}` }, { status: 500 })
+      } catch (e: unknown) {
+        console.error('[CodeSpectra] admin/system/cache system:', e)
+        return NextResponse.json({ error: 'Failed to clear the build cache' }, { status: 500 })
       }
       invalidateServerSecretsCache()
       cleared.push('server secrets cache')
@@ -144,7 +149,10 @@ export async function POST(request: Request) {
         )
       }
       const { ok, output } = safeExec('docker system prune -a -f --filter "until=24h"', 60000)
-      if (!ok) return NextResponse.json({ error: output }, { status: 500 })
+      if (!ok) {
+        console.error('[CodeSpectra] admin/system/cache docker command failed:', output)
+        return NextResponse.json({ error: 'The Docker command failed. See server logs for details.' }, { status: 500 })
+      }
       return NextResponse.json({ message: 'Docker system prune completed — unused images & build cache reclaimed. (Docker volumes are never touched.)' })
     }
 

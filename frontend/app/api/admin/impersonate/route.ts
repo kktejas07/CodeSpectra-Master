@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Failed to impersonate'
+    const msg = 'Failed to impersonate'
     console.error('[CodeSpectra] admin/impersonate POST:', e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

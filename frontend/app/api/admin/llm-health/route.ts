@@ -99,9 +99,10 @@ async function probeOne(
     return { ok: false, error: text.slice(0, 200) || `HTTP ${res.status}`, status: res.status, latencyMs }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    console.error('[CodeSpectra] admin/llm-health probe:', e)
     return {
       ok: false,
-      error: /timeout/i.test(msg) ? 'Probe timed out after 20s (provider slow or unreachable)' : msg.slice(0, 200),
+      error: /timeout/i.test(msg) ? 'Probe timed out after 20s (provider slow or unreachable)' : 'Probe failed. See server logs for details.',
       latencyMs: Date.now() - start,
     }
   }

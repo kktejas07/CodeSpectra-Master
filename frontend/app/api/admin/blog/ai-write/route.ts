@@ -336,7 +336,7 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     console.error('[blog/ai-write] Pipeline error:', e)
     return NextResponse.json(
-      { error: `Content generation failed: ${e instanceof Error ? e.message : 'Unknown error'}` },
+      { error: 'Content generation failed. Try again.' },
       { status: 502 }
     )
   }

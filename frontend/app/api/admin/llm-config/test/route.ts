@@ -115,10 +115,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, message: 'Connection successful' })
   } catch (e: any) {
-    const reason = e?.cause?.message || e?.cause?.code || e?.message || 'Connection failed'
+    console.error('[CodeSpectra] admin/llm-config/test:', e)
+    const reason = String(e?.cause?.code || e?.cause?.message || e?.message || '')
     const detailed = reason.includes('ENOTFOUND') || reason.includes('EAI_AGAIN') || reason.includes('fetch failed')
-      ? `Cannot reach endpoint "${body.endpoint}". Check that the API Endpoint URL is valid and reachable (${reason}).`
-      : reason
+      ? `Cannot reach endpoint "${body.endpoint}". Check that the API Endpoint URL is valid and reachable.`
+      : 'Connection failed. See server logs for details.'
     return NextResponse.json({ ok: false, message: detailed })
   }
 }

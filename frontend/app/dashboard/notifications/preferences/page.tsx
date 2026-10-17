@@ -46,6 +46,12 @@ export default function NotificationPreferencesPage() {
   const [quietStart, setQuietStart] = useState('22:00')
   const [quietEnd, setQuietEnd] = useState('08:00')
   const [savingQuiet, setSavingQuiet] = useState(false)
+  const [quietEnabled, setQuietEnabled] = useState(false)
+  const [quietTz, setQuietTz] = useState<string | null>(null)
+  const [digest, setDigest] = useState<{ daily: boolean; weekly: boolean } | null>(null)
+  const browserTz = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' } catch { return 'UTC' }
+  })()
 
   const fetchPreferences = useCallback(async () => {
     try {
@@ -66,12 +72,38 @@ export default function NotificationPreferencesPage() {
   useEffect(() => {
     void fetch('/api/notifications/preferences/quiet-hours', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((qh: { quietStart?: string; quietEnd?: string } | null) => {
+      .then((qh: { quietStart?: string; quietEnd?: string; enabled?: boolean; timeZone?: string | null } | null) => {
         if (qh?.quietStart) setQuietStart(qh.quietStart)
         if (qh?.quietEnd) setQuietEnd(qh.quietEnd)
+        if (typeof qh?.enabled === 'boolean') setQuietEnabled(qh.enabled)
+        if (qh?.timeZone) setQuietTz(qh.timeZone)
       })
       .catch(() => { /* keep defaults */ })
+    void fetch('/api/notifications/preferences/digest', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { daily?: boolean; weekly?: boolean } | null) => {
+        if (d && typeof d.daily === 'boolean' && typeof d.weekly === 'boolean') setDigest({ daily: d.daily, weekly: d.weekly })
+      })
+      .catch(() => { /* card shows a load error */ })
   }, [])
+
+  const handleDigestToggle = async (field: 'daily' | 'weekly', value: boolean) => {
+    const prev = digest
+    if (prev) setDigest({ ...prev, [field]: value })
+    try {
+      const res = await csrfFetch('/api/notifications/preferences/digest', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ [field]: value }),
+      })
+      if (!res.ok) throw new Error('Failed to update')
+      toast({ type: 'success', title: 'Digest preferences updated' })
+    } catch {
+      setDigest(prev)
+      toast({ type: 'error', title: 'Failed to update digest preferences' })
+    }
+  }
 
   useEffect(() => {
     const interval = setInterval(() => { void fetchPreferences() }, 30_000)
@@ -128,9 +160,10 @@ export default function NotificationPreferencesPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ quietStart, quietEnd }),
+        body: JSON.stringify({ quietStart, quietEnd, enabled: quietEnabled, timeZone: browserTz }),
       })
       if (!res.ok) throw new Error('Failed to save')
+      setQuietTz(browserTz)
       toast({ type: 'success', title: 'Quiet hours saved' })
     } catch {
       toast({ type: 'error', title: 'Failed to save quiet hours' })
@@ -239,34 +272,48 @@ export default function NotificationPreferencesPage() {
           <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">
               <h3 className="text-lg font-semibold text-foreground">Email digest</h3>
-              <p id="digest-unavailable" className="mt-1 text-sm text-muted-foreground">
-                Summaries of what happened on your account. Not available yet — we don&apos;t send digests, so there&apos;s nothing to turn on.
+              <p className="mt-1 text-sm text-muted-foreground">
+                Summaries sent to your email. Turning off email notifications above also stops digests.
               </p>
             </div>
-            <div className="divide-y divide-border/60 px-6">
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="min-w-0 space-y-0.5">
-                  <Label htmlFor="daily-digest" className="font-medium text-muted-foreground">Daily digest</Label>
-                  <p className="text-sm text-muted-foreground">One summary per day · not available yet</p>
+            {digest ? (
+              <div className="divide-y divide-border/60 px-6">
+                <div className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0 space-y-0.5">
+                    <Label htmlFor="daily-digest" className="font-medium text-foreground">Daily digest</Label>
+                    <p className="text-sm text-muted-foreground">One email with the last 24 hours of notifications, only when there&apos;s something new</p>
+                  </div>
+                  <Switch id="daily-digest" checked={digest.daily} onCheckedChange={(v) => handleDigestToggle('daily', v)} />
                 </div>
-                <Switch id="daily-digest" checked={false} disabled aria-describedby="digest-unavailable" />
-              </div>
-              <div className="flex items-center justify-between gap-4 py-4">
-                <div className="min-w-0 space-y-0.5">
-                  <Label htmlFor="weekly-report" className="font-medium text-muted-foreground">Weekly report</Label>
-                  <p className="text-sm text-muted-foreground">Activity and usage highlights · not available yet</p>
+                <div className="flex items-center justify-between gap-4 py-4">
+                  <div className="min-w-0 space-y-0.5">
+                    <Label htmlFor="weekly-report" className="font-medium text-foreground">Weekly report</Label>
+                    <p className="text-sm text-muted-foreground">Platform highlights every Monday</p>
+                  </div>
+                  <Switch id="weekly-report" checked={digest.weekly} onCheckedChange={(v) => handleDigestToggle('weekly', v)} />
                 </div>
-                <Switch id="weekly-report" checked={false} disabled aria-describedby="digest-unavailable" />
               </div>
-            </div>
+            ) : (
+              <p className="px-6 py-4 text-sm text-muted-foreground">Couldn&apos;t load digest settings. Refresh the page to try again.</p>
+            )}
           </Card>
 
           <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">
               <h3 className="text-lg font-semibold text-foreground">Quiet hours</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Set the hours when you would rather not be notified. These are saved to your account but aren&apos;t applied to delivery yet.
+                Email, push and WhatsApp notifications that arrive during these hours are held and sent when they end.
+                Security alerts still come through right away. In-app notifications aren&apos;t affected.
               </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 border-b border-border/60 px-6 py-4">
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor="quiet-enabled" className="font-medium text-foreground">Use quiet hours</Label>
+                <p className="text-sm text-muted-foreground">
+                  Times are in {quietTz ?? browserTz}{quietTz && quietTz !== browserTz ? ` (saving will switch to ${browserTz})` : ''}
+                </p>
+              </div>
+              <Switch id="quiet-enabled" checked={quietEnabled} onCheckedChange={setQuietEnabled} />
             </div>
             <div className="grid gap-4 px-6 py-5 sm:grid-cols-2">
               <div className="space-y-2">

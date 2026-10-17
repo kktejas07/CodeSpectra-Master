@@ -66,7 +66,8 @@ export async function GET(request: Request) {
     const merged = mergeGeneralPlatformSettings(doc?.value)
     return NextResponse.json({ settings: merged })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[CodeSpectra] admin/platform-settings:', e)
+    return NextResponse.json({ error: 'Platform settings request failed' }, { status: 500 })
   }
 }
 
@@ -109,7 +110,8 @@ export async function PATCH(request: Request) {
       )
       return NextResponse.json({ settings: next })
     } catch (e) {
-      return NextResponse.json({ error: String(e) }, { status: 500 })
+      console.error('[CodeSpectra] admin/platform-settings:', e)
+      return NextResponse.json({ error: 'Platform settings request failed' }, { status: 500 })
     }
   }
 
@@ -194,6 +196,7 @@ export async function PATCH(request: Request) {
     invalidateCurrencyCache()
     return NextResponse.json({ settings: mergedNext })
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 500 })
+    console.error('[CodeSpectra] admin/platform-settings:', e)
+    return NextResponse.json({ error: 'Platform settings request failed' }, { status: 500 })
   }
 }

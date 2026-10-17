@@ -55,8 +55,9 @@ export async function POST(req: NextRequest) {
       paths: paths.length > 0 ? paths : ['/* (all)'],
     })
   } catch (e) {
+    console.error('[CodeSpectra] admin/cdn/purge:', e)
     return NextResponse.json(
-      { error: `Network error: ${(e as Error).message}` },
+      { error: 'Network error reaching Cloudflare. Try again.' },
       { status: 502 },
     )
   }

@@ -209,13 +209,16 @@ export function PublicPageWrapper({
                     })
                     let errMsg = `Subscribe failed (${res.status})`
                     let already = false
+                    let needsConfirm = false
                     try {
-                      const data = (await res.json()) as { ok?: boolean; already_subscribed?: boolean; error?: string }
+                      const data = (await res.json()) as { ok?: boolean; already_subscribed?: boolean; confirmation_required?: boolean; error?: string }
                       if (data?.already_subscribed) already = true
+                      if (data?.confirmation_required) needsConfirm = true
                       if (data?.error) errMsg = data.error
                     } catch { /* non-JSON body — keep status message */ }
                     if (!res.ok) throw new Error(errMsg)
-                    addToast({ type: 'success', title: already ? 'Already subscribed!' : 'Subscribed successfully!' })
+                    if (needsConfirm) addToast({ type: 'info', title: 'Check your email', message: 'You unsubscribed earlier, so confirm with the link we just sent.' })
+                    else addToast({ type: 'success', title: already ? 'Already subscribed!' : 'Subscribed successfully!' })
                     form.reset()
                   } catch (err) {
                     addToast({ type: 'error', title: 'Failed to subscribe.', message: err instanceof Error ? err.message : undefined })

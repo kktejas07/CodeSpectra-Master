@@ -67,6 +67,16 @@ const HTTP_CRON_JOBS = [
     intervalMinutes: 10080,
   },
   {
+    id: 'daily-digest',
+    path: '/api/cron/daily-digest',
+    name: 'Daily digest',
+    what: 'Emails opted-in users a summary of their last 24 hours of notifications.',
+    recommend: 'Daily 08:00 UTC',
+    cronHint: '0 8 * * *',
+    auth: 'CRON_SECRET',
+    intervalMinutes: 1440,
+  },
+  {
     id: 'exam-reminders',
     path: '/api/cron/exam-reminders',
     name: 'Exam reminders',
@@ -208,7 +218,7 @@ export async function GET() {
     })
   } catch (e) {
     console.error('[CRON JOBS GET 500 ERROR]', e)
-    const msg = e instanceof Error ? e.message : String(e)
+    const msg = 'Failed to load cron jobs'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
@@ -302,7 +312,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
   } catch (e) {
     console.error('[CRON JOBS POST 500 ERROR]', action, e)
-    const msg = e instanceof Error ? e.message : String(e)
+    const msg = 'Cron action failed'
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

@@ -78,6 +78,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ results: candidates.slice(0, 10) })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 500 })
+    console.error('[CodeSpectra] admin/rag/search:', e)
+    return NextResponse.json({ error: 'Search failed' }, { status: 500 })
   }
 }

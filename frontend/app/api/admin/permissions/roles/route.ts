@@ -41,8 +41,9 @@ export async function GET() {
       })),
       allResources,
     })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/permissions/roles:', e)
+    return NextResponse.json({ error: 'Something went wrong with roles. Try again.' }, { status: 500 })
   }
 }
 
@@ -108,7 +109,8 @@ export async function POST(request: Request) {
     await col.updateOne({ role: body.role }, { $set: doc }, { upsert: true })
     invalidatePermissionCache()
     return NextResponse.json({ role: doc })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+  } catch (e: unknown) {
+    console.error('[CodeSpectra] admin/permissions/roles:', e)
+    return NextResponse.json({ error: 'Something went wrong with roles. Try again.' }, { status: 500 })
   }
 }
