@@ -1,20 +1,15 @@
 'use client'
-import { useToast } from '@/lib/toast-context'
 
-import { useRef, useState } from 'react'
-import {
-  Camera,
-  CheckCircle2,
-  AlertCircle,
-  Upload,
-  ShieldCheck,
-  Video,
-  UserCheck,
-  RefreshCw,
-  FileCheck,
-} from 'lucide-react'
+import Link from 'next/link'
+import { ShieldCheck, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 interface AadhaarIDVerificationModalProps {
+  /**
+   * Kept for API compatibility with ExamAadhaarGate. Never called: there is no
+   * real Aadhaar OCR + face-match + liveness backend yet, and we will not
+   * report a verified result we did not produce.
+   */
   onVerified: (verificationResult: {
     idNumberMasked: string
     name: string
@@ -24,268 +19,51 @@ interface AadhaarIDVerificationModalProps {
   onCancel: () => void
 }
 
-export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVerificationModalProps) {
-  const addToast = useToast()
-  const [step, setStep] = useState<'upload_id' | 'face_match' | 'liveness_video' | 'complete'>('upload_id')
-  const [idFile, setIdFile] = useState<File | null>(null)
-  const [idPhotoSnippet, setIdPhotoSnippet] = useState<string | null>(null)
-  const [ocrResult, setOcrResult] = useState<{ idNumberMasked: string; name: string; dob: string } | null>(null)
-  const [isProcessingOcr, setIsProcessingOcr] = useState(false)
-
-  const [selfieCaptured, setSelfieCaptured] = useState<string | null>(null)
-  const [similarityScore, setSimilarityScore] = useState<number | null>(null)
-  const [isComparing, setIsComparing] = useState(false)
-
-  const [recordingProgress, setRecordingProgress] = useState(0)
-  const [isRecording, setIsRecording] = useState(false)
-  const [livenessVerified, setLivenessVerified] = useState(false)
-
-  const videoRef = useRef<HTMLVideoElement>(null)
-
-  // Step 1: Handle ID Card Upload & OCR Scan
-  const handleIdUpload = (file: File) => {
-    setIdFile(file)
-    setIsProcessingOcr(true)
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string
-      setIdPhotoSnippet(dataUrl)
-      setTimeout(() => {
-        setIsProcessingOcr(false)
-        setOcrResult({
-          idNumberMasked: 'XXXX-XXXX-9812',
-          name: 'Marcus Vance',
-          dob: '1998-05-14',
-        })
-      }, 1200)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  // Step 2: Start Camera & Match Live Face
-  const startCamera = async () => {
-    setStep('face_match')
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-      }
-    } catch (e) {
-      addToast({ type: 'info', title: 'Notification', message: 'Unable to access camera for live face match.' })
-    }
-  }
-
-  const captureSelfieAndMatch = () => {
-    if (!videoRef.current) return
-    const canvas = document.createElement('canvas')
-    canvas.width = 320
-    canvas.height = 240
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0, 320, 240)
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-      setSelfieCaptured(dataUrl)
-      setIsComparing(true)
-
-      setTimeout(() => {
-        setIsComparing(false)
-        setSimilarityScore(96.8)
-      }, 1400)
-    }
-  }
-
-  // Step 3: Record 3.5s Video Liveness Check
-  const startLivenessRecording = () => {
-    setStep('liveness_video')
-    setIsRecording(true)
-    let p = 0
-    const interval = setInterval(() => {
-      p += 10
-      setRecordingProgress(p)
-      if (p >= 100) {
-        clearInterval(interval)
-        setIsRecording(false)
-        setLivenessVerified(true)
-        setStep('complete')
-      }
-    }, 350)
-  }
-
+/**
+ * "ocr_face" exam Aadhaar mode.
+ *
+ * ponytail: this used to simulate OCR, a face-match score and a liveness
+ * recording with timers. Until a real provider is wired, it says plainly that
+ * the check is unavailable and points to the real options (Anon Aadhaar for
+ * exams via SuperAdmin → Purpose routing, or full KYC on Identity verification).
+ */
+export function AadhaarIDVerificationModal({ onCancel }: AadhaarIDVerificationModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-      <div className="max-w-md w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold">Verify your ID and face</h2>
-          </div>
-          <span className="text-[11px] font-semibold tabular-nums bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-            Step {step === 'upload_id' ? '1/3' : step === 'face_match' ? '2/3' : '3/3'}
-          </span>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="aadhaar-unavailable-title"
+    >
+      <div className="relative max-w-md w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-4 text-foreground">
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onCancel}
+          className="absolute right-3 top-3 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="h-4 w-4" />
+        </button>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
+          <h2 id="aadhaar-unavailable-title" className="text-base font-bold">Aadhaar ID check isn&apos;t available yet</h2>
         </div>
-
-        {/* STEP 1: Upload Aadhaar / Govt ID Card */}
-        {step === 'upload_id' && (
-          <div className="space-y-4 text-xs">
-            <p className="text-muted-foreground">
-              Upload or scan your Aadhaar / National ID Card. We will extract details and compare the ID photo against your live camera feed.
-            </p>
-
-            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
-              <Upload className="h-8 w-8 text-primary mb-2" />
-              <div className="font-semibold text-foreground">Upload your Aadhaar or government ID</div>
-              <div className="text-[11px] text-muted-foreground mt-0.5">JPG, PNG, or PDF up to 10MB</div>
-
-              <input
-                type="file"
-                accept="image/*,.pdf"
-                id="aadhaar-input"
-                className="hidden"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) handleIdUpload(e.target.files[0])
-                }}
-              />
-              <label
-                htmlFor="aadhaar-input"
-                className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-              >
-                Choose ID file
-              </label>
-            </div>
-
-            {isProcessingOcr && (
-              <div className="flex items-center justify-center gap-2 py-2 text-primary font-medium">
-                <RefreshCw className="h-4 w-4 animate-spin" /> Reading your ID…
-              </div>
-            )}
-
-            {ocrResult && (
-              <div className="rounded-xl border border-green-500/40 bg-green-500/10 p-3 space-y-1.5 text-xs">
-                <div className="flex items-center gap-1.5 text-green-700 dark:text-green-400 font-bold">
-                  <CheckCircle2 className="h-4 w-4" /> ID details read
-                </div>
-                <div className="text-foreground">Name: <strong>{ocrResult.name}</strong></div>
-                <div className="text-foreground">Aadhaar Number: <strong>{ocrResult.idNumberMasked}</strong></div>
-                <div className="text-muted-foreground">DOB: {ocrResult.dob}</div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={onCancel}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={startCamera}
-                disabled={!ocrResult}
-                className="rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
-              >
-                Next: face check →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: Live Face Match */}
-        {step === 'face_match' && (
-          <div className="space-y-4 text-xs">
-            <p className="text-muted-foreground">
-              Align your face in front of the camera to verify matching identity against your Aadhaar card photo.
-            </p>
-
-            <div className="relative mx-auto h-48 w-64 overflow-hidden rounded-xl border-2 border-primary bg-black">
-              <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none border-2 border-dashed border-primary/60 rounded-full m-6" />
-            </div>
-
-            {isComparing && (
-              <div className="flex items-center justify-center gap-2 text-primary font-medium py-1">
-                <RefreshCw className="h-4 w-4 animate-spin" /> Comparing your face with your ID photo…
-              </div>
-            )}
-
-            {similarityScore && (
-              <div className="rounded-xl border border-green-500/40 bg-green-500/10 p-3 space-y-1 text-center">
-                <div className="text-green-700 dark:text-green-400 font-bold text-sm tabular-nums">
-                  Face matches your ID: {similarityScore}%
-                </div>
-                <div className="text-[11px] text-muted-foreground">Above the 85% match threshold</div>
-              </div>
-            )}
-
-            <div className="flex justify-end gap-2 pt-2">
-              {!similarityScore ? (
-                <button
-                  onClick={captureSelfieAndMatch}
-                  className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-                >
-                  Capture and verify face
-                </button>
-              ) : (
-                <button
-                  onClick={startLivenessRecording}
-                  className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-                >
-                  Next: short liveness check →
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: 3.5s Video Liveness Check */}
-        {step === 'liveness_video' && (
-          <div className="space-y-4 text-xs text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Video className="h-6 w-6 animate-pulse motion-reduce:animate-none" />
-            </div>
-            <div>
-              <h3 className="font-bold text-foreground text-sm">Recording a short liveness check</h3>
-              <p className="text-muted-foreground mt-1">Please blink twice and keep your head centered.</p>
-            </div>
-
-            <div className="w-full bg-secondary rounded-full h-3 overflow-hidden">
-              <div
-                className="bg-primary h-full transition-all duration-300"
-                style={{ width: `${recordingProgress}%` }}
-              />
-            </div>
-            <div className="tabular-nums text-muted-foreground font-semibold">{recordingProgress}% complete</div>
-          </div>
-        )}
-
-        {/* Complete */}
-        {step === 'complete' && (
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-700 dark:text-green-400">
-              <UserCheck className="h-6 w-6" />
-            </div>
-            <div>
-              <h3 className="font-bold text-foreground text-base">Identity verified</h3>
-              <p className="text-xs text-muted-foreground mt-1">
-                ID photo match ({similarityScore}%) and liveness check passed.
-              </p>
-            </div>
-
-            <button
-              onClick={() => {
-                if (ocrResult && similarityScore) {
-                  onVerified({
-                    idNumberMasked: ocrResult.idNumberMasked,
-                    name: ocrResult.name,
-                    similarityScore,
-                    livenessVerified: true,
-                  })
-                }
-              }}
-              className="w-full rounded-lg bg-primary py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-            >
-              Continue to assessment →
-            </button>
-          </div>
-        )}
+        <p className="text-sm text-muted-foreground">
+          Reading your Aadhaar card and matching it to a live selfie isn&apos;t switched on for this platform, so
+          nothing was checked and nothing was uploaded. Your exam&apos;s own identity check still applies.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          You can verify your identity separately on the{' '}
+          <Link href="/dashboard/identity-verify" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-4 hover:underline">
+            Identity verification
+          </Link>{' '}
+          page.
+        </p>
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Close
+          </Button>
+        </div>
       </div>
     </div>
   )

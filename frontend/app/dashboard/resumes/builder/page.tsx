@@ -1,15 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { csrfFetch } from '@/lib/csrf-fetch'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { ArrowLeft, Save, Download, Sparkles, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, Save, Download, FileText, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon } from 'lucide-react'
 
 // Basic Resume Data Structure
 interface ResumeData {
@@ -35,17 +34,33 @@ const emptyData: ResumeData = {
   skills: ''
 }
 
-// Mock Profile Data for "Fetch From Profile"
-const profileData: ResumeData = {
-  personal: { fullName: 'Abhiram R', email: 'abhiram@example.com', phone: '+1 234-567-8900', location: 'San Francisco, CA', linkedin: 'linkedin.com/in/abhiram', portfolio: 'abhiram.dev' },
-  summary: 'Innovative and user-focused Product Designer with 5+ years of experience in designing intuitive and impactful digital products. Adept at user research, wireframing, prototyping, and collaborating with cross-functional teams to deliver high-quality user experiences.',
-  experience: [
-    { id: '1', company: 'TechNova', role: 'Product Designer', dates: 'Jan 2021 - Present', description: 'Led the redesign of the core SaaS platform, increasing user retention by 25%.\nConducted extensive user research and usability testing.\nCollaborated with PMs and engineers in agile sprints.' }
-  ],
-  education: [
-    { id: '1', institution: 'University of Design', degree: 'B.S. Interaction Design', dates: '2016 - 2020' }
-  ],
-  skills: 'Figma, Sketch, Adobe Creative Suite, HTML/CSS, React, User Research, Prototyping, Wireframing'
+// ponytail: drafts live in this browser only — /api/resumes stores uploaded
+// files, not builder data. Move to the API once it has a structured field.
+const DRAFT_KEY = 'codeSpectra_resumeDraft'
+
+type TemplateKey = 'modern' | 'minimal' | 'elegant' | 'professional' | 'creative'
+
+/** Print just the resume sheet: copy it plus the page's styles into a hidden iframe. */
+function printElement(el: HTMLElement, title: string) {
+  const iframe = document.createElement('iframe')
+  iframe.setAttribute('aria-hidden', 'true')
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0'
+  document.body.appendChild(iframe)
+  const doc = iframe.contentDocument
+  const win = iframe.contentWindow
+  if (!doc || !win) { iframe.remove(); return false }
+  const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+    .map(n => n.outerHTML).join('')
+  doc.open()
+  doc.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title.replace(/[<>&]/g, '')}</title>${styles}<style>@page{size:A4;margin:0}html,body{margin:0;background:#fff}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>${el.outerHTML}</body></html>`)
+  doc.close()
+  const done = () => setTimeout(() => iframe.remove(), 1000)
+  setTimeout(() => {
+    win.focus()
+    win.print()
+    done()
+  }, 300)
+  return true
 }
 
 export default function ResumeBuilderPage() {
@@ -56,20 +71,41 @@ export default function ResumeBuilderPage() {
   const addToast = useToast()
 
   const [data, setData] = useState<ResumeData>(emptyData)
-  const [template, setTemplate] = useState<'modern' | 'minimal' | 'elegant' | 'professional' | 'creative'>('modern')
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false)
-  const [userCredits, setUserCredits] = useState<number | null>(null)
+  const [template, setTemplate] = useState<TemplateKey>('modern')
+  const [resumeName, setResumeName] = useState('Untitled resume')
+  const sheetRef = useRef<HTMLDivElement>(null)
 
+  // Restore a draft saved on this device (unless we were asked to load the profile).
   useEffect(() => {
-    fetch('/api/user/ai-credits')
-      .then(res => res.json())
-      .then(data => {
-        if (data.balance !== undefined) {
-          setUserCredits(data.balance)
-        }
-      })
-      .catch(console.error)
-  }, [])
+    if (source === 'profile') return
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (!raw) return
+      const draft = JSON.parse(raw) as { name?: string; template?: TemplateKey; data?: ResumeData }
+      if (draft.data) setData({ ...emptyData, ...draft.data, personal: { ...emptyData.personal, ...draft.data.personal } })
+      if (draft.name) setResumeName(draft.name)
+      if (draft.template) setTemplate(draft.template)
+    } catch {
+      // Storage blocked or corrupt draft — start fresh.
+    }
+  }, [source])
+
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ name: resumeName, template, data, saved_at: new Date().toISOString() }))
+      addToast({ type: 'success', title: 'Saved on this device', message: 'Your draft is stored in this browser only.' })
+    } catch {
+      addToast({ type: 'error', title: 'Could not save draft', message: 'Your browser blocked local storage.' })
+    }
+  }
+
+  const downloadPdf = () => {
+    if (!sheetRef.current || !printElement(sheetRef.current, resumeName || 'Resume')) {
+      window.print()
+      return
+    }
+    addToast({ type: 'info', title: 'Choose "Save as PDF" in the print dialog' })
+  }
 
   useEffect(() => {
     if (source === 'profile') {
@@ -79,8 +115,8 @@ export default function ResumeBuilderPage() {
           const parsed = JSON.parse(saved)
           setData({
             personal: { 
-              fullName: parsed.name || profileData.personal.fullName, 
-              email: parsed.email || profileData.personal.email, 
+              fullName: parsed.name || '',
+              email: parsed.email || '',
               phone: parsed.phone || '', 
               location: parsed.location || '', 
               linkedin: parsed.links?.linkedin || '', 
@@ -97,9 +133,7 @@ export default function ResumeBuilderPage() {
       } catch (e) {
         console.error('Error parsing profile data', e)
       }
-      // fallback
-      setData(profileData)
-      addToast({ type: 'success', title: 'Mock data fetched from profile' })
+      addToast({ type: 'info', title: 'No saved profile found', message: 'Fill in your details below, or complete your profile first.' })
     }
   }, [source, addToast])
 
@@ -143,50 +177,19 @@ export default function ResumeBuilderPage() {
     setData(prev => ({ ...prev, education: prev.education.filter(edu => edu.id !== id) }))
   }
 
-  const generateWithAI = async () => {
-    if (!data.personal.fullName || (!data.experience[0]?.role && !data.skills)) {
-      addToast({ type: 'error', title: 'Provide at least a name and role/skills for AI generation' })
+  // Not AI: fills a starter summary from the role and skills you typed, so it
+  // costs no credits. Edit it to make it yours.
+  const startFromTemplate = () => {
+    if (!data.experience[0]?.role && !data.skills) {
+      addToast({ type: 'error', title: 'Add a role or some skills first' })
       return
     }
-
-    if (userCredits === null || userCredits < 1) {
-      addToast({ type: 'error', title: 'Insufficient AI Credits. Upgrade to PRO to get more.' })
-      return
-    }
-    
-    setIsGeneratingAI(true)
-    
-    try {
-      const res = await csrfFetch('/api/user/ai-credits', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 1 })
-      })
-      
-      const resData = await res.json()
-      if (!res.ok) {
-        addToast({ type: 'error', title: resData.error || 'Failed to deduct AI Credits' })
-        setIsGeneratingAI(false)
-        return
-      }
-      
-      setUserCredits(resData.balance)
-
-      // Mock API Call for actual AI generation
-      setTimeout(() => {
-        const role = data.experience[0]?.role || 'Professional'
-        setData(prev => ({
-          ...prev,
-          summary: `Highly motivated and results-driven ${role} with a proven track record of delivering innovative solutions. Skilled in ${prev.skills || 'various technologies'}, with a strong focus on collaboration, problem-solving, and driving continuous improvement to achieve organizational goals.`
-        }))
-        setIsGeneratingAI(false)
-        addToast({ type: 'success', title: 'AI Summary Generated! (1 credit deducted)' })
-      }, 1500)
-    } catch (e) {
-      console.error(e)
-      addToast({ type: 'error', title: 'Something went wrong.' })
-      setIsGeneratingAI(false)
-    }
+    const role = data.experience[0]?.role || 'professional'
+    setData(prev => ({
+      ...prev,
+      summary: `Motivated ${role} with experience delivering reliable, well-built work. Skilled in ${prev.skills || 'a range of tools'}, with a focus on collaboration, problem-solving and continuous improvement.`
+    }))
+    addToast({ type: 'success', title: 'Starter summary added', message: 'Edit it to describe your own work.' })
   }
 
   if (!gate.ready) return null
@@ -200,13 +203,13 @@ export default function ResumeBuilderPage() {
             <ArrowLeft className="w-4 h-4 mr-2" /> Back
           </Button>
           <div className="hidden sm:block w-px h-6 bg-border mx-2" />
-          <Input defaultValue="Untitled resume" aria-label="Resume name" className="border-transparent hover:border-border focus-visible:border-border shadow-none w-40 sm:w-64 text-base sm:text-lg font-semibold text-foreground px-2 h-9" />
+          <Input value={resumeName} onChange={e => setResumeName(e.target.value)} aria-label="Resume name" className="border-transparent hover:border-border focus-visible:border-border shadow-none w-40 sm:w-64 text-base sm:text-lg font-semibold text-foreground px-2 h-9" />
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={saveDraft}>
             <Save className="w-4 h-4 mr-2" /> Save draft
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={downloadPdf}>
             <Download className="w-4 h-4 mr-2" /> Download PDF
           </Button>
         </div>
@@ -235,9 +238,8 @@ export default function ResumeBuilderPage() {
             <section className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-bold text-foreground">Professional summary</h3>
-                <Button variant="secondary" size="sm" onClick={generateWithAI} disabled={isGeneratingAI} className="bg-primary/10 text-primary hover:bg-primary/15">
-                  {isGeneratingAI ? <Sparkles className="w-4 h-4 mr-2 animate-pulse" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  {isGeneratingAI ? 'Generating…' : 'Write with AI'}
+                <Button variant="secondary" size="sm" onClick={startFromTemplate} className="bg-primary/10 text-primary hover:bg-primary/15">
+                  <FileText className="w-4 h-4 mr-2" aria-hidden /> Start from template
                 </Button>
               </div>
               <Textarea 
@@ -330,7 +332,7 @@ export default function ResumeBuilderPage() {
           {/* Resume Canvas Wrapper */}
           <div className="flex-1 overflow-y-auto custom-scrollbar flex justify-center pb-20">
             {/* The Resume A4 Paper */}
-            <div className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
+            <div ref={sheetRef} className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
               
               {/* --- Template: Modern --- */}
               {template === 'modern' && (
@@ -368,8 +370,8 @@ export default function ResumeBuilderPage() {
 
                   {/* Right Column */}
                   <div className="w-[65%] p-8 bg-white wrap-break-word">
-                    <h1 className="text-4xl font-black text-slate-800 mb-2 uppercase tracking-tight">{data.personal.fullName || 'Your Name'}</h1>
-                    <div className="text-lg text-blue-600 font-medium mb-6">{data.experience[0]?.role || 'Professional Title'}</div>
+                    <h1 className="text-4xl font-black text-slate-800 mb-2 uppercase tracking-tight">{data.personal.fullName || 'Your name'}</h1>
+                    <div className="text-lg text-blue-600 font-medium mb-6">{data.experience[0]?.role || 'Professional title'}</div>
                     
                     <div className="text-sm text-slate-600 leading-relaxed mb-8">
                       {data.summary || 'Summary...'}
@@ -379,7 +381,7 @@ export default function ResumeBuilderPage() {
                       <div className="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center">
                         <Briefcase className="w-4 h-4" />
                       </div>
-                      Work Experience
+                      Work experience
                     </h2>
                     
                     <div className="space-y-6">
@@ -404,7 +406,7 @@ export default function ResumeBuilderPage() {
               {template === 'minimal' && (
                 <div className="p-12">
                   <div className="text-center mb-10">
-                    <h1 className="text-4xl font-light tracking-widest uppercase text-slate-900 mb-3">{data.personal.fullName || 'Your Name'}</h1>
+                    <h1 className="text-4xl font-light tracking-widest uppercase text-slate-900 mb-3">{data.personal.fullName || 'Your name'}</h1>
                     <div className="text-sm text-slate-500 flex items-center justify-center gap-3 flex-wrap">
                       {data.personal.email && <span>{data.personal.email}</span>}
                       {data.personal.phone && <span>• {data.personal.phone}</span>}
@@ -479,7 +481,7 @@ export default function ResumeBuilderPage() {
                 <div className="p-10 relative bg-snow">
                   <div className="absolute top-0 left-0 w-2 h-full bg-[#1e40af]" />
                   <div className="pl-6">
-                    <h1 className="text-5xl font-serif text-[#1e40af] mb-2 tracking-wide">{data.personal.fullName || 'Your Name'}</h1>
+                    <h1 className="text-5xl font-serif text-[#1e40af] mb-2 tracking-wide">{data.personal.fullName || 'Your name'}</h1>
                     <div className="text-xl text-slate-600 font-serif italic mb-6">{data.experience[0]?.role || 'Professional'}</div>
                     
                     <div className="flex gap-4 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-8 bg-white p-4 rounded shadow-sm border border-slate-100">
@@ -552,8 +554,8 @@ export default function ResumeBuilderPage() {
               {template === 'professional' && (
                 <div className="p-10 font-sans text-slate-800">
                   <div className="border-b-4 border-slate-800 pb-6 mb-8 text-center">
-                    <h1 className="text-4xl font-bold uppercase tracking-widest text-slate-900 mb-2">{data.personal.fullName || 'Your Name'}</h1>
-                    <div className="text-lg text-slate-600 font-medium tracking-wide mb-4">{data.experience[0]?.role || 'Professional Title'}</div>
+                    <h1 className="text-4xl font-bold uppercase tracking-widest text-slate-900 mb-2">{data.personal.fullName || 'Your name'}</h1>
+                    <div className="text-lg text-slate-600 font-medium tracking-wide mb-4">{data.experience[0]?.role || 'Professional title'}</div>
                     <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-medium text-slate-500">
                       {data.personal.email && <span>{data.personal.email}</span>}
                       {data.personal.phone && <span>| {data.personal.phone}</span>}
@@ -565,7 +567,7 @@ export default function ResumeBuilderPage() {
                   <div className="grid grid-cols-12 gap-8">
                     <div className="col-span-8 space-y-8">
                       <section>
-                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Professional Summary</h2>
+                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Professional summary</h2>
                         <p className="text-sm leading-relaxed text-slate-700">{data.summary}</p>
                       </section>
 
@@ -601,7 +603,7 @@ export default function ResumeBuilderPage() {
                       </section>
 
                       <section>
-                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Core Skills</h2>
+                        <h2 className="text-xl font-bold uppercase tracking-wider text-slate-900 mb-4 pb-2 border-b-2 border-slate-200">Core skills</h2>
                         <p className="text-sm leading-relaxed text-slate-700">{data.skills}</p>
                       </section>
                     </div>
@@ -617,12 +619,12 @@ export default function ResumeBuilderPage() {
                       <div className="w-32 h-32 bg-white rounded-full mb-8 border-4 border-white/30 flex items-center justify-center overflow-hidden shadow-xl">
                         <span className="text-5xl font-black text-[#ff6b6b]">{((data.personal.fullName || '').charAt(0) || 'U')}</span>
                       </div>
-                      <h1 className="text-4xl font-black leading-none mb-2">{data.personal.fullName || 'Your Name'}</h1>
+                      <h1 className="text-4xl font-black leading-none mb-2">{data.personal.fullName || 'Your name'}</h1>
                       <div className="text-lg font-medium text-white/90 mb-10">{data.experience[0]?.role || 'Professional'}</div>
 
                       <div className="space-y-6">
                         <div>
-                          <h2 className="text-sm font-bold uppercase tracking-widest text-white/70 mb-2">Contact Info</h2>
+                          <h2 className="text-sm font-bold uppercase tracking-widest text-white/70 mb-2">Contact info</h2>
                           <div className="space-y-2 text-sm font-medium">
                             <div>{data.personal.email}</div>
                             <div>{data.personal.phone}</div>

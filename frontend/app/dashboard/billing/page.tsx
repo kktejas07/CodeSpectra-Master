@@ -90,6 +90,8 @@ function BillingContent() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [cycleOpen, setCycleOpen] = useState(false)
   const [cardOpen, setCardOpen] = useState(false)
@@ -128,7 +130,12 @@ function BillingContent() {
       fetch('/api/billing/plans', { credentials: 'include' }),
       fetch('/api/billing/payment-methods', { credentials: 'include' }),
     ])
-    if (subRes.ok) {
+    // Don't guess the plan when the server can't tell us — show an error instead.
+    if (!subRes.ok) {
+      const j = await subRes.json().catch(() => ({}))
+      throw new Error(typeof j.error === 'string' && subRes.status !== 500 ? j.error : `Billing service returned ${subRes.status}`)
+    }
+    {
       const d = await subRes.json()
       const sub = d.subscription || d
       const plan = findPlan((sub as any).plan_id || (sub as any).planId || 'free')
@@ -138,23 +145,6 @@ function BillingContent() {
         features: plan.features,
         pricePerMonth: plan.monthlyUsd,
         pricePerYear: plan.yearlyUsd,
-      })
-    } else {
-      const pf = findPlan('free')
-      setSubscription({
-        planId: 'free',
-        planName: pf.name,
-        status: 'active',
-        billingInterval: 'month',
-        currentPeriodStart: null,
-        currentPeriodEnd: null,
-        canceledAt: null,
-        pricePerMonth: 0,
-        pricePerYear: 0,
-        currentPrice: 0,
-        features: pf.features,
-        autoRenew: true,
-        userEmail: '',
       })
     }
     if (invRes.ok) { const d = await invRes.json(); setInvoices(Array.isArray(d) ? d : []) }
@@ -166,6 +156,7 @@ function BillingContent() {
     let cancelled = false
     ;(async () => {
       setLoading(true)
+      setLoadError(null)
       try {
         await load()
         if (!cancelled && searchParams.get('paid') === '1') {
@@ -204,11 +195,7 @@ function BillingContent() {
         }
       } catch (e) {
         if (!cancelled) {
-          addToast({
-            type: 'error',
-            title: 'Could not load billing',
-            message: e instanceof Error ? e.message : 'Error',
-          })
+          setLoadError(e instanceof Error ? e.message : 'Something went wrong')
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -217,7 +204,7 @@ function BillingContent() {
     return () => {
       cancelled = true
     }
-  }, [load, addToast, searchParams])
+  }, [load, addToast, searchParams, reloadKey])
 
   const defaultPm = paymentMethods.find((p) => p.is_default) || paymentMethods[0]
 
@@ -356,6 +343,23 @@ function BillingContent() {
     setCardExpM(defaultPm.exp_month || 12)
     setCardExpY(defaultPm.exp_year || 2030)
   }, [defaultPm?.id])
+
+  if (!loading && (loadError || !subscription)) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Billing" icon={<CreditCard aria-hidden />} />
+        <Card role="alert" className="rounded-3xl border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">We couldn&apos;t load your billing details</h2>
+          <p className="text-sm text-muted-foreground">
+            {loadError ? `${loadError}. ` : ''}Check your connection and try again. Nothing has been changed on your account.
+          </p>
+          <Button onClick={() => setReloadKey((k) => k + 1)} className="gap-2">
+            <RefreshCw className="h-4 w-4" aria-hidden /> Try again
+          </Button>
+        </Card>
+      </div>
+    )
+  }
 
   if (loading || !subscription) {
     return (

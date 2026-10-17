@@ -1,11 +1,13 @@
 'use client'
 import { formatDate } from '@/lib/format-datetime'
 
-import { use, useEffect, useState } from 'react'
+import { use, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import QRCode from 'qrcode'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Award, Code2, Download, Share2, ShieldCheck, Search, XCircle } from 'lucide-react'
+import { Award, Code2, Download, Share2, ShieldCheck, XCircle } from 'lucide-react'
+import { useToast } from '@/lib/toast-context'
 
 interface VerifyResponse {
   valid: boolean
@@ -29,6 +31,43 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
   const { id } = use(params)
   const [data, setData] = useState<VerifyResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [qrDataUrl, setQrDataUrl] = useState('')
+  const addToast = useToast()
+
+  // Public verify page for this certificate (same token the API verifies).
+  const verifyUrl = useMemo(
+    () => (typeof window !== 'undefined' ? `${window.location.origin}/cert/verify/${encodeURIComponent(id)}` : ''),
+    [id],
+  )
+
+  useEffect(() => {
+    if (!verifyUrl) return
+    QRCode.toDataURL(verifyUrl, { margin: 1, width: 160, color: { dark: '#0f172a', light: '#ffffff' } })
+      .then(setQrDataUrl)
+      .catch(() => setQrDataUrl(''))
+  }, [verifyUrl])
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(verifyUrl)
+      addToast({ type: 'success', title: 'Verification link copied' })
+    } catch {
+      addToast({ type: 'error', title: 'Could not copy the link', message: verifyUrl })
+    }
+  }
+
+  const share = async () => {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try {
+        await navigator.share({ title: `${recipientName} earned a certificate`, url: verifyUrl })
+        return
+      } catch (e) {
+        // User closed the share sheet — nothing to do.
+        if (e instanceof DOMException && e.name === 'AbortError') return
+      }
+    }
+    await copyLink()
+  }
 
   useEffect(() => {
     let active = true
@@ -49,7 +88,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
     }
   }, [id])
 
-  const recipientName = data?.candidate?.name || 'Anonymous Candidate'
+  const recipientName = data?.candidate?.name || 'Anonymous candidate'
   const courseName = data?.certification?.title || 'CodeSpectra Assessment'
   const source = data?.certification?.source || 'CodeSpectra'
   const issueDate = formatIssueDate(data?.issued_at || '')
@@ -57,29 +96,15 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
   return (
     <div className="min-h-screen bg-muted/30 flex flex-col">
       {/* Top Navbar */}
-      <header className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="print:hidden sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-lg text-foreground">
             <Code2 className="h-6 w-6 text-primary" />
             <span>CodeSpectra</span>
           </div>
-          <div className="hidden md:flex flex-1 max-w-md mx-8">
-             <div className="relative w-full">
-               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-               <input
-                 type="search"
-                 placeholder="Search opportunities…"
-                 aria-label="Search opportunities"
-                 className="w-full rounded-full border border-border bg-muted/40 px-9 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-               />
-             </div>
-          </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="hidden sm:flex rounded-full px-4 text-primary border-primary/30 bg-primary/5 hover:bg-primary/10">
-              For business
-            </Button>
             <Button asChild size="sm" className="rounded-full">
-              <Link href="/login">Log in</Link>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(`/certificate-preview/${id}`)}`}>Log in</Link>
             </Button>
           </div>
         </div>
@@ -105,7 +130,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
         ) : (
         <>
         {/* Certificate Header Info */}
-        <div className="w-full max-w-4xl mb-8 text-center md:text-left md:flex justify-between items-end">
+        <div className="print:hidden w-full max-w-4xl mb-8 text-center md:text-left md:flex justify-between items-end">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight flex items-center justify-center md:justify-start gap-3">
               {recipientName} earned a certificate
@@ -125,11 +150,11 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
             </div>
           </div>
 
-          <div className="mt-6 md:mt-0 flex items-center gap-3 justify-center">
-            <Button variant="outline" className="gap-2 shadow-sm rounded-full">
-              <Download className="h-4 w-4" /> Download
+          <div className="mt-6 md:mt-0 flex items-center gap-3 justify-center print:hidden">
+            <Button variant="outline" className="gap-2 shadow-sm rounded-full" onClick={() => window.print()}>
+              <Download className="h-4 w-4" /> Download PDF
             </Button>
-            <Button className="gap-2 shadow-sm rounded-full">
+            <Button className="gap-2 shadow-sm rounded-full" onClick={share}>
               <Share2 className="h-4 w-4" /> Share
             </Button>
           </div>
@@ -137,7 +162,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
 
         {/* The Certificate Itself */}
         <div className="w-full max-w-4xl relative group">
-          <div className="absolute -inset-1 bg-linear-to-r from-[#2F5BE7] to-[#6E8CF5] rounded-[22px] blur opacity-20 group-hover:opacity-30 transition-opacity duration-300 motion-reduce:transition-none" />
+          <div className="print:hidden absolute -inset-1 bg-linear-to-r from-[#2F5BE7] to-[#6E8CF5] rounded-[22px] blur opacity-20 group-hover:opacity-30 transition-opacity duration-300 motion-reduce:transition-none" />
 
           <Card className="relative bg-white text-slate-900 overflow-hidden border-2 border-[#2F5BE7] rounded-[20px] shadow-2xl p-0 aspect-[1.414/1] max-h-[800px] flex flex-col justify-center items-center text-center">
 
@@ -185,33 +210,29 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
               </p>
             </div>
 
-            <div className="absolute bottom-8 right-8 bg-white p-2 border border-slate-200 rounded-lg shadow-sm">
-               {/* Fake QR Code */}
-               <svg width="64" height="64" viewBox="0 0 100 100" fill="currentColor" className="text-slate-800">
-                 <rect x="10" y="10" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="10"/>
-                 <rect x="60" y="10" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="10"/>
-                 <rect x="10" y="60" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="10"/>
-                 <rect x="20" y="20" width="10" height="10"/>
-                 <rect x="70" y="20" width="10" height="10"/>
-                 <rect x="20" y="70" width="10" height="10"/>
-                 <path d="M50 50 h40 v40 h-40 z" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="5,5"/>
-                 <rect x="60" y="60" width="10" height="10"/>
-                 <rect x="80" y="80" width="10" height="10"/>
-                 <rect x="50" y="20" width="5" height="5"/>
-                 <rect x="20" y="50" width="5" height="5"/>
-                 <rect x="40" y="80" width="5" height="5"/>
-               </svg>
-            </div>
+            {qrDataUrl && (
+              <div className="absolute bottom-8 right-8 bg-white p-2 border border-slate-200 rounded-lg shadow-sm">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={qrDataUrl} alt="QR code linking to this certificate's verification page" width={64} height={64} className="h-16 w-16" />
+              </div>
+            )}
 
             <div className="absolute bottom-8 left-8 flex flex-col items-start gap-1">
               <div className="flex items-center gap-1.5 text-slate-500">
                 <ShieldCheck className="h-4 w-4" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">Verifiable Credential</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider">Verifiable credential</span>
               </div>
               <span className="text-[9px] text-slate-500 font-mono">ID: {id}</span>
             </div>
 
           </Card>
+        </div>
+
+        {/* Verification link (also what the QR code encodes) */}
+        <div className="print:hidden mt-6 w-full max-w-4xl flex flex-col sm:flex-row sm:items-center gap-2 text-sm">
+          <span className="text-muted-foreground shrink-0">Verify at</span>
+          <a href={verifyUrl} className="text-primary underline-offset-4 hover:underline break-all font-mono text-xs">{verifyUrl}</a>
+          <Button variant="outline" size="sm" className="sm:ml-auto rounded-full" onClick={copyLink}>Copy link</Button>
         </div>
         </>
         )}

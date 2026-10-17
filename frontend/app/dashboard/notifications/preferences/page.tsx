@@ -46,8 +46,6 @@ export default function NotificationPreferencesPage() {
   const [quietStart, setQuietStart] = useState('22:00')
   const [quietEnd, setQuietEnd] = useState('08:00')
   const [savingQuiet, setSavingQuiet] = useState(false)
-  const [dailyDigest, setDailyDigest] = useState(true)
-  const [weeklyReport, setWeeklyReport] = useState(true)
 
   const fetchPreferences = useCallback(async () => {
     try {
@@ -55,13 +53,6 @@ export default function NotificationPreferencesPage() {
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       setPreferences(Array.isArray(data) ? data : [])
-      const qh = (data as any).quietHours
-      if (qh) {
-        setQuietStart(qh.quietStart || '22:00')
-        setQuietEnd(qh.quietEnd || '08:00')
-      }
-      if ((data as any).dailyDigest !== undefined) setDailyDigest((data as any).dailyDigest)
-      if ((data as any).weeklyReport !== undefined) setWeeklyReport((data as any).weeklyReport)
     } catch (error) {
       console.error('[CodeSpectra] Failed to fetch preferences:', error)
     } finally {
@@ -70,6 +61,17 @@ export default function NotificationPreferencesPage() {
   }, [])
 
   useEffect(() => { void fetchPreferences() }, [fetchPreferences])
+
+  // Quiet hours load once (not on the 30s poll, so typing isn't overwritten).
+  useEffect(() => {
+    void fetch('/api/notifications/preferences/quiet-hours', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((qh: { quietStart?: string; quietEnd?: string } | null) => {
+        if (qh?.quietStart) setQuietStart(qh.quietStart)
+        if (qh?.quietEnd) setQuietEnd(qh.quietEnd)
+      })
+      .catch(() => { /* keep defaults */ })
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => { void fetchPreferences() }, 30_000)
@@ -82,7 +84,7 @@ export default function NotificationPreferencesPage() {
       const notificationPreferencesTour: TourStep[] = [
         {
           target: '[data-tour="notification-preferences-header"]',
-          title: 'Control Notification Channels',
+          title: 'Choose how we notify you',
           description: 'This page lets you control which channels and categories notify you.',
           position: 'bottom',
         },
@@ -95,7 +97,7 @@ export default function NotificationPreferencesPage() {
         {
           target: '[data-tour="notification-preferences-channels"]',
           title: 'Channels and quiet hours',
-          description: 'Toggle email, in-app, and Slack channels, plus digests and quiet hours.',
+          description: 'Turn email, in-app and Slack notifications on or off, and set quiet hours.',
           position: 'top',
         },
       ]
@@ -206,6 +208,7 @@ export default function NotificationPreferencesPage() {
                   </span>
                   <Switch
                     checked={pref.enabled}
+                    aria-label={`${getChannelLabel(pref.type)} notifications`}
                     onCheckedChange={(value) => handleToggle(pref.id, 'enabled', value)}
                   />
                 </div>
@@ -221,6 +224,7 @@ export default function NotificationPreferencesPage() {
                       </div>
                       <Switch
                         checked={enabled}
+                        aria-label={`${getChannelLabel(pref.type)}: ${category}`}
                         onCheckedChange={(value) =>
                           handleToggle(pref.id, `categories.${category}`, value)
                         }
@@ -235,24 +239,24 @@ export default function NotificationPreferencesPage() {
           <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">
               <h3 className="text-lg font-semibold text-foreground">Email digest</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Optional summaries of what happened on your account.
+              <p id="digest-unavailable" className="mt-1 text-sm text-muted-foreground">
+                Summaries of what happened on your account. Not available yet — we don&apos;t send digests, so there&apos;s nothing to turn on.
               </p>
             </div>
             <div className="divide-y divide-border/60 px-6">
               <div className="flex items-center justify-between gap-4 py-4">
                 <div className="min-w-0 space-y-0.5">
-                  <p className="font-medium text-foreground">Daily digest</p>
-                  <p className="text-sm text-muted-foreground">One summary per day</p>
+                  <Label htmlFor="daily-digest" className="font-medium text-muted-foreground">Daily digest</Label>
+                  <p className="text-sm text-muted-foreground">One summary per day · not available yet</p>
                 </div>
-                <Switch checked={dailyDigest} onCheckedChange={setDailyDigest} />
+                <Switch id="daily-digest" checked={false} disabled aria-describedby="digest-unavailable" />
               </div>
               <div className="flex items-center justify-between gap-4 py-4">
                 <div className="min-w-0 space-y-0.5">
-                  <p className="font-medium text-foreground">Weekly report</p>
-                  <p className="text-sm text-muted-foreground">Activity and usage highlights</p>
+                  <Label htmlFor="weekly-report" className="font-medium text-muted-foreground">Weekly report</Label>
+                  <p className="text-sm text-muted-foreground">Activity and usage highlights · not available yet</p>
                 </div>
-                <Switch checked={weeklyReport} onCheckedChange={setWeeklyReport} />
+                <Switch id="weekly-report" checked={false} disabled aria-describedby="digest-unavailable" />
               </div>
             </div>
           </Card>
@@ -261,7 +265,7 @@ export default function NotificationPreferencesPage() {
             <div className="border-b border-border/60 px-6 py-4">
               <h3 className="text-lg font-semibold text-foreground">Quiet hours</h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                Set the hours when you would rather not be notified.
+                Set the hours when you would rather not be notified. These are saved to your account but aren&apos;t applied to delivery yet.
               </p>
             </div>
             <div className="grid gap-4 px-6 py-5 sm:grid-cols-2">
@@ -295,7 +299,7 @@ export default function NotificationPreferencesPage() {
 
           <Card className="rounded-3xl border border-border/70 bg-muted/30">
             <div className="px-6 py-5">
-              <h3 className="text-lg font-semibold text-foreground">Privacy &amp; data</h3>
+              <h3 className="text-lg font-semibold text-foreground">Privacy and data</h3>
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
                 Preferences are stored for your account and used only to deliver notifications. You can change or revoke
                 channels at any time.

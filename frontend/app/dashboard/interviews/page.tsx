@@ -26,15 +26,19 @@ export default function InterviewsPage() {
 
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
 
   const load = useCallback(async () => {
+    setLoading(true)
+    setLoadError(false)
     try {
       const res = await fetch('/api/interviews', { cache: 'no-store' })
-      if (res.ok) {
-        const j = await res.json()
-        setInterviews(j.items as Interview[])
-      }
-    } catch {} finally { setLoading(false) }
+      if (!res.ok) throw new Error(String(res.status))
+      const j = await res.json()
+      setInterviews(Array.isArray(j.items) ? (j.items as Interview[]) : [])
+    } catch {
+      setLoadError(true)
+    } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { void load() }, [load])
@@ -45,19 +49,19 @@ export default function InterviewsPage() {
       const interviewsTour: TourStep[] = [
         {
           target: '[data-tour="interviews-header"]',
-          title: 'Your Interviews',
+          title: 'Your interviews',
           description: 'View all your scheduled and past interviews. Schedule new ones to practice.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interviews-schedule-btn"]',
-          title: 'Schedule Interview',
-          description: 'Click here to schedule a new AI-powered mock interview.',
+          title: 'Schedule an interview',
+          description: 'Click here to schedule a new interview.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interviews-list"]',
-          title: 'Interview List',
+          title: 'Interview list',
           description: 'Browse your interviews. Click any card to view details and start the interview.',
           position: 'bottom',
         },
@@ -92,7 +96,7 @@ export default function InterviewsPage() {
         />
       </div>
 
-      <Link href="/dashboard/interviews/ai-mock/setup">
+      <Link href="/dashboard/interviews/ai-mock/setup" className="block rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
         <Panel interactive className="group flex cursor-pointer items-center gap-4 p-5">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 transition-colors group-hover:bg-primary">
             <Brain className="h-5 w-5 text-primary transition-colors group-hover:text-primary-foreground" aria-hidden />
@@ -109,6 +113,11 @@ export default function InterviewsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           <SkeletonList count={4} />
         </div>
+      ) : loadError ? (
+        <Panel role="alert" className="p-8 text-center text-sm text-muted-foreground space-y-3">
+          <p>We couldn&apos;t load your interviews. Check your connection and try again.</p>
+          <Button variant="outline" size="sm" onClick={() => void load()}>Try again</Button>
+        </Panel>
       ) : interviews.length === 0 ? (
         <Panel className="p-8 text-center text-sm text-muted-foreground">
           <Bot className="mx-auto h-10 w-10 mb-3 text-muted-foreground/50" aria-hidden />
@@ -117,11 +126,16 @@ export default function InterviewsPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2" data-tour="interviews-list">
           {interviews.map((iv) => (
-            <Link key={iv.id} href={`/dashboard/interviews/${iv.id}`}>
-              <Panel interactive className="h-full p-5 space-y-3">
+            // One card, two separate links: the title link stretches over the
+            // card; "View feedback" sits above it (no link inside a link).
+            <Panel key={iv.id} interactive className="relative h-full p-5 space-y-3 focus-within:ring-2 focus-within:ring-ring">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-foreground">{iv.title}</h3>
+                    <h3 className="font-semibold text-foreground">
+                      <Link href={`/dashboard/interviews/${iv.id}`} className="after:absolute after:inset-0 after:rounded-3xl after:content-[''] focus-visible:outline-none">
+                        {iv.title}
+                      </Link>
+                    </h3>
                     <p className="text-xs text-muted-foreground">{iv.role} · {iv.type}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -149,19 +163,17 @@ export default function InterviewsPage() {
                   </div>
                 )}
                 {iv.questions?.length > 0 && (
-                  <p className="text-xs text-muted-foreground">{iv.questions.length} questions answered</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{iv.questions.length} {iv.questions.length === 1 ? 'question' : 'questions'}</p>
                 )}
                 {iv.status === 'completed' && (
                   <Link
                     href={`/dashboard/interviews/feedback?id=${iv.id}`}
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
-                    onClick={(e) => e.stopPropagation()}
+                    className="relative z-10 inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1 rounded focus-visible:outline-2 focus-visible:outline-primary"
                   >
-                    View feedback →
+                    View feedback <ArrowRight className="h-3 w-3" aria-hidden />
                   </Link>
                 )}
-              </Panel>
-            </Link>
+            </Panel>
           ))}
         </div>
       )}

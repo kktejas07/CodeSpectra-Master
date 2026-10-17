@@ -109,7 +109,7 @@ export default function AiMockSetupPage() {
         },
         {
           target: '[data-tour="ai-mock-resume-source"]',
-          title: 'Resume Source',
+          title: 'Resume source',
           description: 'Select a resume to get personalized interview questions. Upload a PDF or pick one from your profile.',
           position: 'bottom',
         },
@@ -121,7 +121,7 @@ export default function AiMockSetupPage() {
         },
         {
           target: '[data-tour="ai-mock-setup-options"]',
-          title: 'Match Settings To Goal',
+          title: 'Match settings to your goal',
           description: 'Pro tip: match difficulty to your target role for the best practice.',
           position: 'top',
         },

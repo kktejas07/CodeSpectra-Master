@@ -62,7 +62,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
     } catch (err: any) {
       console.error('Camera access error:', err)
       setCameraError('Could not access camera. Please verify camera permissions in your browser.')
-      addToast({ type: 'error', title: 'Camera Access Failed', message: 'Please allow camera access to proceed.' })
+      addToast({ type: 'error', title: 'Camera access failed', message: 'Please allow camera access to proceed.' })
     } finally {
       setIsCameraLoading(false)
     }
@@ -120,7 +120,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
         }
       }
     } catch (err) {
-      addToast({ type: 'error', title: 'Capture Failed', message: 'Failed to capture frame.' })
+      addToast({ type: 'error', title: 'Capture failed', message: 'Failed to capture frame.' })
     }
   }
 
@@ -143,7 +143,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
           throw new Error(data.error || 'Failed to verify ID')
         }
         
-        addToast({ type: 'success', title: 'ID Verified', message: 'Name matches account profile.' })
+        addToast({ type: 'success', title: 'ID accepted', message: data.message || 'Your ID was read successfully.' })
         stopCamera()
         if (needFace) {
           setStep('capture_face')
@@ -258,10 +258,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
               <div className="space-y-2">
                 <p className="font-semibold text-foreground">Exam rules</p>
                 <ul className="list-disc pl-4 space-y-1.5 text-muted-foreground text-xs">
-                  <li><strong>Proctored Environment:</strong> We monitor your camera stream, eye movements, and active browser tab.</li>
-                  <li><strong>Zero Cheating Tolerance:</strong> Switching tabs, copy-pasting, or using external AI resources will flag your assessment.</li>
+                  <li><strong>Proctored session:</strong> We monitor your camera stream, eye movements, and active browser tab.</li>
+                  <li><strong>No outside help:</strong> Switching tabs, copy-pasting, or using external AI resources will flag your assessment.</li>
                   {(needId || needFace) && (
-                    <li><strong>Identity Check:</strong> You must verify your identity before taking the assessment{!needId ? ' (face selfie only)' : !needFace ? ' (ID only)' : ''}.</li>
+                    <li><strong>Identity check:</strong> You must verify your identity before taking the assessment{!needId ? ' (face selfie only)' : !needFace ? ' (ID only)' : ''}.</li>
                   )}
                 </ul>
               </div>
@@ -288,7 +288,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
                   className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
                 <span className="text-muted-foreground text-xs">
-                  I consent to CodeSpectra collecting {needId && needFace ? 'my live face photo and Government ID photo' : needId ? 'my Government ID photo' : needFace ? 'my live face photo' : 'session proctoring data'}. I understand {needId || needFace ? 'these are' : 'it is'} used solely by the recruiting team for verification and will be stored securely.
+                  I consent to CodeSpectra collecting {needId && needFace ? 'my live face photo and Government ID photo' : needId ? 'my government ID photo' : needFace ? 'my live face photo' : 'session proctoring data'}. I understand {needId || needFace ? 'these are' : 'it is'} used solely by the recruiting team for verification and will be stored securely.
                 </span>
               </label>
             </div>
@@ -467,7 +467,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
               <div className="space-y-1.5">
                 <span className="text-xs font-semibold text-muted-foreground block text-center">Government ID</span>
                 <div className="aspect-4/3 rounded-xl border border-border overflow-hidden bg-muted">
-                  {idPhoto && <img src={idPhoto} alt="ID Preview" className="w-full h-full object-cover" />}
+                  {idPhoto && <img src={idPhoto} alt="ID preview" className="w-full h-full object-cover" />}
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => { setStep('capture_id'); startCamera(); }} className="w-full text-xs">
                   Retake ID
@@ -479,10 +479,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
               <div className="space-y-1.5">
                 <span className="text-xs font-semibold text-muted-foreground block text-center">Live selfie</span>
                 <div className="aspect-4/3 rounded-xl border border-border overflow-hidden bg-muted">
-                  {facePhoto && <img src={facePhoto} alt="Face Preview" className="w-full h-full object-cover" />}
+                  {facePhoto && <img src={facePhoto} alt="Face preview" className="w-full h-full object-cover" />}
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => { setStep('capture_face'); }} className="w-full text-xs">
-                  Retake Selfie
+                  Retake selfie
                 </Button>
               </div>
               )}

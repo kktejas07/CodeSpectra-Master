@@ -68,7 +68,7 @@ const CATEGORIES = [
   { id: 'hackathon', label: 'Hackathons' },
   { id: 'billing', label: 'Billing' },
   { id: 'interview', label: 'Interviews' },
-  { id: 'code', label: 'Code Quality' },
+  { id: 'code', label: 'Code quality' },
   { id: 'account', label: 'Account' },
   { id: 'team', label: 'Team' },
   { id: 'learning', label: 'Learning' },
@@ -160,7 +160,7 @@ export default function NotificationsPage() {
       const notificationsTour: TourStep[] = [
         {
           target: '[data-tour="notifications-header"]',
-          title: 'Your Notification Inbox',
+          title: 'Your notification inbox',
           description: 'This inbox gathers your product and account updates; use Mark all read to clear them.',
           position: 'bottom',
         },

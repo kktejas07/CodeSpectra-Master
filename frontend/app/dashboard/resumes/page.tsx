@@ -325,9 +325,11 @@ export default function MyResumesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 py-6 sm:grid-cols-2">
-            <div 
+            <button
+              type="button"
+              aria-pressed={creationOption === 'profile'}
               onClick={() => setCreationOption('profile')}
-              className={`p-4 rounded-xl border-2 cursor-pointer flex items-center justify-center gap-3 transition-all ${
+              className={`p-4 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-2 cursor-pointer flex items-center justify-center gap-3 transition-all ${
                 creationOption === 'profile' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/40 hover:bg-muted/50'
@@ -335,10 +337,12 @@ export default function MyResumesPage() {
             >
               <User className="h-5 w-5" />
               <span className="font-semibold">Use my profile</span>
-            </div>
-            <div 
+            </button>
+            <button
+              type="button"
+              aria-pressed={creationOption === 'new'}
               onClick={() => setCreationOption('new')}
-              className={`p-4 rounded-xl border-2 cursor-pointer flex items-center justify-center gap-3 transition-all ${
+              className={`p-4 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border-2 cursor-pointer flex items-center justify-center gap-3 transition-all ${
                 creationOption === 'new' 
                   ? 'border-primary bg-primary/10 text-primary' 
                   : 'border-border hover:border-primary/40 hover:bg-muted/50'
@@ -346,7 +350,7 @@ export default function MyResumesPage() {
             >
               <UserPlus className="h-5 w-5" />
               <span className="font-semibold">Start blank</span>
-            </div>
+            </button>
           </div>
           <DialogFooter className="sm:justify-between w-full flex gap-3">
             <Button variant="outline" className="flex-1 rounded-full" onClick={() => setCreationModalOpen(false)}>Cancel</Button>

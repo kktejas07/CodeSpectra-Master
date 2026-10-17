@@ -710,7 +710,7 @@ export default function ProblemDetailPage() {
                 <div className="flex flex-col items-center justify-center h-full text-center space-y-3 opacity-60">
                    <Code2 className="h-10 w-10 text-muted-foreground" />
                    <div>
-                     <p className="font-bold">Official Solution Locked</p>
+                     <p className="font-bold">Official solution locked</p>
                      <p className="text-xs text-muted-foreground">Solve the problem first to view the official solution.</p>
                    </div>
                 </div>
@@ -790,7 +790,7 @@ export default function ProblemDetailPage() {
               <div className="flex items-center justify-between border-b border-border/50 px-2 bg-muted/20">
                  <div className="flex gap-1 pt-1">
                     <button onClick={() => setRightBottomTab('test')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'test' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Test</button>
-                    <button onClick={() => setRightBottomTab('custom')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'custom' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Custom Test</button>
+                    <button onClick={() => setRightBottomTab('custom')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'custom' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Custom test</button>
                     <button onClick={() => setRightBottomTab('results')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'results' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Results</button>
                     <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" /> AI analysis</button>
                  </div>
@@ -863,8 +863,8 @@ export default function ProblemDetailPage() {
                  <button onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
               </div>
               <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
-                 <button className="pb-2 text-sm font-bold border-b-2 border-primary text-primary">Shortcuts Guide</button>
-                 <button className="pb-2 text-sm font-bold border-b-2 border-transparent text-muted-foreground hover:text-foreground">Execution Environment</button>
+                 <button className="pb-2 text-sm font-bold border-b-2 border-primary text-primary">Shortcuts guide</button>
+                 <button className="pb-2 text-sm font-bold border-b-2 border-transparent text-muted-foreground hover:text-foreground">Execution environment</button>
               </div>
               <div className="p-4 overflow-y-auto">
                  <p className="text-xs font-semibold text-muted-foreground mb-4 leading-relaxed">
@@ -893,7 +893,7 @@ export default function ProblemDetailPage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
               <div className="bg-background rounded-3xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold mb-4">
-                  {feedbackType === 'bug' ? 'Report Bug' : feedbackType === 'feature' ? 'Request Feature' : 'Suggest Idea'}
+                  {feedbackType === 'bug' ? 'Report a bug' : feedbackType === 'feature' ? 'Request a feature' : 'Suggest an idea'}
                 </h3>
                 <textarea
                   value={feedbackContent}

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Search, ChevronDown, ChevronUp, CheckCircle2, Bookmark, Flame, Target, Trophy, ArrowRight, Loader2, Play, Code, Award
+  Search, ChevronDown, ChevronUp, CheckCircle2, Flame, Target, Trophy, ArrowRight, Loader2, Play, Code, Award
 } from 'lucide-react'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Button } from '@/components/ui/button'
@@ -48,11 +48,36 @@ export default function ProblemsListPage() {
   const { startTour, setTourSeen } = useTour()
 
   const [heatmapData, setHeatmapData] = useState<any>(null)
+  const [heatmapFailed, setHeatmapFailed] = useState(false)
   useEffect(() => {
     fetch('/api/user/heatmap?weeks=12').then(r => r.json()).then(data => {
-      if (data && !data.error && data.cells) setHeatmapData(data)
-    }).catch(() => {})
+      if (data && !data.error && !data._error && data.cells) setHeatmapData(data)
+      else setHeatmapFailed(true)
+    }).catch(() => setHeatmapFailed(true))
   }, [])
+
+  // Topic filter is built from the problems actually loaded (no made-up options).
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
+  const topicOptions = useMemo(() => {
+    const set = new Map<string, string>()
+    for (const p of filtered) for (const t of p.topics || []) {
+      const key = t.toLowerCase()
+      if (!set.has(key)) set.set(key, t)
+    }
+    return Array.from(set, ([id, label]) => ({ id, label })).sort((a, b) => a.label.localeCompare(b.label)).slice(0, 12)
+  }, [filtered])
+  const visible = useMemo(
+    () => selectedTopics.length === 0
+      ? filtered
+      : filtered.filter(p => (p.topics || []).some(t => selectedTopics.includes(t.toLowerCase()))),
+    [filtered, selectedTopics],
+  )
+
+  const pickRandom = () => {
+    if (visible.length === 0) return
+    const p = visible[Math.floor(Math.random() * visible.length)]
+    router.push(`/dashboard/problems/${p.slug}`)
+  }
 
   // Initialize tour if this is the first visit to problems page
   useEffect(() => {
@@ -60,19 +85,19 @@ export default function ProblemsListPage() {
       const problemsTour: TourStep[] = [
         {
           target: '[data-tour="problems-search"]',
-          title: 'Coding Practice Library',
+          title: 'Coding practice library',
           description: 'Practice library for placements and interviews; type here to filter questions.',
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-stats"]',
-          title: 'Track Solved Progress',
-          description: 'Track solved totals and Easy, Medium, Hard bars to gauge readiness.',
+          title: 'Problems by difficulty',
+          description: 'See how many Easy, Medium and Hard problems match your filters.',
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-table"]',
-          title: 'Start Solving Problems',
+          title: 'Start solving',
           description: 'Tip: click Solve on any row to open its coding workspace.',
           position: 'bottom',
         },
@@ -80,25 +105,14 @@ export default function ProblemsListPage() {
       autoPlayPageTour('problems', problemsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
-  // Compute real stats from problems data
-  const stats = useMemo(() => {
-    const total = filtered.length
-    const easyTotal = filtered.filter((p: any) => p.difficulty === 'easy').length
-    const mediumTotal = filtered.filter((p: any) => p.difficulty === 'medium').length
-    const hardTotal = filtered.filter((p: any) => p.difficulty === 'hard').length
-    return {
-      total,
-      done: 0, // Will be computed from submissions
-      easyTotal,
-      easySolved: 0,
-      mediumTotal,
-      mediumSolved: 0,
-      hardTotal,
-      hardSolved: 0,
-      streak: 0,
-      maxStreak: 1
-    }
-  }, [filtered])
+  // Counts from the problems shown. Solved/streak numbers aren't available on
+  // this page yet, so we don't show them rather than showing zeros.
+  const stats = useMemo(() => ({
+    total: visible.length,
+    easyTotal: visible.filter(p => p.difficulty === 'easy').length,
+    mediumTotal: visible.filter(p => p.difficulty === 'medium').length,
+    hardTotal: visible.filter(p => p.difficulty === 'hard').length,
+  }), [visible])
 
   // Skeleton components for loading state
   const StatsSkeleton = () => (
@@ -185,10 +199,6 @@ export default function ProblemsListPage() {
     </div>
   )
 
-  // Filter state (mock functionality for now)
-  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([])
-  
   if (!gate.ready) return null
 
   return (
@@ -206,24 +216,25 @@ export default function ProblemsListPage() {
         {/* Left Column (Filters) */}
         <div className="hidden lg:block lg:col-span-2 space-y-2">
            <h2 className="font-semibold text-foreground mb-4">Filters</h2>
-           <FilterAccordion 
-             title="Companies" 
-             items={[{id: 'tcs', label: 'TCS'}, {id: 'wipro', label: 'Wipro'}, {id: 'infosys', label: 'Infosys'}]}
-             selected={selectedCompanies} onToggle={(id) => setSelectedCompanies(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-           />
-           <FilterAccordion 
-             title="Topics" 
-             items={[{id: 'arrays', label: 'Arrays'}, {id: 'strings', label: 'Strings'}, {id: 'dp', label: 'Dynamic Programming'}]}
-             selected={selectedTopics} onToggle={(id) => setSelectedTopics(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
-           />
            <FilterAccordion
               title="Difficulty"
               items={DIFFICULTY_LEVELS.map(l => ({ id: l, label: DIFFICULTY_LABELS[l] }))}
               selected={difficulty !== 'all' ? [difficulty] : []}
               onToggle={(id) => setDifficulty(prev => prev === id ? 'all' : id)}
             />
-           <FilterAccordion title="Status" items={[{id: 'solved', label: 'Solved'}, {id: 'unsolved', label: 'Unsolved'}]} selected={[]} onToggle={() => {}} />
-           <FilterAccordion title="Domain" items={[{id: 'core', label: 'Core CS'}, {id: 'web', label: 'Web Dev'}]} selected={[]} onToggle={() => {}} />
+           {topicOptions.length > 0 && (
+             <FilterAccordion
+               title="Topics"
+               items={topicOptions}
+               selected={selectedTopics}
+               onToggle={(id) => setSelectedTopics(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
+             />
+           )}
+           {selectedTopics.length > 0 && (
+             <Button variant="ghost" size="sm" className="mt-2 px-0 text-primary" onClick={() => setSelectedTopics([])}>
+               Clear topics
+             </Button>
+           )}
         </div>
 
         {/* Center Column (Main Content) */}
@@ -236,39 +247,39 @@ export default function ProblemsListPage() {
                 <div className="flex flex-col items-center flex-1 w-full relative h-32 justify-center">
                    <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
                       <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
-                      <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray={`${stats.total ? (stats.done / stats.total) * 251.2 : 0} 251.2`} className="text-primary" strokeLinecap="round" />
+                      <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="8" strokeDasharray="251.2 251.2" className="text-primary/70" strokeLinecap="round" />
                    </svg>
                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                     <div className="text-2xl font-black tabular-nums text-foreground leading-none">{stats.done}<span className="text-sm font-semibold text-muted-foreground">/{stats.total}</span></div>
-                     <div className="text-[11px] text-muted-foreground font-medium mt-1 max-w-[80px]">Solved</div>
+                     <div className="text-2xl font-black tabular-nums text-foreground leading-none">{stats.total}</div>
+                     <div className="text-[11px] text-muted-foreground font-medium mt-1 max-w-[80px]">{stats.total === 1 ? 'Problem' : 'Problems'}</div>
                    </div>
                 </div>
                 <div className="flex-1 w-full space-y-4">
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
                        <span className="text-foreground">Easy</span>
-                       <span className="text-muted-foreground tabular-nums">{stats.easySolved}/{stats.easyTotal}</span>
+                       <span className="text-muted-foreground tabular-nums">{stats.easyTotal}</span>
                      </div>
                      <div className="w-full bg-muted/50 rounded-full h-1.5">
-                       <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.easyTotal ? (stats.easySolved / stats.easyTotal) * 100 : 0}%` }} />
+                       <div className="h-full bg-green-500 rounded-full" style={{ width: `${stats.total ? (stats.easyTotal / stats.total) * 100 : 0}%` }} />
                      </div>
                    </div>
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
                        <span className="text-foreground">Medium</span>
-                       <span className="text-muted-foreground tabular-nums">{stats.mediumSolved}/{stats.mediumTotal}</span>
+                       <span className="text-muted-foreground tabular-nums">{stats.mediumTotal}</span>
                      </div>
                      <div className="w-full bg-muted/50 rounded-full h-1.5">
-                       <div className="h-full bg-orange-400 rounded-full" style={{ width: `${stats.mediumTotal ? (stats.mediumSolved / stats.mediumTotal) * 100 : 0}%` }} />
+                       <div className="h-full bg-orange-400 rounded-full" style={{ width: `${stats.total ? (stats.mediumTotal / stats.total) * 100 : 0}%` }} />
                      </div>
                    </div>
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
                        <span className="text-foreground">Hard</span>
-                       <span className="text-muted-foreground tabular-nums">{stats.hardSolved}/{stats.hardTotal}</span>
+                       <span className="text-muted-foreground tabular-nums">{stats.hardTotal}</span>
                      </div>
                      <div className="w-full bg-muted/50 rounded-full h-1.5">
-                       <div className="h-full bg-red-500 rounded-full" style={{ width: `${stats.hardTotal ? (stats.hardSolved / stats.hardTotal) * 100 : 0}%` }} />
+                       <div className="h-full bg-red-500 rounded-full" style={{ width: `${stats.total ? (stats.hardTotal / stats.total) * 100 : 0}%` }} />
                      </div>
                    </div>
                 </div>
@@ -287,9 +298,11 @@ export default function ProblemsListPage() {
                         dayLabels={heatmapData.dayLabels}
                         monthLabels={heatmapData.monthLabels}
                         tooltipData={heatmapData.tooltipData}
-                        totalContributions={0}
-                        totalActiveDays={0}
+                        totalContributions={heatmapData.totalContributions ?? 0}
+                        totalActiveDays={heatmapData.totalActiveDays ?? 0}
                      />
+                  ) : heatmapFailed ? (
+                     <div className="flex items-center justify-center h-full text-sm text-muted-foreground">Activity isn&apos;t available right now.</div>
                   ) : (
                      <div className="flex items-center justify-center h-full">
                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -298,8 +311,12 @@ export default function ProblemsListPage() {
                </div>
 
                <div className="flex justify-between items-center gap-3 pt-3 border-t border-border/40 mt-auto text-xs text-muted-foreground">
-                 <div>Current streak: <span className="font-semibold tabular-nums text-foreground">{stats.streak} {stats.streak === 1 ? 'day' : 'days'}</span></div>
-                 <div>Best streak: <span className="font-semibold tabular-nums text-foreground">{stats.maxStreak} {stats.maxStreak === 1 ? 'day' : 'days'}</span></div>
+                 {heatmapData ? (
+                   <>
+                     <div>Active days: <span className="font-semibold tabular-nums text-foreground">{heatmapData.totalActiveDays ?? 0}</span></div>
+                     <div>Activity: <span className="font-semibold tabular-nums text-foreground">{heatmapData.totalContributions ?? 0}</span></div>
+                   </>
+                 ) : <div>&nbsp;</div>}
                </div>
              </Card>
            </div>
@@ -326,8 +343,8 @@ export default function ProblemsListPage() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search problems" aria-label="Search problems" className="pl-9 h-10 rounded-full bg-card" />
                 </div>
-                <Button variant="outline" className="rounded-full h-10 gap-2 border-border/60">
-                   <Play className="h-4 w-4" /> Pick random
+                <Button variant="outline" className="rounded-full h-10 gap-2 border-border/60" onClick={pickRandom} disabled={loading || visible.length === 0}>
+                   <Play className="h-4 w-4" aria-hidden /> Pick random
                 </Button>
               </div>
 
@@ -344,14 +361,13 @@ export default function ProblemsListPage() {
                     <div className="p-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                  ) : error ? (
                     <div className="p-6 text-center text-destructive text-sm font-medium">{error}</div>
-                 ) : filtered.length === 0 ? (
-                    <div className="p-12 text-center text-muted-foreground text-sm">No problems match your search. Try a different word or clear the difficulty filter.</div>
+                 ) : visible.length === 0 ? (
+                    <div className="p-12 text-center text-muted-foreground text-sm">No problems match your search. Try a different word or clear the filters.</div>
                  ) : (
                     <div className="divide-y divide-border/40">
-                       {filtered.map((p, i) => (
+                       {visible.map((p, i) => (
                          <div key={p.id || i} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/40 transition-colors group">
                             <div className="col-span-8 flex gap-3 min-w-0">
-                               <div className="pt-0.5 shrink-0"><Bookmark className="h-4 w-4 text-muted-foreground/50 group-hover:text-primary transition-colors cursor-pointer" /></div>
                                <div className="min-w-0">
                                   <Link href={`/dashboard/problems/${p.slug}`} className="font-semibold text-foreground text-sm truncate block hover:text-primary transition-colors">
                                     {p.title}

@@ -56,31 +56,31 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       const interviewTour: TourStep[] = [
         {
           target: '[data-tour="back-to-interviews"]',
-          title: 'Interview Dashboard',
+          title: 'Interview dashboard',
           description: 'Return to your list of scheduled interviews.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-details"]',
-          title: 'Interview Details',
+          title: 'Interview details',
           description: 'View the scheduled interview information including title, role, and type.',
           position: 'bottom',
         },
         {
           target: '[data-tour="status-controls"]',
-          title: 'Interview Controls',
+          title: 'Interview controls',
           description: 'Start or end interviews using these control buttons.',
           position: 'bottom',
         },
         {
           target: '[data-tour="current-question"]',
-          title: 'Current Question',
+          title: 'Current question',
           description: 'The active question you need to answer during the interview.',
           position: 'bottom',
         },
         {
           target: '[data-tour="answered-questions"]',
-          title: 'Answered Questions',
+          title: 'Answered questions',
           description: 'Review all your previous answers and feedback.',
           position: 'bottom',
         },
@@ -92,7 +92,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
         },
         {
           target: '[data-tour="collaborative-editor"]',
-          title: 'Collaborative Editor',
+          title: 'Collaborative editor',
           description: 'Real-time collaborative code editor for writing solutions during the interview.',
           position: 'bottom',
         }

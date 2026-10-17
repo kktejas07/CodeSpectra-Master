@@ -137,19 +137,19 @@ export default function IdentityVerificationPage() {
       const identityVerifyTour: TourStep[] = [
         {
           target: '[data-tour="identity-verify-header"]',
-          title: 'Verify Identity to Unlock',
+          title: 'Verify your identity',
           description: 'This page runs one-time KYC for every user to unlock exams and gated features.',
           position: 'bottom',
         },
         {
           target: '[data-tour="identity-verify-start"]',
-          title: 'Start Verification Flow',
-          description: 'Start verification to open the secure Didit page and get results in seconds.',
+          title: 'Start verification',
+          description: 'This opens the secure Didit verification page. You come back here when it is done.',
           position: 'top',
         },
         {
           target: '[data-tour="identity-verify-features"]',
-          title: 'Tip: Prepare ID First',
+          title: 'Have your ID ready',
           description: 'Tip: keep a government ID and selfie ready — this panel lists the ID, liveness, face, and fraud checks.',
           position: 'top',
         },
@@ -372,13 +372,13 @@ export default function IdentityVerificationPage() {
                     {status.result?.front_image && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">ID front</p>
-                        <img src={status.result?.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
+                        <img src={status.result?.front_image} alt="ID front" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.back_image && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">ID back</p>
-                        <img src={status.result?.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
+                        <img src={status.result?.back_image} alt="ID back" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.portrait_image && (
@@ -563,13 +563,13 @@ export default function IdentityVerificationPage() {
                     {status.result?.front_image && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">ID front</p>
-                        <img src={status.result?.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
+                        <img src={status.result?.front_image} alt="ID front" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.back_image && (
                       <div>
                         <p className="text-xs text-muted-foreground mb-1">ID back</p>
-                        <img src={status.result?.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
+                        <img src={status.result?.back_image} alt="ID back" className="w-full h-40 object-contain rounded-xl border border-border bg-background" />
                       </div>
                     )}
                     {status.result?.portrait_image && (
@@ -626,28 +626,28 @@ export default function IdentityVerificationPage() {
             <FileCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-foreground">ID verification</p>
-              <p className="text-xs text-muted-foreground">Verify any government-issued ID from 220+ countries</p>
+              <p className="text-xs text-muted-foreground">A photo of your passport, national ID card or driving licence</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <ShieldCheck className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-foreground">Liveness check</p>
-              <p className="text-xs text-muted-foreground">AI-powered passive liveness detection (iBeta certified)</p>
+              <p className="text-xs text-muted-foreground">A short selfie check that you are a real person, present right now</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <Globe className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-foreground">Face match</p>
-              <p className="text-xs text-muted-foreground">Compare your selfie with ID photo (handles old photos)</p>
+              <p className="text-xs text-muted-foreground">Your selfie is compared with the photo on your ID</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
             <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
             <div>
               <p className="text-sm font-medium text-foreground">IP analysis</p>
-              <p className="text-xs text-muted-foreground">Detect VPN, proxy, and Tor usage for fraud prevention</p>
+              <p className="text-xs text-muted-foreground">Your IP address, approximate location and device are recorded, and VPN use is flagged</p>
             </div>
           </div>
         </div>
@@ -658,10 +658,10 @@ export default function IdentityVerificationPage() {
         <h2 className="text-lg font-semibold text-foreground mb-4">How it works</h2>
         <div className="space-y-3">
           {[
-            { step: 1, title: 'Click "Start identity verification"', desc: 'A secure modal opens in your browser' },
+            { step: 1, title: 'Select "Start identity verification"', desc: 'You are taken to our verification partner Didit\'s secure page' },
             { step: 2, title: 'Upload your ID', desc: 'Take a photo of your government-issued ID document' },
             { step: 3, title: 'Take a selfie', desc: 'The system verifies you\'re a real person (passive, no head turns needed)' },
-            { step: 4, title: 'Done', desc: 'Results are instant — typically under 30 seconds' },
+            { step: 4, title: 'Done', desc: 'You return here and see your result. Some checks go to our team for review.' },
           ].map((item) => (
             <div key={item.step} className="flex items-start gap-3">
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -678,7 +678,7 @@ export default function IdentityVerificationPage() {
 
       {/* Privacy note */}
       <div className="rounded-2xl border border-border/70 bg-muted/40 p-4 text-xs text-muted-foreground">
-        <strong className="text-foreground">Privacy:</strong> Your documents are processed securely and encrypted. We don't store raw images — only verification results. Data is retained according to our privacy policy.
+        <strong className="text-foreground">What we collect:</strong> our verification partner Didit processes your ID photos and selfie. We keep the result and the details shown on this page after you finish: your name, date of birth, gender, document type and number, liveness and face-match scores, links to your ID and portrait images, and your IP address, location, device, browser and VPN status. You and our review team can see them. Data is kept according to our privacy policy.
       </div>
 
       {/* Start button */}

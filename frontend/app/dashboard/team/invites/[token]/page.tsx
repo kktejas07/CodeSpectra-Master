@@ -131,7 +131,7 @@ export default function TeamInvitePage() {
                 {user
                   ? <>This invite is for <strong className="text-foreground">{info.email}</strong>, but you're signed in as <strong className="text-foreground">{user.email}</strong>. Sign out and accept with the invited account.</>
                   : <>Sign in with <strong className="text-foreground">{info.email}</strong> to accept this invitation.</>}
-                <Button className="mt-3 w-full" variant="outline" onClick={() => router.push('/login')}>
+                <Button className="mt-3 w-full" variant="outline" onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(`/dashboard/team/invites/${token}`)}`)}>
                   {user ? 'Switch account' : 'Sign in'}
                 </Button>
               </div>
