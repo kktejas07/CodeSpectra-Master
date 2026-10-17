@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Sparkles, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Sparkles, AlertTriangle, RotateCcw, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -13,6 +13,41 @@ import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { MOCK_TESTS } from '@/lib/mock-tests'
 import { Illustration } from '@/components/illustrations/spot'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+
+const TEST_DURATION_SEC = 15 * 60
+
+/**
+ * Per-browser resume state for one attempt (start time, answers, position).
+ * The attempt itself and its start time live on the server; this only keeps a
+ * reload from losing the candidate's place. Storage can be unavailable.
+ */
+type LocalAttemptState = { startedAt?: number; started?: boolean; answers?: Record<number, number>; index?: number }
+const localKey = (sessionId: string) => `codespectra_mock_attempt_${sessionId}`
+function readLocal(sessionId: string): LocalAttemptState {
+  try {
+    const raw = window.localStorage.getItem(localKey(sessionId))
+    const v = raw ? JSON.parse(raw) : null
+    return v && typeof v === 'object' ? (v as LocalAttemptState) : {}
+  } catch { return {} }
+}
+function writeLocal(sessionId: string, patch: LocalAttemptState) {
+  try {
+    window.localStorage.setItem(localKey(sessionId), JSON.stringify({ ...readLocal(sessionId), ...patch }))
+  } catch { /* storage unavailable */ }
+}
+function clearLocal(sessionId: string) {
+  try { window.localStorage.removeItem(localKey(sessionId)) } catch { /* storage unavailable */ }
+}
 
 interface Question {
   id: string
@@ -50,13 +85,67 @@ export default function TakeMockTestPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [finished, setFinished] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(15 * 60) // 15 mins default
+  const [timeLeft, setTimeLeft] = useState(TEST_DURATION_SEC)
+  /** Epoch ms when this attempt's timer started (from the stored attempt). */
+  const [startedAtMs, setStartedAtMs] = useState<number | null>(null)
+  const [resumed, setResumed] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [confirmNewOpen, setConfirmNewOpen] = useState(false)
+  const [startingNew, setStartingNew] = useState(false)
+  const [newTestError, setNewTestError] = useState<string | null>(null)
   const [result, setResult] = useState<GradedResult | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   // Each generate call spends an AI credit — never fire it twice for one mount.
   const requestedRef = useRef(false)
+
+  /** Load the server's attempt into the page (fresh or resumed). */
+  const applyAttempt = useCallback((data: { session_id?: string; questions?: Question[]; created_at?: string; resumed?: boolean }) => {
+    const sid = typeof data.session_id === 'string' ? data.session_id : null
+    const isResumed = data.resumed === true
+    const local = sid ? readLocal(sid) : {}
+    // Resumed and already under way (or no local record, e.g. another
+    // device): the timer runs from when the attempt started — this browser's
+    // record if it has one, else the stored attempt time. A fresh attempt, or
+    // one still on the intro screen, starts its clock when Start is pressed.
+    const underWay = isResumed && local.started !== false
+    const serverStart = data.created_at ? Date.parse(data.created_at) : NaN
+    const start = underWay
+      ? (typeof local.startedAt === 'number' ? local.startedAt : Number.isFinite(serverStart) ? serverStart : Date.now())
+      : Date.now()
+    if (sid) writeLocal(sid, underWay ? { startedAt: start, started: true } : { started: false })
+    const elapsed = underWay ? Math.min(TEST_DURATION_SEC, Math.max(0, Math.floor((Date.now() - start) / 1000))) : 0
+    const qs = Array.isArray(data.questions) ? data.questions : []
+    setQuestions(qs)
+    setSessionId(sid)
+    setResumed(underWay)
+    setStartedAtMs(start)
+    setTimeLeft(TEST_DURATION_SEC - elapsed)
+    setAnswers(underWay && local.answers && typeof local.answers === 'object' ? local.answers : {})
+    setCurrentIndex(underWay && typeof local.index === 'number' ? Math.min(Math.max(0, local.index), Math.max(0, qs.length - 1)) : 0)
+    setResult(null)
+    setSubmitError(null)
+    // A resumed attempt whose time is up goes straight to submission.
+    setFinished(underWay && elapsed >= TEST_DURATION_SEC)
+    setStarted(underWay)
+  }, [])
+
+  const requestAttempt = useCallback(async (newAttempt: boolean) => {
+    const res = await csrfFetch('/api/mock-tests/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        company,
+        role,
+        difficulty,
+        count: 15,
+        ...(newAttempt ? { new_attempt: true } : {}),
+      }),
+    })
+    const data = await res.json().catch(() => null)
+    if (!res.ok) throw new Error(data?.error || 'Failed to generate test')
+    return data
+  }, [company, role, difficulty])
 
   const fetchQuestions = useCallback(async () => {
     if (requestedRef.current) return
@@ -68,48 +157,73 @@ export default function TakeMockTestPage() {
     requestedRef.current = true
     try {
       setLoading(true)
-      const res = await csrfFetch('/api/mock-tests/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          company,
-          role,
-          difficulty,
-          count: 15
-        })
-      })
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => null)
-        throw new Error(errorData?.error || 'Failed to generate test')
-      }
-      const data = await res.json()
-      setQuestions(data.questions || [])
-      setSessionId(data.session_id || null)
+      // Reload / second tab returns the in-progress attempt (no credit spent).
+      applyAttempt(await requestAttempt(false))
     } catch (err: any) {
       setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
     }
-  }, [company, role, difficulty])
+  }, [company, role, applyAttempt, requestAttempt])
+
+  /** "Start a new test": abandons the current attempt and spends one AI credit. */
+  const startNewTest = useCallback(async () => {
+    if (startingNew) return
+    setStartingNew(true)
+    setNewTestError(null)
+    const oldSession = sessionId
+    try {
+      const data = await requestAttempt(true)
+      if (oldSession) clearLocal(oldSession)
+      setError(null)
+      applyAttempt(data)
+      setConfirmNewOpen(false)
+    } catch (err) {
+      setNewTestError(err instanceof Error ? err.message : 'Could not start a new test')
+    } finally {
+      setStartingNew(false)
+    }
+  }, [startingNew, sessionId, requestAttempt, applyAttempt])
 
   useEffect(() => {
     fetchQuestions()
   }, [fetchQuestions])
 
+  // Deadline-based countdown from the attempt's start time, so a reload or a
+  // throttled background tab doesn't add time.
   useEffect(() => {
-    if (!started || finished) return
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          setFinished(true)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
+    if (!started || finished || startedAtMs === null) return
+    const tick = () => {
+      const left = TEST_DURATION_SEC - Math.floor((Date.now() - startedAtMs) / 1000)
+      if (left <= 0) {
+        setTimeLeft(0)
+        setFinished(true)
+        return false
+      }
+      setTimeLeft(left)
+      return true
+    }
+    if (!tick()) return
+    const timer = setInterval(() => { if (!tick()) clearInterval(timer) }, 1000)
     return () => clearInterval(timer)
-  }, [started, finished])
+  }, [started, finished, startedAtMs])
+
+  // Keep this browser's place in the attempt across reloads.
+  useEffect(() => {
+    if (!sessionId || result) return
+    writeLocal(sessionId, { started, answers, index: currentIndex })
+  }, [sessionId, started, answers, currentIndex, result])
+
+  const beginTest = () => {
+    // The clock starts when the candidate presses Start on a fresh attempt.
+    if (!resumed) {
+      const now = Date.now()
+      setStartedAtMs(now)
+      setTimeLeft(TEST_DURATION_SEC)
+      if (sessionId) writeLocal(sessionId, { startedAt: now, started: true })
+    }
+    setStarted(true)
+  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60)
@@ -143,6 +257,7 @@ export default function TakeMockTestPage() {
       const data = await res.json().catch(() => null)
       if (!res.ok) throw new Error(data?.error || 'Could not save your answers')
       setResult(data as GradedResult)
+      clearLocal(sessionId)
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Could not save your answers')
     } finally {
@@ -153,6 +268,38 @@ export default function TakeMockTestPage() {
   useEffect(() => {
     if (finished && !result && !submitting && !submitError) void submitAttempt()
   }, [finished, result, submitting, submitError, submitAttempt])
+
+  const newTestDialog = (
+    <AlertDialog open={confirmNewOpen} onOpenChange={(open) => { if (!startingNew) { setConfirmNewOpen(open); if (!open) setNewTestError(null) } }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Start a new test?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {finished && result
+              ? 'You get a fresh set of questions for this company and role. This uses 1 AI credit.'
+              : 'Your current attempt will be dropped and not scored. You get a fresh set of questions, and this uses 1 AI credit.'}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        {newTestError && <p role="alert" className="text-sm text-destructive">{newTestError}</p>}
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={startingNew}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={startingNew}
+            onClick={(e) => { e.preventDefault(); void startNewTest() }}
+          >
+            {startingNew && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Start a new test
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+
+  const newTestButton = (variant: 'outline' | 'default' | 'ghost' = 'outline') => (
+    <Button variant={variant} onClick={() => setConfirmNewOpen(true)} disabled={startingNew}>
+      <RotateCcw className="mr-2 h-4 w-4" /> Start a new test
+    </Button>
+  )
 
   if (!gate.ready || loading) {
     return (
@@ -195,17 +342,18 @@ export default function TakeMockTestPage() {
           <CardContent className="space-y-4 text-muted-foreground">
             <ul className="list-disc pl-6 space-y-2">
               <li>This test contains <strong>{questions.length} multiple-choice questions</strong>.</li>
-              <li>You have <strong>{Math.floor(timeLeft / 60)} minutes</strong> to complete it.</li>
+              <li>You have <strong>{Math.floor(TEST_DURATION_SEC / 60)} minutes</strong> to complete it. The timer starts when you press Start and keeps running if you reload.</li>
               <li>Once you submit an answer or skip, you cannot go back.</li>
               <li>The test will automatically submit when the timer runs out.</li>
             </ul>
           </CardContent>
           <CardFooter>
-            <Button size="lg" className="w-full" onClick={() => setStarted(true)}>
+            <Button size="lg" className="w-full" onClick={beginTest}>
               Start test
             </Button>
           </CardFooter>
         </Card>
+        {newTestDialog}
       </div>
     )
   }
@@ -218,7 +366,11 @@ export default function TakeMockTestPage() {
             <AlertTriangle className="h-12 w-12 text-destructive" />
             <h2 className="text-xl font-bold">Couldn&apos;t save your answers</h2>
             <p className="text-muted-foreground">{submitError}</p>
-            <Button onClick={() => { setSubmitError(null) }}>Try again</Button>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button onClick={() => { setSubmitError(null) }}>Try again</Button>
+              {newTestButton('outline')}
+            </div>
+            {newTestDialog}
           </>
         ) : (
           <p className="text-muted-foreground">Saving your answers…</p>
@@ -248,11 +400,10 @@ export default function TakeMockTestPage() {
             <Button variant="outline" onClick={() => router.push('/dashboard/mock-tests')}>
               Back to tests and history
             </Button>
-            <Button onClick={() => window.location.reload()}>
-              Retake test
-            </Button>
+            {newTestButton('default')}
           </div>
         </Card>
+        {newTestDialog}
 
         <div className="space-y-6">
           <h3 className="text-xl font-semibold">Review your answers</h3>
@@ -306,13 +457,20 @@ export default function TakeMockTestPage() {
           <h2 className="text-xl font-bold">{company} · {role}</h2>
           <p className="text-sm text-muted-foreground tabular-nums">Question {currentIndex + 1} of {questions.length}</p>
         </div>
-        <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono tabular-nums text-lg" aria-label="Time left">
-          <Clock className="h-5 w-5" />
-          <span className={timeLeft < 60 ? 'text-destructive font-bold' : ''}>
-            {formatTime(timeLeft)}
-          </span>
+        <div className="flex items-center gap-3">
+          {newTestButton('ghost')}
+          <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono tabular-nums text-lg" aria-label="Time left">
+            <Clock className="h-5 w-5" />
+            <span className={timeLeft < 60 ? 'text-destructive font-bold' : ''}>
+              {formatTime(timeLeft)}
+            </span>
+          </div>
         </div>
       </div>
+      {newTestDialog}
+      {resumed && (
+        <p className="-mt-6 mb-6 text-sm text-muted-foreground">Picked up where you left off. The timer kept running from when you started.</p>
+      )}
 
       <Progress value={((currentIndex + 1) / questions.length) * 100} className="mb-8 h-2" />
 

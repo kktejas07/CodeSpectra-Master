@@ -20,6 +20,7 @@ interface VerifyResponse {
   certification?: { title: string; level: string; source: string }
   score_band?: string | null
   issued_at?: string | null
+  revoked_at?: string | null
   issuer?: string
   template?: string
 }
@@ -135,6 +136,9 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
                   ? 'Wait a minute, then reload this page.'
                   : 'No certificate matches this link. Check that it was copied in full.'}
             </p>
+            {data?.status === 'revoked' && data.revoked_at && (
+              <p className="mt-2 text-sm font-medium text-destructive">Revoked on {formatIssueDate(data.revoked_at)}</p>
+            )}
             <code className="text-[11px] block mt-4 text-muted-foreground break-all">{id}</code>
           </Card>
         ) : (

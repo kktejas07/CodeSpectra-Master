@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { certificateTokensForExamSubmissions } from '@/lib/db/certifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,6 +44,20 @@ export async function GET() {
         submitted_at: s.submitted_at || s.created_at,
       }
     })
+
+    // Link a certificate only when a real, unrevoked one exists for the attempt.
+    try {
+      const tokens = await certificateTokensForExamSubmissions(
+        userId,
+        attempts.map((a: any) => ({ id: String(a.id || ''), exam_id: String(a.exam_id || ''), passed: !!a.passed, submitted_at: a.submitted_at || null })),
+      )
+      for (const a of attempts as any[]) {
+        const t = tokens.get(String(a.id || ''))
+        if (t) a.certificate_url = `/certificate-preview/${encodeURIComponent(t)}`
+      }
+    } catch (e) {
+      console.error('[user assessments] certificate lookup:', e)
+    }
 
     const total = attempts.length
     const passed = attempts.filter((a: any) => a.passed).length

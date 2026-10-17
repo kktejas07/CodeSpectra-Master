@@ -3,6 +3,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
+import { newAttemptToken } from '@/lib/db/certifications'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,9 +36,8 @@ export async function POST(request: Request) {
   const user = await userCol.findOne({ $or: [{ _id: body.userId }, { id: body.userId }] } as any)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-  const verifyToken = Buffer.from(
-    `${Date.now()}-${Math.random().toString(36).slice(2)}-${body.userId}`
-  ).toString('base64url').slice(0, 32)
+  // 24 random bytes (crypto.randomBytes) as base64url. Older tokens stay valid.
+  const verifyToken = newAttemptToken()
 
   const now = new Date().toISOString()
   const attempt = {

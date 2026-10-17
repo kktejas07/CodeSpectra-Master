@@ -16,6 +16,15 @@ interface SSOProvider {
   id: string; name: string; provider_type: string; issuer: string
   client_id: string; metadata_url: string; domains: string[]
   default_role: string; enabled: boolean; created_at: string
+  tenant_id?: string; org_id?: string
+}
+
+interface TenantOption { id: string; name: string }
+
+const EMPTY_FORM = {
+  name: '', provider_type: 'oidc', issuer: '', client_id: '',
+  client_secret: '', metadata_url: '', domains: '', default_role: 'user',
+  attribute_mapping: '{"email":"email"}', tenant_id: '',
 }
 
 export default function AdminSSOPage() {
@@ -24,11 +33,10 @@ export default function AdminSSOPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [form, setForm] = useState({
-    name: '', provider_type: 'oidc', issuer: '', client_id: '',
-    client_secret: '', metadata_url: '', domains: '', default_role: 'user',
-    attribute_mapping: '{"email":"email"}',
-  })
+  const [form, setForm] = useState(EMPTY_FORM)
+  const [tenants, setTenants] = useState<TenantOption[]>([])
+  const [tenantsFailed, setTenantsFailed] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -42,20 +50,58 @@ export default function AdminSSOPage() {
 
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
 
+  useEffect(() => {
+    if (!gate.ready) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/tenants', { cache: 'no-store', credentials: 'include' })
+        if (!res.ok) throw new Error(String(res.status))
+        const j = await res.json().catch(() => ({}))
+        const list = (j.tenants || j.data || []) as Array<{ id?: unknown; name?: unknown }>
+        if (!cancelled) {
+          setTenants(
+            list
+              .filter((t) => typeof t.id === 'string' && t.id)
+              .map((t) => ({ id: t.id as string, name: typeof t.name === 'string' && t.name ? t.name : (t.id as string) })),
+          )
+        }
+      } catch {
+        if (!cancelled) setTenantsFailed(true)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [gate.ready])
+
+  const tenantName = (id?: string) => {
+    if (!id) return null
+    return tenants.find((t) => t.id === id)?.name || id
+  }
+
   const create = async () => {
     setBusy(true)
+    setFormError(null)
     try {
       const res = await csrfFetch('/api/admin/sso', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          // Organisation admins only make sense inside an organisation.
+          default_role: form.tenant_id ? form.default_role : 'user',
+        }),
       })
       if (res.ok) {
         setShowForm(false)
-        setForm({ name: '', provider_type: 'oidc', issuer: '', client_id: '', client_secret: '', metadata_url: '', domains: '', default_role: 'user', attribute_mapping: '{"email":"email"}' })
+        setForm(EMPTY_FORM)
         await load()
+      } else {
+        const j = await res.json().catch(() => ({}))
+        setFormError(typeof j.error === 'string' ? j.error : 'Could not create the provider. Try again.')
       }
-    } catch {} finally { setBusy(false) }
+    } catch {
+      setFormError('Could not create the provider. Try again.')
+    } finally { setBusy(false) }
   }
 
   if (!gate.ready) return null
@@ -119,17 +165,39 @@ export default function AdminSSOPage() {
               <Input id="sso-domains" value={form.domains} onChange={(e) => setForm((f) => ({ ...f, domains: e.target.value }))} placeholder="company.com, myorg.org" />
             </div>
             <div>
+              <Label htmlFor="sso-tenant">Organisation</Label>
+              <select id="sso-tenant" value={form.tenant_id}
+                onChange={(e) => setForm((f) => ({ ...f, tenant_id: e.target.value, default_role: e.target.value ? f.default_role : 'user' }))}
+                aria-describedby="sso-tenant-hint"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                <option value="">No organisation</option>
+                {tenants.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              <p id="sso-tenant-hint" className="mt-1 text-xs text-muted-foreground">
+                People who sign in through this provider join this organisation. Leave empty to create regular accounts.
+              </p>
+              {tenantsFailed && (
+                <p className="mt-1 text-xs text-destructive">Couldn&apos;t load organisations. Reload the page to try again.</p>
+              )}
+            </div>
+            <div>
               <Label htmlFor="sso-role">Default role</Label>
               <select id="sso-role" value={form.default_role} onChange={(e) => setForm((f) => ({ ...f, default_role: e.target.value }))}
                 className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="user">User</option>
-                <option value="tenant_admin">Organization admin</option>
+                <option value="tenant_admin" disabled={!form.tenant_id}>Organization admin</option>
               </select>
+              {!form.tenant_id && (
+                <p className="mt-1 text-xs text-muted-foreground">Pick an organisation to allow the organisation admin role.</p>
+              )}
             </div>
           </div>
+          {formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}
           <div className="flex gap-2">
             <Button onClick={create} disabled={busy}>{busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}Create provider</Button>
-            <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setShowForm(false); setFormError(null) }}>Cancel</Button>
           </div>
         </Panel>
       )}
@@ -163,6 +231,12 @@ export default function AdminSSOPage() {
                 <span>Client: <span className="font-mono">{p.client_id?.slice(0, 16)}…</span></span>
                 <span>Role: {p.default_role}</span>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Organisation:{' '}
+                <span className="font-medium text-foreground">
+                  {tenantName(p.tenant_id || p.org_id) || 'None (regular accounts)'}
+                </span>
+              </p>
             </Panel>
           ))}
         </div>

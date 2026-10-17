@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -35,6 +36,7 @@ import {
   CheckCircle2,
   Trophy,
   FileText,
+  Ban,
 } from 'lucide-react'
 import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -59,7 +61,13 @@ interface IssuedCert {
   issuedAt: string
   verifyToken: string
   certificationId: string
+  revokedAt?: string | null
+  revokedBy?: string | null
+  revokeReason?: string | null
 }
+
+const REVOKE_REASON_MIN = 5
+const REVOKE_REASON_MAX = 500
 
 const PREVIEW_DATA: CertificateData = {
   candidateName: 'Alex Johnson',
@@ -92,6 +100,10 @@ export default function CertificatesPage() {
   const [previewData, setPreviewData] = useState<CertificateData>(PREVIEW_DATA)
   const [auditSearch, setAuditSearch] = useState('')
   const [issuing, setIssuing] = useState(false)
+  const [revokeTarget, setRevokeTarget] = useState<IssuedCert | null>(null)
+  const [revokeReason, setRevokeReason] = useState('')
+  const [revoking, setRevoking] = useState(false)
+  const [revokeError, setRevokeError] = useState<string | null>(null)
 
   const [formTemplate, setFormTemplate] = useState<TemplateKey>(TEMPLATE_KEYS[0])
   const [formTitle, setFormTitle] = useState('')
@@ -186,6 +198,43 @@ export default function CertificatesPage() {
       addToast({ title: 'Failed to issue certificate', type: 'error' })
     } finally {
       setIssuing(false)
+    }
+  }
+
+  function openRevoke(cert: IssuedCert) {
+    setRevokeTarget(cert)
+    setRevokeReason('')
+    setRevokeError(null)
+  }
+
+  async function handleRevoke() {
+    if (!revokeTarget) return
+    const reason = revokeReason.trim()
+    if (reason.length < REVOKE_REASON_MIN) {
+      setRevokeError(`Give a reason (at least ${REVOKE_REASON_MIN} characters).`)
+      return
+    }
+    try {
+      setRevoking(true)
+      setRevokeError(null)
+      const res = await csrfFetch(`/api/admin/certifications/${encodeURIComponent(revokeTarget.id)}/revoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setRevokeError(typeof data.error === 'string' ? data.error : 'Could not revoke the certificate. Try again.')
+        if (res.status === 409) fetchIssued()
+        return
+      }
+      addToast({ title: 'Certificate revoked', type: 'success' })
+      setRevokeTarget(null)
+      fetchIssued()
+    } catch {
+      setRevokeError('Could not revoke the certificate. Try again.')
+    } finally {
+      setRevoking(false)
     }
   }
 
@@ -325,6 +374,11 @@ export default function CertificatesPage() {
                     <td className="py-2.5 px-4">
                       <p className="font-medium">{cert.title}</p>
                       <p className="text-[11px] text-muted-foreground">{cert.level}</p>
+                      {cert.revokedAt && (
+                        <Badge variant="destructive" className="mt-1 text-[10px]" title={cert.revokeReason || undefined}>
+                          Revoked {formatDate(cert.revokedAt)}
+                        </Badge>
+                      )}
                     </td>
                     <td className="py-2.5 px-4">
                       <Badge variant="outline" className="text-[10px] capitalize">
@@ -363,6 +417,18 @@ export default function CertificatesPage() {
                         >
                           <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
+                        {!cert.revokedAt && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            aria-label="Revoke certificate"
+                            title="Revoke certificate"
+                            onClick={() => openRevoke(cert)}
+                          >
+                            <Ban className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -517,6 +583,49 @@ export default function CertificatesPage() {
             >
               {issuing && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               Issue certificate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open && !revoking) setRevokeTarget(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Revoke certificate</DialogTitle>
+            <DialogDescription>
+              {revokeTarget
+                ? `"${revokeTarget.title}" issued to ${revokeTarget.user.name} will show as revoked on its public verification page. This can't be undone.`
+                : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="revoke-reason" className="text-xs">Reason</Label>
+            <Textarea
+              id="revoke-reason"
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value.slice(0, REVOKE_REASON_MAX))}
+              placeholder="e.g. Issued to the wrong person"
+              rows={3}
+              aria-describedby="revoke-reason-hint"
+              className="text-xs"
+            />
+            <p id="revoke-reason-hint" className="text-[11px] text-muted-foreground">
+              Required. Kept in the audit log; not shown publicly.
+            </p>
+            {revokeError && <p role="alert" className="text-xs text-destructive">{revokeError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setRevokeTarget(null)} disabled={revoking}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleRevoke}
+              disabled={revoking || revokeReason.trim().length < REVOKE_REASON_MIN}
+            >
+              {revoking && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Revoke certificate
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -112,11 +112,15 @@ export default function CertVerifyPage() {
               <h1 className="text-xl font-bold leading-tight">This certificate is no longer valid</h1>
             </div>
           </div>
+          {data.revoked_at && (
+            <p className="mb-4 text-sm font-medium text-destructive" data-testid="cert-revoked-on">
+              Revoked on {formatDate(data.revoked_at, undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+            </p>
+          )}
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
             <dt className="text-muted-foreground">Holder</dt><dd className="font-medium">{data.holder?.name}</dd>
             <dt className="text-muted-foreground">Certificate</dt><dd className="font-medium">{data.certification?.title}</dd>
             {data.issued_at && (<><dt className="text-muted-foreground">Issued</dt><dd>{formatDate(data.issued_at)}</dd></>)}
-            {data.revoked_at && (<><dt className="text-muted-foreground">Revoked</dt><dd>{formatDate(data.revoked_at)}</dd></>)}
             <dt className="text-muted-foreground">Issuer</dt><dd>{data.issuer || 'CodeSpectra'}</dd>
           </dl>
         </Card>

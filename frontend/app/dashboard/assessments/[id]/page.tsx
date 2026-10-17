@@ -99,7 +99,28 @@ export default function ExamPage() {
   const [submitting, setSubmitting] = useState(false)
   const [results, setResults] = useState<{ score: number; total: number; details: Array<{ qId: string; correct: boolean; points: number; answer?: string }> } | null>(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [certificateUrl, setCertificateUrl] = useState<string | null>(null)
   const [extVerified, setExtVerified] = useState(false)
+
+  // Show "View certificate" only when a real certificate exists for this attempt.
+  useEffect(() => {
+    if (!submitted || !results) return
+    let cancelled = false
+    const submissionId = (results as { id?: unknown; submission_id?: unknown }).id
+      ?? (results as { submission_id?: unknown }).submission_id
+    fetch('/api/user/assessments', { credentials: 'include', cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (cancelled || !json || !Array.isArray(json.attempts)) return
+        const rows = json.attempts as Array<{ id?: string; exam_id?: string; certificate_url?: string }>
+        const match = typeof submissionId === 'string' && submissionId
+          ? rows.find((a) => a.id === submissionId)
+          : rows.find((a) => a.exam_id === examId && a.certificate_url)
+        setCertificateUrl(match?.certificate_url || null)
+      })
+      .catch(() => { if (!cancelled) setCertificateUrl(null) })
+    return () => { cancelled = true }
+  }, [submitted, results, examId])
 
   useEffect(() => {
     fetch(`/api/exams/${examId}`)
@@ -369,8 +390,8 @@ export default function ExamPage() {
           <Button onClick={() => router.push('/dashboard/assessments')} className="flex-1 gap-2" variant="outline">
             <ArrowLeft className="h-4 w-4" /> Back to assessments
           </Button>
-          {results.score / results.total >= 0.7 && (
-            <Button onClick={() => router.push(`/certificate-preview/${examId}`)} className="flex-1 gap-2">
+          {certificateUrl && (
+            <Button onClick={() => router.push(certificateUrl)} className="flex-1 gap-2">
                View certificate <ChevronRight className="h-4 w-4" />
             </Button>
           )}
