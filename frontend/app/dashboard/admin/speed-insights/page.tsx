@@ -4,6 +4,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { Gauge, Loader2 } from 'lucide-react'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import Link from 'next/link'
 
 export default function SpeedInsightsPage() {
@@ -13,11 +14,14 @@ export default function SpeedInsightsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Speed insights"
-        description="How fast pages load for real visitors (Core Web Vitals)."
-        icon={<Gauge />}
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          title="Speed insights"
+          description="How fast pages load for real visitors (Core Web Vitals)."
+          icon={<Gauge />}
+        />
+      </div>
       <Panel>
         <p className="text-sm text-muted-foreground">
           Page-speed numbers live on the{' '}

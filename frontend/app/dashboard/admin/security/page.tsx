@@ -25,6 +25,7 @@ import {
 } from 'recharts'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, StatCard as KitStatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface SecuritySetting {
   _id?: string
@@ -527,7 +528,7 @@ export default function Security() {
                   </AreaChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -544,7 +545,7 @@ export default function Security() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -562,7 +563,7 @@ export default function Security() {
                   </LineChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
           </div>
@@ -625,10 +626,7 @@ export default function Security() {
                 </table>
               </div>
             ) : (
-              <div className="py-12 text-center text-muted-foreground">
-                <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                <p className="text-sm">No active sessions. Sessions appear after users log in.</p>
-              </div>
+              <EmptyState title="No active sessions" description="Sessions appear after users log in." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
 
@@ -664,10 +662,7 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <LogIn className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No login events today</p>
-                </div>
+                <EmptyState title="No login events today" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
 
@@ -702,10 +697,7 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No security alerts in the past 7 days</p>
-                </div>
+                <EmptyState title="No security alerts in the past 7 days" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </div>
@@ -732,10 +724,7 @@ export default function Security() {
                 ))}
               </div>
             ) : (
-              <div className="py-12 text-center text-muted-foreground">
-                <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                <p className="text-sm">No security settings configured. Run the seed script to populate defaults.</p>
-              </div>
+              <EmptyState title="No security settings configured" description="Run the seed script to populate defaults." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
 
@@ -960,10 +949,7 @@ export default function Security() {
                   </table>
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Fingerprint className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No fingerprints yet. They appear as users sign in from this platform.</p>
-                </div>
+                <EmptyState title="No fingerprints yet" description="They appear as users sign in from this platform." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>
@@ -1040,10 +1026,7 @@ export default function Security() {
                   </table>
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Shield className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No blocked IPs. IPs are auto-blocked after brute-force attempts or added manually above.</p>
-                </div>
+                <EmptyState title="No blocked IPs" description="IPs are auto-blocked after brute-force attempts or added manually above." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>
@@ -1104,10 +1087,7 @@ export default function Security() {
                   ))}
                 </div>
               ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <ShieldAlert className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                  <p className="text-sm">No security events yet.</p>
-                </div>
+                <EmptyState title="No security events yet" className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </Card>
           </TabsContent>

@@ -24,6 +24,7 @@ import {
 } from 'lucide-react'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, StatCard, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ExamOption {
   id: string
@@ -232,11 +233,7 @@ export default function PipelinePage() {
 
       {/* Empty state: no exam selected */}
       {!selectedExamId && (
-        <Panel className="flex flex-col items-center justify-center py-16 text-center">
-          <BarChart3 className="h-10 w-10 text-muted-foreground/50 mb-4" />
-          <p className="text-base font-medium text-foreground">Pick an assessment to see its pipeline</p>
-          <p className="text-sm text-muted-foreground mt-1">Choose one from the list above.</p>
-        </Panel>
+        <EmptyState variant="search" title="Pick an assessment to see its pipeline" description="Choose one from the list above." />
       )}
 
       {/* Loading */}
@@ -387,13 +384,12 @@ export default function PipelinePage() {
 
           {/* Empty state for pipeline */}
           {pipeline.stats.total === 0 && (
-            <Panel className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
-              <p className="text-sm font-medium text-foreground">No candidates yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Invite candidates or schedule a bulk run from the <a href="/dashboard/admin/assessments" className="text-primary hover:underline">Assessments</a> page
-              </p>
-            </Panel>
+            <EmptyState
+              title="No candidates yet"
+              description="Invite candidates or schedule a bulk run from the Assessments page."
+              actionLabel="Go to assessments"
+              actionHref="/dashboard/admin/assessments"
+            />
           )}
         </>
       )}

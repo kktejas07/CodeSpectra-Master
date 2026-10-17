@@ -19,7 +19,9 @@ import { useToast } from '@/lib/toast-context'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { BentoGrid, StatCard } from '@/components/app/page-kit'
+import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const emptyCharts: AnalyticsDashboardProps = {
   userGrowth: [],
@@ -334,13 +336,38 @@ export default function SystemAdminDashboard() {
   return (
     <div className="space-y-8" data-testid="admin-system-page">
       <div data-tour="admin-system-header">
-        <PageHeader
-          className="mb-0"
+        <AppBanner
+          eyebrow="Platform admin"
           title="Operations overview"
-          description="Live server health, platform metrics and audit access."
-          icon={<Server />}
+          description="Live server health, platform metrics and audit access in one place."
+          actions={
+            <>
+              <Link href={p.users} className={bannerBtnPrimary}>
+                <Users className="h-4 w-4" /> Users & roles
+              </Link>
+              <Link href={p.analytics} className={bannerBtnSecondary}>
+                <BarChart3 className="h-4 w-4" /> Insights
+              </Link>
+              <Link href={p.settings} className={bannerBtnSecondary}>
+                <Settings className="h-4 w-4" /> Settings
+              </Link>
+            </>
+          }
+          art={
+            <div className="flex flex-col items-end gap-3 pr-2">
+              <BannerChip icon={<Server />} label="Server health" sub="Refreshes every 30s" />
+              <BannerChip icon={<Shield />} label="Audit logs" sub="Every admin action" className="mr-10" delay="1.2s" />
+            </div>
+          }
         />
       </div>
+
+      <BentoGrid>
+        <Kpi label="Total users" value={stats.totalUsers} icon={Users} />
+        <Kpi label="Active (15m)" value={stats.activeUsers} icon={Activity} />
+        <Kpi label="Platform admins" value={stats.superadmins} icon={Shield} />
+        <Kpi label="Org admins" value={stats.admins} icon={BarChart3} />
+      </BentoGrid>
 
       {/* Server Health */}
       {server && (
@@ -699,13 +726,6 @@ export default function SystemAdminDashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Kpi label="Total users" value={stats.totalUsers} icon={Users} />
-        <Kpi label="Active (15m)" value={stats.activeUsers} icon={Activity} />
-        <Kpi label="Platform admins" value={stats.superadmins} icon={Shield} />
-        <Kpi label="Org admins" value={stats.admins} icon={BarChart3} />
-      </div>
-
       <div className="rounded-3xl border border-border/70 bg-card p-6 space-y-5 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none" data-tour="admin-system-quick-links">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Lock className="h-5 w-5 text-primary" /> Quick links
@@ -780,12 +800,14 @@ export default function SystemAdminDashboard() {
             })}
           </div>
         ) : (
-          <Card className="flex flex-col items-center rounded-3xl border-dashed border-muted-foreground/30 p-6 text-center">
-            <Gauge className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">
-              {webVitals ? 'No page-speed data yet — it appears once visitors load pages.' : 'Loading performance data...'}
-            </p>
-          </Card>
+          webVitals ? (
+            <EmptyState
+              title="No page-speed data yet"
+              description="Core Web Vitals appear here once visitors load pages."
+            />
+          ) : (
+            <SkeletonStats />
+          )
         )}
       </div>
 

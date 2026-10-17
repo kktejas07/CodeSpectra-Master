@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Hackathon {
   id: string; name: string; slug: string; status: string
@@ -209,7 +210,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
           <Users className="h-4 w-4 text-primary" /> Team breakdown
         </h2>
         {teams.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">No teams registered yet. Teams appear here once people sign up for the event.</p>
+          <EmptyState title="No teams registered yet" description="Teams appear here once people sign up for the event." className="border-0 bg-transparent py-6 md:py-8" />
         ) : (
           <div className="space-y-2">
             {/* Copy before sorting: never mutate React state during render. */}
@@ -323,7 +324,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
         {filteredEvents.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">No proctoring events at this severity. Choose All to see every event.</p>
+          <EmptyState variant="search" title="No proctoring events at this severity" description="Choose All to see every event." className="border-0 bg-transparent py-6 md:py-8" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { PageHeader } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Users, Plus, Loader2, HelpCircle, KeyRound } from 'lucide-react'
@@ -355,32 +356,35 @@ export default function UsersManagement() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={<Users />}
-        title={
-          <span className="inline-flex items-center gap-1.5">
-            Users
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" aria-label="About user management" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Use Edit for display names and Change role for access level, or remove accounts. New users without a manual password follow Platform settings &rarr; Admin user invitations. Last active combines recent sign-in and in-app activity.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </span>
-        }
-        description="Add people, change their role or plan, reset passwords and remove accounts."
-        actions={
-          <Button className="gap-2 shrink-0" onClick={() => setAddOpen(true)} disabled={loading}>
-            <Plus className="w-4 h-4" />
-            Add user
-          </Button>
-        }
-        className="mb-0"
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          icon={<Users />}
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              Users
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" aria-label="About user management" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-xs max-w-62.5">Use Edit for display names and Change role for access level, or remove accounts. New users without a manual password follow Platform settings &rarr; Admin user invitations. Last active combines recent sign-in and in-app activity.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </span>
+          }
+          description="Add people, change their role or plan, reset passwords and remove accounts."
+          actions={
+            <Button className="gap-2 shrink-0" onClick={() => setAddOpen(true)} disabled={loading}>
+              <Plus className="w-4 h-4" />
+              Add user
+            </Button>
+          }
+          className="mb-0"
+        />
+      </div>
 
       {loading ? (
         <SkeletonTable />

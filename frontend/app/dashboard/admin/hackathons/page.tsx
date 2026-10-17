@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { BentoGrid, PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberField } from '@/components/ui/number-field'
@@ -28,6 +29,7 @@ import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -379,17 +381,20 @@ export default function HackathonsAdminPage() {
 
   return (
     <div className="space-y-6" data-testid="hackathons-admin-page">
-      <PageHeader
-        icon={<Trophy />}
-        title="Hackathon events"
-        description="Create coding competitions, assign problems, manage teams and release results."
-        actions={
-          <Link href="/dashboard/admin/hackathons/create" data-testid="hackathon-new-btn">
-            <Button><Plus className="mr-1 h-4 w-4" /> New event</Button>
-          </Link>
-        }
-        className="mb-0"
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          icon={<Trophy />}
+          title="Hackathon events"
+          description="Create coding competitions, assign problems, manage teams and release results."
+          actions={
+            <Link href="/dashboard/admin/hackathons/create" data-testid="hackathon-new-btn">
+              <Button><Plus className="mr-1 h-4 w-4" /> New event</Button>
+            </Link>
+          }
+          className="mb-0"
+        />
+      </div>
 
       {!loading && items.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-3">
@@ -980,10 +985,12 @@ export default function HackathonsAdminPage() {
           </div>
         </Panel>
       ) : items.length === 0 ? (
-        <Panel className="p-10 text-center text-sm text-muted-foreground">
-          <Trophy className="mx-auto mb-3 h-8 w-8 text-muted-foreground/40" />
-          No hackathon events yet. Select <strong className="text-foreground">New event</strong> to host your first one.
-        </Panel>
+        <EmptyState
+          title="No hackathon events yet"
+          description="Create an event, assign problems and open registration for teams."
+          actionLabel="New event"
+          actionHref="/dashboard/admin/hackathons/create"
+        />
       ) : (
         <BentoGrid>
           {items.map((hk) => (

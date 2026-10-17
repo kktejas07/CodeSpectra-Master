@@ -6,6 +6,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
@@ -127,18 +129,27 @@ export default function RecruiterAnalyticsPage() {
   if (!data) {
     return (
       <div className="space-y-6">
-        <PageHeader
-          title="Recruiter analytics"
-          description="Candidate performance and interview insights."
-          icon={<TrendingUp />}
-        />
-        <Panel className="flex flex-col items-center p-10 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Users className="h-6 w-6" aria-hidden />
-          </span>
-          <p className="mt-3 font-semibold text-foreground">No interview data yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Create interviews and invite candidates — results will show up here.</p>
-        </Panel>
+        <div className="relative isolate">
+          <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+          <PageHeader
+            className="mb-0"
+            title="Recruiter analytics"
+            description="Candidate performance and interview insights."
+            icon={<TrendingUp />}
+          />
+        </div>
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
+          <EmptyState
+            title="No interview data yet"
+            description="Create interviews and invite candidates — scores, rankings and proctoring flags will show up here."
+            actionLabel="Go to interviews"
+            actionHref="/dashboard/interviews"
+            className="h-full"
+          />
+          <div className="hidden lg:block">
+            <DeviceShowcase variant="analytics" compact />
+          </div>
+        </div>
       </div>
     )
   }
@@ -152,7 +163,8 @@ export default function RecruiterAnalyticsPage() {
 
   return (
     <div className="space-y-8">
-      <div data-tour="recruiter-analytics-header">
+      <div data-tour="recruiter-analytics-header" className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
           className="mb-0"
           title="Recruiter analytics"
@@ -246,7 +258,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="py-10 text-center text-sm text-muted-foreground">No data yet</p>
+            <EmptyState title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
       </div>
@@ -271,7 +283,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="py-10 text-center text-sm text-muted-foreground">No proctoring flags recorded</p>
+            <EmptyState title="No proctoring flags recorded" description="Flags from proctored interviews are grouped here by type." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
 
@@ -291,7 +303,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="py-10 text-center text-sm text-muted-foreground">No data yet</p>
+            <EmptyState title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
       </div>
@@ -357,7 +369,7 @@ export default function RecruiterAnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground py-6 text-center">No candidates yet</p>
+          <EmptyState title="No candidates yet" description="Candidates are ranked here once they finish an interview." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Panel>
 
@@ -426,7 +438,7 @@ export default function RecruiterAnalyticsPage() {
             </table>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground py-6 text-center">No interviews yet</p>
+          <EmptyState variant="sessions" title="No interviews yet" description="Your most recent interviews will be listed here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Panel>
     </div>

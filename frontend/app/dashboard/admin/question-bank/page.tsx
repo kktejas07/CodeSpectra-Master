@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -16,6 +17,7 @@ import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, Ch
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 import { metaFor, QUESTION_TYPES } from '@/lib/question-types'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 
 /** Structured fields (pairs/matrix/table/hotspot/scale/tolerance/coding) are
  * authored as JSON in the bank form and merged into the payload on save. */
@@ -275,28 +277,31 @@ export default function QuestionBankPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        icon={<Database />}
-        title="Question bank"
-        description={stats ? `${stats.total} engineering questions you can reuse across assessments.` : `${total} questions shown. Reuse them across assessments.`}
-        actions={
-          <>
-            <Button variant="outline" className="gap-2" onClick={() => setAiOpen(true)}>
-              <Sparkles className="w-4 h-4" />Generate with AI
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
-              <FileUp className="w-4 h-4" />Import
-            </Button>
-            <Button variant="outline" className="gap-2" onClick={handleExport} disabled={rows.length === 0}>
-              <Download className="w-4 h-4" />Export
-            </Button>
-            <Button className="gap-2" onClick={() => openEdit()}>
-              <Plus className="w-4 h-4" />Add question
-            </Button>
-          </>
-        }
-        className="mb-0"
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          icon={<Database />}
+          title="Question bank"
+          description={stats ? `${stats.total} engineering questions you can reuse across assessments.` : `${total} questions shown. Reuse them across assessments.`}
+          actions={
+            <>
+              <Button variant="outline" className="gap-2" onClick={() => setAiOpen(true)}>
+                <Sparkles className="w-4 h-4" />Generate with AI
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
+                <FileUp className="w-4 h-4" />Import
+              </Button>
+              <Button variant="outline" className="gap-2" onClick={handleExport} disabled={rows.length === 0}>
+                <Download className="w-4 h-4" />Export
+              </Button>
+              <Button className="gap-2" onClick={() => openEdit()}>
+                <Plus className="w-4 h-4" />Add question
+              </Button>
+            </>
+          }
+          className="mb-0"
+        />
+      </div>
 
       {/* Stats */}
       {stats && (
@@ -400,8 +405,13 @@ export default function QuestionBankPage() {
               {loading ? (
                 <tr><td colSpan={9} className="p-4"><SkeletonTable rows={5} /></td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
-                  No questions match these filters. Clear a filter, add a question, import a CSV or JSON file, or generate some with AI.
+                <tr><td colSpan={9} className="p-0">
+                  <EmptyState
+                    variant="search"
+                    title="No questions match these filters"
+                    description="Clear a filter, add a question, import a CSV or JSON file, or generate some with AI."
+                    className="border-0 bg-transparent py-6 md:py-8"
+                  />
                 </td></tr>
               ) : rows.map(r => (
                 <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/40 transition-colors">

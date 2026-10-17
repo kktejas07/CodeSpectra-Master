@@ -3,6 +3,8 @@ import { formatTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -525,6 +527,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
+      <div className="relative isolate">
+      <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
       <PageHeader
         icon={<BarChart3 />}
         title="Analytics"
@@ -554,6 +558,7 @@ export default function AnalyticsPage() {
         }
         className="mb-0"
       />
+      </div>
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -714,6 +719,30 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
   const devicePie = (data?.deviceBreakdown || []).map(d => ({ name: d.device || 'Unknown', value: d.count }))
   const browserPie = (data?.browserBreakdown || []).map(b => ({ name: b.browser || 'Unknown', value: b.count }))
   const maxTopPage = Math.max(...(data?.topPages || []).map(p => p.views), 1)
+  const hasTraffic = (data?.totalPageviews ?? 0) > 0 || (data?.topPages?.length ?? 0) > 0 || (data?.totalSessions ?? 0) > 0
+
+  if (!hasTraffic) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <KpiCard icon={<Users />} label="Unique visitors" value={data?.uniqueVisitors ?? 0} />
+          <KpiCard icon={<Activity />} label="Total sessions" value={data?.totalSessions ?? 0} />
+          <KpiCard icon={<Eye />} label="Pageviews" value={data?.totalPageviews ?? 0} />
+          <KpiCard icon={<Zap />} label="Active now" value={data?.activeNow ?? 0} />
+        </div>
+        <div className="grid items-stretch gap-6 lg:grid-cols-2">
+          <EmptyState
+            title="No traffic in this range yet"
+            description="Visitors, top pages, traffic sources and devices appear here as soon as people start using the site. Try a longer date range."
+            className="h-full"
+          />
+          <div className="hidden lg:block">
+            <DeviceShowcase variant="analytics" compact />
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -762,7 +791,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
                 <span className="text-sm font-medium tabular-nums w-16 text-right">{p.views.toLocaleString()}</span>
               </div>
             ))}
-            {(!data?.topPages || data.topPages.length === 0) && <p className="text-sm text-muted-foreground">No page views recorded in this range yet.</p>}
+            {(!data?.topPages || data.topPages.length === 0) && <ChartEmpty title="No page views in this range yet" />}
           </div>
         </Panel>
 
@@ -781,7 +810,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
                 <span className="text-sm font-medium tabular-nums w-16 text-right">{s.count.toLocaleString()}</span>
               </div>
             ))}
-            {(!data?.trafficSources || data.trafficSources.length === 0) && <p className="text-sm text-muted-foreground">No referral traffic recorded in this range.</p>}
+            {(!data?.trafficSources || data.trafficSources.length === 0) && <ChartEmpty title="No referral traffic in this range" />}
           </div>
         </Panel>
       </div>
@@ -803,7 +832,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          ) : <p className="text-sm text-muted-foreground">No data</p>}
+          ) : <ChartEmpty />}
         </Panel>
 
         {/* Browser breakdown */}
@@ -822,7 +851,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          ) : <p className="text-sm text-muted-foreground">No data</p>}
+          ) : <ChartEmpty />}
         </Panel>
       </div>
 
@@ -884,10 +913,12 @@ function LiveTab({ sessions, activeNow, expandedSession, onToggleSession }: {
           <h2 className="text-lg font-semibold text-foreground">Live sessions</h2>
         </div>
         {sessions.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground">
-            <Users className="h-8 w-8 mb-2 mx-auto opacity-50" />
-            <p>No one is on the site right now. Sessions appear here as soon as someone visits.</p>
-          </div>
+          <EmptyState
+            variant="sessions"
+            title="No one is on the site right now"
+            description="Sessions appear here as soon as someone visits."
+            className="rounded-none border-0"
+          />
         ) : (
           <div className="divide-y divide-border/60">
             {sessions.map(s => {
@@ -984,7 +1015,7 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
                 </tr>
               ))}
               {(!data?.topPages || data.topPages.length === 0) && (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">No page data yet</td></tr>
+                <tr><td colSpan={5} className="p-4"><ChartEmpty title="No page data yet" description="Pages appear here once visitors load them." /></td></tr>
               )}
             </tbody>
           </table>
@@ -1286,10 +1317,7 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
       )}
 
       {!loading && !result && funnels.length === 0 && (
-        <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
-          <Filter className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-          <p>No funnels yet. Create one to track conversion flows.</p>
-        </Panel>
+        <EmptyState title="No funnels yet" description="Create one to track how people move through a conversion flow." />
       )}
     </div>
   )
@@ -1304,10 +1332,7 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
 
   if (!data || data.cohorts.length === 0) {
     return (
-      <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
-        <UserCheck className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-        <p>No retention data yet. Data appears as users sign in and return.</p>
-      </Panel>
+      <EmptyState title="No retention data yet" description="Cohorts appear here as people sign in and come back." />
     )
   }
 
@@ -1361,10 +1386,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
 
   if (!data || data.totalRequests === 0) {
     return (
-      <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
-        <Zap className="h-8 w-8 text-muted-foreground/40 mb-2" />
-        <p>No AI usage data yet. Data appears as users interact with AI features.</p>
-      </Panel>
+      <EmptyState title="No AI usage yet" description="Requests, cost and latency appear here once people use AI features." />
     )
   }
 
@@ -1401,7 +1423,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+            <ChartEmpty />
           )}
         </Panel>
 
@@ -1419,7 +1441,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+            <ChartEmpty />
           )}
         </Panel>
       </div>
@@ -1438,7 +1460,7 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+          <ChartEmpty />
         )}
       </Panel>
 
@@ -1491,10 +1513,7 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
 
   if (!data) {
     return (
-      <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
-        <TrendingUp className="h-8 w-8 text-muted-foreground/40 mb-2" />
-        <p>No billing data yet. Revenue analytics appear when users subscribe.</p>
-      </Panel>
+      <EmptyState title="No billing data yet" description="Revenue analytics appear here when people subscribe." />
     )
   }
 
@@ -1531,7 +1550,7 @@ function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+            <ChartEmpty />
           )}
         </Panel>
 
@@ -1644,10 +1663,7 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
           <Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading flags…
         </div>
       ) : flags.length === 0 ? (
-        <Panel className="p-12 border-dashed border-border text-center text-sm text-muted-foreground">
-          <Monitor className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-          <p>No feature flags yet. Create one to start toggling features.</p>
-        </Panel>
+        <EmptyState title="No feature flags yet" description="Create one to turn features on or off without a deploy." />
       ) : (
         <div className="space-y-2">
           {flags.map((f: any) => (
@@ -1770,5 +1786,16 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
         </Panel>
       )}
     </div>
+  )
+}
+
+/** Compact empty state for a chart or list inside a panel. */
+function ChartEmpty({ title = 'No data yet', description }: { title?: string; description?: string }) {
+  return (
+    <EmptyState
+      title={title}
+      description={description ?? 'This fills in as activity is recorded in the selected range.'}
+      className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base"
+    />
   )
 }

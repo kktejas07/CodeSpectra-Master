@@ -27,6 +27,7 @@ import { PageHeader, Panel } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type RunMeta = {
   lastRunAt: string | null
@@ -559,9 +560,7 @@ export default function CronJobsPage() {
               </p>
             </div>
             {data.scheduledWorkflows.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
-                No scheduled workflows yet. Create one in Workflows and set its trigger to Schedule.
-              </p>
+              <EmptyState variant="sessions" title="No scheduled workflows yet" description="Create one in Workflows and set its trigger to Schedule." className="border-0 bg-transparent py-6 md:py-8" />
             ) : (
               <div className="divide-y divide-border/60">
                 {data.scheduledWorkflows.map((w) => (
@@ -628,9 +627,7 @@ export default function CronJobsPage() {
               </h2>
             </div>
             {data.recentRuns.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
-                No runs recorded yet. Runs appear here after the scheduler fires a workflow.
-              </p>
+              <EmptyState title="No runs recorded yet" description="Runs appear here after the scheduler fires a workflow." className="border-0 bg-transparent py-6 md:py-8" />
             ) : (
               <div className="divide-y divide-border/60">
                 {data.recentRuns.map((r) => (

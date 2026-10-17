@@ -9,6 +9,7 @@ import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw,
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ProctorEvent {
   id: string; user_id: string; session_kind: string; session_id: string
@@ -262,7 +263,7 @@ export default function AdminProctorPage() {
           <SkeletonList count={5} />
         </div>
       ) : filtered.length === 0 ? (
-        <Panel className="p-8 text-center text-sm text-muted-foreground">No proctoring events match. Try another category or clear the search.</Panel>
+        <EmptyState variant="search" title="No proctoring events match" description="Try another category or clear the search." />
       ) : (
         <Panel className="divide-y divide-border/60 overflow-hidden p-0">
           {filtered.map((e) => (

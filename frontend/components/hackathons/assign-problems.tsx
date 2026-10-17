@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -202,11 +203,7 @@ export function AssignProblems({
         </div>
 
         {assigned.length === 0 ? (
-          <Card className="rounded-2xl p-8 text-center border-dashed">
-            <Target className="h-8 w-8 mx-auto mb-2 text-muted-foreground/40" />
-            <p className="text-sm text-muted-foreground">No problems assigned yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Use the options above to add problems</p>
-          </Card>
+          <EmptyState title="No problems assigned yet" description="Use the options above to add problems." className="py-8 md:py-10" />
         ) : (
           <div className="space-y-2">
             {assigned.map((problem, index) => (
@@ -314,7 +311,7 @@ function PickFromLibrary({ searchQuery, onSearch, results, searching, assigned, 
       )}
 
       {!searching && searchQuery && results.length === 0 && (
-        <p className="text-xs text-muted-foreground text-center py-4">No problems found</p>
+        <EmptyState variant="search" title="No problems found" description="Try a different title or tag." className="border-0 bg-transparent py-6 md:py-8" />
       )}
     </div>
   )

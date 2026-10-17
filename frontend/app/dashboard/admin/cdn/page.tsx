@@ -15,6 +15,7 @@ import { Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle,
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { WorldMap } from '@/components/gamification/world-map'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface CloudflareData {
   configured: boolean
@@ -410,7 +411,7 @@ export default function CdnAdminPage() {
                   </div>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground text-center py-10">No traffic recorded yet. Data appears once Cloudflare reports requests.</p>
+                <EmptyState title="No traffic recorded yet" description="Data appears once Cloudflare reports requests." className="border-0 bg-transparent py-6 md:py-8" />
               )}
             </div>
           </Panel>

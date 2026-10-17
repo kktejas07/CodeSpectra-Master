@@ -17,6 +17,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { SkeletonButton, SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Announcement {
   id: string; title: string; message: string; link?: string; image?: string
@@ -238,7 +239,7 @@ export default function AnnouncementsPage() {
           {loadingHistory ? (
             <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : history.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">Nothing sent yet. Announcements you send from Compose will be listed here.</p>
+            <EmptyState variant="notifications" title="Nothing sent yet" description="Announcements you send from Compose will be listed here." className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {history.map(ann => (

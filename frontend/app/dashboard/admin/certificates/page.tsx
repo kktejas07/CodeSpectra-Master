@@ -37,6 +37,7 @@ import {
   FileText,
 } from 'lucide-react'
 import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   CertificateRenderer,
   TEMPLATES,
@@ -305,8 +306,12 @@ export default function CertificatesPage() {
                 </tr>
               ) : filteredCerts.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted-foreground">
-                    {auditSearch ? 'No certificates match your search.' : 'No certificates issued yet. Use Issue certificate to create the first one.'}
+                  <td colSpan={7} className="p-0">
+                    {auditSearch ? (
+                      <EmptyState variant="search" title="No certificates match your search" description="Try a different name, email or certificate ID." className="border-0 bg-transparent py-6 md:py-8" />
+                    ) : (
+                      <EmptyState title="No certificates issued yet" description="Use Issue certificate to create the first one." className="border-0 bg-transparent py-6 md:py-8" />
+                    )}
                   </td>
                 </tr>
               ) : (

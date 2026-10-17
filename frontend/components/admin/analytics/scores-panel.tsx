@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Loader2, BarChart3, TrendingUp, Hash } from 'lucide-react'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ScoresData {
   distribution: { bucket: string; count: number }[]
@@ -61,7 +62,7 @@ export function ScoresPanel() {
       <Card className="rounded-3xl border-border/70 p-6">
         <h2 className="text-lg font-semibold text-foreground mb-6">Score distribution</h2>
         {dist.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No scores yet — they appear once candidates submit.</p>
+          <EmptyState title="No scores yet" description="The distribution appears once candidates submit." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         ) : (
           <div className="space-y-4">
             {dist.map(d => {

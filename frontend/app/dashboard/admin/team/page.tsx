@@ -13,6 +13,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface TeamMember {
   id: string; name: string; email: string; role: string; joinedAt: string; status: string
@@ -129,13 +130,13 @@ export default function TeamManagement() {
           <Badge variant="secondary" className="tabular-nums">{stats.total} total</Badge>
         </div>
         {members.length === 0 ? (
-          <div className="flex flex-col items-center py-10 text-center">
-            <Users className="h-12 w-12 text-muted-foreground/30" aria-hidden />
-            <p className="mt-3 text-muted-foreground">No members yet. Add the people who will create and review assessments.</p>
-            <Button className="mt-4 gap-2" size="sm" onClick={() => setAddOpen(true)}>
-              <UserPlus className="h-4 w-4" /> Add member
-            </Button>
-          </div>
+          <EmptyState
+            title="No members yet"
+            description="Add the people who will create and review assessments."
+            actionLabel="Add member"
+            onAction={() => setAddOpen(true)}
+            className="border-0 bg-transparent py-6 md:py-8"
+          />
         ) : (
           <div className="space-y-2 max-h-[350px] overflow-y-auto">
             {members.map(m => (

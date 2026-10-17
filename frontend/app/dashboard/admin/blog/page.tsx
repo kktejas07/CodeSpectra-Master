@@ -24,6 +24,7 @@ import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { FileText, CheckCircle2 } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type Post = {
   id: string
@@ -354,7 +355,7 @@ export default function AdminBlogPage() {
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <Panel className="p-10 text-center text-sm text-muted-foreground">No posts yet. Use New post to write your first article.</Panel>
+        <EmptyState title="No posts yet" description="Use New post to write your first article." />
       ) : (
         <div className="space-y-2">
           {items.map((p) => (

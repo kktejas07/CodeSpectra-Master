@@ -48,6 +48,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type Tab = 'newsroom' | 'signals'
 
@@ -522,7 +523,7 @@ function NewsroomTab() {
       {loading ? (
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
-        <Panel className="p-10 text-center text-sm text-muted-foreground">No posts yet. Select New post or generate a draft above to get started.</Panel>
+        <EmptyState title="No posts yet" description="Select New post or generate a draft above to get started." />
       ) : (
         <div className="space-y-2">
           {items.map((p) => (

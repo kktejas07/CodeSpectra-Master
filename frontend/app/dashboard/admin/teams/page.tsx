@@ -9,6 +9,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { UserCheck, Activity } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Team {
   id: number
@@ -97,11 +98,7 @@ export default function TeamsManagement() {
       </div>
 
       {safeTeams.length === 0 ? (
-        <Panel className="flex flex-col items-center p-10 text-center">
-          <Users className="h-10 w-10 text-muted-foreground/40" aria-hidden />
-          <p className="mt-3 font-medium text-foreground">No teams yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">Teams created inside an organization will show up here.</p>
-        </Panel>
+        <EmptyState title="No teams yet" description="Teams created inside an organization will show up here." />
       ) : (
         <Panel>
           <div className="relative mb-6">
@@ -116,7 +113,7 @@ export default function TeamsManagement() {
             />
           </div>
           {visibleTeams.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted-foreground">No teams match &ldquo;{query.trim()}&rdquo;.</p>
+            <EmptyState variant="search" title={`No teams match "${query.trim()}"`} description="Try a team name, admin or status." className="border-0 bg-transparent py-6 md:py-8" />
           )}
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {visibleTeams.map(team => (

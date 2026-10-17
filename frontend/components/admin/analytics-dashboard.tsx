@@ -17,6 +17,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { BarChart3, TrendingUp, Users, Activity, Code, Send } from 'lucide-react'
 import { StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export interface AnalyticsDashboardProps {
   userGrowth: Array<{ date: string; users: number }>
@@ -76,9 +77,7 @@ export function AnalyticsDashboard({
             </LineChart>
           </ResponsiveContainer>
         ) : (
-          <p className="py-16 text-center text-sm text-muted-foreground">
-            No sign-ups yet — new profiles will show here by month.
-          </p>
+          <EmptyState title="No sign-ups yet" description="New profiles will show here by month." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Card>
 
@@ -110,7 +109,7 @@ export function AnalyticsDashboard({
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <p className="py-12 text-center text-sm text-muted-foreground">No role distribution yet.</p>
+            <EmptyState title="No role distribution yet" description="This fills in as people join with different roles." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Card>
 
@@ -157,9 +156,7 @@ export function AnalyticsDashboard({
             </BarChart>
           </ResponsiveContainer>
         ) : (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            No accepted submissions in this window.
-          </p>
+          <EmptyState title="No accepted submissions in this window" description="Accepted solutions are charted here as they come in." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Card>
     </div>

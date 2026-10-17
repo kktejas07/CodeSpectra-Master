@@ -43,6 +43,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { rankByScore, formatRank } from '@/lib/hackathons/ranking'
 import { DEFAULT_JUDGING_CONFIG, sanitizeJudgingConfig, type JudgingConfig } from '@/lib/hackathons/judge-config'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Hackathon {
   id: string
@@ -615,13 +616,10 @@ export default function HackathonDetailPage({
       </div>
 
       {teams.length === 0 ? (
-        <Panel className="p-12 text-center text-muted-foreground border-dashed bg-transparent flex flex-col items-center justify-center">
-          <div className="bg-muted/40 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-            <Trophy className="h-8 w-8 opacity-40" />
-          </div>
-          <p className="text-base font-medium text-foreground">No teams have registered yet.</p>
-          <p className="text-sm mt-2 opacity-80">Share <code className="bg-muted px-2 py-1 rounded-md text-primary mx-1 font-mono text-xs">/hackathons/{event.slug}</code> with participants so they can sign up.</p>
-        </Panel>
+        <EmptyState
+          title="No teams have registered yet"
+          description={`Share /hackathons/${event.slug} with participants so they can sign up.`}
+        />
       ) : (
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {[...teams].sort((a, b) => (b.xp ?? 0) - (a.xp ?? 0)).map((t) => {

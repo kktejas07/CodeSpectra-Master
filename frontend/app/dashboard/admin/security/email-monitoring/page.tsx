@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { EmptyState } from '@/components/ui/empty-state'
 import {
   Mail, MailOpen, MailX, AlertTriangle, RefreshCw,
   Search, Download, BarChart3, Globe, Monitor,
@@ -267,10 +268,7 @@ export default function EmailMonitoring() {
                 </table>
               </div>
             ) : (
-              <div className="py-12 text-center text-muted-foreground">
-                <Mail className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                <p className="text-sm">No email logs yet. Emails appear after the first send.</p>
-              </div>
+              <EmptyState title="No email logs yet" description="Emails appear after the first send." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
         </TabsContent>
@@ -290,7 +288,7 @@ export default function EmailMonitoring() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -307,7 +305,7 @@ export default function EmailMonitoring() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
           </div>
@@ -324,7 +322,7 @@ export default function EmailMonitoring() {
                 ))}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-25 text-muted-foreground text-xs">No failures recorded</div>
+              <EmptyState title="No failures recorded" description="Failed sends will be listed here." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
             )}
           </Card>
         </TabsContent>
@@ -345,7 +343,7 @@ export default function EmailMonitoring() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground text-xs">No data</div>
+                <EmptyState title="No data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
 
@@ -362,7 +360,7 @@ export default function EmailMonitoring() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground text-xs">No geo data yet</div>
+                <EmptyState title="No geo data yet" description="This fills in as activity is recorded." className="border-0 bg-transparent py-4 md:py-4 [&_h3]:text-base" />
               )}
             </Card>
           </div>
@@ -392,10 +390,7 @@ export default function EmailMonitoring() {
                 ))}
               </div>
             ) : (
-              <div className="py-12 text-center text-muted-foreground">
-                <MailOpen className="h-8 w-8 mb-2 text-muted-foreground/40" />
-                <p className="text-sm">No bounces or failures recorded. All emails delivering cleanly.</p>
-              </div>
+              <EmptyState title="No bounces or failures recorded" description="All emails are being delivered." className="border-0 bg-transparent py-6 md:py-8" />
             )}
           </Card>
         </TabsContent>

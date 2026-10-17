@@ -20,6 +20,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { compressHtmlImages } from '@/lib/image-compress'
 import EmailPreviewFrame from '@/components/newsletter/email-preview-frame'
 import { SkeletonList, SkeletonStats } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Campaign {
   id: string
@@ -511,7 +512,7 @@ export default function NewsletterPage() {
           {loading ? (
             <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin" /></div>
           ) : campaigns.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground"><Megaphone className="h-8 w-8 mb-3 mx-auto opacity-50" /><p className="font-medium text-foreground">No campaigns yet</p><p className="text-sm mt-1">Switch to Compose to write and send your first newsletter.</p></div>
+            <EmptyState variant="notifications" title="No campaigns yet" description="Switch to Compose to write and send your first newsletter." className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {campaigns.map(c => {

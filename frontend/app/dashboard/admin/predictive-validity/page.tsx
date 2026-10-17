@@ -7,6 +7,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { RefreshCw, Users } from 'lucide-react'
 
 interface ValidityStudy {
@@ -47,12 +48,15 @@ export default function PredictiveValidityPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Predictive validity and adverse impact"
-        description="How well assessment scores predict on-the-job results, by discipline and region."
-        icon={<BarChart3 />}
-        actions={<Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>}
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          title="Predictive validity and adverse impact"
+          description="How well assessment scores predict on-the-job results, by discipline and region."
+          icon={<BarChart3 />}
+          actions={<Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>}
+        />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard label="Studies" value={data.length} icon={<BarChart3 />} />

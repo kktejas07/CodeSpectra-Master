@@ -24,6 +24,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface TestCase {
   input: string
@@ -1353,11 +1354,10 @@ export default function AdminCodeathonsPage() {
                 Loading submissions...
               </div>
             ) : submissionsList.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-xl">
-                <Code2 className="h-10 w-10 text-muted-foreground/50 mb-2" />
-                <p className="text-sm font-semibold text-foreground">No submissions yet</p>
-                <p className="text-xs mt-1">When participants write code and click Submit, their solutions will appear here for review.</p>
-              </div>
+              <EmptyState
+                title="No submissions yet"
+                description="When participants write code and select Submit, their solutions appear here for review."
+              />
             ) : selectedSubmission ? (
               /* Single Submission Code Inspector & Review Panel */
               <div className="space-y-5">

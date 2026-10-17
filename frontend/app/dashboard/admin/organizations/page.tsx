@@ -19,6 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, StatCard, Panel, BentoGrid } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Tenant {
   id: string
@@ -414,31 +416,34 @@ export default function TenantsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        className="mb-0"
-        title={
-          <span className="inline-flex items-center gap-1.5">
-            Organizations
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </span>
-        }
-        description="Company and college accounts. Each one has its own organization admins and members."
-        icon={<Building2 />}
-        actions={
-          <Button onClick={() => setCreateOpen(true)} className="gap-2">
-            <Plus className="h-4 w-4" /> New organization
-          </Button>
-        }
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          className="mb-0"
+          title={
+            <span className="inline-flex items-center gap-1.5">
+              Organizations
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-xs max-w-62.5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </span>
+          }
+          description="Company and college accounts. Each one has its own organization admins and members."
+          icon={<Building2 />}
+          actions={
+            <Button onClick={() => setCreateOpen(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> New organization
+            </Button>
+          }
+        />
+      </div>
 
       {!loading && tenants.length > 0 && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -461,11 +466,16 @@ export default function TenantsPage() {
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <Panel className="flex flex-col items-center p-12 text-center">
-          <Building2 className="h-10 w-10 text-muted-foreground/50" />
-          <p className="mt-3 text-muted-foreground">{search ? 'No organizations match your search.' : 'No organizations yet. Create one, then add its organization admins.'}</p>
-          <Button className="mt-4 gap-2" size="sm" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" /> New organization</Button>
-        </Panel>
+        search ? (
+          <EmptyState variant="search" title="No organizations match your search" description="Try a different name or slug." />
+        ) : (
+          <EmptyState
+            title="No organizations yet"
+            description="Create one, then add its organization admins."
+            actionLabel="New organization"
+            onAction={() => setCreateOpen(true)}
+          />
+        )
       ) : (
         <BentoGrid className="lg:grid-cols-3">
           {filtered.map(t => (
@@ -669,11 +679,11 @@ export default function TenantsPage() {
               {membersLoading ? (
                 <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
               ) : members.length === 0 ? (
-                <div className="text-center py-10">
-                  <UserRound className="h-10 w-10 text-muted-foreground/30" />
-                  <p className="mt-2 text-sm text-muted-foreground">No members in this organization yet.</p>
-                  <p className="text-xs text-muted-foreground">Use "Add member" to create one and attach it to this org.</p>
-                </div>
+                <EmptyState
+                  title="No members in this organization yet"
+                  description="Use Add member to create one and attach it to this organization."
+                  className="border-0 bg-transparent py-6 md:py-8"
+                />
               ) : (
                 <div className="space-y-2">
                   {members.map(m => (

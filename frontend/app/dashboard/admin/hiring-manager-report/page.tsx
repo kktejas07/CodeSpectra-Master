@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import type { APIUser } from '@/lib/route-auth'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 import { RefreshCw, Users, Trophy } from 'lucide-react'
 
 interface Candidate {
@@ -47,12 +48,15 @@ export default function HiringManagerReportPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Hiring manager report"
-        description="Candidates and their combined assessment score, ready to share with the hiring manager."
-        icon={<FileText />}
-        actions={<Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>}
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          title="Hiring manager report"
+          description="Candidates and their combined assessment score, ready to share with the hiring manager."
+          icon={<FileText />}
+          actions={<Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>}
+        />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard label="Candidates" value={candidates.length} icon={<Users />} />

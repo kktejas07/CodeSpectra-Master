@@ -39,6 +39,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
+import { EmptyState } from '@/components/ui/empty-state'
 
 
 interface CandidateResult {
@@ -2131,9 +2132,7 @@ export default function ExamResultsPage() {
                                   <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
                                 </div>
                               ) : filteredEvents.length === 0 ? (
-                                <div className="border rounded-lg p-6 text-center">
-                                  <p className="text-sm text-muted-foreground">No events match the selected filter.</p>
-                                </div>
+                                <EmptyState variant="search" title="No events match the selected filter" description="Choose another event type to see more." className="py-6 md:py-8" />
                               ) : (
                                 <div className="border rounded-lg max-h-96 overflow-y-auto overflow-x-hidden bg-card">
                                   {filteredEvents.map((evt, i) => (

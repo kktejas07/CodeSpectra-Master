@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface JobPosting {
   id: string
@@ -264,16 +266,19 @@ export default function AdminJobsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Job postings"
-        description="Jobs listed on the public jobs board, and how many people applied."
-        icon={<Briefcase />}
-        actions={
-          <Button onClick={openCreate} className="gap-2">
-            <Plus className="w-4 h-4" /> Post a job
-          </Button>
-        }
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          title="Job postings"
+          description="Jobs listed on the public jobs board, and how many people applied."
+          icon={<Briefcase />}
+          actions={
+            <Button onClick={openCreate} className="gap-2">
+              <Plus className="w-4 h-4" /> Post a job
+            </Button>
+          }
+        />
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard label="Jobs" value={jobs.length} icon={<Briefcase />} />
@@ -282,11 +287,12 @@ export default function AdminJobsPage() {
       </div>
 
       {jobs.length === 0 && !loading ? (
-        <Panel className="flex flex-col items-center p-10 text-center">
-          <Briefcase className="h-10 w-10 text-muted-foreground/40" aria-hidden />
-          <p className="mt-3 text-muted-foreground">No job postings yet. Post your first one and it will show on the public jobs page.</p>
-          <Button className="mt-4" onClick={openCreate}><Plus className="w-4 h-4 mr-1" />Post a job</Button>
-        </Panel>
+        <EmptyState
+          title="No job postings yet"
+          description="Post your first one and it will show on the public jobs page."
+          actionLabel="Post a job"
+          onAction={openCreate}
+        />
       ) : (
         <DataTable
           columns={columns}

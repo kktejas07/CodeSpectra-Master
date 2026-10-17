@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 import { exportUsersToXLS } from '@/lib/export-excel'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface User {
   id: string
@@ -235,8 +236,13 @@ export function UserManagementTable({
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-muted-foreground">
-                    No users found
+                  <td colSpan={8} className="p-0">
+                    <EmptyState
+                      variant="search"
+                      title="No users found"
+                      description="Try a different search or role filter."
+                      className="border-0 bg-transparent py-6 md:py-8"
+                    />
                   </td>
                 </tr>
               ) : (

@@ -16,6 +16,7 @@ import { EbookOutlineReview } from '@/components/resources/ebook-outline-review'
 import { SkeletonCard, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { BookOpen, FileText } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type AdminEbook = EbookCardData & { id: string; status: string }
 
@@ -269,9 +270,7 @@ export default function AdminResourcesPage() {
       )}
 
       {items.length === 0 && (
-        <Panel className="p-10 text-center text-sm text-muted-foreground">
-          No ebooks yet. Enter a topic above to generate your first one.
-        </Panel>
+        <EmptyState variant="courses" title="No ebooks yet" description="Enter a topic above to generate your first one." />
       )}
 
       <div className="cs-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

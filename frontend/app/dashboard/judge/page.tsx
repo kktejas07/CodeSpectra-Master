@@ -10,10 +10,12 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import {
-  Gavel, Trophy, Users, Clock, ArrowRight, Inbox,
+  Gavel, Trophy, Users, Clock, ArrowRight,
 } from 'lucide-react'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
-import { PageHeader, Panel } from '@/components/app/page-kit'
+import { PageHeader } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
+import { SoftGlow } from '@/components/visuals'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -96,7 +98,8 @@ export default function JudgeDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div data-tour="judge-header">
+      <div data-tour="judge-header" className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
         <PageHeader
           className="mb-0"
           title="Judge desk"
@@ -107,15 +110,10 @@ export default function JudgeDashboardPage() {
 
       <div data-tour="judge-list">
       {hackathons.length === 0 ? (
-        <Panel className="flex flex-col items-center justify-center gap-3 p-10 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <Inbox className="h-6 w-6" aria-hidden />
-          </span>
-          <p className="font-semibold text-foreground">No hackathons assigned to you yet</p>
-          <p className="max-w-md text-sm text-muted-foreground">
-            An admin adds judges on the event&apos;s Judges tab. Events you&apos;re assigned to will show up here.
-          </p>
-        </Panel>
+        <EmptyState
+          title="No hackathons assigned to you yet"
+          description="An admin adds judges on the event's Judges tab. Events you're assigned to will show up here."
+        />
       ) : (
         <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
           {hackathons.map((h) => {

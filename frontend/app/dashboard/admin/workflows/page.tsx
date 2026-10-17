@@ -30,6 +30,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const WorkflowBuilder = dynamic(
   () => import('@/components/workflows/workflow-builder'),
@@ -276,9 +277,7 @@ export default function WorkflowsPage() {
             </div>
           )}
           {!loading && items.length === 0 && (
-            <p className="px-4 py-6 text-sm text-muted-foreground">
-              No workflows yet. Click <strong className="text-foreground">New workflow</strong> to begin.
-            </p>
+            <EmptyState title="No workflows yet" description="Select New workflow to automate your first task." className="border-0 bg-transparent py-6 md:py-8" />
           )}
           <ul className="divide-y divide-border/60">
             {items.map((w) => (

@@ -12,6 +12,7 @@ import { DataTable, type DataTableColumn, type BulkAction } from '@/components/u
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { SoftGlow } from '@/components/visuals'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -551,25 +552,28 @@ export default function AdminExamsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        className="mb-0"
-        title="Assessments"
-        description="Build tests, invite candidates and review results."
-        icon={<BookOpen />}
-        actions={
-          <>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
-              <Upload className="w-4 h-4" />Bulk schedule
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
-              <LayoutDashboard className="w-4 h-4" />Pipeline
-            </Button>
-            <Button className="gap-2" onClick={openAddModal}>
-              <Plus className="w-4 h-4" />Add assessment
-            </Button>
-          </>
-        }
-      />
+      <div className="relative isolate">
+        <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
+        <PageHeader
+          className="mb-0"
+          title="Assessments"
+          description="Build tests, invite candidates and review results."
+          icon={<BookOpen />}
+          actions={
+            <>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
+                <Upload className="w-4 h-4" />Bulk schedule
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
+                <LayoutDashboard className="w-4 h-4" />Pipeline
+              </Button>
+              <Button className="gap-2" onClick={openAddModal}>
+                <Plus className="w-4 h-4" />Add assessment
+              </Button>
+            </>
+          }
+        />
+      </div>
 
       {!loading && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

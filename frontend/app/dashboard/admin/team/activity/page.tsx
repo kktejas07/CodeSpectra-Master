@@ -21,6 +21,7 @@ import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface DayData {
   date: string
@@ -139,7 +140,7 @@ export default function TeamActivityPage() {
             <h2 className="text-lg font-semibold text-foreground">Top contributors</h2>
           </div>
           {userStats.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No activity yet. Contributors appear once members start scanning, reviewing or solving.</p>
+            <EmptyState title="No activity yet" description="Contributors appear once members start scanning, reviewing or solving." className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="space-y-3">
               {userStats.slice(0, 10).map((user, idx) => (
@@ -184,7 +185,7 @@ export default function TeamActivityPage() {
             <h2 className="text-lg font-semibold text-foreground">Recent team activity</h2>
           </div>
           {recentActivity.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">No recent activity yet.</p>
+            <EmptyState variant="notifications" title="No recent activity yet" description="Team actions will be listed here as they happen." className="border-0 bg-transparent py-6 md:py-8" />
           ) : (
             <div className="relative space-y-0 border-l border-border pl-5">
               {recentActivity.slice(0, 8).map((event, idx) => (

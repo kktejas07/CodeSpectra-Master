@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Loader2, Shield, AlertTriangle, RefreshCw, AlertCircle, Eye } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ProctorEvent {
   event_type: string
@@ -191,7 +192,7 @@ export function ProctoringPanel() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No data</div>
+              <EmptyState title="No data yet" description="Flag types appear once proctored sessions are recorded." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
             )}
           </div>
         </Card>
@@ -199,7 +200,7 @@ export function ProctoringPanel() {
         <Card className="rounded-3xl border-border/70 p-6 flex flex-col">
           <h2 className="text-lg font-semibold text-foreground mb-4">Most-flagged assessments</h2>
           {examFlags.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No proctoring flags yet.</div>
+            <EmptyState title="No proctoring flags yet" description="Assessments with the most flags show up here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           ) : (
             <div className="space-y-4 overflow-y-auto max-h-[250px] pr-2">
               {examFlags.slice(0, 5).map(exam => (
@@ -226,7 +227,7 @@ export function ProctoringPanel() {
           <h2 className="text-lg font-semibold text-foreground">Flags by event type</h2>
         </div>
         {sortedTypes.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No proctoring events yet.</div>
+          <EmptyState title="No proctoring events yet" description="Event types are listed here once candidates take proctored tests." className="rounded-none border-0 bg-transparent" />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

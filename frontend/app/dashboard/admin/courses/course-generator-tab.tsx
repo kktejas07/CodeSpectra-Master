@@ -17,6 +17,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { estimateCatalog, estimateCourse, COURSE_LEVELS, INDUSTRIES, subjectsForIndustry } from '@/lib/courses/syllabus'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface JobLog {
   timestamp: string
@@ -565,10 +566,7 @@ export default function CourseGeneratorTab() {
                 </div>
 
                 {existingCourses.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                    <p>No courses yet. Pick an industry, subject and level, then select Generate course.</p>
-                  </div>
+                  <EmptyState variant="courses" title="No courses yet" description="Pick an industry, subject and level, then select Generate course." className="border-0 bg-transparent py-6 md:py-8" />
                 ) : (
                   <div className="space-y-2">
                     {existingCourses.map((course: any) => {
@@ -673,10 +671,7 @@ export default function CourseGeneratorTab() {
                 </div>
 
                 {jobs.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Clock className="h-10 w-10 mx-auto mb-3 opacity-20" />
-                    <p>No jobs yet. Generate a course and its video job will appear here.</p>
-                  </div>
+                  <EmptyState variant="sessions" title="No jobs yet" description="Generate a course and its video job will appear here." className="border-0 bg-transparent py-6 md:py-8" />
                 ) : (
                   <div className="space-y-3">
                     {jobs.map(job => (
