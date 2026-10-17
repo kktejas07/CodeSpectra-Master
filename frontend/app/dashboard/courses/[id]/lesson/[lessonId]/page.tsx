@@ -180,6 +180,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['0']))
   const [viewMode, setViewMode] = useState<'video' | 'text'>('video')
   const [quizScores, setQuizScores] = useState<Record<number, number>>({})
+  // Sections the server counts as passed (includes legacy passes saved without a score).
+  const [passedSections, setPassedSections] = useState<Set<number>>(new Set())
+  const sectionPassed = (i: number) => passedSections.has(i) || (quizScores[i] ?? 0) >= 80
   const [startAt, setStartAt] = useState(() => resumeSeconds(cached?.positions?.[lessonId]))
   const [seekNonce, setSeekNonce] = useState(0)
   const lastPos = useRef(0)
@@ -208,6 +211,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       const done: string[] = completionsData?.completedLessons || []
       setCompletedLessons(new Set(done))
       if (progressData?.quizScores) setQuizScores(progressData.quizScores)
+      if (Array.isArray(progressData?.completedModules)) setPassedSections(new Set((progressData.completedModules as unknown[]).map(Number).filter((n) => Number.isFinite(n))))
       const positions = { ...positionsRef.current, ...(progressData?.lessonPositions || {}) }
       positionsRef.current = positions
       if (courseData.data) {
@@ -582,7 +586,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   )}
                   <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
                     <Button variant="outline" disabled={!quizPrevHref} onClick={() => quizPrevHref && router.push(quizPrevHref)}>Previous</Button>
-                    <Button disabled={!quizNextHref || (quizSectionIndex != null && (quizScores[quizSectionIndex] ?? 0) < 80)} onClick={() => quizNextHref && router.push(quizNextHref)}>
+                    <Button disabled={!quizNextHref || (quizSectionIndex != null && !sectionPassed(quizSectionIndex))} onClick={() => quizNextHref && router.push(quizNextHref)}>
                       Next module
                     </Button>
                   </div>
@@ -856,11 +860,11 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         {isQuizMode && quizSectionIndex === sIdx && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
                         <div className={cn(
                           "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center",
-                          quizScores[sIdx] != null && quizScores[sIdx] >= 80
+                          sectionPassed(sIdx)
                             ? "bg-green-600 border-green-600 text-white"
                             : "border-primary/50 text-primary"
                         )}>
-                          {quizScores[sIdx] != null && quizScores[sIdx] >= 80 ? <CheckCircle className="h-3 w-3" /> : <Puzzle className="h-2.5 w-2.5" />}
+                          {sectionPassed(sIdx) ? <CheckCircle className="h-3 w-3" /> : <Puzzle className="h-2.5 w-2.5" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm leading-snug", isQuizMode && quizSectionIndex === sIdx ? "font-semibold text-primary" : "text-foreground/80 font-medium")}>

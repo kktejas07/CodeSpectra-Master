@@ -1,6 +1,7 @@
 /**
  * /api/user/courses/[id]/completions
- *   GET  -> lesson ids the server has recorded as completed (with evidence).
+ *   GET  -> lesson ids the server counts as completed: rows with evidence, plus
+ *           grandfathered legacy rows (see course-rules deriveCompletionStatus).
  *   POST -> { lessonId, mode: 'watched' | 'read', position? }
  *           Records a completion only when the server's own activity record
  *           (heartbeats from POST /progress) shows the lesson was actually
@@ -17,6 +18,7 @@ import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import {
   SAFE_KEY_RE,
   allLessonIds,
+  courseCompletionStatus,
   ensureCourseIndexes,
   findLesson,
   lessonDurationSec,
@@ -39,12 +41,11 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
 
   try {
     const db = await getMongoDb()
-    // Legacy rows without `evidence` were written on the browser's word and don't count.
-    const completions = await db.collection('lesson_completions')
-      .find({ courseId, userId: user.id, evidence: { $exists: true } }, { projection: { lessonId: 1 } })
-      .toArray()
-
-    return NextResponse.json({ completedLessons: completions.map((c) => c.lessonId) })
+    const course = await db.collection('courses').findOne({ id: courseId })
+    if (!course) return NextResponse.json({ completedLessons: [], legacyLessons: [] })
+    // Same rule as progress, my-courses and the certificate (legacy rows are grandfathered).
+    const status = await courseCompletionStatus(db, course, user.id)
+    return NextResponse.json({ completedLessons: status.completedLessonIds, legacyLessons: status.legacyLessonIds })
   } catch (e) {
     console.error('[completions] GET error:', e)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
@@ -75,11 +76,12 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     if (!found) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     const { lesson } = found
 
+    // Any existing row — verified or grandfathered legacy — already counts; never re-verify it.
     const existing = await db.collection('lesson_completions').findOne(
-      { courseId, userId: user.id, lessonId, evidence: { $exists: true } },
-      { projection: { _id: 1 } },
+      { courseId, userId: user.id, lessonId },
+      { projection: { _id: 1, evidence: 1 } },
     )
-    if (existing) return NextResponse.json({ success: true, completed: true })
+    if (existing) return NextResponse.json({ success: true, completed: true, legacy: existing.evidence == null })
 
     const progress = await db.collection('course_progress').findOne(
       { courseId, userId: user.id },
@@ -141,10 +143,10 @@ export async function POST(request: NextRequest, { params }: Ctx) {
       if ((e as { code?: number })?.code !== 11000) throw e
     }
 
-    // Mark the course finished once every lesson has evidence (quizzes are checked at certificate time).
+    // Mark the course finished once every lesson is done (quizzes are checked at certificate time).
     const lessonIds = allLessonIds(course)
     const done = await db.collection('lesson_completions').countDocuments({
-      courseId, userId: user.id, lessonId: { $in: lessonIds }, evidence: { $exists: true },
+      courseId, userId: user.id, lessonId: { $in: lessonIds },
     })
     if (lessonIds.length > 0 && done >= lessonIds.length) {
       await db.collection('course_progress').updateOne(

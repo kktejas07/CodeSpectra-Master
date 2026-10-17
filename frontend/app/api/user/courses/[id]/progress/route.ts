@@ -1,12 +1,14 @@
 /**
  * /api/user/courses/[id]/progress
  *   GET  -> the learner's progress. `completedModules` and `quizScores` are
- *           derived from server-graded quiz_results, never from the browser.
+ *           derived from server-graded quiz_results (plus grandfathered legacy
+ *           passes recorded before verification), never from this request.
  *   POST -> activity heartbeat for one lesson: { lessonId, position? }.
  *           Records resume position and accumulates active seconds that
  *           POST /completions uses as evidence. Any client-sent progress
  *           numbers (completedModules, quizScores, finalExamScore, completedAt…)
- *           are ignored.
+ *           are ignored and never written, so no new "legacy-looking" passes
+ *           can be created (see course-rules deriveCompletionStatus).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
@@ -50,6 +52,8 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
       lessonsDone: status?.lessonsDone ?? 0,
       totalLessons: status?.totalLessons ?? 0,
       quizzesLeft: status?.quizzesLeft ?? 0,
+      // Some progress was carried over from before server verification (still counts).
+      legacy: status?.legacy ?? false,
       completedAt: progress?.completedAt || null,
       certificateUrl: typeof progress?.certificateUrl === 'string' ? progress.certificateUrl : null,
     })

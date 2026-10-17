@@ -10,7 +10,8 @@
  *
  * Completion rule (server records only, see ../../_lib/course-rules.ts): every
  * lesson has a verified `lesson_completions` row and every module quiz has a
- * passing, server-graded `quiz_results` row.
+ * passing, server-graded `quiz_results` row — or a grandfathered legacy record
+ * from before verification (same rule as progress and my-courses).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import type { Document, Filter } from 'mongodb'

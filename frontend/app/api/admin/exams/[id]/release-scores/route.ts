@@ -3,7 +3,8 @@ import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
 import { notify } from '@/lib/notifications'
-import { issueExamCertificate } from '@/lib/db/certifications'
+import { deliverExamCertificate, issueExamCertificate } from '@/lib/db/certifications'
+import { examPassPercent } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -37,12 +38,8 @@ export async function POST(
     if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
     const exam = owned.doc as Record<string, any>
 
-    // Cutoff remembers per exam: explicit body > stored passing_score > 40%.
-    const stored = Number(exam.passing_score)
-    const cutoff = clampCutoff(
-      body.cutoff,
-      Number.isFinite(stored) && stored >= 0 ? stored : 40
-    )
+    // Cutoff remembers per exam: explicit body > stored passing_score > 40% (examPassPercent).
+    const cutoff = clampCutoff(body.cutoff, examPassPercent(exam))
     if (exam.passing_score !== cutoff) {
       await db.collection('exams').updateOne({ id: examId }, { $set: { passing_score: cutoff } })
     }
@@ -86,13 +83,8 @@ export async function POST(
           const cert = await issueExamCertificate(db, exam, fresh, cutoff)
           if (!cert?.created) continue
           certificatesIssued++
-          await notify({
-            user_id: String(sub.user_id),
-            type: 'assessment.certificate_issued',
-            title: `You earned a certificate for "${examTitle}"`,
-            message: 'Your certificate is ready to view and share. Anyone can verify it from its link.',
-            link: `/cert/verify/${cert.token}`,
-          }).catch(() => {})
+          // In-app for account holders; email with the verify link for invite-only candidates.
+          await deliverExamCertificate(exam, String(sub.user_id), cert)
         } catch (e) {
           // Never fail the release over one certificate; it can be re-issued by releasing again.
           console.error('[release-scores] certificate issue failed:', sub.user_id, e)

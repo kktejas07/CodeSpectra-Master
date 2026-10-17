@@ -11,8 +11,9 @@ export const dynamic = 'force-dynamic'
  *
  * Progress comes from the same server-verified records the course page and the
  * certificate route use (`courseCompletionStatus`: evidence-backed
- * lesson_completions + graded quiz_results). Legacy browser-written fields
- * such as course_progress.completed_lessons / progress are ignored.
+ * lesson_completions + graded quiz_results, plus grandfathered pre-verification
+ * records). Other browser-written fields such as completed_lessons / progress
+ * are ignored.
  */
 export async function GET() {
   const user = await getAPIUser()
@@ -57,6 +58,7 @@ export async function GET() {
           quizzesPassed: status.quizzesPassed,
           quizzesTotal: status.quizzesTotal,
           completed: status.totalLessons > 0 && status.lessonsLeft === 0 && status.quizzesLeft === 0,
+          legacy: status.legacy,
         }
       }),
     )

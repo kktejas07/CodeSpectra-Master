@@ -6,6 +6,7 @@
  *   - lesson completion  -> `lesson_completions` rows that carry `evidence`
  *     (written only by POST /completions after the activity checks below)
  *   - quiz passes        -> `quiz_results` rows (graded here from the stored key)
+ *   - legacy records (pre-verification) still count — see deriveCompletionStatus
  * Anything the browser sends as "progress" is ignored for these decisions.
  */
 import type { Db, Document } from 'mongodb'
@@ -133,24 +134,56 @@ export type CompletionStatus = {
   passedSections: number[]
   bestScores: Record<number, number>
   completedLessonIds: string[]
+  /** Lessons counted from pre-verification records (grandfathered). */
+  legacyLessonIds: string[]
+  /** Module quizzes counted from pre-verification records (grandfathered). */
+  legacySections: number[]
+  /** true when any of the counted progress came from legacy records. */
+  legacy: boolean
 }
 
-/** Read the server-recorded state for one learner in one course. */
-export async function courseCompletionStatus(db: Db, course: Document, userId: string): Promise<CompletionStatus> {
-  const courseId = String(course.id)
-  const lessonIds = allLessonIds(course)
-  const verified = await db.collection('lesson_completions')
-    .find({ courseId, userId, evidence: { $exists: true } }, { projection: { lessonId: 1 } })
-    .toArray()
-  const doneSet = new Set(verified.map((c) => String(c.lessonId)))
-  const completedLessonIds = lessonIds.filter((id) => doneSet.has(id))
+/** A `lesson_completions` row as read for completion decisions. */
+export type CompletionRow = { lessonId?: unknown; evidence?: unknown }
+/** A `quiz_results` row as read for completion decisions. */
+export type QuizRow = { sectionIndex?: unknown; score?: unknown; passed?: unknown }
+/** The legacy, browser-written fields of a `course_progress` row. */
+export type LegacyProgress = { completedModules?: unknown; quizScores?: unknown } | null | undefined
 
-  const results = await db.collection('quiz_results')
-    .find({ courseId, userId }, { projection: { sectionIndex: 1, score: 1, passed: 1 } })
-    .toArray()
+/**
+ * Grandfathering: before server-verified progress, lessons were marked done by
+ * a bare request (rows without `evidence`) and module passes were written by
+ * the browser into `course_progress.completedModules` / `quizScores`.
+ * Those records still count for that learner (`legacy: true`), so nobody has
+ * to redo finished work. Nothing written today looks like that: POST
+ * /completions always stores `evidence`, POST /progress never writes
+ * `completedModules`/`quizScores`, and quiz-submit only inserts graded rows.
+ */
+export function isLegacyCompletion(row: CompletionRow): boolean {
+  return row.evidence === undefined || row.evidence === null
+}
+
+/** Pure completion rule over already-loaded records (unit-tested). */
+export function deriveCompletionStatus(
+  course: Document,
+  completions: CompletionRow[],
+  quizResults: QuizRow[],
+  legacyProgress?: LegacyProgress,
+): CompletionStatus {
+  const lessonIds = allLessonIds(course)
+  const verifiedSet = new Set<string>()
+  const legacySet = new Set<string>()
+  for (const c of completions) {
+    const id = typeof c.lessonId === 'string' ? c.lessonId : ''
+    if (!id) continue
+    if (isLegacyCompletion(c)) legacySet.add(id)
+    else verifiedSet.add(id)
+  }
+  const completedLessonIds = lessonIds.filter((id) => verifiedSet.has(id) || legacySet.has(id))
+  const legacyLessonIds = completedLessonIds.filter((id) => !verifiedSet.has(id))
+
   const bestScores: Record<number, number> = {}
   const passed = new Set<number>()
-  for (const r of results) {
+  for (const r of quizResults) {
     const i = Number(r.sectionIndex)
     if (!Number.isInteger(i)) continue
     const score = Number(r.score) || 0
@@ -160,7 +193,24 @@ export async function courseCompletionStatus(db: Db, course: Document, userId: s
 
   const sections = courseSections(course)
   const quizSections = sections.map((_, i) => i).filter((i) => sectionQuizKey(course, i).length > 0)
-  const passedSections = quizSections.filter((i) => passed.has(i))
+
+  // Legacy browser-recorded module passes (only for real quiz modules of this course).
+  const legacyPassed = new Set<number>()
+  const legacyModules = Array.isArray(legacyProgress?.completedModules) ? (legacyProgress!.completedModules as unknown[]) : []
+  const legacyScores =
+    legacyProgress?.quizScores && typeof legacyProgress.quizScores === 'object'
+      ? (legacyProgress.quizScores as Record<string, unknown>)
+      : {}
+  for (const m of legacyModules) {
+    const i = Number(m)
+    if (!Number.isInteger(i) || !quizSections.includes(i)) continue
+    legacyPassed.add(i)
+    const s = Number(legacyScores[String(i)])
+    if (Number.isFinite(s) && s >= 0) bestScores[i] = Math.max(bestScores[i] ?? 0, Math.min(100, Math.round(s)))
+  }
+
+  const passedSections = quizSections.filter((i) => passed.has(i) || legacyPassed.has(i))
+  const legacySections = passedSections.filter((i) => !passed.has(i))
 
   return {
     totalLessons: lessonIds.length,
@@ -172,7 +222,28 @@ export async function courseCompletionStatus(db: Db, course: Document, userId: s
     passedSections,
     bestScores,
     completedLessonIds,
+    legacyLessonIds,
+    legacySections,
+    legacy: legacyLessonIds.length > 0 || legacySections.length > 0,
   }
+}
+
+/** Read the server-recorded state (plus grandfathered legacy records) for one learner in one course. */
+export async function courseCompletionStatus(db: Db, course: Document, userId: string): Promise<CompletionStatus> {
+  const courseId = String(course.id)
+  const [completions, results, progress] = await Promise.all([
+    db.collection('lesson_completions')
+      .find({ courseId, userId }, { projection: { lessonId: 1, evidence: 1 } })
+      .toArray(),
+    db.collection('quiz_results')
+      .find({ courseId, userId }, { projection: { sectionIndex: 1, score: 1, passed: 1 } })
+      .toArray(),
+    db.collection('course_progress').findOne(
+      { courseId, userId },
+      { projection: { completedModules: 1, quizScores: 1 } },
+    ),
+  ])
+  return deriveCompletionStatus(course, completions as CompletionRow[], results as QuizRow[], progress as LegacyProgress)
 }
 
 /** Unique index so concurrent completions can't double-insert (idempotent; safe to call often). */

@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { certificateTokensForExamSubmissions } from '@/lib/db/certifications'
+import {
+  certificateTokensForExamSubmissions,
+  certificationAttempts,
+  examCertificateIssueKey,
+  issueMissingExamCertificates,
+} from '@/lib/db/certifications'
+import { examPassPercent } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -47,6 +53,43 @@ export async function GET() {
         submitted_at: s.submitted_at || s.created_at,
       }
     })
+
+    // Lazy issue for results released before certificates existed: only exams in
+    // this response that have a released attempt, certificates on, and no
+    // certificate for this user yet (one lookup). Idempotent via issue_key.
+    try {
+      const releasedExamIds = [...new Set(
+        submissions
+          .filter((s: any) => s.score_released === true || !!s.released_at)
+          .map((s: any) => String(s.exam_id || ''))
+          .filter((id) => id && examMap.get(id) && (examMap.get(id) as any).issue_certificates !== false),
+      )]
+      if (releasedExamIds.length) {
+        const held = await (await certificationAttempts())
+          .find(
+            {
+              user_id: userId,
+              $or: [
+                { issue_key: { $in: releasedExamIds.map((id) => examCertificateIssueKey(id, userId)) } },
+                { certification_id: { $in: releasedExamIds }, passed: true },
+              ],
+            } as Record<string, unknown>,
+            { projection: { certification_id: 1, issue_key: 1 } },
+          )
+          .toArray()
+        const heldIds = new Set(held.map((h) => String(h.certification_id || '')))
+        for (const examId of releasedExamIds) {
+          if (heldIds.has(examId)) continue
+          const exam = examMap.get(examId) as Record<string, unknown>
+          await issueMissingExamCertificates(db, exam, examPassPercent(exam), {
+            userId,
+            submissions: submissions.filter((s: any) => s.exam_id === examId) as Record<string, unknown>[],
+          })
+        }
+      }
+    } catch (e) {
+      console.error('[user assessments] lazy certificate issue:', e)
+    }
 
     // Link a certificate only when a real, unrevoked one exists for the attempt.
     try {

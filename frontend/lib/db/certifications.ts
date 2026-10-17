@@ -182,6 +182,58 @@ export interface ExamCertificateResult {
   token: string
   /** true only when this call created the certificate (use it to notify once). */
   created: boolean
+  /** Candidate has no platform account (invite-only); reach them by email instead of in-app. */
+  inviteOnly?: boolean
+  /** Holder name and email recorded on the certificate (email is never shown publicly). */
+  holderName?: string
+  holderEmail?: string
+}
+
+const looksLikeEmail = (v: string) => v.includes('@')
+
+/**
+ * Holder identity for an exam certificate. Platform users come from `user`;
+ * invite-only candidates (`candidate_*` ids, or no account) from their
+ * candidate_invites row, falling back to the submission's email.
+ */
+async function examHolder(
+  db: Db,
+  examId: string,
+  userId: string,
+  sub: ExamDoc,
+): Promise<{ name: string; email: string; inviteOnly: boolean }> {
+  const subEmail = typeof sub.email === 'string' ? sub.email.trim().toLowerCase() : ''
+  if (!userId.startsWith('candidate_')) {
+    const userDoc = await db.collection('user').findOne(
+      { $or: [{ id: userId }, { _id: userId }] } as Record<string, unknown>,
+      { projection: { name: 1, fullName: 1, email: 1 } },
+    )
+    if (userDoc) {
+      const email = String(userDoc.email || subEmail || '')
+      return {
+        name: String(userDoc.fullName || userDoc.name || (email ? email.split('@')[0] : '') || 'Candidate'),
+        email,
+        inviteOnly: false,
+      }
+    }
+  }
+  // Prefer this exam's invite, then any invite for the same candidate.
+  const or: Record<string, unknown>[] = [{ user_id: userId }]
+  if (subEmail) or.push({ email: subEmail })
+  const invites = await db.collection('candidate_invites')
+    .find({ $or: or } as Record<string, unknown>, { projection: { full_name: 1, email: 1, exam_id: 1, target_url: 1, created_at: 1 } })
+    .sort({ created_at: -1 })
+    .limit(20)
+    .toArray()
+  const forExam = invites.find(
+    (i) => i.exam_id === examId || (typeof i.target_url === 'string' && i.target_url.includes(`/assessment/${examId}`)),
+  )
+  const invite = forExam || invites[0]
+  const email = String(invite?.email || subEmail || '').trim().toLowerCase()
+  const rawName = String(invite?.full_name || sub.candidate_name || sub.full_name || '').trim()
+  // Never put an email address on the public certificate.
+  const name = rawName && !looksLikeEmail(rawName) ? rawName : (email ? email.split('@')[0] : 'Candidate')
+  return { name: name.slice(0, 120), email, inviteOnly: true }
 }
 
 /**
@@ -191,8 +243,10 @@ export interface ExamCertificateResult {
  * writes one certificate per (exam, user) keyed by `issue_key`. Idempotent:
  * repeat releases, retakes and concurrent calls return the existing row.
  *
- * Returns null when certificates are off for the exam, the candidate has no
- * platform account (`candidate_*` placeholder ids) or no released attempt passes.
+ * Invite-only candidates (`candidate_*` ids / no account) get one too, named
+ * from their invite; the result says `inviteOnly` so the caller emails them.
+ *
+ * Returns null when certificates are off for the exam or no released attempt passes.
  */
 export async function issueExamCertificate(
   db: Db,
@@ -203,7 +257,7 @@ export async function issueExamCertificate(
   if (exam.issue_certificates === false) return null
   const examId = String(exam.id || '')
   const userId = typeof sub.user_id === 'string' ? sub.user_id : ''
-  if (!examId || !userId || userId.startsWith('candidate_')) return null
+  if (!examId || !userId) return null
 
   const released = sub.score_released === true || !!sub.released_at
   const candidates: Array<{ pct: number; attemptNo: number; submissionId: string | null }> = []
@@ -231,11 +285,7 @@ export async function issueExamCertificate(
   )
   if (existing?.verify_token) return { token: existing.verify_token, created: false }
 
-  const userDoc = await db.collection('user').findOne(
-    { $or: [{ id: userId }, { _id: userId }] } as Record<string, unknown>,
-    { projection: { name: 1, fullName: 1, email: 1 } },
-  )
-  const name = String(userDoc?.fullName || userDoc?.name || (typeof sub.email === 'string' ? sub.email.split('@')[0] : '') || 'Candidate')
+  const holder = await examHolder(db, examId, userId, sub)
   const template = typeof exam.cert_template === 'string' && CERT_TEMPLATE_KEYS.has(exam.cert_template) ? exam.cert_template : undefined
 
   const now = nowIso()
@@ -250,7 +300,8 @@ export async function issueExamCertificate(
     // The public verify route turns this into a coarse band; the exact score is never shown.
     score: best.pct,
     passed: true,
-    snapshot: { name },
+    // The public verify route returns only `snapshot.name`; the email stays private.
+    snapshot: { name: holder.name, ...(holder.email ? { email: holder.email } : {}) },
     cert_snapshot: {
       title: String(exam.title || 'Assessment'),
       level: String(exam.level || exam.difficulty_level || 'Assessment'),
@@ -269,7 +320,159 @@ export async function issueExamCertificate(
   } catch (e) {
     if ((e as { code?: number })?.code !== 11000) throw e
   }
-  if (created) return { token: doc.verify_token, created: true }
+  const who = { inviteOnly: holder.inviteOnly, holderName: holder.name, holderEmail: holder.email }
+  if (created) return { token: doc.verify_token, created: true, ...who }
   const saved = await col.findOne({ issue_key: issueKey }, { projection: { verify_token: 1 } })
-  return saved?.verify_token ? { token: saved.verify_token, created: false } : null
+  return saved?.verify_token ? { token: saved.verify_token, created: false, ...who } : null
+}
+
+const escapeHtml = (v: string) =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+
+/**
+ * Tell the candidate about a certificate this call just created (no-op otherwise,
+ * so every issue path notifies exactly once). Platform users get the in-app
+ * notification; invite-only candidates can't see those, so they get a short
+ * email with the public verify link. Never throws.
+ */
+export async function deliverExamCertificate(
+  exam: ExamDoc,
+  userId: string,
+  cert: ExamCertificateResult | null,
+): Promise<void> {
+  if (!cert?.created) return
+  const examTitle = String(exam.title || 'Assessment')
+  const path = `/cert/verify/${cert.token}`
+  try {
+    if (!cert.inviteOnly) {
+      const { notify } = await import('@/lib/notifications')
+      await notify({
+        user_id: userId,
+        type: 'assessment.certificate_issued',
+        title: `You earned a certificate for "${examTitle}"`,
+        message: 'Your certificate is ready to view and share. Anyone can verify it from its link.',
+        link: path,
+      })
+      return
+    }
+    const to = cert.holderEmail || ''
+    if (!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return
+    // Belt and braces against a flood to one inbox (creation is already once per exam + candidate).
+    const { rateLimitSlidingWindow } = await import('@/lib/in-memory-rate-limit')
+    if (!rateLimitSlidingWindow(`cert-email:${to}`, 10, 60 * 60_000).ok) return
+    const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const url = `${base}${path}`
+    const title = escapeHtml(examTitle)
+    const html = [
+      `<p>Hi ${escapeHtml(cert.holderName || 'there')},</p>`,
+      `<p>You passed ${title} and your certificate is ready.</p>`,
+      `<p>View and share it here: <a href="${escapeHtml(url)}">${escapeHtml(url)}</a></p>`,
+      '<p>Anyone with this link can check that it is genuine.</p>',
+      '<p>CodeSpectra</p>',
+    ].join('')
+    const { sendEmail } = await import('@/lib/send-email')
+    await sendEmail(to, { subject: `Your CodeSpectra certificate for ${examTitle}`, html })
+  } catch (e) {
+    console.error('[certifications] certificate delivery failed:', userId, e)
+  }
+}
+
+/** A released attempt (current or archived best) at or above `cutoff`. */
+function hasPassingReleasedAttempt(sub: ExamDoc, cutoff: number): boolean {
+  const released = sub.score_released === true || !!sub.released_at
+  const cur = released ? percentOf(sub.score, sub.max_score) : null
+  if (cur !== null && cur >= cutoff) return true
+  const prev = sub.previous_best_released as { score?: unknown; max_score?: unknown } | null | undefined
+  const prevPct = prev && typeof prev === 'object' ? percentOf(prev.score, prev.max_score) : null
+  return prevPct !== null && prevPct >= cutoff
+}
+
+export interface ExamBackfillCounts {
+  /** Released submissions with a passing attempt that were looked at. */
+  checked: number
+  /** Certificates created by this run. */
+  issued: number
+  /** Already had a certificate (left as is). */
+  existing: number
+  failed: number
+}
+
+/**
+ * Issue any missing certificates for released, passing submissions — for one
+ * exam (admin backfill), optionally limited to one user (lazy issue on load).
+ * Uses the exam's pass mark (`cutoff`, from examPassPercent) and the same
+ * idempotent issueExamCertificate, and notifies only on first issue.
+ * Users who already hold this exam's certificate are skipped in one query.
+ */
+export async function issueMissingExamCertificates(
+  db: Db,
+  exam: ExamDoc,
+  cutoff: number,
+  opts: { userId?: string; submissions?: ExamDoc[] } = {},
+): Promise<ExamBackfillCounts> {
+  const counts: ExamBackfillCounts = { checked: 0, issued: 0, existing: 0, failed: 0 }
+  const examId = String(exam.id || '')
+  if (!examId || exam.issue_certificates === false) return counts
+
+  const subs = opts.submissions
+    ? opts.submissions.filter((s) => s.exam_id === examId)
+    : ((await db.collection('exam_submissions')
+        .find(
+          {
+            exam_id: examId,
+            ...(opts.userId ? { user_id: opts.userId } : {}),
+            $or: [{ score_released: true }, { released_at: { $nin: [null, ''] } }],
+          } as Record<string, unknown>,
+          { projection: { _id: 0, answers: 0, questions: 0, code_submissions: 0 } },
+        )
+        .limit(5000)
+        .toArray()) as ExamDoc[])
+
+  const passing = subs.filter((s) => typeof s.user_id === 'string' && s.user_id && hasPassingReleasedAttempt(s, cutoff))
+  if (!passing.length) return counts
+
+  const userIds = [...new Set(passing.map((s) => String(s.user_id)))]
+  const col = await certificationAttempts()
+  const held = new Set<string>()
+  for (let i = 0; i < userIds.length; i += 500) {
+    const chunk = userIds.slice(i, i + 500)
+    const rows = await col
+      .find(
+        {
+          user_id: { $in: chunk },
+          $or: [
+            { issue_key: { $in: chunk.map((u) => examCertificateIssueKey(examId, u)) } },
+            { certification_id: examId, passed: true },
+          ],
+        } as Record<string, unknown>,
+        { projection: { user_id: 1 } },
+      )
+      .toArray()
+    for (const r of rows) held.add(String(r.user_id))
+  }
+
+  const done = new Set<string>()
+  for (const sub of passing) {
+    const uid = String(sub.user_id)
+    if (done.has(uid)) continue
+    counts.checked++
+    if (held.has(uid)) {
+      counts.existing++
+      done.add(uid)
+      continue
+    }
+    try {
+      const cert = await issueExamCertificate(db, exam, sub, cutoff)
+      if (!cert) continue // this row didn't qualify; another row of the same user may
+      done.add(uid)
+      if (cert.created) {
+        counts.issued++
+        await deliverExamCertificate(exam, uid, cert)
+      } else counts.existing++
+    } catch (e) {
+      counts.failed++
+      console.error('[certifications] backfill issue failed:', examId, uid, e)
+    }
+  }
+  return counts
 }

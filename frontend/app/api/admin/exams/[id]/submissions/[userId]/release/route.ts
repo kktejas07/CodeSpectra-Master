@@ -5,8 +5,8 @@ import { nowIso } from '@/lib/db/ai'
 
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
-import { issueExamCertificate } from '@/lib/db/certifications'
-import { notify } from '@/lib/notifications'
+import { deliverExamCertificate, issueExamCertificate } from '@/lib/db/certifications'
+import { examPassPercent } from '@/lib/exam-access'
 
 export async function PATCH(
   _request: Request,
@@ -43,8 +43,7 @@ export async function PATCH(
     const exam = await db.collection('exams').findOne({ id: examId })
     const examTitle = exam?.title || 'Technical Assessment'
     // Pass/fail uses the exam's remembered cutoff (bulk release stores it).
-    const storedCutoff = Number((exam as Record<string, any>)?.passing_score)
-    const cutoff = Number.isFinite(storedCutoff) && storedCutoff >= 0 ? Math.min(100, Math.round(storedCutoff)) : 40
+    const cutoff = examPassPercent((exam || {}) as Record<string, unknown>)
     const maxScore = Number(submission.max_score)
     const pct =
       Number.isFinite(Number(submission.score)) && Number.isFinite(maxScore) && maxScore > 0
@@ -68,15 +67,8 @@ export async function PATCH(
         const cert = await issueExamCertificate(db, exam as Record<string, unknown>, { ...submission, score_released: true, released_at: nowIso() }, cutoff)
         if (cert) {
           certificateUrl = `/cert/verify/${cert.token}`
-          if (cert.created) {
-            await notify({
-              user_id: userId,
-              type: 'assessment.certificate_issued',
-              title: `You earned a certificate for "${examTitle}"`,
-              message: 'Your certificate is ready to view and share. Anyone can verify it from its link.',
-              link: certificateUrl,
-            }).catch(() => {})
-          }
+          // Once, on first issue: in-app for account holders, email for invite-only candidates.
+          await deliverExamCertificate(exam as Record<string, unknown>, userId, cert)
         }
       } catch (e) {
         console.error('[CodeSpectra] release certificate issue failed:', e)

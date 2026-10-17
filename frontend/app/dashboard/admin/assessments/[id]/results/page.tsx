@@ -9,7 +9,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard, Award } from 'lucide-react'
 import { SkeletonStats, SkeletonTable, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useDateFormat } from '@/lib/use-platform-timezone'
@@ -74,6 +74,7 @@ interface Exam {
   title: string
   level: string
   duration: number
+  issue_certificates?: boolean
   publicLinkViews?: number
   plagiarismReport?: {
     score: number
@@ -308,6 +309,7 @@ export default function ExamResultsPage() {
   const [reviewLoading, setReviewLoading] = useState(false)
   const [releasing, setReleasing] = useState<string | null>(null)
   const [bulkReleasing, setBulkReleasing] = useState(false)
+  const [issuingCerts, setIssuingCerts] = useState(false)
   // Jev second-opinion availability (null = not checked yet). Grades work
   // without it; unverified free-text grades are flagged for human review.
   const [jevConfigured, setJevConfigured] = useState<boolean | null>(null)
@@ -1043,6 +1045,37 @@ export default function ExamResultsPage() {
     }
   }
 
+  // Certificates for results released before certificates existed (idempotent on the server).
+  const issueMissingCertificates = async () => {
+    setIssuingCerts(true)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/release-scores/certificates`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Could not issue certificates')
+      const issued = Number(json.issued) || 0
+      addToast({
+        type: issued > 0 ? 'success' : 'info',
+        title: issued > 0
+          ? `${issued} certificate${issued === 1 ? '' : 's'} issued`
+          : 'No missing certificates',
+        message: [
+          `${Number(json.checked) || 0} passing candidate${json.checked === 1 ? '' : 's'} checked at ${json.cutoff ?? '—'}% pass mark.`,
+          json.failed > 0 ? `${json.failed} could not be issued; try again.` : null,
+        ].filter(Boolean).join(' '),
+      })
+      if (issued > 0) {
+        await recordAuditLog('issue_missing_certificates', String(params.id), `Issued ${issued} missing certificates`)
+      }
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not issue certificates' })
+    } finally {
+      setIssuingCerts(false)
+    }
+  }
+
   const openReleaseDialog = () => {
     setReleaseResult(null)
     setAdvanceTarget('')
@@ -1488,6 +1521,18 @@ export default function ExamResultsPage() {
             >
               {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Release all ({unreleasedCount})
+            </Button>
+          )}
+          {exam?.issue_certificates !== false && results.some((r) => r.released) && (
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={issueMissingCertificates}
+              disabled={issuingCerts}
+              title="Issue certificates to released candidates at or above the pass mark who don't have one yet"
+            >
+              {issuingCerts ? <Loader2 className="w-4 h-4 animate-spin" /> : <Award className="w-4 h-4" />}
+              Issue missing certificates
             </Button>
           )}
           <Button
