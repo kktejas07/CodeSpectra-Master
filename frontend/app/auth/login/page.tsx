@@ -163,7 +163,7 @@ function LoginInner() {
     <AuthShell
       aside={
         <div className="space-y-10">
-          <ThemeIllustration name="auth-login" alt="A timed coding assessment passing all its test cases" width={340} height={210} priority className="w-full max-w-[400px]" />
+          <ThemeIllustration name="auth-visor" alt="The CodeSpectra visor mascot beside live test results: 12 of 12 tests passed, 42 minutes left, score 94" width={420} height={260} priority className="w-full max-w-[400px]" />
           <p className="cs-display max-w-[12ch] text-5xl xl:text-6xl">Your assessments, results and shortlists.</p>
           <div className="space-y-6">
             <AsideNote title="Taking an assessment?">
@@ -182,7 +182,7 @@ function LoginInner() {
       <AuthHeading title={mode === "sso" ? "Sign in with SSO" : mode === "face" ? "Sign in with your face" : "Sign in"}>
         {mode === "password" ? (
           <>
-            New to Code Spectra?{" "}
+            New to CodeSpectra?{" "}
             <Link href={`/auth/signup${redirectTo !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className="font-semibold text-cs-accent-text underline decoration-2 underline-offset-4">
               Create an account
             </Link>

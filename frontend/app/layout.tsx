@@ -29,9 +29,9 @@ const archivo = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'Code Spectra — Skills assessments that shortlist for you',
+  title: 'CodeSpectra — Skills assessments that shortlist for you',
   description:
-    'Code Spectra runs proctored, auto-scored skills assessments for software, CAD and engineering, QA and aptitude roles, and ranks every candidate so hiring teams review only the strongest.',
+    'CodeSpectra runs proctored, auto-scored skills assessments for software, CAD and engineering, QA and aptitude roles, and ranks every candidate so hiring teams review only the strongest.',
   icons: {
     icon: '/icon.svg',
     apple: '/apple-icon.svg',

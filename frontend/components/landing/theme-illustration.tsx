@@ -31,12 +31,14 @@ export function ThemeIllustration({
     loading: priority ? ('eager' as const) : ('lazy' as const),
     'aria-hidden': alt ? undefined : true,
   }
+  // className goes on the wrapper so layout/visibility utilities (e.g. "hidden sm:block")
+  // never fight the light/dark swap on the images themselves.
   return (
-    <>
+    <span className={cn('block', className)}>
       {/* eslint-disable-next-line @next/next/no-img-element -- animated SVGs must not go through the image optimizer */}
-      <img src={`/illustrations/codespectra/${name}-light.svg`} {...common} className={cn('block h-auto dark:hidden', className)} />
+      <img src={`/illustrations/codespectra/${name}-light.svg`} {...common} className="block h-auto w-full dark:hidden" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={`/illustrations/codespectra/${name}-dark.svg`} {...common} className={cn('hidden h-auto dark:block', className)} />
-    </>
+      <img src={`/illustrations/codespectra/${name}-dark.svg`} {...common} className="hidden h-auto w-full dark:block" />
+    </span>
   )
 }

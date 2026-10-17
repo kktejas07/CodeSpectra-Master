@@ -1,13 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { Menu, X } from 'lucide-react'
-import { useState, useEffect, useId } from 'react'
+import { CodeXml, Menu, X } from 'lucide-react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
+import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
+import { FooterWordmark } from '@/components/landing/footer-wordmark'
 
 export const DASHBOARD_HREF = '/dashboard'
 
@@ -75,7 +77,7 @@ export function PublicPageWrapper({
             {hasSession ? (
               <Link
                 href={DASHBOARD_HREF}
-                className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-text-ink hover:brightness-110"
+                className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
               >
                 Dashboard
               </Link>
@@ -86,7 +88,7 @@ export function PublicPageWrapper({
                 </Link>
                 <Link
                   href="/contact"
-                  className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-text-ink hover:brightness-110"
+                  className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
                 >
                   Book a pilot
                 </Link>
@@ -141,12 +143,13 @@ export function PublicPageWrapper({
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-cs-grid bg-cs-sheet py-16 lg:py-20">
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+      <footer className="relative overflow-hidden border-t border-cs-grid bg-cs-sheet py-16 lg:py-20">
+        <FooterAnimatedBackdrop />
+        <div className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="mb-5 flex items-center gap-2.5" aria-label="CodeSpectra home">
-                <BrandLogo badge={false} />
+                <BrandLogo />
               </Link>
               <p className="text-sm text-cs-ink-soft leading-relaxed">
                 Proctored skills assessments and hackathons that rank every candidate, for hiring teams, colleges and
@@ -236,11 +239,26 @@ export function PublicPageWrapper({
             </div>
           </div>
           <div className="flex flex-col gap-6 border-t border-cs-grid pt-8 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-cs-ink-soft">© 2026 Code Spectra. All rights reserved.</p>
-            <Link href="/status" className="text-xs text-cs-ink-soft hover:text-cs-ink">
-              System status
-            </Link>
+            <p className="text-xs text-cs-ink-soft">© 2026 CodeSpectra. All rights reserved.</p>
+            <div className="flex flex-wrap items-center gap-4 sm:justify-end">
+              <Link
+                href="/status"
+                className="flex items-center gap-2 rounded-full border border-cs-grid bg-cs-paper/60 px-3 py-1.5 text-xs text-cs-ink-soft transition-colors hover:text-cs-ink"
+              >
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#5b84ff] opacity-40 motion-reduce:animate-none" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#2f5be7]" />
+                </span>
+                All systems operational
+              </Link>
+              <Link href="/docs" className="text-cs-ink-soft transition-colors hover:text-cs-ink" aria-label="Documentation">
+                <CodeXml className="h-5 w-5" aria-hidden />
+              </Link>
+            </div>
           </div>
+
+          {/* Giant gradient wordmark (royal blue via --primary in .cs-brand) */}
+          <FooterWordmark />
         </div>
       </footer>
     </div>
@@ -248,37 +266,20 @@ export function PublicPageWrapper({
 }
 
 /**
- * Original CodeSpectra logo: gradient hexagon mark in a tinted tile, wordmark,
- * optional "AI" badge. Gradient ids come from useId so several logos can share a page.
+ * CodeSpectra logo: a rounded tile holding the </> mark, then the wordmark.
+ * Same mark as /public/icon.svg (the favicon), in royal blue.
  */
-export function BrandLogo({ badge = true, className }: { badge?: boolean; className?: string }) {
-  const uid = useId().replace(/:/g, '')
+export function BrandLogo({ className }: { className?: string }) {
   return (
-    <span className={cn('flex items-center gap-2.5', className)}>
-      <span className="relative flex items-center justify-center rounded-xl border border-teal-500/40 bg-linear-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 shadow-sm shadow-teal-500/20">
-        <svg className="h-5 w-5" viewBox="0 0 32 32" fill="none" aria-hidden>
-          <defs>
-            <linearGradient id={`${uid}-g`} x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#2dd4bf" />
-              <stop offset="50%" stopColor="#00c573" />
-              <stop offset="100%" stopColor="#38bdf8" />
-            </linearGradient>
-            <filter id={`${uid}-f`} x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
-          <path d="M7 10L16 4L25 10V22L16 28L7 22V10Z" stroke={`url(#${uid}-g)`} strokeWidth="2" strokeLinejoin="round" />
-          <path d="M16 4V28M7 10L25 22M7 22L25 10" stroke={`url(#${uid}-g)`} strokeWidth="1.2" strokeOpacity="0.6" />
-          <circle cx="16" cy="16" r="3" fill="#00c573" filter={`url(#${uid}-f)`} />
+    <span className={cn('flex items-center gap-3', className)}>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#2f5be7]/45 bg-[#2f5be7]/12 dark:border-[#5b84ff]/45 dark:bg-[#2f5be7]/20">
+        <svg viewBox="0 0 24 24" className="h-[18px] w-[18px] text-[#2f5be7] dark:text-[#8aa8ff]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M8 7L3 12L8 17" />
+          <path d="M16 7L21 12L16 17" />
+          <path d="M14 4.5L10 19.5" />
         </svg>
       </span>
-      <span className="text-lg font-bold tracking-tight md:text-xl">CodeSpectra</span>
-      {badge && (
-        <span className="hidden rounded border border-teal-500/30 bg-teal-500/15 px-1.5 py-0.5 font-mono text-[11px] font-bold text-cs-accent-text sm:inline-block">
-          AI
-        </span>
-      )}
+      <span className="text-[1.3rem] font-bold tracking-tight">CodeSpectra</span>
     </span>
   )
 }

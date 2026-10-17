@@ -14,7 +14,7 @@ from pathlib import Path
 OUT = Path(__file__).resolve().parent.parent / "public" / "illustrations" / "codespectra"
 OUT.mkdir(parents=True, exist_ok=True)
 
-MINT, MINT2, TEAL, CYAN = "#00c573", "#3ecf8e", "#14b8a6", "#06b6d4"
+MINT, MINT2, TEAL, CYAN = "#2f5be7", "#5b84ff", "#3b82f6", "#0ea5e9"  # royal blue family (names kept for history)
 LINE, SOFT, RED, AMBER = "#64748b", "#94a3b8", "#ef4444", "#f59e0b"
 
 BASE_CSS = """
@@ -44,7 +44,7 @@ def svg(name, w, h, body, css="", title=""):
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" fill="none" role="img">{t}'
         f"<defs><linearGradient id=\"mint\" x1=\"0\" y1=\"1\" x2=\"0\" y2=\"0\">"
         f'<stop offset="0" stop-color="{TEAL}"/><stop offset="1" stop-color="{MINT2}"/></linearGradient>'
-        f'<linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/>'
+        f'<linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8"/>'
         f'<stop offset=".5" stop-color="{MINT}"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs>'
         f"<style>{BASE_CSS}{css}</style>{body}</svg>"
     )
@@ -113,19 +113,19 @@ def hero():
 
 # ── 2. Step icons (160×120) ────────────────────────────────────────────────
 def step_build():
-    css = """
-  .card{animation:stack 4s ease-in-out infinite}
-  .c2{animation-delay:.25s}.c3{animation-delay:.5s}
-  @keyframes stack{0%,10%{transform:translateY(-14px);opacity:0}30%,85%{transform:none;opacity:1}100%{transform:translateY(-14px);opacity:0}}
+    css = f"""
+  .card{{animation:hl 4.5s ease-in-out infinite}}
+  .c2{{animation-delay:1.5s}}.c3{{animation-delay:3s}}
+  @keyframes hl{{0%,100%{{stroke:#64748b;stroke-opacity:.55;transform:none}}12%,28%{{stroke:{MINT};stroke-opacity:1;transform:translateX(4px)}}40%{{stroke:#64748b;stroke-opacity:.55;transform:none}}}}
 """
     tags = [("Easy", "3", MINT2, 18), ("Medium", "4", TEAL, 48), ("Hard", "5", CYAN, 78)]
     g = []
     for i, (lab, pts, col, y) in enumerate(tags):
         g.append(
-            f'<g class="card c{i+1}"><rect x="24" y="{y}" width="112" height="24" rx="5" class="surf"/>'
+            f'<g><rect class="card c{i+1}" x="24" y="{y}" width="112" height="24" rx="5" fill="@SURF@" stroke="#64748b" stroke-width="1.5"/>'
             f'<rect x="32" y="{y+9}" width="44" height="6" rx="3" fill="#64748b" opacity=".45"/>'
-            f'<rect x="100" y="{y+5}" width="28" height="14" rx="7" fill="{col}" opacity=".9"/>'
-            f'<text x="114" y="{y+15.5}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" font-weight="700" fill="#020617">{pts}</text></g>'
+            f'<rect x="100" y="{y+5}" width="28" height="14" rx="7" fill="{col}" opacity=".95"/>'
+            f'<text x="114" y="{y+15.5}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" font-weight="700" fill="#fff">{pts}</text></g>'
         )
     svg("step-build", 160, 120, "".join(g), css, "Questions stacked by difficulty, worth 3, 4 and 5 points")
 
@@ -162,7 +162,7 @@ def step_proctor():
 """
     body = (
         '<rect x="22" y="14" width="116" height="80" rx="8" class="surf" stroke-width="1.5"/>'
-        '<path d="M40 22h-10v10M120 22h10v10M40 86h-10v-10M120 86h10v-10" stroke="#00c573" stroke-width="2.5" stroke-linecap="round"/>'
+        '<path d="M40 22h-10v10M120 22h10v10M40 86h-10v-10M120 86h10v-10" stroke="#2f5be7" stroke-width="2.5" stroke-linecap="round"/>'
         '<circle cx="80" cy="46" r="13" class="ln" stroke-width="2"/>'
         '<path d="M58 84c3-13 12-19 22-19s19 6 22 19" class="ln" stroke-width="2"/>'
         '<clipPath id="pv"><rect x="22" y="14" width="116" height="80" rx="8"/></clipPath>'
@@ -194,8 +194,8 @@ def step_review():
         )
     body = (
         "".join(g)
-        + '<line x1="30" y1="88" x2="140" y2="88" stroke="#00c573" stroke-width="1.5" stroke-dasharray="4 4"/>'
-        + f'<g class="tag"><rect x="98" y="96" width="46" height="16" rx="8" fill="{MINT}"/><text x="121" y="107.5" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="9" font-weight="700" fill="#020617">CSV</text></g>'
+        + '<line x1="30" y1="88" x2="140" y2="88" stroke="#2f5be7" stroke-width="1.5" stroke-dasharray="4 4"/>'
+        + f'<g class="tag"><rect x="98" y="96" width="46" height="16" rx="8" fill="{MINT}"/><text x="121" y="107.5" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="9" font-weight="700" fill="#fff">CSV</text></g>'
     )
     svg("step-review", 160, 120, body, css, "Candidates sorted into a ranked shortlist")
 
@@ -216,7 +216,7 @@ def domain_code():
         f'<rect class="l l2" x="24" y="44" width="38" height="5" rx="2.5" fill="{TEAL}" opacity=".8"/>'
         f'<rect class="l l3" x="24" y="55" width="26" height="5" rx="2.5" fill="#94a3b8"/>'
         f'<rect class="caret" x="53" y="54" width="2" height="7" fill="{MINT}"/>'
-        '<g class="pass"><rect x="46" y="68" width="42" height="18" rx="9"/><text x="67" y="80.5" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" font-weight="700" fill="#020617">8/8 ✓</text></g>'
+        '<g class="pass"><rect x="46" y="68" width="42" height="18" rx="9"/><text x="67" y="80.5" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" font-weight="700" fill="#fff">8/8 ✓</text></g>'
     )
     svg("domain-code", 96, 96, body, css, "Code editor running test cases")
 
@@ -232,7 +232,7 @@ def domain_cad():
         # pipe + body (isometric-ish)
         '<path d="M10 58 l18-10 v16 l-18 10z" class="surf"/><path d="M68 48 l18 10 v16 l-18-10z" class="surf"/>'
         f'<path d="M28 44 l20-11 20 11 v24 l-20 11 -20-11z" fill="url(#mint)" fill-opacity=".85" stroke="{TEAL}"/>'
-        '<path d="M28 44 l20 11 20-11 M48 55 v24" stroke="#020617" stroke-opacity=".25"/>'
+        '<path d="M28 44 l20 11 20-11 M48 55 v24" stroke="#fff" stroke-opacity=".25"/>'
         f'<line x1="48" y1="33" x2="48" y2="26" stroke="{LINE}" stroke-width="2.5"/>'
         f'<g class="wheel"><circle cx="48" cy="26" r="11" stroke="{CYAN}" stroke-width="2.5"/>'
         f'<path d="M48 15v22M37 26h22M40 18l16 16M56 18L40 34" stroke="{CYAN}" stroke-width="1.5" opacity=".8"/></g>'
@@ -267,7 +267,7 @@ def domain_qa():
 def domain_aptitude():
     # OMR bubble sheet filling in
     css = """
-  .f{fill:#00c573;opacity:0;animation:fill 5s ease infinite}
+  .f{fill:#2f5be7;opacity:0;animation:fill 5s ease infinite}
   @keyframes fill{0%,8%{opacity:0}18%,88%{opacity:1}100%{opacity:0}}
 """
     g = []
@@ -306,7 +306,7 @@ def integrity():
         '<clipPath id="rad"><circle cx="150" cy="96" r="84"/></clipPath>'
         f'<g clip-path="url(#rad)"><path class="sweep" style="transform-origin:150px 96px" d="M150 96 L150 12 A84 84 0 0 1 223 54 Z" fill="{MINT}" opacity=".16"/></g>'
         f'<path d="M150 64 l28 10 v20 c0 18-12 30-28 36 c-16-6-28-18-28-36 v-20z" fill="url(#mint)" stroke="{TEAL}" stroke-width="1.5"/>'
-        '<path d="M138 96l8 8 16-16" stroke="#020617" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>'
+        '<path d="M138 96l8 8 16-16" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>'
         + ev("e1", "Tab switch at 14:22", AMBER)
         + ev("e2", "Paste blocked", RED)
         + ev("e3", "Face matched to ID", MINT)
@@ -317,7 +317,7 @@ def integrity():
 def scoring_mix():
     css = """
   .seg{transform-box:fill-box;transform-origin:0 50%;animation:grow 6s cubic-bezier(.2,.7,.2,1) infinite}
-  @keyframes grow{0%,6%{transform:scaleX(0)}28%,90%{transform:scaleX(1)}100%{transform:scaleX(0)}}
+  @keyframes grow{0%{transform:scaleX(0)}16%,96%{transform:scaleX(1)}100%{transform:scaleX(0)}}
 """
     mixes = [("Fresher, 0–1 years", [50, 35, 15]), ("Senior, 4–6 years", [15, 35, 50])]
     cols = [MINT2, TEAL, CYAN]
@@ -329,7 +329,7 @@ def scoring_mix():
         for i, pct in enumerate(parts):
             w = 3.2 * pct
             g.append(f'<rect class="seg" style="animation-delay:{r*0.4+i*0.25:.2f}s" x="{x}" y="{y}" width="{w-3}" height="28" rx="4" fill="{cols[i]}"/>')
-            g.append(f'<text x="{x+10}" y="{y+18.5}" font-family="ui-monospace,monospace" font-size="11" font-weight="700" fill="#020617">{pct}%</text>')
+            g.append(f'<text x="{x+10}" y="{y+18.5}" font-family="ui-monospace,monospace" font-size="11" font-weight="700" fill="#fff">{pct}%</text>')
             x += w
     legend = []
     for i, (lab, pts) in enumerate([("Easy", 3), ("Medium", 4), ("Hard", 5)]):
@@ -364,7 +364,7 @@ def hackathon():
         "".join(g)
         # captain
         + f'<circle cx="92" cy="110" r="22" fill="url(#mint)" stroke="{TEAL}" stroke-width="1.5"/>'
-        + '<circle cx="92" cy="104" r="6" fill="#020617" opacity=".75"/><path d="M80 122c3-8 7-10 12-10s9 2 12 10" fill="#020617" opacity=".75"/>'
+        + '<circle cx="92" cy="104" r="6" fill="#fff" opacity=".75"/><path d="M80 122c3-8 7-10 12-10s9 2 12 10" fill="#fff" opacity=".75"/>'
         + f'<path d="M84 84 l4 5 4-7 4 7 4-5 -2 9 h-12z" fill="{AMBER}"/>'
         + '<path d="M114 110 H204" class="ln" stroke-width="1.5"/>'
         # repo card
@@ -430,7 +430,7 @@ def auth_signup():
     for i, (lab, w) in enumerate(rows):
         y = 70 + i * 28
         g.append(f'<g class="row r{i+1}"><circle cx="40" cy="{y}" r="7" fill="url(#mint)"/>'
-                 f'<path d="M36.5 {y}l2.5 2.5 4.5-5" stroke="#020617" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
+                 f'<path d="M36.5 {y}l2.5 2.5 4.5-5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
                  f'<text x="56" y="{y+4}" font-family="ui-sans-serif,system-ui" font-size="11" fill="#64748b">{lab}</text></g>')
     body = (
         '<rect x="14" y="14" width="200" height="182" rx="10" class="surf" stroke-width="1.5"/>'
@@ -439,7 +439,7 @@ def auth_signup():
         + "".join(g)
         # certificate badge
         + f'<g class="badge"><path d="M270 32 l10 7 12-1 4 11 10 7-4 11 4 11-10 7-4 11-12-1-10 7-10-7-12 1-4-11-10-7 4-11-4-11 10-7 4-11 12 1z" fill="url(#spec)"/>'
-        + '<circle cx="270" cy="70" r="20" fill="#020617" fill-opacity=".25"/>'
+        + '<circle cx="270" cy="70" r="20" fill="#fff" fill-opacity=".25"/>'
         + '<path d="M261 70l6 6 12-12" stroke="#fff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>'
         + f'<path d="M258 104 l-8 26 12-6 6 12 6-30z M282 104 l8 26-12-6-6 12-6-30z" fill="{TEAL}" opacity=".85"/></g>'
         + '<text x="270" y="160" text-anchor="middle" class="txt" font-family="ui-sans-serif,system-ui" font-size="11">Certified</text>'
@@ -467,7 +467,7 @@ def screen(name, inner, css, title, url):
     doc = (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="-12 -6 {w+24} {h+40}" fill="none" role="img"><title>{title}</title>'
         f'<defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="{TEAL}"/><stop offset="1" stop-color="{MINT2}"/></linearGradient>'
-        f'<linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset=".5" stop-color="{MINT}"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>'
+        f'<linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8"/><stop offset=".5" stop-color="{MINT}"/><stop offset="1" stop-color="#38bdf8"/></linearGradient>'
         f'<filter id="sh" x="-8%" y="-8%" width="116%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0f1729" flood-opacity=".12"/></filter></defs>'
         f"<style>{css}{SCREEN_CSS}</style>"
         # window frame
@@ -503,7 +503,7 @@ def hero_build():
         + t(40, 230, "Sections", 11, SLATE)
         + "".join(f'<rect x="40" y="{236+i*26}" width="136" height="20" rx="10" fill="{c}" fill-opacity=".14"/>' + t(52, 250 + i * 26, lab, 11, INK, 500)
                   for i, (lab, c) in enumerate([("CAD design task", MINT), ("Drawing review", TEAL), ("Aptitude MCQ", CYAN)]))
-        + f'<rect class="btn" x="40" y="330" width="136" height="32" rx="8" fill="{MINT}"/>' + t(108, 350, "Publish", 13, "#020617", 700, "middle")
+        + f'<rect class="btn" x="40" y="330" width="136" height="32" rx="8" fill="{MINT}"/>' + t(108, 350, "Publish", 13, "#fff", 700, "middle")
     )
     qs = [("Model a gate-valve body to spec", "Hard", 5, CYAN), ("Identify GD&amp;T errors in drawing", "Medium", 4, TEAL),
           ("Choose the correct pump curve", "Easy", 3, MINT2), ("Wall thickness for 16 bar PN rating", "Medium", 4, TEAL),
@@ -515,11 +515,11 @@ def hero_build():
             f'<g class="in" style="animation-delay:{0.35*i:.2f}s"><rect x="210" y="{y}" width="326" height="40" rx="9" fill="#fff" stroke="{LINEL}"/>'
             + t(224, y + 25, q, 12, INK, 500)
             + f'<rect x="452" y="{y+10}" width="52" height="20" rx="10" fill="{col}" fill-opacity=".18"/>' + t(478, y + 24, lvl, 10, INK, 600, "middle")
-            + f'<rect x="508" y="{y+10}" width="20" height="20" rx="6" fill="{col}"/>' + t(518, y + 24, str(pts), 11, "#020617", 700, "middle", MONO)
+            + f'<rect x="508" y="{y+10}" width="20" height="20" rx="6" fill="{col}"/>' + t(518, y + 24, str(pts), 11, "#fff", 700, "middle", MONO)
             + "</g>"
         )
     head = t(210, 76, "Questions", 14, INK, 700) + t(536, 76, "21 points", 12, MINT, 700, "end", MONO)
-    foot = f'<rect x="210" y="346" width="326" height="30" rx="8" fill="{MINT}" fill-opacity=".08" stroke="{MINT}" stroke-opacity=".35" stroke-dasharray="4 4"/>' + t(373, 365, "+ Add from question bank", 12, "#047857", 600, "middle")
+    foot = f'<rect x="210" y="346" width="326" height="30" rx="8" fill="{MINT}" fill-opacity=".08" stroke="{MINT}" stroke-opacity=".35" stroke-dasharray="4 4"/>' + t(373, 365, "+ Add from question bank", 12, "#1e40af", 600, "middle")
     screen("hero-screen-build", side + head + "".join(rows) + foot, css, "Building an assessment for a design engineer role, with questions weighted by difficulty", "codespectra.ai/assessments/new")
 
 
@@ -547,8 +547,8 @@ def hero_proctor():
         + t(40, 86, "Q3 · Find duplicate shipments", 13, INK, 700) + t(366, 86, "Java", 11, SLATE, 500, "end")
         + f'<line x1="24" y1="98" x2="380" y2="98" stroke="{LINEL}"/>' + lines
         + f'<rect x="40" y="336" width="110" height="28" rx="7" fill="#fff" stroke="{LINEL}"/>' + t(95, 354, "Run tests", 12, INK, 600, "middle")
-        + f'<rect x="160" y="336" width="90" height="28" rx="7" fill="{MINT}"/>' + t(205, 354, "Submit", 12, "#020617", 700, "middle")
-        + t(366, 354, "7 / 8 passing", 11, "#047857", 600, "end", MONO)
+        + f'<rect x="160" y="336" width="90" height="28" rx="7" fill="{MINT}"/>' + t(205, 354, "Submit", 12, "#fff", 700, "middle")
+        + t(366, 354, "7 / 8 passing", 11, "#1e40af", 600, "end", MONO)
     )
     cam = (
         f'<rect x="396" y="60" width="140" height="112" rx="10" fill="#0f1729"/>'
@@ -566,7 +566,7 @@ def hero_proctor():
     toasts = (
         f'<g class="toast"><rect x="396" y="276" width="140" height="40" rx="9" fill="#fff7ed" stroke="#fdba74"/>'
         + '<circle cx="412" cy="296" r="4" fill="#f59e0b"/>' + t(422, 293, "Tab switch logged", 11, INK, 600) + t(422, 307, "at 14:22", 10, SLATE) + "</g>"
-        + f'<g class="toast t2"><rect x="396" y="324" width="140" height="40" rx="9" fill="#ecfdf5" stroke="#6ee7b7"/>'
+        + f'<g class="toast t2"><rect x="396" y="324" width="140" height="40" rx="9" fill="#eff4ff" stroke="#a5bdff"/>'
         + f'<circle cx="412" cy="344" r="4" fill="{MINT}"/>' + t(422, 341, "Face matched to ID", 11, INK, 600) + t(422, 355, "snapshot 6 of 12", 10, SLATE) + "</g>"
     )
     screen("hero-screen-proctor", editor + cam + timer + toasts, css, "A candidate taking a proctored coding test with webcam face matching and event logging", "codespectra.ai/assessment/java-mid")
@@ -599,11 +599,11 @@ def hero_results():
         )
     head = (
         t(28, 76, "Java developer · 100 applicants", 14, INK, 700)
-        + f'<rect x="420" y="62" width="112" height="22" rx="11" fill="{MINT}"/>' + t(476, 77, "Shortlist: top 20", 11, "#020617", 700, "middle")
+        + f'<rect x="420" y="62" width="112" height="22" rx="11" fill="{MINT}"/>' + t(476, 77, "Shortlist: top 20", 11, "#fff", 700, "middle")
         + t(44, 98, "Rank", 10, SLATE, 500) + t(74, 98, "Candidate", 10, SLATE, 500) + t(210, 98, "Score / 120", 10, SLATE, 500) + t(522, 98, "Integrity", 10, SLATE, 500, "end")
     )
     cy = 118 + 5 * 34 + 2
-    cutoff = f'<line class="cut" x1="28" y1="{cy}" x2="470" y2="{cy}" stroke="{MINT}" stroke-width="2"/>' + t(532, cy + 4, "cutoff", 10, "#047857", 700, "end")
+    cutoff = f'<line class="cut" x1="28" y1="{cy}" x2="470" y2="{cy}" stroke="{MINT}" stroke-width="2"/>' + t(532, cy + 4, "cutoff", 10, "#1e40af", 700, "end")
     gap = t(74, 118 + 4 * 34 + 24, "ranks 6–20 also shortlisted", 10, SLATE)
     foot = f'<rect x="28" y="356" width="120" height="26" rx="7" fill="#fff" stroke="{LINEL}"/>' + t(88, 373, "Export CSV", 11, INK, 600, "middle") + f'<rect x="156" y="356" width="132" height="26" rx="7" fill="{INK}"/>' + t(222, 373, "Release results", 11, "#fff", 600, "middle")
     screen("hero-screen-results", head + "".join(rows) + cutoff + gap + foot, css, "Ranked screening results with a top-20 shortlist cutoff", "codespectra.ai/exams/java-mid/results")
@@ -637,7 +637,7 @@ def hero_hackathon():
     legend = "".join(f'<rect x="{28+i*104}" y="336" width="10" height="10" rx="2" fill="{cols[i]}"/>' + t(44 + i * 104, 345, f"{lab} {w}", 10, SLATE)
                      for i, (lab, w) in enumerate([("Correctness", 40), ("Quality", 20), ("Efficiency", 20), ("Docs", 10), ("Edge cases", 10)]))
     head = (t(28, 76, "Campus Hackathon · Judge dashboard", 14, INK, 700)
-            + f'<g class="badge"><rect x="414" y="62" width="118" height="24" rx="12" fill="{MINT}"/>' + t(473, 78, "Results released", 11, "#020617", 700, "middle") + "</g>")
+            + f'<g class="badge"><rect x="414" y="62" width="118" height="24" rx="12" fill="{MINT}"/>' + t(473, 78, "Results released", 11, "#fff", 700, "middle") + "</g>")
     screen("hero-screen-hackathon", head + "".join(rows) + legend + t(28, 372, "Scored out of 100 on one rubric", 11, SLATE), css,
            "Hackathon judge dashboard with team scores on a shared rubric", "codespectra.ai/hackathons/campus/judge")
 
@@ -645,3 +645,147 @@ def hero_hackathon():
 for fn in [hero_build, hero_proctor, hero_results, hero_hackathon]:
     fn()
 print("hero screens written")
+
+
+# ── 8. Code visor mascot and binary brackets (style from brand references) ─
+import random
+
+
+def visor_body(cx=120, cy=112, scale=1.0, frame="@SOFT@", body="#c9d5f5"):
+    """Visor/headset with a </> screen. Returns SVG markup centred on (cx, cy)."""
+    s = scale
+    def r(v):
+        return f"{v*s:.1f}"
+    x0, y0 = cx - 92 * s, cy - 58 * s
+    return (
+        f'<g class="float" style="transform-origin:{cx}px {cy}px">'
+        # antenna
+        f'<rect x="{cx-4*s:.1f}" y="{cy-102*s:.1f}" width="{r(8)}" height="{r(36)}" rx="{r(4)}" fill="{body}"/>'
+        f'<circle class="knob" cx="{cx}" cy="{cy-104*s:.1f}" r="{r(8)}" fill="{MINT}"/>'
+        f'<ellipse cx="{cx}" cy="{cy-64*s:.1f}" rx="{r(26)}" ry="{r(10)}" fill="{body}"/>'
+        # ears
+        f'<rect x="{x0-14*s:.1f}" y="{cy-30*s:.1f}" width="{r(28)}" height="{r(60)}" rx="{r(12)}" fill="{body}"/>'
+        f'<rect x="{cx+78*s:.1f}" y="{cy-30*s:.1f}" width="{r(28)}" height="{r(60)}" rx="{r(12)}" fill="{body}"/>'
+        # shell
+        f'<rect x="{x0:.1f}" y="{y0:.1f}" width="{r(184)}" height="{r(116)}" rx="{r(34)}" fill="{body}"/>'
+        # screen
+        f'<rect x="{x0+12*s:.1f}" y="{y0+12*s:.1f}" width="{r(160)}" height="{r(92)}" rx="{r(24)}" fill="url(#visor)"/>'
+        f'<path d="M{x0+24*s:.1f} {y0+60*s:.1f} C{x0+26*s:.1f} {y0+34*s:.1f} {x0+48*s:.1f} {y0+20*s:.1f} {x0+86*s:.1f} {y0+20*s:.1f}" stroke="#fff" stroke-opacity=".18" stroke-width="{r(10)}" stroke-linecap="round"/>'
+        f'<clipPath id="scr"><rect x="{x0+12*s:.1f}" y="{y0+12*s:.1f}" width="{r(160)}" height="{r(92)}" rx="{r(24)}"/></clipPath>'
+        f'<g clip-path="url(#scr)"><rect class="scan" x="{x0:.1f}" y="{y0+14*s:.1f}" width="{r(184)}" height="{r(3)}" fill="#fff" opacity=".35"/></g>'
+        # </> on screen
+        f'<g stroke="#fff" stroke-width="{r(9)}" stroke-linecap="round" stroke-linejoin="round" fill="none">'
+        f'<path class="bl" d="M{cx-26*s:.1f} {cy-20*s:.1f} L{cx-46*s:.1f} {cy} L{cx-26*s:.1f} {cy+20*s:.1f}"/>'
+        f'<path class="br" d="M{cx+26*s:.1f} {cy-20*s:.1f} L{cx+46*s:.1f} {cy} L{cx+26*s:.1f} {cy+20*s:.1f}"/>'
+        f'<path class="sl" d="M{cx+8*s:.1f} {cy-26*s:.1f} L{cx-8*s:.1f} {cy+26*s:.1f}"/></g>'
+        "</g>"
+    )
+
+
+VISOR_DEFS = (
+    f'<linearGradient id="visor" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a6cf0"/>'
+    f'<stop offset=".6" stop-color="{MINT}"/><stop offset="1" stop-color="#1e3a8a"/></linearGradient>'
+)
+VISOR_CSS = """
+  .float{animation:float 5s ease-in-out infinite}
+  @keyframes float{50%{transform:translateY(-6px)}}
+  .knob{animation:knob 2.4s ease-in-out infinite}
+  @keyframes knob{50%{fill:#93b4ff}}
+  .scan{animation:scan 3s ease-in-out infinite alternate}
+  @keyframes scan{to{transform:translateY(84px)}}
+  .bl{animation:bl 3.2s ease-in-out infinite}.br{animation:br 3.2s ease-in-out infinite}
+  @keyframes bl{50%{transform:translateX(-4px)}}@keyframes br{50%{transform:translateX(4px)}}
+  .sl{animation:sl 3.2s ease-in-out infinite}
+  @keyframes sl{0%,100%{opacity:1}50%{opacity:.7}}
+"""
+
+
+def with_defs(doc_body, extra_defs):
+    # insert extra gradient defs into the shared <defs>
+    return doc_body.replace("</defs>", extra_defs + "</defs>", 1)
+
+
+def svg_x(name, w, h, body, css, title, defs=""):
+    """Like svg() but with extra <defs>; writes -light and -dark."""
+    t = f"<title>{title}</title>"
+    doc = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" fill="none" role="img">{t}'
+        f'<defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="{TEAL}"/><stop offset="1" stop-color="{MINT2}"/></linearGradient>{defs}</defs>'
+        f"<style>{BASE_CSS}{css}</style>{body}</svg>"
+    )
+    doc = doc.replace("#64748b", "@LINE@").replace("#94a3b8", "@SOFT@").replace("#ffffff", "@PAPER@")
+    for theme, pal in THEMES.items():
+        out = doc.replace("@VBODY@", "#c9d5f5" if theme == "light" else "#26314f")
+        for k, v in pal.items():
+            out = out.replace(k, v)
+        (OUT / f"{name}-{theme}.svg").write_text(out)
+
+
+def code_visor():
+    """Mascot alone (hero float + small uses)."""
+    body = visor_body(120, 120, 1.0, body="@VBODY@")
+    svg_x("code-visor", 240, 200, body, VISOR_CSS, "CodeSpectra visor mascot with a code screen", VISOR_DEFS)
+
+
+def binary_brackets():
+    random.seed(7)
+    rows = []
+    for r in range(36):
+        line = " ".join(random.choice("01") for _ in range(30))
+        rows.append(f'<text x="18" y="{r*13+10}" font-family="ui-monospace,monospace" font-size="10" letter-spacing="1.5" fill="#fff" fill-opacity="{0.45+random.random()*0.5:.2f}">{line}</text>')
+    digits = "".join(rows)
+    css = """
+  .scroll{animation:scroll 9s linear infinite}
+  @keyframes scroll{to{transform:translateY(-234px)}}
+  .shine{animation:shine 3.6s ease-in-out infinite}
+  @keyframes shine{0%{transform:translateY(-60px)}100%{transform:translateY(300px)}}
+"""
+    defs = (
+        f'<linearGradient id="bb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#60a5fa"/><stop offset=".55" stop-color="{MINT}"/><stop offset="1" stop-color="#1e40af"/></linearGradient>'
+        '<mask id="brk" maskUnits="userSpaceOnUse" x="0" y="0" width="360" height="240">'
+        '<g stroke="#fff" stroke-width="34" stroke-linecap="round" stroke-linejoin="round" fill="none">'
+        '<path d="M120 50 L50 120 L120 190"/><path d="M240 50 L310 120 L240 190"/><path d="M200 30 L160 210"/></g></mask>'
+    )
+    body = (
+        '<g mask="url(#brk)">'
+        '<rect width="360" height="240" fill="url(#bb)"/>'
+        f'<g class="scroll">{digits}</g>'
+        '<rect class="shine" x="0" y="0" width="360" height="26" fill="#fff" opacity=".22"/>'
+        "</g>"
+    )
+    svg_x("binary-brackets", 360, 240, body, css, "Code brackets filled with streaming binary digits", defs)
+
+
+def auth_visor():
+    """Login side panel: mascot + live test status chips."""
+    css = VISOR_CSS + f"""
+  .chip{{opacity:0;animation:chip 7s ease infinite}}
+  .c2{{animation-delay:1.6s}}.c3{{animation-delay:3.2s}}
+  @keyframes chip{{0%{{opacity:0;transform:translateY(6px)}}8%,70%{{opacity:1;transform:none}}80%,100%{{opacity:0}}}}
+  @media (prefers-reduced-motion: reduce){{.chip{{opacity:1!important}}}}
+"""
+    def chip(cls, x, y, dot, label):
+        w = len(label) * 7 + 34
+        return (f'<g class="chip {cls}"><rect x="{x}" y="{y}" width="{w}" height="30" rx="15" fill="@SURF@" stroke="#64748b" stroke-opacity=".35"/>'
+                f'<circle cx="{x+16}" cy="{y+15}" r="5" fill="{dot}"/>'
+                f'<text x="{x+28}" y="{y+19.5}" font-family="ui-sans-serif,system-ui" font-size="12.5" font-weight="600" fill="#64748b">{label}</text></g>')
+    body = (
+        visor_body(150, 132, 1.0, body="@VBODY@")
+        + chip("c1", 248, 34, MINT, "12 / 12 tests passed")
+        + chip("c2", 262, 150, "#f59e0b", "42:10 left")
+        + chip("c3", 0, 222, MINT2, "Score 94 · rank 3 of 100")
+    )
+    svg_x("auth-visor", 420, 260, body, css, "The CodeSpectra visor mascot with live test results", VISOR_DEFS)
+
+
+def hero_visor():
+    """Light-only mascot for the always-white hero."""
+    body = visor_body(120, 120, 1.0, body="#c9d5f5")
+    doc = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 200" fill="none" aria-hidden="true">'
+           f'<defs>{VISOR_DEFS}</defs><style>{VISOR_CSS}@media (prefers-reduced-motion: reduce){{*{{animation:none!important}}}}</style>{body}</svg>')
+    (OUT / "hero-visor.svg").write_text(doc.replace("@SOFT@", "#94a3b8"))
+
+
+for fn in [code_visor, binary_brackets, auth_visor, hero_visor]:
+    fn()
+print("visor + binary written")

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img"><title>Test checklist catching a bug</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#14b8a6"/><stop offset="1" stop-color="#3ecf8e"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset=".5" stop-color="#00c573"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img"><title>Test checklist catching a bug</title><defs><linearGradient id="mint" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#5b84ff"/></linearGradient><linearGradient id="spec" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1d4ed8"/><stop offset=".5" stop-color="#2f5be7"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><style>
   .surf{fill:#f8fafc;stroke:#64748b;stroke-opacity:.7}
   .ln{stroke:#64748b;stroke-opacity:.6;fill:none}
   .txt{fill:#64748b;opacity:.75}
@@ -10,7 +10,7 @@
     .pkt{offset-distance:50%}
   }
 
-  .ck{stroke:#00c573;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:14;stroke-dashoffset:14;animation:ck 4.5s ease infinite}
+  .ck{stroke:#2f5be7;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:14;stroke-dashoffset:14;animation:ck 4.5s ease infinite}
   .k2{animation-delay:.5s}.k3{animation-delay:1s}
   @keyframes ck{0%,10%{stroke-dashoffset:14}25%,85%{stroke-dashoffset:0}100%{stroke-dashoffset:14}}
   .bug{animation:bug 4.5s ease infinite;transform-origin:72px 70px}

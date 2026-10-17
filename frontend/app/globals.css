@@ -842,37 +842,37 @@
 
 /* ─────────────────────────────────────────────────────────────
    Code Spectra brand — public marketing + auth pages
-   Original obsidian + mint palette; mint tint marks "shortlisted".
+   Obsidian navy + royal blue; a blue tint marks "shortlisted".
    Scope: anything inside .cs-brand (PublicPageWrapper, auth pages).
    ───────────────────────────────────────────────────────────── */
 :root {
-  /* Original CodeSpectra palette — light */
-  --cs-paper: #fbfdfc;
+  /* CodeSpectra royal blue — light */
+  --cs-paper: #fbfcff;
   --cs-sheet: #ffffff;
   --cs-ink: #0f1729;
   --cs-ink-soft: #475569;
-  --cs-accent: #00c573;       /* mint — buttons, bars */
-  --cs-accent-ink: #020617;   /* text on mint */
-  --cs-accent-text: #047857;  /* mint as text/links on light (5.5:1) */
-  --cs-teal: #14b8a6;
-  --cs-cyan: #06b6d4;
+  --cs-accent: #2f5be7;       /* royal blue — buttons, bars */
+  --cs-accent-ink: #ffffff;   /* text on royal blue (5.6:1) */
+  --cs-accent-text: #1e40af;  /* royal blue as text/links (8.7:1) */
+  --cs-teal: #3b82f6;         /* secondary blue */
+  --cs-cyan: #0ea5e9;         /* sky, tertiary */
   --cs-grid: #e2e8f0;
-  --cs-mark: #00c573;         /* shortlist highlight (tinted) */
+  --cs-mark: #2f5be7;         /* shortlist highlight (tinted) */
   --cs-flag: #dc2626;
 }
 .dark {
-  /* Original CodeSpectra palette — obsidian */
+  /* CodeSpectra royal blue — obsidian */
   --cs-paper: #080c14;
   --cs-sheet: #0d131f;
   --cs-ink: #f8fafc;
   --cs-ink-soft: #cbd5e1;
-  --cs-accent: #00c573;
-  --cs-accent-ink: #020617;
-  --cs-accent-text: #3ecf8e;
-  --cs-teal: #2dd4bf;
-  --cs-cyan: #22d3ee;
+  --cs-accent: #2f5be7;
+  --cs-accent-ink: #ffffff;
+  --cs-accent-text: #8aa8ff;
+  --cs-teal: #60a5fa;
+  --cs-cyan: #38bdf8;
   --cs-grid: #1e293b;
-  --cs-mark: #00c573;
+  --cs-mark: #5b84ff;
   --cs-flag: #f87171;
 }
 
@@ -893,6 +893,9 @@
 }
 
 .cs-brand {
+  --primary: 226 79% 54%;
+  --primary-foreground: 0 0% 100%;
+  --ring: 226 79% 54%;
   font-family: var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif;
   background: var(--cs-paper);
   color: var(--cs-ink);
@@ -905,6 +908,7 @@
   line-height: 0.94;
   letter-spacing: -0.01em;
 }
+.cs-display, .cs-heading { text-wrap: balance; }
 .cs-heading {
   font-stretch: 78%;
   font-weight: 750;
@@ -947,18 +951,20 @@
 
 /* Hero is white + mint in both themes */
 .cs-light {
-  --cs-paper: #fbfdfc;
+  --cs-paper: #fbfcff;
   --cs-sheet: #ffffff;
   --cs-ink: #0f1729;
   --cs-ink-soft: #475569;
-  --cs-accent-text: #047857;
+  --cs-accent-text: #1e40af;
   --cs-grid: #e2e8f0;
   color-scheme: light;
 }
+@keyframes cs-underline { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.cs-underline { animation: cs-underline 600ms 200ms cubic-bezier(.2,.7,.2,1) both; }
 @keyframes cs-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .cs-progress { animation: cs-progress linear forwards; }
 @keyframes cs-float { 0%, 100% { transform: translateY(0) rotate(-6deg); } 50% { transform: translateY(-8px) rotate(4deg); } }
 .cs-float { animation: cs-float 6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .cs-float { animation: none; }
+  .cs-float, .cs-underline { animation: none; }
 }

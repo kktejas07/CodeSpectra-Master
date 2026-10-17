@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
 /* Shared button styles for marketing pages. Kept here rather than in
    components/ui/button so the dashboard's mint button stays untouched. */
 const btnPrimary =
-  'inline-flex h-12 items-center justify-center rounded-md bg-cs-accent px-6 text-[15px] font-semibold text-cs-accent-text-ink transition-[filter] hover:brightness-110'
+  'inline-flex h-12 items-center justify-center rounded-md bg-cs-accent px-6 text-[15px] font-semibold text-cs-accent-ink transition-[filter] hover:brightness-110'
 const btnSecondary =
   'inline-flex h-12 items-center justify-center rounded-md border border-cs-ink/25 px-6 text-[15px] font-semibold text-cs-ink transition-colors hover:border-cs-ink'
 
@@ -21,7 +21,7 @@ const STEPS = [
   {
     art: 'step-build',
     title: 'Build the assessment',
-    body: 'Pick the role and experience band. Code Spectra assembles a question mix weighted to that level, and you can edit any question before it goes out.',
+    body: 'Pick the role and experience band. CodeSpectra assembles a question mix weighted to that level, and you can edit any question before it goes out.',
   },
   {
     art: 'step-invite',
@@ -257,7 +257,7 @@ export default function Home() {
                     style={{ width: `${r.weight}%` }}
                     className={cn(
                       'flex items-center border-r-2 border-cs-paper px-3 font-semibold tabular-nums last:border-r-0',
-                      i === 0 ? 'bg-cs-ink text-cs-paper' : i < 3 ? 'bg-cs-accent text-cs-accent-text-ink' : 'bg-cs-grid text-cs-ink',
+                      i === 0 ? 'bg-cs-ink text-cs-paper' : i < 3 ? 'bg-cs-accent text-cs-accent-ink' : 'bg-cs-grid text-cs-ink',
                     )}
                   >
                     {r.weight}
@@ -280,12 +280,15 @@ export default function Home() {
       {/* Candidates — secondary audience */}
       <section className="border-b border-cs-grid bg-cs-sheet">
         <div className="mx-auto flex max-w-[1200px] flex-col gap-6 px-4 py-14 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
-          <div className="max-w-[60ch]">
-            <h2 className="text-2xl font-semibold">Taking a Code Spectra assessment?</h2>
+          <div className="flex max-w-[70ch] items-center gap-6">
+            <ThemeIllustration name="code-visor" width={240} height={200} className="hidden w-28 shrink-0 sm:block" />
+            <div>
+            <h2 className="text-2xl font-semibold">Taking a CodeSpectra assessment?</h2>
             <p className="mt-2 leading-relaxed text-cs-ink-soft">
               Use the link from your invite. Before test day you can practise coding problems, try mock tests
               and earn certificates on your own free account.
             </p>
+            </div>
           </div>
           <div className="flex shrink-0 gap-3">
             <Link href="/auth/login" className={btnSecondary}>
@@ -301,9 +304,10 @@ export default function Home() {
       {/* Closing CTA */}
       <section className="cs-graph relative">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-linear-to-r from-cs-paper via-cs-paper/85 to-cs-paper/40" />
-        <div className="relative mx-auto max-w-[1200px] px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+        <div className="relative mx-auto grid max-w-[1200px] items-center gap-12 px-4 py-24 sm:px-6 lg:grid-cols-[1.3fr_0.7fr] lg:px-8 lg:py-32">
+          <div>
           <h2 className="cs-display max-w-[16ch] text-5xl sm:text-6xl lg:text-7xl">
-            Run your next screening on Code Spectra.
+            Run your next screening on CodeSpectra.
           </h2>
           <p className="mt-6 max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">
             Start with a pilot on one open role. We set up the assessment with you and you see the ranked
@@ -317,6 +321,8 @@ export default function Home() {
               See pricing
             </Link>
           </div>
+          </div>
+          <ThemeIllustration name="binary-brackets" width={360} height={240} className="mx-auto w-full max-w-[380px]" />
         </div>
       </section>
     </PublicPageWrapper>

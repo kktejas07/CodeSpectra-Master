@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * White + mint hero: a headline whose role word slides through the roles
- * Code Spectra assesses, beside an auto-advancing slideshow of animated
+ * CodeSpectra assesses, beside an auto-advancing slideshow of animated
  * product screens (SVG files in /public/illustrations/codespectra).
  *
  * The hero stays light in both themes (`cs-light` pins the light tokens).
@@ -104,10 +104,10 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
       <div
         aria-hidden
         className="absolute inset-0 -z-10 opacity-60 [mask-image:radial-gradient(70%_60%_at_70%_40%,#000_30%,transparent_80%)]"
-        style={{ backgroundImage: 'radial-gradient(rgba(0,197,115,0.35) 1px, transparent 1px)', backgroundSize: '22px 22px' }}
+        style={{ backgroundImage: 'radial-gradient(rgba(47,91,231,0.30) 1px, transparent 1px)', backgroundSize: '22px 22px' }}
       />
-      <div aria-hidden className="absolute -top-40 right-[-10%] -z-10 h-[520px] w-[620px] rounded-full bg-[#00c573]/15 blur-3xl" />
-      <div aria-hidden className="absolute bottom-[-30%] left-[-10%] -z-10 h-[420px] w-[520px] rounded-full bg-[#06b6d4]/10 blur-3xl" />
+      <div aria-hidden className="absolute -top-40 right-[-10%] -z-10 h-[520px] w-[620px] rounded-full bg-[#2f5be7]/14 blur-3xl" />
+      <div aria-hidden className="absolute bottom-[-30%] left-[-10%] -z-10 h-[420px] w-[520px] rounded-full bg-[#38bdf8]/12 blur-3xl" />
 
       <div className="mx-auto grid max-w-[1200px] items-center gap-12 px-4 pt-14 pb-16 sm:px-6 sm:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:px-8 lg:pb-24">
         {/* Copy */}
@@ -115,16 +115,20 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
           <h1 className="cs-display text-[3rem] sm:text-7xl lg:text-[4.6rem]">
             <span className="sr-only">Hire developers, design engineers, QA engineers and graduates on proven skills.</span>
             <span aria-hidden className="block">Hire</span>
-            <span aria-hidden className="relative block h-[1.02em] overflow-hidden">
+            <span aria-hidden className="relative block h-[1.08em] overflow-hidden">
               {ROLES.map((r, i) => (
                 <span
                   key={r}
                   className={cn(
-                    'absolute inset-x-0 top-0 block whitespace-nowrap text-[#00975a] transition-all duration-500 ease-[cubic-bezier(.2,.7,.2,1)]',
+                    'absolute inset-x-0 top-0 block whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(.2,.7,.2,1)]',
                     i === role ? 'translate-y-0 opacity-100' : i === (role - 1 + ROLES.length) % ROLES.length ? '-translate-y-full opacity-0' : 'translate-y-full opacity-0',
                   )}
                 >
-                  {r}
+                  <span className="relative inline-block">
+                    {r}
+                    {/* underline draws in each time the word changes */}
+                    {i === role && <span key={`u-${role}`} className="cs-underline absolute inset-x-0 bottom-[0.02em] h-[0.09em] origin-left rounded-full bg-[#2f5be7]" />}
+                  </span>
                 </span>
               ))}
             </span>
@@ -139,13 +143,13 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link
               href={primaryHref}
-              className="inline-flex h-12 items-center justify-center rounded-full bg-[#00c573] px-7 text-[15px] font-bold text-[#020617] shadow-lg shadow-[#00c573]/25 transition-[filter,box-shadow] hover:shadow-[#00c573]/40 hover:brightness-105"
+              className="inline-flex h-12 items-center justify-center rounded-full bg-[#2f5be7] px-7 text-[15px] font-bold text-white shadow-lg shadow-[#2f5be7]/25 transition-[filter,box-shadow] hover:shadow-[#2f5be7]/40 hover:brightness-110"
             >
               Book a pilot
             </Link>
             <Link
               href={secondaryHref}
-              className="inline-flex h-12 items-center justify-center rounded-full border border-slate-300 bg-white px-7 text-[15px] font-semibold text-cs-ink transition-colors hover:border-[#00c573]"
+              className="inline-flex h-12 items-center justify-center rounded-full border border-slate-300 bg-white px-7 text-[15px] font-semibold text-cs-ink transition-colors hover:border-[#2f5be7]"
             >
               {secondaryLabel}
             </Link>
@@ -154,8 +158,8 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
           <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[15px] text-cs-ink-soft">
             {['Proctored', 'Auto-scored', 'Any role, not only code'].map((x) => (
               <li key={x} className="flex items-center gap-2">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#00c573]/15">
-                  <Check className="h-3.5 w-3.5 text-[#047857]" strokeWidth={3} aria-hidden />
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2f5be7]/12">
+                  <Check className="h-3.5 w-3.5 text-[#1e40af]" strokeWidth={3} aria-hidden />
                 </span>
                 {x}
               </li>
@@ -176,12 +180,16 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
           }}
         >
           <div className="relative">
-            {/* floating brand hexagon for depth */}
-            <svg aria-hidden viewBox="0 0 32 32" className="cs-float absolute -top-6 -left-5 z-10 hidden h-14 w-14 drop-shadow-lg sm:block">
-              <path d="M7 10L16 4L25 10V22L16 28L7 22V10Z" fill="#ffffff" stroke="#00c573" strokeWidth="2" strokeLinejoin="round" />
-              <path d="M16 4V28M7 10L25 22M7 22L25 10" stroke="#14b8a6" strokeWidth="1.2" strokeOpacity="0.6" />
-              <circle cx="16" cy="16" r="3" fill="#00c573" />
-            </svg>
+            {/* floating visor mascot for depth */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- animated SVG */}
+            <img
+              src="/illustrations/codespectra/hero-visor.svg"
+              alt=""
+              aria-hidden
+              width={240}
+              height={200}
+              className="cs-float pointer-events-none absolute -top-14 -left-14 z-10 hidden w-28 drop-shadow-xl sm:block"
+            />
 
             <div className="relative aspect-[584/440] w-full">
               {SLIDES.map((s, i) => (
@@ -238,7 +246,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                       <span
                         key={active ? `p-${slide}-${running}` : 'idle'}
                         className={cn(
-                          'block h-full origin-left rounded-full bg-[#00c573]',
+                          'block h-full origin-left rounded-full bg-[#2f5be7]',
                           active ? (running ? 'cs-progress' : 'scale-x-100') : 'scale-x-0',
                         )}
                         style={active && running ? { animationDuration: `${SLIDE_MS}ms` } : undefined}
@@ -256,7 +264,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                 type="button"
                 onClick={() => setPaused((p) => !p)}
                 aria-label={paused ? 'Play slideshow' : 'Pause slideshow'}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-cs-ink hover:border-[#00c573]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-cs-ink hover:border-[#2f5be7]"
               >
                 {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}
               </button>

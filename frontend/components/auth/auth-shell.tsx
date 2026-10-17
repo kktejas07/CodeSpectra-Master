@@ -8,7 +8,7 @@ import { BrandLogo } from '@/app/public-layout'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
 
 /**
- * Shared frame for /auth/login and /auth/signup in the Code Spectra brand.
+ * Shared frame for /auth/login and /auth/signup in the CodeSpectra brand.
  * Form column on the left (where the eye starts), a quiet graph-paper panel
  * on the right with context that actually helps someone signing in.
  */
@@ -28,7 +28,7 @@ export function AuthShell({ aside, children }: { aside: React.ReactNode; childre
         </main>
 
         <footer className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-cs-ink-soft">
-          <span>© 2026 Code Spectra</span>
+          <span>© 2026 CodeSpectra</span>
           <Link href="/privacy" className="hover:text-cs-ink">Privacy</Link>
           <Link href="/terms" className="hover:text-cs-ink">Terms</Link>
           <Link href="/support" className="hover:text-cs-ink">Help</Link>
@@ -141,7 +141,7 @@ export function PrimaryButton({
       disabled={props.disabled || loading}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-cs-accent px-5 text-base font-semibold text-cs-accent-text-ink transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60',
+        'inline-flex h-12 w-full items-center justify-center gap-2 rounded-md bg-cs-accent px-5 text-base font-semibold text-cs-accent-ink transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60',
         className,
       )}
     >

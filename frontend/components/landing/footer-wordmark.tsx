@@ -28,7 +28,8 @@ export function FooterWordmark() {
         aria-hidden
         className="bg-clip-text text-center font-black leading-none tracking-tight text-transparent"
         style={{
-          fontSize: 'clamp(3.25rem, 12.5vw, 12rem)',
+          fontSize: 'clamp(3rem, 11.2vw, 10.75rem)',
+          fontStretch: '88%',
           backgroundImage:
             'radial-gradient(circle at var(--mx, 50%) var(--my, 120%), hsl(var(--primary) / 0.95) 0%, transparent 42%), linear-gradient(180deg, hsl(var(--primary) / 0.75) 0%, hsl(var(--primary) / 0.32) 55%, hsl(var(--primary) / 0.06) 100%)',
           backgroundSize: '100% 100%, 100% 100%',
