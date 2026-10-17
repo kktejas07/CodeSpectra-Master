@@ -65,11 +65,11 @@ const COUNTRY_PATHS: Record<string, { path: string; name: string }> = {
 }
 
 function getColor(count: number): string {
-  if (count === 0) return '#e5e7eb'
-  if (count <= 100) return '#bbf7d0'
-  if (count <= 1000) return '#4ade80'
-  if (count <= 10000) return '#16a34a'
-  return '#14532d'
+  if (count === 0) return 'hsl(var(--muted))'
+  if (count <= 100) return '#c7d4fb'
+  if (count <= 1000) return '#7f9bf3'
+  if (count <= 10000) return '#2f5be7'
+  return '#17224d'
 }
 
 export function WorldMap({ countries, totalRequests }: WorldMapProps) {
@@ -107,7 +107,7 @@ export function WorldMap({ countries, totalRequests }: WorldMapProps) {
               key={code}
               d={path}
               fill={getColor(countMap[code] || 0)}
-              stroke="#94a3b8"
+              stroke="hsl(var(--border))"
               strokeWidth={0.3}
               className="transition-colors duration-150"
               onMouseEnter={(e) => handleMouse(code, e)}
@@ -134,11 +134,11 @@ export function WorldMap({ countries, totalRequests }: WorldMapProps) {
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span>Legend:</span>
         {[
-          { label: '0', color: '#e5e7eb' },
-          { label: '1-100', color: '#bbf7d0' },
-          { label: '101-1K', color: '#4ade80' },
-          { label: '1K-10K', color: '#16a34a' },
-          { label: '10K+', color: '#14532d' },
+          { label: '0', color: 'hsl(var(--muted))' },
+          { label: '1-100', color: '#c7d4fb' },
+          { label: '101-1K', color: '#7f9bf3' },
+          { label: '1K-10K', color: '#2f5be7' },
+          { label: '10K+', color: '#17224d' },
         ].map(item => (
           <span key={item.label} className="flex items-center gap-1">
             <span className="inline-block w-3 h-3 rounded-sm border border-border" style={{ backgroundColor: item.color }} />
@@ -156,7 +156,7 @@ export function WorldMap({ countries, totalRequests }: WorldMapProps) {
               <span className="text-sm font-medium">{c.name}</span>
             </div>
             <div className="text-right">
-              <span className="text-sm font-semibold font-mono text-emerald-500">{c.count.toLocaleString()}</span>
+              <span className="text-sm font-semibold tabular-nums text-primary">{c.count.toLocaleString()}</span>
               <span className="text-[10px] text-muted-foreground ml-1">requests</span>
             </div>
           </div>

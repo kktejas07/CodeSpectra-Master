@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { PageHeader } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -151,26 +152,24 @@ export default function GenerateCoursePage() {
     <div className="space-y-8">
       
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8" data-tour="course-generate-header">
-        <Link href="/dashboard/courses">
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            AI Video Course Generator <Sparkles className="h-6 w-6 text-indigo-500" />
-          </h1>
-          <p className="text-muted-foreground">Design your perfect custom curriculum in seconds.</p>
-        </div>
-      </div>
-
-      {/* Credit Widget */}
-      <div className="flex justify-end mb-6" data-tour="course-generate-credits">
-        <div className="flex items-center gap-3 bg-secondary/30 border border-secondary px-4 py-2 rounded-full">
-          <Zap className="h-4 w-4 text-amber-500" />
-          <span className="text-sm font-medium">Credits: {userCredits !== null ? userCredits : '...'}</span>
-        </div>
+      <div data-tour="course-generate-header">
+        <PageHeader
+          title="AI video course generator"
+          description="Pick a technology, level and length, and AI builds a video course for you."
+          icon={<Sparkles />}
+          className="mb-0"
+          actions={
+            <>
+              <Button asChild variant="outline" size="sm" className="gap-1.5">
+                <Link href="/dashboard/courses"><ArrowLeft className="h-4 w-4" /> Courses</Link>
+              </Button>
+              <div className="flex items-center gap-2 border border-border bg-card px-4 py-1.5 rounded-full" data-tour="course-generate-credits">
+                <Zap className="h-4 w-4 text-amber-500" aria-hidden />
+                <span className="text-sm font-medium tabular-nums">Credits: {userCredits !== null ? userCredits : '…'}</span>
+              </div>
+            </>
+          }
+        />
       </div>
 
       {!generating ? (
@@ -178,10 +177,9 @@ export default function GenerateCoursePage() {
           
           {/* Main Wizard Area */}
           <div className="md:col-span-2">
-            <Card className="p-8 border-indigo-500/20 shadow-xl shadow-indigo-500/5 overflow-hidden relative" data-tour="course-generate-wizard">
+            <Card className="rounded-3xl p-8 border-border/70 overflow-hidden relative" data-tour="course-generate-wizard">
               {/* Animated decorative shapes */}
-              <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
-              <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+              <div aria-hidden className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
 
               <div className="relative z-10">
                 {/* Step 1: Technology */}
@@ -193,7 +191,7 @@ export default function GenerateCoursePage() {
                         key={ind.id}
                         type="button"
                         onClick={() => { setIndustry(ind.id); setTechnology('') }}
-                        className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${industry === ind.id ? 'border-indigo-500 bg-indigo-500/10' : 'border-border hover:border-indigo-500/50'}`}
+                        className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${industry === ind.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
                       >
                         {ind.label}
                       </button>
@@ -204,7 +202,7 @@ export default function GenerateCoursePage() {
                       <div 
                         key={tech}
                         onClick={() => setTechnology(tech)}
-                        className={`px-4 py-3 rounded-xl border-2 cursor-pointer transition-all ${technology === tech ? 'border-indigo-500 bg-indigo-500/10' : 'border-border hover:border-indigo-500/50'}`}
+                        className={`px-4 py-3 rounded-xl border-2 cursor-pointer transition-all ${technology === tech ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
                       >
                         <span className="font-medium">{tech}</span>
                       </div>
@@ -224,7 +222,7 @@ export default function GenerateCoursePage() {
                       {preview.title} · {preview.moduleCount} modules · ≥{preview.minLessons} lessons · ~{preview.estimatedHours}h
                     </p>
                   )}
-                  <Button onClick={handleNext} disabled={!technology} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
+                  <Button onClick={handleNext} disabled={!technology} className="w-full">
                     Next Step <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -241,7 +239,7 @@ export default function GenerateCoursePage() {
                           <div 
                             key={l}
                             onClick={() => setLevel(l)}
-                            className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all ${level === l ? 'border-indigo-500 bg-indigo-500/10' : 'border-border hover:border-indigo-500/50'}`}
+                            className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all ${level === l ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
                           >
                             <span className="font-medium">{l}</span>
                           </div>
@@ -256,7 +254,7 @@ export default function GenerateCoursePage() {
                           <div 
                             key={d}
                             onClick={() => setDuration(d)}
-                            className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all ${duration === d ? 'border-indigo-500 bg-indigo-500/10' : 'border-border hover:border-indigo-500/50'}`}
+                            className={`flex flex-col items-center justify-center p-3 rounded-xl border-2 cursor-pointer transition-all ${duration === d ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'}`}
                           >
                             <span className="font-medium text-lg">{d}h</span>
                           </div>
@@ -267,7 +265,7 @@ export default function GenerateCoursePage() {
 
                   <div className="flex gap-4">
                     <Button onClick={handleBack} variant="outline" className="w-1/3">Back</Button>
-                    <Button onClick={handleNext} disabled={!level} className="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Button onClick={handleNext} disabled={!level} className="w-2/3">
                       Next Step <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
@@ -287,8 +285,8 @@ export default function GenerateCoursePage() {
                       />
                     </div>
                     
-                    <div className="bg-indigo-500/10 border border-indigo-500/20 p-4 rounded-xl">
-                      <h4 className="font-semibold flex items-center gap-2 mb-2"><Sparkles className="h-4 w-4 text-indigo-500"/> AI Blueprint Summary</h4>
+                    <div className="bg-primary/10 border border-primary/20 p-4 rounded-xl">
+                      <h4 className="font-semibold flex items-center gap-2 mb-2"><Sparkles className="h-4 w-4 text-primary"/> Summary</h4>
                       <ul className="text-sm space-y-2 text-muted-foreground">
                         <li>• Topic: <strong className="text-foreground">{technology}</strong></li>
                         <li>• Level: <strong className="text-foreground">{level}</strong></li>
@@ -300,7 +298,7 @@ export default function GenerateCoursePage() {
 
                   <div className="flex gap-4">
                     <Button onClick={handleBack} variant="outline" className="w-1/3">Back</Button>
-                    <Button onClick={startGeneration} className="w-2/3 bg-indigo-600 hover:bg-indigo-700 text-white">
+                    <Button onClick={startGeneration} className="w-2/3">
                       <Zap className="mr-2 h-4 w-4" /> Generate Course
                     </Button>
                   </div>
@@ -311,13 +309,13 @@ export default function GenerateCoursePage() {
 
           {/* Sidebar Info */}
           <div className="hidden md:block">
-            <Card className="p-6 bg-secondary/20 border-border h-full">
+            <Card className="rounded-3xl p-6 bg-muted/30 border-border/70 h-full">
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-                <Video className="h-5 w-5 text-indigo-500" /> How it works
+                <Video className="h-5 w-5 text-primary" /> How it works
               </h3>
               <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-border before:to-transparent">
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-card bg-primary text-primary-foreground shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                     <Database className="h-4 w-4" />
                   </div>
                   <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border border-border bg-background shadow">
@@ -326,7 +324,7 @@ export default function GenerateCoursePage() {
                   </div>
                 </div>
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-card bg-primary text-primary-foreground shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                     <Layers className="h-4 w-4" />
                   </div>
                   <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border border-border bg-background shadow">
@@ -335,7 +333,7 @@ export default function GenerateCoursePage() {
                   </div>
                 </div>
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full border-2 border-card bg-primary text-primary-foreground shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                     <Play className="h-4 w-4" />
                   </div>
                   <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded border border-border bg-background shadow">
@@ -349,23 +347,23 @@ export default function GenerateCoursePage() {
         </div>
       ) : (
         /* Generation Loading State */
-        <Card className="max-w-2xl mx-auto p-12 text-center border-indigo-500/50 shadow-2xl shadow-indigo-500/20 relative overflow-hidden">
+        <Card className="max-w-2xl mx-auto rounded-3xl p-12 text-center border-primary/30 relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-muted">
             <div 
-              className="h-full bg-indigo-600 transition-all duration-1000 ease-out" 
+              className="h-full bg-primary transition-all duration-1000 ease-out" 
               style={{ width: `${progress}%` }} 
             />
           </div>
           
           <div className="relative z-10 flex flex-col items-center">
             <div className="w-24 h-24 mb-8 relative">
-              <div className="absolute inset-0 border-4 border-indigo-200 rounded-full animate-pulse" />
-              <div className="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin" />
-              <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-indigo-600" />
+              <div className="absolute inset-0 border-4 border-primary/25 rounded-full" />
+              <div className="absolute inset-0 border-4 border-primary rounded-full border-t-transparent animate-spin motion-reduce:animate-none" />
+              <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-primary" />
             </div>
             
-            <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-600">
-              Generating your {duration}-hour course...
+            <h2 className="text-3xl font-bold mb-4 text-foreground">
+              Generating your {duration}-hour course…
             </h2>
             
             <p className="text-xl text-muted-foreground mb-8 min-h-7.5 transition-all">
@@ -374,8 +372,8 @@ export default function GenerateCoursePage() {
             
             <div className="w-full max-w-md bg-secondary/50 rounded-lg p-4 text-left border border-border/50">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-muted-foreground">Estimated Time: 12 Hours</span>
-                <span className="font-medium text-indigo-500">{progress}%</span>
+                <span className="text-muted-foreground">Estimated time: 12 hours</span>
+                <span className="font-medium tabular-nums text-primary">{progress}%</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 <Clock className="inline h-3 w-3 mr-1" />
@@ -389,14 +387,14 @@ export default function GenerateCoursePage() {
       {/* PRO Upsell Modal Overlay */}
       {showUpsell && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-md p-8 border-amber-500/30 shadow-2xl relative overflow-hidden">
+          <Card className="w-full max-w-md rounded-3xl p-8 border-amber-500/30 shadow-2xl relative overflow-hidden">
             <div className="absolute -top-20 -right-20 w-40 h-40 bg-amber-500/20 rounded-full blur-3xl" />
             
             <div className="relative z-10 text-center">
-              <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-6">
+              <div className="mx-auto w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-6">
                 <ShieldAlert className="h-8 w-8 text-amber-600 dark:text-amber-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-3">Out of AI Credits</h2>
+              <h2 className="text-2xl font-bold mb-3">Out of AI credits</h2>
               <p className="text-muted-foreground mb-8">
                 Generating a full video course requires 10 credits. You currently have 0 credits. Upgrade to PRO to get 1,000 monthly credits and unlimited course generation.
               </p>

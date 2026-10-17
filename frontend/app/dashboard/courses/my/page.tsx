@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Heart, Loader2 } from 'lucide-react'
+import { BookOpen, Heart, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 
 type Course = {
@@ -71,38 +72,44 @@ export default function MyCoursesPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3" data-tour="my-courses-header">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Courses you are enrolled in.</p>
-        </div>
-        <div className="flex gap-2" data-tour="my-courses-actions">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/courses/wishlist">
-              <Heart className="mr-1.5 h-4 w-4" /> Watchlist
-            </Link>
-          </Button>
-          <Button asChild size="sm">
-            <Link href="/dashboard/courses">Browse all</Link>
-          </Button>
-        </div>
+      <div data-tour="my-courses-header">
+        <PageHeader
+          title="My courses"
+          description="Courses you're enrolled in. Pick one to carry on where you left off."
+          icon={<BookOpen />}
+          className="mb-0"
+          actions={
+            <div className="flex gap-2" data-tour="my-courses-actions">
+              <Button asChild variant="outline" size="sm">
+                <Link href="/dashboard/courses/wishlist">
+                  <Heart className="mr-1.5 h-4 w-4" /> Wishlist
+                </Link>
+              </Button>
+              <Button asChild size="sm">
+                <Link href="/dashboard/courses">Browse all</Link>
+              </Button>
+            </div>
+          }
+        />
       </div>
 
       <div data-tour="my-courses-list">
       {courses.length === 0 ? (
-        <EmptyState
-          variant="courses"
-          title="No enrollments yet"
-          description="Enroll from the Courses catalog to see them here. Leave a course and this empty state returns."
-          actionLabel="Explore courses"
-          actionHref="/dashboard/courses"
-        />
+        <Panel className="p-4">
+          <EmptyState
+            variant="courses"
+            title="No courses yet"
+            description="Enroll in a course from the catalogue and it will show up here."
+            actionLabel="Explore courses"
+            actionHref="/dashboard/courses"
+          />
+        </Panel>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <BentoGrid className="lg:grid-cols-3">
           {courses.map((c) => (
-            <Link key={c.id} href={`/dashboard/courses/${c.id}`}>
-              <Card className="h-full p-4 transition-colors hover:border-primary/40 hover:bg-muted/30">
-                <p className="font-semibold">{c.title}</p>
+            <Link key={c.id} href={`/dashboard/courses/${c.id}`} className="rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+              <Panel interactive className="h-full p-5">
+                <p className="font-semibold text-foreground">{c.title}</p>
                 {c.category || c.level ? (
                   <p className="mt-1 text-xs text-muted-foreground">
                     {[c.category, c.level].filter(Boolean).join(' · ')}
@@ -111,10 +118,10 @@ export default function MyCoursesPage() {
                 {c.description ? (
                   <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{c.description}</p>
                 ) : null}
-              </Card>
+              </Panel>
             </Link>
           ))}
-        </div>
+        </BentoGrid>
       )}
       </div>
     </div>

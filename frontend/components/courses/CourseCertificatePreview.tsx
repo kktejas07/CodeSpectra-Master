@@ -117,7 +117,7 @@ export function CourseCertificatePreview({
           </div>
         </div>
       </div>
-      <p className="text-center text-[11px] text-white/50 mt-3">
+      <p className="text-center text-[11px] text-white/75 mt-3">
         Preview for {displayName} · SuperAdmin template · watermarked sample
       </p>
     </div>

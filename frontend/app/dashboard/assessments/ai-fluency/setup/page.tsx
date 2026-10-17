@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { BrainCircuit, ArrowLeft, Loader2, Sparkles } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { PageHeader } from '@/components/app/page-kit'
 import { ALL_CATEGORIES, CATEGORY_LABELS, DIFFICULTY_LEVELS, type FluencyCategory } from '@/lib/assessments/ai-fluency-types'
 
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -87,24 +88,25 @@ export default function AiFluencySetupPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/dashboard/assessments" className="rounded-lg p-2 hover:bg-muted">
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BrainCircuit className="h-6 w-6 text-primary" /> AI Fluency Assessment
-        </h1>
-      </div>
+      <PageHeader
+        title="AI fluency assessment"
+        description="Test how well you work with AI tools — from writing good prompts to knowing when not to use AI."
+        icon={<BrainCircuit />}
+        className="mb-0"
+        actions={
+          <Link href="/dashboard/assessments">
+            <Button variant="outline" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" /> Back to assessments
+            </Button>
+          </Link>
+        }
+      />
 
-      <Card className="p-6 space-y-5">
-        <p className="text-sm text-muted-foreground">
-          Test your ability to work effectively with AI tools — from writing great prompts
-          to knowing when NOT to use AI.
-        </p>
+      <Card className="rounded-3xl border-border/70 p-6 space-y-5">
 
         {/* Focus Categories */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Focus Areas</label>
+          <label className="text-sm font-medium">Focus areas</label>
           <p className="text-xs text-muted-foreground">Select which AI fluency skills to assess.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {ALL_CATEGORIES.map((cat) => (
@@ -112,7 +114,7 @@ export default function AiFluencySetupPage() {
                 key={cat}
                 type="button"
                 onClick={() => toggleCategory(cat)}
-                className={`rounded-lg border px-3 py-2.5 text-left text-xs transition-colors ${
+                className={`rounded-xl border px-3 py-2.5 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-primary ${
                   focusCategories.includes(cat)
                     ? 'bg-primary/10 border-primary text-primary font-medium'
                     : 'bg-background border-border text-muted-foreground hover:border-primary/40'
@@ -134,7 +136,7 @@ export default function AiFluencySetupPage() {
                 key={d}
                 type="button"
                 onClick={() => setDifficulty(d)}
-                className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
+                className={`rounded-xl border px-3 py-2 text-left text-xs transition-colors focus-visible:outline-2 focus-visible:outline-primary ${
                   difficulty === d
                     ? 'bg-primary/10 border-primary text-primary font-medium'
                     : 'bg-background border-border text-muted-foreground hover:border-primary/40'
@@ -149,7 +151,7 @@ export default function AiFluencySetupPage() {
         {/* Question Count */}
         <div className="space-y-2">
           <label className="text-sm font-medium">
-            Questions: <span className="text-primary">{questionCount}</span>
+            Questions: <span className="text-primary tabular-nums">{questionCount}</span>
           </label>
           <input
             type="range"
@@ -177,9 +179,9 @@ export default function AiFluencySetupPage() {
           size="lg"
         >
           {starting ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Questions...</>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating questions…</>
           ) : (
-            <><Sparkles className="mr-2 h-4 w-4" /> Start Assessment</>
+            <><Sparkles className="mr-2 h-4 w-4" /> Start assessment</>
           )}
         </Button>
       </Card>

@@ -44,7 +44,7 @@ export function SkillBadges() {
 
   if (loading) {
     return (
-      <Card className="border-border/60 p-6">
+      <Card className="rounded-3xl border-border/70 p-6">
         <div className="h-6 w-32 animate-pulse rounded bg-muted" />
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
           {Array.from({ length: 8 }).map((_, i) => (
@@ -58,8 +58,8 @@ export function SkillBadges() {
   if (badges.length === 0) return null
 
   return (
-    <Card className="border-border/60 p-6">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Skill Badges</h2>
+    <Card className="rounded-3xl border-border/70 p-6">
+      <h2 className="text-lg font-semibold text-foreground mb-4">Skill badges</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {badges.map(badge => {
           const Icon = ICON_MAP[badge.icon] || Trophy
@@ -67,8 +67,8 @@ export function SkillBadges() {
           return (
             <div
               key={badge.id}
-              className={`flex flex-col items-center p-4 rounded-lg border border-border/60 text-center ${
-                badge.earned ? 'bg-primary/5' : 'opacity-50'
+              className={`flex flex-col items-center p-4 rounded-2xl border border-border/60 text-center ${
+                badge.earned ? 'border-primary/30 bg-primary/5' : 'opacity-60'
               }`}
             >
               <div className={`flex h-14 w-14 items-center justify-center rounded-full ${
@@ -82,10 +82,10 @@ export function SkillBadges() {
                 <div className="h-1.5 w-full rounded-full bg-muted">
                   <div
                     className="h-1.5 rounded-full bg-primary transition-all"
-                    style={{ width: `${pct}%` }}
+                    style={{ width: `${pct || 0}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-muted-foreground mt-1">{badge.progress}/{badge.total}</p>
+                <p className="text-[11px] tabular-nums text-muted-foreground mt-1">{badge.progress}/{badge.total}</p>
               </div>
               <p className={`text-[10px] mt-1 ${badge.earned ? 'text-primary' : 'text-muted-foreground'}`}>
                 {formatEarnedDate(badge.earned_at)}

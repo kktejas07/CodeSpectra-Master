@@ -93,7 +93,7 @@ function LessonVideoStatus({ courseId, onRetryHint }: { courseId: string; onRetr
   }, [courseId])
 
   const box = (children: React.ReactNode) => (
-    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-6 bg-black text-muted-foreground">
+    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-6 bg-black text-white/70">
       <Play className="h-10 w-10 opacity-40" />
       {children}
     </div>
@@ -414,7 +414,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
         <div className="flex items-center gap-3">
           {/* Progress / Mark Complete */}
           {isDone ? (
-            <div className="hidden sm:flex items-center gap-2 text-emerald-500 font-medium text-sm px-3 py-1.5 bg-emerald-500/10 rounded-full">
+            <div className="hidden sm:flex items-center gap-2 text-green-700 dark:text-green-400 font-medium text-sm px-3 py-1.5 bg-green-500/10 rounded-full">
               <CheckCircle className="h-4 w-4" /> Completed
             </div>
           ) : (
@@ -432,7 +432,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* ── Main Video Area ── */}
-        <main className="flex-1 flex flex-col min-w-0 bg-black/5 dark:bg-black/40">
+        <main className="flex-1 flex flex-col min-w-0 bg-muted/40">
           <div className="flex-1 p-0 sm:p-4 lg:p-6 overflow-y-auto">
             <div className="w-full space-y-6">
               
@@ -474,13 +474,13 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
               {isQuizMode ? (
                 <div className="mt-6 rounded-2xl border border-border/40 bg-card p-6 shadow-sm">
                   <div className="mb-4">
-                    <p className="text-xs font-medium uppercase tracking-wide text-primary">Module quiz</p>
+                    <p className="text-xs font-semibold text-primary">Module quiz</p>
                     <h2 className="text-2xl font-bold mt-1">Let&apos;s test your understanding!</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                       {quizSection?.title || 'This module'} — answer to unlock the next module.
                     </p>
                     {quizSectionIndex != null && quizScores[quizSectionIndex] != null && (
-                      <p className="text-sm text-emerald-600 mt-2">Best score: {quizScores[quizSectionIndex]}%</p>
+                      <p className="text-sm tabular-nums text-green-700 dark:text-green-400 mt-2">Best score: {quizScores[quizSectionIndex]}%</p>
                     )}
                   </div>
                   {quizQuestions.length === 0 ? (
@@ -633,7 +633,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                       <h3 className="text-sm font-semibold mb-3">Key takeaways</h3>
                       <ul className="space-y-2 text-sm text-muted-foreground">
                         {(activeLesson.takeaways || []).filter(Boolean).map((t, i) => (
-                          <li key={i} className="flex gap-2"><CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" /><span>{String(t).slice(0, 500)}</span></li>
+                          <li key={i} className="flex gap-2"><CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-primary" aria-hidden /><span>{String(t).slice(0, 500)}</span></li>
                         ))}
                       </ul>
                     </div>
@@ -644,13 +644,13 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                       <h3 className="text-sm font-semibold mb-3">Quick check</h3>
                       <div className="grid gap-3 sm:grid-cols-3 text-sm">
                         {(activeLesson.quickCheck.recall || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Recall</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.recall).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">Recall</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.recall).slice(0, 500)}</p></div>
                         )}
                         {(activeLesson.quickCheck.apply || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Apply</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.apply).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">Apply</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.apply).slice(0, 500)}</p></div>
                         )}
                         {(activeLesson.quickCheck.stretch || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Stretch</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.stretch).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">Stretch</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.stretch).slice(0, 500)}</p></div>
                         )}
                       </div>
                     </div>
@@ -768,7 +768,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                             <div className={cn(
                               "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center transition-colors",
                               isCompleted 
-                                ? "bg-emerald-500 border-emerald-500 text-white" 
+                                ? "bg-green-600 border-green-600 text-white" 
                                 : isActive 
                                   ? "border-primary bg-primary/20 text-primary"
                                   : "border-muted-foreground/30 text-transparent"
@@ -811,8 +811,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         <div className={cn(
                           "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center",
                           quizScores[sIdx] != null && quizScores[sIdx] >= 80
-                            ? "bg-emerald-500 border-emerald-500 text-white"
-                            : "border-violet-500/50 text-violet-500"
+                            ? "bg-green-600 border-green-600 text-white"
+                            : "border-primary/50 text-primary"
                         )}>
                           {quizScores[sIdx] != null && quizScores[sIdx] >= 80 ? <CheckCircle className="h-3 w-3" /> : <Puzzle className="h-2.5 w-2.5" />}
                         </div>

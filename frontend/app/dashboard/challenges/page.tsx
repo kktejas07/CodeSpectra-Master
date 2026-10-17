@@ -10,6 +10,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Challenge {
   id: string
@@ -73,21 +75,14 @@ export default function ChallengesPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="space-y-8" data-tour="challenges-content">
+    <div className="space-y-6" data-tour="challenges-content">
       <div data-tour="challenges-header">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Practice coding, system design, and behavioral interviews</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        <PageHeader
+          title="Challenges"
+          description="Practise coding, system design and behavioural interview questions."
+          icon={<Trophy />}
+          className="mb-0"
+        />
       </div>
 
       {loading ? (
@@ -97,25 +92,20 @@ export default function ChallengesPage() {
           <SkeletonList count={6} />
         </div>
       ) : challenges.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <Trophy className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No challenges available yet.</p>
-        </Card>
+        <Panel className="p-4">
+          <EmptyState
+            title="No challenges yet"
+            description="New interview challenges will appear here. Meanwhile, try the coding problems."
+            actionLabel="Go to problems"
+            actionHref="/dashboard/problems"
+          />
+        </Panel>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Card className="border-border/60 p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{completedCount}/{challenges.length}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
-            </Card>
-            <Card className="border-border/60 p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{challenges.filter(c => !c.locked).length}</p>
-              <p className="text-xs text-muted-foreground">Available</p>
-            </Card>
-            <Card className="border-border/60 p-4 text-center">
-              <p className="text-2xl font-bold text-foreground">{challenges.filter(c => c.locked).length}</p>
-              <p className="text-xs text-muted-foreground">Locked</p>
-            </Card>
+            <StatCard label="Completed" value={`${completedCount}/${challenges.length}`} icon={<CheckCircle />} />
+            <StatCard label="Available" value={challenges.filter(c => !c.locked).length} icon={<Zap />} />
+            <StatCard label="Locked" value={challenges.filter(c => c.locked).length} icon={<Lock />} />
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -123,25 +113,25 @@ export default function ChallengesPage() {
             {types.map(t => (
               <Button key={t} variant={selectedType === t ? 'default' : 'outline'} size="sm" onClick={() => setSelectedType(t)}>{t}</Button>
             ))}
-            <span className="mx-2 border-l border-border" />
+            <span aria-hidden className="mx-2 border-l border-border" />
             <Button variant={!selectedDifficulty ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(null)}>All levels</Button>
             {difficulties.map(d => (
               <Button key={d} variant={selectedDifficulty === d ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(d)}>{d}</Button>
             ))}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <BentoGrid className="lg:grid-cols-3">
             {filteredChallenges.map((c) => (
-              <Card key={c.id} className={`border-border/60 p-5 transition-colors ${c.locked ? 'opacity-60' : 'hover:border-primary/40'}`}>
+              <Panel key={c.id} interactive={!c.locked} className={`flex flex-col p-5 ${c.locked ? 'opacity-60' : ''}`}>
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Code className="h-4 w-4 text-primary" />
                     <span className="text-xs font-medium text-muted-foreground capitalize">{c.type.replace('-', ' ')}</span>
                   </div>
                   {c.completed ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" aria-label="Completed" />
                   ) : c.locked ? (
-                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <Lock className="h-4 w-4 text-muted-foreground" aria-label="Locked" />
                   ) : null}
                 </div>
                 <h3 className="mb-1 font-semibold text-foreground">{c.title}</h3>
@@ -150,23 +140,23 @@ export default function ChallengesPage() {
                   <Badge variant={c.difficulty === 'Hard' ? 'destructive' : c.difficulty === 'Medium' ? 'default' : 'secondary'} className="text-[10px]">
                     {c.difficulty}
                   </Badge>
-                  <span className="text-muted-foreground">{c.duration} min</span>
-                  <span className="text-muted-foreground">{c.successRate}% success</span>
+                  <span className="text-muted-foreground tabular-nums">{c.duration} min</span>
+                  <span className="text-muted-foreground tabular-nums">{c.successRate}% success</span>
                 </div>
-                {c.prerequisites?.length && (
-                  <p className="mb-3 text-[10px] text-muted-foreground">
+                {!!c.prerequisites?.length && (
+                  <p className="mb-3 text-[11px] text-muted-foreground">
                     Requires: {c.prerequisites.join(', ')}
                   </p>
                 )}
-                <Link href={c.locked ? '#' : `/dashboard/challenges/${c.id}`}>
+                <Link href={c.locked ? '#' : `/dashboard/challenges/${c.id}`} className="mt-auto">
                   <Button variant="outline" size="sm" className="w-full gap-2" disabled={c.locked}>
                     {c.completed ? 'Retry' : c.locked ? 'Locked' : 'Start'}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 </Link>
-              </Card>
+              </Panel>
             ))}
-          </div>
+          </BentoGrid>
         </>
       )}
     </div>

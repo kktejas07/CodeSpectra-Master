@@ -128,22 +128,22 @@ export default function TakeMockTestPage() {
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <h2 className="text-xl font-bold">Failed to load test</h2>
         <p className="text-muted-foreground">{error || 'No questions received.'}</p>
-        <Button onClick={() => router.back()}>Go Back</Button>
+        <Button onClick={() => router.back()}>Go back</Button>
       </div>
     )
   }
 
   if (!started) {
     return (
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-4">
+      <div className="flex-1 space-y-6">
+        <Button variant="ghost" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to config
         </Button>
-        <Card>
+        <Card className="rounded-3xl border-border/70">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Sparkles className="h-6 w-6 text-primary" />
-              Guidelines for {company.toUpperCase()} Mock Test
+            <CardTitle className="flex items-center gap-3 text-2xl">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Sparkles className="h-5 w-5" /></span>
+              Before you start: {company.toUpperCase()} mock test
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-muted-foreground">
@@ -156,7 +156,7 @@ export default function TakeMockTestPage() {
           </CardContent>
           <CardFooter>
             <Button size="lg" className="w-full" onClick={() => setStarted(true)}>
-              Start Test Now
+              Start test
             </Button>
           </CardFooter>
         </Card>
@@ -169,61 +169,61 @@ export default function TakeMockTestPage() {
     const percentage = Math.round((score / questions.length) * 100)
     
     return (
-      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
-        <Card className="text-center p-8">
+      <div className="flex-1 space-y-6">
+        <Card className="rounded-3xl border-border/70 text-center p-8">
           <div className="mb-6 flex justify-center">
             {percentage >= 70 ? (
               <div className="h-24 w-24 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle2 className="h-12 w-12 text-green-500" />
+                <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
               </div>
             ) : (
-              <div className="h-24 w-24 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                <AlertCircle className="h-12 w-12 text-yellow-500" />
+              <div className="h-24 w-24 rounded-full bg-amber-500/10 flex items-center justify-center">
+                <AlertCircle className="h-12 w-12 text-amber-600 dark:text-amber-400" />
               </div>
             )}
           </div>
-          <h2 className="text-3xl font-bold mb-2">Test Completed</h2>
-          <p className="text-xl text-muted-foreground mb-8">
+          <h2 className="text-3xl font-bold mb-2">Test complete</h2>
+          <p className="text-xl text-muted-foreground tabular-nums mb-8">
             You scored {score} out of {questions.length} ({percentage}%)
           </p>
           <div className="flex gap-4 justify-center">
             <Button variant="outline" onClick={() => router.push('/dashboard/mock-tests')}>
-              Back to Tests
+              Back to tests
             </Button>
             <Button onClick={() => window.location.reload()}>
-              Retake Test
+              Retake test
             </Button>
           </div>
         </Card>
 
         <div className="space-y-6">
-          <h3 className="text-2xl font-bold">Review Answers</h3>
+          <h3 className="text-xl font-semibold">Review your answers</h3>
           {questions.map((q, i) => {
             const isCorrect = answers[i] === q.correctIndex
             const skipped = answers[i] === undefined
             return (
-              <Card key={i} className={skipped ? 'border-muted' : isCorrect ? 'border-green-500/50' : 'border-destructive/50'}>
+              <Card key={i} className={`rounded-3xl ${skipped ? 'border-border/70' : isCorrect ? 'border-green-500/50' : 'border-destructive/50'}`}>
                 <CardHeader>
                   <CardTitle className="text-lg flex justify-between gap-4">
                     <span>{i + 1}. {q.question}</span>
                     {skipped ? (
                       <span className="text-sm font-normal text-muted-foreground">Skipped</span>
                     ) : isCorrect ? (
-                      <span className="text-sm font-normal text-green-500 flex items-center"><CheckCircle2 className="w-4 h-4 mr-1"/> Correct</span>
+                      <span className="text-sm font-normal text-green-600 dark:text-green-400 flex items-center shrink-0"><CheckCircle2 className="w-4 h-4 mr-1"/> Correct</span>
                     ) : (
-                      <span className="text-sm font-normal text-destructive flex items-center"><AlertCircle className="w-4 h-4 mr-1"/> Incorrect</span>
+                      <span className="text-sm font-normal text-destructive flex items-center shrink-0"><AlertCircle className="w-4 h-4 mr-1"/> Incorrect</span>
                     )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     {q.options.map((opt, optIdx) => (
-                      <div key={optIdx} className={`p-3 rounded-md border ${optIdx === q.correctIndex ? 'bg-green-500/10 border-green-500/30' : answers[i] === optIdx ? 'bg-destructive/10 border-destructive/30' : ''}`}>
+                      <div key={optIdx} className={`p-3 rounded-xl border ${optIdx === q.correctIndex ? 'bg-green-500/10 border-green-500/30' : answers[i] === optIdx ? 'bg-destructive/10 border-destructive/30' : ''}`}>
                         {opt}
                       </div>
                     ))}
                   </div>
-                  <div className="bg-muted/50 p-4 rounded-md text-sm">
+                  <div className="bg-muted/50 p-4 rounded-xl text-sm">
                     <strong>Explanation:</strong> {q.explanation}
                   </div>
                 </CardContent>
@@ -239,14 +239,14 @@ export default function TakeMockTestPage() {
   const hasAnsweredCurrent = answers[currentIndex] !== undefined
 
   return (
-    <div className="flex-1 flex flex-col p-4 md:p-8 pt-6 w-full h-full">
+    <div className="flex-1 flex flex-col w-full h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-xl font-bold">{company.toUpperCase()} - {role.replace(/-/g, ' ')}</h2>
-          <p className="text-sm text-muted-foreground">Question {currentIndex + 1} of {questions.length}</p>
+          <h2 className="text-xl font-bold capitalize">{company.toUpperCase()} · {role.replace(/-/g, ' ')}</h2>
+          <p className="text-sm text-muted-foreground tabular-nums">Question {currentIndex + 1} of {questions.length}</p>
         </div>
-        <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono text-lg">
+        <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono tabular-nums text-lg" aria-label="Time left">
           <Clock className="h-5 w-5" />
           <span className={timeLeft < 60 ? 'text-destructive font-bold' : ''}>
             {formatTime(timeLeft)}
@@ -259,7 +259,7 @@ export default function TakeMockTestPage() {
       {/* Main Content */}
       <div className="flex-1 grid md:grid-cols-2 gap-8">
         {/* Left Pane - Question */}
-        <div className="bg-card border rounded-xl p-6 shadow-sm flex flex-col">
+        <div className="bg-card border border-border/70 rounded-3xl p-6 flex flex-col">
           <h3 className="text-lg font-medium leading-relaxed mb-4">
             {currentQ.question}
           </h3>
@@ -286,10 +286,10 @@ export default function TakeMockTestPage() {
 
           <div className="flex justify-between items-center mt-8 pt-6 border-t">
             <Button variant="ghost" onClick={handleNext} className="text-muted-foreground">
-              Skip Question
+              Skip question
             </Button>
             <Button onClick={handleNext} disabled={!hasAnsweredCurrent} size="lg">
-              {currentIndex === questions.length - 1 ? 'Submit Test' : 'Submit & Next'}
+              {currentIndex === questions.length - 1 ? 'Submit test' : 'Submit and next'}
             </Button>
           </div>
         </div>

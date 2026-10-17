@@ -219,22 +219,22 @@ export default function ExamPage() {
 
     if (!isReleased) {
       return (
-        <div className="p-6 mt-10">
-          <Card className="p-8 text-center border-primary/20 space-y-6 shadow-xl bg-card/60 backdrop-blur">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-500 animate-pulse">
+        <div className="mx-auto mt-10 max-w-xl p-6">
+          <Card className="rounded-3xl border-border/70 p-8 text-center space-y-6">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 text-green-600 dark:text-green-400">
               <CheckCircle className="h-8 w-8" />
             </div>
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">Assessment Submitted</h1>
+              <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                Thank you for completing the assessment. Your answers have been successfully recorded and submitted.
+                Thanks for finishing. Your answers have been saved and submitted.
               </p>
             </div>
             <div className="border-t border-border/60 pt-4 text-xs text-muted-foreground">
-              Your results are currently under review. The administrator will release your scores shortly.
+              Your results are being reviewed. You'll see your score here once the organiser releases it.
             </div>
             <Button onClick={() => router.push('/dashboard/assessments')} className="w-full gap-2 mt-2">
-              <ArrowLeft className="h-4 w-4" /> Back to Assessments
+              <ArrowLeft className="h-4 w-4" /> Back to assessments
             </Button>
           </Card>
         </div>
@@ -244,22 +244,22 @@ export default function ExamPage() {
     // If released, display premium, clean results list
     return (
       <div className="p-6 space-y-8">
-        <Card className="p-8 text-center space-y-4 bg-card/60 backdrop-blur border-primary/10 shadow-lg">
-          <h1 className="text-3xl font-bold tracking-tight">Assessment Results</h1>
+        <Card className="relative overflow-hidden rounded-3xl border-0 bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] p-8 text-center text-white space-y-4 shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
+          <h1 className="text-3xl font-bold tracking-tight">Assessment results</h1>
           <div className="flex justify-center items-baseline gap-1">
-            <span className="text-6xl font-extrabold text-primary">{results.score}</span>
-            <span className="text-2xl text-muted-foreground">/ {results.total}</span>
+            <span className="text-6xl font-extrabold tabular-nums">{results.score}</span>
+            <span className="text-2xl tabular-nums text-white/75">/ {results.total}</span>
           </div>
-          <p className="text-sm font-medium text-muted-foreground">
+          <p className="text-sm font-medium text-white/85">
             {results.score / results.total >= 0.7 
-              ? '🎉 Outstanding! You passed the benchmark.' 
+              ? 'Great work — you passed.' 
               : 'Keep practicing to improve your score!'}
           </p>
         </Card>
 
         <div className="space-y-4">
           <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-2">
-            Detailed Breakdown & Learning
+            Question-by-question breakdown
           </h3>
           {(results.details || []).map((d, i) => {
             const questionData = exam.questions.find(q => q.id === d.qId)
@@ -274,20 +274,20 @@ export default function ExamPage() {
             return (
               <Card 
                 key={d.qId} 
-                className={`p-5 rounded-2xl border transition-all duration-300 bg-card/40 backdrop-blur hover:bg-card/60 shadow-sm ${
+                className={`p-5 rounded-2xl border transition-colors duration-200 ${
                   d.correct ? 'border-green-500/20 hover:border-green-500/40' : 'border-red-500/20 hover:border-red-500/40'
                 }`}
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">                  {/* Column 1: Question details */}
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-muted-foreground">
                         Question {i + 1}
                       </span>
                       <Badge variant="secondary" className="text-[10px] py-0.5 px-2">
                         {typeLabel}
                       </Badge>
-                      <Badge variant={d.correct ? 'default' : 'destructive'} className="text-[10px] py-0.5 px-2 font-mono">
+                      <Badge variant={d.correct ? 'default' : 'destructive'} className="text-[10px] py-0.5 px-2 tabular-nums">
                         {d.correct ? `+${d.points}` : '0'} / {maxPoints} pts
                       </Badge>
                     </div>
@@ -317,7 +317,7 @@ export default function ExamPage() {
                   {/* Column 2: Your Answer */}
                   <div className="space-y-1.5">
                     <span className="text-xs font-semibold text-muted-foreground block">
-                      Your Selected Answer:
+                      Your answer
                     </span>
                     <div className={`p-3 rounded-xl border text-sm font-medium ${
                       d.correct 
@@ -330,7 +330,7 @@ export default function ExamPage() {
                         ) : (
                           <XCircle className="h-4 w-4 text-red-500 shrink-0" />
                         )}
-                        <span className="text-xs uppercase font-bold tracking-wider">
+                        <span className="text-xs font-bold">
                           {d.correct ? 'Correct' : 'Incorrect'}
                         </span>
                       </div>
@@ -343,13 +343,13 @@ export default function ExamPage() {
                   {/* Column 3: Correct Answer */}
                   <div className="space-y-1.5">
                     <span className="text-xs font-semibold text-muted-foreground block">
-                      Correct Answer / Solution:
+                      Correct answer
                     </span>
                     <div className="p-3 rounded-xl border border-green-500/20 bg-green-500/5 text-green-600 dark:text-green-400 text-sm font-medium">
                       <div className="flex items-center gap-2 mb-1">
                         <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                        <span className="text-xs uppercase font-bold tracking-wider">
-                          Official Answer
+                        <span className="text-xs font-bold">
+                          Expected answer
                         </span>
                       </div>
                       <div className="font-mono text-xs wrap-break-word whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg text-green-600 dark:text-green-300 font-semibold">
@@ -362,7 +362,7 @@ export default function ExamPage() {
                 {(d as any).remarks ? (
                   <div className="mt-4 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 block mb-1 flex items-center gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Evaluator Feedback
+                      <AlertTriangle className="h-3.5 w-3.5" /> Reviewer feedback
                     </span>
                     <div className="text-sm text-foreground whitespace-pre-wrap wrap-break-word">{String((d as any).remarks)}</div>
                   </div>
@@ -374,11 +374,11 @@ export default function ExamPage() {
 
         <div className="flex gap-4">
           <Button onClick={() => router.push('/dashboard/assessments')} className="flex-1 gap-2" variant="outline">
-            <ArrowLeft className="h-4 w-4" /> Back to Assessments
+            <ArrowLeft className="h-4 w-4" /> Back to assessments
           </Button>
           {results.score / results.total >= 0.7 && (
-            <Button onClick={() => router.push(`/certificate-preview/${examId}`)} className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 text-white">
-               View Certificate <ChevronRight className="h-4 w-4" />
+            <Button onClick={() => router.push(`/certificate-preview/${examId}`)} className="flex-1 gap-2">
+               View certificate <ChevronRight className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -405,18 +405,18 @@ export default function ExamPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0" data-tour="assessment-detail-header">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/assessments')}>
+          <Button variant="ghost" size="sm" aria-label="Back to assessments" onClick={() => router.push('/dashboard/assessments')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="font-semibold truncate">{exam.title}</h1>
           <Badge variant="outline">{currentQ + 1}/{exam.questions.length}</Badge>
         </div>
         <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${
-          timeRemaining === 0 ? 'bg-red-500/20 text-red-400 animate-pulse' :
-          isLowTime ? 'bg-red-500/10 text-red-400' : 'bg-muted'
+          timeRemaining === 0 ? 'bg-red-500/20 text-red-600 dark:text-red-400 animate-pulse motion-reduce:animate-none' :
+          isLowTime ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-muted'
         }`}>
           <Clock className="h-4 w-4" />
-          <span className="text-sm font-mono font-medium">{formatTime(timeRemaining)}</span>
+          <span className="text-sm font-mono font-medium tabular-nums">{formatTime(timeRemaining)}</span>
           {isLowTime && <AlertTriangle className="h-4 w-4" />}
         </div>
       </header>
@@ -424,7 +424,7 @@ export default function ExamPage() {
       <div className="flex-1 overflow-auto p-6">
         {question && (
           <div className="space-y-6">
-            <Card className="p-6 space-y-4" data-tour="assessment-detail-question">
+            <Card className="rounded-3xl border-border/70 p-6 space-y-4" data-tour="assessment-detail-question">
               <div className="flex items-center gap-2">
                 <Badge>{question.type}</Badge>
                 <Badge variant="outline">{question.points} pts</Badge>
@@ -490,7 +490,7 @@ export default function ExamPage() {
                 ) : (
                   <Button onClick={() => setShowSubmitConfirm(true)} disabled={submitting}>
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    Submit Assessment
+                    Submit assessment
                   </Button>
                 )}
               </div>
@@ -500,6 +500,7 @@ export default function ExamPage() {
                   <button
                     key={i}
                     onClick={() => setCurrentQ(i)}
+                    aria-label={`Go to question ${i + 1}`}
                     className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
                       i === currentQ ? 'bg-primary text-primary-foreground shadow-sm scale-115' :
                       answers[exam.questions[i].id] ? 'bg-primary/20 text-primary hover:bg-primary/30' :

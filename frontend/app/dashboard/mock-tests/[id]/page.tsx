@@ -6,14 +6,15 @@ import { ArrowLeft, Sparkles, Target, Zap, Lightbulb, BrainCircuit } from 'lucid
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const DIFFICULTIES = [
-  { id: 'beginner', title: 'Beginner', description: 'Basic concepts and foundational knowledge', icon: Lightbulb, color: 'text-green-500', bg: 'bg-green-500/10' },
-  { id: 'basic', title: 'Basic', description: 'Standard interview questions and practical usage', icon: Target, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { id: 'intermediate', title: 'Intermediate', description: 'Complex scenarios and architectural decisions', icon: Zap, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
-  { id: 'advanced', title: 'Advanced', description: 'Deep dives into internals and performance', icon: BrainCircuit, color: 'text-orange-500', bg: 'bg-orange-500/10' },
+  { id: 'beginner', title: 'Beginner', description: 'Basic concepts and foundational knowledge', icon: Lightbulb, color: 'text-primary', bg: 'bg-primary/10' },
+  { id: 'basic', title: 'Basic', description: 'Standard interview questions and practical usage', icon: Target, color: 'text-primary', bg: 'bg-primary/10' },
+  { id: 'intermediate', title: 'Intermediate', description: 'Complex scenarios and architectural decisions', icon: Zap, color: 'text-primary', bg: 'bg-primary/10' },
+  { id: 'advanced', title: 'Advanced', description: 'Deep dives into internals and performance', icon: BrainCircuit, color: 'text-primary', bg: 'bg-primary/10' },
   { id: 'expert', title: 'Expert', description: 'System design and highly specialized problems', icon: Sparkles, color: 'text-purple-500', bg: 'bg-purple-500/10' },
 ]
 
@@ -60,31 +61,36 @@ export default function MockTestSetupPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
-      <div className="flex items-center gap-4" data-tour="mock-test-detail-header">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Configure Your Test</h2>
-          <p className="text-muted-foreground mt-2">
-            How comfortable are you with this role's core topics?
-          </p>
-        </div>
+    <div className="flex-1 space-y-6">
+      <div data-tour="mock-test-detail-header">
+        <PageHeader
+          title="Set up your test"
+          description="How comfortable are you with this role's core topics? Pick the level that fits."
+          className="mb-0"
+          icon={
+            <button type="button" onClick={() => router.back()} aria-label="Go back" className="flex h-full w-full items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-primary">
+              <ArrowLeft />
+            </button>
+          }
+        />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-4" data-tour="mock-test-detail-levels">
+      <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Difficulty" data-tour="mock-test-detail-levels">
         {DIFFICULTIES.map((diff) => (
           <Card 
             key={diff.id} 
+            role="radio"
+            aria-checked={selected === diff.id}
+            tabIndex={0}
             className={cn(
-              "cursor-pointer transition-all hover:border-primary/50",
-              selected === diff.id ? "border-primary ring-1 ring-primary shadow-sm" : ""
+              "cursor-pointer rounded-3xl border-border/70 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 motion-reduce:hover:translate-y-0 focus-visible:outline-2 focus-visible:outline-primary",
+              selected === diff.id ? "border-primary ring-1 ring-primary bg-primary/5" : ""
             )}
             onClick={() => setSelected(diff.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected(diff.id) } }}
           >
             <CardHeader>
-              <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center mb-4", diff.bg)}>
+              <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center mb-4", diff.bg)}>
                 <diff.icon className={cn("h-5 w-5", diff.color)} />
               </div>
               <CardTitle className="text-xl">{diff.title}</CardTitle>
@@ -101,7 +107,7 @@ export default function MockTestSetupPage() {
           onClick={handleStart}
           className="w-full sm:w-auto"
         >
-          {isSubmitting ? 'Starting...' : 'Continue to Test'}
+          {isSubmitting ? 'Starting…' : 'Continue to test'}
         </Button>
       </div>
     </div>

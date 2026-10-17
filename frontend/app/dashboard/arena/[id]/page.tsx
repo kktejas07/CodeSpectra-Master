@@ -12,6 +12,7 @@ import { Code2, Play, Send, CheckCircle, AlertCircle, Loader2, ArrowRight, Spark
 import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from '@/lib/arena-challenges'
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
@@ -230,24 +231,25 @@ function ArenaChallengeInner() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2" data-tour="arena-detail-header">
+      <div data-tour="arena-detail-header">
+        <PageHeader
+          title={challenge.title}
+          icon={<Code2 />}
+          className="mb-3"
+        />
         <div className="flex flex-wrap items-center gap-2">
-          <Code2 className="h-6 w-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">{challenge.title}</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge className={diffStyles[challenge.difficulty] ?? ''}>{challenge.difficulty?.toUpperCase() || 'EASY'}</Badge>
+          <Badge className={`capitalize ${diffStyles[challenge.difficulty] ?? ''}`}>{challenge.difficulty || 'easy'}</Badge>
           <Badge variant="secondary">{challenge.category}</Badge>
-          <Badge variant="outline">{challenge.points} pts</Badge>
+          <Badge variant="outline" className="tabular-nums">{challenge.points} pts</Badge>
           {source === 'ai' ? (
-            <Badge className="gap-1 border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300">
+            <Badge className="gap-1 border-primary/40 bg-primary/10 text-primary">
               <Sparkles className="h-3 w-3" />
               AI variant
             </Badge>
           ) : source === 'static' ? (
             <Badge variant="outline" className="gap-1 font-normal">
               <Database className="h-3 w-3" />
-              Curated seed
+              Curated
             </Badge>
           ) : null}
         </div>
@@ -255,7 +257,7 @@ function ArenaChallengeInner() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Left: problem statement */}
-        <Card className="space-y-4 border-border/60 p-6 overflow-y-auto max-h-[calc(100vh-14rem)]">
+        <Card className="space-y-4 rounded-3xl border-border/70 p-6 overflow-y-auto max-h-[calc(100vh-14rem)]">
           <h2 className="font-semibold text-foreground">Problem</h2>
           <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
             {challenge.statement.map((p, i) => <p key={i}>{p}</p>)}
@@ -263,7 +265,7 @@ function ArenaChallengeInner() {
           <div className="space-y-2">
             <h3 className="font-semibold text-foreground">Examples</h3>
             {challenge.examples.map((ex, i) => (
-              <div key={i} className="rounded-md border border-border/60 bg-muted/30 p-3 font-mono text-xs">
+              <div key={i} className="rounded-xl border border-border/60 bg-muted/30 p-3 font-mono text-xs">
                 <p className="text-foreground/80">Input: {ex.input}</p>
                 <p className="text-foreground/80">Output: {ex.output}</p>
                 {ex.explanation ? <p className="mt-2 text-muted-foreground">{ex.explanation}</p> : null}
@@ -283,6 +285,7 @@ function ArenaChallengeInner() {
           {/* Language + buttons */}
           <div className="flex items-center gap-2 flex-wrap" data-tour="arena-detail-actions">
             <select
+              aria-label="Language"
               value={language}
               onChange={(e) => { setLanguage(e.target.value); setResult(null); setShowResults(false) }}
               className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -304,7 +307,7 @@ function ArenaChallengeInner() {
           </div>
 
           {/* Monaco editor */}
-          <div className="h-[400px] rounded-lg border border-border overflow-hidden" data-tour="arena-detail-editor">
+          <div className="h-[400px] rounded-2xl border border-border overflow-hidden" data-tour="arena-detail-editor">
             <Editor
               height="100%"
               language={MONACO_LANG_MAP[language] || 'plaintext'}
@@ -324,7 +327,7 @@ function ArenaChallengeInner() {
 
           {/* Results panel */}
           {showResults && (
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               {!result ? (
                 <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -359,7 +362,7 @@ function ArenaChallengeInner() {
                         }`}>
                           <div className="flex items-center gap-1.5 font-medium mb-1">
                             {r.passed
-                              ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                              ? <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                               : <AlertCircle className="h-3.5 w-3.5 text-red-500" />
                             }
                             <span className="text-foreground">Test case {i + 1}</span>
@@ -395,7 +398,7 @@ function ArenaChallengeInner() {
 
                   {/* Stderr excerpt for compile/runtime errors */}
                   {result.stderr_excerpt && !result.results.some(r => r.stderr) && (
-                    <pre className="text-xs text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">
+                    <pre className="text-xs text-red-700 dark:text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">
                       {result.stderr_excerpt}
                     </pre>
                   )}

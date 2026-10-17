@@ -324,7 +324,7 @@ export function QuizComponent({
               <div className="flex items-start gap-3">
                 <span className="font-mono text-sm mt-0.5">{String.fromCharCode(65 + i)})</span>
                 <span className="flex-1">{option}</span>
-                {showCorrect && <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />}
+                {showCorrect && <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />}
                 {showWrong && <XCircle className="h-5 w-5 text-red-500 shrink-0" />}
               </div>
             </button>
@@ -342,7 +342,7 @@ export function QuizComponent({
         >
           <div className="flex items-start gap-2">
             {isCorrect ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
             ) : (
               <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
             )}
@@ -359,7 +359,7 @@ export function QuizComponent({
           </div>
 
           <div className="flex items-start gap-2 pl-0.5">
-            <HelpCircle className={`h-4 w-4 shrink-0 mt-0.5 ${isCorrect ? 'text-green-600' : 'text-amber-600'}`} />
+            <HelpCircle className={`h-4 w-4 shrink-0 mt-0.5 ${isCorrect ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
             <div>
               <p className="text-sm font-medium text-foreground mb-0.5">
                 {isCorrect ? 'Why this is right' : 'Why this matters — learn it again'}

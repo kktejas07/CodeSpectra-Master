@@ -10,6 +10,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Send, BarChart3,
 } from 'lucide-react'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
+import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CATEGORY_LABELS, type FluencyQuestion, type FluencyEvaluation, type CategoryBreakdown } from '@/lib/assessments/ai-fluency-types'
 
@@ -171,19 +172,19 @@ export default function AiFluencySessionPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <BrainCircuit className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-sm">AI Fluency Assessment</span>
+          <span className="font-semibold text-sm">AI fluency assessment</span>
           <Badge variant="outline" className="text-[10px]">{stored.difficulty}</Badge>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {formatTime(elapsed)}</span>
-          <span>Q{questionIndex + 1}/{totalQuestions}</span>
+          <span className="flex items-center gap-1 font-mono tabular-nums"><Clock className="h-3 w-3" /> {formatTime(elapsed)}</span>
+          <span className="tabular-nums">Question {questionIndex + 1} of {totalQuestions}</span>
         </div>
       </div>
 
       {/* Progress bar */}
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div
-          className="h-full bg-primary rounded-full transition-all duration-500"
+          className="h-full bg-primary rounded-full transition-all duration-500 motion-reduce:transition-none"
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -191,7 +192,7 @@ export default function AiFluencySessionPage() {
       {/* Score + category bar */}
       {scores.length > 0 && (
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span>Avg: <span className="font-medium text-foreground">{avgScore}/10</span></span>
+          <span>Average: <span className="font-medium tabular-nums text-foreground">{avgScore}/10</span></span>
           <span>·</span>
           <span>{scores.length} answered</span>
           {categoryScores.size > 1 && (
@@ -209,7 +210,7 @@ export default function AiFluencySessionPage() {
 
       {/* Question Card */}
       {currentQuestion && !showEvaluation && (
-        <Card className="p-6 space-y-4">
+        <Card className="rounded-3xl border-border/70 p-6 space-y-4">
           <div className="flex items-start gap-2">
             <Badge variant="outline" className="shrink-0 text-[10px]">
               {CATEGORY_LABELS[currentQuestion.category]}
@@ -231,12 +232,12 @@ export default function AiFluencySessionPage() {
 
       {/* Evaluation Display */}
       {showEvaluation && evaluation && (
-        <Card className={`p-6 space-y-3 border-2 ${
+        <Card className={`rounded-3xl p-6 space-y-3 border-2 ${
           evaluation.score >= 7 ? 'border-green-500/40' : evaluation.score >= 4 ? 'border-amber-500/40' : 'border-red-500/40'
         }`}>
           <div className="flex items-center gap-2">
             {evaluation.score >= 7 ? (
-              <CheckCircle2 className="h-5 w-5 text-green-500" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
             ) : evaluation.score >= 4 ? (
               <AlertCircle className="h-5 w-5 text-amber-500" />
             ) : (
@@ -249,7 +250,7 @@ export default function AiFluencySessionPage() {
           )}
           {evaluation.strengths.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-green-600 mb-1">Strengths</p>
+              <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Strengths</p>
               {evaluation.strengths.map((s, i) => (
                 <p key={i} className="text-xs text-muted-foreground">• {s}</p>
               ))}
@@ -268,7 +269,7 @@ export default function AiFluencySessionPage() {
 
       {/* Answer Input */}
       {!showEvaluation && currentQuestion && (
-        <Card className="p-4 space-y-3">
+        <Card className="rounded-3xl border-border/70 p-5 space-y-3">
           <textarea
             ref={answerRef}
             value={answer}
@@ -351,48 +352,51 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
       <div className="text-center text-muted-foreground py-12">
         <p>Report not found.</p>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/dashboard/assessments/ai-fluency/setup')}>
-          Start New Assessment
+          Start a new assessment
         </Button>
       </div>
     )
   }
 
-  const scoreColor = report.overallScore >= 80 ? 'text-green-500' : report.overallScore >= 60 ? 'text-amber-500' : 'text-red-500'
+  const scoreColor = report.overallScore >= 80 ? 'text-green-600 dark:text-green-400' : report.overallScore >= 60 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <BrainCircuit className="h-6 w-6 text-primary" /> AI Fluency Report
-        </h1>
-        <Button variant="outline" onClick={() => router.push('/dashboard/assessments/ai-fluency/setup')}>
-          New Assessment
-        </Button>
-      </div>
+      <PageHeader
+        title="AI fluency report"
+        description="How you did across each skill, with what to work on next."
+        icon={<BrainCircuit />}
+        className="mb-0"
+        actions={
+          <Button variant="outline" onClick={() => router.push('/dashboard/assessments/ai-fluency/setup')}>
+            New assessment
+          </Button>
+        }
+      />
 
-      <Card className="p-6 text-center space-y-3">
-        <p className={`text-5xl font-bold ${scoreColor}`}>{report.overallScore}</p>
+      <Card className="rounded-3xl border-border/70 p-6 text-center space-y-3">
+        <p className={`text-5xl font-bold tabular-nums ${scoreColor}`}>{report.overallScore}</p>
         <p className="text-sm text-muted-foreground">out of 100</p>
         <Badge variant="outline" className="text-sm">{report.level}</Badge>
       </Card>
 
       {report.summary && (
-        <Card className="p-5">
+        <Card className="rounded-3xl border-border/70 p-5">
           <p className="text-sm leading-relaxed">{report.summary}</p>
         </Card>
       )}
 
       {/* Category Breakdown */}
       {report.categoryBreakdown?.length > 0 && (
-        <Card className="p-5 space-y-3">
+        <Card className="rounded-3xl border-border/70 p-5 space-y-3">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" /> Category Breakdown
+            <BarChart3 className="h-4 w-4" /> Score by skill
           </h3>
           {report.categoryBreakdown.map((cat: CategoryBreakdown) => (
             <div key={cat.category} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-medium">{cat.label}</span>
-                <span className="text-muted-foreground">{cat.score}/100 ({cat.count} question{cat.count !== 1 ? 's' : ''})</span>
+                <span className="text-muted-foreground tabular-nums">{cat.score}/100 ({cat.count} question{cat.count !== 1 ? 's' : ''})</span>
               </div>
               <div className="h-2 rounded-full bg-muted overflow-hidden">
                 <div
@@ -405,24 +409,24 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
             </div>
           ))}
           <div className="flex gap-4 text-xs text-muted-foreground pt-2 border-t border-border">
-            <span>Strongest: <span className="text-green-600 font-medium">{report.strongestCategory}</span></span>
-            <span>Weakest: <span className="text-amber-600 font-medium">{report.weakestCategory}</span></span>
+            <span>Strongest: <span className="text-green-600 dark:text-green-400 font-medium">{report.strongestCategory}</span></span>
+            <span>Weakest: <span className="text-amber-600 dark:text-amber-400 font-medium">{report.weakestCategory}</span></span>
           </div>
         </Card>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {report.topStrengths?.length > 0 && (
-          <Card className="p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-green-600">Top Strengths</h3>
+          <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-green-600 dark:text-green-400">Top strengths</h3>
             {report.topStrengths.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
           </Card>
         )}
         {report.topImprovements?.length > 0 && (
-          <Card className="p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-amber-600">Areas to Improve</h3>
+          <Card className="rounded-3xl border-border/70 p-5 space-y-2">
+            <h3 className="text-sm font-semibold text-amber-600 dark:text-amber-400">Areas to improve</h3>
             {report.topImprovements.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
@@ -431,7 +435,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
       </div>
 
       {report.recommendations?.length > 0 && (
-        <Card className="p-5 space-y-2">
+        <Card className="rounded-3xl border-border/70 p-5 space-y-2">
           <h3 className="text-sm font-semibold">Recommendations</h3>
           {report.recommendations.map((r: string, i: number) => (
             <p key={i} className="text-xs text-muted-foreground">• {r}</p>

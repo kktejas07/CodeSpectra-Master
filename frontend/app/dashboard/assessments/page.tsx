@@ -4,7 +4,6 @@ import { formatDate } from '@/lib/format-datetime'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
@@ -13,6 +12,8 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Trophy, BarChart3, CheckCircle, XCircle, FileText, BrainCircuit } from 'lucide-react'
 import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Attempt {
   id: string
@@ -194,71 +195,40 @@ export default function MyAssessmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3" data-tour="assessments-header">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <FileText className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">My Assessments</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Your past assessment attempts and results</p>
-          </div>
-        </div>
-        <Link href="/dashboard/assessments" data-tour="assessments-browse">
-          <Button variant="outline" size="sm" className="gap-2">
-            <BarChart3 className="h-4 w-4" /> Browse Assessments
-          </Button>
-        </Link>
+      <div data-tour="assessments-header">
+        <PageHeader
+          title="My assessments"
+          description="Tests you're invited to, plus your past attempts, scores and certificates."
+          icon={<FileText />}
+          className="mb-0"
+          actions={
+            <Link href="/dashboard/assessments" data-tour="assessments-browse">
+              <Button variant="outline" size="sm" className="gap-2">
+                <BarChart3 className="h-4 w-4" /> Browse assessments
+              </Button>
+            </Link>
+          }
+        />
       </div>
 
       {/* KPI Row */}
       <div className="grid gap-4 sm:grid-cols-3" data-tour="assessments-kpis">
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{totalAttempts}</p>
-              <p className="text-xs text-muted-foreground">Total Attempts</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-500/10">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{passedCount}</p>
-              <p className="text-xs text-muted-foreground">Passed</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/10">
-              <Trophy className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{avgScore}%</p>
-              <p className="text-xs text-muted-foreground">Average Score</p>
-            </div>
-          </div>
-        </Card>
+        <StatCard label="Total attempts" value={totalAttempts} icon={<BarChart3 />} />
+        <StatCard label="Passed" value={passedCount} icon={<CheckCircle />} />
+        <StatCard label="Average score" value={`${avgScore}%`} icon={<Trophy />} />
       </div>
 
       {/* AI Fluency Assessment Card */}
-      <Card className="border-border/60 p-5">
+      <Panel className="p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10">
               <BrainCircuit className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="font-semibold text-foreground">AI Fluency Assessment</p>
+              <p className="font-semibold text-foreground">AI fluency assessment</p>
               <p className="text-xs text-muted-foreground">
-                Test your prompt engineering, AI output review, debugging, decision-making & chaining skills
+                Test your prompt writing, AI output review, debugging, decision-making and chaining skills
               </p>
             </div>
           </div>
@@ -268,18 +238,18 @@ export default function MyAssessmentsPage() {
             </Button>
           </Link>
         </div>
-      </Card>
+      </Panel>
 
       {/* Assigned / Ready-to-take */}
       {available.length > 0 && (
         <div className="space-y-3" data-tour="assessments-ready">
           <h2 className="text-lg font-semibold text-foreground">Ready to take</h2>
           {available.map(ex => (
-            <Card key={ex.id} className="border-border/60 p-4">
+            <Panel key={ex.id} interactive className="p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0 space-y-1">
                   <p className="font-medium text-foreground">{ex.title}</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground tabular-nums">
                     Level {(ex.level || '').toLowerCase()} · {ex.duration} min · {ex.questions} questions
                   </p>
                   <Badge variant="outline" className={`text-xs ${
@@ -292,7 +262,7 @@ export default function MyAssessmentsPage() {
                   Start
                 </Button>
               </div>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}
@@ -300,13 +270,14 @@ export default function MyAssessmentsPage() {
       {/* Attempts Table */}
       <div data-tour="assessments-table">
       {attempts.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <FileText className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">You haven't taken any assessments yet.</p>
-          <Link href="/dashboard/assessments">
-            <Button variant="outline" size="sm" className="mt-4">Browse Assessments</Button>
-          </Link>
-        </Card>
+        <Panel className="p-4">
+          <EmptyState
+            title="No attempts yet"
+            description="When you finish an assessment, your score and certificate will show up here."
+            actionLabel="Browse assessments"
+            actionHref="/dashboard/assessments"
+          />
+        </Panel>
       ) : (
         <DataTable
           columns={columns}

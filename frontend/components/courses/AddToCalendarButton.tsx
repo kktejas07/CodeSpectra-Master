@@ -92,7 +92,7 @@ export function AddToCalendarButton({
   const btnClass =
     variant === 'hero'
       ? cn(
-          'h-12 w-12 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-white/60 hover:border-white/40 hover:text-white transition-all',
+          'h-12 w-12 rounded-xl border border-white/30 bg-white/10 flex items-center justify-center text-white hover:border-white/60 hover:bg-white/15 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white',
           className,
         )
       : cn('h-9 w-9 rounded-full border', className)
@@ -113,7 +113,7 @@ export function AddToCalendarButton({
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <button type="button" className="absolute inset-0 bg-black/50" aria-label="Close" onClick={() => setOpen(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-border bg-card shadow-2xl p-5 space-y-4">
+          <div className="relative w-full max-w-sm rounded-3xl border border-border bg-card text-foreground shadow-2xl p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="font-bold text-base">Select dates to add</h3>
@@ -126,7 +126,7 @@ export function AddToCalendarButton({
               </button>
             </div>
 
-            <div className="rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-800 dark:text-sky-200 text-xs p-3">
+            <div className="rounded-xl bg-primary/10 border border-primary/20 text-foreground text-xs p-3">
               You can select the dates you want as calendar events.
             </div>
 

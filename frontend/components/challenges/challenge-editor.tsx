@@ -657,7 +657,7 @@ export function ChallengeEditor({
                 >
                   <div className="flex items-start gap-3">
                     {testResults.status === 'accepted' || testResults.status === 'passed' ? (
-                      <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
+                      <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                     ) : (
                       <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 shrink-0" />
                     )}
@@ -683,7 +683,7 @@ export function ChallengeEditor({
                 <div className="grid grid-cols-3 gap-2">
                   <Card className="p-3 bg-muted/30 border-border/40 text-center">
                     <p className="text-[10px] text-muted-foreground mb-0.5">Tests Passed</p>
-                    <p className={`text-lg font-bold ${testResults.testsPassed === testResults.totalTests && testResults.totalTests > 0 ? 'text-green-500' : 'text-amber-500'}`}>
+                    <p className={`text-lg font-bold ${testResults.testsPassed === testResults.totalTests && testResults.totalTests > 0 ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
                       {testResults.testsPassed}/{testResults.totalTests}
                     </p>
                   </Card>
@@ -712,7 +712,7 @@ export function ChallengeEditor({
                       >
                         <div className="flex items-center gap-2 mb-1">
                           {r.passed ? (
-                            <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                            <CheckCircle className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
                           ) : (
                             <AlertCircle className="w-3.5 h-3.5 text-red-500" />
                           )}
@@ -769,7 +769,7 @@ export function ChallengeEditor({
           <Card className="w-full max-w-sm p-6 border-border/60 shadow-2xl">
             <div className="text-center space-y-4">
               <div className="mx-auto w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-green-500" />
+                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <h2 className="text-lg font-bold text-foreground">Solution accepted!</h2>
@@ -787,7 +787,7 @@ export function ChallengeEditor({
                     Share your solution
                   </p>
                   {githubSubmitted ? (
-                    <div className="flex items-center gap-2 text-xs text-green-500">
+                    <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
                       <CheckCircle className="w-3.5 h-3.5" />
                       GitHub repo submitted!
                     </div>

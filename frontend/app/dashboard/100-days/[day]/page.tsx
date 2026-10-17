@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ArrowLeft, Play, Send, Loader2, CheckCircle, AlertCircle, Trophy, ChevronRight, ChevronLeft, BookOpen, Flame } from 'lucide-react'
 import { HUNDRED_DAYS, type HundredDayProblem } from '@/lib/100-days-data'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
@@ -116,8 +117,8 @@ export default function DayPage() {
 
   if (!dayData || day < 1 || day > 100) {
     return (
-      <Card className="p-6 border-border/60 text-center">
-        <p className="text-muted-foreground">Day {day} is not available yet. More coming soon!</p>
+      <Card className="rounded-3xl p-6 border-border/70 text-center">
+        <p className="text-muted-foreground">Day {day} isn't available yet. Go back to the overview to pick another day.</p>
         <Button asChild variant="link" className="h-auto p-0 mt-2"><Link href="/dashboard/100-days">Back to overview</Link></Button>
       </Card>
     )
@@ -187,12 +188,13 @@ export default function DayPage() {
   return (
     <div className="space-y-6">
       {/* Top bar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button asChild variant="ghost" size="sm" className="gap-1"><Link href="/dashboard/100-days"><ArrowLeft className="h-4 w-4" /> All days</Link></Button>
-        <Badge variant="outline" className="font-mono">Day {day}</Badge>
-        <h1 className="text-2xl font-bold text-foreground">{dayData.theme}</h1>
-        {allDone && <Badge variant="success" className="gap-1"><Trophy className="h-3 w-3" /> Day complete!</Badge>}
-      </div>
+      <PageHeader
+        title={<span className="inline-flex flex-wrap items-center gap-3"><span>Day <span className="tabular-nums">{day}</span>: {dayData.theme}</span>{allDone && <Badge variant="success" className="gap-1"><Trophy className="h-3 w-3" /> Day complete</Badge>}</span>}
+        description={`${dayData.problems.length} ${dayData.problems.length === 1 ? 'problem' : 'problems'} today. Solve them all to unlock the next day.`}
+        icon={<Flame />}
+        className="mb-0"
+        actions={<Button asChild variant="outline" size="sm" className="gap-1"><Link href="/dashboard/100-days"><ArrowLeft className="h-4 w-4" /> All days</Link></Button>}
+      />
 
       {/* Problem tabs */}
       <Tabs value={activeProblem} onValueChange={setActiveProblem}>
@@ -218,7 +220,7 @@ export default function DayPage() {
       {problem && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: problem */}
-          <Card className="p-6 border-border/60 space-y-4 overflow-y-auto max-h-[calc(100vh-14rem)]">
+          <Card className="rounded-3xl p-6 border-border/70 space-y-4 overflow-y-auto max-h-[calc(100vh-14rem)]">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-foreground">{problem.title}</h2>
               <Badge variant={problem.difficulty === 'easy' ? 'success' : problem.difficulty === 'medium' ? 'warning' : 'danger'}>{problem.difficulty}</Badge>
@@ -293,7 +295,7 @@ export default function DayPage() {
                   {result && !running && !submitting ? (
                     <span className="inline-flex items-center gap-1.5">
                       {result.status === 'accepted' ? (
-                        <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
                       ) : (
                         <AlertCircle className="h-3.5 w-3.5 text-destructive" />
                       )}
@@ -425,7 +427,7 @@ function ResultsPanel({ result, running }: { result: RunResponse | null; running
               r.passed ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'
             }`}>
               <div className="flex items-center gap-1.5 font-medium mb-1.5">
-                {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <AlertCircle className="h-3.5 w-3.5 text-red-500" />}
+                {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <AlertCircle className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />}
                 <span className="text-foreground">Test case {i + 1} of {result.total_tests}</span>
                 <span className="text-muted-foreground ml-auto">{r.time_ms}ms</span>
               </div>
@@ -433,12 +435,12 @@ function ResultsPanel({ result, running }: { result: RunResponse | null; running
                 <p className="text-muted-foreground">Input: <span className="text-foreground">{r.input || '(empty)'}</span></p>
                 <p className="text-muted-foreground">Expected: <span className="text-foreground">{r.expected || '(empty)'}</span></p>
                 {!r.passed && (
-                  <p className="text-muted-foreground">Got: <span className="text-red-400">{r.stdout || '(empty)'}</span></p>
+                  <p className="text-muted-foreground">Got: <span className="text-red-700 dark:text-red-400">{r.stdout || '(empty)'}</span></p>
                 )}
                 {r.passed && (
-                  <p className="text-muted-foreground">Got: <span className="text-green-500">{r.stdout || '(empty)'}</span></p>
+                  <p className="text-muted-foreground">Got: <span className="text-green-700 dark:text-green-400">{r.stdout || '(empty)'}</span></p>
                 )}
-                {r.stderr && <pre className="mt-1 text-red-400 bg-red-500/5 rounded p-1.5 overflow-auto max-h-20">{r.stderr}</pre>}
+                {r.stderr && <pre className="mt-1 text-red-700 dark:text-red-400 bg-red-500/5 rounded p-1.5 overflow-auto max-h-20">{r.stderr}</pre>}
               </div>
             </div>
           ))}
@@ -446,7 +448,7 @@ function ResultsPanel({ result, running }: { result: RunResponse | null; running
       )}
 
       {result.stderr_excerpt && !result.results.some(r => r.stderr) && (
-        <pre className="text-xs text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">{result.stderr_excerpt}</pre>
+        <pre className="text-xs text-red-700 dark:text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">{result.stderr_excerpt}</pre>
       )}
     </div>
   )

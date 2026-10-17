@@ -12,6 +12,8 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { ContributionGraph } from '@/components/gamification/contribution-graph'
 import { SkillBadges } from '@/components/gamification/skill-badges'
+import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Achievement {
   id: number
@@ -104,47 +106,31 @@ export default function AchievementsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <div className="flex items-center gap-2" data-tour="achievements-header">
-          <Trophy className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Achievements & Badges</h1>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-62.5">Showcase your platform achievements and earned skill badges.</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+      <div data-tour="achievements-header">
+        <PageHeader
+          title="Achievements and badges"
+          description="Your level, XP and the achievements and skill badges you've earned."
+          icon={<Trophy />}
+          className="mb-0"
+        />
       </div>
 
       {achievements.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <Trophy className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No achievements yet. Start completing challenges to earn them.</p>
-        </Card>
+        <Panel className="p-4">
+          <EmptyState
+            title="No achievements yet"
+            description="Solve problems and finish challenges to start earning achievements."
+            actionLabel="Go to problems"
+            actionHref="/dashboard/problems"
+          />
+        </Panel>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="achievements-stats">
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">Lvl {level}</p>
-              <p className="text-xs text-muted-foreground">Your level</p>
-            </Card>
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">{xp} XP</p>
-              <p className="text-xs text-muted-foreground">Total XP earned</p>
-            </Card>
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">{earnedCount}/{achievements.length}</p>
-              <p className="text-xs text-muted-foreground">Achievements earned</p>
-            </Card>
-            <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">{solved}</p>
-              <p className="text-xs text-muted-foreground">Problems solved</p>
-            </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="achievements-stats">
+            <StatCard label="Your level" value={`Level ${level}`} icon={<Zap />} />
+            <StatCard label="Total XP" value={`${xp} XP`} icon={<Flame />} />
+            <StatCard label="Achievements" value={`${earnedCount}/${achievements.length}`} icon={<Trophy />} />
+            <StatCard label="Problems solved" value={solved} icon={<Code2 />} />
           </div>
 
           <div data-tour="achievements-graph"><ContributionGraph /></div>
@@ -155,13 +141,13 @@ export default function AchievementsPage() {
               {!badgesLocked && <TabsTrigger value="badges">Badges</TabsTrigger>}
             </TabsList>
             <TabsContent value="achievements">
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <BentoGrid className="lg:grid-cols-3">
                 {achievements.map(a => {
                   const Icon = ICON_MAP[a.icon] || Trophy
                   return (
-                    <Card key={a.id} className={`border-border/60 p-5 ${!a.earned ? 'opacity-50' : ''}`}>
+                    <Panel key={a.id} className={`p-5 ${!a.earned ? 'opacity-60' : ''}`}>
                       <div className="flex items-start gap-3 mb-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
                           <Icon className="h-5 w-5" />
                         </div>
                         <div>
@@ -169,20 +155,24 @@ export default function AchievementsPage() {
                           <p className="text-xs text-muted-foreground">{a.description}</p>
                         </div>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted">
-                        <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${Math.round((a.progress / a.total) * 100)}%` }} />
+                      <div className="h-1.5 w-full rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={a.total} aria-valuenow={a.progress} aria-label={`${a.name} progress`}>
+                        <div className="h-1.5 rounded-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${a.total ? Math.round((a.progress / a.total) * 100) : 0}%` }} />
                       </div>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{a.progress}/{a.total}</p>
-                    </Card>
+                      <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">{a.progress}/{a.total}</p>
+                    </Panel>
                   )
                 })}
-              </div>
+              </BentoGrid>
             </TabsContent>
             {!badgesLocked && <TabsContent value="badges">
               {userBadges.length > 0 ? (
-                <div>Badges: {userBadges.join(', ')}</div>
+                <div className="flex flex-wrap gap-2">
+                  {userBadges.map(b => (
+                    <span key={b} className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-sm font-medium capitalize text-primary">{b.replace(/-/g, ' ')}</span>
+                  ))}
+                </div>
               ) : (
-                <p className="py-10 text-center text-sm text-muted-foreground">No badges earned yet.</p>
+                <p className="py-10 text-center text-sm text-muted-foreground">No badges yet. Solve problems to earn your first one.</p>
               )}
             </TabsContent>}
           </Tabs>

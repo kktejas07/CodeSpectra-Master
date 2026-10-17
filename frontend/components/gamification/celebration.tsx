@@ -17,11 +17,13 @@ export function Celebration() {
 }
 
 function createConfetti(count: number) {
+  // Respect reduced-motion: skip the falling confetti entirely.
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
   const container = document.createElement('div')
   container.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;overflow:hidden'
   document.body.appendChild(container)
 
-  const colors = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4']
+  const colors = ['#2f5be7', '#7f9bf3', '#38bdf8', '#f59e0b', '#22c55e', '#ec4899', '#17224d']
   
   for (let i = 0; i < count; i++) {
     const el = document.createElement('div')

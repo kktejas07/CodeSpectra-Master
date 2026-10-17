@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { PageHeader, Panel, Section, BentoGrid } from '@/components/app/page-kit'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 
 export default function CertificationsPage() {
@@ -49,17 +50,16 @@ export default function CertificationsPage() {
     <div className="space-y-8" data-testid="certifications-page">
       {/* Header */}
       <div data-tour="certifications-header">
-        <h1 className="text-3xl font-bold mb-2">Certifications</h1>
-        <p className="text-muted-foreground max-w-3xl">
-          Real, recognized certifications — the honest guide. The official AWS, Azure, and
-          Google exams are paid, so we give you the free study path, a free official practice
-          exam, and the booking link. We also curate free verifiable credentials you can earn
-          directly from freeCodeCamp, Microsoft Learn, and more.
-        </p>
+        <PageHeader
+          title="Certifications"
+          description="The official AWS, Azure and Google exams are paid, so we link you to the free study path, a free official practice exam and the booking page. We also list free credentials you can earn from freeCodeCamp, Microsoft Learn and others."
+          icon={<Award />}
+          className="mb-0"
+        />
       </div>
 
       {/* Honesty callout */}
-      <Card className="p-4 border-primary/20 bg-primary/5">
+      <Card className="rounded-3xl p-5 border-primary/20 bg-primary/5">
         <div className="flex items-start gap-3">
           <FileBadge2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
@@ -77,49 +77,45 @@ export default function CertificationsPage() {
 
       {/* Vendor prep tracks */}
       {prep.length > 0 && (
-        <section className="space-y-4" data-tour="certifications-prep">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-bold">Prepare for a real certification</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Study free, take the official practice exam, then book the real exam.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div data-tour="certifications-prep">
+        <Section
+          title={<span className="flex items-center gap-2"><GraduationCap className="h-5 w-5 text-primary" aria-hidden /> Prepare for a real certification</span>}
+          description="Study for free, take the official practice exam, then book the real exam."
+        >
+          <BentoGrid className="lg:grid-cols-3">
             {prep.map((track) => (
               <PrepCard key={track.id} track={track} />
             ))}
-          </div>
-        </section>
+          </BentoGrid>
+        </Section>
+        </div>
       )}
 
       {/* Free credentials */}
       {free.length > 0 && (
-        <section className="space-y-4" data-tour="certifications-free">
-          <div className="flex items-center gap-2">
-            <Award className="h-5 w-5 text-green-500" />
-            <h2 className="text-xl font-bold">Free credentials you can earn today</h2>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Complete these free courses to earn shareable, verifiable certificates.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div data-tour="certifications-free">
+        <Section
+          title={<span className="flex items-center gap-2"><Award className="h-5 w-5 text-primary" aria-hidden /> Free credentials you can earn today</span>}
+          description="Finish these free courses to earn shareable, verifiable certificates."
+        >
+          <BentoGrid className="lg:grid-cols-3">
             {free.map((track) => (
               <FreeCard key={track.id} track={track} />
             ))}
-          </div>
-        </section>
+          </BentoGrid>
+        </Section>
+        </div>
       )}
 
       {/* Platform certs note */}
-      <Card className="p-5 border-border/40">
+      <Card className="rounded-3xl p-5 border-border/70">
         <div className="flex items-start gap-3">
           <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Also on CodeSpectra</p>
             <p>
-              You can still earn verifiable CodeSpectra certificates through assessments,
-              level-ups, and events. Admins can issue certificates from the admin panel.
+              You can also earn verifiable CodeSpectra certificates by passing assessments,
+              levelling up and taking part in events.
             </p>
           </div>
         </div>
@@ -130,14 +126,15 @@ export default function CertificationsPage() {
 
 function PrepCard({ track }: { track: CertTrack }) {
   return (
-    <Card
+    <Panel
       data-testid={`prep-card-${track.id}`}
-      className="p-5 border-border/40 hover:border-primary/40 transition-all"
+      interactive
+      className="p-5"
     >
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div
-            className="w-11 h-11 rounded-lg flex items-center justify-center font-bold text-white text-lg shrink-0"
+            className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-lg shrink-0"
             style={{ backgroundColor: track.color }}
           >
             {track.icon}
@@ -147,7 +144,7 @@ function PrepCard({ track }: { track: CertTrack }) {
           </Badge>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+          <p className="text-xs text-muted-foreground font-medium">
             {track.providerBadge}
           </p>
           <h3 className="font-semibold text-foreground mt-0.5">{track.certName}</h3>
@@ -179,30 +176,31 @@ function PrepCard({ track }: { track: CertTrack }) {
           )}
         </div>
       </div>
-    </Card>
+    </Panel>
   )
 }
 
 function FreeCard({ track }: { track: CertTrack }) {
   return (
-    <Card
+    <Panel
       data-testid={`free-card-${track.id}`}
-      className="p-5 border-border/40 hover:border-green-500/40 transition-all"
+      interactive
+      className="p-5"
     >
       <div className="space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div
-            className="w-11 h-11 rounded-lg flex items-center justify-center font-bold text-white text-lg shrink-0"
+            className="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-white text-lg shrink-0"
             style={{ backgroundColor: track.color }}
           >
             {track.icon}
           </div>
-          <Badge variant="outline" className="text-[10px] shrink-0 text-green-500 border-green-500/40">
+          <Badge variant="outline" className="text-[10px] shrink-0 text-green-700 dark:text-green-400 border-green-500/40">
             Free
           </Badge>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+          <p className="text-xs text-muted-foreground font-medium">
             {track.providerBadge}
           </p>
           <h3 className="font-semibold text-foreground mt-0.5">{track.certName}</h3>
@@ -216,6 +214,6 @@ function FreeCard({ track }: { track: CertTrack }) {
           </Button>
         </div>
       </div>
-    </Card>
+    </Panel>
   )
 }

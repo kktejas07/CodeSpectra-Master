@@ -435,10 +435,10 @@ export default function ProblemDetailPage() {
   const difficultyTone = useMemo(() => {
     if (!problem) return ''
     return problem.difficulty === 'easy'
-      ? 'text-green-600 bg-green-500/10'
+      ? 'text-green-700 dark:text-green-400 bg-green-500/10'
       : problem.difficulty === 'medium'
-        ? 'text-orange-500 bg-orange-500/10'
-        : 'text-red-500 bg-red-500/10'
+        ? 'text-orange-700 dark:text-orange-400 bg-orange-500/10'
+        : 'text-red-700 dark:text-red-400 bg-red-500/10'
   }, [problem])
 
   if (!gate.ready) return null
@@ -446,7 +446,7 @@ export default function ProblemDetailPage() {
   if (loadError) {
     return (
       <div className="flex items-center justify-center p-6 py-20">
-        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6">
+        <div className="rounded-3xl border border-destructive/40 bg-destructive/10 p-6">
           <h2 className="font-semibold text-destructive mb-1">Could not load problem</h2>
           <p className="text-sm text-muted-foreground">{loadError}</p>
           <Link href="/dashboard/problems" className="inline-flex items-center gap-1 text-primary mt-3 text-sm">
@@ -487,45 +487,45 @@ export default function ProblemDetailPage() {
   // Header secondary actions — inline on md+ screens, inside the collapsible menu below md.
   const headerSecondaryActions = (
     <>
-      <button onClick={() => { setFeedbackType('feature'); setFeedbackOpen(true) }} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Request a Feature</button>
+      <button onClick={() => { setFeedbackType('feature'); setFeedbackOpen(true) }} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Request a feature</button>
       <div className="flex items-center gap-1">
         <button onClick={() => { setFeedbackType('bug'); setFeedbackOpen(true) }} aria-label="Report bug" className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
           <Bug className="h-4 w-4" />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Report Bug</div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Report bug</div>
         </button>
         <button onClick={() => { setFeedbackType('suggestion'); setFeedbackOpen(true) }} aria-label="Suggest idea" className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
           <Lightbulb className="h-4 w-4" />
-          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Suggest Idea</div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Suggest idea</div>
         </button>
       </div>
 
       <div className="flex bg-muted rounded-full p-1 border border-border/50">
-        <button onClick={() => setIsDark(false)} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${!isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+        <button onClick={() => setIsDark(false)} aria-label="Light editor theme" aria-pressed={!isDark} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${!isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
           <Sun className="h-3.5 w-3.5" />
         </button>
-        <button onClick={() => setIsDark(true)} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+        <button onClick={() => setIsDark(true)} aria-label="Dark editor theme" aria-pressed={isDark} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
           <Moon className="h-3.5 w-3.5" />
         </button>
       </div>
 
-       <button onClick={() => setIsInfoPanelOpen(true)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+       <button onClick={() => setIsInfoPanelOpen(true)} aria-label="Keyboard shortcuts and help" className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
          <HelpCircle className="h-4 w-4" />
        </button>
 
        {/* AI Mentor Button */}
-       <button onClick={() => setAiMentorOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md hover:from-purple-600 hover:to-blue-600 transition-colors">
+       <button onClick={() => setAiMentorOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
          <Sparkles className="h-3.5 w-3.5" />
          Ask AI
        </button>
 
        {/* Functional Timer */}
        <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-muted/50 px-3 py-1.5 rounded-md border border-border/50">
-         <Timer className="h-4 w-4 text-blue-500" />
-         <span className="text-foreground">{formatTimer(timerSeconds)}</span>
-         <button onClick={timerRunning ? stopTimer : startTimer} className="ml-1 p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
+         <Timer className="h-4 w-4 text-primary" />
+         <span className="text-foreground tabular-nums">{formatTimer(timerSeconds)}</span>
+         <button onClick={timerRunning ? stopTimer : startTimer} aria-label={timerRunning ? 'Pause timer' : 'Start timer'} className="ml-1 p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
            {timerRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
          </button>
-         <button onClick={resetTimer} className="p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
+         <button onClick={resetTimer} aria-label="Reset timer" className="p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
            <RotateCcw className="h-3 w-3" />
          </button>
        </div>
@@ -542,7 +542,7 @@ export default function ProblemDetailPage() {
       {/* Top Header */}
       <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-card shrink-0" data-tour="problem-detail-header">
         <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/dashboard/problems')} className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground">
+          <button onClick={() => router.push('/dashboard/problems')} aria-label="Back to problems" className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground">
              <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="font-bold text-foreground">{problem.title}</div>
@@ -613,7 +613,6 @@ export default function ProblemDetailPage() {
                 <>
                   <div className="flex items-center gap-3 mb-4">
                      <span className={`text-xs font-bold px-2 py-0.5 rounded capitalize ${difficultyTone}`}>{problem.difficulty}</span>
-                     <div className="text-xs text-muted-foreground font-semibold flex items-center gap-1.5"><Sparkles className="h-3 w-3 text-blue-500"/> 120 Points</div>
                   </div>
                   
                   <div className="prose prose-sm dark:prose-invert max-w-none mb-8 text-foreground/90">
@@ -622,19 +621,19 @@ export default function ProblemDetailPage() {
 
                   {problem.test_cases.length > 0 && (
                     <div className="space-y-4 mb-8">
-                       <h3 className="font-bold text-foreground">Sample Testcases</h3>
+                       <h3 className="font-bold text-foreground">Sample test cases</h3>
                        {problem.test_cases.filter(t => t.is_sample).map((t, i) => (
                          <div key={t.id} className="rounded-xl border border-border overflow-hidden bg-card/40">
                             <div className="bg-muted/40 px-4 py-2 border-b border-border flex justify-between items-center text-sm font-semibold">
-                               Testcase {i+1}
+                               Test case {i+1}
                             </div>
                             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4">
                                <div className="sm:pr-2">
-                                  <div className="text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Input</div>
+                                  <div className="text-xs text-muted-foreground mb-1.5 font-semibold">Input</div>
                                   <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.stdin}</pre>
                                </div>
                                <div className="sm:pl-4">
-                                  <div className="text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Output</div>
+                                  <div className="text-xs text-muted-foreground mb-1.5 font-semibold">Output</div>
                                   <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.expected_stdout}</pre>
                                </div>
                             </div>
@@ -793,7 +792,7 @@ export default function ProblemDetailPage() {
                     <button onClick={() => setRightBottomTab('test')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'test' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Test</button>
                     <button onClick={() => setRightBottomTab('custom')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'custom' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Custom Test</button>
                     <button onClick={() => setRightBottomTab('results')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'results' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}>Results</button>
-                    <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" /> AI Analysis</button>
+                    <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-bold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" /> AI analysis</button>
                  </div>
                  <div className="flex items-center text-muted-foreground gap-2 pr-2">
                     <button className="p-1 hover:bg-muted rounded"><Maximize2 className="h-3.5 w-3.5" /></button>
@@ -806,17 +805,17 @@ export default function ProblemDetailPage() {
                        <div className="flex gap-2">
                          {problem.test_cases.filter(t => t.is_sample).map((t, i) => (
                             <button key={t.id} className="px-3 py-1.5 rounded bg-muted text-xs font-semibold hover:bg-muted/80 transition-colors">
-                               Testcase {i+1}
+                               Test case {i+1}
                             </button>
                          ))}
                        </div>
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-muted/10 p-4 rounded-xl border border-border/50">
                           <div>
-                            <h4 className="text-xs uppercase font-bold text-muted-foreground mb-2">Input</h4>
+                            <h4 className="text-xs font-semibold text-muted-foreground mb-2">Input</h4>
                             <pre className="text-sm font-mono text-foreground">{problem.test_cases[0]?.stdin}</pre>
                           </div>
                           <div>
-                            <h4 className="text-xs uppercase font-bold text-muted-foreground mb-2">Expected Output</h4>
+                            <h4 className="text-xs font-semibold text-muted-foreground mb-2">Expected output</h4>
                             <pre className="text-sm font-mono text-foreground">{problem.test_cases[0]?.expected_stdout}</pre>
                           </div>
                        </div>
@@ -838,15 +837,15 @@ export default function ProblemDetailPage() {
                    className="font-bold border-border/80 h-9"
                  >
                    {running === 'run' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Play className="h-4 w-4 mr-2 text-primary" />}
-                   Save & Compile
+                   Save and run
                  </Button>
                  <Button 
                    onClick={() => execute('submit')}
                    disabled={running !== null}
-                   className="font-bold h-9 bg-blue-600 hover:bg-blue-700 text-white"
+                   className="font-semibold h-9"
                  >
                    {running === 'submit' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                   Submit Code
+                   Submit code
                  </Button>
               </div>
 
@@ -873,11 +872,11 @@ export default function ProblemDetailPage() {
                  </p>
                  <div className="space-y-2">
                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">1. Run / Save & Compile Code:</span>
+                       <span className="text-xs font-semibold text-muted-foreground">1. Run / Save and run Code:</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Enter</kbd>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">2. Submit Code:</span>
+                       <span className="text-xs font-semibold text-muted-foreground">2. Submit code:</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Shift + Enter</kbd>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-md border border-border/50">
@@ -892,7 +891,7 @@ export default function ProblemDetailPage() {
           {/* Feedback Modal */}
           {feedbackOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
-              <div className="bg-background rounded-xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-background rounded-3xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-lg font-bold mb-4">
                   {feedbackType === 'bug' ? 'Report Bug' : feedbackType === 'feature' ? 'Request Feature' : 'Suggest Idea'}
                 </h3>
@@ -915,10 +914,10 @@ export default function ProblemDetailPage() {
           {/* AI Mentor Modal */}
           {aiMentorOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAiMentorOpen(false)}>
-              <div className="bg-background rounded-xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div className="bg-background rounded-3xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="h-5 w-5 text-purple-500" />
-                  <h3 className="text-lg font-bold">AI Mentor</h3>
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h3 className="text-lg font-bold">AI mentor</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
                   Ask questions about the problem. The AI will guide you without giving the full solution.
@@ -971,14 +970,14 @@ function Markdownish({ text }: { text: string }) {
 
 function ResultsPanel({ result, running }: { result: RunResponse | null, running: boolean }) {
   if (running) return <div className="flex items-center gap-2 text-sm text-muted-foreground p-4"><Loader2 className="h-4 w-4 animate-spin" /> Compiling and testing...</div>
-  if (!result) return <p className="text-sm text-muted-foreground p-4 text-center">Click <strong>Save & Compile</strong> to run your code against sample test cases.</p>
+  if (!result) return <p className="text-sm text-muted-foreground p-4 text-center">Click <strong>Save and run</strong> to run your code against sample test cases.</p>
   
   const ok = result.status === 'accepted'
   return (
     <div className="space-y-4">
       <div className={`p-4 rounded-xl border ${ok ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'} flex items-center justify-between`}>
          <div className="flex items-center gap-3">
-            {ok ? <CheckCircle2 className="h-6 w-6 text-green-500" /> : <XCircle className="h-6 w-6 text-red-500" />}
+            {ok ? <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" /> : <XCircle className="h-6 w-6 text-red-600 dark:text-red-400" />}
             <div>
                <div className={`font-bold text-lg ${ok ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{ok ? 'Accepted' : 'Failed'}</div>
                <div className="text-xs text-muted-foreground font-semibold">Passed {result.passed_tests}/{result.total_tests} test cases</div>
@@ -986,8 +985,8 @@ function ResultsPanel({ result, running }: { result: RunResponse | null, running
          </div>
          {result.score != null && (
             <div className="text-right">
-               <div className="text-2xl font-black text-foreground">{result.score}%</div>
-               <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Score</div>
+               <div className="text-2xl font-black tabular-nums text-foreground">{result.score}%</div>
+               <div className="text-xs font-semibold text-muted-foreground">Score</div>
             </div>
          )}
       </div>
@@ -999,18 +998,18 @@ function ResultsPanel({ result, running }: { result: RunResponse | null, running
                 <div className="px-4 py-3 flex items-center justify-between border-b border-border/40">
                    <div className="flex items-center gap-2 font-bold text-sm">
                       {r.passed ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                      Testcase {i+1} {r.is_sample && <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] uppercase font-bold ml-1 text-muted-foreground">Sample</span>}
+                      Test case {i+1} {r.is_sample && <span className="px-1.5 py-0.5 rounded bg-muted text-[11px] font-semibold ml-1 text-muted-foreground">Sample</span>}
                    </div>
-                   <div className="text-xs font-mono text-muted-foreground">{r.time_ms ?? '—'}ms</div>
+                   <div className="text-xs font-mono tabular-nums text-muted-foreground">{r.time_ms ?? '—'}ms</div>
                 </div>
                 {!r.passed && (
                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                         <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Your Output</div>
+                         <div className="text-xs font-semibold text-muted-foreground mb-1">Your output</div>
                          <pre className="text-sm font-mono bg-red-500/10 text-red-700 dark:text-red-400 p-2 rounded border border-red-500/20 whitespace-pre-wrap">{r.stdout || r.stderr || r.error || '—'}</pre>
                       </div>
                       <div>
-                         <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Expected Output</div>
+                         <div className="text-xs font-semibold text-muted-foreground mb-1">Expected output</div>
                          <pre className="text-sm font-mono bg-green-500/10 text-green-700 dark:text-green-400 p-2 rounded border border-green-500/20 whitespace-pre-wrap">{r.expected ?? '—'}</pre>
                       </div>
                    </div>

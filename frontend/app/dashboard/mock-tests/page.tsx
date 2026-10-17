@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge'
 import { AiCreditsWidget } from '@/components/ui/ai-credits-widget'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/lib/toast-context'
@@ -92,31 +93,31 @@ export default function MockTestsPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-tour="mock-tests-header">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent inline-flex items-center gap-2">
-            <Sparkles className="h-8 w-8 text-primary" />
-            AI-Powered Mock Tests
-          </h2>
-          <p className="text-muted-foreground mt-2">
-            Practice role-based assessments generated dynamically by AI for top companies.
-          </p>
-        </div>
-        <div className="w-full sm:w-64 shrink-0 flex flex-col gap-3">
-          <AiCreditsWidget />
-          <Button data-tour="mock-tests-create" onClick={() => setIsModalOpen(true)} className="w-full gap-2">
-            <Plus className="w-4 h-4" /> Create Custom Test
-          </Button>
-        </div>
+    <div className="flex-1 space-y-6">
+      <div data-tour="mock-tests-header">
+        <PageHeader
+          title="Mock tests"
+          description="Practise role-based tests for the companies you're applying to. AI writes a fresh set of questions each time."
+          icon={<Sparkles />}
+          className="mb-0"
+          actions={
+            <div className="w-full sm:w-64 shrink-0 flex flex-col gap-3">
+              <AiCreditsWidget />
+              <Button data-tour="mock-tests-create" onClick={() => setIsModalOpen(true)} className="w-full gap-2">
+                <Plus className="w-4 h-4" /> Create custom test
+              </Button>
+            </div>
+          }
+        />
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search by company or role..."
-            className="pl-8"
+            placeholder="Search by company or role…"
+            aria-label="Search by company or role"
+            className="pl-9 rounded-xl"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -124,13 +125,13 @@ export default function MockTestsPage() {
       </div>
 
       {filteredTests.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-tour="mock-tests-list">
+        <div className="cs-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 lg:gap-5" data-tour="mock-tests-list">
           {filteredTests.map((test) => (
-            <Card key={test.id} className="group hover:border-primary/50 transition-colors cursor-pointer flex flex-col">
+            <Card key={test.id} className="group flex flex-col rounded-3xl border-border/70 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_18px_40px_-20px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
               <CardHeader className="flex flex-row items-start justify-between pb-2">
                 <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-md ${test.color} shrink-0 flex items-center justify-center`} aria-hidden="true">
-                    <span className="text-sm font-bold text-white">{(test.company || '').charAt(0)}</span>
+                  <div className="h-11 w-11 rounded-xl border border-primary/20 bg-primary/10 shrink-0 flex items-center justify-center" aria-hidden="true">
+                    <span className="text-sm font-bold text-primary">{(test.company || '').charAt(0)}</span>
                   </div>
                   <div>
                     <CardTitle className="text-base line-clamp-1">{test.company}</CardTitle>
@@ -151,42 +152,42 @@ export default function MockTestsPage() {
               </CardContent>
               <CardFooter className="pt-0">
                 <Button 
-                  className="w-full gap-2 group-hover:bg-primary/90 transition-colors cursor-pointer"
+                  className="w-full gap-2"
                   onClick={() => router.push(`/dashboard/mock-tests/${test.id}`)}
                 >
-                  Start Test <ChevronRight className="w-4 h-4" />
+                  Start test <ChevronRight className="w-4 h-4" />
                 </Button>
               </CardFooter>
             </Card>
           ))}
         </div>
       ) : (
-        <div className="mt-12">
+        <Panel className="p-4">
           <EmptyState 
             title="No tests found" 
-            description={`We couldn't find any companies or roles matching "${search}". Create a custom AI-generated test for this specific company and role!`} 
-            actionLabel="Generate Custom Test"
+            description={`Nothing matches "${search}" yet. Create a custom test for that company and role instead.`} 
+            actionLabel="Create custom test"
             onAction={() => {
               setCustomData({ ...customData, company: search })
               setIsModalOpen(true)
             }}
           />
-        </div>
+        </Panel>
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" /> Generate Custom Test
+              <Sparkles className="w-5 h-5 text-primary" /> Create a custom test
             </DialogTitle>
             <DialogDescription>
-              Provide details for the company and role you want to practice for. This costs 1 AI Credit.
+              Provide details for the company and role you want to practice for. This uses 1 AI credit.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="company">Company Name</Label>
+              <Label htmlFor="company">Company name</Label>
               <Input 
                 id="company" 
                 placeholder="e.g. Stripe, Airbnb" 
@@ -195,7 +196,7 @@ export default function MockTestsPage() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="role">Target Role</Label>
+              <Label htmlFor="role">Target role</Label>
               <Input 
                 id="role" 
                 placeholder="e.g. Backend Developer" 
@@ -205,7 +206,7 @@ export default function MockTestsPage() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="type">Test Type</Label>
+                <Label htmlFor="type">Test type</Label>
                 <select 
                   id="type"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -219,7 +220,7 @@ export default function MockTestsPage() {
                 </select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="level">Experience Level</Label>
+                <Label htmlFor="level">Experience level</Label>
                 <select 
                   id="level"
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -237,9 +238,9 @@ export default function MockTestsPage() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button onClick={handleGenerate} disabled={!customData.company || !customData.role || isGenerating}>
               {isGenerating ? (
-                <>Generating... <Sparkles className="w-4 h-4 ml-2 animate-pulse" /></>
+                <>Generating… <Sparkles className="w-4 h-4 ml-2 animate-pulse motion-reduce:animate-none" /></>
               ) : (
-                <>Generate Test (-1 Credit)</>
+                <>Generate test (1 credit)</>
               )}
             </Button>
           </DialogFooter>

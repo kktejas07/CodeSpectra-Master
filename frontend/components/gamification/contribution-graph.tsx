@@ -30,9 +30,9 @@ function getLevel(count: number): number {
 
 const LEVEL_CLASSES = [
   'bg-muted',
-  'bg-emerald-200 dark:bg-emerald-900',
-  'bg-emerald-400 dark:bg-emerald-700',
-  'bg-emerald-600 dark:bg-emerald-500',
+  'bg-primary/25',
+  'bg-primary/55',
+  'bg-primary',
 ]
 
 function formatDate(dateStr: string): string {
@@ -87,7 +87,7 @@ export function ContributionGraph() {
 
   if (loading) {
     return (
-      <Card className="border-border/60 p-6">
+      <Card className="rounded-3xl border-border/70 p-6">
         <div className="h-6 w-40 animate-pulse rounded bg-muted" />
         <div className="mt-4 h-32 animate-pulse rounded bg-muted" />
       </Card>
@@ -99,8 +99,8 @@ export function ContributionGraph() {
   const dayLabels = ['Mon', '', 'Wed', '', 'Fri', '', 'Sun']
 
   return (
-    <Card className="border-border/60 p-6">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Contribution Activity</h2>
+    <Card className="rounded-3xl border-border/70 p-6">
+      <h2 className="text-lg font-semibold text-foreground mb-4">Activity</h2>
 
       <div className="overflow-x-auto">
         <div className="inline-flex gap-0.5">

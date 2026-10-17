@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { AllFiltersDialog, type FilterState } from '@/components/listings/all-filters-dialog'
 import { Loader2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 const QUIZZES = [
@@ -77,21 +78,21 @@ export default function QuizzesPage() {
   return (
     <div className="w-full space-y-6">
       <div data-tour="quizzes-header">
-        <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-          <HelpCircle className="h-8 w-8 text-primary" /> Quizzes
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Role-based quizzes and company mock tests.
-        </p>
+        <PageHeader
+          title="Quizzes"
+          description="Role-based quizzes and company mock tests. Pick one to start practising."
+          icon={<HelpCircle />}
+          className="mb-0"
+        />
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row" data-tour="quizzes-search">
         <div className="relative flex-1">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Search quizzes…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9 rounded-xl" aria-label="Search quizzes" placeholder="Search quizzes…" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <Button type="button" variant="outline" onClick={() => setOpen(true)}>
-          All Filters
+          All filters
           {Object.values(filters).some((v) => v?.length) ? (
             <Badge className="ml-2" variant="secondary">
               Active
@@ -102,6 +103,7 @@ export default function QuizzesPage() {
 
       <div data-tour="quizzes-grid">
       {filtered.length === 0 ? (
+        <Panel className="p-4">
         <EmptyState
           variant="search"
           title="No quizzes match your filters"
@@ -109,21 +111,22 @@ export default function QuizzesPage() {
           actionLabel="Clear search"
           onAction={() => { setQ(''); setFilters({}) }}
         />
+        </Panel>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <BentoGrid>
           {filtered.map((item) => (
-            <Link key={item.id} href={item.href}>
-              <Card className="h-full p-4 transition-colors hover:border-primary/40 hover:bg-muted/30">
+            <Link key={item.id} href={item.href} className="rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+              <Panel interactive className="h-full p-5">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="font-semibold">{item.company}</p>
+                  <p className="font-semibold text-foreground">{item.company}</p>
                   <Badge variant="outline">{item.type}</Badge>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{item.role}</p>
                 <p className="mt-3 text-xs text-muted-foreground">{item.level}</p>
-              </Card>
+              </Panel>
             </Link>
           ))}
-        </div>
+        </BentoGrid>
       )}
       </div>
 

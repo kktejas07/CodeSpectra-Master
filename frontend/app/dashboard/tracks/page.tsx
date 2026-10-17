@@ -9,6 +9,8 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   python: FileCode2,
@@ -95,18 +97,13 @@ export default function TracksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2" data-tour="tracks-header">
-        <h1 className="text-3xl font-bold">Tech-stack tracks</h1>
-        <TooltipProvider data-tour="tracks-tooltip">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p className="text-xs max-w-62.5">Pick a stack and grind through curated problems.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      <div data-tour="tracks-header">
+        <PageHeader
+          title="Tech-stack tracks"
+          description="Pick a stack and work through problems picked for it."
+          icon={<Layers />}
+          className="mb-0"
+        />
       </div>
 
       {loading ? (
@@ -114,43 +111,49 @@ export default function TracksPage() {
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : tracks.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <TrendingUp className="h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No tracks available yet.</p>
-        </Card>
+        <Panel className="p-4">
+          <EmptyState
+            title="No tracks yet"
+            description="Tracks will appear here soon. Until then, browse all coding problems."
+            actionLabel="Go to problems"
+            actionHref="/dashboard/problems"
+          />
+        </Panel>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="tracks-grid">
-          {tracks.map((t) => {
+        <div data-tour="tracks-grid">
+        <BentoGrid className="lg:grid-cols-3">
+          {tracks.map((t, i) => {
             const count = trackProblemCount(t)
             const Icon = TRACK_ICONS[t.id] || Code2
             return (
-              <Link key={t.id} href={`/dashboard/problems?topic=${encodeURIComponent(t.topics[0] || '')}`} className="group">
-                <Card className={cn('p-5 h-full transition border-border/60 hover:border-primary/40 hover:bg-card/70', t.tone)}>
+              <Link key={t.id} href={`/dashboard/problems?topics=${encodeURIComponent(t.topics[0] || '')}`} className={cn('group rounded-3xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary', i === 0 && 'sm:col-span-2')}>
+                <Panel interactive className="p-5 h-full flex flex-col">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background/60 text-primary">
-                      <Icon className="h-4 w-4" />
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
                     </div>
-                    <h3 className="font-semibold flex-1">{t.name}</h3>
+                    <h3 className="font-semibold text-foreground flex-1">{t.name}</h3>
                     {t.badge && (
-                      <span className="rounded-full bg-primary/15 text-primary text-[10px] px-2 py-0.5 uppercase tracking-wide">{t.badge}</span>
+                      <span className="rounded-full bg-primary/10 text-primary text-[11px] font-medium px-2 py-0.5">{t.badge}</span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed mb-3">{t.description}</p>
                   <div className="flex flex-wrap gap-1 mb-3">
                     {t.topics.map((tp) => (
-                      <span key={tp} className="rounded border border-border/60 bg-background/40 text-[10px] px-1.5 py-0.5">{tp}</span>
+                      <span key={tp} className="rounded-full border border-border/70 bg-muted/40 text-[11px] text-muted-foreground px-2 py-0.5">{tp}</span>
                     ))}
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{count > 0 ? `${count} problems` : 'Catalog growing'}</span>
-                    <span className="inline-flex items-center gap-1 text-primary group-hover:translate-x-0.5 transition">
+                  <div className="mt-auto flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground tabular-nums">{count > 0 ? `${count} problems` : 'More problems coming'}</span>
+                    <span className="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0">
                       Practice <ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
-                </Card>
+                </Panel>
               </Link>
             )
           })}
+        </BentoGrid>
         </div>
       )}
     </div>
