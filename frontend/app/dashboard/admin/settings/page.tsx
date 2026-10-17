@@ -74,6 +74,7 @@ import { isStripePriceId } from '@/lib/pricing-catalog'
 import { PricingCatalogStripeHint } from '@/components/dashboard/pricing-catalog-stripe-hint'
 import { emailTemplates, hackathonEmailTemplates } from '@/lib/email-templates'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader } from '@/components/app/page-kit'
 import {
   CertificateRenderer,
   TEMPLATES,
@@ -930,19 +931,12 @@ function SystemSettingsInner() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <SettingsIcon className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground">Platform settings</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage platform branding, email delivery, payments, and integrations. Environment variables override stored secrets.
-            </p>
-                  </div>
-                </div>
-      </div>
+      <PageHeader
+        className="mb-0"
+        title="Platform settings"
+        description="Manage platform branding, email delivery, payments, and integrations. Environment variables override stored secrets."
+        icon={<SettingsIcon />}
+      />
 
       {loadError ? (
         <Alert variant="destructive" className="border-destructive/40">
@@ -954,7 +948,7 @@ function SystemSettingsInner() {
       <div className="min-w-0 space-y-6">
           {section === 'branding' ? (
         <div className="space-y-6">
-        <Card className="rounded-xl border-border/60 shadow-sm">
+        <Card className="rounded-3xl border-border/70 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
@@ -1113,7 +1107,7 @@ function SystemSettingsInner() {
             </div>
 
             <div className="border-t border-border/40 pt-4 mt-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Company & Legal</p>
+              <p className="text-sm font-semibold text-foreground mb-3">Company and legal</p>
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="company_name">Company name</Label>
@@ -1197,10 +1191,10 @@ function SystemSettingsInner() {
       ) : null}
 
       {section === 'media' ? (
-        <Card className="rounded-xl border-border/60 bg-card p-6 shadow-sm">
+        <Card className="rounded-3xl border-border/70 bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold tracking-tight">Media Player Settings</h2>
+              <h2 className="text-lg font-semibold tracking-tight">Media player settings</h2>
               <p className="text-sm text-muted-foreground mt-1">
                 Configure global defaults for the Vidstack video player. After saving, hard-refresh a lesson page to verify autoplay stays off when disabled.
               </p>
@@ -1316,7 +1310,7 @@ function SystemSettingsInner() {
             </div>
           </div>
           <div className="mt-6 space-y-4 border-t border-border/40 pt-5">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branding overlay</p>
+            <p className="text-sm font-semibold text-foreground">Branding overlay</p>
             <div>
               <Label htmlFor="video_player_logo_url">Player logo / watermark URL</Label>
               <Input
@@ -1378,7 +1372,7 @@ function SystemSettingsInner() {
             ) : null}
 
            {section === 'mail' ? (
-        <Card className="rounded-xl border-border/60 shadow-sm">
+        <Card className="rounded-3xl border-border/70 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-primary" />
@@ -1438,9 +1432,9 @@ function SystemSettingsInner() {
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-foreground">Postal</p>
                   {secretsMeta.has_postal_api_key || secretsMeta.postal_server ? (
-                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                    <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
                   ) : (
-                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                    <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">Not configured</span>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1518,7 +1512,7 @@ function SystemSettingsInner() {
           ) : null}
 
           {section === 'ops' ? (
-        <Card className="rounded-xl border-border/60 shadow-sm">
+        <Card className="rounded-3xl border-border/70 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
               <Sliders className="h-5 w-5 text-primary" />
@@ -1607,7 +1601,7 @@ function SystemSettingsInner() {
           ) : null}
 
           {section === 'product' ? (
-        <Card className="rounded-xl border-border/60 shadow-sm">
+        <Card className="rounded-3xl border-border/70 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
@@ -1660,7 +1654,7 @@ function SystemSettingsInner() {
           ) : null}
 
           {section === 'certificates' ? (
-        <Card className="rounded-xl border-border/60 shadow-sm">
+        <Card className="rounded-3xl border-border/70 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
               <ScrollText className="h-5 w-5 text-primary" />
@@ -1766,7 +1760,7 @@ function SystemSettingsInner() {
           ) : null}
 
           {section === 'integrations' ? (
-            <Card className="rounded-xl border-border/60 shadow-sm">
+            <Card className="rounded-3xl border-border/70 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-5 w-5 text-primary" />
@@ -1792,11 +1786,11 @@ function SystemSettingsInner() {
                     <p className="text-sm font-semibold text-foreground">Trusted origins (CORS + CSRF)</p>
                     <div className="flex items-center gap-2">
                       {secretsMeta.trusted_origins_extra ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                        <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
                       ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                        <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">Not configured</span>
                       )}
-                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-medium">Dynamic</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -1834,11 +1828,11 @@ function SystemSettingsInner() {
                     <p className="text-sm font-semibold text-foreground">Code execution backend (Piston)</p>
                     <div className="flex items-center gap-2">
                       {secretsMeta.piston_url ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                        <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
                       ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">In-process</span>
+                        <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">In-process</span>
                       )}
-                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-medium">Dynamic</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -1866,7 +1860,7 @@ function SystemSettingsInner() {
 
                   <div className="grid grid-cols-2 gap-3 pt-2">
                     <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <label className="text-xs font-medium text-muted-foreground">
                         Run timeout (ms)
                       </label>
                       <Input
@@ -1888,7 +1882,7 @@ function SystemSettingsInner() {
                       )}
                     </div>
                     <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <label className="text-xs font-medium text-muted-foreground">
                         Max concurrent jobs
                       </label>
                       <Input
@@ -1918,11 +1912,11 @@ function SystemSettingsInner() {
                     <p className="text-sm font-semibold text-foreground">GitHub App / PAT token</p>
                     <div className="flex items-center gap-2">
                       {secretsMeta.has_github_app_token ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                        <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
                       ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                        <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">Not configured</span>
                       )}
-                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-medium">Dynamic</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -1966,11 +1960,11 @@ function SystemSettingsInner() {
                     <p className="text-sm font-semibold text-foreground">Internal backend auth secret</p>
                     <div className="flex items-center gap-2">
                       {secretsMeta.has_internal_backend_secret ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                        <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
                       ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                        <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">Not configured</span>
                       )}
-                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-medium">Dynamic</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -2014,11 +2008,11 @@ function SystemSettingsInner() {
                     <p className="text-sm font-semibold text-foreground">Grade verification (TypeSafe Jev)</p>
                     <div className="flex items-center gap-2">
                       {secretsMeta.has_typesafe_api_key ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                        <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
                       ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                        <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">Not configured</span>
                       )}
-                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-medium">Dynamic</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -2063,11 +2057,11 @@ function SystemSettingsInner() {
                     <p className="text-sm font-semibold text-foreground">GitHub OAuth App (per-user install)</p>
                     <div className="flex items-center gap-2">
                       {secretsMeta.github_client_id ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                        <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">✓ Active</span>
                       ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                        <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">Not configured</span>
                       )}
-                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[11px] font-medium">Dynamic</span>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
@@ -2090,7 +2084,7 @@ function SystemSettingsInner() {
                   </p>
                   <div className="grid gap-2 md:grid-cols-2">
                     <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <label className="text-xs font-medium text-muted-foreground">
                         Client ID
                       </label>
                       <Input
@@ -2109,7 +2103,7 @@ function SystemSettingsInner() {
                       ) : null}
                     </div>
                     <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <label className="text-xs font-medium text-muted-foreground">
                         Client secret
                       </label>
                       <div className="relative">
@@ -2156,11 +2150,11 @@ function SystemSettingsInner() {
                     secretsMeta.firebase_auth_domain &&
                     secretsMeta.firebase_project_id &&
                     secretsMeta.firebase_app_id ? (
-                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide">
+                      <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2.5 py-0.5 text-[11px] font-medium">
                         ✓ Active
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide">
+                      <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2.5 py-0.5 text-[11px] font-medium">
                         Not configured
                       </span>
                     )}
@@ -2233,7 +2227,7 @@ function SystemSettingsInner() {
             </Card>
           ) : null}
           {section === 'payments' ? (
-            <Card className="rounded-xl border-border/60 shadow-sm">
+            <Card className="rounded-3xl border-border/70 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-primary" />
@@ -2251,11 +2245,11 @@ function SystemSettingsInner() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">Razorpay (primary)</p>
                     {secretsMeta.has_razorpay_key_id && secretsMeta.has_razorpay_key_secret ? (
-                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">
                         ✓ Active
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">
                         Not configured
                       </span>
                     )}
@@ -2376,11 +2370,11 @@ function SystemSettingsInner() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">PhonePe (UPI & Cards)</p>
                     {secretsMeta.phonepe_merchant_id ? (
-                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      <span className="rounded-full bg-green-500/15 text-green-700 dark:text-green-300 px-2 py-0.5 text-[11px] font-medium">
                         ✓ Active
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">
                         Not configured
                       </span>
                     )}
@@ -2518,7 +2512,7 @@ function SystemSettingsInner() {
                 <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">Stripe (legacy)</p>
-                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                    <span className="rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[11px] font-medium">
                       Legacy
                     </span>
                   </div>
@@ -2734,7 +2728,7 @@ function SystemSettingsInner() {
 
           {section === 'llm' ? (
             <div className="space-y-0" data-testid="llm-section">
-              <Card className="rounded-xl border-border/60 p-6">
+              <Card className="rounded-3xl border-border/70 p-6">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold text-foreground">AI & LLM Configuration</h3>
@@ -2746,7 +2740,7 @@ function SystemSettingsInner() {
               <LlmSettingsTabs />
             </div>
           ) : section === 'gamification' ? (
-            <Card className="rounded-xl border-border/60 shadow-sm">
+            <Card className="rounded-3xl border-border/70 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <Trophy className="h-5 w-5 text-primary" />
@@ -2758,7 +2752,7 @@ function SystemSettingsInner() {
               </div>
               <div className="space-y-6 px-6 py-5">
                 <div className="space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">XP Rewards</p>
+                  <p className="text-sm font-semibold text-foreground">XP rewards</p>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {[
                       { key: 'xp_submission_easy', label: 'Easy submission', default: 10 },
@@ -2787,7 +2781,7 @@ function SystemSettingsInner() {
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Level Thresholds</p>
+                  <p className="text-sm font-semibold text-foreground">Level thresholds</p>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     {[
                       { key: 'level_2_xp', label: 'Level 2', default: 100 },
@@ -2810,7 +2804,7 @@ function SystemSettingsInner() {
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Streak Settings</p>
+                  <p className="text-sm font-semibold text-foreground">Streak settings</p>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <Label className="text-xs">Streak XP multiplier</Label>
@@ -2836,7 +2830,7 @@ function SystemSettingsInner() {
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Referral</p>
+                  <p className="text-sm font-semibold text-foreground">Referral</p>
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <Label className="text-xs">Referral XP bonus</Label>
@@ -2861,7 +2855,7 @@ function SystemSettingsInner() {
                 </div>
 
                 <div className="space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Badges</p>
+                  <p className="text-sm font-semibold text-foreground">Badges</p>
                   <div className="space-y-0 divide-y divide-border/60">
                     {[
                       { key: 'badge_hackathon_enabled', label: 'Hackathon badges', desc: 'Award badges for hackathon participation' },
@@ -2895,7 +2889,7 @@ function SystemSettingsInner() {
               </div>
             </Card>
           ) : section === 'email-templates' ? (
-            <Card className="rounded-xl border-border/60 shadow-sm">
+            <Card className="rounded-3xl border-border/70 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />

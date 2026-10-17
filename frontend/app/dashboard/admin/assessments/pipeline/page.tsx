@@ -4,7 +4,6 @@ import { formatDate } from '@/lib/format-datetime'
 import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -24,6 +23,7 @@ import {
   Download,
 } from 'lucide-react'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard, Panel } from '@/components/app/page-kit'
 
 interface ExamOption {
   id: string
@@ -69,22 +69,22 @@ interface PipelineData {
 }
 
 const STAGE_CONFIG = [
-  { key: 'invited' as const, label: 'Invited', icon: Mail, color: 'text-blue-600', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  { key: 'inProgress' as const, label: 'In Progress', icon: Play, color: 'text-amber-600', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  { key: 'completed' as const, label: 'Completed', icon: CheckCircle2, color: 'text-gray-600', bg: 'bg-gray-500/10', border: 'border-gray-500/20' },
-  { key: 'passed' as const, label: 'Passed', icon: Trophy, color: 'text-green-600', bg: 'bg-green-500/10', border: 'border-green-500/20' },
-  { key: 'failed' as const, label: 'Failed', icon: XCircle, color: 'text-red-600', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+  { key: 'invited' as const, label: 'Invited', icon: Mail, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+  { key: 'inProgress' as const, label: 'In progress', icon: Play, color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  { key: 'completed' as const, label: 'Completed', icon: CheckCircle2, color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border' },
+  { key: 'passed' as const, label: 'Passed', icon: Trophy, color: 'text-green-700 dark:text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+  { key: 'failed' as const, label: 'Failed', icon: XCircle, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
 ] as const
 
 /** Drag-and-drop recruitment board columns. 'none' holds everyone not yet moved. */
 const RECRUITMENT_STAGES = [
-  { key: 'none', label: 'New / Unstaged', color: 'text-slate-600', bg: 'bg-slate-500/10', border: 'border-slate-500/20' },
-  { key: 'shortlisted', label: 'Shortlisted', color: 'text-blue-600', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
-  { key: 'hr', label: 'HR Round', color: 'text-violet-600', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
-  { key: 'technical', label: 'Technical Round', color: 'text-indigo-600', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
-  { key: 'offer', label: 'Offer', color: 'text-emerald-600', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  { key: 'hold', label: 'On Hold', color: 'text-amber-600', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  { key: 'rejected', label: 'Rejected', color: 'text-rose-600', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
+  { key: 'none', label: 'New / unstaged', color: 'text-muted-foreground', bg: 'bg-muted', border: 'border-border' },
+  { key: 'shortlisted', label: 'Shortlisted', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20' },
+  { key: 'hr', label: 'HR round', color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-500/10', border: 'border-violet-500/20' },
+  { key: 'technical', label: 'Technical round', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/20' },
+  { key: 'offer', label: 'Offer', color: 'text-green-700 dark:text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
+  { key: 'hold', label: 'On hold', color: 'text-amber-700 dark:text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
+  { key: 'rejected', label: 'Rejected', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-500/10', border: 'border-rose-500/20' },
 ] as const
 
 type RecruitStageKey = (typeof RECRUITMENT_STAGES)[number]['key']
@@ -206,22 +206,17 @@ export default function PipelinePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <LayoutDashboard className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Candidate Pipeline</h1>
-            <p className="text-sm text-muted-foreground">Track candidates through each stage of the assessment</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-0"
+        title="Candidate pipeline"
+        description="Track candidates through each stage of an assessment and move them between hiring rounds."
+        icon={<LayoutDashboard />}
+      />
 
       {/* Exam selector */}
-      <Card className="p-4">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-medium text-muted-foreground">Assessment:</span>
+      <Panel className="p-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <span className="shrink-0 text-sm font-medium text-muted-foreground">Assessment</span>
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
             <SelectTrigger>
               <SelectValue placeholder={loadingExams ? 'Loading...' : 'Select an assessment'} />
@@ -233,15 +228,15 @@ export default function PipelinePage() {
             </SelectContent>
           </Select>
         </div>
-      </Card>
+      </Panel>
 
       {/* Empty state: no exam selected */}
       {!selectedExamId && (
-        <div className="flex flex-col items-center justify-center py-20 text-center">
-          <BarChart3 className="h-12 w-12 text-muted-foreground/40 mb-4" />
-          <p className="text-lg font-medium text-muted-foreground">Select an assessment to view pipeline</p>
-          <p className="text-sm text-muted-foreground/70 mt-1">Choose an assessment from the dropdown above</p>
-        </div>
+        <Panel className="flex flex-col items-center justify-center py-16 text-center">
+          <BarChart3 className="h-10 w-10 text-muted-foreground/50 mb-4" />
+          <p className="text-base font-medium text-foreground">Pick an assessment to see its pipeline</p>
+          <p className="text-sm text-muted-foreground mt-1">Choose one from the list above.</p>
+        </Panel>
       )}
 
       {/* Loading */}
@@ -257,50 +252,10 @@ export default function PipelinePage() {
         <>
           {/* Stats cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-                  <Users className="h-4.5 w-4.5 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{pipeline.stats.total}</p>
-                  <p className="text-xs text-muted-foreground">Total Invited</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
-                  <TrendingUp className="h-4.5 w-4.5 text-amber-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{pipeline.stats.total > 0 ? Math.round(((pipeline.stats.completed + pipeline.stats.passed + pipeline.stats.failed) / pipeline.stats.total) * 100) : 0}%</p>
-                  <p className="text-xs text-muted-foreground">Completion Rate</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-500/10">
-                  <Trophy className="h-4.5 w-4.5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{pipeline.stats.passRate}%</p>
-                  <p className="text-xs text-muted-foreground">Pass Rate</p>
-                </div>
-              </div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                  <BarChart3 className="h-4.5 w-4.5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{pipeline.stats.avgScore}%</p>
-                  <p className="text-xs text-muted-foreground">Average Score</p>
-                </div>
-              </div>
-            </Card>
+            <StatCard label="Total invited" value={pipeline.stats.total} icon={<Users />} />
+            <StatCard label="Completion rate" value={`${pipeline.stats.total > 0 ? Math.round(((pipeline.stats.completed + pipeline.stats.passed + pipeline.stats.failed) / pipeline.stats.total) * 100) : 0}%`} icon={<TrendingUp />} />
+            <StatCard label="Pass rate" value={`${pipeline.stats.passRate}%`} icon={<Trophy />} />
+            <StatCard label="Average score" value={`${pipeline.stats.avgScore}%`} icon={<BarChart3 />} />
           </div>
 
           {/* Kanban columns */}
@@ -309,18 +264,18 @@ export default function PipelinePage() {
               const items = pipeline.stages[key]
               return (
                 <div key={key} className="flex flex-col">
-                  <div className={`flex items-center gap-2 rounded-t-lg border ${border} ${bg} px-3 py-2`}>
+                  <div className={`flex items-center gap-2 rounded-t-2xl border ${border} ${bg} px-3 py-2`}>
                     <Icon className={`h-4 w-4 ${color}`} />
                     <span className={`text-sm font-semibold ${color}`}>{label}</span>
                     <Badge variant="secondary" className="ml-auto text-xs">{items.length}</Badge>
                   </div>
-                  <div className={`flex-1 border border-t-0 ${border} rounded-b-lg bg-card/50 max-h-96 overflow-y-auto`}>
+                  <div className={`flex-1 border border-t-0 ${border} rounded-b-2xl bg-card/50 max-h-96 overflow-y-auto`}>
                     {items.length === 0 ? (
                       <div className="py-8 text-center text-xs text-muted-foreground">No candidates</div>
                     ) : (
                       <div className="p-2 space-y-2">
                         {items.map(c => (
-                          <div key={c.id} className="rounded-md border border-border/60 bg-card p-2.5 space-y-1 hover:shadow-sm transition-shadow">
+                          <div key={c.id} className="rounded-xl border border-border/60 bg-card p-2.5 space-y-1 hover:shadow-sm transition-shadow">
                             <p className="text-sm font-medium truncate">{c.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{c.email}</p>
                             {c.company && <p className="text-xs text-muted-foreground truncate">{c.company}</p>}
@@ -384,11 +339,11 @@ export default function PipelinePage() {
                       if (dragged) void moveStage(dragged, key)
                     }}
                   >
-                    <div className={`flex items-center gap-2 rounded-t-lg border ${border} ${bg} px-3 py-2`}>
+                    <div className={`flex items-center gap-2 rounded-t-2xl border ${border} ${bg} px-3 py-2`}>
                       <span className={`text-sm font-semibold ${color}`}>{label}</span>
                       <Badge variant="secondary" className="ml-auto text-xs">{items.length}</Badge>
                     </div>
-                    <div className={`min-h-40 flex-1 border border-t-0 ${border} rounded-b-lg bg-card/50 max-h-[28rem] overflow-y-auto`}>
+                    <div className={`min-h-40 flex-1 border border-t-0 ${border} rounded-b-2xl bg-card/50 max-h-[28rem] overflow-y-auto`}>
                       {items.length === 0 ? (
                         <div className="py-8 text-center text-xs text-muted-foreground">Drop candidates here</div>
                       ) : (
@@ -401,7 +356,7 @@ export default function PipelinePage() {
                                 draggable
                                 onDragStart={(e) => { setDraggingKey(k); e.dataTransfer.effectAllowed = 'move' }}
                                 onDragEnd={() => setDraggingKey(null)}
-                                className={`cursor-grab active:cursor-grabbing rounded-md border border-border/60 bg-card p-2.5 space-y-1 hover:shadow-sm transition-shadow ${draggingKey === k ? 'opacity-50' : ''}`}
+                                className={`cursor-grab active:cursor-grabbing rounded-xl border border-border/60 bg-card p-2.5 space-y-1 hover:shadow-sm transition-shadow ${draggingKey === k ? 'opacity-50' : ''}`}
                                 title="Drag to another stage"
                               >
                                 <div className="flex items-start justify-between gap-2">
@@ -432,13 +387,13 @@ export default function PipelinePage() {
 
           {/* Empty state for pipeline */}
           {pipeline.stats.total === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Users className="h-10 w-10 text-muted-foreground/40 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">No candidates yet</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">
-                Schedule bulk assessments from the <a href="/dashboard/admin/assessments" className="text-primary hover:underline">Assessments</a> page
+            <Panel className="flex flex-col items-center justify-center py-12 text-center">
+              <Users className="h-10 w-10 text-muted-foreground/50 mb-3" />
+              <p className="text-sm font-medium text-foreground">No candidates yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Invite candidates or schedule a bulk run from the <a href="/dashboard/admin/assessments" className="text-primary hover:underline">Assessments</a> page
               </p>
-            </div>
+            </Panel>
           )}
         </>
       )}

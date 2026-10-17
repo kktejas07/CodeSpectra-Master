@@ -16,6 +16,7 @@ import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader } from '@/components/app/page-kit'
 import { parseCodingAnswer, isCodingType } from '@/lib/coding-answer'
 import { ScoreHistogram, StatusDonut, QuestionBars } from '@/components/assessment/results-charts'
 import {
@@ -211,7 +212,7 @@ function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Re
   // Hardware port audit gets a purpose-built summary.
   if (event_type === 'hardware_port_audit') {
     const devices = Array.isArray(meta.devices) ? (meta.devices as Array<Record<string, unknown>>) : []
-    const verdictClass = (v: unknown) => (v === 'blocked' ? 'text-rose-400' : v === 'warn' ? 'text-amber-400' : 'text-emerald-400')
+    const verdictClass = (v: unknown) => (v === 'blocked' ? 'text-rose-600 dark:text-rose-400' : v === 'warn' ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400')
     const verdictLabel = (v: unknown) => (v === 'blocked' ? 'Blocked' : v === 'warn' ? 'Review' : 'Safe')
     return (
       <div className="px-4 pb-3 border-t border-muted/50 space-y-2">
@@ -219,13 +220,13 @@ function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Re
           <span className="text-muted-foreground">Devices <b className="text-foreground">{Number(meta.total ?? 0)}</b></span>
           {devices.length > 0 && (
             <>
-              <span className="text-emerald-400">{Number(meta.safe ?? 0)} safe</span>
-              <span className="text-amber-400">{Number(meta.warn ?? 0)} review</span>
-              <span className="text-rose-400">{Number(meta.blocked ?? 0)} blocked</span>
+              <span className="text-green-600 dark:text-green-400">{Number(meta.safe ?? 0)} safe</span>
+              <span className="text-amber-600 dark:text-amber-400">{Number(meta.warn ?? 0)} review</span>
+              <span className="text-rose-600 dark:text-rose-400">{Number(meta.blocked ?? 0)} blocked</span>
             </>
           )}
           <span className="text-muted-foreground">Monitors <b className="text-foreground">{Number(meta.screen_count ?? 1)}</b></span>
-          {meta.multi_monitor === true && <span className="text-rose-400 font-semibold">Multi-monitor detected</span>}
+          {meta.multi_monitor === true && <span className="text-rose-600 dark:text-rose-400 font-semibold">Multi-monitor detected</span>}
           {meta.browser ? <span className="text-muted-foreground">{String(meta.browser)}</span> : null}
           {meta.os ? <span className="text-muted-foreground">{String(meta.os)}</span> : null}
           {meta.ip ? <span className="text-muted-foreground">IP {String(meta.ip)}</span> : null}
@@ -1260,9 +1261,9 @@ export default function ExamResultsPage() {
       cell: (row: CandidateResult) => {
         const badges: Record<string, React.ReactNode> = {
           pending: <Badge variant="outline" className="text-muted-foreground">Invited</Badge>,
-          in_progress: <Badge variant="outline" className="text-blue-500 border-blue-500/20">In Progress</Badge>,
-          completed: <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 text-white">Completed</Badge>,
-          expired: <Badge variant="secondary" className="text-amber-500">Expired</Badge>,
+          in_progress: <Badge variant="outline" className="text-blue-600 dark:text-blue-400 border-blue-500/20">In progress</Badge>,
+          completed: <Badge variant="success">Completed</Badge>,
+          expired: <Badge variant="secondary" className="text-amber-700 dark:text-amber-400">Expired</Badge>,
         }
         return badges[row.status] || <Badge variant="outline">{row.status}</Badge>
       },
@@ -1272,9 +1273,9 @@ export default function ExamResultsPage() {
       header: 'Graded',
       cell: (row: CandidateResult) => {
         if (row.status !== 'completed') return <span className="text-xs text-muted-foreground">--</span>
-        if (row.graded) return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Graded</span>
+        if (row.graded) return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Graded</span>
         if (row.needsReview) return <span className="text-xs text-amber-500 flex items-center gap-1" title="AI graded, but a question is flagged for human review — open the candidate to finish"><Clock className="w-3 h-3"/> Needs review</span>
-        return <span className="text-xs text-amber-500 flex items-center gap-1"><Clock className="w-3 h-3"/> Not Graded</span>
+        return <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1"><Clock className="w-3 h-3"/> Not graded</span>
       },
     },
     {
@@ -1288,16 +1289,16 @@ export default function ExamResultsPage() {
           return <span className="text-xs text-blue-500 flex items-center gap-1"><Send className="w-3 h-3"/> Sent</span>
         }
         if (row.deliveryStatus === 'opened') {
-          return <span className="text-xs text-emerald-500 flex items-center gap-1"><Eye className="w-3 h-3"/> Opened</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><Eye className="w-3 h-3"/> Opened</span>
         }
         if (row.deliveryStatus === 'delivered') {
-          return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
         }
         if (row.deliveryStatus === 'failed' || row.deliveryStatus === 'bounced') {
           return <span className="text-xs text-rose-500 flex items-center gap-1"><XCircle className="w-3 h-3"/> {row.deliveryStatus === 'bounced' ? 'Bounced' : 'Failed'}</span>
         }
         if (row.status === 'completed') {
-          return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
+          return <span className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
         }
         return <span className="text-xs text-muted-foreground">--</span>
       },
@@ -1308,7 +1309,7 @@ export default function ExamResultsPage() {
       cell: (row: CandidateResult) => (
         <div className="flex items-center gap-2">
           {row.proctoringFlags === 0 ? (
-            <span className="text-emerald-500 text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Clean</span>
+            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Clean</span>
           ) : (
             <span className="text-rose-500 text-xs flex items-center gap-1 font-bold">
               <ShieldAlert className="w-3 h-3"/> {row.proctoringFlags} Flags
@@ -1332,7 +1333,7 @@ export default function ExamResultsPage() {
       header: 'Released',
       cell: (row: CandidateResult) => (
         row.released ? (
-          <span className="text-emerald-500 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Released</span>
+          <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Released</span>
         ) : row.status === 'completed' ? (
           <span className="text-muted-foreground text-xs">Pending</span>
         ) : null
@@ -1366,7 +1367,7 @@ export default function ExamResultsPage() {
                 </DropdownMenuItem>
               )}
               {row.status === 'completed' && row.graded && !row.released && (
-                <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-emerald-500 focus:text-emerald-500">
+                <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-green-600 dark:text-green-400 focus:text-green-600">
                   <Send className="h-4 w-4" /> Release Score
                 </DropdownMenuItem>
               )}
@@ -1431,32 +1432,33 @@ export default function ExamResultsPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
-            <ArrowLeft className="h-4 w-4" /> Back to Assessments
-          </div>
-          <h1 className="text-3xl font-bold tracking-tight">Results: {exam.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
+      <div className="space-y-3">
+        <button type="button" className="flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push('/dashboard/admin/assessments')}>
+          <ArrowLeft className="h-4 w-4" /> Back to assessments
+        </button>
+        <PageHeader
+          className="mb-0"
+          title={<>Results: {exam.title}</>}
+          description="Review submissions, grade open answers, check proctoring and release scores to candidates."
+          icon={<CheckCheck />}
+        />
+        <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{exam.level}</Badge>
             <Badge variant="outline">{exam.duration} mins</Badge>
             <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {completedCount} Submitted
+              {completedCount} submitted
             </Badge>
-            <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
-              {results.length} Total Invited
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:text-amber-400">
+              {results.length} invited
             </Badge>
             {(exam.publicLinkViews ?? 0) > 0 && (
-              <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
+              <Badge variant="secondary" className="bg-blue-500/10 text-blue-600 dark:text-blue-400">
                 <Link className="w-3 h-3 mr-1" />
-                {exam.publicLinkViews} Public Link Views
+                {exam.publicLinkViews} public link views
               </Badge>
             )}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {pendingGradingCount > 0 && (
-            <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
+            <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20">
               <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
             </Badge>
           )}
@@ -1464,7 +1466,7 @@ export default function ExamResultsPage() {
             <Badge
               variant="secondary"
               title={jevConfigured ? 'Jev second-opinion verification active — disagreements escalate to human review' : 'Jev key not configured — free-text grades will be flagged for human review'}
-              className={jevConfigured ? 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'gap-1 bg-muted text-muted-foreground'}
+              className={jevConfigured ? 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20' : 'gap-1 bg-muted text-muted-foreground'}
             >
               <ShieldAlert className="w-3.5 h-3.5" /> {jevConfigured ? 'Jev verified' : 'Jev off'}
             </Badge>
@@ -1473,31 +1475,33 @@ export default function ExamResultsPage() {
             <Badge
               variant="secondary"
               title={`Checked ${fmtDateTime(exam.plagiarismReport.checked_at)} · ${exam.plagiarismReport.pairs} pair(s), ${exam.plagiarismReport.aiFlags} AI flag(s), ${exam.plagiarismReport.bankMatches} bank match(es)`}
-              className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-rose-500/10 text-rose-500 border-rose-500/20' : 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}
+              className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-rose-500/10 text-rose-500 border-rose-500/20' : 'gap-1 bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20'}
             >
               <ShieldAlert className="w-3.5 h-3.5" /> Plagiarism {exam.plagiarismReport.score}/100
             </Badge>
           )}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           {pendingGradingCount > 0 && (
             <Button
               variant="outline"
-              className="gap-2 text-blue-600 border-blue-500/40 hover:bg-blue-500/10 dark:text-blue-400"
+              className="gap-2 text-primary border-primary/40 hover:bg-primary/10"
               onClick={() => gradeCandidates(results.filter(r => r.status === 'completed' && r.graded === false).map(r => r.userId || r.id))}
               disabled={!!bulkGradeIds}
             >
               {bulkGradeIds ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-              {bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : `Grade All Pending (${pendingGradingCount})`}
+              {bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : `Grade all pending (${pendingGradingCount})`}
             </Button>
           )}
           {unreleasedCount > 0 && (
             <Button
               variant="default"
-              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              className="gap-2"
               onClick={openReleaseDialog}
               disabled={bulkReleasing}
             >
               {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              Release All ({unreleasedCount})
+              Release all ({unreleasedCount})
             </Button>
           )}
           <Button
@@ -1507,7 +1511,7 @@ export default function ExamResultsPage() {
             disabled={exportingReport}
           >
             {exportingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            Export Report
+            Export report
           </Button>
           <Button
             variant="outline"
@@ -1521,7 +1525,7 @@ export default function ExamResultsPage() {
           </Button>
           <Button variant="outline" className="gap-2" onClick={remindAllPending} disabled={bulkReminding}>
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
-            Remind All Pending
+            Remind all pending
           </Button>
           <Button variant="outline" className="gap-2" onClick={exportCSV}>
             <Download className="w-4 h-4" /> Export CSV
@@ -1531,20 +1535,21 @@ export default function ExamResultsPage() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {([
-          ['all', 'All Invited', results.length, 'text-foreground', ''],
+          ['all', 'All invited', results.length, 'text-foreground', ''],
           ['pending', 'Invited', pendingCount, 'text-muted-foreground', ''],
-          ['in_progress', 'In Progress', inProgressCount, 'text-blue-600 dark:text-blue-400', ''],
-          ['completed', 'Submitted', completedCount, 'text-emerald-600 dark:text-emerald-400', ''],
-          ['ungraded', 'Awaiting Grading', pendingGradingCount, 'text-amber-600 dark:text-amber-400', ''],
-          ['flagged', 'Flagged Review', flaggedCount, 'text-red-600 dark:text-red-400', ''],
+          ['in_progress', 'In progress', inProgressCount, 'text-blue-600 dark:text-blue-400', ''],
+          ['completed', 'Submitted', completedCount, 'text-green-700 dark:text-green-400', ''],
+          ['ungraded', 'Awaiting grading', pendingGradingCount, 'text-amber-600 dark:text-amber-400', ''],
+          ['flagged', 'Flagged for review', flaggedCount, 'text-red-600 dark:text-red-400', ''],
         ] as const).map(([key, label, count, color, _]) => (
           <button
             key={key}
             type="button"
             onClick={() => setResultFilter(key)}
-            className={`rounded-lg border p-3 text-left transition-colors ${resultFilter === key ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-card hover:bg-muted/50'} ${count === 0 ? 'opacity-60' : ''}`}
+            aria-pressed={resultFilter === key}
+            className={`rounded-2xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${resultFilter === key ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border/70 bg-card hover:bg-muted/50'} ${count === 0 ? 'opacity-60' : ''}`}
           >
-            <div className={`text-2xl font-bold ${color}`}>{count}</div>
+            <div className={`text-2xl font-bold tabular-nums ${color}`}>{count}</div>
             <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
           </button>
         ))}
@@ -1596,7 +1601,7 @@ export default function ExamResultsPage() {
                   <p className="text-muted-foreground truncate">{s.email}</p>
                 </div>
                 {s.has_draft === true && (
-                  <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 shrink-0">draft saved</Badge>
+                  <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400 shrink-0">draft saved</Badge>
                 )}
                 {s.has_draft === false && (
                   <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0">no draft</Badge>
@@ -1713,7 +1718,7 @@ export default function ExamResultsPage() {
                       </span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground block text-xs">Time Used</span>
+                      <span className="text-muted-foreground block text-xs">Time used</span>
                       <span className="text-xl font-bold">
                         {reviewData.submission.total_time_ms
                           ? `${Math.floor(reviewData.submission.total_time_ms / 60000)}m ${Math.floor((reviewData.submission.total_time_ms % 60000) / 1000)}s`
@@ -1728,7 +1733,7 @@ export default function ExamResultsPage() {
                   {/* Answer Review */}
                   <div className="space-y-3">
                     <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Answer Review
+                      <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" /> Answer review
                       {reviewData.submission.has_pending_review && (
                         <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/10">
                           <Clock className="w-3 h-3 mr-1" /> Pending Manual Grading
@@ -1826,12 +1831,12 @@ export default function ExamResultsPage() {
                                     <Badge
                                       variant="outline"
                                       title={detail.jev_agree ? 'Jev second opinion agreed with the AI grade' : 'Jev second opinion disagreed — check this grade manually'}
-                                      className={detail.jev_agree ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30 shrink-0' : 'text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0'}
+                                      className={detail.jev_agree ? 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/30 shrink-0' : 'text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0'}
                                     >
                                       <ShieldAlert className="w-3 h-3 mr-1" /> Jev {detail.jev_agree ? 'agreed' : 'disputed'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` ${Math.round(detail.jev_confidence * 100)}%` : ''}
                                     </Badge>
                                   )}
-                                  <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
+                                  <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
                                     {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
                                   </Badge>
                                 </div>
@@ -1854,11 +1859,11 @@ export default function ExamResultsPage() {
                                   const isSelected = userSet.includes(optLower)
                                   const isCorrectAnswer = correctSet.includes(optLower)
                                   const optClass = isSelected && isCorrectAnswer
-                                    ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'
+                                    ? 'bg-green-500/20 text-green-600 dark:text-green-400 border-green-500/40'
                                     : isSelected && !isCorrectAnswer
                                       ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through'
                                       : !isSelected && isCorrectAnswer
-                                        ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20'
+                                        ? 'bg-green-500/10 text-green-600/70 dark:text-green-400/70 border-green-500/20'
                                         : 'text-muted-foreground'
                                   return (
                                     <div
@@ -1894,8 +1899,8 @@ export default function ExamResultsPage() {
                                 </div>
                                 {modelAnswer && (
                                   <div>
-                                    <span className="text-xs font-medium text-emerald-500 block mb-1">Model Answer / Rubric:</span>
-                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
+                                    <span className="text-xs font-medium text-green-600 dark:text-green-400 block mb-1">Model answer / rubric:</span>
+                                    <pre className="text-xs font-mono bg-green-500/5 border border-green-500/20 text-green-700 dark:text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
                                   </div>
                                 )}
 
@@ -1998,7 +2003,7 @@ export default function ExamResultsPage() {
                       {Object.keys(manualGrades).length > 0 && (
                         <Button
                           size="sm"
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                          className="w-full gap-2"
                           onClick={saveGradesWithAudit}
                           disabled={savingGrades}
                         >
@@ -2017,7 +2022,7 @@ export default function ExamResultsPage() {
                         onClick={() => setShowProctorLog(v => !v)}
                         className="flex items-center gap-2 font-semibold text-sm text-left flex-1 min-w-0"
                       >
-                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">Proctoring Log</span>
+                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">Proctoring log</span>
                         <Badge variant="outline" className="text-xs shrink-0">{reviewData.proctorEvents.length} events</Badge>
                       </button>
                       <button
@@ -2061,29 +2066,29 @@ export default function ExamResultsPage() {
                                     onClick={() => setProctorFilter('all')}
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'all' ? 'bg-muted border-foreground/30' : 'bg-card hover:bg-muted/50'}`}
                                   >
-                                    <div className="text-lg font-bold">{allEvents.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total</div>
+                                    <div className="text-lg font-bold tabular-nums">{allEvents.length}</div>
+                                    <div className="text-[11px] text-muted-foreground font-medium">Total</div>
                                   </div>
                                   <div 
                                     onClick={() => setProctorFilter('high')}
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'high' ? 'bg-rose-500/10 border-rose-500/40' : 'bg-card hover:bg-rose-500/5'}`}
                                   >
-                                    <div className="text-lg font-bold text-rose-500">{highRisk.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-rose-500/70 font-semibold">High Risk</div>
+                                    <div className="text-lg font-bold tabular-nums text-rose-600 dark:text-rose-400">{highRisk.length}</div>
+                                    <div className="text-[11px] text-rose-600/80 dark:text-rose-400/80 font-medium">High risk</div>
                                   </div>
                                   <div 
                                     onClick={() => setProctorFilter('warn')}
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'warn' ? 'bg-amber-500/10 border-amber-500/40' : 'bg-card hover:bg-amber-500/5'}`}
                                   >
-                                    <div className="text-lg font-bold text-amber-500">{warnRisk.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-amber-500/70 font-semibold">Warnings</div>
+                                    <div className="text-lg font-bold tabular-nums text-amber-600 dark:text-amber-400">{warnRisk.length}</div>
+                                    <div className="text-[11px] text-amber-700/80 dark:text-amber-400/80 font-medium">Warnings</div>
                                   </div>
                                   <div 
                                     onClick={() => setProctorFilter('info')}
                                     className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'info' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-card hover:bg-blue-500/5'}`}
                                   >
-                                    <div className="text-lg font-bold text-blue-500">{infoRisk.length}</div>
-                                    <div className="text-[10px] uppercase tracking-wider text-blue-500/70 font-semibold">Info</div>
+                                    <div className="text-lg font-bold tabular-nums text-blue-600 dark:text-blue-400">{infoRisk.length}</div>
+                                    <div className="text-[11px] text-blue-600/80 dark:text-blue-400/80 font-medium">Info</div>
                                   </div>
                                 </div>
                               )}
@@ -2092,7 +2097,7 @@ export default function ExamResultsPage() {
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/50 mt-2">
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{tabSwitches}</div>
-                                    <div className="text-[10px] text-muted-foreground font-medium">Tab Switches</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">Tab switches</div>
                                   </div>
                                   <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
                                     <div className="text-sm font-bold text-foreground">{copyPaste}</div>
@@ -2111,7 +2116,7 @@ export default function ExamResultsPage() {
 
                               {allEvents.length === 0 ? (
                                 <div className="border rounded-lg p-6 text-center">
-                                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mb-2" />
+                                  <CheckCircle2 className="w-8 h-8 text-green-600 dark:text-green-400 mb-2" />
                                   <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
                                 </div>
                               ) : filteredEvents.length === 0 ? (
@@ -2163,7 +2168,7 @@ export default function ExamResultsPage() {
                         </div>
                       </div>
                       <div className="space-y-1">
-                        <span className="text-xs font-semibold text-muted-foreground block">Face Photo</span>
+                        <span className="text-xs font-semibold text-muted-foreground block">Face photo</span>
                         <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
                           {reviewData.submission.face_photo ? (
                             <img src={reviewData.submission.face_photo} alt="Face" className="w-full h-full object-cover" />
@@ -2180,7 +2185,7 @@ export default function ExamResultsPage() {
                 <div className="shrink-0 border-t px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-background">
                   <div className="text-xs text-muted-foreground min-w-0">
                     {reviewData.submission.released_at ? (
-                      <span className="text-emerald-500 flex items-center gap-1">
+                      <span className="text-green-600 dark:text-green-400 flex items-center gap-1">
                         <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Score released on {fmtDateTime(reviewData.submission.released_at)}</span>
                       </span>
                     ) : (
@@ -2189,14 +2194,14 @@ export default function ExamResultsPage() {
                   </div>
                   <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
                     <Button variant="outline" onClick={downloadReviewPdf} className="gap-2">
-                      <Download className="w-4 h-4" /> Download Report
+                      <Download className="w-4 h-4" /> Download report
                     </Button>
                     <Button variant="outline" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
                       Close
                     </Button>
                     {!reviewData.submission.released_at && (
                       <Button
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                        className="gap-2"
                         onClick={() => releaseScore(reviewCandidate.userId || reviewCandidate.id, reviewCandidate.name)}
                         disabled={releasing === (reviewCandidate.userId || reviewCandidate.id)}
                       >
@@ -2222,7 +2227,7 @@ export default function ExamResultsPage() {
       <AlertDialog open={!!confirmDeleteInvite} onOpenChange={(open) => !open && setConfirmDeleteInvite(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Invite?</AlertDialogTitle>
+            <AlertDialogTitle>Delete invite?</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to delete the invite for {confirmDeleteInvite?.name}? This action cannot be undone.
             </AlertDialogDescription>
@@ -2268,7 +2273,7 @@ export default function ExamResultsPage() {
             <div className="max-h-56 overflow-y-auto rounded-md border divide-y divide-border/40">
               {gradeProg.items.map((it) => (
                 <div key={it.id} className="flex items-start gap-2 px-3 py-1.5 text-xs">
-                  {it.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />}
+                  {it.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />}
                   {it.status === 'failed' && <XCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />}
                   {it.status === 'grading' && <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0 mt-0.5" />}
                   {it.status === 'pending' && <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
@@ -2354,7 +2359,7 @@ export default function ExamResultsPage() {
                 </div>
               )}
               {plagResult.suspiciousPairs.length === 0 && plagResult.aiGeneratedFlags.length === 0 && plagResult.questionBankMatches.length === 0 && (
-                <p className="text-sm text-emerald-600 flex items-center gap-2">
+                <p className="text-sm text-green-700 dark:text-green-400 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4" /> No copy or AI-authorship signals found.
                 </p>
               )}
@@ -2389,7 +2394,7 @@ export default function ExamResultsPage() {
                 className="h-9 w-24 rounded-md border border-border bg-background px-2 text-sm"
               />
               <div className="flex gap-2 text-xs">
-                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600">{passPreview.length} pass</Badge>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:text-green-400">{passPreview.length} pass</Badge>
                 <Badge variant="secondary" className="bg-rose-500/10 text-rose-500">{failPreview.length} below</Badge>
                 <Badge variant="secondary">{releasablePreview.length} releasing</Badge>
               </div>
@@ -2398,7 +2403,7 @@ export default function ExamResultsPage() {
               <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
                 {passPreview.map((r) => (
                   <div key={r.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 shrink-0" />
                     <span className="font-medium truncate">{r.name}</span>
                     <span className="text-muted-foreground truncate ml-auto">{r.email}</span>
                     <span className="font-mono font-semibold">{r.score}%</span>
@@ -2407,8 +2412,8 @@ export default function ExamResultsPage() {
               </div>
             )}
             {releaseResult && (
-              <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-                <p className="text-sm font-medium text-emerald-600">
+              <div className="space-y-3 rounded-lg border border-green-500/30 bg-green-500/5 p-3">
+                <p className="text-sm font-medium text-green-700 dark:text-green-400">
                   Released {releaseResult.released} at {releaseResult.cutoff}% — {releaseResult.passed} passed, {releaseResult.failed} below cutoff
                   {releaseResult.skipped_pending > 0 ? `, ${releaseResult.skipped_pending} still locked (ungraded)` : ''}.
                 </p>
@@ -2441,7 +2446,6 @@ export default function ExamResultsPage() {
             <AlertDialogCancel disabled={bulkReleasing}>Close</AlertDialogCancel>
             {!releaseResult && (
               <AlertDialogAction
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 onClick={(e) => { e.preventDefault(); void releaseAllWithAudit() }}
                 disabled={bulkReleasing || releasablePreview.length === 0}
               >

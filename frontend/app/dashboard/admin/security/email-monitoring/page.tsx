@@ -3,6 +3,7 @@ import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { PageHeader, StatCard as KitStatCard } from '@/components/app/page-kit'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -175,31 +176,29 @@ export default function EmailMonitoring() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Email Monitoring</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Track delivery status, bounces, spam complaints, and sender reputation across all channels
-          </p>
-        </div>
-        <div className="flex gap-2">
+      <PageHeader
+        className="mb-0"
+        title="Email monitoring"
+        description="Track delivery, bounces, spam complaints and sender reputation across every channel."
+        icon={<Mail />}
+        actions={<>
           <Button variant="outline" size="sm" className="gap-2" onClick={fetchData} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
           </Button>
           <Button variant="outline" size="sm" className="gap-2" onClick={exportCsv} disabled={logs.length === 0}>
             <Download className="h-4 w-4" /> Export CSV
           </Button>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* ── KPI Cards ──────────────────────────────────────── */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
-        <StatCard label="Total Sent" value={stats?.total ?? 0} icon={Mail} color="bg-slate-600" />
-        <StatCard label="Delivered" value={stats?.delivered ?? 0} icon={MailOpen} color="bg-emerald-600" />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        <StatCard label="Total sent" value={stats?.total ?? 0} icon={Mail} color="bg-slate-600" />
+        <StatCard label="Delivered" value={stats?.delivered ?? 0} icon={MailOpen} color="bg-green-600" />
         <StatCard label="Bounced" value={stats?.bounced ?? 0} icon={MailX} color="bg-amber-600" />
         <StatCard label="Failed" value={stats?.failed ?? 0} icon={MailX} color="bg-red-600" />
         <StatCard label="Spam" value={stats?.spam ?? 0} icon={AlertTriangle} color="bg-orange-600" />
-        <StatCard label="Bounce Rate" value={`${bounceRate}%`} icon={BarChart3} color="bg-rose-600" sub={stats?.sending ? `${stats.sending} sending` : undefined} />
+        <StatCard label="Bounce rate" value={`${bounceRate}%`} icon={BarChart3} color="bg-rose-600" sub={stats?.sending ? `${stats.sending} sending` : undefined} />
       </div>
 
       <Tabs defaultValue="logs" className="w-full">
@@ -212,7 +211,7 @@ export default function EmailMonitoring() {
 
         {/* ── Delivery Log ─────────────────────────────────── */}
         <TabsContent value="logs" className="space-y-4">
-          <Card className="border-border/60 p-4">
+          <Card className="rounded-3xl border-border/70 p-4">
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-50">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -240,7 +239,7 @@ export default function EmailMonitoring() {
             </div>
           </Card>
 
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
               <p className="text-sm text-muted-foreground">{total} total emails{statusFilter ? ` · filtered` : ''}</p>
               <div className="flex items-center gap-2">
@@ -252,7 +251,7 @@ export default function EmailMonitoring() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider">
+                    <tr className="border-b border-border/40 text-muted-foreground text-xs">
                       <th className="text-left py-3 px-4 font-medium">Timestamp</th>
                       <th className="text-left py-3 px-4 font-medium">Recipient</th>
                       <th className="text-left py-3 px-4 font-medium">Subject</th>
@@ -279,8 +278,8 @@ export default function EmailMonitoring() {
         {/* ── Analytics ─────────────────────────────────────── */}
         <TabsContent value="analytics" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Delivery Status Breakdown</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Delivery status</h3>
               {statusData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -295,8 +294,8 @@ export default function EmailMonitoring() {
               )}
             </Card>
 
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Emails by Category</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Emails by category</h3>
               {categoryData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={categoryData}>
@@ -313,8 +312,8 @@ export default function EmailMonitoring() {
             </Card>
           </div>
 
-          <Card className="border-border/60 p-4">
-            <h3 className="font-semibold text-sm mb-3">Bounce / Failure Reasons</h3>
+          <Card className="rounded-3xl border-border/70 p-4">
+            <h3 className="font-semibold text-sm mb-3">Bounce and failure reasons</h3>
             {stats?.bounceReasons && stats.bounceReasons.length > 0 ? (
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
                 {stats.bounceReasons.map((reason, i) => (
@@ -333,8 +332,8 @@ export default function EmailMonitoring() {
         {/* ── Domains & Geo ─────────────────────────────────── */}
         <TabsContent value="domains" className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Top Recipient Domains</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Top recipient domains</h3>
               {domainData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={domainData} layout="vertical">
@@ -350,8 +349,8 @@ export default function EmailMonitoring() {
               )}
             </Card>
 
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Recipients by Country</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Recipients by country</h3>
               {countryData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={countryData}>
@@ -371,11 +370,11 @@ export default function EmailMonitoring() {
 
         {/* ── Bounce Reasons ────────────────────────────────── */}
         <TabsContent value="failures" className="space-y-4">
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <h3 className="font-semibold">Bounce / Error Details</h3>
+                <h3 className="font-semibold">Bounce and error details</h3>
               </div>
               <Badge variant="outline" className="text-xs">{stats?.bounceReasons?.length ?? 0} unique errors</Badge>
             </div>
@@ -407,25 +406,15 @@ export default function EmailMonitoring() {
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
-function StatCard({ label, value, sub, icon: Icon, color }: {
+// `color` is kept for call-site compatibility; tiles now use the shared brand style.
+function StatCard({ label, value, sub, icon: Icon }: {
   label: string
   value: string | number
   sub?: string
   icon: React.ComponentType<any>
   color: string
 }) {
-  return (
-    <Card className="p-4 border-border/60 flex items-start gap-3">
-      <div className={`rounded-lg p-2 ${color}`}>
-        <Icon className="h-4 w-4 text-white" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xl font-bold tabular-nums">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        {sub && <p className="text-[10px] text-muted-foreground/70 mt-0.5">{sub}</p>}
-      </div>
-    </Card>
-  )
+  return <KitStatCard label={label} value={value} hint={sub} icon={<Icon />} />
 }
 
 function EmailRow({ log }: { log: EmailLog }) {

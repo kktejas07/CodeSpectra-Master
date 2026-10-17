@@ -12,6 +12,7 @@ import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Panel } from '@/components/app/page-kit'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
@@ -601,7 +602,7 @@ export default function ExamReviewPage() {
           published: true 
         })
       })
-      addToast({ type: 'success', title: 'Assessment Published!' })
+      addToast({ type: 'success', title: 'Assessment published' })
       router.push('/dashboard/admin/assessments')
     } catch {
       addToast({ type: 'error', title: 'Failed to publish assessment' })
@@ -619,7 +620,7 @@ export default function ExamReviewPage() {
           <SkeletonText lines={1} />
           <SkeletonText lines={2} />
         </div>
-        <div className="bg-card border rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-border/70 rounded-3xl p-6 space-y-4">
           <SkeletonText lines={1} />
           <SkeletonList count={3} />
         </div>
@@ -631,11 +632,11 @@ export default function ExamReviewPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
-            <ArrowLeft className="h-4 w-4" /> Back to Assessments
-          </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 space-y-1">
+          <button type="button" className="mb-2 flex items-center gap-2 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => router.push('/dashboard/admin/assessments')}>
+            <ArrowLeft className="h-4 w-4" /> Back to assessments
+          </button>
           {editingMeta ? (
             <div className="space-y-3">
               <div className="flex items-center gap-2 flex-wrap">
@@ -643,7 +644,7 @@ export default function ExamReviewPage() {
                   value={metaTitle}
                   onChange={(e) => setMetaTitle(e.target.value)}
                   className="text-2xl font-bold h-auto py-1 min-w-50 max-w-[400px]"
-                  placeholder="Assessment Title"
+                  placeholder="Assessment title"
                 />
                 <Button size="sm" onClick={saveExamMeta} disabled={savingMeta}>
                   {savingMeta ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
@@ -735,7 +736,7 @@ export default function ExamReviewPage() {
                   <span className="text-muted-foreground whitespace-nowrap">Require face</span>
                 </label>
                 <div className="flex items-center gap-1.5">
-                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Cert Template:</Label>
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Certificate template:</Label>
                   <select
                     value={metaCertTemplate}
                     onChange={(e) => setMetaCertTemplate(e.target.value)}
@@ -785,13 +786,13 @@ export default function ExamReviewPage() {
             </div>
           ) : (
             <>
-              <h1 className="text-3xl font-bold tracking-tight">
+              <h1 className="text-2xl font-bold tracking-tight text-balance text-foreground sm:text-[1.75rem]">
                 {exam.title}
-                <Button variant="ghost" size="sm" className="ml-2 h-7 w-7 p-0" onClick={() => setEditingMeta(true)} title="Edit exam details">
+                <Button variant="ghost" size="sm" className="ml-2 h-7 w-7 p-0" onClick={() => setEditingMeta(true)} title="Edit exam details" aria-label="Edit assessment details">
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
               </h1>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex flex-wrap items-center gap-2 mt-2">
                 {exam.subject && <Badge variant="outline">{exam.subject}</Badge>}
                 {exam.degree_type && <Badge variant="outline">{DEGREE_TYPES.find(d => d.id === exam.degree_type)?.label || exam.degree_type}</Badge>}
                 {exam.branch && <Badge variant="outline">{BRANCHES.find(b => b.id === exam.branch)?.short || exam.branch}</Badge>}
@@ -805,24 +806,24 @@ export default function ExamReviewPage() {
             </>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as Draft</Button>
-          <Button onClick={handlePublish} disabled={publishing} className="bg-green-600 hover:bg-green-700 text-white">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as draft</Button>
+          <Button onClick={handlePublish} disabled={publishing}>
             {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-            Publish Assessment
+            Publish assessment
           </Button>
         </div>
       </div>
 
-      <div className="bg-card border rounded-lg p-6 space-y-6">
-        <div className="flex items-center justify-between">
+      <Panel className="space-y-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold mb-1">Questions ({exam.questionList.length})</h2>
+            <h2 className="text-lg font-semibold mb-1">Questions <span className="tabular-nums text-muted-foreground">({exam.questionList.length})</span></h2>
             <p className="text-muted-foreground text-sm">
               Review the questions for this assessment. You can add, edit, or remove questions.
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {selectedIds.size > 0 && (
               <Button variant="destructive" size="sm" disabled={deletingSelected} onClick={async () => {
                 setDeletingSelected(true)
@@ -845,23 +846,23 @@ export default function ExamReviewPage() {
               }
             }} className="gap-2">
               <CheckSquare className="h-4 w-4" />
-              {selectedIds.size === exam.questionList.length ? 'Deselect All' : 'Select All'}
+              {selectedIds.size === exam.questionList.length ? 'Deselect all' : 'Select all'}
             </Button>
             <Button variant="outline" onClick={() => { setImportText(''); setImportedPreview(null); setImportModal(true) }} className="gap-2">
               <Upload className="h-4 w-4" /> Import
             </Button>
             <Button variant="outline" onClick={openBankModal} className="gap-2">
-              <Database className="h-4 w-4" /> Pull from Bank
+              <Database className="h-4 w-4" /> Pull from bank
             </Button>
             <Button onClick={openAddQuestion} className="gap-2">
-              <Plus className="h-4 w-4" /> Add Question
+              <Plus className="h-4 w-4" /> Add question
             </Button>
           </div>
         </div>
 
         <div className="space-y-4">
           {exam.questionList.map((q, idx) => (
-            <div key={q.id} className={`border rounded-md p-4 bg-muted/20 relative group transition-colors ${selectedIds.has(q.id) ? 'border-primary ring-1 ring-primary/30' : ''}`}>
+            <div key={q.id} className={`border border-border/70 rounded-2xl p-4 bg-muted/20 relative group transition-colors ${selectedIds.has(q.id) ? 'border-primary ring-1 ring-primary/30' : ''}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 mb-2">
                   <button onClick={() => {
@@ -869,7 +870,7 @@ export default function ExamReviewPage() {
                     if (next.has(q.id)) next.delete(q.id)
                     else next.add(q.id)
                     setSelectedIds(next)
-                  }} className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedIds.has(q.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 hover:border-muted-foreground/60'}`}>
+                  }} aria-label={selectedIds.has(q.id) ? `Deselect question ${idx + 1}` : `Select question ${idx + 1}`} aria-pressed={selectedIds.has(q.id)} className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedIds.has(q.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 hover:border-muted-foreground/60'}`}>
                     {selectedIds.has(q.id) && <CheckSquare className="w-3.5 h-3.5" />}
                   </button>
                   <Badge variant="outline" className="bg-background">
@@ -877,16 +878,16 @@ export default function ExamReviewPage() {
                     {typeLabel(q.type)}
                   </Badge>
                   <span className="text-sm font-medium text-muted-foreground">Q{idx + 1}</span>
-                  <span className="text-xs text-muted-foreground">({q.score} pts)</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">({q.score} pts)</span>
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)} className="h-8">
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
+                  <Button size="sm" variant="ghost" onClick={() => openEditQuestion(q)} className="h-8" aria-label="Edit question">
                     <Edit3 className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleRegenerateQuestion(q.id)} disabled={regeneratingId === q.id} className="h-8">
+                  <Button size="sm" variant="ghost" onClick={() => handleRegenerateQuestion(q.id)} disabled={regeneratingId === q.id} className="h-8" aria-label="Regenerate question">
                     {regeneratingId === q.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => handleDeleteQuestion(q.id)} className="h-8 text-destructive hover:bg-destructive/10">
+                  <Button size="sm" variant="ghost" onClick={() => handleDeleteQuestion(q.id)} className="h-8 text-destructive hover:bg-destructive/10" aria-label="Delete question">
                     <Trash2 className="h-3.5 w-3.5" />
                   </Button>
                 </div>
@@ -904,14 +905,14 @@ export default function ExamReviewPage() {
                         ? (q.answer || '').split(',').map(s => s.trim()).includes(opt)
                         : opt === q.answer
                     return (
-                      <div key={i} className={`p-2 border rounded text-sm ${isCorrect ? 'bg-primary/10 border-primary/30 font-medium' : 'bg-background'}`}>
+                      <div key={i} className={`p-2 border rounded-lg text-sm ${isCorrect ? 'bg-primary/10 border-primary/30 font-medium' : 'bg-background'}`}>
                         <span className={q.type === 'multiple_response' ? 'flex items-center gap-2' : ''}>
                           {isSeq && <span className="text-xs text-muted-foreground mr-2">{i + 1}.</span>}
                           {q.type === 'multiple_response' && (
                             <CheckSquare className={`h-3.5 w-3.5 ${isCorrect ? 'text-primary' : 'text-muted-foreground'}`} />
                           )}
                           {opt}
-                          {isCorrect && !isSeq && <span className="text-xs text-primary ml-2">({q.type === 'multiple_response' ? 'Correct' : 'Correct Answer'})</span>}
+                          {isCorrect && !isSeq && <span className="text-xs text-primary ml-2">({q.type === 'multiple_response' ? 'Correct' : 'Correct answer'})</span>}
                         </span>
                       </div>
                     )
@@ -933,15 +934,15 @@ export default function ExamReviewPage() {
             </div>
           ))}
           {exam.questionList.length === 0 && (
-            <div className="text-center py-12 border border-dashed rounded-lg text-muted-foreground">
-              No questions yet. Click "Add Question" to create one manually.
+            <div className="text-center py-12 border border-dashed rounded-2xl text-sm text-muted-foreground">
+              No questions yet. Click "Add question" to write one, or pull some from the question bank.
             </div>
           )}
           {/* ponytail: the API strips questionList for non-admin sessions, so
               exam.questions > 0 with an empty list means a stale/forbidden
               session — not an empty exam. Say so instead of misleading. */}
           {exam.questionList.length === 0 && (exam.questions || 0) > 0 && (
-            <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
               <p className="font-medium text-amber-700 dark:text-amber-400">
                 Expected {exam.questions} questions, but the server sent none.
               </p>
@@ -960,12 +961,12 @@ export default function ExamReviewPage() {
             </div>
           )}
         </div>
-      </div>
+      </Panel>
 
       <Dialog open={importModal} onOpenChange={setImportModal}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Import Questions</DialogTitle>
+            <DialogTitle>Import questions</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -1077,7 +1078,7 @@ export default function ExamReviewPage() {
         <DialogContent className="sm:max-w-200 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-primary" /> Pull from Question Bank
+              <Database className="h-4 w-4 text-primary" /> Pull from question bank
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -1198,7 +1199,7 @@ export default function ExamReviewPage() {
       <Dialog open={questionModal} onOpenChange={setQuestionModal}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{exam.questionList.find(q => q.id === editingQuestion?.id) ? 'Edit Question' : 'Add Question'}</DialogTitle>
+            <DialogTitle>{exam.questionList.find(q => q.id === editingQuestion?.id) ? 'Edit question' : 'Add question'}</DialogTitle>
           </DialogHeader>
           {editingQuestion && (() => {
             const t = editingQuestion.type
@@ -1209,7 +1210,7 @@ export default function ExamReviewPage() {
             return (
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label>Question Type</Label>
+                <Label>Question type</Label>
                 <Select value={t} onValueChange={(v) => setQ({ ...defaultsForType(v as QuestionType), type: v as QuestionType })}>
                   <SelectTrigger>
                     <SelectValue />
@@ -1454,7 +1455,7 @@ export default function ExamReviewPage() {
                     <Textarea id="q-starter" value={editingQuestion.starter_code || ''} onChange={(e) => setQ({ starter_code: e.target.value })} rows={4} className="font-mono text-xs" placeholder="Function signature / scaffolding the candidate starts from..." />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="q-model-answer">Model Answer / Rubric</Label>
+                    <Label htmlFor="q-model-answer">Model answer / rubric</Label>
                     <Textarea
                       id="q-model-answer"
                       value={editingQuestion.answer || ''}
@@ -1466,7 +1467,7 @@ export default function ExamReviewPage() {
                     <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Hidden Test Cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
+                    <Label>Hidden test cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
                     {(editingQuestion.test_cases || []).map((tc, i) => (
                       <div key={i} className="flex items-start gap-2">
                         <Input
@@ -1498,7 +1499,7 @@ export default function ExamReviewPage() {
 
               {t === 'descriptive' && (
                 <div className="grid gap-2">
-                  <Label htmlFor="q-model-answer">Model Answer / Rubric</Label>
+                  <Label htmlFor="q-model-answer">Model answer / rubric</Label>
                   <Textarea
                     id="q-model-answer"
                     value={editingQuestion.answer || ''}

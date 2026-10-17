@@ -24,6 +24,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard as KitStatCard } from '@/components/app/page-kit'
 
 interface SecuritySetting {
   _id?: string
@@ -115,19 +116,9 @@ interface DashboardData {
   blockedIps?: BlockedIp[]
 }
 
-function StatCard({ label, value, sub, icon: Icon, color }: { label: string; value: string | number; sub?: string; icon: React.ComponentType<any>; color: string }) {
-  return (
-    <Card className="p-5 border-border/60 flex items-start gap-4">
-      <div className={`rounded-lg p-2.5 ${color}`}>
-        <Icon className="h-5 w-5 text-white" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-2xl font-bold tabular-nums">{value}</p>
-        <p className="text-sm text-muted-foreground">{label}</p>
-        {sub && <p className="text-xs text-muted-foreground/70 mt-0.5">{sub}</p>}
-      </div>
-    </Card>
-  )
+// `color` is kept for call-site compatibility; tiles now use the shared brand style.
+function StatCard({ label, value, sub, icon: Icon }: { label: string; value: string | number; sub?: string; icon: React.ComponentType<any>; color: string }) {
+  return <KitStatCard label={label} value={value} hint={sub} icon={<Icon />} />
 }
 
 /** Weekly host-scan status banner linking to the full scans report page. */
@@ -150,9 +141,9 @@ function ScanBanner() {
   const bad = (summary?.critical || 0) > 0 || (summary?.infected || 0) > 0
   return (
     <Link href="/dashboard/admin/security/scans" className="block">
-      <Card className="flex flex-wrap items-center gap-3 border-border/60 p-4 transition-colors hover:bg-muted/40">
-        <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${bad ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
-          {bad ? <ShieldAlert className="h-4 w-4 text-red-500" /> : <ShieldCheck className="h-4 w-4 text-emerald-500" />}
+      <Card className="flex flex-wrap items-center gap-3 rounded-2xl border-border/70 p-4 transition-colors hover:bg-muted/40">
+        <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${bad ? 'bg-red-500/10' : 'bg-green-500/10'}`}>
+          {bad ? <ShieldAlert className="h-4 w-4 text-red-500" /> : <ShieldCheck className="h-4 w-4 text-green-600 dark:text-green-400" />}
         </span>
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-semibold">
@@ -194,7 +185,7 @@ function SessionRow({ session }: { session: UserSession }) {
       >
         <td className="py-3 px-4">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isRecent ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+            <div className={`w-2 h-2 rounded-full ${isRecent ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
             <DeviceIcon device={session.device} />
             <span className="text-sm font-medium">{session.browser}</span>
           </div>
@@ -489,16 +480,18 @@ export default function Security() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Security & Audit</h1>
-          <p className="text-sm text-muted-foreground mt-1">Real-time monitoring: sessions, devices, audit logs, blocked IPs, and security events</p>
-        </div>
-        <Button variant="outline" size="sm" className="gap-2" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        className="mb-0"
+        title="Security and audit"
+        description="Live view of sessions, devices, audit logs, blocked IPs and security events."
+        icon={<ShieldCheck />}
+        actions={
+          <Button variant="outline" size="sm" className="gap-2" onClick={load} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {loading && !data ? (
         <div className="space-y-6">
@@ -510,18 +503,18 @@ export default function Security() {
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="overview" className="gap-1.5"><Activity className="h-4 w-4" />Overview</TabsTrigger>
-            <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" />Audit Logs</TabsTrigger>
-            <TabsTrigger value="fingerprints" className="gap-1.5"><Fingerprint className="h-4 w-4" />Device Fingerprints</TabsTrigger>
+            <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" />Audit logs</TabsTrigger>
+            <TabsTrigger value="fingerprints" className="gap-1.5"><Fingerprint className="h-4 w-4" />Device fingerprints</TabsTrigger>
             <TabsTrigger value="blocked" className="gap-1.5"><Ban className="h-4 w-4" />Blocked IPs</TabsTrigger>
-            <TabsTrigger value="events" className="gap-1.5"><ShieldAlert className="h-4 w-4" />Security Events</TabsTrigger>
+            <TabsTrigger value="events" className="gap-1.5"><ShieldAlert className="h-4 w-4" />Security events</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
           <ScanBanner />
           {/* ── Charts ──────────────────────────────────────────────── */}
           <div className="grid gap-6 lg:grid-cols-3">
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Login Timeline (24h)</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Logins, last 24 hours</h3>
               {loginTimelineData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart data={loginTimelineData}>
@@ -538,8 +531,8 @@ export default function Security() {
               )}
             </Card>
 
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Sessions by Country (Top 10)</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Sessions by country (top 10)</h3>
               {geoData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={geoData}>
@@ -555,8 +548,8 @@ export default function Security() {
               )}
             </Card>
 
-            <Card className="border-border/60 p-4">
-              <h3 className="font-semibold text-sm mb-3">Threat Trend (7d)</h3>
+            <Card className="rounded-3xl border-border/70 p-4">
+              <h3 className="font-semibold text-sm mb-3">Threats, last 7 days</h3>
               {threatTrendData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={200}>
                   <LineChart data={threatTrendData}>
@@ -576,28 +569,28 @@ export default function Security() {
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Active Now"
+              label="Active now"
               value={stats?.activeNow ?? 0}
               sub={stats ? `${stats.uniqueUsersToday} unique today` : undefined}
               icon={Activity}
-              color="bg-emerald-600"
+              color="bg-green-600"
             />
             <StatCard
-              label="Logins Today"
+              label="Logins today"
               value={stats ? `${stats.successCount}` : '0'}
               sub={stats ? `${stats.totalToday} total sessions` : undefined}
               icon={LogIn}
               color="bg-blue-600"
             />
             <StatCard
-              label="Failed Attempts"
+              label="Failed attempts"
               value={stats?.failedCount ?? 0}
               sub="Today"
               icon={Ban}
               color="bg-red-600"
             />
             <StatCard
-              label="Active Sessions"
+              label="Active sessions"
               value={data?.activeSessions?.length ?? 0}
               sub="Last 24h"
               icon={Users}
@@ -605,11 +598,11 @@ export default function Security() {
             />
           </div>
 
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Monitor className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Active Sessions</h3>
+                <h3 className="font-semibold">Active sessions</h3>
               </div>
               <Badge variant="outline" className="text-xs">{data?.activeSessions?.length ?? 0} sessions</Badge>
             </div>
@@ -617,7 +610,7 @@ export default function Security() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider">
+                    <tr className="border-b border-border/40 text-muted-foreground text-xs">
                       <th className="text-left py-3 px-4 font-medium">Device / Browser</th>
                       <th className="text-left py-3 px-4 font-medium">OS</th>
                       <th className="text-left py-3 px-4 font-medium">User</th>
@@ -640,17 +633,17 @@ export default function Security() {
           </Card>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <Activity className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Login Activity</h3>
+                <h3 className="font-semibold">Login activity</h3>
               </div>
               {data?.loginEvents && data.loginEvents.length > 0 ? (
                 <div className="divide-y divide-border/40 max-h-[400px] overflow-y-auto">
                   {data.loginEvents.map(e => (
                     <div key={e.id} className="px-6 py-3 flex items-start gap-3">
                       {e.outcome === 'success' ? (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                       ) : (
                         <XCircle className="h-4 w-4 text-red-500 mt-0.5 shrink-0" />
                       )}
@@ -678,10 +671,10 @@ export default function Security() {
               )}
             </Card>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />
-                <h3 className="font-semibold">Security Alerts</h3>
+                <h3 className="font-semibold">Security alerts</h3>
               </div>
               {data?.recentAlerts && data.recentAlerts.length > 0 ? (
                 <div className="divide-y divide-border/40 max-h-[400px] overflow-y-auto">
@@ -717,10 +710,10 @@ export default function Security() {
             </Card>
           </div>
 
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
               <Shield className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Security Settings</h3>
+              <h3 className="font-semibold">Security settings</h3>
             </div>
             {data?.settings && data.settings.length > 0 ? (
               <div className="grid gap-0 divide-y divide-border/40 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
@@ -746,10 +739,10 @@ export default function Security() {
             )}
           </Card>
 
-          <Card className="border-border/60">
+          <Card className="rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
               <Globe className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Policy Configuration</h3>
+              <h3 className="font-semibold">Policy settings</h3>
             </div>
             <div className="divide-y divide-border/40">
               <div className="p-6">
@@ -838,17 +831,17 @@ export default function Security() {
           {/* ── Audit Logs ──────────────────────────────────────────────────── */}
           <TabsContent value="audit" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Events</p>
-                <p className="mt-1 text-2xl font-bold">{auditStats.total}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Total events</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{auditStats.total}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
-                <p className="mt-1 text-2xl font-bold text-red-500">{auditStats.critical}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Critical</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{auditStats.critical}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Denied / Failed</p>
-                <p className="mt-1 text-2xl font-bold text-amber-500">{auditStats.denied}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Denied / Failed</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{auditStats.denied}</p>
               </Card>
             </div>
             <DataTable
@@ -885,25 +878,25 @@ export default function Security() {
           {/* ── Device Fingerprints ───────────────────────────────────────── */}
           <TabsContent value="fingerprints" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Tracked Devices</p>
-                <p className="mt-1 text-2xl font-bold">{fingerprintStats.total}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Tracked devices</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{fingerprintStats.total}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Multi-Account Risk</p>
-                <p className="mt-1 text-2xl font-bold text-amber-500">{fingerprintStats.risk}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Multi-account risk</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">{fingerprintStats.risk}</p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Blocked Devices</p>
-                <p className="mt-1 text-2xl font-bold text-red-500">{fingerprintStats.blocked}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Blocked devices</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">{fingerprintStats.blocked}</p>
               </Card>
             </div>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Fingerprint className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold">Device Fingerprints</h3>
+                  <h3 className="font-semibold">Device fingerprints</h3>
                 </div>
                 <Badge variant="outline" className="text-xs">FingerprintJS v5</Badge>
               </div>
@@ -911,7 +904,7 @@ export default function Security() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider">
+                      <tr className="border-b border-border/40 text-muted-foreground text-xs">
                         <th className="text-left py-3 px-4 font-medium">Fingerprint</th>
                         <th className="text-left py-3 px-4 font-medium">Accounts</th>
                         <th className="text-left py-3 px-4 font-medium">Seen</th>
@@ -947,7 +940,7 @@ export default function Security() {
                             ) : fp.risk ? (
                               <Badge variant="secondary" className="text-[10px] text-amber-600">Multi-account</Badge>
                             ) : (
-                              <Badge variant="outline" className="text-[10px] text-emerald-600">Clean</Badge>
+                              <Badge variant="outline" className="text-[10px] text-green-700 dark:text-green-400">Clean</Badge>
                             )}
                           </td>
                           <td className="py-3 px-4 text-right">
@@ -977,7 +970,7 @@ export default function Security() {
 
           {/* ── Blocked IPs ───────────────────────────────────────────────── */}
           <TabsContent value="blocked" className="space-y-4">
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <Ban className="h-5 w-5 text-primary" />
                 <h3 className="font-semibold">Block an IP Address</h3>
@@ -1002,7 +995,7 @@ export default function Security() {
               </div>
             </Card>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Blocks className="h-5 w-5 text-primary" />
@@ -1014,7 +1007,7 @@ export default function Security() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-border/40 text-muted-foreground text-xs uppercase tracking-wider">
+                      <tr className="border-b border-border/40 text-muted-foreground text-xs">
                         <th className="text-left py-3 px-4 font-medium">IP</th>
                         <th className="text-left py-3 px-4 font-medium">Reason</th>
                         <th className="text-left py-3 px-4 font-medium">Blocked By</th>
@@ -1058,28 +1051,28 @@ export default function Security() {
           {/* ── Security Events ──────────────────────────────────────────── */}
           <TabsContent value="events" className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
-                <p className="mt-1 text-2xl font-bold text-red-500">
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Critical</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-red-600 dark:text-red-400">
                   {data?.securityEvents?.filter(e => e.severity === 'critical').length ?? 0}
                 </p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Warning</p>
-                <p className="mt-1 text-2xl font-bold text-amber-500">
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Warning</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums text-amber-600 dark:text-amber-400">
                   {data?.securityEvents?.filter(e => e.severity === 'warning').length ?? 0}
                 </p>
               </Card>
-              <Card className="border-border/60 p-4">
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Last 20 Events</p>
-                <p className="mt-1 text-2xl font-bold">{data?.securityEvents?.length ?? 0}</p>
+              <Card className="rounded-2xl border-border/70 p-4">
+                <p className="text-sm font-medium text-muted-foreground">Last 20 events</p>
+                <p className="mt-1 text-2xl font-bold tabular-nums">{data?.securityEvents?.length ?? 0}</p>
               </Card>
             </div>
 
-            <Card className="border-border/60">
+            <Card className="rounded-3xl border-border/70">
               <div className="border-b border-border/60 px-6 py-4 flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold">Security Events</h3>
+                <h3 className="font-semibold">Security events</h3>
               </div>
               {data?.securityEvents && data.securityEvents.length > 0 ? (
                 <div className="divide-y divide-border/40 max-h-[480px] overflow-y-auto">
@@ -1090,7 +1083,7 @@ export default function Security() {
                       ) : e.severity === 'warning' ? (
                         <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
                       ) : (
-                        <CheckCircle className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
                       )}
                       <div className="min-w-0 flex-1">
                         <p className="text-sm">

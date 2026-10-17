@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -15,10 +14,11 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, EyeOff, LogIn, ShieldAlert, RefreshCw, UserRound, Mail } from 'lucide-react'
+import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, EyeOff, LogIn, ShieldAlert, RefreshCw, UserRound, Mail, CheckCircle2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard, Panel, BentoGrid } from '@/components/app/page-kit'
 
 interface Tenant {
   id: string
@@ -414,39 +414,46 @@ export default function TenantsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="flex items-center gap-1.5 text-3xl font-bold text-foreground">
-              Organizations
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p className="text-xs max-w-62.5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </h1>
-            <p className="text-sm text-muted-foreground">Tenants scoped to Organization admins</p>
-          </div>
+      <PageHeader
+        className="mb-0"
+        title={
+          <span className="inline-flex items-center gap-1.5">
+            Organizations
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-62.5">Enterprise tenants. View members, impersonate an org admin to debug their experience, edit plan/slug, or delete.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </span>
+        }
+        description="Company and college accounts. Each one has its own organization admins and members."
+        icon={<Building2 />}
+        actions={
+          <Button onClick={() => setCreateOpen(true)} className="gap-2">
+            <Plus className="h-4 w-4" /> New organization
+          </Button>
+        }
+      />
+
+      {!loading && tenants.length > 0 && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <StatCard label="Organizations" value={tenants.length} icon={<Building2 />} />
+          <StatCard label="Active" value={tenants.filter(t => t.is_active).length} icon={<CheckCircle2 />} />
+          <StatCard label="Members" value={tenants.reduce((n, t) => n + (t.member_count || 0), 0)} icon={<Users />} />
         </div>
-        <Button onClick={() => setCreateOpen(true)} className="gap-2">
-          <Plus className="h-4 w-4" /> New organization
-        </Button>
-      </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-50">
-          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8 h-9 text-sm" aria-label="Search organizations" />
         </div>
-        <p className="text-xs text-muted-foreground">{filtered.length} organization{filtered.length !== 1 ? 's' : ''}</p>
+        <p className="text-sm tabular-nums text-muted-foreground">{filtered.length} organization{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 
       {loading ? (
@@ -454,22 +461,22 @@ export default function TenantsPage() {
           {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="border-border/60 p-12 text-center">
-          <Building2 className="h-12 w-12 text-muted-foreground/30" />
-          <p className="mt-3 text-muted-foreground">No organizations yet. Create your first tenant to assign Organization admins.</p>
+        <Panel className="flex flex-col items-center p-12 text-center">
+          <Building2 className="h-10 w-10 text-muted-foreground/50" />
+          <p className="mt-3 text-muted-foreground">{search ? 'No organizations match your search.' : 'No organizations yet. Create one, then add its organization admins.'}</p>
           <Button className="mt-4 gap-2" size="sm" onClick={() => setCreateOpen(true)}><Plus className="h-4 w-4" /> New organization</Button>
-        </Card>
+        </Panel>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <BentoGrid className="lg:grid-cols-3">
           {filtered.map(t => (
-            <Card key={t.id} className={`border-border/60 p-5 ${t.is_active ? '' : 'opacity-70'}`}>
+            <Panel key={t.id} interactive className={`p-5 ${t.is_active ? '' : 'opacity-70'}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-foreground">{t.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{t.slug || t.id}</p>
                 </div>
-                <Badge variant={t.is_active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                  {t.is_active ? 'active' : 'inactive'}
+                <Badge variant={t.is_active ? 'success' : 'secondary'} className="text-[11px] shrink-0">
+                  {t.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
               <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -494,7 +501,7 @@ export default function TenantsPage() {
                         <button
                           type="button"
                           aria-label={`Toggle ${t.name} active state`}
-                          className="rounded p-1 text-muted-foreground hover:text-foreground"
+                          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           onClick={() => void handleToggleActive(t)}
                           disabled={togglingId === t.id}
                         >
@@ -507,7 +514,7 @@ export default function TenantsPage() {
                   <button
                     type="button"
                     aria-label={`Delete ${t.name}`}
-                    className="rounded p-1 text-muted-foreground hover:text-destructive"
+                    className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={async () => {
                     const ok = await confirm({
                       title: `Delete "${t.name}"?`,
@@ -524,9 +531,9 @@ export default function TenantsPage() {
                   </button>
                 </div>
               </div>
-            </Card>
+            </Panel>
           ))}
-        </div>
+        </BentoGrid>
       )}
 
       {/* Create drawer */}

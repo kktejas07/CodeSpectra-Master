@@ -5,6 +5,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Loader2, Shield, AlertTriangle, RefreshCw, AlertCircle, Eye } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
 
 interface ProctorEvent {
   event_type: string
@@ -117,31 +118,27 @@ export function ProctoringPanel() {
   })
 
   const riskPieData = [
-    { name: 'High Risk', value: highRiskCount, color: '#ef4444' },
-    { name: 'Low/Medium Risk', value: lowRiskCount, color: '#f59e0b' }
+    { name: 'High risk', value: highRiskCount, color: '#ef4444' },
+    { name: 'Low/medium risk', value: lowRiskCount, color: '#f59e0b' }
   ]
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Shield className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Proctoring Analytics</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Proctoring flags and event distribution across assessments</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+      <PageHeader
+        className="mb-0"
+        title="Proctoring analytics"
+        description="Proctoring flags and how they are spread across your assessments."
+        icon={<Shield />}
+        actions={<>
           {lastUpdated && (
             <span className="text-xs text-muted-foreground">
               Updated: {formatTime(lastUpdated)}
             </span>
           )}
           <button
+            type="button"
             onClick={() => void fetchData()}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -155,60 +152,20 @@ export function ProctoringPanel() {
             />
             Auto-refresh
           </label>
-        </div>
-      </div>
+        </>}
+      />
 
       {/* KPI Row */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{data?.total_flags ?? 0}</p>
-              <p className="text-xs text-muted-foreground">Total Flags</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
-              <AlertCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{highRiskCount}</p>
-              <p className="text-xs text-muted-foreground">High Risk Events</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-              <Eye className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{lowRiskCount}</p>
-              <p className="text-xs text-muted-foreground">Low Risk Events</p>
-            </div>
-          </div>
-        </Card>
-        <Card className="border-border/60 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
-              <Shield className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-foreground">{sortedTypes.length}</p>
-              <p className="text-xs text-muted-foreground">Unique Types</p>
-            </div>
-          </div>
-        </Card>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard label="Total flags" value={data?.total_flags ?? 0} icon={<AlertTriangle />} />
+        <StatCard label="High-risk events" value={highRiskCount} icon={<AlertCircle />} />
+        <StatCard label="Low-risk events" value={lowRiskCount} icon={<Eye />} />
+        <StatCard label="Event types" value={sortedTypes.length} icon={<Shield />} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/60 p-6 flex flex-col">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h2>
+        <Card className="rounded-3xl border-border/70 p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Risk distribution</h2>
           <div className="flex-1 min-h-[250px]">
             {riskPieData.some(d => d.value > 0) ? (
               <ResponsiveContainer width="100%" height="100%">
@@ -239,10 +196,10 @@ export function ProctoringPanel() {
           </div>
         </Card>
 
-        <Card className="border-border/60 p-6 flex flex-col">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Top Flags per Exam</h2>
+        <Card className="rounded-3xl border-border/70 p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Most-flagged assessments</h2>
           {examFlags.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No proctoring data available.</div>
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No proctoring flags yet.</div>
           ) : (
             <div className="space-y-4 overflow-y-auto max-h-[250px] pr-2">
               {examFlags.slice(0, 5).map(exam => (
@@ -252,7 +209,7 @@ export function ProctoringPanel() {
                   </span>
                   <div className="flex-1 h-6 rounded-full bg-muted/50 overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-red-500/60 transition-all"
+                      className="h-full rounded-full bg-red-500/60 transition-all motion-reduce:transition-none"
                       style={{ width: `${(exam.total / maxExamFlags) * 100}%` }}
                     />
                   </div>
@@ -264,18 +221,18 @@ export function ProctoringPanel() {
         </Card>
       </div>
 
-      <Card className="border-border/60 overflow-hidden">
+      <Card className="rounded-3xl border-border/70 overflow-hidden">
         <div className="px-6 py-4 border-b border-border/60">
-          <h2 className="text-lg font-semibold text-foreground">Flags by Event Type</h2>
+          <h2 className="text-lg font-semibold text-foreground">Flags by event type</h2>
         </div>
         {sortedTypes.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">No event data.</div>
+          <div className="p-8 text-center text-muted-foreground text-sm">No proctoring events yet.</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/60 text-muted-foreground">
-                  <th className="px-6 py-3 text-left font-medium">Event Type</th>
+                  <th className="px-6 py-3 text-left font-medium">Event type</th>
                   <th className="px-6 py-3 text-left font-medium w-40">Distribution</th>
                   <th className="px-6 py-3 text-right font-medium">Count</th>
                 </tr>
@@ -295,7 +252,7 @@ export function ProctoringPanel() {
                     <td className="px-6 py-3">
                       <div className="h-4 rounded-full bg-muted/50 overflow-hidden">
                         <div
-                          className="h-full rounded-full transition-all"
+                          className="h-full rounded-full transition-all motion-reduce:transition-none"
                           style={{
                             width: `${(count / maxCount) * 100}%`,
                             backgroundColor: EVENT_COLORS[type] || '#6b7280',

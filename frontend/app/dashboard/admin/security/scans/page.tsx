@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonTable, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { cn } from '@/lib/utils'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
 
 interface ImageResult {
   image: string
@@ -77,28 +78,25 @@ export default function SecurityScansPage() {
       <div>
         <Link
           href="/dashboard/admin/security"
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 rounded-md text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <ArrowLeft className="h-3 w-3" /> Security
+          <ArrowLeft className="h-4 w-4" /> Security
         </Link>
-        <h1 className="mt-1 flex items-center gap-2 text-3xl font-bold tracking-tight">
-          {healthy ? (
-            <ShieldCheck className="h-7 w-7 text-emerald-500" />
-          ) : (
-            <ShieldAlert className="h-7 w-7 text-amber-500" />
-          )}
-          Security Scans
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Weekly Trivy image CVEs + ClamAV filesystem sweep, reported from the host.
-          {latest
-            ? ` Last run ${formatDateTime(latest.ranAt)}.`
-            : ' No reports yet — the next scheduled run will populate this page.'}
-        </p>
+        <PageHeader
+          className="mb-0 mt-2"
+          title="Security scans"
+          description={<>
+            Weekly Trivy image CVEs and ClamAV filesystem sweep, reported from the host.
+            {latest
+              ? ` Last run ${formatDateTime(latest.ranAt)}.`
+              : ' No reports yet — the next scheduled run will fill this page.'}
+          </>}
+          icon={healthy ? <ShieldCheck /> : <ShieldAlert />}
+        />
       </div>
 
       {error ? (
-        <Card className="flex flex-col items-center gap-3 p-10 text-center">
+        <Card className="flex flex-col items-center gap-3 rounded-3xl p-10 text-center">
           <p className="text-sm font-medium">Couldn&apos;t load scan reports</p>
           <p className="text-xs text-muted-foreground">{error}</p>
           <Button size="sm" onClick={load}>
@@ -110,49 +108,27 @@ export default function SecurityScansPage() {
           variant="default"
           title="No scan reports yet"
           description="Reports appear here after the first scheduled Sunday run, or trigger /usr/local/bin/codespectra-weekly-scan.sh on the host."
-          actionLabel="Back to Security"
+          actionLabel="Back to security"
           actionHref="/dashboard/admin/security"
         />
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <Card className="p-4">
-              <p className="text-2xl font-bold tabular-nums">{latest.images.length}</p>
-              <p className="text-xs text-muted-foreground">Images scanned</p>
-            </Card>
-            <Card className="p-4">
-              <p
-                className={cn(
-                  'text-2xl font-bold tabular-nums',
-                  critTotal > 0 ? 'text-red-500' : 'text-emerald-500',
-                )}
-              >
-                {critTotal}
-              </p>
-              <p className="text-xs text-muted-foreground">Critical CVEs</p>
-            </Card>
-            <Card className="p-4">
-              <p
-                className={cn(
-                  'text-2xl font-bold tabular-nums',
-                  infected.length > 0 ? 'text-red-500' : 'text-emerald-500',
-                )}
-              >
-                {infected.length}
-              </p>
-              <p className="text-xs text-muted-foreground">Malware hits</p>
-            </Card>
-            <Card className="p-4">
-              <p className="truncate text-sm font-bold">
-                {latest.freshclam ? 'Current' : 'Unknown'}
-              </p>
-              <p className="text-xs text-muted-foreground">AV signatures</p>
-            </Card>
+            <StatCard label="Images scanned" value={latest.images.length} />
+            <StatCard
+              label="Critical CVEs"
+              value={<span className={cn(critTotal > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400')}>{critTotal}</span>}
+            />
+            <StatCard
+              label="Malware hits"
+              value={<span className={cn(infected.length > 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400')}>{infected.length}</span>}
+            />
+            <StatCard label="AV signatures" value={latest.freshclam ? 'Current' : 'Unknown'} />
           </div>
 
           {infected.length > 0 && (
-            <Card className="border-red-500/40 bg-red-500/5 p-4">
-              <p className="text-sm font-semibold text-red-600">Infected files — isolate immediately</p>
+            <Card className="rounded-2xl border-red-500/40 bg-red-500/5 p-4">
+              <p className="text-sm font-semibold text-red-600 dark:text-red-400">Infected files — isolate immediately</p>
               <ul className="mt-2 space-y-1 font-mono text-xs">
                 {infected.map((f) => (
                   <li key={f} className="break-all">
@@ -164,13 +140,13 @@ export default function SecurityScansPage() {
           )}
 
           <div>
-            <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Per-image CVEs (High + Critical)
+            <h2 className="mb-2.5 text-sm font-semibold text-foreground">
+              CVEs per image (high and critical)
             </h2>
             <ul className="space-y-2">
               {latest.images.map((img) => (
                 <li key={img.image}>
-                  <Card className="p-3">
+                  <Card className="rounded-2xl p-3">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="min-w-0 flex-1 truncate font-mono text-xs font-medium">
                         {img.image}
@@ -198,10 +174,10 @@ export default function SecurityScansPage() {
 
           {history.length > 0 && (
             <div>
-              <h2 className="mb-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <h2 className="mb-2.5 text-sm font-semibold text-foreground">
                 History
               </h2>
-              <Card className="divide-y divide-border/60">
+              <Card className="divide-y divide-border/60 rounded-2xl">
                 {history.map((h) => (
                   <div key={h.ranAt} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-xs">
                     <span className="tabular-nums text-muted-foreground">

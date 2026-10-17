@@ -85,7 +85,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add User</DialogTitle>
+            <DialogTitle>Add user</DialogTitle>
             <DialogDescription>
               Creates a new user account with full platform access. Every user can freely join events, interviews, codeathons, and use all features.
             </DialogDescription>

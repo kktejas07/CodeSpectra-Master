@@ -209,7 +209,7 @@ export function UserManagementTable({
         </div>
       )}
 
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden rounded-2xl border-border/70">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b border-border">

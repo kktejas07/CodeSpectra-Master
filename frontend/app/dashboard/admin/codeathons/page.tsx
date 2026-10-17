@@ -23,6 +23,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/app/page-kit'
 
 interface TestCase {
   input: string
@@ -195,7 +196,7 @@ function CodeathonFormFields({
         </div>
 
         <div className="space-y-2 pt-1">
-          <Label className="text-xs font-semibold text-foreground">Topics & Focus Areas</Label>
+          <Label className="text-xs font-semibold text-foreground">Topics and focus areas</Label>
           <div className="flex flex-wrap gap-1.5 p-3 rounded-lg border border-border/60 bg-muted/20">
             {TOPIC_OPTIONS.map((t) => {
               const active = formData.topics.includes(t)
@@ -207,8 +208,8 @@ function CodeathonFormFields({
                   className={cn(
                     'px-2.5 py-1 rounded-full text-xs font-medium border transition-all',
                     active
-                      ? 'bg-emerald-500 text-black font-semibold border-emerald-400 shadow-xs'
-                      : 'bg-card text-muted-foreground border-border hover:border-emerald-500/40 hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground font-semibold border-primary shadow-xs'
+                      : 'bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground'
                   )}
                 >
                   {t}
@@ -238,7 +239,7 @@ function CodeathonFormFields({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Max Participants</Label>
+            <Label className="text-xs font-semibold text-foreground">Max participants</Label>
             <Input
               type="number"
               min={0}
@@ -252,7 +253,7 @@ function CodeathonFormFields({
 
         <div className="grid grid-cols-1 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Start Date & Time</Label>
+            <Label className="text-xs font-semibold text-foreground">Start date and time</Label>
             <Input
               type="datetime-local"
               value={formData.startDate}
@@ -262,7 +263,7 @@ function CodeathonFormFields({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">End Date & Time</Label>
+            <Label className="text-xs font-semibold text-foreground">End date and time</Label>
             <Input
               type="datetime-local"
               value={formData.endDate}
@@ -274,7 +275,7 @@ function CodeathonFormFields({
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Prize Pool</Label>
+            <Label className="text-xs font-semibold text-foreground">Prize pool</Label>
             <Input
               value={formData.prizePool}
               onChange={(e) => setFormData((prev) => ({ ...prev, prizePool: e.target.value }))}
@@ -284,7 +285,7 @@ function CodeathonFormFields({
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground">Certificate Template</Label>
+            <Label className="text-xs font-semibold text-foreground">Certificate template</Label>
             <Select
               value={formData.cert_template}
               onValueChange={(v) => setFormData((prev) => ({ ...prev, cert_template: v }))}
@@ -301,14 +302,14 @@ function CodeathonFormFields({
 
         {/* Event Format Card */}
         <div className="rounded-xl border border-border/80 bg-muted/15 p-4 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            <Terminal className="h-3.5 w-3.5 text-emerald-400" />
-            <span>Event Format & Visibility</span>
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Terminal className="h-4 w-4 text-primary" />
+            <span>Event format and visibility</span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Event Type</Label>
+              <Label className="text-xs font-medium">Event type</Label>
               <Select
                 value={formData.event_type}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, event_type: v }))}
@@ -322,7 +323,7 @@ function CodeathonFormFields({
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-medium">Problem Visibility</Label>
+              <Label className="text-xs font-medium">Problem visibility</Label>
               <Select
                 value={formData.problem_visibility}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, problem_visibility: v }))}
@@ -339,7 +340,7 @@ function CodeathonFormFields({
           {formData.event_type === 'team' && (
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
               <div className="space-y-1">
-                <Label className="text-xs">Min Team Size</Label>
+                <Label className="text-xs">Min team size</Label>
                 <Input
                   type="number"
                   min={1}
@@ -350,7 +351,7 @@ function CodeathonFormFields({
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Max Team Size</Label>
+                <Label className="text-xs">Max team size</Label>
                 <Input
                   type="number"
                   min={formData.team_size_min}
@@ -720,10 +721,10 @@ export default function AdminCodeathonsPage() {
         <div className="rounded-xl border border-border/80 bg-muted/20 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-emerald-400" />
-              <h4 className="text-sm font-bold text-foreground">Current Problem Set ({problemsList.length})</h4>
+              <BookOpen className="h-4 w-4 text-primary" />
+              <h4 className="text-sm font-bold text-foreground">Current problem set ({problemsList.length})</h4>
             </div>
-            <span className="text-xs font-mono font-semibold text-emerald-400">
+            <span className="text-xs font-semibold tabular-nums text-primary">
               Total: {problemsList.reduce((sum, p) => sum + (p.points || 0), 0)} pts
             </span>
           </div>
@@ -744,9 +745,9 @@ export default function AdminCodeathonsPage() {
                           variant="outline"
                           className={cn(
                             'text-[10px] px-1.5 py-0',
-                            p.difficulty === 'Hard' ? 'border-rose-500/40 text-rose-400 bg-rose-500/10' :
-                            p.difficulty === 'Easy' ? 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10' :
-                            'border-amber-500/40 text-amber-400 bg-amber-500/10'
+                            p.difficulty === 'Hard' ? 'border-rose-500/40 text-rose-700 dark:text-rose-400 bg-rose-500/10' :
+                            p.difficulty === 'Easy' ? 'border-green-500/40 text-green-700 dark:text-green-400 bg-green-500/10' :
+                            'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10'
                           )}
                         >
                           {p.difficulty}
@@ -758,7 +759,7 @@ export default function AdminCodeathonsPage() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-400"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600 dark:hover:text-rose-400"
                     onClick={() => removeProblem(p.id)}
                     title="Remove Problem"
                   >
@@ -785,7 +786,7 @@ export default function AdminCodeathonsPage() {
                 <Search className="h-3.5 w-3.5" /> Import from Bank
               </TabsTrigger>
               <TabsTrigger value="ai" className="text-xs gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-amber-400" /> AI Generator
+                <Sparkles className="h-3.5 w-3.5 text-primary" /> AI generator
               </TabsTrigger>
             </TabsList>
 
@@ -793,7 +794,7 @@ export default function AdminCodeathonsPage() {
             <TabsContent value="create" className="space-y-3 pt-3">
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_100px] gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Problem Title *</Label>
+                  <Label className="text-[11px] font-medium">Problem title *</Label>
                   <Input
                     value={problemForm.title}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, title: e.target.value }))}
@@ -828,7 +829,7 @@ export default function AdminCodeathonsPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-[11px] font-medium">Problem Statement / Requirements</Label>
+                <Label className="text-[11px] font-medium">Problem statement</Label>
                 <Textarea
                   value={problemForm.description}
                   onChange={(e) => setProblemForm((prev) => ({ ...prev, description: e.target.value }))}
@@ -840,7 +841,7 @@ export default function AdminCodeathonsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Sample Input</Label>
+                  <Label className="text-[11px] font-medium">Sample input</Label>
                   <Textarea
                     value={problemForm.sample_input}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, sample_input: e.target.value }))}
@@ -850,7 +851,7 @@ export default function AdminCodeathonsPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Sample Output</Label>
+                  <Label className="text-[11px] font-medium">Sample output</Label>
                   <Textarea
                     value={problemForm.sample_output}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, sample_output: e.target.value }))}
@@ -866,10 +867,10 @@ export default function AdminCodeathonsPage() {
                   size="sm"
                   onClick={addCustomProblem}
                   disabled={!problemForm.title.trim()}
-                  className="h-8 px-4 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-xs"
+                  className="h-8 px-4 text-xs gap-1.5 font-semibold"
                 >
                   <Plus className="h-3.5 w-3.5" />
-                  Add Problem to Competition
+                  Add problem
                 </Button>
               </div>
             </TabsContent>
@@ -905,7 +906,7 @@ export default function AdminCodeathonsPage() {
                   {bankResults.map((bp) => (
                     <div
                       key={bp.id || bp.slug}
-                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border/80 bg-muted/20 hover:border-emerald-500/40 transition-colors"
+                      className="flex items-center justify-between gap-2 p-2.5 rounded-lg border border-border/80 bg-muted/20 hover:border-primary/40 transition-colors"
                     >
                       <div className="min-w-0">
                         <p className="text-xs font-semibold text-foreground truncate">{bp.title}</p>
@@ -914,7 +915,7 @@ export default function AdminCodeathonsPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="h-7 px-2.5 text-[11px] font-semibold gap-1 hover:bg-emerald-500/20 hover:text-emerald-400"
+                        className="h-7 px-2.5 text-[11px] font-semibold gap-1 hover:bg-primary/10 hover:text-primary"
                         onClick={() => importFromBank(bp)}
                       >
                         <Plus className="h-3 w-3" /> Import
@@ -959,7 +960,7 @@ export default function AdminCodeathonsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-[11px] font-medium">Focus Topic</Label>
+                  <Label className="text-[11px] font-medium">Focus topic</Label>
                   <Input
                     value={aiTopic}
                     onChange={(e) => setAiTopic(e.target.value)}
@@ -974,10 +975,10 @@ export default function AdminCodeathonsPage() {
                   size="sm"
                   onClick={() => void generateAiProblem(setProblemsList)}
                   disabled={generatingAi}
-                  className="h-8 px-4 text-xs gap-1.5 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-xs"
+                  className="h-8 px-4 text-xs gap-1.5 font-semibold"
                 >
                   {generatingAi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  Synthesize Problem via AI
+                  Generate problem with AI
                 </Button>
               </div>
             </TabsContent>
@@ -995,7 +996,7 @@ export default function AdminCodeathonsPage() {
         <div className="space-y-0.5">
           <Link
             href={`/dashboard/codeathons/${r.id}`}
-            className="font-bold text-foreground hover:text-emerald-400 hover:underline flex items-center gap-1.5 transition-colors"
+            className="font-bold text-foreground hover:text-primary hover:underline flex items-center gap-1.5 transition-colors"
           >
             {r.title}
             <ExternalLink className="h-3 w-3 text-muted-foreground inline" />
@@ -1011,9 +1012,9 @@ export default function AdminCodeathonsPage() {
         <Badge
           className={
             r.status === 'active'
-              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+              ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
               : r.status === 'upcoming'
-              ? 'bg-sky-500/20 text-sky-400 border-sky-500/30'
+              ? 'bg-sky-500/15 text-sky-700 dark:text-sky-400 border-sky-500/30'
               : 'bg-muted text-muted-foreground border-border'
           }
         >
@@ -1029,10 +1030,10 @@ export default function AdminCodeathonsPage() {
           variant="outline"
           className={
             r.difficulty === 'Hard'
-              ? 'border-rose-400 text-rose-400 bg-rose-500/10'
+              ? 'border-rose-500/40 text-rose-700 dark:text-rose-400 bg-rose-500/10'
               : r.difficulty === 'Easy'
-              ? 'border-emerald-400 text-emerald-400 bg-emerald-500/10'
-              : 'border-amber-400 text-amber-400 bg-amber-500/10'
+              ? 'border-green-500/40 text-green-700 dark:text-green-400 bg-green-500/10'
+              : 'border-amber-500/40 text-amber-700 dark:text-amber-400 bg-amber-500/10'
           }
         >
           {r.difficulty || 'Medium'}
@@ -1065,10 +1066,10 @@ export default function AdminCodeathonsPage() {
           size="sm"
           variant="outline"
           onClick={() => openProblemManager(r)}
-          className="h-7 px-2 text-xs font-semibold gap-1 hover:border-emerald-500/40 hover:text-emerald-400"
+          className="h-7 px-2 text-xs font-semibold gap-1 hover:border-primary/40 hover:text-primary"
           title="Click to view and manage problems"
         >
-          <BookOpen className="h-3.5 w-3.5 text-emerald-400" />
+          <BookOpen className="h-3.5 w-3.5 text-primary" />
           <span>{r.problems?.length || 0}</span>
         </Button>
       ),
@@ -1087,7 +1088,7 @@ export default function AdminCodeathonsPage() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-emerald-400 hover:bg-emerald-500/10"
+            className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
             onClick={() => {
               setShareTarget(r)
               copyShareLink(r)
@@ -1101,7 +1102,7 @@ export default function AdminCodeathonsPage() {
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-sky-400 hover:bg-sky-500/10"
+            className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-primary hover:bg-primary/10"
             onClick={() => void loadSubmissions(r)}
             title="Submissions & Code Reviews / Judge Scores"
           >
@@ -1145,20 +1146,14 @@ export default function AdminCodeathonsPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500/20 via-teal-500/15 to-cyan-500/10 border border-emerald-500/30 shadow-sm">
-            <Trophy className="h-6 w-6 text-emerald-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Codeathon & Hackathon Management</h1>
-            <p className="text-muted-foreground text-xs sm:text-sm">
-              Author problem sets, distribute invite links, review participant code submissions, and publish judge scores.
-            </p>
-          </div>
-        </div>
+      <PageHeader
+        className="mb-0"
+        title="Codeathons"
+        description="Write problem sets, share invite links, review submitted code and publish judge scores."
+        icon={<Trophy />}
+        actions={
         <Button
-          className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md shrink-0"
+          className="gap-2 font-semibold shrink-0"
           onClick={() => {
             setForm(INITIAL_FORM)
             setCreateProblems([])
@@ -1166,9 +1161,10 @@ export default function AdminCodeathonsPage() {
           }}
         >
           <Plus className="w-4 h-4" />
-          Create Codeathon
+          Create codeathon
         </Button>
-      </div>
+        }
+      />
 
       {loading ? (
         <SkeletonTable rows={5} />
@@ -1191,7 +1187,7 @@ export default function AdminCodeathonsPage() {
           ]}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No codeathons yet. Click 'Create Codeathon' to author problems and host your tournament."
+          emptyMessage="No codeathons yet. Click 'Create codeathon' to write problems and host your first event."
         />
       )}
 
@@ -1200,11 +1196,11 @@ export default function AdminCodeathonsPage() {
         <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary">
                 <Trophy className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Create Codeathon</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">Create codeathon</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   Configure competition parameters, topics, timeline, and curate the problem set before launch.
                 </DialogDescription>
@@ -1218,8 +1214,8 @@ export default function AdminCodeathonsPage() {
             {/* Problem Set Manager Card inside Create flow */}
             <div className="px-6 pb-6 border-t border-border/60 pt-4">
               <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-emerald-400" />
-                Tournament Problem Set
+                <BookOpen className="h-4 w-4 text-primary" />
+                Problem set
               </h3>
               {renderProblemManagerContent(createProblems, setCreateProblems)}
             </div>
@@ -1232,10 +1228,10 @@ export default function AdminCodeathonsPage() {
             <Button
               onClick={handleCreate}
               disabled={saving || !form.title.trim()}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md"
+              className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-1.5" />}
-              Publish Codeathon
+              Publish codeathon
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1250,7 +1246,7 @@ export default function AdminCodeathonsPage() {
                 <Pencil className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Edit Codeathon: {editing?.title}</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">Edit codeathon: {editing?.title}</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   Update competition details, event parameters, and curate the problem set.
                 </DialogDescription>
@@ -1264,8 +1260,8 @@ export default function AdminCodeathonsPage() {
             {/* Problem Set Manager inside Edit flow */}
             <div className="px-6 pb-6 border-t border-border/60 pt-4">
               <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-emerald-400" />
-                Tournament Problem Set
+                <BookOpen className="h-4 w-4 text-primary" />
+                Problem set
               </h3>
               {renderProblemManagerContent(editingProblems, setEditingProblems)}
             </div>
@@ -1278,7 +1274,7 @@ export default function AdminCodeathonsPage() {
             <Button
               onClick={saveEdit}
               disabled={saving || !editForm.title.trim()}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md"
+              className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
               Save Changes
@@ -1292,7 +1288,7 @@ export default function AdminCodeathonsPage() {
         <DialogContent className="sm:max-w-3xl max-h-[88vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary">
                 <BookOpen className="h-5 w-5" />
               </div>
               <div>
@@ -1317,7 +1313,7 @@ export default function AdminCodeathonsPage() {
             <Button
               onClick={saveStandaloneProblems}
               disabled={saving}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-md"
+              className="font-semibold"
             >
               {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Check className="h-4 w-4 mr-1.5" />}
               Save Problem Set
@@ -1332,20 +1328,20 @@ export default function AdminCodeathonsPage() {
           <DialogHeader className="px-6 py-4 border-b border-border bg-muted/20 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sky-500/15 border border-sky-500/30 text-sky-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary">
                   <Award className="h-5 w-5" />
                 </div>
                 <div>
                   <DialogTitle className="text-lg font-bold text-foreground">
-                    Submissions & Code Reviews: {submissionsTarget?.title}
+                    Submissions and code review: {submissionsTarget?.title}
                   </DialogTitle>
                   <DialogDescription className="text-xs text-muted-foreground">
                     Inspect participant code submissions, test execution diagnostics, and publish judge feedback.
                   </DialogDescription>
                 </div>
               </div>
-              <Badge variant="outline" className="font-mono text-xs border-sky-500/30 text-sky-400">
-                {submissionsList.length} Submissions
+              <Badge variant="outline" className="tabular-nums text-xs border-primary/30 text-primary">
+                {submissionsList.length} submissions
               </Badge>
             </div>
           </DialogHeader>
@@ -1353,7 +1349,7 @@ export default function AdminCodeathonsPage() {
           <div className="flex-1 overflow-y-auto p-6">
             {loadingSubmissions ? (
               <div className="flex items-center justify-center py-20 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mr-2 text-sky-400" />
+                <Loader2 className="h-6 w-6 animate-spin mr-2 text-primary" />
                 Loading submissions...
               </div>
             ) : submissionsList.length === 0 ? (
@@ -1382,8 +1378,8 @@ export default function AdminCodeathonsPage() {
                     <Badge
                       className={
                         selectedSubmission.status === 'accepted'
-                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                          : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                          ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
+                          : 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30'
                       }
                     >
                       {selectedSubmission.status}
@@ -1417,7 +1413,7 @@ export default function AdminCodeathonsPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-foreground flex items-center gap-1.5">
-                      <FileCode className="h-3.5 w-3.5 text-emerald-400" />
+                      <FileCode className="h-3.5 w-3.5 text-primary" />
                       Submitted Source Code
                     </span>
                     <Button
@@ -1429,7 +1425,7 @@ export default function AdminCodeathonsPage() {
                         addToast({ type: 'success', title: 'Code copied to clipboard!' })
                       }}
                     >
-                      <Copy className="h-3 w-3" /> Copy Code
+                      <Copy className="h-3 w-3" /> Copy code
                     </Button>
                   </div>
                   <pre className="p-4 rounded-xl border border-border/80 bg-slate-950 font-mono text-xs text-emerald-300 overflow-x-auto max-h-64 select-text">
@@ -1440,7 +1436,7 @@ export default function AdminCodeathonsPage() {
                 {/* Output / Diagnostics */}
                 {(selectedSubmission.output || selectedSubmission.error) && (
                   <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground">Execution Output / Diagnostics</span>
+                    <span className="text-xs font-semibold text-muted-foreground">Output and errors</span>
                     <pre className="p-3 rounded-lg border border-border/60 bg-muted/40 font-mono text-[11px] text-foreground overflow-x-auto max-h-28">
                       {selectedSubmission.output || selectedSubmission.error}
                     </pre>
@@ -1448,15 +1444,15 @@ export default function AdminCodeathonsPage() {
                 )}
 
                 {/* Judge Review & Feedback Form */}
-                <div className="rounded-xl border border-sky-500/30 bg-sky-950/15 p-4 space-y-4">
-                  <div className="flex items-center gap-2 text-xs font-bold text-sky-400 uppercase tracking-wider">
-                    <Award className="h-4 w-4" />
-                    <span>Judge Review & Score Grading</span>
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 space-y-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Award className="h-4 w-4 text-primary" />
+                    <span>Judge review and score</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Awarded Score (Points)</Label>
+                      <Label className="text-xs font-semibold">Score (points)</Label>
                       <Input
                         type="number"
                         value={reviewScore}
@@ -1466,7 +1462,7 @@ export default function AdminCodeathonsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold">Evaluation Status</Label>
+                      <Label className="text-xs font-semibold">Status</Label>
                       <Select value={reviewStatus} onValueChange={setReviewStatus}>
                         <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -1479,7 +1475,7 @@ export default function AdminCodeathonsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold">Judge Review Feedback / Code Quality Notes</Label>
+                    <Label className="text-xs font-semibold">Judge feedback</Label>
                     <Textarea
                       value={reviewNotes}
                       onChange={(e) => setReviewNotes(e.target.value)}
@@ -1493,7 +1489,7 @@ export default function AdminCodeathonsPage() {
                     <Button
                       onClick={handleSaveReview}
                       disabled={savingReview}
-                      className="bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs gap-1.5 shadow-md"
+                      className="font-semibold text-xs gap-1.5"
                     >
                       {savingReview ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckSquare className="h-3.5 w-3.5" />}
                       Publish Review & Update Score
@@ -1537,14 +1533,14 @@ export default function AdminCodeathonsPage() {
                               className={cn(
                                 'text-[10px]',
                                 s.status === 'accepted'
-                                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
-                                  : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                                  ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
+                                  : 'bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/30'
                               )}
                             >
-                              {s.status === 'accepted' ? 'Accepted' : 'Wrong Answer'} ({s.test_cases_passed}/{s.test_cases_total})
+                              {s.status === 'accepted' ? 'Accepted' : 'Wrong answer'} ({s.test_cases_passed}/{s.test_cases_total})
                             </Badge>
                           </td>
-                          <td className="p-3 font-mono font-bold text-emerald-400">
+                          <td className="p-3 font-mono font-bold tabular-nums text-primary">
                             {s.score} pts
                           </td>
                           <td className="p-3">
@@ -1560,7 +1556,7 @@ export default function AdminCodeathonsPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-7 px-2.5 text-xs gap-1 hover:border-sky-500/40 hover:text-sky-400"
+                              className="h-7 px-2.5 text-xs gap-1 hover:border-primary/40 hover:text-primary"
                               onClick={() => openReviewDrawer(s)}
                             >
                               <Code2 className="h-3.5 w-3.5" /> Review Code
@@ -1588,11 +1584,11 @@ export default function AdminCodeathonsPage() {
         <DialogContent className="sm:max-w-lg p-6 border-border bg-card/95 backdrop-blur-xl shadow-2xl">
           <DialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 border border-primary/20 text-primary">
                 <Share2 className="h-5 w-5" />
               </div>
               <div>
-                <DialogTitle className="text-lg font-bold text-foreground">Share Codeathon</DialogTitle>
+                <DialogTitle className="text-lg font-bold text-foreground">Share codeathon</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   Distribute the tournament access link to candidates, participants, and judges.
                 </DialogDescription>
@@ -1602,7 +1598,7 @@ export default function AdminCodeathonsPage() {
 
           <div className="space-y-4 pt-4">
             <div className="p-4 rounded-xl border border-border bg-muted/20 space-y-2">
-              <span className="text-xs font-semibold text-foreground block">Tournament Direct URL</span>
+              <span className="text-xs font-semibold text-foreground block">Direct link</span>
               <div className="flex items-center gap-2">
                 <Input
                   readOnly
@@ -1611,7 +1607,7 @@ export default function AdminCodeathonsPage() {
                 />
                 <Button
                   size="sm"
-                  className="h-9 px-3 shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5"
+                  className="h-9 px-3 shrink-0 gap-1.5"
                   onClick={() => shareTarget && copyShareLink(shareTarget)}
                 >
                   {copiedLink ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

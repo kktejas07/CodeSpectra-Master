@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card } from '@/components/ui/card'
+import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -243,18 +243,15 @@ export default function BulkSchedulePage() {
   return (
     <div className="w-full space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-          <Upload className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Bulk Schedule Assessments</h1>
-          <p className="text-sm text-muted-foreground">Upload a CSV of candidates and invite them in bulk</p>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-0"
+        title="Bulk schedule assessments"
+        description="Upload a CSV of candidates and invite them all to one assessment."
+        icon={<Upload />}
+      />
 
       {/* Progress indicator */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {STEPS.map((s, i) => (
           <div key={s} className="flex items-center gap-2">
             <div className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-colors ${
@@ -271,11 +268,11 @@ export default function BulkSchedulePage() {
       </div>
 
       {/* Step content */}
-      <Card className="p-6">
+      <Panel>
         {/* Step 0: Select Assessment */}
         {step === 0 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Select Assessment</h2>
+            <h2 className="text-lg font-semibold">Select assessment</h2>
             <p className="text-sm text-muted-foreground">Choose which assessment to schedule for your candidates. Search by title or role.</p>
             <Popover open={examPickerOpen} onOpenChange={setExamPickerOpen}>
               <PopoverTrigger asChild>
@@ -379,7 +376,7 @@ export default function BulkSchedulePage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold">Preview Candidates</h2>
+                <h2 className="text-lg font-semibold">Preview candidates</h2>
                 <p className="text-sm text-muted-foreground">
                   File: {csvFileName}
                 </p>
@@ -422,7 +419,7 @@ export default function BulkSchedulePage() {
         {/* Step 3: Schedule Settings */}
         {step === 3 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Schedule Settings</h2>
+            <h2 className="text-lg font-semibold">Schedule settings</h2>
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="deadline">Deadline (optional)</Label>
@@ -435,7 +432,7 @@ export default function BulkSchedulePage() {
                 <p className="text-xs text-muted-foreground">Candidates must complete before this date. Default: 7 days.</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="duration">Duration Override (optional)</Label>
+                <Label htmlFor="duration">Duration override (optional)</Label>
                 <Input
                   id="duration"
                   type="number"
@@ -447,7 +444,7 @@ export default function BulkSchedulePage() {
                 <p className="text-xs text-muted-foreground">Override the assessment's default duration in minutes.</p>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="message">Custom Email Message (optional)</Label>
+                <Label htmlFor="message">Custom email message (optional)</Label>
                 <Textarea
                   id="message"
                   rows={3}
@@ -471,8 +468,8 @@ export default function BulkSchedulePage() {
         {/* Step 4: Confirm */}
         {step === 4 && !result && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Confirm & Send</h2>
-            <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
+            <h2 className="text-lg font-semibold">Confirm and send</h2>
+            <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 space-y-2 text-sm">
               <p><strong>Assessment:</strong> {selectedExam?.title}</p>
               <p><strong>Candidates:</strong> {validCount} valid candidates will be invited</p>
               {deadline && <p><strong>Deadline:</strong> {formatDateTime(deadline)}</p>}
@@ -485,7 +482,7 @@ export default function BulkSchedulePage() {
               </Button>
               <Button onClick={handleSend} disabled={sending} className="gap-2">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {sending ? 'Sending...' : `Send ${validCount} Invite(s)`}
+                {sending ? 'Sending...' : `Send ${validCount} invite(s)`}
               </Button>
             </div>
           </div>
@@ -494,22 +491,22 @@ export default function BulkSchedulePage() {
         {/* Result */}
         {step === 4 && result && (
           <div className="space-y-4">
-            <div className={`rounded-lg border p-6 ${result.failed === 0 ? 'border-green-500/20 bg-green-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
+            <div className={`rounded-2xl border p-6 ${result.failed === 0 ? 'border-green-500/20 bg-green-500/5' : 'border-amber-500/20 bg-amber-500/5'}`}>
               <div className="flex items-center gap-3 mb-3">
                 {result.failed === 0 ? (
-                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  <CheckCircle2 className="h-6 w-6 text-green-600 dark:text-green-400" />
                 ) : (
-                  <AlertTriangle className="h-6 w-6 text-amber-600" />
+                  <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                 )}
                 <div>
                   <p className="font-semibold text-lg">{result.created} invite(s) sent successfully</p>
-                  {result.failed > 0 && <p className="text-amber-600">{result.failed} failed</p>}
+                  {result.failed > 0 && <p className="text-amber-700 dark:text-amber-400">{result.failed} failed</p>}
                 </div>
               </div>
               {result.errors.length > 0 && (
                 <div className="mt-3 space-y-1 text-sm">
                   {result.errors.map((e, i) => (
-                    <p key={i} className="text-red-600">
+                    <p key={i} className="text-red-600 dark:text-red-400">
                       <strong>{e.email}:</strong> {e.reason}
                     </p>
                   ))}
@@ -518,15 +515,15 @@ export default function BulkSchedulePage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>
-                Back to Assessments
+                Back to assessments
               </Button>
               <Button onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
-                View Pipeline
+                View pipeline
               </Button>
             </div>
           </div>
         )}
-      </Card>
+      </Panel>
     </div>
   )
 }

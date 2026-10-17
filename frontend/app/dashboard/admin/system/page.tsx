@@ -19,6 +19,7 @@ import { useToast } from '@/lib/toast-context'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
 
 const emptyCharts: AnalyticsDashboardProps = {
   userGrowth: [],
@@ -68,7 +69,8 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
   return (
     <div className="h-2 w-full rounded-full bg-muted/50">
       <div
-        className={`h-2 rounded-full transition-all duration-500 ${color}`}
+        // High usage reads as a warning regardless of the metric's own colour.
+        className={`h-2 rounded-full transition-all duration-500 motion-reduce:transition-none ${pct >= 90 ? 'bg-red-500' : pct >= 75 ? 'bg-amber-500' : color}`}
         style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
       />
     </div>
@@ -331,18 +333,13 @@ export default function SystemAdminDashboard() {
 
   return (
     <div className="space-y-8" data-testid="admin-system-page">
-      <div className="space-y-2" data-tour="admin-system-header">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <Server className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Operations overview</h1>
-            <p className="text-muted-foreground">
-              Live server health, platform metrics, and audit access.
-            </p>
-          </div>
-        </div>
+      <div data-tour="admin-system-header">
+        <PageHeader
+          className="mb-0"
+          title="Operations overview"
+          description="Live server health, platform metrics and audit access."
+          icon={<Server />}
+        />
       </div>
 
       {/* Server Health */}
@@ -351,8 +348,8 @@ export default function SystemAdminDashboard() {
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Cpu className="h-5 w-5 text-primary" /> Server health
-              <Badge variant="outline" className="ml-2 text-[10px]">
-                auto-refresh 30s
+              <Badge variant="outline" className="ml-2 text-[11px] font-normal">
+                Refreshes every 30s
               </Badge>
             </h2>
             <Button variant="outline" size="sm" onClick={fetchServerStats} disabled={refreshing}>
@@ -363,51 +360,51 @@ export default function SystemAdminDashboard() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             {/* CPU */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">CPU</p>
-                <Cpu className="h-5 w-5 text-blue-400" />
+                <Cpu className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{server.cpu.usagePct}%</p>
-              <ProgressBar pct={server.cpu.usagePct} color="bg-blue-500" />
+              <p className="text-2xl font-bold tabular-nums text-foreground">{server.cpu.usagePct}%</p>
+              <ProgressBar pct={server.cpu.usagePct} color="bg-primary" />
               <p className="text-[11px] text-muted-foreground">
                 {server.cpu.cores} cores · load {server.cpu.loadAvg1.toFixed(1)}
               </p>
             </Card>
 
             {/* RAM */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">RAM</p>
-                <MemoryStick className="h-5 w-5 text-green-400" />
+                <MemoryStick className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{server.memory.usagePct}%</p>
-              <ProgressBar pct={server.memory.usagePct} color="bg-green-500" />
+              <p className="text-2xl font-bold tabular-nums text-foreground">{server.memory.usagePct}%</p>
+              <ProgressBar pct={server.memory.usagePct} color="bg-primary" />
               <p className="text-[11px] text-muted-foreground">
                 {fmtBytes(server.memory.used)} / {fmtBytes(server.memory.total)}
               </p>
             </Card>
 
             {/* Disk */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">Disk</p>
-                <HardDrive className="h-5 w-5 text-yellow-400" />
+                <HardDrive className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">{server.disk.usagePct}%</p>
-              <ProgressBar pct={server.disk.usagePct} color="bg-yellow-500" />
+              <p className="text-2xl font-bold tabular-nums text-foreground">{server.disk.usagePct}%</p>
+              <ProgressBar pct={server.disk.usagePct} color="bg-primary" />
               <p className="text-[11px] text-muted-foreground">
                 {fmtBytes(server.disk.free)} free of {fmtBytes(server.disk.total)}
               </p>
             </Card>
 
             {/* Containers */}
-            <Card className="p-5 space-y-3">
+            <Card className="rounded-3xl p-5 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">Containers</p>
-                <Container className="h-5 w-5 text-purple-400" />
+                <Container className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-bold tabular-nums text-foreground">
                 {server.containers.available ? server.containers.count : '—'}
               </p>
               {server.containers.available ? (
@@ -416,7 +413,7 @@ export default function SystemAdminDashboard() {
                 <p className="text-[11px] text-muted-foreground">Docker daemon not reachable</p>
               )}
               <p className="text-[11px] text-muted-foreground">
-                Piston: <Badge variant={server.piston.status === 'connected' ? 'default' : 'destructive'} className="text-[10px] px-1 py-0">
+                Code runner: <Badge variant={server.piston.status === 'connected' ? 'success' : 'destructive'} className="text-[10px] px-1 py-0">
                   {server.piston.status}
                 </Badge>
                 {' '}· {server.piston.runtimes} langs
@@ -430,7 +427,7 @@ export default function SystemAdminDashboard() {
           {/* Container list + Cache management row */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Container list */}
-            <Card className="p-5">
+            <Card className="rounded-3xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Terminal className="h-4 w-4 text-muted-foreground" /> Running containers
@@ -480,7 +477,7 @@ export default function SystemAdminDashboard() {
             </Card>
 
             {/* Cache management */}
-            <Card className="p-5">
+            <Card className="rounded-3xl p-5">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Zap className="h-4 w-4 text-muted-foreground" /> Maintenance
@@ -561,7 +558,7 @@ export default function SystemAdminDashboard() {
             </Card>
 
             {/* Redis health + live rate-limit counters */}
-            <Card className="p-5 lg:col-span-2" data-tour="admin-system-redis">
+            <Card className="rounded-3xl p-5 lg:col-span-2" data-tour="admin-system-redis">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Database className="h-4 w-4 text-muted-foreground" /> Redis & rate limiting
@@ -641,7 +638,7 @@ export default function SystemAdminDashboard() {
                         return (
                           <div key={cat.kind}>
                             <div className="mb-1.5 flex items-center gap-2">
-                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cat.label}</p>
+                              <p className="text-xs font-semibold text-muted-foreground">{cat.label}</p>
                               <Badge variant="outline" className="px-1 text-[9px]">{items.length}</Badge>
                             </div>
                             <div className="space-y-1.5">
@@ -709,8 +706,8 @@ export default function SystemAdminDashboard() {
         <Kpi label="Org admins" value={stats.admins} icon={BarChart3} />
       </div>
 
-      <div className="rounded-lg border border-border/40 bg-card p-8 space-y-6" data-tour="admin-system-quick-links">
-        <h2 className="flex items-center gap-3 text-xl font-bold text-foreground">
+      <div className="rounded-3xl border border-border/70 bg-card p-6 space-y-5 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none" data-tour="admin-system-quick-links">
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
           <Lock className="h-5 w-5 text-primary" /> Quick links
         </h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -761,9 +758,9 @@ export default function SystemAdminDashboard() {
               const isGood = key === 'CLS' ? (p75 != null ? p75 <= 0.1 : false) : (p75 != null ? p75 <= 2500 : false)
               const isPoor = key === 'CLS' ? (p75 != null ? p75 > 0.25 : false) : (p75 != null ? p75 > 4000 : false)
               const ratingLabel = p75 == null ? 'No data' : isGood ? 'Good' : isPoor ? 'Poor' : 'Needs work'
-              const ratingColor = p75 == null ? 'text-muted-foreground' : isGood ? 'text-green-500' : isPoor ? 'text-red-500' : 'text-amber-500'
+              const ratingColor = p75 == null ? 'text-muted-foreground' : isGood ? 'text-green-600 dark:text-green-400' : isPoor ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
               return (
-                <Card key={key} className="border-border/60 p-4">
+                <Card key={key} className="rounded-2xl border-border/70 p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Icon className="h-4 w-4 text-muted-foreground" />
@@ -783,10 +780,10 @@ export default function SystemAdminDashboard() {
             })}
           </div>
         ) : (
-          <Card className="border-dashed border-muted-foreground/30 p-6 text-center">
+          <Card className="flex flex-col items-center rounded-3xl border-dashed border-muted-foreground/30 p-6 text-center">
             <Gauge className="h-8 w-8 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">
-              {webVitals ? 'No web vitals data collected yet' : 'Loading performance data...'}
+              {webVitals ? 'No page-speed data yet — it appears once visitors load pages.' : 'Loading performance data...'}
             </p>
           </Card>
         )}
@@ -807,17 +804,7 @@ function Kpi({
   value: number
   icon: React.ComponentType<{ className?: string }>
 }) {
-  return (
-    <Card className="p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="mb-2 text-sm text-muted-foreground">{label}</p>
-          <p className="text-3xl font-bold text-foreground">{value}</p>
-        </div>
-        <Icon className="h-8 w-8 text-primary/40" />
-      </div>
-    </Card>
-  )
+  return <StatCard label={label} value={value} icon={<Icon />} />
 }
 
 function QL({
@@ -830,7 +817,7 @@ function QL({
   label: string
 }) {
   return (
-    <Button className="h-12 justify-start" asChild variant="secondary">
+    <Button className="h-12 justify-start rounded-xl" asChild variant="secondary">
       <Link href={href}>
         <Icon className="mr-3 h-5 w-5" /> {label}
       </Link>

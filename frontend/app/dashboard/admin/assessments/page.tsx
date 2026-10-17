@@ -11,6 +11,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { PageHeader, StatCard } from '@/components/app/page-kit'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
@@ -511,27 +512,27 @@ export default function AdminExamsPage() {
       <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="More options">
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" title="More options" aria-label="More options">
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuItem onSelect={() => setTimeout(() => openInviteModal(r), 0)} disabled={!r.published} className="gap-2">
-              <Send className="h-4 w-4" /> Invite Candidate
+              <Send className="h-4 w-4" /> Invite candidate
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setTimeout(() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }, 0)} disabled={!r.published} className="gap-2">
-              <Users className="h-4 w-4" /> Bulk Invite
+              <Users className="h-4 w-4" /> Bulk invite
             </DropdownMenuItem>
             {r.published && (
               <DropdownMenuItem onSelect={() => setTimeout(() => openLinkDialog(r), 0)} className="gap-2">
-                <Link2 className="h-4 w-4" /> Copy Public Link
+                <Link2 className="h-4 w-4" /> Share links
               </DropdownMenuItem>
             )}
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/results`)} className="gap-2">
-              <Eye className="h-4 w-4" /> View Results
+              <Eye className="h-4 w-4" /> View results
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/edit`)} className="gap-2">
-              <Edit className="h-4 w-4" /> Edit Assessment
+              <Edit className="h-4 w-4" /> Edit assessment
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive">
               <Trash2 className="h-4 w-4" /> Delete
@@ -550,30 +551,36 @@ export default function AdminExamsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <BookOpen className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Assessment Management</h1>
-            <p className="text-muted-foreground text-sm">{visibleExams.length} assessments</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
-            <Upload className="w-4 h-4" />Bulk Schedule
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
-            <LayoutDashboard className="w-4 h-4" />Pipeline
-          </Button>
-          <Button className="gap-2" onClick={openAddModal}>
-            <Plus className="w-4 h-4" />Add Assessment
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        className="mb-0"
+        title="Assessments"
+        description="Build tests, invite candidates and review results."
+        icon={<BookOpen />}
+        actions={
+          <>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
+              <Upload className="w-4 h-4" />Bulk schedule
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
+              <LayoutDashboard className="w-4 h-4" />Pipeline
+            </Button>
+            <Button className="gap-2" onClick={openAddModal}>
+              <Plus className="w-4 h-4" />Add assessment
+            </Button>
+          </>
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
+      {!loading && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <StatCard label="Assessments" value={visibleExams.length} icon={<BookOpen />} />
+          <StatCard label="Published" value={visibleExams.filter(e => e.published).length} icon={<CheckCircle2 />} />
+          <StatCard label="Invites sent" value={visibleExams.reduce((n, e) => n + (e.invites || 0), 0)} icon={<Send />} />
+          <StatCard label="Submitted" value={visibleExams.reduce((n, e) => n + (e.attempts || 0), 0)} icon={<Users />} />
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-card p-3">
         <span className="text-sm font-medium text-muted-foreground">Created:</span>
         <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
         <span className="text-muted-foreground">to</span>
@@ -602,14 +609,14 @@ export default function AdminExamsPage() {
           searchKeys={['title', 'subject', 'level', 'tenant_id']}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No assessments. Click 'Add Assessment' to create one."
+          emptyMessage="No assessments yet. Click 'Add assessment' to create your first test."
         />
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
+            <DialogTitle>{editingExam ? 'Edit assessment' : 'Create assessment'}</DialogTitle>
           </DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4 py-4">
             <div className="col-span-1 sm:col-span-2 lg:col-span-3 grid gap-2">
@@ -617,11 +624,11 @@ export default function AdminExamsPage() {
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. JavaScript Fundamentals" />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="subject">Target Role / Subject</Label>
+              <Label htmlFor="subject">Target role / subject</Label>
               <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. QA Engineer, Full Stack Developer" />
             </div>
             <div className="grid gap-2">
-              <Label>Complexity Level</Label>
+              <Label>Level</Label>
               <Select value={level} onValueChange={setLevel}>
                 <SelectTrigger>
                   <SelectValue />
@@ -658,7 +665,7 @@ export default function AdminExamsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Screening Type</Label>
+              <Label>Screening type</Label>
               <Select value={screeningType} onValueChange={setScreeningType}>
                 <SelectTrigger>
                   <SelectValue />
@@ -732,12 +739,12 @@ export default function AdminExamsPage() {
               <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
             </div>
             <div className="sm:col-span-2 lg:col-span-3 grid gap-2">
-              <Label htmlFor="techStack">Topics / Skills (comma separated)</Label>
+              <Label htmlFor="techStack">Topics / skills (comma separated)</Label>
               <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Selenium, TestNG, API Testing, SQL" />
             </div>
             <div className="flex items-center justify-between mt-2 sm:col-span-2 lg:col-span-3">
               <div className="space-y-0.5">
-                <Label>Access Type</Label>
+                <Label>Access</Label>
                 <div className="text-sm text-muted-foreground">
                   Who can take this assessment
                 </div>
@@ -752,7 +759,7 @@ export default function AdminExamsPage() {
                       : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  Invite Only
+                  Invite only
                 </button>
                 <button
                   type="button"
@@ -763,7 +770,7 @@ export default function AdminExamsPage() {
                       : 'bg-card text-muted-foreground border-border hover:border-primary/50'
                   }`}
                 >
-                  Open to All
+                  Open to all
                 </button>
               </div>
             </div>
@@ -779,11 +786,11 @@ export default function AdminExamsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveExam} disabled={saving} className={!editingExam ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}>
+            <Button onClick={handleSaveExam} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {!editingExam && !saving && questions > 0 && <Wand2 className="mr-2 h-4 w-4" />}
               {!editingExam && !saving && questions === 0 && <Plus className="mr-2 h-4 w-4" />}
-              {editingExam ? 'Save Changes' : questions > 0 ? 'Generate with AI' : 'Create Blank Assessment'}
+              {editingExam ? 'Save changes' : questions > 0 ? 'Generate with AI' : 'Create blank assessment'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -792,7 +799,7 @@ export default function AdminExamsPage() {
       <Sheet open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
         <SheetContent side="right" className="w-full sm:w-120 sm:max-w-md overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>Invite Candidate</SheetTitle>
+            <SheetTitle>Invite candidate</SheetTitle>
             <SheetDescription>
               Send an assessment invitation to a candidate for <strong>{invitingExam?.title}</strong>.
             </SheetDescription>
@@ -800,15 +807,15 @@ export default function AdminExamsPage() {
           {!generatedLink ? (
             <form onSubmit={handleSendInvite} className="space-y-4 px-4 pb-4">
               <div className="space-y-2">
-                <Label htmlFor="candName">Candidate Name <span className="text-muted-foreground">(Optional)</span></Label>
+                <Label htmlFor="candName">Candidate name <span className="text-muted-foreground">(Optional)</span></Label>
                 <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. John Doe" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="candEmail">Email Address *</Label>
+                <Label htmlFor="candEmail">Email address *</Label>
                 <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="candCc">CC Email <span className="text-muted-foreground">(Optional)</span></Label>
+                <Label htmlFor="candCc">CC email <span className="text-muted-foreground">(Optional)</span></Label>
                 <Input id="candCc" type="email" value={candCc} onChange={(e) => setCandCc(e.target.value)} placeholder="manager@company.com" />
                 <p className="text-xs text-muted-foreground">Copy this person on the invitation email</p>
               </div>
@@ -816,23 +823,23 @@ export default function AdminExamsPage() {
                 <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={sendingInvite || !candEmail}>
                   {sendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Send Invite
+                  Send invite
                 </Button>
               </SheetFooter>
             </form>
           ) : (
             <div className="space-y-4 px-4 pb-4">
               <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-                <div className="flex items-center gap-2 text-green-600 mb-2">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
                   <CheckCircle2 className="h-5 w-5" />
                   <p className="font-medium">Invitation sent!</p>
                 </div>
-                <p className="text-sm text-green-600/80">
+                <p className="text-sm text-green-700/80 dark:text-green-400/80">
                   Link emailed to <strong>{candEmail}</strong>
                 </p>
               </div>
               <div className="space-y-2">
-                <Label>Invite Link</Label>
+                <Label>Invite link</Label>
                 <div className="flex gap-2">
                   <Input readOnly value={generatedLink} className="font-mono text-sm" />
                   <Button variant="secondary" onClick={() => {
@@ -854,7 +861,7 @@ export default function AdminExamsPage() {
       <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
         <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Bulk Invite Candidates — {bulkInviteExam?.title}</DialogTitle>
+            <DialogTitle>Bulk invite candidates — {bulkInviteExam?.title}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
             {bulkResults ? (
@@ -866,7 +873,7 @@ export default function AdminExamsPage() {
                   </div>
                   {bulkResults.errors.length > 0 && (
                     <div className="text-xs text-muted-foreground space-y-1 max-h-32 overflow-y-auto">
-                      {bulkResults.errors.map((e, i) => <p key={i} className="text-red-500">{e}</p>)}
+                      {bulkResults.errors.map((e, i) => <p key={i} className="text-red-600 dark:text-red-400">{e}</p>)}
                     </div>
                   )}
                 </div>
@@ -913,7 +920,7 @@ export default function AdminExamsPage() {
                     }}
                   />
                   <Button variant="outline" size="sm" onClick={() => document.getElementById('bulk-file-input')?.click()} className="gap-2">
-                    <Upload className="h-3.5 w-3.5" /> Upload File
+                    <Upload className="h-3.5 w-3.5" /> Upload file
                   </Button>
                   <Button onClick={() => {
                     const candidates = parseBulkCsv(bulkCsvText)
@@ -932,7 +939,7 @@ export default function AdminExamsPage() {
                     <div className="max-h-48 overflow-y-auto space-y-1 text-xs">
                       {bulkPreview.map((c, i) => (
                         <div key={i} className="flex items-center gap-2 py-1 border-b border-border/40 last:border-0">
-                          <span className="font-mono text-primary shrink-0 w-6">{i + 1}.</span>
+                          <span className="tabular-nums text-primary shrink-0 w-6">{i + 1}.</span>
                           <span className="font-medium text-foreground truncate">{c.name}</span>
                           <span className="text-muted-foreground truncate ml-auto">{c.email}</span>
                         </div>
@@ -948,7 +955,7 @@ export default function AdminExamsPage() {
               <Button variant="outline" onClick={() => setIsBulkInviteOpen(false)}>Cancel</Button>
               <Button onClick={handleBulkInvite} disabled={bulkSending || !bulkPreview || bulkPreview.length === 0}>
                 {bulkSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                Send {bulkPreview?.length || 0} Invites
+                Send {bulkPreview?.length || 0} invites
               </Button>
             </DialogFooter>
           )}
@@ -958,7 +965,7 @@ export default function AdminExamsPage() {
       <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
         <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Share Links — {linkExam?.title}</DialogTitle>
+            <DialogTitle>Share links — {linkExam?.title}</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-5">
             <div className="grid gap-2">
@@ -1050,7 +1057,7 @@ export default function AdminExamsPage() {
               {linkLoading ? (
                 <p className="text-sm text-muted-foreground">Loading links...</p>
               ) : linkRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No links yet. Create one below.</p>
+                <p className="text-sm text-muted-foreground">No links yet. Set the options above and click 'Create & copy link'.</p>
               ) : (
                 <div className="border rounded-md divide-y divide-border/40 max-h-72 overflow-y-auto">
                   {linkRows.map((l) => (
@@ -1082,7 +1089,7 @@ export default function AdminExamsPage() {
                             <p className="text-muted-foreground">No usage recorded yet.</p>
                           ) : (
                             <div className="space-y-1 max-h-48 overflow-y-auto">
-                              <div className="grid grid-cols-12 gap-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 pb-1 border-b border-border/30">
+                              <div className="grid grid-cols-12 gap-2 text-[11px] font-medium text-muted-foreground px-2 pb-1 border-b border-border/30">
                                 <span className="col-span-2">Time</span>
                                 <span className="col-span-2">IP</span>
                                 <span className="col-span-2">Device</span>
@@ -1117,7 +1124,7 @@ export default function AdminExamsPage() {
             <Button variant="outline" onClick={() => setIsLinkOpen(false)}>Close</Button>
             <Button onClick={handleCreateLink} disabled={linkCreating || (linkType === 'invited' && !linkEmail.includes('@'))}>
               {linkCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-              Create & Copy Link
+              Create & copy link
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -42,9 +42,9 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-2xl font-bold text-foreground">
-          <Clock className="h-6 w-6 text-primary" />
-          Audit Logs
+        <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+          <Clock className="h-5 w-5 text-primary" />
+          Audit logs
         </h2>
         <Button
           variant="outline"
@@ -82,7 +82,7 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
           },
         ]}
         loading={loading}
-        emptyMessage="No audit events found."
+        emptyMessage="No audit events yet. Admin actions will be logged here."
         pageSize={20}
       />
     </div>

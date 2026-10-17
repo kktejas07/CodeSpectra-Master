@@ -103,7 +103,7 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Subscription Plan</Label>
+                  <Label>Subscription plan</Label>
                   <Select value={plan} onValueChange={setPlan}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -112,10 +112,10 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Account Status</Label>
+                  <Label>Account status</Label>
                   <div className="flex items-center gap-3 pt-2">
                     <Switch checked={status} onCheckedChange={setStatus} />
-                    <Badge className={status ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}>
+                    <Badge className={status ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-muted text-muted-foreground'}>
                       {status ? 'Active' : 'Inactive'}
                     </Badge>
                   </div>
