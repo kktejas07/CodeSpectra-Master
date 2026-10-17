@@ -9,7 +9,7 @@ import { ResultsSheet } from '@/components/landing/results-sheet'
 import { HeroShowcase } from '@/components/landing/hero-showcase'
 import { BentoGrid } from '@/components/landing/bento-grid'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
-import { PhoneMockup } from '@/components/landing/phone-mockup'
+import { DeviceShowcase } from '@/components/visuals'
 
 /* Shared button styles for marketing pages. Kept here rather than in
    components/ui/button so the dashboard's mint button stays untouched. */
@@ -136,7 +136,7 @@ export default function Home() {
               </Link>
             </div>
           </div>
-          <PhoneMockup />
+          <DeviceShowcase variant="candidate" />
         </div>
       </section>
 
