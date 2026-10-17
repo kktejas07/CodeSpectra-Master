@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import {
   syncCheckoutSessionCompleted,
+  syncCheckoutSessionFailed,
   syncSubscriptionFromStripe,
   syncInvoiceFromStripe,
 } from '@/lib/stripe-webhook-sync'
@@ -12,8 +13,11 @@ export const runtime = 'nodejs'
 /**
  * POST /api/billing/stripe-webhook
  *
- * Receives Stripe webhook events, verifies the signature, and syncs to
- * the billing_orders / billing_payments / billing_subscriptions collections.
+ * Receives Stripe webhook events, verifies the `stripe-signature` header
+ * against STRIPE_WEBHOOK_SECRET on the raw body (stripe.webhooks.constructEvent,
+ * which also rejects stale timestamps), and syncs to the billing_orders /
+ * billing_payments / billing_subscriptions collections. Paid checkouts
+ * activate via activatePaidOrder() — see lib/stripe-webhook-sync.ts.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const stripeSecretKey = process.env.STRIPE_SECRET_KEY
@@ -28,21 +32,29 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const raw = await req.text()
   const signature = req.headers.get('stripe-signature') || ''
+  if (!signature) return NextResponse.json({ error: 'invalid_signature' }, { status: 400 })
 
   let event: Stripe.Event
   try {
     const stripe = new Stripe(stripeSecretKey)
     event = stripe.webhooks.constructEvent(raw, signature, webhookSecret)
   } catch (e) {
-    console.error('[stripe-webhook] signature verification failed:', e)
+    console.error('[stripe-webhook] signature verification failed:', e instanceof Error ? e.message : e)
     return NextResponse.json({ error: 'invalid_signature' }, { status: 400 })
   }
 
   try {
     switch (event.type) {
-      case 'checkout.session.completed': {
+      case 'checkout.session.completed':
+      case 'checkout.session.async_payment_succeeded': {
         const session = event.data.object as Stripe.Checkout.Session
         await syncCheckoutSessionCompleted(session)
+        break
+      }
+      case 'checkout.session.async_payment_failed':
+      case 'checkout.session.expired': {
+        const session = event.data.object as Stripe.Checkout.Session
+        await syncCheckoutSessionFailed(session)
         break
       }
       case 'customer.subscription.updated':

@@ -3,7 +3,8 @@
  * Implements PaymentGatewayAdapter for the Stripe provider.
  */
 import Stripe from 'stripe'
-import { billingOrders, billingPayments, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
+import { billingOrders, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
+import { orderPlanSnapshot } from '@/lib/billing-plans'
 import type { PaymentGatewayAdapter, CheckoutResult, SubscriptionResult, PaymentMethod } from './payment-service'
 import type { CheckoutPlan } from './payment-service'
 
@@ -16,32 +17,76 @@ function getClient(): Stripe {
 export class StripeAdapter implements PaymentGatewayAdapter {
   name = 'stripe' as const
 
-  async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan): Promise<CheckoutResult> {
+  /**
+   * One-off Checkout Session for exactly the resolved plan, like Razorpay:
+   * the order (with its plan snapshot) is stored first and its id travels in
+   * the session metadata, so the webhook activates that order via
+   * activatePaidOrder(). Amounts are already in the smallest currency unit
+   * (plan.amount_paise = paise / cents), which is what Stripe's unit_amount
+   * expects — never divide or multiply here.
+   *
+   * ponytail: mode is always 'payment' (no Stripe-side recurring billing).
+   * Subscription plans extend by duration_days per paid order, same as the
+   * Razorpay / PhonePe paths; Stripe auto-renewal would need invoice-driven
+   * activation, which this app doesn't implement.
+   */
+  async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string): Promise<CheckoutResult> {
     const stripe = getClient()
-    const session = await stripe.checkout.sessions.create({
-      mode: plan.kind === 'subscription' ? 'subscription' : 'payment',
-      payment_method_types: ['card'],
-      customer_email: email,
-      line_items: [{
-        price_data: {
-          currency: 'usd',
-          product_data: { name: plan.name },
-          unit_amount: plan.amount_paise,
-          recurring: plan.kind === 'subscription' ? { interval: 'month' } : undefined,
-        },
-        quantity: 1,
-      }],
-      metadata: { user_id: userId, plan_id: planId },
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/billing?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/billing?canceled=true`,
+    const currency = (plan.currency || 'usd').toLowerCase()
+    const orderId = newId()
+    const orders = await billingOrders()
+    await orders.insertOne({
+      id: orderId,
+      user_id: userId,
+      amount_paise: plan.amount_paise,
+      currency: plan.currency,
+      ...orderPlanSnapshot(plan),
+      receipt: `${userId}_${planId}_${Date.now()}`,
+      coupon_id: couponId,
+      status: 'created',
+      notes: { provider: 'stripe' },
+      created_at: nowIso(),
+      updated_at: nowIso(),
     })
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    let session: Stripe.Checkout.Session
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        customer_email: email,
+        client_reference_id: orderId,
+        line_items: [{
+          price_data: {
+            currency,
+            product_data: { name: plan.name },
+            unit_amount: plan.amount_paise,
+          },
+          quantity: 1,
+        }],
+        metadata: { order_id: orderId, user_id: userId, plan_id: planId },
+        payment_intent_data: { metadata: { order_id: orderId, user_id: userId, plan_id: planId } },
+        success_url: `${baseUrl}/dashboard/billing?success=true`,
+        cancel_url: `${baseUrl}/dashboard/billing?canceled=true`,
+      })
+    } catch (e) {
+      await orders.updateOne({ id: orderId, status: 'created' }, { $set: { status: 'failed', updated_at: nowIso() } }).catch(() => {})
+      throw e
+    }
+
+    // Admin order lists detect the gateway from the `stripe_` prefix.
+    await orders.updateOne(
+      { id: orderId },
+      { $set: { razorpay_order_id: `stripe_${session.id}`, notes: { provider: 'stripe', stripe_session_id: session.id }, updated_at: nowIso() } },
+    )
 
     return {
       provider: 'stripe',
       gateway_id: session.id,
       redirect_url: session.url || undefined,
       amount_paise: plan.amount_paise,
-      currency: 'usd',
+      currency: plan.currency,
       plan,
     }
   }

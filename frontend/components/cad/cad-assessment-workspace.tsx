@@ -5,17 +5,33 @@
  * mode="exam") and the try-it page (/assessment/demo/cad, mode="demo").
  *
  * exam: loads the exam, applies the same entry gates the server enforces
- *       (lib/exam-access.ts), uploads files to /api/exams/[id]/cad-submission/files
- *       and submits the attempt to /api/exams/[id]/cad-submission. The timer
- *       only runs when the exam has a duration.
- * demo: sample brief, no timer, nothing uploaded or scored, "Preview" banner.
+ *       (lib/exam-access.ts), then the same pre-start checks as the main test
+ *       page (/assessment/[id]): Device Audit extension gate, recording
+ *       consent, ID / face capture per exam settings. After the checks pass the
+ *       candidate presses Start, which records the start time server-side
+ *       (/api/exams/[id]/cad-submission/start) — the timer runs from that, not
+ *       from page load. The active task runs inside the same proctoring stack
+ *       (ProctoringWrapper strict_lockdown + RealTimeProctor fullscreen +
+ *       SessionRecorder), posting to /api/proctor/events with session_kind
+ *       'exam' and session_id = exam id, so reviewers get the same timeline.
+ *       Files upload to /api/exams/[id]/cad-submission/files and the attempt
+ *       is submitted to /api/exams/[id]/cad-submission. The timer only runs
+ *       when the exam has a duration.
+ * demo: sample brief, no timer, no proctoring, nothing uploaded or scored,
+ *       "Preview" banner.
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import { Clock, Upload, Save, Send, Download, MessageSquare, Eye, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Clock, Upload, Save, Send, Download, MessageSquare, Eye, Loader2, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
+import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
+import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
+import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
+import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
   AlertDialog,
@@ -58,6 +74,8 @@ interface ExamInfo {
   ends_at?: string | null
   access_type?: 'invite_only' | 'open'
   require_token_links?: boolean
+  require_id_verification?: boolean | null
+  require_face_capture?: boolean | null
   submission?: unknown
   attempts?: { used: number; max: number; can_retake: boolean }
 }
@@ -66,6 +84,9 @@ type Phase =
   | { kind: 'loading' }
   | { kind: 'blocked'; title: string; message: string }
   | { kind: 'submitted'; used: number; max: number }
+  /** exam only: gates passed, pre-start checks (consent, ID / face) + Start. */
+  | { kind: 'prestart' }
+  /** Task is running (exam: after Start; demo: immediately). */
   | { kind: 'ready' }
 
 const FILE_LABEL: Record<CadFileKind, string> = {
@@ -115,9 +136,17 @@ export function CadAssessmentWorkspace({
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const autoSubmitRef = useRef(false)
   const startedAtRef = useRef<number>(0)
+  const warned30Ref = useRef(false)
+
+  // Pre-start checks (exam mode), mirroring /assessment/[id].
+  const [recordingConsent, setRecordingConsent] = useState(false)
+  const [showVerification, setShowVerification] = useState(false)
+  const [checksPassed, setChecksPassed] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [idPhoto, setIdPhoto] = useState<string | null>(null)
+  const [facePhoto, setFacePhoto] = useState<string | null>(null)
 
   const draftKey = `codespectra-cad-draft-${examId}`
-  const startedKey = `codespectra-cad-started-${examId}`
 
   // ─── Load + entry gates (exam mode) ────────────────────────────────────────
   useEffect(() => {
@@ -170,26 +199,43 @@ export function CadAssessmentWorkspace({
           if (draft && !cancelled) setVivaRationale(String((JSON.parse(draft) as { vivaRationale?: string }).vivaRationale || ''))
         } catch { /* storage unavailable */ }
 
-        // Timer only when the exam sets a duration. The start time survives a
-        // refresh (this tab) so reloading doesn't reset the clock.
-        const minutes = Number(found.duration) || 0
-        let started = Date.now()
-        try {
-          const saved = Number(sessionStorage.getItem(startedKey))
-          if (saved > 0) started = saved
-          else sessionStorage.setItem(startedKey, String(started))
-        } catch { /* storage unavailable */ }
-        startedAtRef.current = started
-        if (minutes > 0 && !cancelled) {
-          setTimeLeft(Math.max(0, Math.round((started + minutes * 60_000 - Date.now()) / 1000)))
-        }
-        if (!cancelled) setPhase({ kind: 'ready' })
+        // The timer starts when the candidate presses Start (see handleStart).
+        if (!cancelled) setPhase({ kind: 'prestart' })
       } catch {
         block('Couldn’t load the test', 'Check your connection and reload the page.')
       }
     })()
     return () => { cancelled = true }
-  }, [isDemo, examId, inviteToken, linkToken, draftKey, startedKey])
+  }, [isDemo, examId, inviteToken, linkToken, draftKey])
+
+  // ─── Start (exam mode, after checks) ───────────────────────────────────────
+  // The server records the start time once per attempt; a reload resumes from
+  // it. Remaining time is computed against the server clock to ignore skew.
+  const handleStart = async () => {
+    if (isDemo || starting) return
+    setStarting(true)
+    try {
+      const res = await csrfFetch(`/api/exams/${encodeURIComponent(examId)}/cad-submission/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inviteToken, linkToken }),
+      })
+      const j = await res.json().catch(() => ({})) as { error?: string; started_at?: string; server_now?: string; duration_minutes?: number }
+      if (!res.ok || !j.started_at) throw new Error(j.error || 'Could not start the test')
+      const startedMs = Date.parse(j.started_at)
+      const serverNowMs = j.server_now ? Date.parse(j.server_now) : Date.now()
+      const elapsedMs = Math.max(0, serverNowMs - startedMs)
+      // Map the server start onto the local clock for total_time_ms.
+      startedAtRef.current = Date.now() - elapsedMs
+      const minutes = Number(j.duration_minutes) || 0
+      setTimeLeft(minutes > 0 ? Math.max(0, Math.round((minutes * 60_000 - elapsedMs) / 1000)) : null)
+      setPhase({ kind: 'ready' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Couldn’t start the test', message: e instanceof Error ? e.message : undefined })
+    } finally {
+      setStarting(false)
+    }
+  }
 
   // ─── Submit (exam mode) ────────────────────────────────────────────────────
   const submit = useCallback(async (autoSubmitted: boolean) => {
@@ -205,6 +251,8 @@ export function CadAssessmentWorkspace({
           auto_submitted: autoSubmitted,
           inviteToken,
           linkToken,
+          idPhoto,
+          facePhoto,
           started_at: startedAtRef.current ? new Date(startedAtRef.current).toISOString() : null,
           total_time_ms: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
         }),
@@ -213,7 +261,6 @@ export function CadAssessmentWorkspace({
       if (!res.ok) throw new Error(j.error || 'Submit failed')
       try {
         localStorage.removeItem(draftKey)
-        sessionStorage.removeItem(startedKey)
       } catch { /* storage unavailable */ }
       setPhase({ kind: 'submitted', used: j.attempt_no ?? 1, max: j.max_attempts ?? 1 })
       addToast({ type: 'success', title: 'CAD task submitted' })
@@ -227,7 +274,7 @@ export function CadAssessmentWorkspace({
     } finally {
       setSubmitting(false)
     }
-  }, [isDemo, submitting, examId, vivaRationale, selectedTaskCode, inviteToken, linkToken, draftKey, startedKey, addToast])
+  }, [isDemo, submitting, examId, vivaRationale, selectedTaskCode, inviteToken, linkToken, idPhoto, facePhoto, draftKey, addToast])
 
   // Countdown + one-shot auto-submit at zero.
   useEffect(() => {
@@ -242,6 +289,23 @@ export function CadAssessmentWorkspace({
     const t = setTimeout(() => setTimeLeft((s) => (s === null ? s : s - 1)), 1000)
     return () => clearTimeout(t)
   }, [phase.kind, timeLeft, submit])
+
+  // 30-minute warning, logged to the proctoring timeline like the main test.
+  useEffect(() => {
+    if (isDemo || phase.kind !== 'ready' || timeLeft !== 1800 || warned30Ref.current) return
+    warned30Ref.current = true
+    addToast({ type: 'warning', title: '30 minutes remaining' })
+    csrfFetch('/api/proctor/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        session_kind: 'exam',
+        session_id: examId,
+        event_type: 'timer_warning_30min',
+        meta: { time_left: 1800, task: 'cad', timestamp: new Date().toISOString() },
+      }),
+    }).catch(() => {})
+  }, [isDemo, phase.kind, timeLeft, examId, addToast])
 
   // ─── File handling ─────────────────────────────────────────────────────────
   const onPickFile = async (kind: CadFileKind, file: File | undefined) => {
@@ -345,12 +409,108 @@ export function CadAssessmentWorkspace({
     )
   }
 
+  if (phase.kind === 'prestart') {
+    const requireId = exam?.require_id_verification !== false
+    const requireFace = exam?.require_face_capture !== false
+    const minutes = Number(exam?.duration) || 0
+    return (
+      <ExtensionGate>
+        <div className="flex min-h-[80vh] items-center justify-center bg-background p-4">
+          <Card className="w-full max-w-lg space-y-6 rounded-3xl border-border/70 p-8">
+            <div className="text-center">
+              <h1 className="mb-2 text-2xl font-bold">{exam?.title || 'CAD task'}</h1>
+              <p className="text-sm text-muted-foreground">Proctored CAD task. Complete the checks below, then press Start.</p>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Duration</span>
+                <span className="font-semibold tabular-nums">{minutes > 0 ? `${minutes} minutes` : 'No time limit'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">You submit</span>
+                <span className="font-semibold">Native CAD file, STEP export, rationale</span>
+              </div>
+              {exam?.attempts && exam.attempts.max > 1 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Attempt</span>
+                  <span className="font-semibold tabular-nums">{exam.attempts.used + 1} of {exam.attempts.max}</span>
+                </div>
+              )}
+            </div>
+
+            {minutes > 0 && (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
+                <p>
+                  <strong>Before you start:</strong> the timer starts when you press Start and can&apos;t be paused. Reloading
+                  the page doesn&apos;t reset it. At zero, whatever you&apos;ve uploaded is submitted automatically.
+                </p>
+              </div>
+            )}
+
+            {!checksPassed ? (
+              <>
+                <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border bg-muted/20 p-3 transition-colors hover:border-primary/40">
+                  <input
+                    type="checkbox"
+                    checked={recordingConsent}
+                    onChange={(e) => setRecordingConsent(e.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span className="text-xs leading-relaxed text-muted-foreground">
+                    I consent to session recording (webcam and screen) during this task. The recording is used solely for
+                    proctoring integrity verification and will be stored securely.
+                  </span>
+                </label>
+                {(!requireId || !requireFace) && (
+                  <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                    Identity check for this test: {!requireId && !requireFace ? 'consent only — no ID or face capture required' : !requireId ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
+                  </div>
+                )}
+                <Button onClick={() => setShowVerification(true)} className="h-12 w-full rounded-xl text-base font-semibold">
+                  Continue to identity check
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4 text-sm text-foreground">
+                  <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                  <p>Checks complete. The test opens in fullscreen and is proctored from the moment you press Start.</p>
+                </div>
+                <Button onClick={() => void handleStart()} disabled={starting} className="h-12 w-full gap-2 rounded-xl text-base font-semibold">
+                  {starting && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}
+                  Start
+                </Button>
+              </>
+            )}
+          </Card>
+
+          {showVerification && (
+            <IdentityVerification
+              examTitle={exam?.title || 'CAD task'}
+              requireId={requireId}
+              requireFace={requireFace}
+              onCancel={() => setShowVerification(false)}
+              onComplete={(data) => {
+                setIdPhoto(data.idPhoto)
+                setFacePhoto(data.facePhoto)
+                setShowVerification(false)
+                setChecksPassed(true)
+              }}
+            />
+          )}
+        </div>
+      </ExtensionGate>
+    )
+  }
+
   // ─── Workspace ─────────────────────────────────────────────────────────────
   const title = isDemo ? 'Bracket mass reduction and stress optimization' : exam?.title || 'CAD task'
   const ready = !!staged.native && !!staged.step && vivaRationale.trim().length >= CAD_RATIONALE_MIN_CHARS
   const lowTime = timeLeft !== null && timeLeft < 300
 
-  return (
+  const workspace = (
     <div className="flex h-[calc(100vh-2.5rem)] flex-col bg-background">
       {isDemo && (
         <div role="note" className="flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-800 dark:text-amber-300">
@@ -610,5 +770,20 @@ export function CadAssessmentWorkspace({
         </AlertDialog>
       )}
     </div>
+  )
+
+  if (isDemo) return workspace
+
+  // Same proctoring stack and session id as /assessment/[id], so the CAD
+  // attempt lands on the exam's proctoring timeline.
+  return (
+    <ExtensionGate>
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={examId} idPhoto={idPhoto || undefined}>
+        <RealTimeProctor sessionKind="exam" sessionId={examId} enabled enforceFullscreen>
+          <SessionRecorder sessionKind="exam" sessionId={examId} enabled={recordingConsent} />
+          {workspace}
+        </RealTimeProctor>
+      </ProctoringWrapper>
+    </ExtensionGate>
   )
 }

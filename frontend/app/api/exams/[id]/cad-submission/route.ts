@@ -69,8 +69,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const autoSubmitted = body.auto_submitted === true
   const inviteToken = typeof body.inviteToken === 'string' ? body.inviteToken : null
   const linkToken = typeof body.linkToken === 'string' ? body.linkToken : null
-  const startedAt = typeof body.started_at === 'string' && !Number.isNaN(Date.parse(body.started_at)) ? body.started_at : null
-  const totalTimeMs = Math.max(0, Math.min(Number(body.total_time_ms) || 0, 7 * 24 * 3600 * 1000))
+  const clientStartedAt = typeof body.started_at === 'string' && !Number.isNaN(Date.parse(body.started_at)) ? body.started_at : null
+  const clientTotalTimeMs = Math.max(0, Math.min(Number(body.total_time_ms) || 0, 7 * 24 * 3600 * 1000))
+  // Identity capture from the pre-start check (same fields the main submit
+  // stores). Only small data:image URLs are kept.
+  const photo = (v: unknown): string | null =>
+    typeof v === 'string' && /^data:image\/(png|jpe?g|webp);base64,/.test(v) && v.length <= 2_000_000 ? v : null
+  const idPhoto = photo(body.idPhoto)
+  const facePhoto = photo(body.facePhoto)
 
   if (rationale.length > CAD_RATIONALE_MAX_CHARS) {
     return NextResponse.json({ error: `Design rationale is too long (max ${CAD_RATIONALE_MAX_CHARS} characters).` }, { status: 400 })
@@ -106,6 +112,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       return NextResponse.json({ error: 'Upload both your native CAD file and the STEP export before submitting.' }, { status: 400 })
     }
 
+    // Start time recorded by POST ./start for this attempt wins over the
+    // client's value, so reviewers see a server-side timeline.
+    const draft = await db.collection('exam_drafts').findOne(
+      { exam_id: examId, user_id: userId },
+      { projection: { _id: 0, cad_started_at: 1, cad_started_attempt: 1 } },
+    )
+    const serverStartedAt = draft?.cad_started_attempt === access.attemptNo && typeof draft.cad_started_at === 'string'
+      ? draft.cad_started_at : null
+    const startedAt = serverStartedAt || clientStartedAt
+    const totalTimeMs = serverStartedAt
+      ? Math.max(0, Math.min(Date.now() - Date.parse(serverStartedAt), 7 * 24 * 3600 * 1000))
+      : clientTotalTimeMs
+
+    // Same extension check as the main submit: logged, not blocking.
+    const auditEvents = await db.collection('proctor_events').countDocuments({
+      user_id: userId,
+      session_id: examId,
+      event_type: 'hardware_port_audit',
+      created_at: { $gte: new Date(Date.now() - 24 * 3600 * 1000).toISOString() },
+    })
+    const extensionDetected = auditEvents > 0
+
     const points = Math.max(1, Math.min(1000, Number(exam.cad_points) || CAD_DEFAULT_POINTS))
     const cad: CadSubmissionInfo = { files, rationale, task_code: taskCode }
     const now = nowIso()
@@ -122,6 +150,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       max_score: points,
       has_pending_review: true,
       auto_submitted: autoSubmitted,
+      extension_detected: extensionDetected,
+      id_photo: idPhoto,
+      face_photo: facePhoto,
+      start_time_source: serverStartedAt ? 'server' : 'client',
       details: [{ qId: CAD_TASK_QID, correct: false, points, answer: rationale, pending_review: true }],
       cad,
       device_info: {
