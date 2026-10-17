@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import { RotateCcw } from 'lucide-react'
-import { EmptyArt, SoftGlow } from '@/components/visuals'
+import { SoftGlow } from '@/components/visuals'
+import { Illustration } from '@/components/illustrations/spot'
 import { Button } from '@/components/ui/button'
 
 export default function ErrorPage({
@@ -17,7 +18,7 @@ export default function ErrorPage({
   return (
     <div role="alert" className="relative isolate flex min-h-[70vh] flex-col items-center justify-center px-6 py-16 text-center">
       <SoftGlow />
-      <EmptyArt variant="search" className="mb-8" />
+      <Illustration name="error" className="mb-6 w-56" />
       <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Something went wrong</h1>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
         This section didn’t load. Your work is saved — try again, or head back home.

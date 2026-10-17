@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { Illustration, type IllustrationName } from '@/components/illustrations/spot'
 
 /**
  * CodeSpectra app page kit — shared building blocks for every dashboard,
@@ -14,12 +15,15 @@ export function PageHeader({
   description,
   icon,
   actions,
+  illustration,
   className,
 }: {
   title: React.ReactNode
   description?: React.ReactNode
   icon?: React.ReactNode
   actions?: React.ReactNode
+  /** Small spot illustration on the right (large screens only). */
+  illustration?: IllustrationName
   className?: string
 }) {
   return (
@@ -35,7 +39,12 @@ export function PageHeader({
           {description && <p className="mt-1 max-w-[70ch] text-[15px] leading-relaxed text-muted-foreground">{description}</p>}
         </div>
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {(actions || illustration) && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-4">
+          {actions}
+          {illustration && <Illustration name={illustration} className="hidden w-32 lg:block" />}
+        </div>
+      )}
     </header>
   )
 }

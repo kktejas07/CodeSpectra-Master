@@ -1044,3 +1044,50 @@
 @keyframes cs-ping-soft { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(2.2); opacity: 0; } }
 .cs-ping-soft { animation: cs-ping-soft 2.4s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .cs-bob, .cs-ping-soft { animation: none; } }
+
+/* ── Spot illustrations (components/illustrations) ─────────────────────────
+   Theme-aware vector art: every colour comes from these tokens, so the same
+   SVG works in light, dark and on the royal-blue banner (.cs-illo-inverse). */
+.cs-illo {
+  --i-line: hsl(var(--foreground) / 0.78);
+  --i-paper: hsl(var(--card));
+  --i-soft: hsl(var(--primary) / 0.12);
+  --i-mid: hsl(var(--primary) / 0.32);
+  --i-accent: hsl(var(--primary));
+  --i-muted: hsl(var(--muted-foreground) / 0.35);
+  --i-ground: hsl(var(--primary) / 0.10);
+  --i-ok: #16a34a;
+  --i-warn: #f59e0b;
+  --i-bad: #ef4444;
+}
+.dark .cs-illo { --i-ok: #4ade80; --i-warn: #fbbf24; --i-bad: #f87171; --i-paper: hsl(var(--card)); }
+.cs-illo.cs-illo-inverse, .dark .cs-illo.cs-illo-inverse {
+  --i-line: rgba(255, 255, 255, 0.92);
+  --i-paper: rgba(255, 255, 255, 0.14);
+  --i-soft: rgba(255, 255, 255, 0.16);
+  --i-mid: rgba(255, 255, 255, 0.38);
+  --i-accent: #ffffff;
+  --i-muted: rgba(255, 255, 255, 0.45);
+  --i-ground: rgba(255, 255, 255, 0.12);
+}
+.cs-illo .l { stroke: var(--i-line); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.cs-illo .lt { stroke: var(--i-line); stroke-width: 1.5; stroke-linecap: round; fill: none; opacity: .55; }
+.cs-illo .p { fill: var(--i-paper); }
+.cs-illo .s { fill: var(--i-soft); }
+.cs-illo .m { fill: var(--i-mid); }
+.cs-illo .a { fill: var(--i-accent); }
+.cs-illo .as { stroke: var(--i-accent); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.cs-illo .mu { fill: var(--i-muted); }
+.cs-illo .g { fill: var(--i-ground); }
+.cs-illo .ok { fill: var(--i-ok); }
+.cs-illo .oks { stroke: var(--i-ok); stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.cs-illo .wn { fill: var(--i-warn); }
+.cs-illo .bd { fill: var(--i-bad); }
+.cs-illo .w { fill: #fff; }
+.cs-illo.cs-illo-inverse .w { fill: #2f5be7; }
+.cs-illo.cs-illo-inverse .oks, .cs-illo.cs-illo-inverse .as[style] { stroke: #2f5be7 !important; }
+.cs-illo .float { animation: cs-bob 6s ease-in-out infinite; transform-box: fill-box; }
+.cs-illo .float2 { animation: cs-bob 7s ease-in-out infinite 1.2s; transform-box: fill-box; }
+.cs-illo .twinkle { animation: cs-twinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes cs-twinkle { 0%, 100% { opacity: .35; transform: scale(.8); } 50% { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .cs-illo .float, .cs-illo .float2, .cs-illo .twinkle { animation: none; } }

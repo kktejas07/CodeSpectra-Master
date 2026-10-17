@@ -14,7 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import Link from 'next/link'
-import { EmptyArt } from '@/components/visuals/empty-art'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface ActivityItem {
   ts: string
@@ -84,7 +84,7 @@ export function ActivityTimeline({
 
       {displayActivities.length === 0 ? (
         <div className="flex flex-col items-center py-2 text-center" role="status">
-          <EmptyArt variant="sessions" className="-my-5 scale-[0.6]" />
+          <Illustration name="calendar" className="mb-1 w-28" />
           <p className="text-sm font-semibold text-foreground">No recent activity</p>
           <p className="mt-0.5 text-xs text-muted-foreground">Solve a problem or run a scan to see it here.</p>
         </div>

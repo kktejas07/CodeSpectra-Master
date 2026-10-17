@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TrendingUp, Info } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
-import { EmptyArt } from '@/components/visuals/empty-art'
+import { Illustration } from '@/components/illustrations/spot'
 
 interface DayData {
   date: string
@@ -153,7 +153,7 @@ export function ContributionGraph({
     <div className="w-full">
       {!hasData && compactEmpty ? (
         <div className="flex flex-col items-center py-2 text-center" role="status">
-          <EmptyArt variant="sessions" className="-my-5 scale-[0.6]" />
+          <Illustration name="calendar" className="mb-1 w-28" />
           <p className="text-sm font-semibold text-foreground">No activity yet</p>
           <p className="mt-0.5 text-xs text-muted-foreground">Solve a problem to start filling this in.</p>
         </div>
