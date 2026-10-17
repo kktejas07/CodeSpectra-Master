@@ -5,6 +5,35 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Brand swap (green → royal blue): the app hard-codes Tailwind emerald/teal in
+   ~80 files. Re-pointing those scales recolours them all in one place.
+   green-* is left alone — it is used for success states. */
+@theme {
+  --color-emerald-50: #eef3ff;
+  --color-emerald-100: #dfe8ff;
+  --color-emerald-200: #c5d4ff;
+  --color-emerald-300: #9fb6ff;
+  --color-emerald-400: #7090fb;
+  --color-emerald-500: #4a6ef3;
+  --color-emerald-600: #2f5be7;
+  --color-emerald-700: #2448c9;
+  --color-emerald-800: #213ca3;
+  --color-emerald-900: #213781;
+  --color-emerald-950: #17224d;
+  --color-teal-50: #eff6ff;
+  --color-teal-100: #dbeafe;
+  --color-teal-200: #bfdbfe;
+  --color-teal-300: #93c5fd;
+  --color-teal-400: #60a5fa;
+  --color-teal-500: #3b82f6;
+  --color-teal-600: #2563eb;
+  --color-teal-700: #1d4ed8;
+  --color-teal-800: #1e40af;
+  --color-teal-900: #1e3a8a;
+  --color-teal-950: #172554;
+}
+
+
 /* Use JetBrains Mono for code blocks and IDE-like sections. 
    The main UI uses standard sans-serif for readability. */
 @theme {
@@ -13,10 +42,10 @@
     monospace;
 }
 
-/* Prisma Emerald/Mint Marketing & App Theme — Light */
+/* CodeSpectra royal blue app theme — Light */
 :root {
   /* Clean alabaster paper with subtle cool mint undertone */
-  --background: 160 20% 99%;
+  --background: 220 40% 99%;
   --foreground: 220 30% 8%;
   --card: 0 0% 100%;
   --card-foreground: 220 30% 8%;
@@ -24,20 +53,20 @@
   --popover-foreground: 220 30% 8%;
   
   /* Primary accent - Electric Prisma Mint / Emerald (#00c573) */
-  --primary: 156 100% 39%;
-  --primary-foreground: 220 30% 8%;
+  --primary: 226 79% 54%;
+  --primary-foreground: 0 0% 100%;
   
   /* Secondary colors */
-  --secondary: 160 20% 96%;
-  --secondary-foreground: 160 60% 20%;
+  --secondary: 226 60% 97%;
+  --secondary-foreground: 226 60% 30%;
   
   /* Neutral grays */
   --muted: 220 15% 96%;
   --muted-foreground: 220 10% 46%;
   
   /* Accent */
-  --accent: 160 25% 94%;
-  --accent-foreground: 160 60% 15%;
+  --accent: 226 60% 95%;
+  --accent-foreground: 226 65% 25%;
   
   /* Destructive */
   --destructive: 0 84% 60%;
@@ -50,12 +79,12 @@
   /* Borders and input */
   --border: 220 15% 90%;
   --input: 220 15% 90%;
-  --ring: 156 100% 39%;
+  --ring: 226 79% 54%;
   
   /* Charts */
-  --chart-1: 156 100% 39%;
+  --chart-1: 226 79% 54%;
   --chart-2: 187 92% 43%;
-  --chart-3: 153 60% 53%;
+  --chart-3: 199 89% 48%;
   --chart-4: 38 92% 50%;
   --chart-5: 221 83% 53%;
   
@@ -65,27 +94,27 @@
   /* Sidebar */
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 220 30% 8%;
-  --sidebar-primary: 156 100% 39%;
-  --sidebar-primary-foreground: 220 30% 8%;
-  --sidebar-accent: 160 20% 96%;
-  --sidebar-accent-foreground: 160 60% 20%;
+  --sidebar-primary: 226 79% 54%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 226 60% 96%;
+  --sidebar-accent-foreground: 226 60% 30%;
   --sidebar-border: 220 15% 90%;
-  --sidebar-ring: 156 100% 39%;
+  --sidebar-ring: 226 79% 54%;
 
   --marketing-band-bg: 220 30% 6%;
   --marketing-band-fg: 0 0% 98%;
 
   /* Prisma Extended Tokens */
-  --color-prisma-emerald: #00c573;
-  --color-prisma-mint: #3ecf8e;
+  --color-prisma-emerald: #2f5be7;
+  --color-prisma-mint: #5b84ff;
   --color-prisma-cyan: #06b6d4;
-  --color-prisma-teal: #14b8a6;
+  --color-prisma-teal: #3b82f6;
   --color-prisma-obsidian: #080c14;
   --color-prisma-card: #0d131f;
   --color-prisma-border: #1e293b;
 }
 
-/* Prisma Emerald/Mint Theme - Dark Mode (Default Elite Obsidian Look) */
+/* CodeSpectra royal blue app theme — Dark (obsidian) */
 .dark {
   /* Deep Obsidian Slate with emerald depth */
   --background: 220 40% 5%;
@@ -96,12 +125,12 @@
   --popover-foreground: 210 20% 98%;
   
   /* Primary accent - Vibrant Electric Prisma Mint (#00c573 / #3ecf8e) */
-  --primary: 156 100% 42%;
+  --primary: 225 100% 68%;
   --primary-foreground: 220 40% 5%;
   
   /* Secondary colors */
   --secondary: 220 25% 13%;
-  --secondary-foreground: 156 60% 85%;
+  --secondary-foreground: 225 90% 88%;
   
   /* Neutral grays / dark slate mists */
   --muted: 220 20% 12%;
@@ -109,7 +138,7 @@
   
   /* Accent */
   --accent: 220 25% 15%;
-  --accent-foreground: 156 80% 90%;
+  --accent-foreground: 225 90% 90%;
   
   /* Destructive */
   --destructive: 0 72% 51%;
@@ -122,12 +151,12 @@
   /* Borders and input */
   --border: 220 20% 16%;
   --input: 220 20% 14%;
-  --ring: 156 100% 42%;
+  --ring: 225 100% 68%;
   
   /* Charts */
-  --chart-1: 156 100% 42%;
+  --chart-1: 225 100% 68%;
   --chart-2: 187 92% 50%;
-  --chart-3: 153 60% 55%;
+  --chart-3: 199 89% 60%;
   --chart-4: 38 92% 50%;
   --chart-5: 221 83% 60%;
   
@@ -137,21 +166,21 @@
   /* Sidebar */
   --sidebar: 220 35% 6%;
   --sidebar-foreground: 210 20% 98%;
-  --sidebar-primary: 156 100% 42%;
+  --sidebar-primary: 225 100% 68%;
   --sidebar-primary-foreground: 220 40% 5%;
   --sidebar-accent: 220 25% 13%;
-  --sidebar-accent-foreground: 156 80% 90%;
+  --sidebar-accent-foreground: 225 90% 90%;
   --sidebar-border: 220 20% 14%;
-  --sidebar-ring: 156 100% 42%;
+  --sidebar-ring: 225 100% 68%;
 
   --marketing-band-bg: 220 45% 3%;
   --marketing-band-fg: 0 0% 98%;
 
   /* Prisma Extended Tokens */
-  --color-prisma-emerald: #00c573;
-  --color-prisma-mint: #3ecf8e;
+  --color-prisma-emerald: #2f5be7;
+  --color-prisma-mint: #5b84ff;
   --color-prisma-cyan: #06b6d4;
-  --color-prisma-teal: #14b8a6;
+  --color-prisma-teal: #3b82f6;
   --color-prisma-obsidian: #080c14;
   --color-prisma-card: #0d131f;
   --color-prisma-border: #1e293b;
@@ -159,14 +188,14 @@
 
 
 @theme inline {
-  --font-sans: var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-sans: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, 'SF Mono', monospace;
   --font-circular: 'Circular', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-source-code-pro: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Supabase Extended Colors */
-  --color-phosphor-green: #3ecf8e;
-  --color-mint-pulse: #00c573;
+  --color-phosphor-green: #5b84ff; /* legacy name, now royal blue light */
+  --color-mint-pulse: #2f5be7;     /* legacy name, now royal blue */
   --color-forest-depth: #1f4b37;
   --color-midnight-emerald: #006239;
   --color-snow: #fafafa;
@@ -232,8 +261,8 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family:
-      var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
-      monospace;
+      var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
+      'Segoe UI', sans-serif;
     font-feature-settings: 'rounding-metrics' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -896,7 +925,7 @@
   --primary: 226 79% 54%;
   --primary-foreground: 0 0% 100%;
   --ring: 226 79% 54%;
-  font-family: var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   background: var(--cs-paper);
   color: var(--cs-ink);
   font-stretch: 100%;
@@ -908,7 +937,10 @@
   line-height: 0.94;
   letter-spacing: -0.01em;
 }
-.cs-display, .cs-heading { text-wrap: balance; }
+.cs-display, .cs-heading {
+  text-wrap: balance;
+  font-family: var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif;
+}
 .cs-heading {
   font-stretch: 78%;
   font-weight: 750;

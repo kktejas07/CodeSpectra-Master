@@ -28,6 +28,14 @@ const archivo = localFont({
   weight: '100 900',
 })
 
+// Plus Jakarta Sans variable (wght 200–800): app-wide UI and body text.
+const jakarta = localFont({
+  src: '../fonts/plus-jakarta-sans-latin-variable.woff2',
+  variable: '--font-jakarta',
+  display: 'swap',
+  weight: '200 800',
+})
+
 export const metadata: Metadata = {
   title: 'CodeSpectra — Skills assessments that shortlist for you',
   description:
@@ -49,7 +57,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${mono.variable} ${archivo.variable}`}
+      className={`${mono.variable} ${archivo.variable} ${jakarta.variable}`}
     >
       <body
         className="antialiased bg-background text-foreground font-sans"
