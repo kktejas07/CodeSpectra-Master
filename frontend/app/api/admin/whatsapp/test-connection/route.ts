@@ -13,7 +13,3 @@ export async function POST() {
   const status = await checkWhatsAppConnection()
   return NextResponse.json(status, { status: status.ok ? 200 : 400 })
 }
-
-export async function GET() {
-  return POST()
-}

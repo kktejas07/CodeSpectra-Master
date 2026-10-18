@@ -2,6 +2,8 @@
  * Minimal HTML parser for Open Graph tags.
  * Scrapes the target URL for og:image, og:description, and fallback description.
  */
+import { safeFetch } from '@/lib/url-safety'
+
 export interface OgData {
   image?: string
   description?: string
@@ -10,7 +12,8 @@ export interface OgData {
 
 export async function scrapeOgData(url: string): Promise<OgData> {
   try {
-    const res = await fetch(url, {
+    // Feed item links are untrusted: block private / metadata hosts on every hop.
+    const res = await safeFetch(url, {
       headers: {
         'User-Agent': 'CodeSpectraSignalsBot/1.0 (+https://codespectra.ai)',
         'Accept': 'text/html',

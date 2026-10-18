@@ -41,18 +41,18 @@ export async function POST(
 
   const body = await req.json().catch(() => ({}))
   const targetIdentifier = typeof body?.user === 'string' ? body.user.trim().slice(0, 200) : null
-  if (!targetIdentifier) return NextResponse.json({ error: 'User identifier (name, email, or ID) is required' }, { status: 400 })
+  if (!targetIdentifier) return NextResponse.json({ error: 'User email or ID is required' }, { status: 400 })
 
-  const exact = new RegExp(`^${escapeRegex(targetIdentifier)}$`, 'i')
+  // Exact id or exact (case-insensitive) email only — a name is not unique.
+  const exactEmail = new RegExp(`^${escapeRegex(targetIdentifier)}$`, 'i')
   const foundUser = await (await users()).findOne({
     $or: [
       { id: targetIdentifier },
       { _id: targetIdentifier },
-      { email: exact },
-      { name: exact },
+      ...(targetIdentifier.includes('@') ? [{ email: exactEmail }] : []),
     ],
   } as Record<string, unknown>)
-  if (!foundUser) return NextResponse.json({ error: 'No user found with that email, name or ID' }, { status: 404 })
+  if (!foundUser) return NextResponse.json({ error: 'No user found with that email or ID' }, { status: 404 })
 
   const targetUserId = String(foundUser.id || foundUser._id)
   const targetName = foundUser.fullName || foundUser.name || foundUser.email || 'Member'
@@ -69,12 +69,10 @@ export async function POST(
     'members.user_id': targetUserId,
   })
 
+  // Never dissolve the person's existing team on their behalf: they leave it
+  // themselves (or accept an invite), then an organiser can add them.
   if (already) {
-    if (already.members.length === 1 && (already.submissions || 0) === 0) {
-      await teamsCol.deleteOne({ id: already.id })
-    } else {
-      return NextResponse.json({ error: `User is already on team "${already.name}"` }, { status: 409 })
-    }
+    return NextResponse.json({ error: `User is already on team "${already.name}". They need to leave it first.` }, { status: 409 })
   }
 
   // Atomic size cap: only push while the team is still under max_per_team.

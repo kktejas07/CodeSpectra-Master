@@ -6,11 +6,12 @@ import { MODEL_OPTIONS, UserAISettings } from '@/lib/ai/model-options'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Cheap defaults for everyone; a user can opt into a premium model.
 const defaults: UserAISettings = {
   chat_model: 'gemini-flash',
-  review_model: 'claude-sonnet',
+  review_model: 'gemini-flash',
   hints_model: 'gemini-flash',
-  grade_model: 'claude-sonnet',
+  grade_model: 'gemini-flash',
 }
 
 export async function GET() {

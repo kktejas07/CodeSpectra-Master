@@ -29,8 +29,10 @@ export const dynamic = 'force-dynamic'
 const MAX_PAGE_SIZE = 50
 const DEFAULT_PAGE_SIZE = 20
 
+// The AI inventory is platform-wide (no tenant scoping): superadmin only,
+// matching the page guard.
 function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
+  return role === 'superadmin'
 }
 
 function isValidCategory(s: string): s is InventoryCategory {

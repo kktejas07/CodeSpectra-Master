@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requirePageAccess } from '@/lib/route-auth'
 import { z } from 'zod'
 import { getUserAiCredits, spendAiCredits } from '@/lib/user-credits'
 import { backendPost } from '@/lib/ai/backend'
@@ -46,7 +46,7 @@ const questionSchema = z.object({
  * questions and spends a credit.
  */
 export async function POST(req: Request) {
-  const gate = await requireAuth()
+  const gate = await requirePageAccess('/dashboard/mock-tests')
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   let input: z.infer<typeof generateSchema>
@@ -81,6 +81,9 @@ export async function POST(req: Request) {
           questions: publicQuestions(existing.questions),
           created_at: existing.created_at,
           resumed: true,
+          progress: existing.progress
+            ? { answers: existing.progress.answers, index: existing.progress.index, started_at: existing.progress.started_at }
+            : null,
         })
       }
       // Stale, or the user asked for a new test: abandon the old attempt.

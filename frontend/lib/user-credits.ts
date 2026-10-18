@@ -9,7 +9,7 @@
 import 'server-only'
 import { users } from '@/lib/db/admin'
 import { getUserEntitlements, userIdFilter } from '@/lib/entitlements'
-import { aiAllowanceFor, assertCreditAmount, creditPeriod, DEFAULT_AI_ALLOWANCE } from '@/lib/entitlements-core'
+import { aiAllowanceFor, aiCreditCost, assertCreditAmount, creditPeriod, DEFAULT_AI_ALLOWANCE, type AiCreditFeature } from '@/lib/entitlements-core'
 
 export const FREE_AI_CREDITS = DEFAULT_AI_ALLOWANCE.free
 export const PRO_AI_CREDITS = DEFAULT_AI_ALLOWANCE.pro
@@ -80,4 +80,34 @@ export async function spendAiCredits(userId: string, amount = 1): Promise<SpendR
 export async function refundAiCredits(userId: string, amount = 1): Promise<void> {
   const n = assertCreditAmount(amount)
   await (await users()).updateOne(userIdFilter(userId), { $inc: { aiCredits: n } } as never)
+}
+
+export type ChargeResult =
+  | { ok: true; cost: number; balance: number; refund: () => Promise<void> }
+  | { ok: false; cost: number; balance: number }
+
+/**
+ * Charge one use of an AI feature up front (atomic, from AI_CREDIT_COSTS).
+ * Call `refund()` if the AI work then fails, so a failed call costs nothing.
+ */
+export async function chargeAiFeature(userId: string, feature: AiCreditFeature): Promise<ChargeResult> {
+  const cost = aiCreditCost(feature)
+  const spent = await spendAiCredits(userId, cost)
+  if (!spent.ok) return { ok: false, cost, balance: spent.balance }
+  let refunded = false
+  return {
+    ok: true,
+    cost,
+    balance: spent.balance,
+    refund: async () => {
+      if (refunded) return
+      refunded = true
+      try { await refundAiCredits(userId, cost) } catch (e) { console.error('[credits] refund failed:', e) }
+    },
+  }
+}
+
+/** Standard 402 body for an out-of-credits AI call. */
+export function outOfCredits(r: { cost: number; balance: number }) {
+  return { error: 'You are out of AI credits', balance: r.balance, required: r.cost }
 }

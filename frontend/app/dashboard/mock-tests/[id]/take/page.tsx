@@ -100,10 +100,23 @@ export default function TakeMockTestPage() {
   const requestedRef = useRef(false)
 
   /** Load the server's attempt into the page (fresh or resumed). */
-  const applyAttempt = useCallback((data: { session_id?: string; questions?: Question[]; created_at?: string; resumed?: boolean }) => {
+  const applyAttempt = useCallback((data: {
+    session_id?: string; questions?: Question[]; created_at?: string; resumed?: boolean
+    progress?: { answers?: Record<string, number>; index?: number; started_at?: number | null } | null
+  }) => {
     const sid = typeof data.session_id === 'string' ? data.session_id : null
     const isResumed = data.resumed === true
-    const local = sid ? readLocal(sid) : {}
+    const browser = sid ? readLocal(sid) : {}
+    // Another device (or cleared storage): fall back to the server's autosave.
+    const server = isResumed && data.progress && typeof data.progress === 'object' ? data.progress : null
+    const local: LocalAttemptState = browser.answers || !server
+      ? browser
+      : {
+          started: true,
+          startedAt: typeof server.started_at === 'number' ? server.started_at : browser.startedAt,
+          answers: server.answers && typeof server.answers === 'object' ? (server.answers as Record<number, number>) : {},
+          index: typeof server.index === 'number' ? server.index : 0,
+        }
     // Resumed and already under way (or no local record, e.g. another
     // device): the timer runs from when the attempt started — this browser's
     // record if it has one, else the stored attempt time. A fresh attempt, or
@@ -214,6 +227,19 @@ export default function TakeMockTestPage() {
     writeLocal(sessionId, { started, answers, index: currentIndex })
   }, [sessionId, started, answers, currentIndex, result])
 
+  // Autosave progress on the server (debounced) so another device can resume.
+  useEffect(() => {
+    if (!sessionId || !started || result || finished) return
+    const t = setTimeout(() => {
+      csrfFetch('/api/mock-tests/attempts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, answers, index: currentIndex, started_at: startedAtMs }),
+      }).catch(() => { /* best effort; the browser copy still holds the place */ })
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [sessionId, started, answers, currentIndex, startedAtMs, result, finished])
+
   const beginTest = () => {
     // The clock starts when the candidate presses Start on a fresh attempt.
     if (!resumed) {
@@ -319,7 +345,7 @@ export default function TakeMockTestPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-4">
         <Illustration name="error" className="w-40" />
-        <h2 className="text-xl font-bold">Failed to load test</h2>
+        <h1 className="text-xl font-bold">Failed to load test</h1>
         <p className="text-muted-foreground">{error || 'No questions received.'}</p>
         <Button onClick={() => router.back()}>Go back</Button>
       </div>
@@ -329,6 +355,7 @@ export default function TakeMockTestPage() {
   if (!started) {
     return (
       <div className="flex-1 space-y-6">
+        <h1 className="sr-only">{company} mock test</h1>
         <Button variant="ghost" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to config
         </Button>
@@ -364,7 +391,7 @@ export default function TakeMockTestPage() {
         {submitError ? (
           <>
             <AlertTriangle className="h-12 w-12 text-destructive" />
-            <h2 className="text-xl font-bold">Couldn&apos;t save your answers</h2>
+            <h1 className="text-xl font-bold">Couldn&apos;t save your answers</h1>
             <p className="text-muted-foreground">{submitError}</p>
             <div className="flex flex-wrap justify-center gap-2">
               <Button onClick={() => { setSubmitError(null) }}>Try again</Button>
@@ -384,6 +411,7 @@ export default function TakeMockTestPage() {
 
     return (
       <div className="flex-1 space-y-6">
+        <h1 className="sr-only">{company} mock test results</h1>
         <Card className="rounded-3xl border-border/70 text-center p-8">
           <div className="mb-6 flex justify-center">
             {percentage >= 70 ? (
@@ -454,7 +482,7 @@ export default function TakeMockTestPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-xl font-bold">{company} · {role}</h2>
+          <h1 className="text-xl font-bold">{company} · {role}</h1>
           <p className="text-sm text-muted-foreground tabular-nums">Question {currentIndex + 1} of {questions.length}</p>
         </div>
         <div className="flex items-center gap-3">

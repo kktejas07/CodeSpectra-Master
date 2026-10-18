@@ -252,10 +252,12 @@ export async function POST(req: NextRequest) {
       }
       const secret = process.env.CRON_SECRET?.trim() || ''
       const origin = new URL(req.url).origin
-      const url = secret
-        ? `${origin}${path}?secret=${encodeURIComponent(secret)}`
-        : `${origin}${path}`
-      const res = await fetch(url, { method: 'POST', cache: 'no-store' })
+      // Secret in the Authorization header only — never in the URL (access logs).
+      const res = await fetch(`${origin}${path}`, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: secret ? { Authorization: `Bearer ${secret}` } : undefined,
+      })
       const text = await res.text()
       let data: unknown = text
       try {

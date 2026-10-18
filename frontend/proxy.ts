@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { checkCsrf, CSRF_COOKIE, CSRF_HEADER } from '@/lib/csrf'
 import { edgeRateLimit, edgeClientKey } from '@/lib/edge-rate-limit'
+import { isCsrfExempt } from '@/lib/csrf-exempt'
 
 const CSP = [
   "default-src 'self'",
@@ -23,42 +24,15 @@ const CSP = [
 
 const HSTS = 'max-age=63072000; includeSubDomains; preload'
 
-export default function proxy(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const response = NextResponse.next()
 
   // Global API rate limiting (best-effort edge layer). Generous threshold catches
   // only egregious abuse — per-route limits in Node handlers are the real guard.
-  const CSRF_EXEMPT = [
-    '/api/analytics/web-vitals',
-    '/api/analytics/events',
-    '/api/github/webhook',
-    '/api/billing/webhook',
-    '/api/billing/stripe-webhook',
-    '/api/billing/phonepe-webhook',
-    '/api/billing/phonepe-callback',
-    // Cron endpoints authenticate with CRON_SECRET (server-to-server), not
-    // browser cookies — CSRF tokens are meaningless here, and requiring them
-    // breaks the admin "run now" self-fetch and external cron callers.
-    '/api/cron/',
-    '/api/webhooks/postal',
-    '/api/admin/llm-test',
-    '/api/proctor/events',
-    '/api/daily-login',
-    '/api/kyc/didit/webhook',
-    '/api/security/track',
-    // Face sign-in starts a sign-in (no session yet), like /api/auth/login.
-    '/api/auth/face-verify',
-    // Login/token endpoints ESTABLISH the session, so there is no session to
-    // forge — and cookie-less native clients cannot obtain a CSRF token
-    // before their first call. Brute-force/IP protections live in the routes.
-    '/api/auth/login',
-    '/api/auth/mobile-token',
-    // Public runtime config (GET, no cookies) — read before any session exists.
-    '/api/config/public',
-  ]
-  if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
+  // Exempt paths: lib/csrf-exempt.ts (segment-aware).
+  if (pathname.startsWith('/api/') && !isCsrfExempt(pathname)) {
     const rl = edgeRateLimit(`api:${edgeClientKey(request)}`, 240, 60_000)
     if (!rl.ok) {
       return NextResponse.json(
@@ -74,7 +48,7 @@ export default function proxy(request: NextRequest) {
   const secureFlag = process.env.NODE_ENV === 'production' ? 'Secure;' : ''
 
   // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)
-  if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
+  if (pathname.startsWith('/api/') && !isCsrfExempt(pathname)) {
     // Bearer-authenticated callers (the mobile app, server-to-server clients)
     // carry no ambient cookie, so a CSRF token is neither present nor
     // meaningful — there is nothing to forge. Cross-site scripting cannot

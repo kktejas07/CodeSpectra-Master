@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useRoleGate } from '@/lib/use-role-gate'
 import { getRequiredRoleForRoute, isPlatformAdminRoute } from '@/lib/page-permissions'
 import { isSuperAdmin, isAdmin, isJudge, type UserRole } from '@/lib/rbac'
+import { routeCovers } from '@/lib/page-access'
 
 /** Shared cache for locked pages & features — avoids per-hook fetches */
 interface LockedData { locked_pages: string[]; locked_features: string[] }
@@ -94,19 +95,13 @@ export function usePageGuard(
       return
     }
 
-    fetch('/api/admin/permissions/roles', { credentials: 'include' })
+    // The caller's own role grants (any role can read these; the roles API is superadmin-only).
+    fetch('/api/user/my-permissions', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then(data => {
+      .then((data: { readable?: unknown } | null) => {
         if (cancelled) return
-        if (!data?.roles) { setDbAllowed(false); return }
-        const roleData = data.roles.find((r: any) => r.role === gate.user!.role)
-        if (!roleData) { setDbAllowed(false); return }
-        const perms = (roleData.permissions || []) as any[]
-        const hasAccess = perms.some((p: any) =>
-          (p.resourceType === 'page' && (p.actions?.includes('read') || p.actions?.includes('manage'))) &&
-          (p.resource === route || route.startsWith(p.resource + '/'))
-        )
-        setDbAllowed(hasAccess)
+        const readable = Array.isArray(data?.readable) ? (data!.readable as unknown[]).filter((x): x is string => typeof x === 'string') : []
+        setDbAllowed(readable.some(base => routeCovers(base, route)))
       })
       .catch(() => { setDbAllowed(false) })
 

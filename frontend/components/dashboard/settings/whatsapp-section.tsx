@@ -104,7 +104,7 @@ export function WhatsAppSettingsSection() {
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await fetch('/api/admin/whatsapp/test-connection', { credentials: 'include' })
+      const res = await csrfFetch('/api/admin/whatsapp/test-connection', { method: 'POST', credentials: 'include' })
       const data = await res.json()
       if (data.ok) {
         setTestResult({

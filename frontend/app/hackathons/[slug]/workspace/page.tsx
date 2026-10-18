@@ -553,6 +553,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
   return (
     <div className="min-h-screen bg-background">
+      <h1 className="sr-only">{hackathon.name} workspace</h1>
       <header className="border-b border-border bg-card/90 backdrop-blur sticky top-0 z-10">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-3">
           <div className="flex min-w-0 items-center gap-3">

@@ -126,7 +126,7 @@ export default function LiveInterviewPage() {
         <Link href={`/dashboard/interviews/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-3 w-3" /> Back
         </Link>
-        <p className="text-sm font-medium text-foreground">Interview live room</p>
+        <h1 className="text-sm font-medium text-foreground">Interview live room</h1>
         <div className="flex items-center gap-2">
           <Button size="sm" variant={micOn ? 'default' : 'destructive'} onClick={toggleMic} aria-label={micOn ? 'Mute microphone' : 'Unmute microphone'} aria-pressed={!micOn}>
             {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}

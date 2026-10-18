@@ -17,6 +17,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { getMongoDb } from '@/lib/mongodb'
 import type { WorkflowDoc, WorkflowNode } from '@/lib/db/leaderboard'
+import { safeFetch } from '@/lib/url-safety'
 
 export interface WorkflowStepResult {
   node_id: string
@@ -51,7 +52,8 @@ async function runNode(
       if (!url) throw new Error('http.request: url required')
       if (!/^https?:\/\//i.test(url)) throw new Error('http.request: only http/https URLs allowed')
       const method = String(cfg.method || 'GET').toUpperCase()
-      const res = await fetch(url, {
+      // No private / loopback / metadata hosts, including via redirects.
+      const res = await safeFetch(url, {
         method,
         headers: (cfg.headers as Record<string, string>) || undefined,
         body:

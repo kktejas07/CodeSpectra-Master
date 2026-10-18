@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendWhatsAppText } from '@/lib/whatsapp'
@@ -7,15 +8,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET?.trim()
-  if (!expected) {
-    if (process.env.NODE_ENV === 'production') return false
-    return true
-  }
-  const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret') || ''
-  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  return fromQuery === expected || fromHeader === expected
+  return isCronAuthorized(req)
 }
 
 async function postImpl(req: NextRequest) {

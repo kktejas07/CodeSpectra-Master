@@ -343,13 +343,13 @@ export default function CronJobsPage() {
                 <li>
                   Point cron at e.g.{' '}
                   <code className="break-all rounded bg-muted px-1 text-[11px]">
-                    https://your-domain/api/cron/tick?secret=YOUR_SECRET
+                    https://your-domain/api/cron/tick
                   </code>{' '}
-                  (or header{' '}
+                  with the header{' '}
                   <code className="break-all rounded bg-muted px-1 text-[11px]">
                     Authorization: Bearer YOUR_SECRET
                   </code>
-                  ).
+                  . A <code className="rounded bg-muted px-1 text-[11px]">?secret=</code> query is not accepted.
                 </li>
               </ol>
               <p className="text-xs text-muted-foreground">
@@ -481,7 +481,7 @@ export default function CronJobsPage() {
               </h2>
               <p className="mt-0.5 wrap-break-word text-xs text-muted-foreground">
                 Point Dokploy / cron-job.org / GitHub Actions at these URLs with{' '}
-                <code className="rounded bg-muted px-1">?secret=CRON_SECRET</code>. Status is based on
+                the header <code className="rounded bg-muted px-1">Authorization: Bearer CRON_SECRET</code>. Status is based on
                 the last recorded call, not just the secret being set.
               </p>
             </div>

@@ -11,6 +11,7 @@ import {
   setSessionCookie,
 } from '@/lib/session'
 import { getAPIUser } from '@/lib/route-auth'
+import { getUserEntitlements } from '@/lib/entitlements'
 import { accountBlockReason } from '@/lib/auth-account'
 import { normalizeUserRole } from '@/lib/rbac'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
@@ -254,7 +255,12 @@ export async function GET() {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ user: null })
 
-  const profile = await getUserById(user.id)
+  const [profile, planKey] = await Promise.all([
+    getUserById(user.id),
+    // Effective plan from the one resolver (live subscription, then admin
+    // override) — never the raw `user.plan` field. Falls back to free.
+    getUserEntitlements(user.id).then((e) => e.planKey).catch(() => 'free'),
+  ])
   updateUserById(user.id, { updatedAt: new Date() } as never).catch(() => {})
   const p = (profile || {}) as Record<string, unknown>
   return NextResponse.json({
@@ -263,7 +269,7 @@ export async function GET() {
       email: user.email || null,
       // Effective role (a tenant admin without an active tenant runs as `user`).
       role: user.role,
-      plan: (p.plan as string) || 'free',
+      plan: planKey || 'free',
       fullName: user.fullName || null,
       lastLoginMethod: user.lastLoginMethod || null,
       lastLoginAt: user.lastLoginAt || null,

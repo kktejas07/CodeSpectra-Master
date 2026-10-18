@@ -1,11 +1,12 @@
 /**
  * Cron: generate one draft ebook per day from the rotating topic list.
- * POST /api/cron/ebooks-daily  ?secret=CRON_SECRET
+ * POST /api/cron/ebooks-daily  (Authorization: Bearer CRON_SECRET)
  *
  * Original CodeSpectra content only — no scraping copyrighted books.
  * Human publishes from /dashboard/admin/resources.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { ebooksCol } from '@/lib/db/ebooks'
 import { generateEbookDraft, topicForDay } from '@/lib/ebooks-generate'
@@ -18,12 +19,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 180
 
 function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET?.trim()
-  if (!expected) return process.env.NODE_ENV !== 'production'
-  const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret') || ''
-  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  return fromQuery === expected || fromHeader === expected
+  return isCronAuthorized(req)
 }
 
 async function postImpl(req: NextRequest) {

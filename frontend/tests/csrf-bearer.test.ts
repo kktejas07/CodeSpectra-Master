@@ -10,6 +10,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { checkCsrf } from '@/lib/csrf'
+import { isCsrfExempt } from '@/lib/csrf-exempt'
 
 const TOKEN = 'a'.repeat(32)
 
@@ -43,10 +44,9 @@ describe('checkCsrf (cookie path — unchanged)', () => {
 })
 
 describe('session-establishing routes are CSRF-exempt', () => {
-  // Mirrors CSRF_EXEMPT in middleware.ts. Login/token mint a session, so
-  // there is nothing to forge, and native clients have no cookie yet.
-  const EXEMPT = ['/api/auth/login', '/api/auth/mobile-token']
-  const isExempt = (pathname: string): boolean => EXEMPT.some((p) => pathname.startsWith(p))
+  // The real list the proxy uses (lib/csrf-exempt.ts). Login/token mint a
+  // session, so there is nothing to forge, and native clients have no cookie yet.
+  const isExempt = (pathname: string): boolean => isCsrfExempt(pathname)
 
   it('cookie-less mobile-token POST passes the middleware gate', () => {
     expect(isExempt('/api/auth/mobile-token')).toBe(true)
@@ -66,6 +66,18 @@ describe('session-establishing routes are CSRF-exempt', () => {
   it('unrelated mutating routes are NOT exempt', () => {
     expect(isExempt('/api/admin/users')).toBe(false)
     expect(isExempt('/api/courses')).toBe(false)
+  })
+
+  it('matches by path segment, not string prefix', () => {
+    // A sibling route that merely starts with an exempt name is NOT exempt.
+    expect(isExempt('/api/auth/login-method')).toBe(false)
+    expect(isExempt('/api/auth/loginx')).toBe(false)
+    expect(isExempt('/api/cronjobs')).toBe(false)
+    // The entry itself and its sub-paths are.
+    expect(isExempt('/api/auth/login')).toBe(true)
+    expect(isExempt('/api/cron/tick')).toBe(true)
+    expect(isExempt('/api/analytics/web-vitals/summary')).toBe(true)
+    expect(isExempt('/api/billing/stripe-webhook')).toBe(true)
   })
 })
 

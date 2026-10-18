@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -12,6 +12,7 @@ import { Panel, Section, BentoGrid } from '@/components/app/page-kit'
 import { AppBanner, Illustration, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 import { Scene } from '@/components/illustrations/scenes'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default function CertificationsPage() {
   const gate = usePageGuard('user')
@@ -72,6 +73,8 @@ export default function CertificationsPage() {
         />
       </div>
 
+      <MyCertificates />
+
       {/* Honesty callout */}
       <Card className="rounded-3xl p-5 border-primary/20 bg-primary/5">
         <div className="flex items-start gap-3">
@@ -121,7 +124,7 @@ export default function CertificationsPage() {
         </div>
       )}
 
-      {/* CodeSpectra certificates — this page has no list of the user's own certificates yet, so show how to earn one. */}
+      {/* How to earn more CodeSpectra certificates (the user's own are listed under My certificates). */}
       <Panel className="grid items-center gap-6 overflow-hidden p-6 md:grid-cols-[1fr_minmax(0,320px)] lg:p-8">
         <div className="min-w-0">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
@@ -238,5 +241,83 @@ function FreeCard({ track }: { track: CertTrack }) {
         </div>
       </div>
     </Panel>
+  )
+}
+interface EarnedCertificate {
+  id: string
+  title: string
+  level: string
+  source: string
+  event_title: string | null
+  score_label: string | null
+  issued_at: string | null
+  verify_url: string
+}
+
+/** The user's own CodeSpectra certificates (from certification_attempts). */
+function MyCertificates() {
+  const [state, setState] = useState<{ status: 'loading' | 'error' | 'ready'; items: EarnedCertificate[] }>({ status: 'loading', items: [] })
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/user/certificates', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(String(res.status))
+        const data = (await res.json()) as { certificates?: EarnedCertificate[] }
+        if (!cancelled) setState({ status: 'ready', items: Array.isArray(data.certificates) ? data.certificates : [] })
+      })
+      .catch(() => { if (!cancelled) setState({ status: 'error', items: [] }) })
+    return () => { cancelled = true }
+  }, [])
+
+  return (
+    <div id="my-certificates" className="scroll-mt-24">
+      <Section
+        title={<span className="flex items-center gap-2"><FileBadge2 className="h-5 w-5 text-primary" aria-hidden /> My certificates</span>}
+        description="Certificates you have earned on CodeSpectra. Each has a public link anyone can check."
+      >
+        {state.status === 'loading' ? (
+          <Panel className="p-5 text-sm text-muted-foreground">Loading your certificates…</Panel>
+        ) : state.status === 'error' ? (
+          <Panel className="p-5 text-sm text-destructive" role="alert">We could not load your certificates. Refresh the page to try again.</Panel>
+        ) : state.items.length === 0 ? (
+          <EmptyState
+            compact
+            illustration="certificate"
+            title="No certificates yet"
+            description="Pass an assessment, finish a course or take part in an event to earn one."
+          />
+        ) : (
+          <BentoGrid className="lg:grid-cols-3">
+            {state.items.map((c) => (
+              <Panel key={c.id} className="p-5">
+                <div className="flex h-full flex-col gap-3">
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-foreground">{c.title}</h3>
+                    {c.event_title && <p className="text-sm text-muted-foreground">{c.event_title}</p>}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {c.level && <Badge variant="secondary">{c.level}</Badge>}
+                    {c.score_label && <Badge variant="outline">{c.score_label}</Badge>}
+                  </div>
+                  {c.issued_at && (
+                    <p className="text-xs text-muted-foreground">
+                      Issued {new Date(c.issued_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </p>
+                  )}
+                  <div className="mt-auto">
+                    <Button asChild size="sm" variant="outline" className="rounded-full">
+                      <Link href={c.verify_url} target="_blank" rel="noopener noreferrer">
+                        View certificate <ExternalLink className="ml-1 h-3.5 w-3.5" aria-hidden />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </Panel>
+            ))}
+          </BentoGrid>
+        )}
+      </Section>
+    </div>
   )
 }

@@ -216,6 +216,49 @@ export async function requirePermission(resource: string, action: string = 'read
 }
 
 /**
+ * Server-side page / feature gate for the API behind a dashboard page: the
+ * caller must be signed in, the page (and `feature`, e.g. "scanner:chat") must
+ * not be locked by the superadmin, and the role must have read access to the
+ * page (stored role permissions merged with the defaults). Superadmin bypasses.
+ */
+export async function requirePageAccess(route: string, feature?: string) {
+  const user = await getAPIUser()
+  if (!user) return { error: 'Unauthorized', status: 401 as const }
+  if (user.role === 'superadmin') return { user }
+  try {
+    const [{ decidePageAccess }, { mergeGeneralPlatformSettings }, permsDb] = await Promise.all([
+      import('@/lib/page-access'),
+      import('@/lib/platform-general-settings'),
+      import('@/lib/permissions-db'),
+    ])
+    const db = await getMongoDb()
+    const general = await db.collection('platform_settings').findOne({ key: 'general' })
+    const settings = mergeGeneralPlatformSettings(general?.value)
+    const stored = (await getPermissionsForRole(user.role)).map((p) => ({
+      resource: p.resource,
+      resourceType: (p.resource.startsWith('/') ? 'page' : 'entity') as import('@/lib/permissions-db').ResourceType,
+      actions: (p.actions || []) as import('@/lib/permissions-db').PermissionAction[],
+    }))
+    const permissions = permsDb.mergePermissions(stored, permsDb.getDefaultRolePermissions(user.role))
+    const decision = decidePageAccess({
+      role: user.role,
+      route,
+      feature,
+      lockedPages: settings.locked_pages ?? [],
+      lockedFeatures: settings.locked_features ?? [],
+      permissions,
+    })
+    if (decision.ok) return { user }
+    return decision.reason === 'locked'
+      ? { error: 'This feature is not available yet', status: 403 as const }
+      : { error: 'Forbidden', status: 403 as const }
+  } catch (e) {
+    console.error('[route-auth] requirePageAccess:', e)
+    return { error: 'Could not verify access', status: 500 as const }
+  }
+}
+
+/**
  * Check if the current user's plan allows a feature.
  * Returns 402 Payment Required if the plan doesn't include the feature.
  */

@@ -3,9 +3,10 @@
  * their notifications from the last 24 hours. Opt-in via the "Daily digest"
  * switch (notification_preferences { type: 'digest', daily: true }).
  * Users with nothing new get no email. Quiet hours defer the send.
- * Auth: CRON_SECRET (Bearer header or ?secret=). Recommended: daily 08:00 UTC.
+ * Auth: CRON_SECRET (Authorization: Bearer header). Recommended: daily 08:00 UTC.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
 import { claimDigestSend, deliverOrDefer, escapeHtml, getDigestRecipients } from '@/lib/notifications-delivery'
@@ -14,15 +15,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET?.trim()
-  if (!expected) {
-    if (process.env.NODE_ENV === 'production') return false
-    return true
-  }
-  const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret') || ''
-  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  return fromQuery === expected || fromHeader === expected
+  return isCronAuthorized(req)
 }
 
 async function handle(req: NextRequest) {

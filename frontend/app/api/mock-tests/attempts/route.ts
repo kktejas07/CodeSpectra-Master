@@ -23,6 +23,57 @@ const submitSchema = z.object({
   answers: z.record(z.string().regex(/^\d{1,3}$/), z.number().int().min(0).max(3)),
 })
 
+const progressSchema = z.object({
+  session_id: z.string().min(1).max(100),
+  answers: z.record(z.string().regex(/^\d{1,3}$/), z.number().int().min(0).max(3)),
+  index: z.number().int().min(0).max(999),
+  started_at: z.number().int().positive().nullable().optional(),
+})
+
+/**
+ * PATCH -> autosave answers in progress for the caller's own open attempt, so
+ * a reload on another device resumes where they left off. Never grades.
+ */
+export async function PATCH(req: Request) {
+  const gate = await requireAuth()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  const rl = await rateLimitRedis(`mock-tests:autosave:${gate.user.id}`, 120, 10 * 60_000)
+  if (!rl.ok) {
+    return NextResponse.json({ error: 'Too many saves' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  }
+
+  let parsed: z.infer<typeof progressSchema>
+  try {
+    parsed = progressSchema.parse(await req.json())
+  } catch {
+    return NextResponse.json({ error: 'Invalid progress' }, { status: 400 })
+  }
+  if (Object.keys(parsed.answers).length > 200) {
+    return NextResponse.json({ error: 'Invalid progress' }, { status: 400 })
+  }
+
+  const col = await mockTestSessions()
+  // The start time can only be set once, and never in the future.
+  const now = Date.now()
+  const session = await col.findOne(
+    { id: parsed.session_id, user_id: gate.user.id, submitted_at: null, abandoned_at: { $exists: false } },
+    { projection: { _id: 0, progress: 1, created_at: 1 } },
+  )
+  if (!session) return NextResponse.json({ error: 'Test not found' }, { status: 404 })
+  const created = Date.parse(session.created_at)
+  const requestedStart = typeof parsed.started_at === 'number' ? Math.min(parsed.started_at, now) : null
+  const startedAt = session.progress?.started_at
+    ?? (requestedStart !== null && Number.isFinite(created) ? Math.max(requestedStart, created) : requestedStart)
+
+  const res = await col.updateOne(
+    { id: parsed.session_id, user_id: gate.user.id, submitted_at: null, abandoned_at: { $exists: false } },
+    { $set: { progress: { answers: parsed.answers, index: parsed.index, started_at: startedAt, saved_at: new Date(now).toISOString() } } },
+  )
+  if (res.matchedCount === 0) return NextResponse.json({ error: 'Test not found' }, { status: 404 })
+  return NextResponse.json({ saved: true })
+}
+
 export async function GET() {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })

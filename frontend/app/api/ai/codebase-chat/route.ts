@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
-import { getAPIUser } from '@/lib/route-auth'
+import { requirePageAccess } from '@/lib/route-auth'
 import { isSafeUrl } from '@/lib/url-safety'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
-  const user = await getAPIUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const gate = await requirePageAccess('/dashboard/scanner', 'scanner:chat')
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const user = gate.user
 
   try {
     const body = await request.json()

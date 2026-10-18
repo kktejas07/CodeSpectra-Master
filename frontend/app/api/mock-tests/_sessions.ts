@@ -34,6 +34,8 @@ export interface MockTestSessionDoc {
   submitted_at: string | null
   abandoned_at?: string
   answers?: Record<string, number>
+  /** Autosaved in-progress state (PATCH /api/mock-tests/attempts), so another device can resume. */
+  progress?: { answers: Record<string, number>; index: number; started_at: number | null; saved_at: string }
   score?: number
   total?: number
   percentage?: number

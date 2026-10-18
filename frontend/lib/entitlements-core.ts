@@ -150,6 +150,32 @@ export function withinLimit(limit: number, used: number, requested = 1): boolean
 
 export const MAX_CREDIT_SPEND = 100
 
+/**
+ * AI credit cost per feature — the one table every AI route charges from.
+ * A mock interview is charged once, when the session starts.
+ */
+export const AI_CREDIT_COSTS = {
+  chat: 1,
+  code_review: 1,
+  code_analysis: 1,
+  grade: 1,
+  hints: 1,
+  mock_interview: 3,
+  resume_summary: 1,
+  mock_test: 1,
+  interview_prep: 1,
+  course: 1,
+  fixes: 1,
+} as const
+
+export type AiCreditFeature = keyof typeof AI_CREDIT_COSTS
+
+/** Cost of one use of an AI feature (unknown features cost 1, never 0). */
+export function aiCreditCost(feature: string): number {
+  const v = (AI_CREDIT_COSTS as Record<string, number>)[feature]
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 ? v : 1
+}
+
 /** A credit spend must be a positive integer within a sane cap (no minting). */
 export function assertCreditAmount(raw: unknown): number {
   if (typeof raw !== 'number' || !Number.isInteger(raw) || raw < 1 || raw > MAX_CREDIT_SPEND) {

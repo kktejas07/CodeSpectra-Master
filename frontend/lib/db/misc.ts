@@ -78,6 +78,8 @@ export interface AuditLogDoc {
   outcome: 'success' | 'denied'
   detail?: string
   user_id: string
+  /** Tenant of the acting admin (tenant_admin entries); null for platform actions. */
+  tenant_id?: string | null
   created_at: string
 }
 

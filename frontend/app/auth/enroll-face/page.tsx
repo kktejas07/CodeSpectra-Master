@@ -96,7 +96,7 @@ function EnrollFaceInner() {
         <div className="flex flex-col items-center text-center space-y-4">
           <Scene name="proctored-test" className="w-full max-w-[200px] sm:max-w-[280px]" />
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">Secure your account</h2>
+            <h1 className="text-2xl font-bold tracking-tight">Secure your account</h1>
             <p className="text-sm text-muted-foreground mt-2">
               Enroll your face to verify your identity during assessments. Face sign-in also needs two-step verification.
             </p>

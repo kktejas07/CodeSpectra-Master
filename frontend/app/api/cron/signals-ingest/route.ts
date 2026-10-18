@@ -1,11 +1,12 @@
 /**
  * Cron: ingest public RSS → research → fact pack → draft → humanize → signal_drafts (pending).
- * POST /api/cron/signals-ingest  ?secret=CRON_SECRET
+ * POST /api/cron/signals-ingest  (Authorization: Bearer CRON_SECRET)
  *
  * Never scrapes Unstop/closed sites. Human must approve before publish.
  * Cost: HTTP fetch/RSS = free. LLM = existing platform AI keys (usage).
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { sanitizeArticleHtml, safeHttpUrl, escapeHtml } from '@/lib/safe-html'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { SIGNAL_FEEDS } from '@/lib/signals/feeds'
@@ -21,12 +22,7 @@ export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET?.trim()
-  if (!expected) return process.env.NODE_ENV !== 'production'
-  const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret') || ''
-  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  return fromQuery === expected || fromHeader === expected
+  return isCronAuthorized(req)
 }
 
 async function postImpl(req: NextRequest) {

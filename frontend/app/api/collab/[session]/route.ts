@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
+import { canAccessCollab } from '@/lib/collab-access'
 import { collabDocuments, getOrCreateDocument, nowIso, newId } from '@/lib/db/collab'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// ponytail: known ceiling — any AUTHENTICATED user with the session UUID can
-// read/write these docs (collab rooms are shared-link by design, ids are
-// randomUUID so unguessable). If rooms ever need per-user ACLs, add a
-// `participants: string[]` field on create and gate all three handlers on it.
+// Every handler is gated on the interview's participants / staff
+// (lib/collab-access.ts) — the session id is the interview id.
 
 /** GET /api/collab/[session] — fetch current document (with ?v= for conditional) */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ session: string }> }) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const clientVersion = Number(req.nextUrl.searchParams.get('v')) || 0
 
   const col = await collabDocuments()
@@ -43,6 +43,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ session: 
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({})) as {
     content?: string; language?: string; version?: number
@@ -89,6 +90,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ session
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { getOrCreateDocument } = await import('@/lib/db/collab')
   const doc = await getOrCreateDocument(session, 'javascript')

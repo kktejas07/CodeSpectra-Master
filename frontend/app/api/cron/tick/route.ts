@@ -3,8 +3,7 @@
  * GET  /api/cron/tick      (alias for cron services that only support GET)
  *
  * Auth: provide either
- *   - `Authorization: Bearer <CRON_SECRET>`  OR
- *   - `?secret=<CRON_SECRET>` query parameter
+ *   - `Authorization: Bearer <CRON_SECRET>` (the `?secret=` query is no longer accepted)
  *
  * Set `CRON_SECRET` in your environment (or in MongoDB platform_settings)
  * and configure your cron provider (Vercel Cron, GitHub Actions,
@@ -19,6 +18,7 @@
  * so single-instance deployments work out of the box.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { runDueWorkflows, startSchedulerLoop } from '@/lib/scheduler'
 import { getMongoDb } from '@/lib/mongodb'
@@ -31,17 +31,7 @@ export const dynamic = 'force-dynamic'
 startSchedulerLoop()
 
 function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET?.trim()
-  if (!expected) {
-    if (process.env.NODE_ENV === 'production') {
-      return false
-    }
-    return true // dev mode: allow without secret
-  }
-  const url = new URL(req.url)
-  const fromQuery = url.searchParams.get('secret') || ''
-  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
-  return fromQuery === expected || fromHeader === expected
+  return isCronAuthorized(req)
 }
 
 async function handle(req: NextRequest) {

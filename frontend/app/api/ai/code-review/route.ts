@@ -4,6 +4,7 @@ import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 import { codeScans } from '@/lib/db/scans'
 import { aiCodeReviews, newId, nowIso } from '@/lib/db/ai'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 
@@ -41,6 +42,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     scanCtx = `Scan id ${scan.id}; language ${scan.language}; type ${scan.scan_type}.`
   }
 
+  const charge = await chargeAiFeature(user.id, 'code_review')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
+
   let result: Record<string, unknown>
   try {
     result = await backendPost<Record<string, unknown>>(
@@ -54,6 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     )
   } catch (err) {
     console.error('[CodeSpectra] AI code-review error:', err)
+    await charge.refund()
     return NextResponse.json({ success: false, error: 'AI service unavailable' }, { status: 502 })
   }
 

@@ -675,7 +675,7 @@ export default function HackathonDetailPage({
                       {addingMemberTeamId === t.id ? (
                         <div className="flex gap-1 items-center mt-1">
                           <Input
-                            placeholder="Email, name or ID"
+                            placeholder="Email or user ID"
                             value={addMemberInput}
                             onChange={(e) => setAddMemberInput(e.target.value)}
                             className="h-6 text-[10px] w-36 px-1.5"

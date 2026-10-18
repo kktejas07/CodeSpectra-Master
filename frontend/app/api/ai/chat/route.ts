@@ -11,6 +11,7 @@ import { resolveModel } from '@/lib/ai/get-user-model'
 import { getMongoDb } from '@/lib/mongodb'
 import { codeScans } from '@/lib/db/scans'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 
@@ -82,6 +83,10 @@ export async function POST(req: NextRequest): Promise<Response> {
     .limit(20)
     .toArray()
 
+  // One credit per message, taken before any work; refunded if the LLM fails.
+  const charge = await chargeAiFeature(user.id, 'chat')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
+
   // Persist user turn.
   await msgsCol.insertOne({
     id: newId(),
@@ -113,7 +118,9 @@ export async function POST(req: NextRequest): Promise<Response> {
   const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'chat_model')
 
   // Stream from backend, simultaneously buffering to persist the assistant turn.
-  const upstream = await backendChatStream({
+  let upstream: Response
+  try {
+  upstream = await backendChatStream({
     sessionId,
     systemMessage,
     history: history.map((m) => ({ role: m.role, content: m.content })),
@@ -123,8 +130,14 @@ export async function POST(req: NextRequest): Promise<Response> {
     modelOverride: modelOverride || undefined,
     endpointOverride: endpointOverride || undefined,
   })
+  } catch (err) {
+    console.error('[ai/chat] upstream error:', err)
+    await charge.refund()
+    return NextResponse.json({ error: 'AI service unavailable' }, { status: 502 })
+  }
 
   if (!upstream.ok || !upstream.body) {
+    await charge.refund()
     return NextResponse.json(
       { error: `LLM upstream ${upstream.status}` },
       { status: 502 },

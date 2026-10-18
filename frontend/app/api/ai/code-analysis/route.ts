@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 
@@ -28,7 +29,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!body.code) {
     return NextResponse.json({ error: 'code required' }, { status: 400 })
   }
-  const result = await backendPost<Record<string, unknown>>(
+  const charge = await chargeAiFeature(user.id, 'code_analysis')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
+
+  let result: Record<string, unknown>
+  try {
+  result = await backendPost<Record<string, unknown>>(
     '/internal/ai/code-analysis',
     {
       code: body.code.slice(0, 10_000),
@@ -39,5 +45,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     },
     { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )
-  return NextResponse.json(result)
+  } catch (err) {
+    console.error('[CodeSpectra] AI code-analysis error:', err)
+    await charge.refund()
+    return NextResponse.json({ success: false, error: 'AI service unavailable' }, { status: 502 })
+  }
+  return NextResponse.json({ ...result, creditsCharged: charge.cost, balance: charge.balance })
 }

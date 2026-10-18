@@ -191,6 +191,7 @@ export default function DashboardLayout({
       .then(data => {
         if (cancelled || !data?.user) return
         setUserRole((data.user.role || 'user') as UserRole)
+        // Effective plan (lib/entitlements.ts via /api/auth/session), not the raw user.plan field.
         setUserPlan(data.user.plan || 'free')
       })
       .catch(() => { if (!cancelled) setUserRole('user') })

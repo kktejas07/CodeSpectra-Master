@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requirePageAccess } from '@/lib/route-auth'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 import { getMongoDb } from '@/lib/mongodb'
 import {
   parseResume, generateOpeningQuestion,
@@ -18,8 +19,9 @@ interface StartBody {
 }
 
 export async function POST(req: NextRequest) {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const gate = await requirePageAccess('/dashboard/interviews/ai-mock')
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const user = gate.user
 
   let body: StartBody
   try {
@@ -39,6 +41,10 @@ export async function POST(req: NextRequest) {
   if (!['beginner', 'intermediate', 'advanced', 'expert'].includes(difficulty)) {
     return NextResponse.json({ error: 'Invalid difficulty' }, { status: 400 })
   }
+
+  // A mock interview is charged once, here; answers within the session are included.
+  const charge = await chargeAiFeature(user.id, 'mock_interview')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
 
   // Parse resume if provided
   let resume: ParsedResume | null = null
@@ -108,6 +114,7 @@ export async function POST(req: NextRequest) {
     await db.collection('ai_mock_sessions').insertOne(sessionDoc)
   } catch (e) {
     console.error('[ai-mock] DB insert error:', e)
+    await charge.refund()
     return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
   }
 

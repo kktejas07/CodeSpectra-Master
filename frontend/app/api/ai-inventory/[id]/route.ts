@@ -13,8 +13,10 @@ import { CATEGORY_ORDER, fetchCategory, type InventoryCategory } from '@/lib/ai-
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// The AI inventory is platform-wide (no tenant scoping): superadmin only,
+// matching the page guard.
 function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
+  return role === 'superadmin'
 }
 
 export async function GET(

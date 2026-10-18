@@ -6,7 +6,7 @@
     "dev": "next dev --webpack",
     "prebuild": "node scripts/sync-docs.cjs && node scripts/ensure-anon-aadhaar-types.cjs",
     "build": "NODE_ENV=production next build --webpack",
-    "start": "next dev --webpack -p 3000 -H 0.0.0.0",
+    "start": "next start -p 3000 -H 0.0.0.0",
     "course-worker": "tsx scripts/course-video-worker.ts",
     "postinstall": "patch-package",
     "lint": "eslint .",

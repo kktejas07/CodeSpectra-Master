@@ -105,8 +105,9 @@ const ADVISORIES: Advisory[] = [
   },
 ]
 
+// Platform-wide audit (spawns tooling on the host): superadmin only.
 function isAdmin(role?: string | null): boolean {
-  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
+  return role === 'superadmin'
 }
 
 function shouldUseRealAudit(): boolean {

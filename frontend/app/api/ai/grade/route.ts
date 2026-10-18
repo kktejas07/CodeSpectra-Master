@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 import { aiGrades, newId, nowIso } from '@/lib/db/ai'
+import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 
@@ -41,7 +42,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const rubric = body.rubric && Object.keys(body.rubric).length > 0 ? body.rubric : DEFAULT_RUBRIC
 
-  const result = await backendPost<Record<string, unknown>>(
+  const charge = await chargeAiFeature(user.id, 'grade')
+  if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
+
+  let result: Record<string, unknown>
+  try {
+  result = await backendPost<Record<string, unknown>>(
     '/internal/ai/grade',
     {
       code: body.code.slice(0, 10_000),
@@ -53,6 +59,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     },
     { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )
+  } catch (err) {
+    console.error('[CodeSpectra] AI grade error:', err)
+    await charge.refund()
+    return NextResponse.json({ success: false, error: 'AI service unavailable' }, { status: 502 })
+  }
 
   const gradesCol = await aiGrades()
   const doc = {

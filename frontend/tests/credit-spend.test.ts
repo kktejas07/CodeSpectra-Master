@@ -70,3 +70,27 @@ describe('spendAiCredits', () => {
     await expect(refundAiCredits('u1', -5)).rejects.toThrow(RangeError)
   })
 })
+
+describe('chargeAiFeature', () => {
+  beforeEach(() => {
+    state.doc = { id: 'u1', aiCredits: 3, creditsPlan: 'free', creditsResetAt: new Date(Date.now() + 86_400_000) }
+    vi.clearAllMocks()
+  })
+
+  it('charges the table cost and refunds exactly once', async () => {
+    const { chargeAiFeature } = await import('@/lib/user-credits')
+    const r = await chargeAiFeature('u1', 'mock_interview')
+    expect(r.ok).toBe(true)
+    expect(state.doc!.aiCredits).toBe(0)
+    if (r.ok) { await r.refund(); await r.refund() }
+    expect(state.doc!.aiCredits).toBe(3)
+  })
+
+  it('refuses without spending when the balance is below the cost', async () => {
+    state.doc!.aiCredits = 2
+    const { chargeAiFeature } = await import('@/lib/user-credits')
+    const r = await chargeAiFeature('u1', 'mock_interview')
+    expect(r).toMatchObject({ ok: false, cost: 3, balance: 2 })
+    expect(state.doc!.aiCredits).toBe(2)
+  })
+})
