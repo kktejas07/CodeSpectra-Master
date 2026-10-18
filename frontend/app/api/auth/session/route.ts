@@ -20,6 +20,7 @@ import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { isIpBlocked, isIpOutsideWhitelist, trackDeviceFingerprint, recordSecurityEvent } from '@/lib/db/security'
 import { writeAuditLog } from '@/lib/db/misc'
+import { trustCurrentDevice } from '@/lib/trusted-devices'
 
 export const runtime = 'nodejs'
 
@@ -227,6 +228,8 @@ export async function POST(request: NextRequest) {
 
     await clearPending2faCookie()
     await setSessionCookie({ uid, email, role })
+    // A verified Google/GitHub sign-in: trust this browser for face sign-in.
+    await trustCurrentDevice(uid, request.headers.get('user-agent'))
     if (loginMethod) await updateUserLastLogin(uid, loginMethod).catch(() => {})
     await recordOAuthSession(request, uid, email, visitorId)
     await writeAuditLog({ action: 'auth.oauth_login', outcome: 'success', actor: email, actorIp: rawIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', detail: resolved.linked ? 'linked to existing account by verified email' : resolved.created ? 'account created' : undefined, user_id: uid }).catch(() => {})
@@ -248,6 +251,7 @@ export async function DELETE() {
   response.cookies.set(IMPERSONATOR_COOKIE, '', cleared)
   response.cookies.set(IMPERSONATING_COOKIE, '', { ...cleared, httpOnly: false })
   response.cookies.set('codespectra_2fa_pending', '', cleared)
+  response.cookies.set('codespectra_face_email_pending', '', cleared)
   return response
 }
 

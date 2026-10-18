@@ -8,7 +8,8 @@ import { safeRedirect } from "@/lib/safe-redirect";
 import { csrfFetch } from "@/lib/csrf-fetch";
 import { Github } from "@/components/ui/brand-icons";
 import { useAuth, getLastLogin } from "@/lib/auth-context";
-import { FaceCamera } from "@/components/auth/face-camera";
+import { FaceCamera, type LivenessCapture } from "@/components/auth/face-camera";
+import { pickLivenessChallenge, type LivenessChallenge } from "@/lib/auth-face-liveness";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { DeviceShowcase } from "@/components/visuals";
 import {
@@ -92,6 +93,13 @@ function LoginInner() {
   const [platformSettings, setPlatformSettings] = useState<{ enable_sso_login?: boolean }>({});
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
+  // Face sign-in: a fresh random challenge per attempt (remounts the camera),
+  // and the emailed-code step for a device this account hasn't trusted yet.
+  const [faceChallenge, setFaceChallenge] = useState<LivenessChallenge | null>(null);
+  const [faceAttempt, setFaceAttempt] = useState(0);
+  const [emailCodePending, setEmailCodePending] = useState(false);
+  const [emailCode, setEmailCode] = useState("");
+  const [emailCodeNotice, setEmailCodeNotice] = useState<string | null>(null);
 
   const { signInWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
 
@@ -106,10 +114,19 @@ function LoginInner() {
       .catch(console.error);
   }, []);
 
+  const newFaceAttempt = () => {
+    setFaceChallenge(pickLivenessChallenge());
+    setFaceAttempt((n) => n + 1);
+  };
+
   const goTo = (m: Mode) => {
     setError(null);
     setPendingSecondFactor(null);
     setTotpCode("");
+    setEmailCodePending(false);
+    setEmailCode("");
+    setEmailCodeNotice(null);
+    if (m === "face") newFaceAttempt();
     setMode(m);
   };
 
@@ -201,14 +218,11 @@ function LoginInner() {
     }
   }
 
-  async function handleFaceLogin(descriptor: Float32Array | null) {
+  async function handleFaceLogin(result: LivenessCapture) {
     setError(null);
-    if (!descriptor) {
-      setError("Your face wasn’t detected. Face the camera in good light and try again.");
-      return;
-    }
     if (!email) {
       setError("Enter your email first, then look at the camera.");
+      newFaceAttempt();
       return;
     }
     setLoading(true);
@@ -216,10 +230,21 @@ function LoginInner() {
       const res = await fetch("/api/auth/face-verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), descriptor: Array.from(descriptor) }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          descriptors: result.descriptors.map((d) => Array.from(d)),
+          liveness: { challenge: result.challenge, passed: result.passed },
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Face sign-in failed. Use your password instead.");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Face sign-in didn’t work. Try again, or use your password.");
+      if (data.emailCodeRequired) {
+        setEmailCode("");
+        setEmailCodeNotice(null);
+        setEmailCodePending(true);
+        setLoading(false);
+        return;
+      }
       if (data.twoFactorRequired) {
         setTotpCode("");
         setPendingSecondFactor("face");
@@ -229,7 +254,70 @@ function LoginInner() {
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Face sign-in failed.");
+      setError(err instanceof Error ? err.message : "Face sign-in didn’t work. Try again, or use your password.");
+      newFaceAttempt();
+      setLoading(false);
+    }
+  }
+
+  async function handleEmailCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setEmailCodeNotice(null);
+    setLoading(true);
+    try {
+      const res = await csrfFetch("/api/auth/face-email-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: emailCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.expired) {
+          setEmailCodePending(false);
+          setEmailCode("");
+          newFaceAttempt();
+        }
+        throw new Error(data.error || "That code didn’t work. Try again.");
+      }
+      if (data.twoFactorRequired) {
+        setEmailCodePending(false);
+        setTotpCode("");
+        setPendingSecondFactor("face");
+        setLoading(false);
+        return;
+      }
+      router.push(redirectTo);
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "That code didn’t work. Try again.");
+      setLoading(false);
+    }
+  }
+
+  async function resendEmailCode() {
+    setError(null);
+    setEmailCodeNotice(null);
+    setLoading(true);
+    try {
+      const res = await csrfFetch("/api/auth/face-email-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resend: true }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.expired) {
+          setEmailCodePending(false);
+          newFaceAttempt();
+        }
+        throw new Error(data.error || "We couldn’t send a new code. Try again in a minute.");
+      }
+      setEmailCode("");
+      setEmailCodeNotice("We sent a new code. Earlier codes no longer work.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "We couldn’t send a new code. Try again in a minute.");
+    } finally {
       setLoading(false);
     }
   }
@@ -279,7 +367,7 @@ function LoginInner() {
         ) : mode === "sso" ? (
           "We’ll send you to your organisation’s sign-in page."
         ) : (
-          "Works only if you enrolled your face and turned on two-step verification."
+          "Works if you’ve enrolled your face in your account settings."
         )}
       </AuthHeading>
 
@@ -398,16 +486,65 @@ function LoginInner() {
         </form>
       )}
 
-      {!pendingSecondFactor && mode === "face" && (
+      {!pendingSecondFactor && mode === "face" && emailCodePending && (
+        <form onSubmit={handleEmailCode} className="space-y-5">
+          <p className="text-cs-ink-soft">
+            Face recognised. This is a new device, so we emailed a 6-digit code to{" "}
+            <span className="font-semibold text-cs-ink">{email.trim().toLowerCase()}</span>. It expires in 10 minutes.
+          </p>
+          {emailCodeNotice && (
+            <p role="status" className="rounded-md border border-cs-grid px-4 py-3 text-[15px] text-cs-ink-soft">
+              {emailCodeNotice}
+            </p>
+          )}
+          <Field
+            id="face-email-code"
+            label="Code from your email"
+            inputMode="numeric"
+            maxLength={6}
+            value={emailCode}
+            onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="000000"
+            autoComplete="one-time-code"
+            autoFocus
+            required
+            className="text-center text-xl tracking-[0.4em] tabular-nums"
+          />
+          <PrimaryButton type="submit" loading={loading} disabled={emailCode.length !== 6}>
+            Verify and sign in
+          </PrimaryButton>
+          <button
+            type="button"
+            onClick={() => void resendEmailCode()}
+            disabled={loading}
+            className="text-[15px] font-medium text-cs-ink-soft hover:text-cs-ink disabled:opacity-50"
+          >
+            Send a new code
+          </button>
+          <p className="text-sm text-cs-ink-soft">After this, we’ll remember this device for face sign-in.</p>
+        </form>
+      )}
+
+      {!pendingSecondFactor && mode === "face" && !emailCodePending && (
         <div className="space-y-5">
           {emailField}
-          {email ? (
+          {email && faceChallenge ? (
             <div className="overflow-hidden rounded-md border border-cs-grid">
-              <FaceCamera mode="verify" onCapture={handleFaceLogin} onError={(err) => setError(err.message)} />
+              <FaceCamera
+                key={faceAttempt}
+                mode="verify"
+                livenessChallenge={faceChallenge}
+                onCapture={() => {}}
+                onLivenessCapture={(r) => void handleFaceLogin(r)}
+                onError={(err) => setError(err.message)}
+              />
             </div>
           ) : (
             <p className="text-cs-ink-soft">Enter your email to turn on the camera.</p>
           )}
+          <p className="text-sm text-cs-ink-soft">
+            We’ll ask you to blink or turn your head to check it’s really you. On a new device we’ll also email you a code.
+          </p>
         </div>
       )}
 

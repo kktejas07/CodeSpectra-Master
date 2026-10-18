@@ -4,6 +4,20 @@ import React, { useEffect, useRef, useState } from 'react'
 import * as faceapi from '@vladmandic/face-api'
 import { Loader2, Camera, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {
+  createLivenessTracker,
+  eyeAspectRatio,
+  livenessInstruction,
+  noseYaw,
+  type LivenessChallenge,
+} from '@/lib/auth-face-liveness'
+
+export interface LivenessCapture {
+  /** Descriptors from two frames: before and after the challenge. */
+  descriptors: Float32Array[]
+  challenge: LivenessChallenge
+  passed: true
+}
 
 interface FaceCameraProps {
   mode: 'enroll' | 'verify'
@@ -17,6 +31,13 @@ interface FaceCameraProps {
    * assessment proctoring, which only needs a stored photo.
    */
   captureMode?: 'liveness' | 'instant'
+  /**
+   * Face sign-in: after the first frame, ask for this movement (blink /
+   * turn), then take a second frame, and report both via onLivenessCapture
+   * instead of onCapture.
+   */
+  livenessChallenge?: LivenessChallenge
+  onLivenessCapture?: (result: LivenessCapture) => void
 }
 
 const CDN_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'
@@ -30,6 +51,22 @@ const DETECT_TIMEOUT_MS = 8000
 const CAPTURE_BUDGET_MS = 25000
 const MODEL_LOAD_TIMEOUT_MS = 45000
 const MODEL_SLOW_HINT_MS = 12000
+const LIVENESS_BUDGET_MS = 15000
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+type LandmarkSet = {
+  getNose: () => Array<{ x: number; y: number }>
+  getLeftEye: () => Array<{ x: number; y: number }>
+  getRightEye: () => Array<{ x: number; y: number }>
+}
+
+function sampleOf(lm: LandmarkSet) {
+  const l = lm.getLeftEye()
+  const r = lm.getRightEye()
+  const nose = lm.getNose()
+  return { ear: (eyeAspectRatio(l) + eyeAspectRatio(r)) / 2, yaw: noseYaw(l, r, nose[3] ?? nose[0]) }
+}
 
 function detectOptions() {
   return new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.35, inputSize: 320 })
@@ -116,7 +153,7 @@ function withTimeout<T>(thenable: unknown, ms: number, label: string): Promise<T
   })
 }
 
-export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' }: FaceCameraProps) {
+export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness', livenessChallenge, onLivenessCapture }: FaceCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const onErrorRef = useRef(onError)
@@ -130,8 +167,12 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
   // models are cached after first success, camera stream is re-requested).
   const [initNonce, setInitNonce] = useState(0)
 
+  const onLivenessRef = useRef(onLivenessCapture)
+  const challengeRef = useRef(livenessChallenge)
   onErrorRef.current = onError
   onCaptureRef.current = onCapture
+  onLivenessRef.current = onLivenessCapture
+  challengeRef.current = livenessChallenge
 
   useEffect(() => {
     let mounted = true
@@ -223,6 +264,81 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
     runIdRef.current += 1
   }
 
+  const stopStream = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+  }
+
+  /**
+   * Face sign-in liveness: ask for the challenge movement, confirm it over
+   * several frames, then take a second centred descriptor. Both frames go
+   * to the server, which matches each against the enrolled template.
+   */
+  const runLiveness = async (runId: number, first: Float32Array, challenge: LivenessChallenge) => {
+    const tracker = createLivenessTracker(challenge)
+    setMessage(livenessInstruction(challenge))
+    let startedAt = Date.now()
+    while (runIdRef.current === runId) {
+      const video = videoRef.current
+      if (!video) return
+      if (Date.now() - startedAt > LIVENESS_BUDGET_MS) {
+        setStatus('error')
+        setMessage('We couldn’t confirm the movement. Retry and follow the prompt.')
+        return
+      }
+      try {
+        const det = (await withTimeout(
+          faceapi.detectSingleFace(video, detectOptions()).withFaceLandmarks(true),
+          DETECT_TIMEOUT_MS,
+          'Face detection timed out',
+        )) as { landmarks: LandmarkSet } | undefined
+        if (runIdRef.current !== runId) return
+        if (det && tracker.push(sampleOf(det.landmarks))) break
+      } catch (err) {
+        if (runIdRef.current !== runId) return
+        console.error('Liveness check error:', err)
+      }
+      await sleep(40)
+    }
+    if (runIdRef.current !== runId) return
+
+    setMessage('Done. Now look straight at the camera.')
+    startedAt = Date.now()
+    while (runIdRef.current === runId) {
+      const video = videoRef.current
+      if (!video) return
+      if (Date.now() - startedAt > LIVENESS_BUDGET_MS) {
+        setStatus('error')
+        setMessage('Could not lock onto your face. Face the camera and retry.')
+        return
+      }
+      try {
+        const det = (await withTimeout(
+          faceapi.detectSingleFace(video, detectOptions()).withFaceLandmarks(true).withFaceDescriptor(),
+          DETECT_TIMEOUT_MS,
+          'Descriptor timed out',
+        )) as { landmarks: LandmarkSet; descriptor: Float32Array } | undefined
+        if (runIdRef.current !== runId) return
+        if (det) {
+          const { yaw } = sampleOf(det.landmarks)
+          if (yaw >= 0.36 && yaw <= 0.64) {
+            stopStream()
+            setStatus('captured')
+            setMessage('Face captured.')
+            onLivenessRef.current?.({ descriptors: [first, det.descriptor], challenge, passed: true })
+            return
+          }
+        }
+      } catch (err) {
+        if (runIdRef.current !== runId) return
+        console.error('Liveness capture error:', err)
+      }
+      await sleep(80)
+    }
+  }
+
   const analyzeFace = async (runId: number) => {
     const startedAt = Date.now()
     // ponytail: previously EVERY thrown detection was swallowed and the loop
@@ -305,6 +421,12 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         if (!fullDetection) {
           setStatus('error')
           setMessage('Failed to generate biometric descriptor. Try again.')
+          return
+        }
+
+        const challenge = challengeRef.current
+        if (challenge && onLivenessRef.current) {
+          await runLiveness(runId, fullDetection.descriptor, challenge)
           return
         }
 
@@ -434,7 +556,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' 
         {status === 'ready' && (
           <Button onClick={captureFace} className="w-full gap-2">
             <Camera className="w-4 h-4" />
-            {mode === 'enroll' ? 'Capture Face & Enroll' : captureMode === 'instant' ? 'Capture Photo' : 'Verify My Face'}
+            {mode === 'enroll' ? 'Capture face and enroll' : captureMode === 'instant' ? 'Capture photo' : 'Verify my face'}
           </Button>
         )}
 

@@ -1,6 +1,9 @@
 /**
  * /api/mock-tests/attempts
- *   GET  -> the caller's submitted mock-test attempts (newest first, no questions)
+ *   GET  -> the caller's attempts (submitted + open), paginated on the server.
+ *           ?page=&page_size=&company=&role=&status=all|submitted|in_progress
+ *           &sort=date|score&order=asc|desc. Also returns filter facets and a
+ *           score trend (last 30 submitted, oldest first). No answer key.
  *   POST -> submit answers for a session created by /api/mock-tests/generate.
  *           Graded on the server against the stored answer key; a session can
  *           only be submitted once. Returns the score plus the answer key and
@@ -10,7 +13,9 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
+import type { Filter } from 'mongodb'
 import { mockTestSessions, type MockTestSessionDoc } from '../_sessions'
+import { buildHistoryFilter, buildHistorySort, parseHistoryQuery, toHistoryRow } from '../_history'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -74,20 +79,46 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ saved: true })
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  const rows = await (await mockTestSessions())
-    .find(
-      { user_id: gate.user.id, submitted_at: { $ne: null } },
-      { projection: { _id: 0, id: 1, company: 1, role: 1, difficulty: 1, score: 1, total: 1, percentage: 1, submitted_at: 1 } },
-    )
-    .sort({ submitted_at: -1 })
-    .limit(50)
-    .toArray()
+  const q = parseHistoryQuery(new URL(req.url).searchParams)
+  const now = Date.now()
+  try {
+    const col = await mockTestSessions()
+    const filter = buildHistoryFilter(gate.user.id, q, now) as Filter<SessionDoc>
+    const projection = {
+      _id: 0, id: 1, company: 1, role: 1, difficulty: 1, score: 1, total: 1, percentage: 1,
+      created_at: 1, submitted_at: 1, 'progress.started_at': 1, 'questions.id': 1,
+    }
+    // Trend + facets ignore pagination/status so the chart and filters stay stable while paging.
+    const trendFilter = buildHistoryFilter(gate.user.id, { company: q.company, role: q.role, status: 'submitted' }, now) as Filter<SessionDoc>
+    const facetFilter = buildHistoryFilter(gate.user.id, { company: null, role: null, status: 'all' }, now) as Filter<SessionDoc>
+    const [total, rows, trendRows, companies, roles] = await Promise.all([
+      col.countDocuments(filter),
+      col.find(filter, { projection }).sort(buildHistorySort(q)).skip((q.page - 1) * q.pageSize).limit(q.pageSize).toArray(),
+      col.find(trendFilter, { projection: { _id: 0, id: 1, percentage: 1, submitted_at: 1 } }).sort({ submitted_at: -1 }).limit(30).toArray(),
+      col.distinct('company', facetFilter),
+      col.distinct('role', facetFilter),
+    ])
 
-  return NextResponse.json({ items: rows })
+    return NextResponse.json({
+      items: rows.map((r) => toHistoryRow(r as SessionDoc)),
+      page: q.page,
+      page_size: q.pageSize,
+      total,
+      total_pages: Math.max(1, Math.ceil(total / q.pageSize)),
+      facets: {
+        companies: (companies as string[]).filter(Boolean).sort().slice(0, 200),
+        roles: (roles as string[]).filter(Boolean).sort().slice(0, 200),
+      },
+      trend: trendRows.reverse().map((r) => ({ id: r.id, percentage: r.percentage ?? 0, submitted_at: r.submitted_at })),
+    })
+  } catch (e) {
+    console.error('[mock-tests attempts] GET', e)
+    return NextResponse.json({ error: 'Could not load your attempts' }, { status: 500 })
+  }
 }
 
 export async function POST(req: Request) {

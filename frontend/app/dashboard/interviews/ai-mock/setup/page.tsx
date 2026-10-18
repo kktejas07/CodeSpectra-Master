@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Brain, ArrowLeft, Loader2, FileText, Sparkles, Upload,
-  CheckCircle, AlertCircle, ChevronDown, ClipboardPaste, User
+  CheckCircle, AlertCircle, ChevronDown, ClipboardPaste, User, PenLine
 } from 'lucide-react'
 import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -26,7 +26,33 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 
 const DURATION_OPTIONS = [15, 20, 30, 45]
 
-type ResumeSource = 'none' | 'upload' | 'profile'
+type ResumeSource = 'none' | 'draft' | 'profile' | 'upload'
+
+interface ResumeDraftSummary {
+  id: string
+  name: string
+  template: string
+  updated_at: string
+}
+
+/** Last résumé choice, per browser (a convenience — the server never relies on it). */
+const LAST_RESUME_KEY = 'cs:aimock:last-resume'
+type LastResume = { source: ResumeSource; id?: string | null }
+
+function readLastResume(): LastResume | null {
+  try {
+    const raw = localStorage.getItem(LAST_RESUME_KEY)
+    if (!raw) return null
+    const v = JSON.parse(raw) as LastResume
+    return ['none', 'draft', 'profile', 'upload'].includes(v?.source) ? v : null
+  } catch {
+    return null
+  }
+}
+
+function writeLastResume(v: LastResume) {
+  try { localStorage.setItem(LAST_RESUME_KEY, JSON.stringify(v)) } catch { /* storage blocked */ }
+}
 
 interface ProfileResume {
   id: string
@@ -69,6 +95,11 @@ export default function AiMockSetupPage() {
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
   const [loadingResumes, setLoadingResumes] = useState(false)
+  const [resumesLoaded, setResumesLoaded] = useState(false)
+  const [drafts, setDrafts] = useState<ResumeDraftSummary[]>([])
+  const [draftsState, setDraftsState] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [selectedDraftId, setSelectedDraftId] = useState<string | null>(null)
+  const lastChoice = useRef<LastResume | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -85,18 +116,48 @@ export default function AiMockSetupPage() {
     try {
       const res = await fetch('/api/resumes')
       if (res.ok) {
-        const data = await res.json()
-        setProfileResumes(data)
+        const data = (await res.json()) as ProfileResume[]
+        setProfileResumes(Array.isArray(data) ? data : [])
+        // Re-select the last uploaded résumé used, if it's still there.
+        const last = lastChoice.current
+        const match = last?.source === 'profile' && last.id ? data.find((r) => r.id === last.id && r.text_content) : null
+        if (match) {
+          setSelectedResumeId(match.id)
+          setResumeText(match.text_content || '')
+        }
       }
     } catch { /* silent */ }
+    setResumesLoaded(true)
     setLoadingResumes(false)
   }, [])
 
   useEffect(() => {
-    if (resumeSource === 'profile' && profileResumes.length === 0 && !loadingResumes) {
+    if (resumeSource === 'profile' && !resumesLoaded && !loadingResumes) {
       fetchResumes()
     }
-  }, [resumeSource, profileResumes.length, loadingResumes, fetchResumes])
+  }, [resumeSource, resumesLoaded, loadingResumes, fetchResumes])
+
+  useEffect(() => {
+    if (resumeSource !== 'draft' || draftsState !== 'idle') return
+    setDraftsState('loading')
+    fetch('/api/resumes/drafts?list=1', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((d: { drafts?: ResumeDraftSummary[] }) => {
+        const list = d.drafts ?? []
+        setDrafts(list)
+        const last = lastChoice.current
+        if (last?.source === 'draft' && last.id && list.some((x) => x.id === last.id)) setSelectedDraftId(last.id)
+        setDraftsState('ready')
+      })
+      .catch(() => setDraftsState('error'))
+  }, [resumeSource, draftsState])
+
+  // Restore the last résumé choice once.
+  useEffect(() => {
+    const last = readLastResume()
+    lastChoice.current = last
+    if (last && last.source !== 'none') setResumeSource(last.source)
+  }, [])
 
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
@@ -188,16 +249,29 @@ export default function AiMockSetupPage() {
   const handleSourceChange = (source: ResumeSource) => {
     setResumeSource(source)
     setExtractError('')
-    if (source === 'none') {
-      setResumeText('')
-      setSelectedResumeId(null)
-    }
+    if (source !== 'profile' && source !== 'upload') setResumeText('')
+    if (source !== 'profile') setSelectedResumeId(null)
+    if (source !== 'draft') setSelectedDraftId(null)
   }
 
   const handleStart = async () => {
     if (!effectiveRole) {
       setError('Please select or enter a role.')
       return
+    }
+    // Saved résumés go by id; the server loads (and owner-checks) the text.
+    const selectedUpload = resumeSource === 'profile' && selectedResumeId
+      ? profileResumes.find((r) => r.id === selectedResumeId && r.text_content)
+      : undefined
+    let resumeRef: { kind: 'draft' | 'uploaded'; id: string } | undefined
+    if (resumeSource === 'draft') {
+      if (!selectedDraftId) {
+        setError('Pick a draft, or choose None to start without a resume.')
+        return
+      }
+      resumeRef = { kind: 'draft', id: selectedDraftId }
+    } else if (selectedUpload) {
+      resumeRef = { kind: 'uploaded', id: selectedUpload.id }
     }
     setStarting(true)
     setError('')
@@ -207,7 +281,8 @@ export default function AiMockSetupPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          resumeText: resumeText.trim() || undefined,
+          resume: resumeRef,
+          resumeText: resumeRef || resumeSource === 'none' ? undefined : resumeText.trim() || undefined,
           role: effectiveRole,
           difficulty,
           duration,
@@ -221,6 +296,7 @@ export default function AiMockSetupPage() {
         return
       }
 
+      writeLastResume({ source: resumeSource, id: resumeRef?.id ?? null })
       sessionStorage.setItem(`aimock_${data.sessionId}`, JSON.stringify({
         sessionId: data.sessionId,
         firstQuestion: data.firstQuestion,
@@ -238,9 +314,10 @@ export default function AiMockSetupPage() {
   }
 
   const resumeSourceOptions: { value: ResumeSource; label: string; icon: React.ReactNode }[] = [
-    { value: 'none', label: 'None', icon: <FileText className="h-4 w-4" /> },
-    { value: 'upload', label: 'Upload PDF', icon: <Upload className="h-4 w-4" /> },
-    { value: 'profile', label: 'From profile', icon: <User className="h-4 w-4" /> },
+    { value: 'none', label: 'None', icon: <FileText className="h-4 w-4" aria-hidden /> },
+    { value: 'draft', label: 'Builder draft', icon: <PenLine className="h-4 w-4" aria-hidden /> },
+    { value: 'profile', label: 'My uploads', icon: <User className="h-4 w-4" aria-hidden /> },
+    { value: 'upload', label: 'Upload PDF', icon: <Upload className="h-4 w-4" aria-hidden /> },
   ]
 
   return (
@@ -333,13 +410,14 @@ export default function AiMockSetupPage() {
           </p>
 
           {/* Segmented Control */}
-          <div className="flex rounded-xl border border-border bg-muted/50 p-0.5">
+          <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-border bg-muted/50 p-0.5 sm:grid-cols-4" role="group" aria-label="Resume source">
             {resumeSourceOptions.map((opt) => (
               <button
                 key={opt.value}
                 type="button"
                 onClick={() => handleSourceChange(opt.value)}
-                className={`flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
+                aria-pressed={resumeSource === opt.value}
+                className={`min-h-9 flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 ${
                   resumeSource === opt.value
                     ? 'bg-background text-foreground shadow-sm'
                     : 'text-muted-foreground hover:text-foreground'
@@ -350,6 +428,55 @@ export default function AiMockSetupPage() {
               </button>
             ))}
           </div>
+
+          {/* Résumé builder drafts */}
+          {resumeSource === 'draft' && (
+            <div className="space-y-2">
+              {draftsState === 'loading' || draftsState === 'idle' ? (
+                <div className="flex items-center justify-center gap-2 rounded-2xl border border-border p-6">
+                  <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
+                  <span className="text-sm text-muted-foreground">Loading your drafts…</span>
+                </div>
+              ) : draftsState === 'error' ? (
+                <p className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive" role="alert">
+                  Couldn&apos;t load your drafts. Try again, or pick another source.
+                </p>
+              ) : drafts.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 rounded-2xl border border-border p-6 text-center">
+                  <PenLine className="h-8 w-8 text-muted-foreground" aria-hidden />
+                  <p className="text-sm font-medium text-foreground">No saved drafts yet</p>
+                  <p className="text-xs text-muted-foreground">
+                    Build one in the{' '}
+                    <Link href="/dashboard/resumes/builder" className="text-primary underline">resume builder</Link>
+                    , or upload a PDF instead.
+                  </p>
+                </div>
+              ) : (
+                <div className="max-h-48 space-y-2 overflow-y-auto" role="radiogroup" aria-label="Saved drafts">
+                  {drafts.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={selectedDraftId === d.id}
+                      onClick={() => setSelectedDraftId(d.id)}
+                      className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        selectedDraftId === d.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <PenLine className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">{d.name}</p>
+                        <p className="text-xs text-muted-foreground">Updated {formatDate(d.updated_at)}</p>
+                      </div>
+                      {selectedDraftId === d.id && <CheckCircle className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Questions are tailored to the draft as it is saved now.</p>
+            </div>
+          )}
 
           {/* Upload PDF Panel */}
           {resumeSource === 'upload' && (

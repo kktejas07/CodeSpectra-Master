@@ -8,6 +8,7 @@ import { writeAuditLog } from '@/lib/db/misc'
 import { createUserSession } from '@/lib/db/sessions'
 import { updateUserLastLogin } from '@/lib/db/admin'
 import { accountBlockReason } from '@/lib/auth-account'
+import { trustCurrentDevice } from '@/lib/trusted-devices'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,6 +54,8 @@ export async function POST(request: Request) {
 
     await clearPending2faCookie()
     await setSessionCookie({ uid: pending.uid, email: pending.email, role: pending.role })
+    // Full sign-in done (first factor + authenticator code): trust this browser for face sign-in.
+    await trustCurrentDevice(pending.uid, request.headers.get('user-agent'))
     if (pending.method === 'sso') await updateUserLastLogin(pending.uid, 'sso').catch(() => {})
     await writeAuditLog({ action: `auth.${pending.method}_login`, outcome: 'success', actor: pending.email, actorIp, resource: 'user/' + pending.uid, resourceType: 'auth', severity: 'info', detail: '2FA passed', user_id: pending.uid }).catch(() => {})
     createUserSession({ user_id: pending.uid, email: pending.email, ip: actorIp, user_agent: request.headers.get('user-agent') || 'Unknown device' }).catch(() => {})

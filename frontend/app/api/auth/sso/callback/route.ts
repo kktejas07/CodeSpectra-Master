@@ -4,6 +4,7 @@ import { ssoProviders } from '@/lib/db/sso'
 import { getMongoDb } from '@/lib/mongodb'
 import { cookies } from 'next/headers'
 import { setPending2faCookie, setSessionCookie, verifyPurposeToken } from '@/lib/session'
+import { trustCurrentDevice } from '@/lib/trusted-devices'
 import { safeRedirect } from '@/lib/safe-redirect'
 import { normalizeUserRole } from '@/lib/rbac'
 import { updateUserLastLogin } from '@/lib/db/admin'
@@ -216,6 +217,7 @@ export async function GET(req: NextRequest) {
 
     // Create session
     await setSessionCookie({ uid, email: user.email, role })
+    await trustCurrentDevice(uid, req.headers.get('user-agent'))
     await updateUserLastLogin(uid, 'sso').catch(() => {})
 
     // Redirect param strictly same-origin (see safe-redirect).

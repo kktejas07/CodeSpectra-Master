@@ -4,7 +4,7 @@
  * `assignRanks`.
  */
 
-export type LeaderboardCategory = 'global' | 'practice' | 'hackathon' | 'exams'
+export type LeaderboardCategory = 'global' | 'practice' | 'hackathon' | 'exams' | 'arena'
 export type LeaderboardPeriod = 'all' | 'month'
 
 /** Which xp_events reasons count towards each category (null = every reason). */
@@ -13,6 +13,8 @@ export const CATEGORY_REASONS: Record<LeaderboardCategory, string[] | null> = {
   practice: ['submission_accepted', 'first_blood', 'challenge_completed'],
   hackathon: ['hackathon_score', 'codeathon_attended'],
   exams: ['exam_passed', 'certification_passed'],
+  /** Arena points (lib/arena-points.ts): once per original question, daily cap. */
+  arena: ['arena_solved'],
 }
 
 export function parseLeaderboardQuery(params: URLSearchParams): {

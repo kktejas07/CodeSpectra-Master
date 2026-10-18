@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Trophy, Medal, Award, BarChart3, Globe, GraduationCap, Puzzle, Tent, Search } from 'lucide-react'
+import { Trophy, Medal, Award, BarChart3, Globe, GraduationCap, Puzzle, Swords, Tent, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -16,13 +16,14 @@ import { PageHeader, Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 
-type Category = 'global' | 'practice' | 'hackathon' | 'exams'
+type Category = 'global' | 'practice' | 'arena' | 'hackathon' | 'exams'
 type Period = 'all' | 'month'
 
 // Each category maps to the XP sources counted by /api/leaderboard.
 const categories: { id: Category; label: string; icon: any }[] = [
   { id: 'global', label: 'Global', icon: Globe },
   { id: 'practice', label: 'Practice', icon: Puzzle },
+  { id: 'arena', label: 'Arena', icon: Swords },
   { id: 'hackathon', label: 'Hackathons', icon: Tent },
   { id: 'exams', label: 'Exams and certifications', icon: GraduationCap },
 ]

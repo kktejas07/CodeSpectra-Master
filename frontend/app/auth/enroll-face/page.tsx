@@ -98,7 +98,7 @@ function EnrollFaceInner() {
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Secure your account</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Enroll your face to verify your identity during assessments. Face sign-in also needs two-step verification.
+              Enroll your face to verify your identity during assessments and to sign in with your face. On a new device we’ll also email you a code.
             </p>
             {isMandatory && (
               <div className="mt-4 flex items-center gap-2 bg-yellow-500/10 text-yellow-600 text-sm rounded-lg p-3">

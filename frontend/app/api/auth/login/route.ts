@@ -13,6 +13,7 @@ import { emailTemplates } from '@/lib/email-templates'
 import { updateUserLastLogin } from '@/lib/db/admin'
 import { createUserSession } from '@/lib/db/sessions'
 import { accountBlockReason } from '@/lib/auth-account'
+import { trustCurrentDevice } from '@/lib/trusted-devices'
 import { checkAuthThrottle, recordAuthFailure, clearAuthFailures } from '@/lib/auth-throttle'
 import { isIpBlocked, blockIp, trackDeviceFingerprint, detectImpossibleTravel, recordSecurityEvent, isIpOutsideWhitelist, securityPolicy } from '@/lib/db/security'
 
@@ -179,6 +180,8 @@ export async function POST(request: Request) {
 
     await clearAuthFailures('login', ident, rawIp)
     await setSessionCookie({ uid, email: user.email, role })
+    // Password (+ authenticator code when on) passed: trust this browser for face sign-in.
+    await trustCurrentDevice(uid, request.headers.get('user-agent'))
     await updateUserLastLogin(uid, 'email').catch((e) => console.error('[Login] updateUserLastLogin failed:', e))
 
     await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid }).catch(() => {})

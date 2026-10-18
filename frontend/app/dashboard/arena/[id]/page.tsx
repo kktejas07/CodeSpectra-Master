@@ -44,13 +44,38 @@ interface RunResult {
   time_ms: number
 }
 
+interface ArenaPoints {
+  points: number
+  reason: 'awarded' | 'not_accepted' | 'already_earned' | 'daily_cap' | 'unknown_question'
+  earned_today: number
+  daily_cap: number
+}
+
 interface RunResponse {
+  arena_points?: ArenaPoints | null
+  arena_points_error?: string | null
   status: string
   passed_tests: number
   total_tests: number
   total_time_ms: number
   stderr_excerpt: string | null
   results: RunResult[]
+}
+
+function arenaPointsMessage(p: ArenaPoints): string {
+  const today = `${p.earned_today}/${p.daily_cap} arena points today`
+  switch (p.reason) {
+    case 'awarded':
+      return `+${p.points} points added to your XP · ${today}`
+    case 'already_earned':
+      return 'Solved again — you already earned points for this question.'
+    case 'daily_cap':
+      return `Daily arena limit reached (${today}). Solve it again tomorrow to earn its points.`
+    case 'not_accepted':
+      return 'No points yet — pass every test to earn points for this question.'
+    default:
+      return 'This question doesn\'t award points.'
+  }
 }
 
 function ArenaChallengeInner() {
@@ -64,11 +89,13 @@ function ArenaChallengeInner() {
   const [challenge, setChallenge] = useState<ArenaChallenge | null>(baseChallenge ?? null)
   const [source, setSource] = useState<'ai' | 'static' | null>(null)
   const [adaptNotice, setAdaptNotice] = useState<string | null>(null)
+  const [variantId, setVariantId] = useState<string | null>(null)
 
   useEffect(() => {
     setChallenge(baseChallenge ?? null)
     setSource(null)
     setAdaptNotice(null)
+    setVariantId(null)
   }, [baseChallenge])
 
   useEffect(() => {
@@ -88,10 +115,12 @@ function ArenaChallengeInner() {
           body: JSON.stringify({ challengeId: id, userStack: stack }),
           signal: ac.signal,
         })
-        const json = await res.json() as { source?: string; challenge?: ArenaChallenge; notice?: string }
+        const json = await res.json() as { source?: string; challenge?: ArenaChallenge; notice?: string; variant_id?: string }
         if (json.challenge) {
           setChallenge(json.challenge)
           setSource(json.source === 'ai' ? 'ai' : 'static')
+          // Submits are graded on the server's copy of this variant's tests.
+          setVariantId(json.source === 'ai' && json.variant_id ? json.variant_id : null)
         }
         if (json.notice) setAdaptNotice(json.notice)
       } catch {
@@ -187,13 +216,15 @@ function ArenaChallengeInner() {
           })),
           mode: 'submit',
           challenge_id: id,
+          variant_id: variantId ?? undefined,
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
       if (!res.ok) throw new Error(json.error || 'Submit failed')
       setResult(json)
       if (json.status === 'accepted' && nextId) {
-        setTimeout(() => router.push(`/dashboard/arena/${nextId}`), 1400)
+        // Leave time to read the points line before moving on.
+        setTimeout(() => router.push(`/dashboard/arena/${nextId}`), 3000)
       }
     } catch (e: any) {
       setResult({
@@ -207,7 +238,7 @@ function ArenaChallengeInner() {
     } finally {
       setSubmitted(false)
     }
-  }, [challenge, language, nextId, router, id])
+  }, [challenge, language, nextId, router, id, variantId])
 
   if (!challenge) {
     return (
@@ -403,6 +434,25 @@ function ArenaChallengeInner() {
                       {result.stderr_excerpt}
                     </pre>
                   )}
+
+                  {/* Arena points for this submit (server decided) */}
+                  {result.arena_points_error ? (
+                    <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
+                      {result.arena_points_error}
+                    </p>
+                  ) : result.arena_points ? (
+                    <p
+                      role="status"
+                      className={`flex items-center gap-2 rounded-xl border p-3 text-xs ${
+                        result.arena_points.reason === 'awarded'
+                          ? 'border-primary/30 bg-primary/10 text-foreground'
+                          : 'border-border bg-muted/40 text-muted-foreground'
+                      }`}
+                    >
+                      <Trophy className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                      <span>{arenaPointsMessage(result.arena_points)}</span>
+                    </p>
+                  ) : null}
 
                   {/* Auto-nav notice */}
                   {result.status === 'accepted' && nextId && (

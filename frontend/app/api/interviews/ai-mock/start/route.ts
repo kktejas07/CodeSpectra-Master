@@ -7,12 +7,16 @@ import {
   type ParsedResume,
 } from '@/lib/interviews/ai-mock-engine'
 import { DEFAULT_MAX_TURNS, DEFAULT_MAX_DURATION } from '@/lib/interviews/ai-mock-types'
+import { MAX_RESUME_CHARS, loadOwnResumeText, parseResumeRef, type ResumeRef } from '../_resume'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 interface StartBody {
+  /** Ad-hoc text (pasted / PDF read in the browser). Ignored when `resume` is given. */
   resumeText?: string
+  /** One of the caller's saved drafts or uploaded résumés, loaded on the server. */
+  resume?: unknown
   role: string
   difficulty: string
   questionCount: number
@@ -42,15 +46,37 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid difficulty' }, { status: 400 })
   }
 
+  // Résumé: a saved one is loaded by id (owner-checked) — never trust client text for it.
+  const resumeRef = parseResumeRef(body.resume)
+  if (resumeRef === null) return NextResponse.json({ error: 'Invalid resume selection' }, { status: 400 })
+  let resumeText = ''
+  let resumeSource: ResumeRef | null = null
+  if (resumeRef) {
+    let loaded: Awaited<ReturnType<typeof loadOwnResumeText>> = null
+    try {
+      loaded = await loadOwnResumeText(user.id, resumeRef)
+    } catch (e) {
+      console.error('[ai-mock] Resume load error:', e)
+      return NextResponse.json({ error: 'Could not load that resume. Try again.' }, { status: 500 })
+    }
+    if (!loaded) {
+      return NextResponse.json({ error: 'That resume is no longer available or has no text. Pick another one.' }, { status: 404 })
+    }
+    resumeText = loaded.text
+    resumeSource = resumeRef
+  } else if (typeof body.resumeText === 'string') {
+    resumeText = body.resumeText.trim().slice(0, MAX_RESUME_CHARS)
+  }
+
   // A mock interview is charged once, here; answers within the session are included.
   const charge = await chargeAiFeature(user.id, 'mock_interview')
   if (!charge.ok) return NextResponse.json(outOfCredits(charge), { status: 402 })
 
   // Parse resume if provided
   let resume: ParsedResume | null = null
-  if (body.resumeText && body.resumeText.trim().length > 20) {
+  if (resumeText.length > 20) {
     try {
-      resume = await parseResume(body.resumeText.trim())
+      resume = await parseResume(resumeText)
     } catch (e) {
       console.error('[ai-mock] Resume parse error:', e)
     }
@@ -96,6 +122,7 @@ export async function POST(req: NextRequest) {
     role,
     difficulty,
     resume: resume || null,
+    resumeSource: resumeSource ?? (resumeText ? { kind: 'text' } : null),
     conversationHistory,
     currentQuestion: { text: opening.question, category: opening.category, askedAt: now },
     scores: [],

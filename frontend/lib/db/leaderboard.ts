@@ -48,6 +48,7 @@ export type XpReason =
   | 'challenge_completed'
   | 'xp_redeemed'
   | 'referral_earned'
+  | 'arena_solved'
 
 export interface XpEventDoc {
   id: string

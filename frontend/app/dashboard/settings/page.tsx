@@ -28,6 +28,7 @@ import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { FaceSignInSection } from '@/components/dashboard/settings/face-sign-in-section'
 
 const LS = {
   language: 'codespectra:user:language',
@@ -380,7 +381,7 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold">Security</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Manage your password and two-factor authentication.
+                Manage your password, two-factor authentication, face sign-in and trusted devices.
               </p>
             </div>
             {emailVerified === false && (
@@ -435,8 +436,8 @@ export default function SettingsPage() {
                 <p className="font-medium text-foreground">Face biometrics</p>
                 <p className="text-sm text-muted-foreground">
                   {user?.has_enrolled_face 
-                    ? 'Enrolled — identity verified for proctored assessments'
-                    : 'Not enrolled — required for proctored assessments'}
+                    ? 'Enrolled — used for proctored assessments and face sign-in'
+                    : 'Not enrolled — required for proctored assessments and face sign-in'}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -455,6 +456,8 @@ export default function SettingsPage() {
                 </Link>
               </Button>
             </div>
+            <Separator className="mx-6 w-auto" />
+            <FaceSignInSection />
             <Separator className="mx-6 w-auto" />
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">

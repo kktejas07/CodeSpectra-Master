@@ -1,6 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
-import { randomUUID } from 'node:crypto'
+import { createHmac, randomUUID } from 'node:crypto'
 import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { accountBlockReason, isSessionVersionCurrent, type AuthProfileLike } from '@/lib/auth-account'
@@ -77,6 +77,16 @@ async function getSecret(): Promise<Uint8Array> {
     throw err
   })
   return _secretPromise
+}
+
+/**
+ * A key for one purpose (trusted-device cookies, email-code hashes),
+ * derived from the session secret so a token signed for one purpose is
+ * never valid as another (e.g. a device cookie as a session).
+ */
+export async function deriveServerKey(label: string): Promise<Uint8Array> {
+  const secret = await getSecret()
+  return new Uint8Array(createHmac('sha256', Buffer.from(secret)).update(`codespectra:${label}`).digest())
 }
 
 export interface SessionPayload {
@@ -322,11 +332,45 @@ export async function clearPending2faCookie(): Promise<void> {
   cookieStore.set(PENDING_2FA_COOKIE, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 })
 }
 
+const FACE_EMAIL_PENDING_COOKIE = 'codespectra_face_email_pending'
+
+export interface PendingFaceEmailPayload {
+  uid: string
+  email: string
+  role: string
+  /** Id of the `auth_email_codes` row holding the hashed code. */
+  challengeId: string
+}
+
+/** Face matched on a new device; park the user until they enter the emailed code (10 minutes). */
+export async function setPendingFaceEmailCookie(p: PendingFaceEmailPayload): Promise<void> {
+  const token = await signPurposeToken('face_email_pending', { ...p }, '10m')
+  const cookieStore = await cookies()
+  cookieStore.set(FACE_EMAIL_PENDING_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 10 * 60,
+  })
+}
+
+export async function readPendingFaceEmailCookie(): Promise<PendingFaceEmailPayload | null> {
+  const cookieStore = await cookies()
+  return verifyPurposeToken<PendingFaceEmailPayload>('face_email_pending', cookieStore.get(FACE_EMAIL_PENDING_COOKIE)?.value)
+}
+
+export async function clearPendingFaceEmailCookie(): Promise<void> {
+  const cookieStore = await cookies()
+  cookieStore.set(FACE_EMAIL_PENDING_COOKIE, '', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/', maxAge: 0 })
+}
+
 /**
  * Sign the user out everywhere: bump session_version (kills every session
  * JWT), stamp sessions_revoked_at (kills Firebase session cookies / ID
- * tokens issued before now) and revoke Firebase refresh tokens so a still
- * signed-in Firebase client can't silently mint a new session.
+ * tokens issued before now), forget every trusted device, and revoke
+ * Firebase refresh tokens so a still signed-in Firebase client can't
+ * silently mint a new session.
  */
 export async function revokeAllUserSessions(userId: string): Promise<void> {
   const db = await getMongoDb()
@@ -338,6 +382,10 @@ export async function revokeAllUserSessions(userId: string): Promise<void> {
   )
   invalidateAuthProfile(userId)
   if (profile?.id) invalidateAuthProfile(String(profile.id))
+  // Trusted devices go too (password change, demotion, deactivation,
+  // delete): face sign-in on any device needs an emailed code again.
+  const ids = [...new Set([userId, profile?.id, profile?._id].filter((x) => x != null && x !== '').map(String))]
+  await db.collection('trusted_devices').deleteMany({ user_id: { $in: ids } }).catch(() => {})
   try {
     const { getAdminAuthInstance } = await import('@/lib/firebase-admin')
     const auth = await getAdminAuthInstance()

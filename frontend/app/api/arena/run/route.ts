@@ -6,6 +6,8 @@ import { newId, nowIso } from '@/lib/db/ai'
 import { limitRequest } from '@/lib/rate-limit'
 import { HUNDRED_DAYS } from '@/lib/100-days-data'
 import { completedDaysFrom, findSprintProblem } from '@/lib/hundred-days-progress'
+import { getArenaChallenge } from '@/lib/arena-challenges'
+import { awardArenaPoints, loadArenaVariant, type ArenaAwardResult } from '@/lib/arena-awards'
 
 const MAX_SOURCE = 50_000
 const MAX_CASES = 20
@@ -31,6 +33,7 @@ export async function POST(request: NextRequest) {
     mode?: unknown
     challenge_id?: unknown
     hundred_days_problem_id?: unknown
+    variant_id?: unknown
   }
   try {
     body = await request.json()
@@ -43,6 +46,7 @@ export async function POST(request: NextRequest) {
   const mode: 'run' | 'submit' = body.mode === 'submit' ? 'submit' : 'run'
   const challenge_id = typeof body.challenge_id === 'string' ? body.challenge_id.slice(0, 64) : undefined
   const sprintId = typeof body.hundred_days_problem_id === 'string' ? body.hundred_days_problem_id.slice(0, 32) : undefined
+  const variantId = typeof body.variant_id === 'string' && body.variant_id ? body.variant_id.slice(0, 64) : null
 
   if (!source || !lang) {
     return NextResponse.json({ error: 'source_code and language are required' }, { status: 400 })
@@ -57,9 +61,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Unknown problem' }, { status: 404 })
   }
 
+  // Arena submits are graded on the server's own tests: the stored AI variant
+  // served to this user, else the original seed. Client test cases are ignored.
+  const arenaSubmit = mode === 'submit' && Boolean(challenge_id) && !sprint
+  const arenaOriginal = arenaSubmit ? getArenaChallenge(challenge_id!) : undefined
+  if (arenaSubmit && !arenaOriginal) {
+    return NextResponse.json({ error: 'Unknown challenge' }, { status: 404 })
+  }
+
   let test_cases: Array<{ input: string; expected_output: string }>
   if (sprint) {
     test_cases = sprint.problem.examples.map((ex) => ({ input: ex.input, expected_output: ex.output }))
+  } else if (arenaOriginal) {
+    let examples = arenaOriginal.examples
+    if (variantId) {
+      const variant = await loadArenaVariant(gate.user.id, variantId).catch(() => null)
+      if (!variant || variant.original_id !== arenaOriginal.id) {
+        return NextResponse.json({ error: 'This version of the challenge has expired. Reload the page to get a fresh one.' }, { status: 409 })
+      }
+      examples = variant.examples
+    }
+    test_cases = examples.map((ex) => ({ input: ex.input, expected_output: ex.output }))
   } else {
     const raw = Array.isArray(body.test_cases) ? body.test_cases : []
     if (raw.length > MAX_CASES) {
@@ -132,15 +154,14 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Arena submissions are practice only (graded on the examples shown, which may be
-  // AI-adapted per user), so they are stored but award no XP.
-  if (mode === 'submit' && challenge_id && !sprint) {
+  if (arenaOriginal) {
     try {
       const db = await getMongoDb()
       await db.collection('arena_submissions').insertOne({
         id: newId(),
         userId: gate.user.id,
-        challengeId: challenge_id,
+        challengeId: arenaOriginal.id,
+        variantId,
         language: lang,
         sourceCode: source,
         status: aggregateStatus,
@@ -152,6 +173,23 @@ export async function POST(request: NextRequest) {
       })
     } catch (e) {
       console.error('[arena] Failed to save submission:', e)
+    }
+  }
+
+  // Arena points: server-graded accepted submit, once per original question, daily cap.
+  let arenaPoints: ArenaAwardResult | null = null
+  let arenaPointsError: string | null = null
+  if (arenaOriginal) {
+    try {
+      arenaPoints = await awardArenaPoints({
+        userId: gate.user.id,
+        originalId: arenaOriginal.id,
+        variantId,
+        accepted: aggregateStatus === 'accepted' && passed === test_cases.length,
+      })
+    } catch (e) {
+      console.error('[arena] Failed to award points:', e)
+      if (aggregateStatus === 'accepted') arenaPointsError = 'Your solution passed, but points could not be saved. Submit again to earn them.'
     }
   }
 
@@ -185,5 +223,6 @@ export async function POST(request: NextRequest) {
     stderr_excerpt: firstStderr,
     results,
     ...(sprintProgress ? { sprint: sprintProgress } : {}),
+    ...(arenaOriginal ? { arena_points: arenaPoints, arena_points_error: arenaPointsError } : {}),
   })
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { 
   ChevronRight, 
   Search,
@@ -51,7 +52,7 @@ export default function MockTestsPage() {
 
   useEffect(() => {
     if (!gate.ready) return
-    fetch('/api/mock-tests/attempts', { cache: 'no-store' })
+    fetch('/api/mock-tests/attempts?status=submitted&page_size=5', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d: { items?: MockAttempt[] }) => setHistory(d.items || []))
       .catch(() => setHistoryError(true))
@@ -188,7 +189,12 @@ export default function MockTestsPage() {
       )}
 
       <section aria-labelledby="mock-history-heading" className="space-y-3">
-        <h2 id="mock-history-heading" className="text-lg font-semibold">Your attempts</h2>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <h2 id="mock-history-heading" className="text-lg font-semibold">Your recent attempts</h2>
+          <Link href="/dashboard/mock-tests/history" className="text-sm font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
+            View full history
+          </Link>
+        </div>
         {historyError ? (
           <p className="text-sm text-destructive">Couldn&apos;t load your past attempts. Refresh to try again.</p>
         ) : history === null ? (
@@ -214,7 +220,7 @@ export default function MockTestsPage() {
                   {history.map((a) => (
                     <tr key={a.id} className="border-b border-border/40 last:border-0">
                       <td className="p-3">
-                        <span className="font-medium">{a.company}</span>
+                        <Link href={`/dashboard/mock-tests/history/${encodeURIComponent(a.id)}`} className="font-medium hover:text-primary hover:underline">{a.company}</Link>
                         <span className="text-muted-foreground"> · {a.role}</span>
                       </td>
                       <td className="p-3 capitalize">{a.difficulty}</td>

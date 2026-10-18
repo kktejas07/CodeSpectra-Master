@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getArenaChallenge, type ArenaChallenge } from '@/lib/arena-challenges'
 import { backendComplete } from '@/lib/ai/backend'
 import { getApiKey } from '@/lib/ai/get-api-key'
+import { saveArenaVariant } from '@/lib/arena-awards'
 
 const adaptSchema = z.object({
   title: z.string(),
@@ -101,9 +102,15 @@ Keep numbers realistic and ensure one clear correct idea.`,
       constraints: v.constraints,
     }
 
+    // The server grades submits on these stored tests (the variant maps back to
+    // the original id for points). If it can't be stored, serve the seed so
+    // grading and what the user sees always match.
+    const variantId = await saveArenaVariant(gate.user.id, base.id, v.examples)
+
     return NextResponse.json({
       source: 'ai' as const,
       challenge: merged,
+      variant_id: variantId,
     })
   } catch (e) {
     console.error('[arena/adapt]', e)
