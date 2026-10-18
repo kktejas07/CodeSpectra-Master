@@ -30,6 +30,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
+import { TenantFilter, tenantQuery } from '@/components/hackathons/tenant-filter'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -46,7 +47,7 @@ interface Hackathon {
 interface ProblemOption { slug: string; title: string; difficulty: string; topics?: string[] }
 
 export default function HackathonsAdminPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
   const tz = usePlatformTimezone()
   const [items, setItems] = useState<Hackathon[]>([])
@@ -115,17 +116,21 @@ export default function HackathonsAdminPage() {
   const [editLoading, setEditLoading] = useState(false)
 
   const [loadError, setLoadError] = useState(false)
+  // Superadmin-only organization filter ('' = all, 'global' = platform events).
+  const [tenant, setTenant] = useState('')
+  const isSuper = gate.user?.role === 'superadmin'
 
   const load = useCallback(async () => {
     setLoading(true); setError(null); setLoadError(false)
     try {
-      const res = await fetch('/api/hackathons', { cache: 'no-store' })
+      const q = isSuper ? tenantQuery(tenant) : ''
+      const res = await fetch(`/api/hackathons${q ? `?${q}` : ''}`, { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'failed')
       setItems(j.items as Hackathon[])
     } catch (e) { setLoadError(true); setError(e instanceof Error ? e.message : String(e)) }
     finally { setLoading(false) }
-  }, [])
+  }, [isSuper, tenant])
 
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
 
@@ -188,9 +193,14 @@ export default function HackathonsAdminPage() {
   async function editProblem(slug: string) {
     setEditLoading(true)
     try {
-      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}?edit=1`, { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
+      // Company admins can use platform problems but only edit their own organization's.
+      if (j.can_edit !== true) {
+        addToast({ type: 'info', title: 'Only the problem’s owner can edit it', message: 'You can still use it in this event, or write your own version.' })
+        return
+      }
       setOwnForm({
         title: j.title || '',
         difficulty: (['easy', 'medium', 'hard'].includes(j.difficulty) ? j.difficulty : 'medium') as 'easy' | 'medium' | 'hard',
@@ -398,6 +408,12 @@ export default function HackathonsAdminPage() {
           className="mb-0"
         />
       </div>
+
+      {isSuper && (
+        <div className="flex justify-end">
+          <TenantFilter value={tenant} onChange={setTenant} id="hackathon-tenant-filter" />
+        </div>
+      )}
 
       {!loading && items.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-3">

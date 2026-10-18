@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonActivity, hackathonProctorEvents } from '@/lib/db/qr-events'
+import { isHackathonStaff } from '@/lib/hackathons/access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const team = await teamsCol.findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
   if (!team) return NextResponse.json({ error: 'Not in a team for this event' }, { status: 403 })
 
-  if (!hk.results_released && user.role !== 'superadmin') {
+  if (!hk.results_released && !isHackathonStaff(user, hk)) {
     return NextResponse.json({ error: 'Results not yet released' }, { status: 403 })
   }
 

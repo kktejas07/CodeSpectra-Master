@@ -26,6 +26,8 @@ import {
   DEFAULT_FEATURES,
 } from '@/lib/db/qr-events'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
+import { eventListTenantFilter } from '@/lib/hackathons/tenant-scope'
+import { checkTaskProblems } from '@/lib/hackathons/admin-checks'
 
 function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
   if (currentStatus === 'draft') return 'draft'
@@ -70,9 +72,8 @@ export async function GET(req: NextRequest) {
   const user = await getAPIUser()
   const col = await hackathons()
   const isJudgeFilter = req.nextUrl.searchParams.get('judge') === '1'
-  const tenantFilter: Record<string, unknown> = user?.role === 'tenant_admin'
-    ? (user.tenantId ? { tenant_id: user.tenantId } : { _id: null })
-    : {}
+  // Company admins: own organization only. Superadmin: everything, or ?tenant=global|<id>.
+  const tenantFilter = eventListTenantFilter(user, req.nextUrl.searchParams.get('tenant'))
   const filter: Record<string, unknown> = { ...tenantFilter }
   if (!user || !isAdmin(user.role)) {
     filter.status = { $ne: 'draft' as const }
@@ -149,6 +150,9 @@ export async function POST(req: NextRequest) {
     order: i,
     ...(typeof t.time_limit_minutes === 'number' ? { time_limit_minutes: t.time_limit_minutes } : {}),
   }))
+
+  const taskError = await checkTaskProblems(user, tasks.map((t) => t.problem_slug))
+  if (taskError) return NextResponse.json({ error: taskError }, { status: 403 })
 
   const rulesHackathon: HackathonRule[] = (body.rules || []).map((r: any) => ({
     type: (r.type as HackathonRule['type']) || 'general',

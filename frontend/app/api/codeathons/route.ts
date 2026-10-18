@@ -3,15 +3,15 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 import { isTenantStaff, publicCodeathonView } from '@/lib/exam-access'
+import { eventListTenantFilter } from '@/lib/hackathons/tenant-scope'
 
-export async function GET() {
+export async function GET(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
-    const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
-      ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
-      : {}
+    // Company admins: own organization only. Superadmin: everything, or ?tenant=global|<id>.
+    const filter = eventListTenantFilter(gate.user, new URL(request.url).searchParams.get('tenant'))
     const docs = await db.collection('codeathons').find(filter).toArray()
     // Participants never get hidden test cases (they are the grading key).
     const data = docs.map((d) => (isTenantStaff(gate.user, d) ? d : publicCodeathonView(d)))
@@ -23,6 +23,10 @@ export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  // A company admin without an organization would create an unowned (platform) event.
+  if (gate.user.role === 'tenant_admin' && !gate.user.tenantId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   try {

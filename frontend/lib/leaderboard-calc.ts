@@ -11,7 +11,7 @@ export type LeaderboardPeriod = 'all' | 'month'
 export const CATEGORY_REASONS: Record<LeaderboardCategory, string[] | null> = {
   global: null,
   practice: ['submission_accepted', 'first_blood', 'challenge_completed'],
-  hackathon: ['hackathon_score', 'codeathon_attended'],
+  hackathon: ['hackathon_score', 'codeathon_attended', 'codeathon_result'],
   exams: ['exam_passed', 'certification_passed'],
   /** Arena points (lib/arena-points.ts): once per original question, daily cap. */
   arena: ['arena_solved'],

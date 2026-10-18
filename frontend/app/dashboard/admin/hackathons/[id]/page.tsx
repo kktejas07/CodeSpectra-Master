@@ -3,7 +3,7 @@ import { formatDateTime } from '@/lib/format-datetime'
 import { useConfirm } from '@/lib/confirm-context'
 
 /**
- * /dashboard/admin/hackathons/[id] — superadmin event detail.
+ * /dashboard/admin/hackathons/[id] — event detail (superadmin, or the event's own company admin).
  *
  * Lists every team registered for the event with their live XP / level /
  * achievements + a quick admin form to grant XP, push an achievement, or
@@ -41,6 +41,7 @@ import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { NotEventStaff } from '@/components/hackathons/not-event-staff'
 import { rankByScore, formatRank } from '@/lib/hackathons/ranking'
 import { DEFAULT_JUDGING_CONFIG, sanitizeJudgingConfig, type JudgingConfig } from '@/lib/hackathons/judge-config'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -90,7 +91,7 @@ export default function HackathonDetailPage({
 }) {
   const confirmDialog = useConfirm()
   const { id } = use(params)
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const [event, setEvent] = useState<Hackathon | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
@@ -360,6 +361,8 @@ export default function HackathonDetailPage({
       </div>
     )
   }
+
+  if ((event as { is_staff?: boolean }).is_staff === false) return <NotEventStaff />
 
   // Rank on the judged totals stored at release (equal totals share a rank);
   // before release there is no rank yet.

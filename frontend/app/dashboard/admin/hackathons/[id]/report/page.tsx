@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { NotEventStaff } from '@/components/hackathons/not-event-staff'
 import { EmptyState } from '@/components/ui/empty-state'
 
 interface Hackathon {
@@ -73,7 +74,7 @@ function formatDuration(ms: number): string {
 
 export default function HackathonReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -89,7 +90,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
       const hk = hRes.ok ? await hRes.json() : null
       setHackathon(hk)
 
-      if (!hk) return
+      if (!hk || hk.is_staff === false) return
       const [tRes, sRes, pRes] = await Promise.all([
         fetch(`/api/hackathons/${id}/teams`, { cache: 'no-store' }),
         fetch(`/api/hackathons/${id}/judge-submissions`, { cache: 'no-store' }),
@@ -114,6 +115,8 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
   if (!hackathon) {
     return <EmptyState illustration="not-found" title="Hackathon not found" description="It may have been deleted — go back to all events." actionLabel="All events" actionHref="/dashboard/admin/hackathons" className="m-6" />
   }
+
+  if ((hackathon as { is_staff?: boolean }).is_staff === false) return <NotEventStaff />
 
   const totalSuspicion = proctorEvents.reduce((acc, e) => acc + (severityWeight[e.severity] || 0), 0)
   const criticalTeams = [...new Set(proctorEvents.filter(e => e.severity === 'critical').map(e => e.team_id))]

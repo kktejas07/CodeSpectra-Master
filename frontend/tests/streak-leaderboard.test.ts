@@ -71,7 +71,7 @@ describe('leaderboard ranking', () => {
     const now = new Date('2026-10-18T12:00:00Z')
     expect(buildXpMatch('global', 'all', now)).toEqual({})
     expect(buildXpMatch('hackathon', 'month', now)).toEqual({
-      reason: { $in: ['hackathon_score', 'codeathon_attended'] },
+      reason: { $in: ['hackathon_score', 'codeathon_attended', 'codeathon_result'] },
       created_at: { $gte: '2026-10-01T00:00:00.000Z' },
     })
     expect(monthStartIso(new Date('2026-01-31T23:00:00Z'))).toBe('2026-01-01T00:00:00.000Z')

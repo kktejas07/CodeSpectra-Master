@@ -44,10 +44,13 @@ export async function GET(request: NextRequest) {
     ? 0
     : Math.min(50, Math.max(1, Number(rawLimit) || 0))
 
-  const isAdmin = await (async () => {
-    const gate = await requireAdmin()
-    return !('error' in gate)
-  })()
+  const adminGate = await requireAdmin()
+  const isAdmin = !('error' in adminGate)
+  // Company admins see platform problems and their own company's, never other companies'.
+  const tenantScope =
+    isAdmin && 'user' in adminGate && adminGate.user.role === 'tenant_admin'
+      ? { $or: [{ tenant_id: { $exists: false } }, { tenant_id: null }, { tenant_id: adminGate.user.tenantId ?? '__none__' }] }
+      : null
 
   try {
     await ensureSeeded()
@@ -61,6 +64,7 @@ export async function GET(request: NextRequest) {
       ]
     }
 
+    if (tenantScope) filter.$and = [tenantScope]
     if (difficulty) filter.difficulty = difficulty
     if (search) filter.title = { $regex: sanitizeRegex(search), $options: 'i' }
     if (topicsParam) {

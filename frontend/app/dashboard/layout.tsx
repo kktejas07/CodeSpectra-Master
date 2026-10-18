@@ -18,6 +18,7 @@ import {
 } from '@/lib/rbac'
 import {
   ADMIN_ONLY_ROUTES,
+  EVENT_ADMIN_ROUTES,
   TENANT_ADMIN_ROUTES,
   JUDGE_ROUTES,
   ALL_USER_ROUTES,
@@ -525,7 +526,17 @@ export default function DashboardLayout({
       return result
     }
 
-    const allRouteGroups = [ALL_USER_ROUTES, TENANT_ADMIN_ROUTES, JUDGE_ROUTES, ADMIN_ONLY_ROUTES] as const
+    // Hackathon/codeathon admin is open to company admins (TENANT_ADMIN_ROUTES) but
+    // keeps its old place in the platform list, so the "Hackathons" section
+    // still groups question bank, proctoring and certificates for superadmin.
+    const eventAt = ADMIN_ONLY_ROUTES.indexOf('/dashboard/admin/question-bank')
+    const adminOrdered = eventAt >= 0
+      ? [...ADMIN_ONLY_ROUTES.slice(0, eventAt), ...EVENT_ADMIN_ROUTES, ...ADMIN_ONLY_ROUTES.slice(eventAt)]
+      : [...ADMIN_ONLY_ROUTES, ...EVENT_ADMIN_ROUTES]
+    const tenantOrdered = isSuperAdmin(role)
+      ? TENANT_ADMIN_ROUTES.filter((r) => !EVENT_ADMIN_ROUTES.includes(r))
+      : TENANT_ADMIN_ROUTES
+    const allRouteGroups = [ALL_USER_ROUTES, tenantOrdered, JUDGE_ROUTES, adminOrdered] as const
     const seen = new Set<string>()
     const allLeaves: NavLeaf[] = []
     for (const group of allRouteGroups) {

@@ -23,6 +23,10 @@ export async function POST(
     // tenant_admin may only grade submissions of their own tenant's codeathon.
     const owned = await requireTenantEntity(db, 'codeathons', codeathonId, gate.user)
     if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
+    // Scores are frozen once results are released.
+    if ((owned.doc as Record<string, unknown>).results_released === true) {
+      return NextResponse.json({ error: 'Results are released; scores are locked' }, { status: 409 })
+    }
 
     const submission = await db.collection('codeathon_submissions').findOne({
       id: submissionId,

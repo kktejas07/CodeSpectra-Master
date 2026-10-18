@@ -22,6 +22,7 @@ import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
+import { CodeathonResultsCard } from '@/components/codeathons/codeathon-results-card'
 
 interface Problem {
   id: string
@@ -427,6 +428,8 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       {/* Main content */}
+      <CodeathonResultsCard codeathonId={codeathon.id} className="mb-6" />
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>

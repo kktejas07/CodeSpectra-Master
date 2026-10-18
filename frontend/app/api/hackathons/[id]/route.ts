@@ -21,6 +21,7 @@ import {
 import { sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
 import { isHackathonStaff } from '@/lib/hackathons/access'
 import { requireAdmin } from '@/lib/route-auth'
+import { checkTaskProblems, checkNewJudges } from '@/lib/hackathons/admin-checks'
 
 export const runtime = 'nodejs'
 
@@ -69,9 +70,10 @@ export async function GET(
     // Anonymous view: no judge ids or creator id.
     const { judges, created_by, ...pub } = doc
     void judges; void created_by
-    return NextResponse.json({ ...pub, is_judge: false })
+    return NextResponse.json({ ...pub, is_judge: false, is_staff: false })
   }
-  return NextResponse.json({ ...doc, is_judge: (doc.judges || []).includes(user.id) })
+  // is_staff lets the admin pages tell a company admin when an event isn't theirs to manage.
+  return NextResponse.json({ ...doc, is_judge: (doc.judges || []).includes(user.id), is_staff: staff })
 }
 
 export async function PATCH(
@@ -151,7 +153,11 @@ export async function PATCH(
   if ('grace_period_minutes' in body) $set.grace_period_minutes = clampInt(body.grace_period_minutes, 0, 1440) ?? 0
   if ('allow_late_submissions' in body) $set.allow_late_submissions = body.allow_late_submissions === true
   if (Array.isArray(body.judges)) {
-    $set.judges = [...new Set(body.judges.filter((j): j is string => typeof j === 'string' && j.trim().length > 0).map((j) => j.trim()))].slice(0, 100)
+    const judges = [...new Set(body.judges.filter((j): j is string => typeof j === 'string' && j.trim().length > 0).map((j) => j.trim()))].slice(0, 100)
+    // Company admins may only add judges from their own organization.
+    const judgeError = await checkNewJudges(user, judges, cur.judges || [])
+    if (judgeError) return NextResponse.json({ error: judgeError }, { status: 403 })
+    $set.judges = judges
   }
   if (body.timeout_minutes != null && clampInt(body.timeout_minutes, 1, 60 * 24 * 60) === null) {
     return NextResponse.json({ error: 'timeout_minutes must be a number' }, { status: 400 })
@@ -164,6 +170,11 @@ export async function PATCH(
   }
   
   if (Array.isArray(body.tasks)) {
+    // Company admins: platform problems + their own organization's only. Tasks
+    // already on the event (e.g. added by a superadmin) stay allowed.
+    const existingSlugs = new Set((cur.tasks || []).map((t) => t.problem_slug))
+    const taskError = await checkTaskProblems(user, body.tasks.map((t: any) => String(t?.problem_slug || '')).filter((s: string) => !existingSlugs.has(s)))
+    if (taskError) return NextResponse.json({ error: taskError }, { status: 403 })
     $set.tasks = body.tasks.map((t: any, i: number) => ({
       problem_slug: String(t.problem_slug || ''),
       problem_title: String(t.problem_title || ''),

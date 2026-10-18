@@ -36,6 +36,8 @@ export async function POST(
     // Get codeathon
     const codeathon = await db.collection('codeathons').findOne({ id: codeathonId })
     if (!codeathon) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+    // Released results are final — no more submissions.
+    if (codeathon.results_released === true) return NextResponse.json({ error: 'Results are released; this codeathon is closed' }, { status: 409 })
 
     // Check contest is active
     const now = new Date()

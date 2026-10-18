@@ -38,11 +38,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/security/scans',
   '/dashboard/admin/feedback',
 
-  // Hackathons, Problems & Proctoring
-  '/dashboard/admin/hackathons',
-  '/dashboard/admin/hackathons/create',
-  '/dashboard/admin/hackathons/edit',
-  '/dashboard/admin/codeathons',
+  // Hackathons, Problems & Proctoring (hackathon/codeathon admin is in EVENT_ADMIN_ROUTES)
   '/dashboard/admin/question-bank',
   '/dashboard/admin/assessments/bulk',
   '/dashboard/admin/assessments/pipeline',
@@ -116,9 +112,23 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
 ]
 
 /**
+ * Hackathon + codeathon admin. Company admins (tenant_admin) manage their own
+ * organization's events here (every API scopes them to their tenant);
+ * superadmin keeps the global view with an organization filter. Sub-pages
+ * ([id], report, edit/[id]) match by prefix.
+ */
+export const EVENT_ADMIN_ROUTES: string[] = [
+  '/dashboard/admin/hackathons',
+  '/dashboard/admin/hackathons/create',
+  '/dashboard/admin/hackathons/edit',
+  '/dashboard/admin/codeathons',
+]
+
+/**
  * Routes accessible to tenant_admin and above.
  */
 export const TENANT_ADMIN_ROUTES: string[] = [
+  ...EVENT_ADMIN_ROUTES,
   '/dashboard/admin/team',
   '/dashboard/admin/team/activity',
   '/dashboard/admin/assessments',

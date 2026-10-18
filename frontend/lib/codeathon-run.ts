@@ -51,23 +51,9 @@ export function codeathonProblemsVisible(doc: CodeathonLike, now = Date.now()): 
   return codeathonWindow(doc, now).started
 }
 
-/** Best score per problem, summed — resubmitting the same solution never inflates the total. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function bestScoreTotals(subs: ReadonlyArray<Record<string, any>>): { total: number; solved: number } {
-  const best = new Map<string, { score: number; accepted: boolean }>()
-  for (const s of subs) {
-    const pid = typeof s.problem_id === 'string' ? s.problem_id : ''
-    if (!pid) continue
-    const score = typeof s.score === 'number' && Number.isFinite(s.score) ? s.score : 0
-    const accepted = s.status === 'accepted'
-    const prev = best.get(pid)
-    best.set(pid, { score: Math.max(prev?.score ?? 0, score), accepted: !!prev?.accepted || accepted })
-  }
-  let total = 0
-  let solved = 0
-  for (const v of best.values()) { total += v.score; if (v.accepted) solved++ }
-  return { total, solved }
-}
+/** Best score per problem, summed (pure; lives in codeathon-results so client code can use it). */
+export { bestScoreTotals } from '@/lib/codeathon-results'
+import { bestScoreTotals } from '@/lib/codeathon-results'
 
 type Db = import('mongodb').Db
 

@@ -25,6 +25,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { TenantFilter, tenantQuery } from '@/components/hackathons/tenant-filter'
+import { ReleaseResultsDialog } from '@/components/codeathons/release-results-dialog'
 
 interface TestCase {
   input: string
@@ -79,6 +81,9 @@ interface Codeathon {
   team_size_min?: number
   team_size_max?: number
   problem_visibility?: string
+  results_released?: boolean
+  released_at?: string
+  tenant_id?: string | null
 }
 
 interface CodeathonFormData {
@@ -384,7 +389,7 @@ function CodeathonFormFields({
 }
 
 export default function AdminCodeathonsPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
   const [loading, setLoading] = useState(true)
@@ -448,11 +453,17 @@ export default function AdminCodeathonsPage() {
   const [copiedLink, setCopiedLink] = useState(false)
 
   const [loadError, setLoadError] = useState(false)
+  // Results release step
+  const [resultsTarget, setResultsTarget] = useState<Codeathon | null>(null)
+  // Superadmin-only organization filter ('' = all, 'global' = platform events).
+  const [tenant, setTenant] = useState('')
+  const isSuper = gate.user?.role === 'superadmin'
 
   const fetchData = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/codeathons', { credentials: 'include' })
+      const q = isSuper ? tenantQuery(tenant) : ''
+      const res = await fetch(`/api/codeathons${q ? `?${q}` : ''}`, { credentials: 'include' })
       if (!res.ok) throw new Error(`Failed to load codeathons (${res.status})`)
       const json = await res.json()
       setCodeathons(json.data || [])
@@ -465,8 +476,9 @@ export default function AdminCodeathonsPage() {
   }
 
   useEffect(() => {
-    void fetchData()
-  }, [])
+    if (gate.ready) void fetchData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gate.ready, isSuper, tenant])
 
   const handleDelete = async (ids: string[]) => {
     const deleted: string[] = []
@@ -543,12 +555,15 @@ export default function AdminCodeathonsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...editForm, problems: editingProblems }),
       })
-      if (!res.ok) throw new Error('Failed to update codeathon')
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(typeof j?.error === 'string' ? j.error : 'Failed to update codeathon')
+      }
       addToast({ type: 'success', title: 'Codeathon updated successfully' })
       setEditing(null)
       void fetchData()
-    } catch {
-      addToast({ type: 'error', title: 'Failed to update codeathon' })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Failed to update codeathon' })
     } finally {
       setSaving(false)
     }
@@ -1064,6 +1079,7 @@ export default function AdminCodeathonsPage() {
       key: 'status',
       header: 'Status',
       cell: (r) => (
+        <div className="flex flex-wrap items-center gap-1">
         <Badge
           className={
             r.status === 'active'
@@ -1075,6 +1091,8 @@ export default function AdminCodeathonsPage() {
         >
           {r.status}
         </Badge>
+        {r.results_released && <Badge variant="success">Results released</Badge>}
+        </div>
       ),
     },
     {
@@ -1164,6 +1182,17 @@ export default function AdminCodeathonsPage() {
             <Award className="h-3.5 w-3.5" />
           </Button>
 
+          {/* Results release */}
+          <Button aria-label={r.results_released ? 'View released results' : 'Review and release results'}
+            size="sm"
+            variant="ghost"
+            className={cn('h-8 px-2 text-xs gap-1 hover:text-primary hover:bg-primary/10', r.results_released ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground')}
+            onClick={() => setResultsTarget(r)}
+            title={r.results_released ? 'Results released' : 'Review and release results'}
+          >
+            <Trophy className="h-3.5 w-3.5" />
+          </Button>
+
           {/* Live Arena Link */}
           <Button
             size="sm"
@@ -1220,6 +1249,18 @@ export default function AdminCodeathonsPage() {
           Create codeathon
         </Button>
         }
+      />
+
+      {isSuper && (
+        <div className="flex justify-end">
+          <TenantFilter value={tenant} onChange={setTenant} id="codeathon-tenant-filter" />
+        </div>
+      )}
+
+      <ReleaseResultsDialog
+        codeathon={resultsTarget}
+        onOpenChange={(open) => { if (!open) setResultsTarget(null) }}
+        onReleased={() => void fetchData()}
       />
 
       {loading ? (

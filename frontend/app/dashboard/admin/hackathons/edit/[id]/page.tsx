@@ -24,6 +24,8 @@ import {
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
+import { NotEventStaff } from '@/components/hackathons/not-event-staff'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
 import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
@@ -34,13 +36,15 @@ interface ProblemOption { slug: string; title: string; difficulty: string; topic
 export default function HackathonEditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
+  const problemToast = useToast()
   const tz = usePlatformTimezone()
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
   const [eventStatus, setEventStatus] = useState<string>('')
+  const [notStaff, setNotStaff] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -90,6 +94,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       .then(r => r.json())
       .then(doc => {
         if (doc.error) { setError(doc.error); return }
+        if (doc.is_staff === false) { setNotStaff(true); return }
         setEventStatus(doc.status || '')
         const startsAt = new Date(doc.starts_at || Date.now())
         setForm({
@@ -254,6 +259,11 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       const res = await fetch(`/api/problems/${encodeURIComponent(slug)}?edit=1`, { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
+      // Company admins can use platform problems but only edit their own organization's.
+      if (j.can_edit !== true) {
+        problemToast({ type: 'info', title: 'Only the problem’s owner can edit it', message: 'You can still use it in this event, or write your own version.' })
+        return
+      }
       setOwnForm({
         title: j.title || '',
         difficulty: (['easy', 'medium', 'hard'].includes(j.difficulty) ? j.difficulty : 'medium') as 'easy' | 'medium' | 'hard',
@@ -400,6 +410,8 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       <SkeletonButton />
     </div>
   )
+
+  if (notStaff) return <NotEventStaff />
 
   return (
     <div className="space-y-6">

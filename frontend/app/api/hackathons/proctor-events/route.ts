@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonProctorEvents, HackathonProctorEventDoc, newId, nowIso } from '@/lib/db/qr-events'
+import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -59,9 +60,8 @@ export async function GET(req: NextRequest) {
   const hk = await (await hackathons()).findOne({ $or: [{ id: hackathonId }, { slug: hackathonId }] })
   if (!hk) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
 
-  const isJudge = hk.judges?.includes(user.id)
-  const isSuperAdmin = user.role === 'superadmin'
-  if (!isJudge && !isSuperAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // Judges of this event, superadmin, or this event's own company admin (deny by default).
+  if (!isHackathonJudge(user, hk) && !isHackathonStaff(user, hk)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const col = await hackathonProctorEvents()
   const events = await col.find({ hackathon_id: hk.id }).sort({ created_at: -1 }).toArray()

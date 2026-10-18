@@ -5,6 +5,8 @@ import { codeathonProblemsVisible } from '@/lib/codeathon-run'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { isTenantStaff, pickFields, publicCodeathonView, CODEATHON_EDITABLE_FIELDS } from '@/lib/exam-access'
 
+const RELEASE_LOCKED_FIELDS = ['problems', 'startDate', 'endDate', 'event_type', 'status'] as const
+
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth()
   if ('error' in gate) {
@@ -48,6 +50,16 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     if (!existing) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     if (!isTenantStaff(gate.user, existing as unknown as Record<string, unknown>)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    // Released results are final: the format, dates and problems can't change underneath them.
+    if ((existing as unknown as Record<string, unknown>).results_released === true) {
+      const norm = (k: string, v: unknown) => (v === undefined || v === null || v === '' ? (k === 'event_type' ? 'individual' : null) : v)
+      const cur = existing as unknown as Record<string, unknown>
+      const locked = RELEASE_LOCKED_FIELDS.filter((k) =>
+        k in data && JSON.stringify(norm(k, data[k])) !== JSON.stringify(norm(k, cur[k])))
+      if (locked.length > 0) {
+        return NextResponse.json({ error: 'Results are released, so dates, format, status and problems are locked' }, { status: 409 })
+      }
     }
     await col.updateOne({ id }, { $set: { ...data, updated_at: nowIso() } })
     const updated = await col.findOne({ id })

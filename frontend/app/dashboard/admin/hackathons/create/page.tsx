@@ -25,6 +25,7 @@ import {
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
 import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
@@ -33,7 +34,8 @@ interface ProblemOption { slug: string; title: string; difficulty: string; topic
 
 export default function HackathonCreatePage() {
   const router = useRouter()
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
+  const problemToast = useToast()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
@@ -193,6 +195,11 @@ export default function HackathonCreatePage() {
       const res = await fetch(`/api/problems/${encodeURIComponent(slug)}?edit=1`, { cache: 'no-store' })
       const j = await res.json()
       if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
+      // Company admins can use platform problems but only edit their own organization's.
+      if (j.can_edit !== true) {
+        problemToast({ type: 'info', title: 'Only the problem’s owner can edit it', message: 'You can still use it in this event, or write your own version.' })
+        return
+      }
       setOwnForm({
         title: j.title || '',
         difficulty: (['easy', 'medium', 'hard'].includes(j.difficulty) ? j.difficulty : 'medium') as 'easy' | 'medium' | 'hard',
