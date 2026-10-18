@@ -91,6 +91,8 @@ interface Exam {
   access_type?: 'invite_only' | 'open'
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  /** No usable camera: 'allow_flag' (default) = upload an ID photo and continue, flagged; 'block' = can't start. */
+  no_camera_policy?: 'block' | 'allow_flag' | null
   questionList: Question[]
   /** Number of questions (the list itself only arrives from POST ./start). */
   question_count?: number
@@ -155,6 +157,10 @@ export default function CandidateAssessmentPage() {
   const [showVerification, setShowVerification] = useState(false)
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [facePhoto, setFacePhoto] = useState<string | null>(null)
+  /** Result of the stored identity check for this attempt. */
+  const [identityStatus, setIdentityStatus] = useState<'verified' | 'needs_review' | null>(null)
+  /** What to do once the identity check is stored: start, or retry a submit the server refused without one. */
+  const afterIdentityRef = useRef<{ kind: 'start' } | { kind: 'submit'; auto: boolean }>({ kind: 'start' })
 
   // Recording Consent
   const [recordingConsent, setRecordingConsent] = useState(false)
@@ -421,8 +427,15 @@ export default function CandidateAssessmentPage() {
       const j = await res.json().catch(() => ({})) as {
         error?: string; expired?: boolean; questionList?: Question[]; started_at?: string; deadline?: string | null
         server_now?: string; answers?: Record<string, string | string[]>; attempt_no?: number
+        identity_required?: boolean
       }
       if (res.status === 410 && j.expired) { setTimeUp(true); return }
+      if (j.identity_required) {
+        afterIdentityRef.current = { kind: 'start' }
+        setShowVerification(true)
+        addToast({ type: 'error', title: 'Identity check needed', message: j.error })
+        return
+      }
       if (!res.ok || !Array.isArray(j.questionList) || !j.started_at) throw new Error(j.error || 'Could not start the assessment')
 
       const serverNow = j.server_now ? Date.parse(j.server_now) : Date.now()
@@ -500,7 +513,14 @@ export default function CandidateAssessmentPage() {
         credentials: 'include',
       })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
+        const err = await res.json().catch(() => ({})) as { error?: string; identity_required?: boolean }
+        if (err.identity_required) {
+          // Answers stay saved; redo the identity check, then this submit runs again.
+          afterIdentityRef.current = { kind: 'submit', auto: autoSubmitted }
+          setShowVerification(true)
+          addToast({ type: 'error', title: 'Identity check needed', message: 'Redo the identity check to submit. Your answers are saved.' })
+          return
+        }
         throw new Error(err.error || 'Failed to submit')
       }
       const okJson = await res.json().catch(() => ({})) as { attempt_no?: number; max_attempts?: number }
@@ -552,6 +572,29 @@ export default function CandidateAssessmentPage() {
     const s = seconds % 60
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
+
+  const identityDialog = exam && showVerification ? (
+    <IdentityVerification
+      examId={exam.id}
+      examTitle={exam.title}
+      requireId={exam.require_id_verification !== false}
+      requireFace={exam.require_face_capture !== false}
+      noCameraPolicy={exam.no_camera_policy ?? 'allow_flag'}
+      inviteToken={searchParams.get('inviteToken')}
+      linkToken={searchParams.get('link')}
+      onCancel={() => setShowVerification(false)}
+      onComplete={(data) => {
+        setIdPhoto(data.idPhoto)
+        setFacePhoto(data.facePhoto)
+        setIdentityStatus(data.needsReview ? 'needs_review' : 'verified')
+        setShowVerification(false)
+        const next = afterIdentityRef.current
+        afterIdentityRef.current = { kind: 'start' }
+        if (next.kind === 'submit') void submitAssessment(next.auto)
+        else void handleStart()
+      }}
+    />
+  ) : null
 
   if (loading) {
     return (
@@ -653,6 +696,7 @@ export default function CandidateAssessmentPage() {
             Submit saved answers
           </Button>
         </Card>
+        {identityDialog}
       </div>
     )
   }
@@ -757,32 +801,26 @@ export default function CandidateAssessmentPage() {
               Identity check for this assessment: {exam.require_id_verification === false && exam.require_face_capture === false ? 'consent only — no ID or face capture required' : exam.require_id_verification === false ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
             </div>
           )}
+          {(exam.require_id_verification !== false || exam.require_face_capture !== false) && (
+            <p className="text-xs text-muted-foreground">
+              {exam.no_camera_policy === 'block'
+                ? 'This test needs a working camera for the identity check.'
+                : 'No camera on this device? You can upload a photo of your ID instead, and the organiser will check it by hand.'}
+            </p>
+          )}
           {resuming && (
             <div className="bg-primary/10 border border-primary/20 text-foreground p-3 rounded-xl text-xs flex items-center gap-2">
               <Clock className="h-4 w-4 shrink-0 text-primary" />
               <span>You already started this attempt. The timer kept running; your saved answers will be restored.</span>
             </div>
           )}
-          <Button onClick={() => setShowVerification(true)} disabled={starting} className="w-full text-base font-semibold h-12 rounded-xl gap-2">
+          <Button onClick={() => { afterIdentityRef.current = { kind: 'start' }; setShowVerification(true) }} disabled={starting} className="w-full text-base font-semibold h-12 rounded-xl gap-2">
             {starting && <Loader2 className="h-4 w-4 animate-spin" />}
             {resuming ? 'Resume assessment' : 'Start assessment'}
           </Button>
         </Card>
 
-        {showVerification && (
-          <IdentityVerification
-            examTitle={exam.title}
-            requireId={exam.require_id_verification !== false}
-            requireFace={exam.require_face_capture !== false}
-            onCancel={() => setShowVerification(false)}
-            onComplete={(data) => {
-              setIdPhoto(data.idPhoto)
-              setFacePhoto(data.facePhoto)
-              setShowVerification(false)
-              void handleStart()
-            }}
-          />
-        )}
+        {identityDialog}
       </div>
       </ExtensionGate>
     )
@@ -794,7 +832,7 @@ export default function CandidateAssessmentPage() {
   return (
     <ExtensionGate bypass={extensionBypass}>
     <>
-      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined}>
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined} identityStatus={identityStatus} examTitle={exam.title}>
       <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted} enforceFullscreen={hasStarted}>
       <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent} />
       <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -947,6 +985,7 @@ export default function CandidateAssessmentPage() {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+    {identityDialog}
     </>
     </ExtensionGate>
   )

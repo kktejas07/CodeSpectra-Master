@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ids'
-import { checkExamEntry, isCadExam } from '@/lib/exam-access'
+import { checkExamEntry, checkIdentityForAttempt, isCadExam } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
@@ -49,6 +49,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken }, { claimLinkUse: true })
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
+
+    // Identity check stored for this attempt first (POST ../../identity).
+    const identity = await checkIdentityForAttempt(db, exam as Record<string, unknown>, userId, access.attemptNo)
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error, identity_required: true }, { status: identity.status })
+    }
 
     const now = nowIso()
     // Atomic keep-or-set: the start time only changes when this is a new

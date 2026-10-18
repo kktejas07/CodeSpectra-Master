@@ -76,6 +76,7 @@ interface ExamInfo {
   require_token_links?: boolean
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  no_camera_policy?: 'block' | 'allow_flag' | null
   submission?: unknown
   attempts?: { used: number; max: number; can_retake: boolean }
   proctoring_mode?: 'standard' | 'strict'
@@ -148,6 +149,9 @@ export function CadAssessmentWorkspace({
   const [starting, setStarting] = useState(false)
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [facePhoto, setFacePhoto] = useState<string | null>(null)
+  const [identityStatus, setIdentityStatus] = useState<'verified' | 'needs_review' | null>(null)
+  /** A submit the server refused for a missing identity check; retried once the check is stored. */
+  const retrySubmitRef = useRef<boolean | null>(null)
 
   const draftKey = `codespectra-cad-draft-${examId}`
 
@@ -223,7 +227,13 @@ export function CadAssessmentWorkspace({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteToken, linkToken }),
       })
-      const j = await res.json().catch(() => ({})) as { error?: string; started_at?: string; server_now?: string; duration_minutes?: number }
+      const j = await res.json().catch(() => ({})) as { error?: string; started_at?: string; server_now?: string; duration_minutes?: number; identity_required?: boolean }
+      if (j.identity_required) {
+        setChecksPassed(false)
+        setShowVerification(true)
+        addToast({ type: 'error', title: 'Identity check needed', message: j.error })
+        return
+      }
       if (!res.ok || !j.started_at) throw new Error(j.error || 'Could not start the test')
       const startedMs = Date.parse(j.started_at)
       const serverNowMs = j.server_now ? Date.parse(j.server_now) : Date.now()
@@ -260,7 +270,14 @@ export function CadAssessmentWorkspace({
           total_time_ms: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
         }),
       })
-      const j = await res.json().catch(() => ({})) as { error?: string; attempt_no?: number; max_attempts?: number }
+      const j = await res.json().catch(() => ({})) as { error?: string; attempt_no?: number; max_attempts?: number; identity_required?: boolean }
+      if (j.identity_required) {
+        // Files and rationale stay staged; redo the identity check, then submit again.
+        retrySubmitRef.current = autoSubmitted
+        setShowVerification(true)
+        addToast({ type: 'error', title: 'Identity check needed', message: 'Redo the identity check to submit. Your files are saved.' })
+        return
+      }
       if (!res.ok) throw new Error(j.error || 'Submit failed')
       try {
         localStorage.removeItem(draftKey)
@@ -379,6 +396,29 @@ export function CadAssessmentWorkspace({
     addToast({ type: 'success', title: 'Starter template downloaded', message: 'Minimal STEP stub - replace with your full bracket model.' })
   }
 
+  const identityDialog = !isDemo && showVerification ? (
+    <IdentityVerification
+      examId={examId}
+      examTitle={exam?.title || 'CAD task'}
+      requireId={exam?.require_id_verification !== false}
+      requireFace={exam?.require_face_capture !== false}
+      noCameraPolicy={exam?.no_camera_policy ?? 'allow_flag'}
+      inviteToken={inviteToken}
+      linkToken={linkToken}
+      onCancel={() => setShowVerification(false)}
+      onComplete={(data) => {
+        setIdPhoto(data.idPhoto)
+        setFacePhoto(data.facePhoto)
+        setIdentityStatus(data.needsReview ? 'needs_review' : 'verified')
+        setShowVerification(false)
+        setChecksPassed(true)
+        const retry = retrySubmitRef.current
+        retrySubmitRef.current = null
+        if (retry !== null) void submit(retry)
+      }}
+    />
+  ) : null
+
   // ─── Non-workspace states ──────────────────────────────────────────────────
   if (phase.kind === 'loading') {
     return (
@@ -471,7 +511,14 @@ export function CadAssessmentWorkspace({
                     Identity check for this test: {!requireId && !requireFace ? 'consent only — no ID or face capture required' : !requireId ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
                   </div>
                 )}
-                <Button onClick={() => setShowVerification(true)} className="h-12 w-full rounded-xl text-base font-semibold">
+                {(requireId || requireFace) && (
+                  <p className="text-xs text-muted-foreground">
+                    {exam?.no_camera_policy === 'block'
+                      ? 'This test needs a working camera for the identity check.'
+                      : 'No camera on this device? You can upload a photo of your ID instead, and the organiser will check it by hand.'}
+                  </p>
+                )}
+                <Button onClick={() => { retrySubmitRef.current = null; setShowVerification(true) }} className="h-12 w-full rounded-xl text-base font-semibold">
                   Continue to identity check
                 </Button>
               </>
@@ -489,20 +536,7 @@ export function CadAssessmentWorkspace({
             )}
           </Card>
 
-          {showVerification && (
-            <IdentityVerification
-              examTitle={exam?.title || 'CAD task'}
-              requireId={requireId}
-              requireFace={requireFace}
-              onCancel={() => setShowVerification(false)}
-              onComplete={(data) => {
-                setIdPhoto(data.idPhoto)
-                setFacePhoto(data.facePhoto)
-                setShowVerification(false)
-                setChecksPassed(true)
-              }}
-            />
-          )}
+          {identityDialog}
         </div>
       </ExtensionGate>
     )
@@ -781,10 +815,11 @@ export function CadAssessmentWorkspace({
   // attempt lands on the exam's proctoring timeline.
   return (
     <ExtensionGate bypass={exam?.proctoring_mode !== 'strict'}>
-      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={examId} idPhoto={idPhoto || undefined}>
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={examId} idPhoto={idPhoto || undefined} identityStatus={identityStatus} examTitle={exam?.title}>
         <RealTimeProctor sessionKind="exam" sessionId={examId} enabled enforceFullscreen>
           <SessionRecorder sessionKind="exam" sessionId={examId} enabled={recordingConsent} />
           {workspace}
+          {identityDialog}
         </RealTimeProctor>
       </ProctoringWrapper>
     </ExtensionGate>

@@ -221,6 +221,7 @@ export function ensureExamIndexes(db: Db): Promise<void> {
         await db.collection('exam_submission_attempts').createIndex({ exam_id: 1, user_id: 1 }, { name: 'exam_submission_attempts_exam_user' })
         await db.collection('exam_submission_files').createIndex({ id: 1 }, { unique: true, name: 'exam_submission_files_id' })
         await db.collection('exam_submission_files').createIndex({ exam_id: 1, user_id: 1, status: 1 }, { name: 'exam_submission_files_exam_user' })
+        await db.collection('exam_identity_checks').createIndex({ exam_id: 1, user_id: 1, attempt_no: 1 }, { unique: true, name: 'exam_identity_checks_attempt' })
       } catch (e) {
         // Most likely an index that already exists with other options; never block a submit on it.
         console.error('[CodeSpectra] ensureExamIndexes:', e)
@@ -399,6 +400,7 @@ export const PROCTOR_INFO_EVENT_TYPES: readonly string[] = [
   'answer_pattern_score', 'timer_warning_30min', 'hardware_port_audit', 'browser_fingerprint_captured',
   'keyboard_dynamics_snapshot', 'face_match_restored', 'tab_focus', 'window_focus', 'fullscreen_enter',
   'viewport_restored', 'screen_share_started', 'eye_blink_detected', 'usb_device_unplugged',
+  'identity_check_completed',
 ]
 
 export function isRiskProctorEvent(type: unknown): boolean {
@@ -577,8 +579,186 @@ export const EXAM_EDITABLE_FIELDS = [
   'starts_at', 'ends_at', 'require_token_links', 'require_id_verification', 'require_face_capture',
   'cert_template', 'degree_type', 'branch', 'screening_type', 'techStack',
   'questions', 'questionList', 'published', 'access_type', 'status', 'allow_retake', 'max_attempts',
-  'issue_certificates', 'proctoring_mode', 'kind', 'cad_points',
+  'issue_certificates', 'proctoring_mode', 'kind', 'cad_points', 'no_camera_policy',
 ] as const
+
+// ─── Identity check (ID photo + live face photo) ─────────────────────────────
+//
+// Per test: `require_id_verification` / `require_face_capture` (missing = on,
+// so new tests get the full check) and `no_camera_policy` for candidates whose
+// machine has no usable camera. The candidate page runs the check, POSTs it to
+// /api/exams/[id]/identity, and start/submit refuse an attempt without a
+// stored result that satisfies the test's settings.
+
+/** 'block' = no camera, no test. 'allow_flag' (default) = upload an ID photo and continue; flagged for manual review. */
+export type NoCameraPolicy = 'block' | 'allow_flag'
+
+export interface ExamIdentityPolicy {
+  requireId: boolean
+  requireFace: boolean
+  /** True when the test asks for any identity capture. */
+  required: boolean
+  noCamera: NoCameraPolicy
+}
+
+export function examIdentityPolicy(exam: Doc): ExamIdentityPolicy {
+  const requireId = exam.require_id_verification !== false
+  const requireFace = exam.require_face_capture !== false
+  return {
+    requireId,
+    requireFace,
+    required: requireId || requireFace,
+    noCamera: exam.no_camera_policy === 'block' ? 'block' : 'allow_flag',
+  }
+}
+
+/** Coerce the no-camera setting from an editor body (call after pickFields). */
+export function normalizeIdentityFields(data: Doc): void {
+  if ('no_camera_policy' in data) data.no_camera_policy = data.no_camera_policy === 'block' ? 'block' : 'allow_flag'
+  if ('require_id_verification' in data) data.require_id_verification = data.require_id_verification !== false
+  if ('require_face_capture' in data) data.require_face_capture = data.require_face_capture !== false
+}
+
+export type IdentityStep =
+  /** Nothing to capture (consent only). */
+  | { kind: 'none' }
+  /** Webcam flow: ID card photo and/or live face photo. */
+  | { kind: 'camera'; requireId: boolean; requireFace: boolean }
+  /** No camera, test allows it: upload an ID photo; the attempt is flagged for manual review. */
+  | { kind: 'upload_id' }
+  /** No camera and the test needs one. */
+  | { kind: 'blocked' }
+
+/** What the candidate has to do, given the test's settings and whether a camera works. */
+export function identityRequirement(policy: ExamIdentityPolicy, cameraAvailable: boolean): IdentityStep {
+  if (!policy.required) return { kind: 'none' }
+  if (cameraAvailable) return { kind: 'camera', requireId: policy.requireId, requireFace: policy.requireFace }
+  return policy.noCamera === 'block' ? { kind: 'blocked' } : { kind: 'upload_id' }
+}
+
+export const NO_CAMERA_REVIEW_LABEL = 'No camera — needs manual identity review'
+
+export type IdentityMethod = 'camera' | 'no_camera_upload' | 'consent_only'
+
+/** Stored identity result for one attempt (collection `exam_identity_checks`). */
+export interface IdentityCheckRecord {
+  method: IdentityMethod
+  id_photo?: string | null
+  face_photo?: string | null
+}
+
+/**
+ * Server rule used by start and submit: does the stored identity result for
+ * this attempt satisfy the test? `record` null = the candidate never ran it.
+ */
+export function identityCheckSatisfies(
+  policy: ExamIdentityPolicy,
+  record: IdentityCheckRecord | null | undefined,
+): { ok: true } | { ok: false; error: string } {
+  if (!policy.required) return { ok: true }
+  if (!record) return { ok: false, error: 'Complete the identity check before you start.' }
+  if (record.method === 'camera') {
+    if (policy.requireId && !record.id_photo) return { ok: false, error: 'Your ID photo is missing. Redo the identity check.' }
+    if (policy.requireFace && !record.face_photo) return { ok: false, error: 'Your face photo is missing. Redo the identity check.' }
+    return { ok: true }
+  }
+  if (record.method === 'no_camera_upload') {
+    if (policy.noCamera !== 'allow_flag') return { ok: false, error: 'This test needs a working camera.' }
+    if (!record.id_photo) return { ok: false, error: 'Upload a photo of your ID to continue.' }
+    return { ok: true }
+  }
+  return { ok: false, error: 'Complete the identity check before you start.' }
+}
+
+const IDENTITY_COLLECTION = 'exam_identity_checks'
+
+/** The stored identity result for this attempt, or null. */
+export async function getIdentityCheck(db: Db, examId: string, userId: string, attemptNo: number): Promise<Doc | null> {
+  return (await db.collection(IDENTITY_COLLECTION).findOne(
+    { exam_id: examId, user_id: userId, attempt_no: attemptNo },
+    { projection: { _id: 0 } },
+  )) as Doc | null
+}
+
+/** Store (replace) the identity result for one attempt. */
+export async function saveIdentityCheck(db: Db, doc: Doc & { exam_id: string; user_id: string; attempt_no: number }): Promise<void> {
+  await ensureExamIndexes(db)
+  await db.collection(IDENTITY_COLLECTION).replaceOne(
+    { exam_id: doc.exam_id, user_id: doc.user_id, attempt_no: doc.attempt_no },
+    doc,
+    { upsert: true },
+  )
+}
+
+/** Start / submit gate: loads the attempt's identity result and applies identityCheckSatisfies. */
+export async function checkIdentityForAttempt(
+  db: Db,
+  exam: Doc,
+  userId: string,
+  attemptNo: number,
+): Promise<{ ok: true; record: Doc | null } | { ok: false; error: string; status: number }> {
+  const policy = examIdentityPolicy(exam)
+  const record = policy.required ? await getIdentityCheck(db, String(exam.id), userId, attemptNo) : null
+  const verdict = identityCheckSatisfies(policy, record as IdentityCheckRecord | null)
+  return verdict.ok ? { ok: true, record } : { ok: false, error: verdict.error, status: 403 }
+}
+
+/** Summary copied onto the submission for reviewers (no photos; those go in id_photo / face_photo). */
+export function identitySummary(record: Doc | null | undefined): Doc | null {
+  if (!record) return null
+  return {
+    method: record.method ?? null,
+    needs_manual_review: record.needs_manual_review === true,
+    no_camera_reason: record.no_camera_reason ?? null,
+    face_match: record.face_match ?? null,
+    upload_scan_status: record.upload_scan_status ?? null,
+    checked_at: record.updated_at ?? record.created_at ?? null,
+  }
+}
+
+/**
+ * Advisory face-match result reported by the browser (face-api 128-d
+ * descriptors of the ID photo and the selfie). Never used to accept or reject
+ * anyone; reviewers see it next to the photos.
+ */
+export function sanitizeFaceMatch(raw: unknown): Doc | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const r = raw as Doc
+  const status = ['compared', 'no_face_in_id', 'no_face_in_selfie', 'unavailable'].includes(String(r.status)) ? String(r.status) : null
+  if (!status) return null
+  if (status !== 'compared') return { status, advisory: true }
+  const distance = Number(r.distance)
+  if (!Number.isFinite(distance) || distance < 0 || distance > 2) return { status: 'unavailable', advisory: true }
+  const threshold = 0.6
+  return {
+    status,
+    distance: Math.round(distance * 1000) / 1000,
+    similarity: Math.round(Math.max(0, Math.min(1, 1 - distance)) * 100) / 100,
+    threshold,
+    likely_match: distance < threshold,
+    model: 'face-api-128d',
+    advisory: true,
+  }
+}
+
+// ─── Certificates: who may revoke ────────────────────────────────────────────
+
+/**
+ * Superadmin: any certificate. Tenant admin: only certificates issued for an
+ * exam (`certification_id` = exam id) that belongs to their own tenant. A
+ * missing tenantId / exam / tenant_id never matches.
+ */
+export function canRevokeExamCertificate(
+  user: Pick<APIUser, 'role' | 'tenantId'> | null | undefined,
+  cert: Doc | null | undefined,
+  exam: Doc | null | undefined,
+): boolean {
+  if (!user || !cert) return false
+  if (user.role === 'superadmin') return true
+  if (user.role !== 'tenant_admin' || !user.tenantId) return false
+  if (!exam || !exam.id || cert.certification_id !== exam.id) return false
+  return !!exam.tenant_id && exam.tenant_id === user.tenantId
+}
 
 // ─── Proctoring mode / exam kind ─────────────────────────────────────────────
 

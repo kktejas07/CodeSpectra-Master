@@ -21,9 +21,11 @@ export interface KycPurposeConfig {
 
 export const DEFAULT_KYC_PURPOSES: KycPurposeConfig = {
   identity_kyc: 'didit',
-  // 'ocr_face' has no provider wired (the gate only says "not available"), so a
-  // platform that never picked a mode gets 'off'. A saved explicit mode is kept
-  // by mergeKycPurposes below.
+  // Extra in-test ID button (ProctoringWrapper → ExamAadhaarGate). 'ocr_face'
+  // now runs the test's own ID card photo + live selfie capture (stored per
+  // attempt). Each test's pre-start identity check is set per test
+  // (require_id_verification / require_face_capture, on by default) and does
+  // not depend on this. A saved explicit mode is kept by mergeKycPurposes.
   exam_aadhaar: 'off',
   profile_aadhaar: 'anon_aadhaar',
   anon_aadhaar_test_mode: true,

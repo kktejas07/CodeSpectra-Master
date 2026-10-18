@@ -6,7 +6,7 @@ import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
-import { attemptTimeState, checkExamEntry, extensionRequired, getExamDraft, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
+import { attemptTimeState, checkExamEntry, checkIdentityForAttempt, extensionRequired, getExamDraft, identitySummary, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -106,6 +106,15 @@ export async function POST(
     }
     const late = timeState.status === 'expired'
 
+    // Identity check for this attempt (also required by start). If it is
+    // missing the page re-runs the check and submits again — the answers are
+    // kept in the draft and on the device.
+    const identity = await checkIdentityForAttempt(db, exam as Record<string, unknown>, userId, access.attemptNo)
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error, identity_required: true }, { status: identity.status })
+    }
+    const identityRecord = identity.record
+
     // Extension check: log if no hardware_port_audit event exists, but
     // don't block submission — the extension is a proctoring aid, not a
     // hard requirement for candidates who can't install it (mobile, etc.).
@@ -203,8 +212,10 @@ export async function POST(
       auto_submitted: late || body.auto_submitted === true,
       // Past deadline + grace: answers are the server draft saved before the deadline.
       late_submit: late,
-      id_photo: photo(body.idPhoto),
-      face_photo: photo(body.facePhoto),
+      // Photos come from the stored identity check (server-validated), not the submit body.
+      id_photo: typeof identityRecord?.id_photo === 'string' ? identityRecord.id_photo : photo(body.idPhoto),
+      face_photo: typeof identityRecord?.face_photo === 'string' ? identityRecord.face_photo : photo(body.facePhoto),
+      identity_check: identitySummary(identityRecord),
       details,
       device_info: { 
         ua: req.headers.get('user-agent') || '', 

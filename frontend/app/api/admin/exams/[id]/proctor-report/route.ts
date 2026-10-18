@@ -73,6 +73,7 @@ export async function GET(
         score_released: sub.score_released || false,
         id_photo: sub.id_photo || null,
         face_photo: sub.face_photo || null,
+        identity_check: sub.identity_check || null,
         device_info: sub.device_info || null,
         submitted_at: sub.created_at,
         proctor_events: eventsByUser[sub.user_id] || [],

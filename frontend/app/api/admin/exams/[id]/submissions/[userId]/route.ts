@@ -78,6 +78,8 @@ export async function GET(
         released_at: submission.released_at || null,
         id_photo: submission.id_photo || null,
         face_photo: submission.face_photo || null,
+        // Identity check summary: method, no-camera review flag, advisory face match.
+        identity_check: submission.identity_check || null,
         // Timing data
         question_timings: submission.question_timings || {},
         total_time_ms: submission.total_time_ms || 0,

@@ -6,7 +6,10 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
-import { isExamStaff, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP, NEW_EXAM_PASS_PERCENT } from '@/lib/exam-access'
+import { isExamStaff, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, normalizeIdentityFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP, NEW_EXAM_PASS_PERCENT } from '@/lib/exam-access'
+import { revokeExamCertificates } from '@/lib/db/certifications'
+import { writeAuditLog, auditLogAction } from '@/lib/db/misc'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { canonicalType, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 
@@ -305,6 +308,8 @@ export async function POST(request: Request) {
       require_token_links: body.require_token_links === true,
       require_id_verification: body.require_id_verification === false ? false : true,
       require_face_capture: body.require_face_capture === false ? false : true,
+      // No camera: let the candidate upload an ID photo and flag the attempt (default), or block.
+      no_camera_policy: body.no_camera_policy === 'block' ? 'block' : 'allow_flag',
       allow_retake: body.allow_retake === true,
       max_attempts: body.allow_retake === true
         ? Math.min(MAX_ATTEMPTS_CAP, Math.max(1, Math.floor(Number(body.max_attempts)) || 1))
@@ -357,6 +362,7 @@ export async function PATCH(request: Request) {
     normalizeRetakeFields(updates)
     normalizeCertificateFields(updates)
     normalizeProctoringFields(updates)
+    normalizeIdentityFields(updates)
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id })
     if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -395,6 +401,23 @@ export async function DELETE(request: Request) {
     const examUrl = new RegExp(`/assessment/${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:[/?#]|$)`)
     const examFilter = { exam_id: id }
     const removed: Record<string, number> = {}
+
+    // Certificates outlive the exam as records, but must stop verifying as
+    // valid: revoke them (the public verify page then shows "Revoked on …").
+    // First, so a failure leaves everything in place for a retry.
+    const subIds = (await db.collection('exam_submissions')
+      .find(examFilter, { projection: { _id: 0, id: 1 } }).toArray()).map((s) => String(s.id))
+    const archivedIds = (await db.collection('exam_submission_attempts')
+      .find(examFilter, { projection: { _id: 0, id: 1 } }).toArray()).map((s) => String(s.id))
+    const revoked = await revokeExamCertificates(id, [...subIds, ...archivedIds], user.id, 'Test deleted')
+    removed.certificates_revoked = revoked
+    if (revoked > 0) {
+      await writeAuditLog({
+        ...auditLogAction('certificate.revoke', 'success', user.id, clientLimiterKeyFromRequest(request, null), `exam/${id}`, 'certificate', 'warning', `Test deleted: ${revoked} certificate(s) revoked`),
+        tenant_id: user.role === 'tenant_admin' ? user.tenantId ?? null : null,
+      })
+    }
+
     const del = async (col: string, filter: Record<string, unknown>) => {
       removed[col] = (await db.collection(col).deleteMany(filter)).deletedCount
     }
@@ -402,6 +425,7 @@ export async function DELETE(request: Request) {
     await del('exam_submission_attempts', examFilter)
     await del('exam_submission_files', examFilter)
     await del('exam_drafts', examFilter)
+    await del('exam_identity_checks', examFilter)
     await del('assessment_link_usage', examFilter)
     await del('assessment_links', examFilter)
     await del('proctor_events', { session_kind: 'exam', session_id: id })

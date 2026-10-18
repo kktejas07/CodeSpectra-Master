@@ -38,6 +38,7 @@ interface Exam {
   ends_at?: string | null
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  no_camera_policy?: 'block' | 'allow_flag' | null
   require_token_links?: boolean | null
   access_type?: 'invite_only' | 'open'
   allow_retake?: boolean
@@ -101,6 +102,7 @@ export default function AdminExamsPage() {
   const [requireTokenLinks, setRequireTokenLinks] = useState(false)
   const [requireIdVerification, setRequireIdVerification] = useState(true)
   const [requireFaceCapture, setRequireFaceCapture] = useState(true)
+  const [noCameraPolicy, setNoCameraPolicy] = useState<'block' | 'allow_flag'>('allow_flag')
   const [allowRetake, setAllowRetake] = useState(false)
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [passingScore, setPassingScore] = useState(60)
@@ -223,6 +225,7 @@ export default function AdminExamsPage() {
     setRequireTokenLinks(false)
     setRequireIdVerification(true)
     setRequireFaceCapture(true)
+    setNoCameraPolicy('allow_flag')
     setAllowRetake(false)
     setMaxAttempts(1)
     setPassingScore(60)
@@ -247,6 +250,7 @@ export default function AdminExamsPage() {
     setEndsAt(exam.ends_at ? toZonedDatetimeString(new Date(exam.ends_at), tz) : '')
     setRequireIdVerification(exam.require_id_verification !== false)
     setRequireFaceCapture(exam.require_face_capture !== false)
+    setNoCameraPolicy(exam.no_camera_policy === 'block' ? 'block' : 'allow_flag')
     setRequireTokenLinks(exam.require_token_links === true)
     setAccessType(exam.access_type === 'open' ? 'open' : 'invite_only')
     setAllowRetake(exam.allow_retake === true)
@@ -286,6 +290,7 @@ export default function AdminExamsPage() {
       require_token_links: requireTokenLinks,
       require_id_verification: requireIdVerification,
       require_face_capture: requireFaceCapture,
+      no_camera_policy: noCameraPolicy,
       allow_retake: allowRetake,
       max_attempts: allowRetake ? maxAttempts : 1,
       passing_score: passingScore,
@@ -872,10 +877,29 @@ export default function AdminExamsPage() {
                 />
                 <span>
                   Require face capture
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture a live selfie (biometric verify + enroll). Off = skip face step.</span>
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates take a live selfie. With ID on too, reviewers see an advisory face match score. Off = skip face step.</span>
                 </span>
               </label>
               </div>
+              {(requireIdVerification || requireFaceCapture) && (
+                <div className="grid gap-1.5 sm:max-w-sm">
+                  <Label htmlFor="noCameraPolicy">If the candidate has no camera</Label>
+                  <Select value={noCameraPolicy} onValueChange={(v) => setNoCameraPolicy(v === 'block' ? 'block' : 'allow_flag')}>
+                    <SelectTrigger id="noCameraPolicy" className="h-9 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="allow_flag">Allow and flag for review</SelectItem>
+                      <SelectItem value="block">Block the test</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {noCameraPolicy === 'block'
+                      ? 'Candidates without a working camera can’t start the test.'
+                      : 'Candidates upload a photo of their ID instead. Their result is flagged “No camera — needs manual identity review”.'}
+                  </p>
+                </div>
+              )}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="questions">Questions</Label>

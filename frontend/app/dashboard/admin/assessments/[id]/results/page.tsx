@@ -67,7 +67,23 @@ interface CandidateResult {
   bestScore?: number | null
   bestAttemptNo?: number | null
   kind?: string
+  /** Took the test without a camera (uploaded ID photo): check identity by hand. */
+  identityReview?: boolean
+  /** Advisory face match (0–1) of the ID photo vs the live selfie. */
+  faceMatch?: number | null
+  /** This candidate's certificate for the test, if one was issued. */
+  certificate?: { id: string; revokedAt: string | null; verifyToken: string | null } | null
 }
+
+interface IdentityCheckInfo {
+  method?: 'camera' | 'no_camera_upload' | null
+  needs_manual_review?: boolean
+  no_camera_reason?: 'no_device' | 'permission_denied' | 'error' | null
+  face_match?: { status?: string; similarity?: number; likely_match?: boolean } | null
+  upload_scan_status?: 'clean' | 'unscanned' | null
+}
+
+const NO_CAMERA_REVIEW_LABEL = 'No camera — needs manual identity review'
 
 interface Exam {
   id: string
@@ -114,6 +130,7 @@ interface ReviewData {
     released_at: string | null
     id_photo?: string | null
     face_photo?: string | null
+    identity_check?: IdentityCheckInfo | null
     question_timings?: Record<string, number>
     total_time_ms?: number
     started_at?: string | null
@@ -173,6 +190,8 @@ const PROCTOR_LABELS: Record<string, string> = {
   face_match_restored: 'Face verified',
   keyboard_dynamics_snapshot: 'Typing pattern analysis',
   answer_pattern_score: 'Answer pattern score',
+  identity_no_camera: NO_CAMERA_REVIEW_LABEL,
+  identity_check_completed: 'Identity check completed',
 }
 
 const PROCTOR_ICONS: Record<string, React.ReactNode> = {
@@ -189,11 +208,13 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
   face_match_restored: <Camera className="w-3 h-3" />,
   keyboard_dynamics_snapshot: <Keyboard className="w-3 h-3" />,
   answer_pattern_score: <ShieldAlert className="w-3 h-3" />,
+  identity_no_camera: <Camera className="w-3 h-3" />,
+  identity_check_completed: <Camera className="w-3 h-3" />,
 }
 
 const PROCTOR_RISK_HIGH = new Set(['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked', 'face_match_mismatch', 'answer_pattern_score'])
-const PROCTOR_RISK_WARN = new Set(['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed'])
-const PROCTOR_RISK_INFO = new Set(['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot'])
+const PROCTOR_RISK_WARN = new Set(['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed', 'identity_no_camera'])
+const PROCTOR_RISK_INFO = new Set(['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot', 'identity_check_completed'])
 
 
 // Keys every event carries that are noise for a human reviewer.
@@ -222,6 +243,8 @@ const PROCTOR_META_LABELS: Record<string, string> = {
   paste_score: 'Paste score', speed_score: 'Speed score',
   pattern_score: 'Pattern score', clipboard_score: 'Clipboard score',
   total_answers: 'Total answers', total_pastes: 'Total pastes',
+  reason: 'Reason', scan: 'Virus scan', attempt_no: 'Attempt', id_photo: 'ID photo', face_photo: 'Face photo',
+  face_similarity: 'Face match (advisory)', face_match_advisory: 'Face match note',
 }
 
 const humanize = (k: string): string =>
@@ -745,6 +768,40 @@ export default function ExamResultsPage() {
   const [bulkReminding, setBulkReminding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteInvite, setConfirmDeleteInvite] = useState<{ id: string; name: string } | null>(null)
+  const [revokeTarget, setRevokeTarget] = useState<{ certId: string; userId: string; name: string } | null>(null)
+  const [revokeReason, setRevokeReason] = useState('')
+  const [revoking, setRevoking] = useState(false)
+
+  const revokeCertificate = async () => {
+    if (!revokeTarget || revoking) return
+    const reason = revokeReason.trim()
+    if (reason.length < 5) {
+      addToast({ type: 'error', title: 'Give a reason (at least 5 characters)' })
+      return
+    }
+    setRevoking(true)
+    try {
+      const res = await csrfFetch(`/api/admin/certifications/${encodeURIComponent(revokeTarget.certId)}/revoke`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason }),
+      })
+      const json = await res.json().catch(() => ({})) as { error?: string; revokedAt?: string }
+      if (!res.ok) throw new Error(json.error || 'Could not revoke the certificate')
+      const { userId, certId, name } = revokeTarget
+      setResults((prev) => prev.map((r) => (r.userId === userId && r.certificate?.id === certId
+        ? { ...r, certificate: { ...r.certificate, revokedAt: json.revokedAt || new Date().toISOString() } }
+        : r)))
+      addToast({ type: 'success', title: `${name}'s certificate is revoked`, message: 'Its verify link now shows it as revoked.' })
+      setRevokeTarget(null)
+      setRevokeReason('')
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not revoke the certificate' })
+    } finally {
+      setRevoking(false)
+    }
+  }
 
   const resendInvite = async (inviteId: string, name: string) => {
     setResendingId(inviteId)
@@ -1332,6 +1389,7 @@ export default function ExamResultsPage() {
       key: 'proctoringFlags',
       header: 'Integrity',
       cell: (row: CandidateResult) => (
+        <div>
         <div className="flex items-center gap-2">
           {row.proctoringFlags === 0 ? (
             <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Clean</span>
@@ -1340,6 +1398,12 @@ export default function ExamResultsPage() {
               <ShieldAlert className="w-3 h-3"/> {row.proctoringFlags} Flags
             </span>
           )}
+        </div>
+        {row.identityReview && (
+          <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-400 flex items-center gap-1" title="The candidate had no working camera and uploaded an ID photo. Open the review to compare it.">
+            <Camera className="w-3 h-3 shrink-0" /> {NO_CAMERA_REVIEW_LABEL}
+          </div>
+        )}
         </div>
       ),
     },
@@ -1366,7 +1430,14 @@ export default function ExamResultsPage() {
       header: 'Released',
       cell: (row: CandidateResult) => (
         row.released ? (
-          <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Released</span>
+          <div>
+            <span className="text-green-600 dark:text-green-400 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Released</span>
+            {row.certificate && (
+              row.certificate.revokedAt
+                ? <span className="text-[11px] text-destructive">Certificate revoked</span>
+                : <span className="text-[11px] text-muted-foreground flex items-center gap-1"><Award className="w-3 h-3" /> Certificate issued</span>
+            )}
+          </div>
         ) : row.status === 'completed' ? (
           <span className="text-muted-foreground text-xs">Pending</span>
         ) : null
@@ -1388,7 +1459,7 @@ export default function ExamResultsPage() {
                 }
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuContent align="end" className="w-48">
               {row.status === 'completed' && (
                 <DropdownMenuItem onClick={() => openReview(row)} className="gap-2">
                   <Eye className="h-4 w-4" /> Review
@@ -1413,6 +1484,14 @@ export default function ExamResultsPage() {
                     <Bell className="h-4 w-4" /> Send reminder
                   </DropdownMenuItem>
                 </>
+              )}
+              {row.certificate && !row.certificate.revokedAt && row.userId && (
+                <DropdownMenuItem
+                  onClick={() => { setRevokeReason(''); setRevokeTarget({ certId: row.certificate!.id, userId: row.userId!, name: row.name }) }}
+                  className="gap-2 text-destructive focus:text-destructive"
+                >
+                  <Award className="h-4 w-4" /> Revoke certificate
+                </DropdownMenuItem>
               )}
               {row.inviteToken && (
                 <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
@@ -1452,7 +1531,7 @@ export default function ExamResultsPage() {
 
   const inProgressCount = results.filter(r => r.status === 'in_progress').length
   const pendingCount = results.filter(r => r.status === 'pending').length
-  const flaggedCount = results.filter(r => r.proctoringFlags > 0).length
+  const flaggedCount = results.filter(r => r.proctoringFlags > 0 || r.identityReview).length
 
   const filteredResults = results.filter(r => {
     switch (resultFilter) {
@@ -1460,7 +1539,7 @@ export default function ExamResultsPage() {
       case 'in_progress': return r.status === 'in_progress'
       case 'pending': return r.status === 'pending'
       case 'ungraded': return r.status === 'completed' && r.graded === false
-      case 'flagged': return r.proctoringFlags > 0
+      case 'flagged': return r.proctoringFlags > 0 || r.identityReview === true
       default: return true
     }
   })
@@ -2253,6 +2332,35 @@ export default function ExamResultsPage() {
                     )}
                   </div>
 
+                  {/* Identity check: no-camera flag + advisory face match */}
+                  {reviewData.submission.identity_check?.needs_manual_review && (
+                    <div role="note" className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
+                      <Camera className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                      <div className="space-y-0.5">
+                        <p className="font-semibold">{NO_CAMERA_REVIEW_LABEL}</p>
+                        <p className="text-xs">
+                          {reviewData.submission.identity_check.no_camera_reason === 'permission_denied'
+                            ? 'Camera access was blocked in the candidate’s browser.'
+                            : reviewData.submission.identity_check.no_camera_reason === 'error'
+                              ? 'The candidate said their camera wasn’t working.'
+                              : 'No camera was found on the candidate’s device.'}
+                          {' '}They uploaded a photo of their ID instead; no live face photo was taken. Check the ID against the candidate before relying on this result.
+                          {reviewData.submission.identity_check.upload_scan_status === 'unscanned' ? ' The virus scanner was unavailable when it was uploaded.' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {reviewData.submission.identity_check?.face_match && (
+                    <p className="text-xs text-muted-foreground">
+                      {reviewData.submission.identity_check.face_match.status === 'compared' && typeof reviewData.submission.identity_check.face_match.similarity === 'number'
+                        ? <>Face match (advisory, computed in the candidate&apos;s browser): <span className="font-medium tabular-nums text-foreground">{Math.round(reviewData.submission.identity_check.face_match.similarity * 100)}%</span> — {reviewData.submission.identity_check.face_match.likely_match ? 'likely the same person' : 'may be a different person, compare the photos'}. Never used to accept or reject.</>
+                        : reviewData.submission.identity_check.face_match.status === 'no_face_in_id'
+                          ? 'Face match: no face found on the ID photo. Compare the photos by eye.'
+                          : reviewData.submission.identity_check.face_match.status === 'no_face_in_selfie'
+                            ? 'Face match: no face found in the selfie. Compare the photos by eye.'
+                            : 'Face match: couldn’t be computed on the candidate’s device. Compare the photos by eye.'}
+                    </p>
+                  )}
                   {/* Identity Photos */}
                   {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2348,6 +2456,36 @@ export default function ExamResultsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open && !revoking) setRevokeTarget(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Revoke certificate?</DialogTitle>
+            <DialogDescription>
+              {revokeTarget?.name}&apos;s certificate will show as revoked on its public verify page. This can&apos;t be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-1.5">
+            <label htmlFor="revoke-reason" className="text-sm font-medium">Reason</label>
+            <textarea
+              id="revoke-reason"
+              value={revokeReason}
+              onChange={(e) => setRevokeReason(e.target.value)}
+              maxLength={500}
+              rows={3}
+              placeholder="For example: identity could not be confirmed"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-xs text-muted-foreground">Kept in the audit log. Not shown on the public page.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevokeTarget(null)} disabled={revoking}>Cancel</Button>
+            <Button variant="destructive" onClick={() => void revokeCertificate()} disabled={revoking || revokeReason.trim().length < 5} className="gap-2">
+              {revoking && <Loader2 className="h-4 w-4 animate-spin" />} Revoke certificate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk grading progress — chunked batches with live counts so a
           minutes-long grade never looks stuck, plus cancel + retry remainder. */}

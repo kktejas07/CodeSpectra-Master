@@ -3,6 +3,7 @@ import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { attemptSummary, PROCTOR_INFO_EVENT_TYPES } from '@/lib/exam-access'
+import { examCertificatesByUser } from '@/lib/db/certifications'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAdmin()
@@ -102,7 +103,15 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       bestScore?: number | null
       bestAttemptNo?: number | null
       kind?: string
+      /** Took the test without a camera (uploaded ID): identity must be checked by hand. */
+      identityReview?: boolean
+      /** Advisory face match of ID photo vs selfie (0–1), when computed. */
+      faceMatch?: number | null
+      /** This candidate's certificate for the exam, if one was issued. */
+      certificate?: { id: string; revokedAt: string | null; verifyToken: string | null } | null
     }
+    // Certificates for this exam, by holder (for revoke on the results page).
+    const certByUser = await examCertificatesByUser(id, submissions.map((s) => String(s.id)))
     const attemptFields = (sub: Record<string, unknown> | undefined) => {
       if (!sub) return {}
       const a = attemptSummary(sub, exam as Record<string, unknown>)
@@ -112,6 +121,15 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         bestScore: a.best ? toPercent(a.best.score, a.best.max_score) : null,
         bestAttemptNo: a.best?.attempt_no ?? null,
         ...(sub.kind ? { kind: String(sub.kind) } : {}),
+        ...identityFields(sub),
+        certificate: certByUser.get(String(sub.user_id || '')) ?? null,
+      }
+    }
+    const identityFields = (sub: Record<string, unknown>) => {
+      const ic = sub.identity_check as { needs_manual_review?: boolean; face_match?: { status?: string; similarity?: number } | null } | null | undefined
+      return {
+        identityReview: ic?.needs_manual_review === true,
+        faceMatch: ic?.face_match?.status === 'compared' && typeof ic.face_match.similarity === 'number' ? ic.face_match.similarity : null,
       }
     }
 

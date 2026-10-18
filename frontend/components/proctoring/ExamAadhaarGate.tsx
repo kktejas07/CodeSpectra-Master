@@ -1,25 +1,31 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Loader2 } from 'lucide-react'
+import { X, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AnonAadhaarVerify } from '@/components/kyc/AnonAadhaarVerify'
-import { AadhaarIDVerificationModal } from '@/components/proctoring/AadhaarIDVerificationModal'
+import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 
 type ExamMode = 'anon_aadhaar' | 'ocr_face' | 'off'
 
 /**
  * Exam gate: uses SuperAdmin exam_aadhaar purpose setting.
  * - anon_aadhaar → ZK prove
- * - ocr_face → existing OCR + face modal
- * - off → auto-pass (the default when no mode has been saved)
+ * - ocr_face → ID card photo + live selfie, the same capture flow as the
+ *   test's own identity check (stored for this attempt via /api/exams/[id]/identity)
+ * - off → nothing extra to check; says so (never reports a check that didn't happen)
  */
 export function ExamAadhaarGate({
   onVerified,
   onCancel,
+  examId,
+  examTitle = 'this test',
 }: {
   onVerified: () => void
   onCancel: () => void
+  /** The exam being taken; needed for the card + selfie mode. */
+  examId?: string
+  examTitle?: string
 }) {
   const [mode, setMode] = useState<ExamMode | null>(null)
   const [seed, setSeed] = useState('314159265358979')
@@ -34,20 +40,16 @@ export function ExamAadhaarGate({
         const m = (d.exam_aadhaar || 'off') as ExamMode
         if (d.anon_aadhaar_nullifier_seed) setSeed(String(d.anon_aadhaar_nullifier_seed))
         if (typeof d.anon_aadhaar_test_mode === 'boolean') setTestMode(d.anon_aadhaar_test_mode)
-        if (m === 'off') {
-          onVerified()
-          return
-        }
         setMode(m)
       })
       .catch(() => {
         // Settings unreachable: behave like the platform default ('off').
-        if (!cancelled) onVerified()
+        if (!cancelled) setMode('off')
       })
     return () => {
       cancelled = true
     }
-  }, [onVerified])
+  }, [])
 
   if (!mode) {
     return (
@@ -59,8 +61,37 @@ export function ExamAadhaarGate({
     )
   }
 
-  if (mode === 'ocr_face') {
-    return <AadhaarIDVerificationModal onVerified={() => onVerified()} onCancel={onCancel} />
+  if (mode === 'ocr_face' && examId) {
+    const qs = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+    return (
+      <IdentityVerification
+        examId={examId}
+        examTitle={examTitle}
+        inviteToken={qs?.get('inviteToken') || null}
+        linkToken={qs?.get('link') || null}
+        onCancel={onCancel}
+        onComplete={() => onVerified()}
+      />
+    )
+  }
+
+  if (mode === 'off' || mode === 'ocr_face') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exam-id-none-title">
+        <div className="relative w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
+            <h2 id="exam-id-none-title" className="text-base font-bold text-foreground">No extra ID check needed</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            This test doesn&apos;t ask for an extra ID check during the test. Nothing was checked or uploaded.
+          </p>
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" onClick={onCancel}>Close</Button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -176,7 +176,7 @@ export function KycSettingsSection() {
                 >
                   <option value="off">Off (default)</option>
                   <option value="anon_aadhaar">Anon Aadhaar proof</option>
-                  <option value="ocr_face">Aadhaar card + selfie (not available yet)</option>
+                  <option value="ocr_face">ID card photo + live selfie</option>
                 </select>
                 <p className="text-[11px] text-muted-foreground" aria-live="polite">
                   {settings.exam_aadhaar === 'off'

@@ -22,6 +22,9 @@ interface ProctoringWrapperProps {
   sessionKind?: 'exam' | 'problem' | 'interview'
   sessionId?: string
   idPhoto?: string  // Base64 ID photo from IdentityVerification
+  /** Result of the test's pre-start identity check (stored server-side). Shown instead of the "Verify" button. */
+  identityStatus?: 'verified' | 'needs_review' | null
+  examTitle?: string
 }
 
 export function ProctoringWrapper({
@@ -32,6 +35,8 @@ export function ProctoringWrapper({
   sessionKind,
   sessionId,
   idPhoto,
+  identityStatus = null,
+  examTitle,
 }: ProctoringWrapperProps) {
   const [tabFocusLostCount, setTabFocusLostCount] = useState(0)
   const [showWarningBanner, setShowWarningBanner] = useState(false)
@@ -346,9 +351,13 @@ export function ProctoringWrapper({
               <span><span className="tabular-nums">{tabFocusLostCount}</span> {tabFocusLostCount === 1 ? 'tab switch' : 'tab switches'}</span>
             </div>
           )}
-          {kycVerified ? (
+          {identityStatus === 'needs_review' ? (
+            <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-bold text-[11px]" title="No camera was available, so your uploaded ID will be checked by the organiser">
+              <UserCheck className="h-3.5 w-3.5" /> ID sent for review
+            </div>
+          ) : identityStatus === 'verified' || kycVerified ? (
             <div className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-green-700 dark:text-green-400 font-bold text-[11px]">
-              <UserCheck className="h-3.5 w-3.5" /> ID verified
+              <UserCheck className="h-3.5 w-3.5" /> {identityStatus === 'verified' ? 'Identity check done' : 'ID verified'}
             </div>
           ) : (
             <button onClick={() => setShowIdKycModal(true)} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
@@ -376,6 +385,8 @@ export function ProctoringWrapper({
 
       {showIdKycModal && (
         <ExamAadhaarGate
+          examId={sessionKind === 'exam' ? sessionId : undefined}
+          examTitle={examTitle}
           onVerified={() => {
             setKycVerified(true)
             setShowIdKycModal(false)

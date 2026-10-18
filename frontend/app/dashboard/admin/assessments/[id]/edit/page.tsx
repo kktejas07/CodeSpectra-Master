@@ -137,6 +137,7 @@ interface Exam {
   require_token_links?: boolean | null
   require_id_verification?: boolean | null
   require_face_capture?: boolean | null
+  no_camera_policy?: 'block' | 'allow_flag' | null
   allow_retake?: boolean
   max_attempts?: number
   passing_score?: number | null
@@ -333,6 +334,7 @@ export default function ExamReviewPage() {
   const [metaRequireTokenLinks, setMetaRequireTokenLinks] = useState(false)
   const [metaRequireId, setMetaRequireId] = useState(true)
   const [metaRequireFace, setMetaRequireFace] = useState(true)
+  const [metaNoCamera, setMetaNoCamera] = useState<'block' | 'allow_flag'>('allow_flag')
   const [metaAllowRetake, setMetaAllowRetake] = useState(false)
   const [metaMaxAttempts, setMetaMaxAttempts] = useState(1)
   const [metaPassingScore, setMetaPassingScore] = useState(40)
@@ -366,6 +368,7 @@ export default function ExamReviewPage() {
         // Missing/null = true (strict, backward-compat for pre-flag assessments).
         setMetaRequireId((found as { require_id_verification?: boolean | null }).require_id_verification !== false)
         setMetaRequireFace((found as { require_face_capture?: boolean | null }).require_face_capture !== false)
+        setMetaNoCamera((found as { no_camera_policy?: string | null }).no_camera_policy === 'block' ? 'block' : 'allow_flag')
         setMetaAllowRetake(found.allow_retake === true)
         setMetaMaxAttempts(found.allow_retake === true ? Math.max(1, Number(found.max_attempts) || 2) : 1)
         setMetaCertTemplate(found.cert_template || 'classic')
@@ -446,6 +449,7 @@ export default function ExamReviewPage() {
           require_token_links: metaRequireTokenLinks,
           require_id_verification: metaRequireId,
           require_face_capture: metaRequireFace,
+          no_camera_policy: metaNoCamera,
           allow_retake: metaAllowRetake,
           max_attempts: metaAllowRetake ? metaMaxAttempts : 1,
           cert_template: metaCertTemplate,
@@ -460,7 +464,7 @@ export default function ExamReviewPage() {
         })
       })
       if (!metaRes.ok) throw new Error('update failed')
-      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType, proctoring_mode: metaProctoringMode, kind: metaKind, cad_points: metaCadPoints })
+      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, no_camera_policy: metaNoCamera, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType, proctoring_mode: metaProctoringMode, kind: metaKind, cad_points: metaCadPoints })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -799,6 +803,21 @@ export default function ExamReviewPage() {
                   />
                   <span className="text-muted-foreground whitespace-nowrap">Require face</span>
                 </label>
+                {(metaRequireId || metaRequireFace) && (
+                  <div className="flex items-center gap-1.5">
+                    <Label htmlFor="meta-no-camera" className="text-xs text-muted-foreground whitespace-nowrap">If the candidate has no camera:</Label>
+                    <select
+                      id="meta-no-camera"
+                      value={metaNoCamera}
+                      onChange={(e) => setMetaNoCamera(e.target.value === 'block' ? 'block' : 'allow_flag')}
+                      className="h-8 rounded-md border border-border/60 bg-background px-2 py-1 text-xs"
+                      title="Allow: the candidate uploads an ID photo and the result is flagged for manual identity review"
+                    >
+                      <option value="allow_flag">Allow and flag for review</option>
+                      <option value="block">Block the test</option>
+                    </select>
+                  </div>
+                )}
                 <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Candidates can submit again; results keep their latest and best attempt">
                   <input
                     type="checkbox"

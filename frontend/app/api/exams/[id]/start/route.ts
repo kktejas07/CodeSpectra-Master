@@ -8,6 +8,7 @@
  * while a candidate can read them.
  *
  * Body: { inviteToken?, linkToken? }
+ * 403 { identity_required: true } — run POST ./identity first (per the test's settings).
  * 200: { questionList, started_at, deadline, server_now, answers, attempt_no }
  * 410: { expired: true } — time is up; the page submits (the server finalises
  *      the attempt from the saved draft).
@@ -16,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
-import { attemptTimeState, candidateExamView, checkExamEntry, getExamDraft, startExamAttempt } from '@/lib/exam-access'
+import { attemptTimeState, candidateExamView, checkExamEntry, checkIdentityForAttempt, getExamDraft, startExamAttempt } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -58,6 +59,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         return NextResponse.json({ error: access.error }, { status: access.status })
       }
       access = late
+    }
+
+    // Identity check (ID photo + face photo, or the no-camera upload) must be
+    // stored for this attempt first — POST ./identity. Not skippable from here.
+    const identity = await checkIdentityForAttempt(db, exam, userId, access.attemptNo)
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error, identity_required: true }, { status: identity.status })
     }
 
     const draft = await startExamAttempt(db, examId, userId, access.attemptNo)

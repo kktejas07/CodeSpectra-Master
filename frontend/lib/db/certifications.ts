@@ -476,3 +476,144 @@ export async function issueMissingExamCertificates(
   }
   return counts
 }
+
+// ─── Revocation ──────────────────────────────────────────────────────────────
+
+/**
+ * Certificates issued for one exam: `certification_id` = exam id, or linked
+ * to one of its submissions via `exam_submission_id`.
+ */
+export function examCertificatesFilter(examId: string, submissionIds: string[] = []): Record<string, unknown> {
+  const or: Record<string, unknown>[] = [{ certification_id: examId }]
+  const subs = submissionIds.filter(Boolean)
+  if (subs.length) or.push({ exam_submission_id: { $in: subs } })
+  return { $or: or }
+}
+
+/**
+ * Revoke every live certificate of an exam (used when the exam is deleted, so
+ * its certificates stop verifying as valid). Already revoked ones keep their
+ * original revocation. Returns how many were revoked now.
+ */
+export async function revokeExamCertificates(
+  examId: string,
+  submissionIds: string[],
+  revokedBy: string,
+  reason: string,
+): Promise<number> {
+  const col = await certificationAttempts()
+  const res = await col.updateMany(
+    { ...examCertificatesFilter(examId, submissionIds), passed: true, revoked_at: null } as Record<string, unknown>,
+    { $set: { revoked_at: nowIso(), revoked_by: revokedBy, revoke_reason: reason } },
+  )
+  return res.modifiedCount
+}
+
+/** Certificate status per holder (user id) for one exam's results page. */
+export async function examCertificatesByUser(
+  examId: string,
+  submissionIds: string[],
+): Promise<Map<string, { id: string; revokedAt: string | null; verifyToken: string | null }>> {
+  const col = await certificationAttempts()
+  const rows = await col
+    .find(
+      { ...examCertificatesFilter(examId, submissionIds), passed: true } as Record<string, unknown>,
+      { projection: { _id: 1, id: 1, user_id: 1, revoked_at: 1, verify_token: 1, submitted_at: 1 } },
+    )
+    .sort({ submitted_at: -1 })
+    .limit(5000)
+    .toArray()
+  const out = new Map<string, { id: string; revokedAt: string | null; verifyToken: string | null }>()
+  for (const r of rows) {
+    const uid = String(r.user_id || '')
+    if (!uid || out.has(uid)) continue
+    out.set(uid, {
+      id: r.id || String((r as { _id?: unknown })._id),
+      revokedAt: r.revoked_at || null,
+      verifyToken: r.verify_token || null,
+    })
+  }
+  return out
+}
+
+// ─── Codeathon certificates ──────────────────────────────────────────────────
+
+/** Stable key: one certificate per participant per codeathon (re-releases never add a second). */
+export const codeathonCertificateIssueKey = (codeathonId: string, userId: string): string =>
+  `codeathon:${codeathonId}:${userId}`
+
+export interface CodeathonCertificateInput {
+  codeathonId: string
+  codeathonTitle: string
+  userId: string
+  /** Public name on the certificate — never an email address. */
+  holderName: string
+  kind: 'rank' | 'participation'
+  /** e.g. "1st place" / "Participant". */
+  level: string
+  /** e.g. "Ranked #1 of 40" / "Certificate of participation" (no "%", so no score band). */
+  scoreLabel: string
+  rank: number | null
+  template?: string
+}
+
+/**
+ * Issue (or find) the codeathon certificate for one participant. Idempotent
+ * through `issue_key`: repeat releases and concurrent calls return the
+ * existing row, and `created` is true only for the call that wrote it.
+ */
+export async function issueCodeathonCertificate(
+  input: CodeathonCertificateInput,
+): Promise<{ token: string; created: boolean } | null> {
+  if (!input.codeathonId || !input.userId) return null
+  const col = await certificationAttempts()
+  const issueKey = codeathonCertificateIssueKey(input.codeathonId, input.userId)
+  const now = nowIso()
+  const template = input.template && CERT_TEMPLATE_KEYS.has(input.template) ? input.template : undefined
+  const name = input.holderName && !looksLikeEmail(input.holderName) ? input.holderName.slice(0, 120) : 'Participant'
+  const doc: CertificationAttemptDoc & { codeathon_id: string; certificate_kind: string; rank: number | null } = {
+    id: newId(),
+    user_id: input.userId,
+    certification_id: `codeathon:${input.codeathonId}`,
+    issue_key: issueKey,
+    verify_token: newToken(),
+    started_at: now,
+    submitted_at: now,
+    score: 0,
+    passed: true,
+    score_label: input.scoreLabel,
+    snapshot: { name },
+    cert_snapshot: {
+      title: String(input.codeathonTitle || 'Codeathon').slice(0, 200),
+      level: input.level,
+      source: 'CodeSpectra codeathon',
+    },
+    event_title: input.codeathonTitle || null,
+    codeathon_id: input.codeathonId,
+    certificate_kind: input.kind,
+    rank: input.rank,
+    ...(template ? { template } : {}),
+  }
+
+  await ensureIssuedCertificateIndex()
+  let created = false
+  try {
+    const res = await col.updateOne({ issue_key: issueKey }, { $setOnInsert: doc }, { upsert: true })
+    created = res.upsertedCount > 0
+  } catch (e) {
+    if ((e as { code?: number })?.code !== 11000) throw e
+  }
+  if (created) return { token: doc.verify_token, created: true }
+  const saved = await col.findOne({ issue_key: issueKey }, { projection: { verify_token: 1 } })
+  return saved?.verify_token ? { token: saved.verify_token, created: false } : null
+}
+
+/** Verify token of a participant's live (not revoked) codeathon certificate, if any. */
+export async function codeathonCertificateToken(codeathonId: string, userId: string): Promise<string | null> {
+  if (!codeathonId || !userId) return null
+  const row = await (await certificationAttempts()).findOne(
+    { issue_key: codeathonCertificateIssueKey(codeathonId, userId), revoked_at: null } as Record<string, unknown>,
+    { projection: { verify_token: 1 } },
+  )
+  return typeof row?.verify_token === 'string' ? row.verify_token : null
+}

@@ -14,7 +14,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
-import { attemptDeadlineMs, checkExamEntry, isCadExam, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
+import { attemptDeadlineMs, checkExamEntry, checkIdentityForAttempt, identitySummary, isCadExam, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import {
   CAD_DEFAULT_POINTS,
@@ -113,6 +113,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const serverStartedAt = draft?.cad_started_attempt === access.attemptNo && typeof draft.cad_started_at === 'string'
       ? draft.cad_started_at : null
     if (!serverStartedAt) return NextResponse.json({ error: 'Start the test before submitting.' }, { status: 409 })
+
+    // Identity check for this attempt (also required by ./start).
+    const identity = await checkIdentityForAttempt(db, exam as Record<string, unknown>, userId, access.attemptNo)
+    if (!identity.ok) {
+      return NextResponse.json({ error: identity.error, identity_required: true }, { status: identity.status })
+    }
+    const identityRecord = identity.record
     const deadline = attemptDeadlineMs(exam as Record<string, unknown>, serverStartedAt)
     const late = deadline !== null && Date.now() > deadline + EXAM_SUBMIT_GRACE_MS
 
@@ -160,8 +167,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       auto_submitted: autoSubmitted || late,
       late_submit: late,
       extension_detected: extensionDetected,
-      id_photo: idPhoto,
-      face_photo: facePhoto,
+      // Photos come from the stored identity check (server-validated), not the submit body.
+      id_photo: typeof identityRecord?.id_photo === 'string' ? identityRecord.id_photo : idPhoto,
+      face_photo: typeof identityRecord?.face_photo === 'string' ? identityRecord.face_photo : facePhoto,
+      identity_check: identitySummary(identityRecord),
       start_time_source: 'server',
       details: [{ qId: CAD_TASK_QID, correct: false, points, answer: rationale, pending_review: true }],
       cad,
