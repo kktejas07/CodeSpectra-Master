@@ -208,3 +208,72 @@ export function creditPeriod(input: {
   if (balance === null || expired || planChanged) return { balance: input.allowance, reset: true }
   return { balance: Math.max(0, balance), reset: false }
 }
+
+// ─── Problem packs ──────────────────────────────────────────────────────────
+
+export interface PackRule {
+  id: string
+  name: string
+  problem_slugs?: string[] | null
+  topics?: string[] | null
+  included_in_plans?: string[] | null
+  /** On sale (only packs on sale are offered as "Unlock with …"). */
+  active?: boolean | null
+}
+
+export interface ProblemRef {
+  id?: string | null
+  slug: string
+  topics?: string[] | null
+}
+
+export interface ProblemAccess {
+  locked: boolean
+  /** Pack to offer when locked (an on-sale pack that contains the problem), else null. */
+  unlockWith: { id: string; name: string } | null
+  /** Every pack the problem belongs to. */
+  packIds: string[]
+}
+
+const lc = (v: unknown) => (typeof v === 'string' ? v.trim().toLowerCase() : '')
+
+/** Packs that contain a problem: listed by slug / id, or sharing a topic. */
+export function packsContaining(problem: ProblemRef, packs: PackRule[]): PackRule[] {
+  const slug = lc(problem.slug)
+  const id = lc(problem.id)
+  const topics = new Set((problem.topics || []).map(lc).filter(Boolean))
+  return packs.filter((p) => {
+    const slugs = (p.problem_slugs || []).map(lc)
+    if ((slug && slugs.includes(slug)) || (id && slugs.includes(id))) return true
+    return (p.topics || []).some((t) => topics.has(lc(t)))
+  })
+}
+
+/**
+ * The access rule: a problem in no pack is open to everyone. A problem in a
+ * pack is locked unless the user bought one of its packs (purchases never
+ * expire), their plan is included in one of its packs, or they are staff
+ * (superadmin / the problem's editor). Deny by default otherwise.
+ */
+export function problemAccess(input: {
+  problem: ProblemRef
+  packs: PackRule[]
+  purchasedPacks?: unknown
+  planKey?: string | null
+  bypass?: boolean
+}): ProblemAccess {
+  const containing = packsContaining(input.problem, input.packs)
+  const packIds = containing.map((p) => p.id)
+  if (containing.length === 0 || input.bypass) return { locked: false, unlockWith: null, packIds }
+
+  const owned = new Set(Array.isArray(input.purchasedPacks) ? input.purchasedPacks.map(lc) : [])
+  if (containing.some((p) => owned.has(lc(p.id)))) return { locked: false, unlockWith: null, packIds }
+
+  const plan = normalizePlanKey(input.planKey ?? '') || 'free'
+  if (containing.some((p) => (p.included_in_plans || []).map(lc).includes(plan))) {
+    return { locked: false, unlockWith: null, packIds }
+  }
+
+  const offer = containing.find((p) => p.active !== false)
+  return { locked: true, unlockWith: offer ? { id: offer.id, name: offer.name } : null, packIds }
+}

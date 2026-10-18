@@ -4,8 +4,10 @@ import {
   syncCheckoutSessionCompleted,
   syncCheckoutSessionFailed,
   syncSubscriptionFromStripe,
-  syncInvoiceFromStripe,
+  syncInvoicePaid,
+  syncInvoicePaymentFailed,
 } from '@/lib/stripe-webhook-sync'
+import { getStripeSecretKey, getStripeWebhookSecret } from '@/lib/stripe-client'
 import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
@@ -18,16 +20,15 @@ export const runtime = 'nodejs'
  * which also rejects stale timestamps), and syncs to the billing_orders /
  * billing_payments / billing_subscriptions collections. Paid checkouts
  * activate via activatePaidOrder() — see lib/stripe-webhook-sync.ts.
+ * Recurring plans: invoice.paid extends the period (idempotent per invoice),
+ * invoice.payment_failed starts the grace window, customer.subscription.*
+ * mirrors cancel-at-period-end and the end of the subscription.
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET
+  const [stripeSecretKey, webhookSecret] = await Promise.all([getStripeSecretKey(), getStripeWebhookSecret()])
 
   if (!stripeSecretKey || !webhookSecret) {
-    return NextResponse.json(
-      { error: 'Stripe is not configured. Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET.' },
-      { status: 503 },
-    )
+    return NextResponse.json({ error: 'Stripe is not configured.' }, { status: 503 })
   }
 
   const raw = await req.text()
@@ -60,13 +61,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
-        await syncSubscriptionFromStripe(subscription)
+        await syncSubscriptionFromStripe(subscription, event.type === 'customer.subscription.deleted')
         break
       }
-      case 'invoice.paid':
+      case 'invoice.paid': {
+        await syncInvoicePaid(event.data.object as Stripe.Invoice)
+        break
+      }
       case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
-        await syncInvoiceFromStripe(invoice)
+        await syncInvoicePaymentFailed(event.data.object as Stripe.Invoice)
         break
       }
       default:

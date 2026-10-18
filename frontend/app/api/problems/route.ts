@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { requireAuth, requireAdmin } from '@/lib/route-auth'
+import { requireAuth, requireAdmin, getAPIUser } from '@/lib/route-auth'
+import { accessFor, getPackContext } from '@/lib/entitlements'
 import { problems, nowIso, newId, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { SEED_PROBLEMS_BULK } from '@/scripts/seed-problems-bulk'
@@ -81,7 +82,19 @@ export async function GET(request: NextRequest) {
         seen.add(k)
         return true
       })
-      return NextResponse.json({ data: uniqueList, count: uniqueList.length })
+      // Pack locks for this viewer (the problem page and run / submit enforce them server-side).
+      const viewer = await getAPIUser().catch(() => null)
+      const ctx = await getPackContext(viewer).catch((e) => {
+        console.error('[problems] pack context failed:', e)
+        return null
+      })
+      const data = ctx
+        ? uniqueList.map((p) => {
+            const a = accessFor(ctx, { id: p.id, slug: p.slug, topics: p.topics })
+            return a.packIds.length ? { ...p, locked: a.locked, unlock_pack: a.locked ? a.unlockWith : null } : p
+          })
+        : uniqueList
+      return NextResponse.json({ data, count: data.length })
     }
   } catch (error) {
     console.warn('[CodeSpectra] problems GET (mongo unavailable, using seed):', error)

@@ -17,6 +17,8 @@ import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { AnalysisPanel } from '@/components/ai/analysis-panel'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { Illustration } from '@/components/illustrations/spot'
+import { UnlockPackButton } from '../unlock-pack-button'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -108,6 +110,8 @@ export default function ProblemDetailPage() {
   const slug = params?.slug ?? ''
   const [problem, setProblem] = useState<Problem | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [packLock, setPackLock] = useState<{ title: string; message: string; pack: { id: string; name: string } | null } | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
   const [bookmarked, setBookmarked] = useState(false)
 
   const [language, setLanguage] = useState<string>('python')
@@ -175,6 +179,11 @@ export default function ProblemDetailPage() {
       try {
         const res = await fetch(`/api/problems/${slug}`, { cache: 'no-store' })
         const json = await res.json()
+        if (res.status === 402 && json.code === 'pack_locked') {
+          setPackLock({ title: json.problem?.title || 'Locked problem', message: json.error || '', pack: json.pack || null })
+          return
+        }
+        setPackLock(null)
         if (!res.ok) throw new Error(json.error || 'Failed to load problem')
         const p = json as Problem
         setProblem(p)
@@ -185,7 +194,7 @@ export default function ProblemDetailPage() {
         setLoadError(e instanceof Error ? e.message : String(e))
       }
     })()
-  }, [slug])
+  }, [slug, reloadKey])
 
   useEffect(() => {
     if (!problem) return
@@ -442,6 +451,24 @@ export default function ProblemDetailPage() {
   }, [problem])
 
   if (!gate.ready) return null
+
+  if (packLock) {
+    return (
+      <div className="flex items-center justify-center p-6 py-20">
+        <div className="max-w-md space-y-3 rounded-3xl border border-border/70 bg-card p-6 text-center">
+          <Illustration name="locked" className="mx-auto w-36" />
+          <h1 className="text-lg font-semibold text-foreground">{packLock.title}</h1>
+          <p className="text-sm text-muted-foreground">{packLock.message}</p>
+          {packLock.pack ? (
+            <UnlockPackButton pack={packLock.pack} size="default" className="gap-2" onUnlocked={() => setReloadKey((k) => k + 1)} />
+          ) : null}
+          <Link href="/dashboard/problems" className="flex items-center justify-center gap-1 text-sm text-primary">
+            <ArrowLeft className="h-4 w-4" aria-hidden /> Back to problems
+          </Link>
+        </div>
+      </div>
+    )
+  }
 
   if (loadError) {
     return (

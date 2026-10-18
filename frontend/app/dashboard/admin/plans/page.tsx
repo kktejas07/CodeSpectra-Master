@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
+import { ProblemPacksPanel } from './problem-packs-panel'
 
 interface PlanDef {
   _id?: string; plan: string; name: string; description: string
@@ -338,6 +339,8 @@ export default function PlansPage() {
           </Panel>
         </div>
       )}
+
+      <ProblemPacksPanel />
 
       <Dialog open={newOpen} onOpenChange={setNewOpen}>
         <DialogContent className="sm:max-w-md">

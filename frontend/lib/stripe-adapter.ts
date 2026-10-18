@@ -2,44 +2,44 @@
  * Stripe payment gateway adapter.
  * Implements PaymentGatewayAdapter for the Stripe provider.
  */
-import Stripe from 'stripe'
+import type Stripe from 'stripe'
 import { billingOrders, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
-import { cancelAtPeriodEnd, orderPlanSnapshot } from '@/lib/billing-plans'
-import { readServerSecrets } from '@/lib/server-secrets-cache'
+import { cancelAtPeriodEnd, orderPlanSnapshot, resolveBillingPlan } from '@/lib/billing-plans'
+import { getStripeClient, getStripeSecretKey, stripeAutoRenewEnabled } from '@/lib/stripe-client'
+import { ensureStripePrice, findStripeCustomerId } from '@/lib/stripe-subscriptions'
 import type { PaymentGatewayAdapter, CheckoutResult, SubscriptionResult, PaymentMethod } from './payment-service'
 import type { CheckoutPlan } from './payment-service'
 
-/** Admin-saved key (server secrets) first, then env (D17). */
-export async function getStripeSecretKey(): Promise<string | null> {
-  const fromDb = await readServerSecrets().catch(() => ({} as { stripe_secret_key?: string }))
-  return fromDb.stripe_secret_key || process.env.STRIPE_SECRET_KEY || null
-}
-
-async function getClient(): Promise<Stripe> {
-  const key = await getStripeSecretKey()
-  if (!key) throw new Error('No payment provider configured: Stripe key missing')
-  return new Stripe(key)
-}
+export { getStripeSecretKey }
+const getClient = getStripeClient
 
 export class StripeAdapter implements PaymentGatewayAdapter {
   name = 'stripe' as const
 
   /**
-   * One-off Checkout Session for exactly the resolved plan, like Razorpay:
-   * the order (with its plan snapshot) is stored first and its id travels in
-   * the session metadata, so the webhook activates that order via
-   * activatePaidOrder(). Amounts are already in the smallest currency unit
-   * (plan.amount_paise = paise / cents), which is what Stripe's unit_amount
-   * expects — never divide or multiply here.
+   * Checkout Session for exactly the resolved plan. The order (with its plan
+   * snapshot) is stored first and its id travels in the session metadata.
+   * Amounts are already in the smallest currency unit (paise / cents) —
+   * never divide or multiply here.
    *
-   * ponytail: mode is always 'payment' (no Stripe-side recurring billing).
-   * Subscription plans extend by duration_days per paid order, same as the
-   * Razorpay / PhonePe paths; Stripe auto-renewal would need invoice-driven
-   * activation, which this app doesn't implement.
+   *  - Monthly / annual plans: subscription mode with a recurring Price for
+   *    the plan + interval (lib/stripe-subscriptions.ts). Stripe renews it;
+   *    every paid invoice activates via invoice.paid (lib/stripe-webhook-sync.ts).
+   *    A coupon becomes a one-time Stripe discount on the first invoice.
+   *  - Packs (one_time) and STRIPE_AUTO_RENEW=false: one-off payment mode,
+   *    activated on checkout.session.completed.
    */
   async createCheckout(userId: string, email: string, planId: string, plan: CheckoutPlan, couponId?: string): Promise<CheckoutResult> {
     const stripe = await getClient()
     const currency = (plan.currency || 'usd').toLowerCase()
+    const recurring = plan.kind === 'subscription' && !!plan.interval && stripeAutoRenewEnabled()
+    // Full (pre-coupon) price for the recurring Price, from the server catalog only.
+    const listPlan = recurring ? await resolveBillingPlan(plan.id, plan.interval) : null
+    if (recurring && (!listPlan || listPlan.mode !== 'checkout' || listPlan.amount_paise < plan.amount_paise)) {
+      throw new Error('Plan price changed. Please try again.')
+    }
+    const priceId = recurring ? await ensureStripePrice(listPlan!) : null
+    const customerId = recurring ? await findStripeCustomerId(userId) : null
     const orderId = newId()
     const orders = await billingOrders()
     await orders.insertOne({
@@ -51,15 +51,32 @@ export class StripeAdapter implements PaymentGatewayAdapter {
       receipt: `${userId}_${planId}_${Date.now()}`,
       coupon_id: couponId,
       status: 'created',
-      notes: { provider: 'stripe' },
+      notes: { provider: 'stripe', ...(recurring ? { stripe_mode: 'subscription' } : {}) },
       created_at: nowIso(),
       updated_at: nowIso(),
     })
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const meta = { order_id: orderId, user_id: userId, plan_id: planId, ...(plan.interval ? { interval: plan.interval } : {}) }
     let session: Stripe.Checkout.Session
     try {
-      session = await stripe.checkout.sessions.create({
+      if (recurring) {
+        const discount = listPlan!.amount_paise - plan.amount_paise
+        const coupon = discount > 0
+          ? await stripe.coupons.create({ amount_off: discount, currency, duration: 'once', max_redemptions: 1, name: 'Coupon', metadata: { order_id: orderId } })
+          : null
+        session = await stripe.checkout.sessions.create({
+          mode: 'subscription',
+          ...(customerId ? { customer: customerId } : { customer_email: email }),
+          client_reference_id: orderId,
+          line_items: [{ price: priceId!, quantity: 1 }],
+          ...(coupon ? { discounts: [{ coupon: coupon.id }] } : {}),
+          metadata: meta,
+          subscription_data: { metadata: meta },
+          success_url: `${baseUrl}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${baseUrl}/dashboard/billing?canceled=1`,
+        })
+      } else session = await stripe.checkout.sessions.create({
         mode: 'payment',
         payment_method_types: ['card'],
         customer_email: email,
@@ -72,8 +89,8 @@ export class StripeAdapter implements PaymentGatewayAdapter {
           },
           quantity: 1,
         }],
-        metadata: { order_id: orderId, user_id: userId, plan_id: planId },
-        payment_intent_data: { metadata: { order_id: orderId, user_id: userId, plan_id: planId } },
+        metadata: meta,
+        payment_intent_data: { metadata: meta },
         success_url: `${baseUrl}/dashboard/billing?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/dashboard/billing?canceled=1`,
       })
@@ -85,7 +102,7 @@ export class StripeAdapter implements PaymentGatewayAdapter {
     // Admin order lists detect the gateway from the `stripe_` prefix.
     await orders.updateOne(
       { id: orderId },
-      { $set: { razorpay_order_id: `stripe_${session.id}`, notes: { provider: 'stripe', stripe_session_id: session.id }, updated_at: nowIso() } },
+      { $set: { razorpay_order_id: `stripe_${session.id}`, notes: { provider: 'stripe', stripe_session_id: session.id, ...(recurring ? { stripe_mode: 'subscription' } : {}) }, updated_at: nowIso() } },
     )
 
     return {

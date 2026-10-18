@@ -116,3 +116,53 @@ export function validateCouponInput(raw: unknown, partial: boolean): { ok: true;
   }
   return { ok: true, value: out }
 }
+
+// ─── Stripe auto-renewal (pure rules) ───────────────────────────────────────
+
+/** Days a past-due Stripe subscription keeps access after a failed renewal. */
+export function graceDays(raw: string | undefined = process.env.BILLING_GRACE_DAYS): number {
+  const n = Number(raw)
+  return Number.isInteger(n) && n >= 0 && n <= 30 ? n : 7
+}
+
+/**
+ * Access end after a failed renewal: `days` from the failure, never earlier
+ * than the period already paid for. An existing grace window is never pushed
+ * out by a later failure (Stripe retries several times).
+ */
+export function graceEndsAt(input: { failedAt: Date; endsAt?: string | null; currentGraceEndsAt?: string | null; days: number }): string {
+  const existing = input.currentGraceEndsAt ? Date.parse(input.currentGraceEndsAt) : NaN
+  if (Number.isFinite(existing)) {
+    const paid = input.endsAt ? Date.parse(input.endsAt) : NaN
+    return new Date(Math.max(existing, Number.isFinite(paid) ? paid : 0)).toISOString()
+  }
+  const grace = input.failedAt.getTime() + input.days * 86_400_000
+  const paid = input.endsAt ? Date.parse(input.endsAt) : NaN
+  return new Date(Math.max(grace, Number.isFinite(paid) ? paid : 0)).toISOString()
+}
+
+export type StripeSubOutcome = 'active' | 'past_due' | 'ended' | 'pending'
+
+/** What a Stripe subscription status means for access here. */
+export function stripeSubOutcome(status: string | null | undefined): StripeSubOutcome {
+  switch (status) {
+    case 'active':
+    case 'trialing':
+      return 'active'
+    case 'past_due':
+      return 'past_due'
+    case 'canceled':
+    case 'unpaid':
+    case 'incomplete_expired':
+      return 'ended'
+    default:
+      return 'pending' // incomplete / paused: the first payment or a resume decides
+  }
+}
+
+/** A past-due subscription whose grace window has run out (the sweep downgrades it). */
+export function graceExpired(sub: { status?: string | null; past_due?: boolean | null; grace_ends_at?: string | null }, now: Date = new Date()): boolean {
+  if (sub.status !== 'active' || !sub.past_due || !sub.grace_ends_at) return false
+  const t = Date.parse(sub.grace_ends_at)
+  return Number.isFinite(t) && t <= now.getTime()
+}

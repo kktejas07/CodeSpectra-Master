@@ -18,7 +18,9 @@ import { getPlatformCurrency } from '@/lib/server-currency'
 import { BILLING_PLANS as CATALOG_DEFAULTS } from '@/lib/billing-catalog'
 import {
   BILLING_PLANS as STATIC_PLANS,
+  DEFAULT_PROBLEM_PACKS,
   billingCoupons,
+  billingPacks,
   billingOrders,
   billingPayments,
   billingSubscriptions,
@@ -26,6 +28,8 @@ import {
   nowIso,
   finalizeCouponRedemption,
   type BillingOrderDoc,
+  type BillingSubscriptionDoc,
+  type ProblemPackDoc,
 } from '@/lib/db/billing'
 import {
   isValidPlanId,
@@ -34,7 +38,7 @@ import {
   type PlanCheckoutMode,
   type PlanInterval,
 } from '@/lib/billing-plan-mode'
-import { trialDaysForCoupon } from '@/lib/billing-lifecycle'
+import { graceExpired, trialDaysForCoupon } from '@/lib/billing-lifecycle'
 
 export interface ResolvedPlan {
   /** Canonical id stored on the order and the subscription. */
@@ -64,7 +68,8 @@ function toMinor(major: number): number {
 /**
  * Resolve a plan id (+ billing interval for monthly/annual plans) to a priced,
  * classified plan. Returns null for unknown ids. Order of precedence:
- *   1. legacy static keys (pro_monthly, pro_yearly, problem_pack_50)
+ *   0. problem packs (`billing_packs`, then built-in packs) — one-time purchases
+ *   1. legacy static keys (pro_monthly, pro_yearly)
  *   2. admin plans in the `plans` collection (matched by `plan` key)
  *   3. built-in catalog defaults (free / pro / enterprise) when no DB plan exists
  */
@@ -74,6 +79,9 @@ export async function resolveBillingPlan(
 ): Promise<ResolvedPlan | null> {
   if (!isValidPlanId(rawPlanId)) return null
   const planId = rawPlanId
+
+  const pack = await resolvePack(planId)
+  if (pack) return pack
 
   const s = STATIC_PLANS[planId]
   if (s) {
@@ -165,6 +173,33 @@ export async function resolveBillingPlan(
   return null
 }
 
+/** A pack on sale, priced from the catalog (never from the client). */
+async function resolvePack(planId: string): Promise<ResolvedPlan | null> {
+  let doc: ProblemPackDoc | null = null
+  try {
+    doc = await (await billingPacks()).findOne({ id: planId }, { projection: { _id: 0 } })
+  } catch (e) {
+    console.error('[billing-plans] pack lookup failed:', e)
+    throw new Error('Plan lookup failed')
+  }
+  const def = DEFAULT_PROBLEM_PACKS.find((p) => p.id === planId)
+  const pack = doc ? { ...def, ...doc } : def
+  if (!pack) return null
+  const price = Number(pack.price)
+  const onSale = pack.active !== false && Number.isFinite(price) && price > 0
+  return {
+    id: pack.id,
+    name: pack.name,
+    amount_paise: onSale ? toMinor(price) : 0,
+    currency: /^[A-Z]{3}$/.test(pack.currency || '') ? pack.currency : await getPlatformCurrency(),
+    kind: 'one_time',
+    perks: [pack.description || 'Lifetime access'].filter(Boolean),
+    // A pack that is not on sale cannot be bought (free mode never reaches a gateway).
+    mode: onSale ? 'checkout' : 'free',
+    source: doc ? 'db' : 'static',
+  }
+}
+
 /** Display name for a stored plan id (invoices, admin lists). */
 export function storedPlanLabel(order: Pick<BillingOrderDoc, 'plan_id' | 'plan_name'>): string | null {
   if (order.plan_name) return order.plan_name
@@ -205,6 +240,11 @@ export function ensureBillingIndexes(): Promise<void> {
           { unique: true, name: 'billing_payments_phonepe_payment_id_unique', partialFilterExpression: { phonepe_payment_id: { $gt: '' } } },
         )
         await payments.createIndex({ order_id: 1 }, { name: 'billing_payments_order_id' })
+        // One order (= one activation) per Stripe invoice, so a replayed invoice.paid is a no-op.
+        await (await billingOrders()).createIndex(
+          { stripe_invoice_id: 1 },
+          { unique: true, name: 'billing_orders_stripe_invoice_id_unique', partialFilterExpression: { stripe_invoice_id: { $gt: '' } } },
+        )
       } catch (e) {
         // Existing duplicate rows block a unique index; the atomic order claim
         // still prevents double activation. Log so ops can clean up.
@@ -220,11 +260,23 @@ export interface ActivationResult {
 }
 
 /**
+ * Stripe recurring billing: the period comes from Stripe (the invoice's
+ * subscription period) instead of stacking duration_days, and the Stripe ids
+ * are stored on the subscription. A paid invoice also clears past-due.
+ */
+export interface StripePeriod {
+  periodStart: string
+  periodEnd: string
+  customerId: string
+  subscriptionId: string
+}
+
+/**
  * Apply a paid order's effects. The caller MUST have atomically moved the
  * order to `paid` (only one caller per order gets here). Uses the plan
  * snapshot stored on the order; falls back to the resolver for legacy orders.
  */
-export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: string): Promise<ActivationResult> {
+export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: string, stripe?: StripePeriod): Promise<ActivationResult> {
   let kind = order.plan_kind
   let durationDays = order.duration_days
   if (!kind) {
@@ -240,7 +292,7 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
   const trialDays = trialDaysForCoupon(coupon)
   if (kind === 'subscription' && trialDays) durationDays = trialDays
 
-  if (kind === 'subscription' && durationDays && durationDays > 0) {
+  if (kind === 'subscription' && (stripe || (durationDays && durationDays > 0))) {
     const subs = await billingSubscriptions()
     const existing = await subs.findOne(
       { user_id: order.user_id, status: { $in: ['active', 'expired', 'cancelled', 'past_due'] } },
@@ -251,9 +303,14 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
     // starts the new plan now.
     const extendsCurrent =
       !!existing && existing.status === 'active' && existing.plan_id === order.plan_id && new Date(existing.ends_at) > now
-    const start = extendsCurrent ? new Date(existing!.ends_at) : now
-    const endsAt = new Date(start.getTime() + durationDays * DAY_MS).toISOString()
+    // Stripe renewals use Stripe's own period (no stacking: Stripe already bills back-to-back).
+    const start = stripe ? new Date(stripe.periodStart) : extendsCurrent ? new Date(existing!.ends_at) : now
+    const endsAt = stripe ? stripe.periodEnd : new Date(start.getTime() + (durationDays ?? 0) * DAY_MS).toISOString()
     const ts = nowIso()
+    const keepStart = stripe ? !!existing && existing.stripe_subscription_id === stripe.subscriptionId : extendsCurrent
+    const modeFields = stripe
+      ? { billing_mode: 'stripe_subscription' as const, stripe_customer_id: stripe.customerId, stripe_subscription_id: stripe.subscriptionId }
+      : { billing_mode: 'prepaid' as const }
 
     // Paid orders clear any trial marker so the trial-expiry job can never end
     // a paid period; any order also undoes a pending "cancel at period end".
@@ -268,7 +325,8 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
             status: 'active',
             plan_id: order.plan_id,
             ends_at: endsAt,
-            ...(extendsCurrent ? {} : { started_at: ts }),
+            ...(keepStart ? {} : { started_at: ts }),
+            ...modeFields,
             ...(paymentDocId ? { last_payment_id: paymentDocId } : {}),
             last_order_id: order.id,
             ...trialFields,
@@ -278,6 +336,11 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
           $unset: {
             ...(trialDays ? {} : { trial_ends_at: '', trial_order_id: '' }),
             cancelled_at: '',
+            past_due: '',
+            past_due_since: '',
+            grace_ends_at: '',
+            ended_reason: '',
+            ...(stripe ? {} : { stripe_subscription_id: '' }),
           },
         } as never,
       )
@@ -290,6 +353,7 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
         status: 'active',
         started_at: ts,
         ends_at: endsAt,
+        ...modeFields,
         ...(paymentDocId ? { last_payment_id: paymentDocId } : {}),
         last_order_id: order.id,
         ...trialFields,
@@ -298,6 +362,15 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
       })
     }
     subscription = { id: subId, plan_id: order.plan_id, ends_at: endsAt, ...(trialDays ? { trial_ends_at: endsAt } : {}) }
+
+    // A new plan replaced a Stripe subscription: stop the old one renewing.
+    const oldStripeSub = existing?.status === 'active' && existing.billing_mode === 'stripe_subscription' ? existing.stripe_subscription_id : undefined
+    if (oldStripeSub && oldStripeSub !== stripe?.subscriptionId) {
+      const { cancelStripeSubscriptionNow } = await import('@/lib/stripe-subscriptions')
+      await cancelStripeSubscriptionNow(oldStripeSub).catch((e) =>
+        console.error('[billing-plans] could not cancel replaced Stripe subscription', oldStripeSub, e),
+      )
+    }
 
     await (await billingOrders()).updateOne(
       { id: order.id },
@@ -363,6 +436,13 @@ export async function markOrderRefunded(
 
   await (await billingPayments()).updateMany({ order_id: order.id }, { $set: { status: 'refunded' } })
 
+  // A refunded pack is taken back (purchases otherwise never expire).
+  if (order.plan_kind === 'one_time') {
+    const { users } = await import('@/lib/db/admin')
+    const { userIdFilter } = await import('@/lib/entitlements')
+    await (await users()).updateOne(userIdFilter(order.user_id), { $pull: { purchased_packs: order.plan_id } } as never)
+  }
+
   let downgraded = false
   let shortened = false
   const subs = await billingSubscriptions()
@@ -385,29 +465,80 @@ export async function markOrderRefunded(
   return { ok: true, order, downgraded, shortened }
 }
 
+
+/** The user's live subscription (latest period first). */
+async function liveSub(userId: string): Promise<BillingSubscriptionDoc | null> {
+  return (await billingSubscriptions()).findOne(
+    { user_id: userId, status: 'active', ends_at: { $gt: nowIso() } },
+    { sort: { ends_at: -1 } },
+  )
+}
+
 /**
  * Cancel at period end (D8): the plan stays active until `ends_at`, then
- * simply lapses (every reader checks `ends_at`). No gateway call is needed —
- * periods are prepaid, there is no auto-renewal to stop.
+ * lapses (every reader checks `ends_at`). A Stripe subscription is told first
+ * (cancel_at_period_end) so it stops renewing; if Stripe refuses, nothing
+ * changes here and the error surfaces. Prepaid periods need no gateway call.
  */
 export async function cancelAtPeriodEnd(userId: string): Promise<{ ends_at: string } | null> {
-  const subs = await billingSubscriptions()
+  const current = await liveSub(userId)
+  if (!current) return null
+  if (current.billing_mode === 'stripe_subscription' && current.stripe_subscription_id) {
+    const { setStripeCancelAtPeriodEnd } = await import('@/lib/stripe-subscriptions')
+    await setStripeCancelAtPeriodEnd(current.stripe_subscription_id, true)
+  }
   const ts = nowIso()
-  const sub = await subs.findOneAndUpdate(
-    { user_id: userId, status: 'active', ends_at: { $gt: ts } },
+  const sub = await (await billingSubscriptions()).findOneAndUpdate(
+    { id: current.id, status: 'active' },
     { $set: { cancel_at_period_end: true, cancelled_at: ts, updated_at: ts } },
-    { returnDocument: 'after', sort: { ends_at: -1 } },
+    { returnDocument: 'after' },
   )
   return sub ? { ends_at: sub.ends_at } : null
 }
 
-/** Undo a pending cancel while the period is still running. */
+/** Undo a pending cancel while the period is still running ("Keep my plan"). */
 export async function resumeSubscription(userId: string): Promise<boolean> {
-  const subs = await billingSubscriptions()
+  const current = await liveSub(userId)
+  if (!current || current.cancel_at_period_end !== true) return false
+  if (current.billing_mode === 'stripe_subscription' && current.stripe_subscription_id) {
+    const { setStripeCancelAtPeriodEnd } = await import('@/lib/stripe-subscriptions')
+    await setStripeCancelAtPeriodEnd(current.stripe_subscription_id, false)
+  }
   const ts = nowIso()
-  const res = await subs.updateOne(
-    { user_id: userId, status: 'active', cancel_at_period_end: true, ends_at: { $gt: ts } },
+  const res = await (await billingSubscriptions()).updateOne(
+    { id: current.id, status: 'active', cancel_at_period_end: true },
     { $set: { cancel_at_period_end: false, updated_at: ts }, $unset: { cancelled_at: '' } },
   )
   return res.modifiedCount > 0
+}
+
+/**
+ * Downgrade past-due Stripe subscriptions whose grace window ran out: the
+ * subscription ends here and is cancelled at Stripe so it stops retrying.
+ * Access already lapses at ends_at (= grace end); this makes it final.
+ * Meant to run daily from the scheduler.
+ */
+export async function endLapsedGracePeriods(now: Date = new Date()): Promise<number> {
+  const subs = await billingSubscriptions()
+  const due = await subs
+    .find({ status: 'active', past_due: true, grace_ends_at: { $lte: now.toISOString() } } as never, { projection: { _id: 0 } })
+    .limit(500)
+    .toArray()
+  let n = 0
+  for (const sub of due) {
+    if (!graceExpired(sub, now)) continue
+    const r = await subs.updateOne(
+      { id: sub.id, status: 'active', past_due: true },
+      { $set: { status: 'expired', ends_at: sub.grace_ends_at!, ended_reason: 'payment_failed', updated_at: now.toISOString() } },
+    )
+    if (r.modifiedCount === 0) continue
+    n++
+    if (sub.stripe_subscription_id) {
+      const { cancelStripeSubscriptionNow } = await import('@/lib/stripe-subscriptions')
+      await cancelStripeSubscriptionNow(sub.stripe_subscription_id).catch((e) =>
+        console.error('[billing-plans] could not cancel lapsed Stripe subscription', sub.stripe_subscription_id, e),
+      )
+    }
+  }
+  return n
 }

@@ -4,8 +4,9 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
-  Search, ChevronDown, ChevronUp, CheckCircle2, Target, Trophy, ArrowRight, Loader2, Play, Award
+  Search, ChevronDown, ChevronUp, CheckCircle2, Target, Trophy, ArrowRight, Loader2, Play, Award, Lock
 } from 'lucide-react'
+import { UnlockPackButton } from './unlock-pack-button'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
@@ -76,8 +77,9 @@ export default function ProblemsListPage() {
   )
 
   const pickRandom = () => {
-    if (visible.length === 0) return
-    const p = visible[Math.floor(Math.random() * visible.length)]
+    const open = visible.filter((x) => !x.locked)
+    if (open.length === 0) return
+    const p = open[Math.floor(Math.random() * open.length)]
     router.push(`/dashboard/problems/${p.slug}`)
   }
 
@@ -369,12 +371,22 @@ export default function ProblemsListPage() {
                          <div key={p.id || i} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-muted/40 transition-colors group">
                             <div className="col-span-8 flex gap-3 min-w-0">
                                <div className="min-w-0">
-                                  <Link href={`/dashboard/problems/${p.slug}`} className="font-semibold text-foreground text-sm truncate block hover:text-primary transition-colors">
-                                    {p.title}
-                                  </Link>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Link href={`/dashboard/problems/${p.slug}`} className="font-semibold text-foreground text-sm truncate block hover:text-primary transition-colors">
+                                      {p.title}
+                                    </Link>
+                                    {p.locked ? (
+                                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                                        <Lock className="h-3 w-3" aria-hidden /> Locked
+                                      </span>
+                                    ) : null}
+                                  </div>
                                   <div className="text-xs text-muted-foreground mt-1 truncate">
                                     {p.topics?.join(', ')} {p.topics?.length > 3 && <span className="text-primary font-medium">+{p.topics.length - 3}</span>}
                                   </div>
+                                  {p.locked && p.unlock_pack ? (
+                                    <UnlockPackButton pack={p.unlock_pack} className="mt-2 h-7 rounded-full px-3 text-xs" onUnlocked={() => void load()} />
+                                  ) : null}
                                </div>
                             </div>
                             <div className="col-span-2 text-center">
@@ -387,7 +399,7 @@ export default function ProblemsListPage() {
                             </div>
                             <div className="col-span-2 flex justify-center">
                                <Button size="sm" variant="outline" className="h-8 rounded-full font-semibold border-border/80" onClick={() => router.push(`/dashboard/problems/${p.slug}`)}>
-                                 Solve
+                                 {p.locked ? 'Preview' : 'Solve'}
                                </Button>
                             </div>
                          </div>

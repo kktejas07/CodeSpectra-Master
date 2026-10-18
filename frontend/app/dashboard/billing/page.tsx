@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { CreditCard, Check, Download, Eye, Loader2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, CreditCard, Check, Download, ExternalLink, Eye, Loader2, RefreshCw } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { completeCheckout } from '@/lib/razorpay-checkout'
@@ -63,6 +63,10 @@ type Subscription = {
   currentPrice: number
   features: string[]
   autoRenew: boolean
+  /** 'stripe' = Stripe renews it and holds the card. */
+  provider: 'stripe' | null
+  pastDue: boolean
+  graceEndsAt: string | null
   userEmail: string
 }
 
@@ -144,6 +148,7 @@ function BillingContent() {
         plan_id: string; plan_name?: string; status: string; starts_at?: string; ends_at?: string
         interval?: 'month' | 'year'; amount?: number | null; currency?: string | null
         cancel_at_period_end?: boolean; cancelled_at?: string | null
+        provider?: 'stripe' | null; auto_renew?: boolean; past_due?: boolean; grace_ends_at?: string | null
       } | null
       const planId = sub?.plan_id || 'free'
       const catalog = planList.find((p) => p.id === planId)
@@ -161,7 +166,10 @@ function BillingContent() {
         pricePerYear: catalog?.yearlyPrice ?? 0,
         currentPrice: sub?.amount ?? (iv === 'year' ? catalog?.yearlyPrice : catalog?.price) ?? 0,
         features: catalog?.features ?? [],
-        autoRenew: false,
+        autoRenew: sub?.auto_renew === true,
+        provider: sub?.provider === 'stripe' ? 'stripe' : null,
+        pastDue: sub?.past_due === true,
+        graceEndsAt: sub?.grace_ends_at || null,
         userEmail: typeof d.user_email === 'string' ? d.user_email : '',
       })
     }
@@ -360,6 +368,20 @@ function BillingContent() {
     }
   }
 
+  // Stripe-hosted page to update the card (Stripe subscriptions only).
+  const openPortal = async () => {
+    setBusy('portal')
+    try {
+      const res = await csrfFetch('/api/billing/portal', { method: 'POST', credentials: 'include' })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || typeof j.url !== 'string') throw new Error(typeof j.error === 'string' ? j.error : 'Could not open payment settings')
+      window.location.href = j.url
+    } catch (e) {
+      addToast({ type: 'error', title: 'Payment method', message: e instanceof Error ? e.message : 'Failed' })
+      setBusy(null)
+    }
+  }
+
   if (!loading && (loadError || !subscription)) {
     return (
       <div className="space-y-6">
@@ -432,12 +454,32 @@ function BillingContent() {
               <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
                 Cancelled — access until {nextBill}
               </p>
+            ) : subscription.autoRenew && !subscription.pastDue ? (
+              <p className="mt-2 text-sm text-muted-foreground">Renews automatically on {nextBill}</p>
             ) : null}
           </div>
-          <Badge className={isCanceled ? 'bg-muted text-muted-foreground' : 'bg-green-500/15 text-green-800 dark:text-green-400'}>
-            {isCanceled ? 'Cancelling' : subscription.status}
+          <Badge className={subscription.pastDue ? 'bg-destructive/15 text-destructive' : isCanceled ? 'bg-muted text-muted-foreground' : 'bg-green-500/15 text-green-800 dark:text-green-400'}>
+            {subscription.pastDue ? 'Past due' : isCanceled ? 'Cancelling' : subscription.status}
           </Badge>
         </div>
+
+        {subscription.pastDue ? (
+          <div role="alert" className="mt-6 flex flex-wrap items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-foreground">Your last renewal payment failed</p>
+              <p className="text-sm text-muted-foreground">
+                Update your payment method by {subscription.graceEndsAt ? formatDate(subscription.graceEndsAt) : nextBill} to keep your plan. We&apos;ll retry the charge automatically.
+              </p>
+            </div>
+            {subscription.provider === 'stripe' ? (
+              <Button size="sm" onClick={() => void openPortal()} disabled={Boolean(busy)} className="gap-2">
+                {busy === 'portal' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Update payment method
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-8 grid gap-8 md:grid-cols-2">
           <div>
@@ -453,7 +495,7 @@ function BillingContent() {
           </div>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="text-muted-foreground">{isCanceled ? 'Access until' : 'Current period ends'}</p>
+              <p className="text-muted-foreground">{isCanceled || subscription.pastDue ? 'Access until' : subscription.autoRenew ? 'Next renewal' : 'Current period ends'}</p>
               <p className="font-medium tabular-nums text-foreground">{nextBill}</p>
             </div>
             <div>
@@ -560,8 +602,14 @@ function BillingContent() {
             <h3 className="text-lg font-semibold text-foreground">Payment method</h3>
             <p className="text-sm text-muted-foreground mt-1">The card used for your subscription renewals.</p>
           </div>
-          {/* Cards are managed by the payment gateway at checkout; there's no
-              server route to edit one here, so no edit button. */}
+          {/* Stripe subscriptions: the card is changed in Stripe's billing portal.
+              Other gateways take the card at each checkout. */}
+          {subscription.provider === 'stripe' ? (
+            <Button variant="outline" className="gap-2" onClick={() => void openPortal()} disabled={Boolean(busy)}>
+              {busy === 'portal' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" aria-hidden />}
+              Manage payment method
+            </Button>
+          ) : null}
         </div>
         {defaultPm ? (
           <div className="mt-4 flex items-center gap-4 rounded-2xl border border-border/70 bg-muted/20 p-4">
@@ -731,7 +779,9 @@ function BillingContent() {
           <AlertDialogHeader>
             <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
             <AlertDialogDescription>
-              You keep access until the end of the current period. You can resubscribe anytime.
+              {subscription.provider === 'stripe'
+                ? 'Automatic renewal stops. You keep access until the end of the current period and can turn renewal back on until then.'
+                : 'You keep access until the end of the current period. You can resubscribe anytime.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

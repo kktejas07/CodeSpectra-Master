@@ -12,7 +12,7 @@ import {
 import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS, getXpRewards } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
 import { limitRequest } from '@/lib/rate-limit'
-import { getUserEntitlements, checkLimit, windowStart } from '@/lib/entitlements'
+import { getUserEntitlements, checkLimit, windowStart, checkProblemAccess, packLockedError } from '@/lib/entitlements'
 import type { PistonExecuteResult } from '@/lib/piston'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -116,6 +116,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!problem || problem.is_published === false || problem.hackathon_id || problem.visibility === 'hackathon_only') {
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
   }
+
+  // Problem packs: run and submit both need access (purchase or included plan).
+  const isOwner = !!problem.created_by && problem.created_by === gate.user.id
+  let access
+  try {
+    access = await checkProblemAccess(gate.user, problem, isOwner)
+  } catch (e) {
+    console.error('[submissions] pack access check failed:', e)
+    return NextResponse.json({ error: 'Could not check access to this problem. Please try again.' }, { status: 503 })
+  }
+  if (access.locked) return NextResponse.json(packLockedError(access), { status: 402 })
 
   // Plan limit: distinct problems submitted this month (lib/entitlements.ts).
   // Re-submitting a problem already attempted this month is always allowed.

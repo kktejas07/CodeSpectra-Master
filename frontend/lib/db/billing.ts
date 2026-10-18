@@ -40,6 +40,10 @@ export interface BillingOrderDoc {
   refunded_by?: string
   refunded_by_email?: string
   refund_note?: string
+  /** Stripe recurring billing: the invoice this order records (unique — one activation per invoice). */
+  stripe_invoice_id?: string
+  stripe_subscription_id?: string
+  stripe_customer_id?: string
   created_at: string
   updated_at: string
 }
@@ -71,7 +75,39 @@ export interface BillingSubscriptionDoc {
   /** User cancelled: access continues until ends_at, then the plan simply lapses. */
   cancel_at_period_end?: boolean
   cancelled_at?: string
+  /** 'stripe_subscription' = Stripe renews it automatically; otherwise a prepaid period. */
+  billing_mode?: 'prepaid' | 'stripe_subscription'
+  stripe_customer_id?: string
+  stripe_subscription_id?: string
+  /** A renewal payment failed: access continues until grace_ends_at (= ends_at), then lapses. */
+  past_due?: boolean
+  past_due_since?: string
+  grace_ends_at?: string
+  /** Why the subscription stopped (Stripe ended it, grace ran out, …). */
+  ended_reason?: string
   created_at: string
+  updated_at?: string
+}
+
+/**
+ * A one-time problem pack (catalog entry). Its id is the checkout plan id and
+ * the value stored in user.purchased_packs. Problems belong to a pack by slug
+ * or by topic. Purchases never expire.
+ */
+export interface ProblemPackDoc {
+  id: string
+  name: string
+  description?: string
+  /** Major units of `currency` (e.g. 199 = ₹199). */
+  price: number
+  currency: string
+  problem_slugs: string[]
+  topics: string[]
+  /** Plan keys whose subscribers get the pack without buying it (e.g. pro). */
+  included_in_plans: string[]
+  /** On sale. A pack that is not on sale still locks its problems; buyers keep access. */
+  active: boolean
+  created_at?: string
   updated_at?: string
 }
 
@@ -102,6 +138,28 @@ export async function billingSubscriptions(): Promise<Collection<BillingSubscrip
 export async function billingCoupons(): Promise<Collection<BillingCouponDoc>> {
   return (await getMongoDb()).collection<BillingCouponDoc>('billing_coupons')
 }
+export async function billingPacks(): Promise<Collection<ProblemPackDoc>> {
+  return (await getMongoDb()).collection<ProblemPackDoc>('billing_packs')
+}
+
+/**
+ * Built-in packs. A `billing_packs` doc with the same id overrides it (admin
+ * assigns problems in /dashboard/admin/plans). Empty by default: a pack locks
+ * nothing until problems are assigned to it.
+ */
+export const DEFAULT_PROBLEM_PACKS: ProblemPackDoc[] = [
+  {
+    id: 'problem_pack_50',
+    name: '50 Premium Problem Pack',
+    description: '50 expert-curated premium problems. Lifetime access.',
+    price: 199,
+    currency: 'INR',
+    problem_slugs: [],
+    topics: [],
+    included_in_plans: ['pro', 'enterprise'],
+    active: true,
+  },
+]
 
 async function redeemerInfo(userId: string): Promise<{ user_name?: string; user_email?: string }> {
   try {

@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { problems } from '@/lib/db/problems'
+import { checkProblemAccess, packLockedError } from '@/lib/entitlements'
+import type { APIUser } from '@/lib/route-auth'
+
+/** Discussions can carry solutions, so a pack-locked problem's thread is locked too. */
+async function packGate(user: APIUser, slug: string): Promise<NextResponse | null> {
+  try {
+    const doc = await (await problems()).findOne({ slug }, { projection: { id: 1, slug: 1, topics: 1, created_by: 1 } })
+    if (!doc) return null
+    const access = await checkProblemAccess(user, doc, !!doc.created_by && doc.created_by === user.id)
+    return access.locked ? NextResponse.json(packLockedError(access), { status: 402 }) : null
+  } catch (e) {
+    console.error('[discussions] pack access check failed:', e)
+    return NextResponse.json({ error: 'Could not load discussions. Please try again.' }, { status: 503 })
+  }
+}
 
 interface DiscussionDoc {
   id: string
@@ -19,6 +35,8 @@ export async function GET(
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { slug } = await ctx.params
+  const locked = await packGate(gate.user, slug)
+  if (locked) return locked
 
   try {
     const db = await getMongoDb()
@@ -40,6 +58,8 @@ export async function POST(
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { slug } = await ctx.params
+  const locked = await packGate(gate.user, slug)
+  if (locked) return locked
 
   try {
     const { content, parent_id = null } = (await req.json()) as {

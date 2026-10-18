@@ -7,7 +7,7 @@
  */
 import 'server-only'
 import { ObjectId, type Filter } from 'mongodb'
-import { billingSubscriptions, type BillingSubscriptionDoc } from '@/lib/db/billing'
+import { billingPacks, billingSubscriptions, DEFAULT_PROBLEM_PACKS, type BillingSubscriptionDoc, type ProblemPackDoc } from '@/lib/db/billing'
 import { users, tenants, type BetterAuthUserDoc } from '@/lib/db/admin'
 import { getPlanForRole } from '@/lib/plans'
 import type { PlanDefinition } from '@/lib/plans-client'
@@ -19,9 +19,12 @@ import {
   limitFor,
   mergePlanDefinition,
   pickEffectivePlanKey,
+  problemAccess,
   withinLimit,
   type EntitlementSource,
   type LimitKey,
+  type ProblemAccess,
+  type ProblemRef,
 } from '@/lib/entitlements-core'
 
 export interface Entitlements {
@@ -115,4 +118,70 @@ export function checkLimit(
 export function windowStart(kind: 'day' | 'month', now: Date = new Date()): string {
   const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), kind === 'day' ? now.getUTCDate() : 1))
   return d.toISOString()
+}
+
+// ─── Problem packs ──────────────────────────────────────────────────────────
+
+let packCache: { at: number; packs: ProblemPackDoc[] } | null = null
+const PACK_TTL_MS = 30_000
+
+/** Pack catalog: built-in defaults overridden / extended by `billing_packs` docs. */
+export async function loadProblemPacks(opts: { fresh?: boolean } = {}): Promise<ProblemPackDoc[]> {
+  if (!opts.fresh && packCache && Date.now() - packCache.at < PACK_TTL_MS) return packCache.packs
+  const rows = await (await billingPacks()).find({}, { projection: { _id: 0 } }).limit(500).toArray()
+  const byId = new Map<string, ProblemPackDoc>(DEFAULT_PROBLEM_PACKS.map((p) => [p.id, p]))
+  for (const r of rows) if (r && typeof r.id === 'string') byId.set(r.id, { ...byId.get(r.id), ...r } as ProblemPackDoc)
+  const packs = [...byId.values()]
+  packCache = { at: Date.now(), packs }
+  return packs
+}
+
+export function invalidateProblemPacks(): void {
+  packCache = null
+}
+
+export interface PackContext {
+  planKey: string
+  purchasedPacks: string[]
+  packs: ProblemPackDoc[]
+  bypass: boolean
+}
+
+/** Everything the access rule needs for one viewer (null = signed out = free, nothing bought). */
+export async function getPackContext(user: Pick<APIUser, 'id' | 'role'> | null): Promise<PackContext> {
+  const packs = await loadProblemPacks()
+  if (!user) return { planKey: 'free', purchasedPacks: [], packs, bypass: false }
+  const [ent, doc] = await Promise.all([
+    getUserEntitlements(user.id),
+    users().then((c) => c.findOne(userIdFilter(user.id), { projection: { purchased_packs: 1 } })),
+  ])
+  const raw = (doc as { purchased_packs?: unknown } | null)?.purchased_packs
+  const purchased = Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string') : []
+  return { planKey: ent.planKey, purchasedPacks: purchased, packs, bypass: user.role === 'superadmin' }
+}
+
+/** Pack access for one problem. `isEditor` = the problem's owner / tenant editor. */
+export function accessFor(ctx: PackContext, problem: ProblemRef, isEditor = false): ProblemAccess {
+  return problemAccess({
+    problem,
+    packs: ctx.packs,
+    purchasedPacks: ctx.purchasedPacks,
+    planKey: ctx.planKey,
+    bypass: ctx.bypass || isEditor,
+  })
+}
+
+export async function checkProblemAccess(user: Pick<APIUser, 'id' | 'role'> | null, problem: ProblemRef, isEditor = false): Promise<ProblemAccess> {
+  return accessFor(await getPackContext(user), problem, isEditor)
+}
+
+/** 402 body for a locked problem (problem page, run / submit). */
+export function packLockedError(access: ProblemAccess) {
+  return {
+    error: access.unlockWith
+      ? `This problem is part of ${access.unlockWith.name}. Unlock the pack to solve it.`
+      : 'This problem is part of a premium pack.',
+    code: 'pack_locked' as const,
+    pack: access.unlockWith,
+  }
 }

@@ -4,6 +4,7 @@ import { problems, nowIso, type TestCase, type ProblemDoc } from '@/lib/db/probl
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
 import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
+import { checkProblemAccess, packLockedError } from '@/lib/entitlements'
 
 /**
  * Who may edit a problem: superadmin; its creator; or a tenant_admin of the
@@ -59,8 +60,7 @@ export async function GET(
     const col = await problems()
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
     if (doc) {
-      const needsUser = wantsEdit || doc.visibility === 'hackathon_only' || doc.is_published === false
-      const user = needsUser ? await getAPIUser().catch(() => null) : null
+      const user = await getAPIUser().catch(() => null)
       // Editors loading the edit form get every test, so a save never drops the hidden ones.
       if (wantsEdit && canEditProblem(user, doc)) {
         const { _id, ...rest } = doc
@@ -72,6 +72,22 @@ export async function GET(
       }
       if (doc.is_published === false && doc.visibility !== 'hackathon_only' && !canEditProblem(user, doc)) {
         return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+      }
+      // Problem packs: locked problems show title only (lib/entitlements-core problemAccess).
+      // Hackathon problems are gated by their event instead.
+      if (doc.visibility !== 'hackathon_only') {
+        // Fail closed: the seed fallback below must never serve a problem we couldn't check.
+        const access = await checkProblemAccess(user, doc, canEditProblem(user, doc)).catch((e) => {
+          console.error('[problems/[slug]] pack access check failed:', e)
+          return null
+        })
+        if (!access) return NextResponse.json({ error: 'Could not load this problem. Please try again.' }, { status: 503 })
+        if (access.locked) {
+          return NextResponse.json(
+            { ...packLockedError(access), problem: { id: doc.id, slug: doc.slug, title: doc.title, difficulty: doc.difficulty, topics: doc.topics } },
+            { status: 402 },
+          )
+        }
       }
       return NextResponse.json({
         ...doc,

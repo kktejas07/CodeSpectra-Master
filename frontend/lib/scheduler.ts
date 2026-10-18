@@ -280,4 +280,14 @@ async function checkTrials(): Promise<void> {
   } catch {
     await recordCronRun('trial-expiry', false, Date.now() - started)
   }
+  // Same daily pass: end paid plans whose payment-failure grace period has run out.
+  const graceStarted = Date.now()
+  try {
+    const { endLapsedGracePeriods } = await import('./billing-plans')
+    const ended = await endLapsedGracePeriods()
+    if (ended > 0) logger.info(`[billing] Ended ${ended} subscription(s) after the grace period`)
+    await recordCronRun('grace-expiry', true, Date.now() - graceStarted)
+  } catch {
+    await recordCronRun('grace-expiry', false, Date.now() - graceStarted)
+  }
 }

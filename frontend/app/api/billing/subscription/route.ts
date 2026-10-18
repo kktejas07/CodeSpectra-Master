@@ -40,6 +40,10 @@ export async function GET() {
         interval: order?.interval ?? resolved?.interval ?? 'month',
         amount: order ? (order.amount_paise || 0) / 100 : resolved ? resolved.amount_paise / 100 : null,
         currency: order?.currency ?? resolved?.currency ?? null,
+        provider: active.billing_mode === 'stripe_subscription' ? 'stripe' : null,
+        auto_renew: active.billing_mode === 'stripe_subscription' && active.cancel_at_period_end !== true,
+        past_due: active.past_due === true,
+        grace_ends_at: active.past_due ? active.grace_ends_at ?? null : null,
       },
       user_email: user.email,
     })

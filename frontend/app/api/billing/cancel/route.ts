@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 
 /**
  * POST /api/billing/cancel — cancel at period end: the plan stays active until
- * `ends_at`, then lapses. DB-only, so it works with no gateway configured.
+ * `ends_at`, then lapses. Stripe subscriptions are set to cancel_at_period_end
+ * at Stripe first (lib/billing-plans.ts); prepaid plans are DB-only.
  */
 export async function POST() {
   const user = await getAPIUser()
@@ -22,7 +23,7 @@ export async function POST() {
   }
 }
 
-/** DELETE /api/billing/cancel — undo a pending cancel before the period ends. */
+/** DELETE /api/billing/cancel — "Keep my plan": undo a pending cancel (at Stripe too) before the period ends. */
 export async function DELETE() {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
