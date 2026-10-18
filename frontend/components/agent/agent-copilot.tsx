@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useAgentChat } from './use-agent-chat'
 import { ConversationList } from './conversation-list'
 import { AssistantMessage, UserBubble } from './agent-message'
+import { TenantPicker } from './tenant-picker'
 
 export const STARTER_PROMPTS = [
   'Create a backend engineer test from this job description',
@@ -26,6 +27,9 @@ export function AgentStatusBadges({ chat }: { chat: ReturnType<typeof useAgentCh
   const credits = chat.status?.credits
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {chat.isSuper && (
+        <TenantPicker id="copilot-scope" value={chat.scope} onChange={chat.setScope} disabled={chat.streaming} />
+      )}
       <Tooltip>
         <TooltipTrigger asChild>
           <Badge variant="outline" className="h-8 max-w-[14rem] gap-1.5 rounded-full px-3" tabIndex={0}>

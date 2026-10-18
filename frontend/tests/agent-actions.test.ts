@@ -193,3 +193,30 @@ describe('conversation store scoping', () => {
     expect((await store.getAction(ADMIN, 'f'))?.status).toBe('pending')
   })
 })
+
+describe('superadmin tenant scope + action id', () => {
+  const SUPER: AgentCaller = { userId: 'su', role: 'superadmin', tenantId: null }
+
+  it('confirm passes actionId and runs a superadmin proposal inside the tenant it was drafted for', async () => {
+    const { tool, execute } = makeTool()
+    await store.saveAction(action({ created_by: 'su', tenant_id: 't9' }))
+    const r = await confirmAction(SUPER, 'a1', { getTool: () => tool })
+    expect(r).toMatchObject({ ok: true, action: { status: 'done' } })
+    expect(execute).toHaveBeenCalledWith({ title: 'Java' }, expect.objectContaining({ caller: { ...SUPER, tenantId: 't9' }, actionId: 'a1' }))
+  })
+
+  it('tenant admins still only match their own tenant; another superadmin cannot see it', async () => {
+    await store.saveAction(action({ created_by: 'su', tenant_id: 't9' }))
+    expect(await store.getAction({ userId: 'su', role: 'tenant_admin', tenantId: 't1' }, 'a1')).toBeNull()
+    expect(await store.getAction({ userId: 'other', role: 'superadmin', tenantId: null }, 'a1')).toBeNull()
+    expect(await store.getAction(SUPER, 'a1')).not.toBeNull()
+  })
+
+  it('stores the chosen scope on a superadmin conversation only', async () => {
+    const c = await store.createConversation(SUPER, 'Scoped', 't9')
+    expect(c.scope_tenant_id).toBe('t9')
+    expect(c.tenant_id).toBeNull()
+    const t = await store.createConversation(ADMIN, 'Mine', 't9')
+    expect(t.scope_tenant_id).toBeUndefined()
+  })
+})

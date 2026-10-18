@@ -24,6 +24,7 @@ import { buildProjectReport } from '@/lib/hackathons/reporting'
 import { collectHumanScores, average } from '@/lib/hackathons/calibration'
 import { getMongoDb } from '@/lib/mongodb'
 import { ok, fail, type ServiceResult, type ServiceUser } from './result'
+import { addedJudges, emailNewJudges } from './judge-emails'
 
 export function computeHackathonStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
   if (currentStatus === 'draft') return 'draft'
@@ -149,6 +150,7 @@ export async function createHackathon(
   if (extras.judging_config !== undefined) doc.judging_config = sanitizeJudgingConfig(extras.judging_config)
   await col.insertOne(doc)
   knowledgeOnEventChange('hackathon', doc.id, doc.tenant_id)
+  if (doc.judges?.length) await emailNewJudges(doc, doc.judges)
   const { _id: _omit, ...clean } = doc as HackathonDoc & { _id?: unknown }
   void _omit
   return ok(clean as HackathonDoc, 201)
@@ -285,6 +287,8 @@ export async function updateHackathon(user: ServiceUser, id: string, body: Parti
 
   await col.updateOne({ id }, { $set })
   knowledgeOnEventChange('hackathon', id)
+  // Email judges added by this change only (existing judges are not re-emailed).
+  const newJudges = Array.isArray($set.judges) ? addedJudges($set.judges as string[], cur.judges || []) : []
   // Recalculate status from new dates — unless the organiser just set one by hand.
   const after = await col.findOne({ id }, { projection: { _id: 0 } })
   if (after && !statusChanged) {
@@ -294,6 +298,7 @@ export async function updateHackathon(user: ServiceUser, id: string, body: Parti
       after.status = computed
     }
   }
+  if (after && newJudges.length) await emailNewJudges(after, newJudges)
   return ok(after as HackathonDoc | null)
 }
 

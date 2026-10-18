@@ -23,6 +23,7 @@ import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SOURCE_TYPE_LABELS, TENANT_TYPES, type KnowledgeSourceType } from '@/lib/rag/types'
 import { cn } from '@/lib/utils'
+import { TenantPicker } from '@/components/agent/tenant-picker'
 
 type Status = 'queued' | 'indexing' | 'ready' | 'failed'
 
@@ -113,6 +114,9 @@ export default function KnowledgePage() {
   const addToast = useToast()
   const confirm = useConfirm()
   const isSuper = gate.user?.role === 'superadmin'
+  /** Superadmin only: narrow sources, search, reindex and uploads to one organisation (null = whole platform). */
+  const [scopeTenant, setScopeTenant] = useState<string | null>(null)
+  const tenantParam = isSuper && scopeTenant ? scopeTenant : null
 
   const [stats, setStats] = useState<Stats | null>(null)
   const [rows, setRows] = useState<SourceRow[]>([])
@@ -155,6 +159,7 @@ export default function KnowledgePage() {
       if (typeFilter !== 'all') sp.set('type', typeFilter)
       if (statusFilter !== 'all') sp.set('status', statusFilter)
       if (titleFilter.trim()) sp.set('q', titleFilter.trim())
+      if (tenantParam) sp.set('tenant', tenantParam)
       const r = await fetch(`/api/admin/knowledge/sources?${sp}`, { credentials: 'include' })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || `Couldn't load sources (${r.status})`)
@@ -166,7 +171,7 @@ export default function KnowledgePage() {
     } finally {
       setLoading(false)
     }
-  }, [page, typeFilter, statusFilter, titleFilter])
+  }, [page, typeFilter, statusFilter, titleFilter, tenantParam])
 
   useEffect(() => {
     if (!gate.ready) return
@@ -189,8 +194,8 @@ export default function KnowledgePage() {
 
   const reindexAll = async () => {
     const ok = await confirm({
-      title: isSuper ? 'Reindex all knowledge?' : 'Reindex your organisation?',
-      description: isSuper
+      title: isSuper ? (tenantParam ? 'Reindex this organisation?' : 'Reindex all knowledge?') : 'Reindex your organisation?',
+      description: isSuper && !tenantParam
         ? 'Every source on the platform is queued. Unchanged content is skipped, so this mostly costs database reads.'
         : "Your organisation's tests, results, events, uploads and candidate summaries are queued. Unchanged content is skipped.",
       confirmText: 'Reindex',
@@ -199,7 +204,7 @@ export default function KnowledgePage() {
     setReindexing(true)
     try {
       const r = await csrfFetch('/api/admin/knowledge/reindex', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tenantParam ? { tenant: tenantParam } : {}),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Reindex failed')
@@ -261,7 +266,7 @@ export default function KnowledgePage() {
       const r = await csrfFetch('/api/admin/knowledge/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, limit: 8, ...(searchType !== 'all' ? { types: [searchType] } : {}) }),
+        body: JSON.stringify({ query, limit: 8, ...(searchType !== 'all' ? { types: [searchType] } : {}), ...(tenantParam ? { tenant: tenantParam } : {}) }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Search failed')
@@ -291,6 +296,7 @@ export default function KnowledgePage() {
       fd.set('title', upTitle)
       fd.set('kind', upKind)
       fd.set('tags', upTags)
+      if (tenantParam) fd.set('tenant', tenantParam)
       const r = await csrfFetch('/api/admin/knowledge/upload', { method: 'POST', body: fd })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Upload failed')
@@ -330,9 +336,16 @@ export default function KnowledgePage() {
           : 'What the AI copilot can look up for your organisation: your tests, results, events, candidates and the documents you upload, plus public help pages.'}
         actions={
           <>
+            {isSuper && (
+              <TenantPicker
+                id="knowledge-scope"
+                value={scopeTenant}
+                onChange={(t) => { setScopeTenant(t); setPage(1); setHits(null) }}
+              />
+            )}
             <Button variant="outline" onClick={reindexAll} disabled={reindexing}>
               {reindexing ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw aria-hidden />}
-              {isSuper ? 'Reindex everything' : 'Reindex my organisation'}
+              {isSuper ? (tenantParam ? 'Reindex organisation' : 'Reindex everything') : 'Reindex my organisation'}
             </Button>
             <Button onClick={() => { resetUpload(); setUploadOpen(true) }} className="min-h-11 sm:min-h-9">
               <Upload aria-hidden /> Upload document
@@ -544,7 +557,7 @@ export default function KnowledgePage() {
             <DialogHeader>
               <DialogTitle>Upload a document</DialogTitle>
               <DialogDescription>
-                PDF, DOCX, TXT or Markdown, up to 10 MB. Files are virus-scanned, and only {isSuper ? 'the platform team' : 'your organisation’s admins'} can search them.
+                PDF, DOCX, TXT or Markdown, up to 10 MB. Files are virus-scanned, and only {isSuper ? (tenantParam ? 'that organisation’s admins' : 'the platform team') : 'your organisation’s admins'} can search them.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">

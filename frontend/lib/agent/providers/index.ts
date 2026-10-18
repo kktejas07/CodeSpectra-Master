@@ -62,14 +62,8 @@ export async function resolveProviderTargets(userId: string): Promise<ProviderTa
     targets.push({ kind: adapterKindFor(provider), provider, model, endpoint, apiKey })
   }
 
-  // getRoundRobinKey falls back to the platform's single legacy api_key for
-  // ANY provider without its own keys; never send that key to another vendor.
-  let platformKey = ''
-  let platformProvider = ''
   try {
     const pref = await resolveModel(userId, 'chat_model')
-    platformKey = pref.apiKeyOverride || ''
-    platformProvider = pref.providerOverride
     if (pref.providerOverride && pref.modelOverride) {
       let endpoint = endpointFor(pref.providerOverride, pref.endpointOverride)
       if (pref.providerOverride === 'custom' && !endpoint) {
@@ -77,7 +71,10 @@ export async function resolveProviderTargets(userId: string): Promise<ProviderTa
         const s = (await readServerSecrets()) as Record<string, unknown>
         endpoint = String(s.custom_endpoint || process.env.CUSTOM_ENDPOINT || '').trim().replace(/\/+$/, '')
       }
-      const key = pref.apiKeyOverride || (await getApiKey(pref.providerOverride as never))?.key || ''
+      // getApiKey includes the legacy platform api_key, but only for the provider it
+      // was saved with (lib/ai/get-round-robin-key legacyKeyFor). apiKeyOverride is
+      // not used: with a per-task override it can belong to a different provider.
+      const key = (await getApiKey(pref.providerOverride as never))?.key || ''
       add(pref.providerOverride, pref.modelOverride, endpoint, key)
     }
   } catch (e) {
@@ -90,7 +87,7 @@ export async function resolveProviderTargets(userId: string): Promise<ProviderTa
     // openrouter/auto may route to a model without tool support — skip it here.
     if (entry.model === 'openrouter/auto') continue
     const key = (await getApiKey(entry.provider as never))?.key
-    if (!key || (platformKey && key === platformKey && entry.provider !== platformProvider)) continue
+    if (!key) continue
     add(entry.provider, entry.model, endpointFor(entry.provider, entry.endpoint), key)
   }
   return targets

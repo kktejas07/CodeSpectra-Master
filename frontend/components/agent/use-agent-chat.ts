@@ -8,7 +8,7 @@ import type { ActionMap, AgentStatus, ConversationSummary, StoredMessage, UiItem
 
 type StreamEvent =
   | AgentEvent
-  | { type: 'conversation'; id: string; title: string; created: boolean }
+  | { type: 'conversation'; id: string; title: string; created: boolean; tenantId?: string | null }
   | { type: 'model'; provider: string; model: string }
 
 async function errorOf(res: Response): Promise<string> {
@@ -31,9 +31,12 @@ export function useAgentChat() {
   const [status, setStatus] = useState<AgentStatus | null>(null)
   const [liveModel, setLiveModel] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  /** Superadmin tenant picker (null = whole platform). Ignored for tenant admins. */
+  const [scope, setScope] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const activeRef = useRef<string | null>(null)
   activeRef.current = activeId
+  const isSuper = status?.role === 'superadmin'
 
   const refreshList = useCallback(async () => {
     try {
@@ -70,8 +73,9 @@ export function useAgentChat() {
         setError(await errorOf(r))
         return
       }
-      const d = (await r.json()) as { messages: StoredMessage[]; actions: ProposedAction[] }
+      const d = (await r.json()) as { conversation?: { tenant_id?: string | null }; messages: StoredMessage[]; actions: ProposedAction[] }
       if (activeRef.current !== id) return
+      if (d.conversation && 'tenant_id' in d.conversation) setScope(d.conversation.tenant_id ?? null)
       setItems(itemsFromMessages(d.messages ?? []))
       setActions(Object.fromEntries((d.actions ?? []).map((a) => [a.id, a])))
     } catch {
@@ -99,7 +103,7 @@ export function useAgentChat() {
       const res = await csrfFetch('/api/admin/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, conversationId: activeRef.current }),
+        body: JSON.stringify({ message, conversationId: activeRef.current, ...(isSuper ? { tenantId: scope ?? 'platform' } : {}) }),
         signal: ac.signal,
       })
       if (!res.ok || !res.body) {
@@ -128,7 +132,7 @@ export function useAgentChat() {
           if (ev.type === 'conversation') {
             activeRef.current = ev.id
             setActiveId(ev.id)
-            if (ev.created) setConversations((prev) => [{ id: ev.id, title: ev.title, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, ...prev])
+            if (ev.created) setConversations((prev) => [{ id: ev.id, title: ev.title, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...(ev.tenantId !== undefined ? { tenant_id: ev.tenantId } : {}) }, ...prev])
           } else if (ev.type === 'model') {
             setLiveModel(ev.model)
           } else {
@@ -147,7 +151,7 @@ export function useAgentChat() {
       void refreshStatus()
       void refreshList()
     }
-  }, [streaming, refreshList, refreshStatus])
+  }, [streaming, refreshList, refreshStatus, isSuper, scope])
 
   const stop = useCallback(() => abortRef.current?.abort(), [])
 
@@ -190,6 +194,7 @@ export function useAgentChat() {
 
   return {
     conversations, loadingList, activeId, items, actions, loadingConv, streaming, status, liveModel, error,
+    isSuper, scope, setScope,
     open, send, stop, confirm: (id: string) => actOn(id, 'confirm'), cancel: (id: string) => actOn(id, 'cancel'),
     editArgs, rename, remove,
   }

@@ -1,7 +1,9 @@
 /**
  * POST /api/admin/agent/chat — one admin-copilot turn, streamed as NDJSON
  * (one JSON event per line: conversation, model, text, tool_call, tool_result,
- * proposal, error, done). Body: { message: string, conversationId?: string }.
+ * proposal, error, done). Body: { message: string, conversationId?: string,
+ * tenantId?: string | null } — tenantId is the superadmin tenant picker
+ * ('platform'/null = whole platform); tenant admins may not send another tenant.
  * Admins only; rate limited; the turn aborts when the client disconnects.
  */
 import { NextResponse } from 'next/server'
@@ -10,6 +12,7 @@ import { limitRequest } from '@/lib/rate-limit'
 import { getUserAiCredits, outOfCredits } from '@/lib/user-credits'
 import { MAX_USER_MESSAGE_CHARS, openConversation, runChatTurn, type AgentStreamEvent } from '@/lib/agent/service'
 import { AllProvidersFailedError } from '@/lib/agent/providers'
+import { parseScopeRequest, tenantExists } from '@/lib/agent/scope-tenant'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,6 +33,12 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: `Messages can be up to ${MAX_USER_MESSAGE_CHARS} characters.` }, { status: 413 })
   }
   const conversationId = typeof body?.conversationId === 'string' && body.conversationId ? body.conversationId : null
+  const scope = parseScopeRequest(caller, body?.tenantId)
+  if (scope.kind === 'error') return NextResponse.json({ error: scope.error }, { status: scope.status })
+  if (scope.kind === 'set' && scope.tenantId && !(await tenantExists(scope.tenantId).catch(() => false))) {
+    return NextResponse.json({ error: 'Unknown organisation.' }, { status: 400 })
+  }
+  const scopeTenantId = scope.kind === 'set' ? scope.tenantId : undefined
 
   try {
     const credits = await getUserAiCredits(caller.userId)
@@ -39,7 +48,7 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ error: 'Could not check your AI credits. Try again.' }, { status: 503 })
   }
 
-  const opened = await openConversation(caller, conversationId, message)
+  const opened = await openConversation(caller, conversationId, message, scopeTenantId)
   if (!opened) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
   const { conv, created } = opened
 
@@ -59,7 +68,7 @@ export async function POST(req: Request): Promise<Response> {
           closed = true
         }
       }
-      send({ type: 'conversation', id: conv.id, title: conv.title, created })
+      send({ type: 'conversation', id: conv.id, title: conv.title, created, ...(caller.role === 'superadmin' ? { tenantId: conv.scope_tenant_id ?? null } : {}) })
       try {
         const r = await runChatTurn({ caller, conv, message, signal: abort.signal, emit: send })
         if (r.status === 'error') {

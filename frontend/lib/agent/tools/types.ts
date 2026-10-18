@@ -9,9 +9,8 @@ import type { AgentTool, ToolContext } from '@/lib/agent/contract'
  * id is the idempotency key (lib/agent/tools/ledger.ts). Optional — without
  * it a hash of tool + caller + conversation + args is used.
  */
-export interface ToolExecuteContext extends ToolContext {
-  actionId?: string
-}
+/** ToolContext already carries the optional `actionId` (contract addition). */
+export type ToolExecuteContext = ToolContext
 
 export interface ExecuteResult {
   ok: boolean

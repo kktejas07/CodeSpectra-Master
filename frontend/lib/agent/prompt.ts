@@ -13,7 +13,7 @@ export function buildSystemPrompt(opts: {
   const { caller, now } = opts
   const scope = caller.role === 'superadmin'
     ? caller.tenantId
-      ? `platform superadmin (home organisation ${caller.tenantId}; may act platform-wide)`
+      ? `platform superadmin, scoped to organisation ${caller.tenantId} for this conversation (stay inside it)`
       : 'platform superadmin (platform-wide)'
     : `organisation admin for organisation ${caller.tenantId}`
   const writes = opts.tools.filter((t) => t.kind === 'write').map((t) => t.name)

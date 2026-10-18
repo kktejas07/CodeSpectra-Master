@@ -5,13 +5,13 @@
  * the same result back without doing the work again.
  *
  * Key = ctx.actionId when the confirm endpoint passes one, else the action's
- * `_nonce` (set at propose time, stored with the action's args), else a hash
+ * `_nonce` (fallback for proposals stored before actionId was passed), else a hash
  * of tool + caller + conversation + args.
  */
 import { createHash } from 'crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { ToolInputError, ToolPermissionError, type ToolContext } from '@/lib/agent/contract'
-import type { ExecuteResult, ToolExecuteContext } from './types'
+import type { ExecuteResult } from './types'
 
 export const LEDGER_COLLECTION = 'agent_tool_executions'
 const STALE_RUNNING_MS = 15 * 60 * 1000
@@ -25,7 +25,7 @@ function stable(v: unknown): string {
 }
 
 export function idempotencyKey(tool: string, args: unknown, ctx: ToolContext): string {
-  const actionId = (ctx as ToolExecuteContext).actionId
+  const actionId = ctx.actionId
   if (typeof actionId === 'string' && actionId) return `action:${actionId}`
   // Fresh per proposal (set by writeTool at propose time and stored with the action).
   const nonce = args && typeof args === 'object' ? (args as Record<string, unknown>)._nonce : undefined

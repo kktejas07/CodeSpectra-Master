@@ -193,3 +193,14 @@ export interface AgentMessage {
   tool_call_id?: string
   created_at: string
 }
+
+// ─── Additions (appended after the first build) ─────────────────────────────
+
+/**
+ * ADDITION: interface merge onto ToolContext above. The confirm endpoint sets
+ * `actionId` (the ProposedAction id) so execute() can key idempotency on it.
+ * Undefined in read tools and propose().
+ */
+export interface ToolContext {
+  actionId?: string
+}

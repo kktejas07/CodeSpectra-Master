@@ -2,7 +2,7 @@
  * Agent persistence — every query is scoped to the caller (owner + tenant).
  *
  * Collections:
- *   agent_conversations  { id, owner_id, tenant_id, title, created_at, updated_at, last_model? }
+ *   agent_conversations  { id, owner_id, tenant_id, title, created_at, updated_at, last_model?, scope_tenant_id? }
  *   agent_messages       AgentMessageDoc (lib/agent/history.ts)
  *   agent_actions        ProposedAction + updated_at / executing_at / finished_at
  */
@@ -19,6 +19,8 @@ export interface AgentConversationDoc {
   created_at: string
   updated_at: string
   last_model?: string
+  /** Superadmin only: the tenant the copilot was scoped to (null = whole platform). */
+  scope_tenant_id?: string | null
 }
 
 export type AgentActionDoc = ProposedAction & {
@@ -31,8 +33,30 @@ const CONVERSATIONS = 'agent_conversations'
 const MESSAGES = 'agent_messages'
 const ACTIONS = 'agent_actions'
 
+type Db = Awaited<ReturnType<typeof getMongoDb>>
+
+/** Lazy index build, once per process (reset on failure so the next call retries). */
+let indexesReady: Promise<unknown> | null = null
+function ensureAgentIndexes(db: Db): Promise<unknown> {
+  if (!indexesReady) {
+    indexesReady = Promise.all([
+      db.collection(CONVERSATIONS).createIndex({ owner_id: 1, tenant_id: 1, updated_at: -1 }, { name: 'agent_conv_owner_tenant_updated' }),
+      db.collection(MESSAGES).createIndex({ conversation_id: 1, created_at: 1 }, { name: 'agent_msg_conv_created' }),
+      db.collection(ACTIONS).createIndex({ id: 1 }, { unique: true, name: 'agent_actions_id' }),
+      db.collection(ACTIONS).createIndex({ conversationId: 1 }, { name: 'agent_actions_conv' }),
+      db.collection(ACTIONS).createIndex({ created_by: 1, tenant_id: 1, status: 1 }, { name: 'agent_actions_owner_status' }),
+      db.collection(ACTIONS).createIndex({ expires_at: 1 }, { name: 'agent_actions_expires' }),
+    ]).catch((e) => {
+      indexesReady = null
+      console.error('[agent] index build failed', e)
+    })
+  }
+  return indexesReady
+}
+
 async function col<T extends object>(name: string) {
   const db = await getMongoDb()
+  await ensureAgentIndexes(db)
   return db.collection<T>(name)
 }
 
@@ -50,7 +74,12 @@ export function scopeFilter(caller: AgentCaller) {
   return { owner_id: caller.userId, tenant_id: caller.tenantId ?? null }
 }
 
-function actionScope(caller: AgentCaller) {
+/**
+ * Superadmin proposals carry the tenant the conversation was scoped to, so a
+ * superadmin's actions are matched by owner only (they are platform-wide anyway).
+ */
+export function actionScope(caller: AgentCaller): Record<string, unknown> {
+  if (caller.role === 'superadmin') return { created_by: caller.userId }
   return { created_by: caller.userId, tenant_id: caller.tenantId ?? null }
 }
 
@@ -58,9 +87,16 @@ const NO_ID = { projection: { _id: 0 } } as const
 
 // ─── Conversations ──────────────────────────────────────────────────────────
 
-export async function createConversation(caller: AgentCaller, title: string): Promise<AgentConversationDoc> {
+export async function createConversation(caller: AgentCaller, title: string, scopeTenantId?: string | null): Promise<AgentConversationDoc> {
   const ts = nowIso()
-  const doc: AgentConversationDoc = { id: newId(), ...scopeFilter(caller), title: title.slice(0, 120), created_at: ts, updated_at: ts }
+  const doc: AgentConversationDoc = {
+    id: newId(),
+    ...scopeFilter(caller),
+    title: title.slice(0, 120),
+    created_at: ts,
+    updated_at: ts,
+    ...(caller.role === 'superadmin' ? { scope_tenant_id: scopeTenantId ?? null } : {}),
+  }
   await (await col<AgentConversationDoc>(CONVERSATIONS)).insertOne({ ...doc })
   return doc
 }
@@ -89,7 +125,7 @@ export async function renameConversation(caller: AgentCaller, id: string, title:
   return r.matchedCount > 0
 }
 
-export async function touchConversation(caller: AgentCaller, id: string, patch: Partial<Pick<AgentConversationDoc, 'last_model'>> = {}) {
+export async function touchConversation(caller: AgentCaller, id: string, patch: Partial<Pick<AgentConversationDoc, 'last_model' | 'scope_tenant_id'>> = {}) {
   await (await col<AgentConversationDoc>(CONVERSATIONS)).updateOne(
     { id, ...scopeFilter(caller) },
     { $set: { ...patch, updated_at: nowIso() } },

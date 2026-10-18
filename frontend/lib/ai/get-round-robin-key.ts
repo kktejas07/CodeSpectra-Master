@@ -1,6 +1,24 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { isMaskedSecret } from '@/lib/server-secrets-cache'
-import { type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
+import { LLM_CONFIG_DEFAULTS, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
+
+/**
+ * The platform's single legacy `api_key` belongs to the provider it was saved
+ * with (`cfg.provider`; the default provider when that is missing). It must
+ * never be handed to another vendor — that would leak the key to them and
+ * 401 every call. Pure.
+ */
+export function legacyKeyFor(cfg: Pick<LLMConfig, 'provider' | 'api_key'> | null | undefined, provider: LLMProviderId): string | null {
+  if (!cfg) return null
+  const raw = typeof cfg.api_key === 'string' ? cfg.api_key.trim() : ''
+  if (!raw || isMaskedSecret(raw)) return null
+  const norm = (p: string) => {
+    const l = p.trim().toLowerCase()
+    return l === 'omnirouter' ? 'opencode' : l
+  }
+  const owner = (typeof cfg.provider === 'string' && cfg.provider.trim()) || LLM_CONFIG_DEFAULTS.provider
+  return norm(owner) === norm(String(provider)) ? raw : null
+}
 
 export async function getRoundRobinKey(provider: LLMProviderId): Promise<string | null> {
   try {
@@ -9,7 +27,7 @@ export async function getRoundRobinKey(provider: LLMProviderId): Promise<string 
     if (!doc?.value) return null
     const cfg = doc.value as unknown as LLMConfig
     if (!cfg.keys || !cfg.keys[provider] || cfg.keys[provider]!.length === 0) {
-      return cfg.api_key || null // Fallback to legacy
+      return legacyKeyFor(cfg, provider) // legacy single key: only for its own provider
     }
     
     const keys = cfg.keys[provider]!

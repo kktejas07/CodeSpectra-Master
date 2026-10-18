@@ -11,7 +11,7 @@ export async function GET() {
   try {
     const rows = await listConversations(gate.caller, 100)
     return NextResponse.json({
-      conversations: rows.map((c) => ({ id: c.id, title: c.title, created_at: c.created_at, updated_at: c.updated_at })),
+      conversations: rows.map((c) => ({ id: c.id, title: c.title, created_at: c.created_at, updated_at: c.updated_at, ...(gate.caller.role === 'superadmin' ? { tenant_id: c.scope_tenant_id ?? null } : {}) })),
     })
   } catch (e) {
     console.error('[agent/conversations] list failed:', e)

@@ -76,6 +76,15 @@ async function loadPending(caller: AgentCaller, id: string, now: Date): Promise<
   }
 }
 
+/**
+ * The caller tools run as: a superadmin acts in the tenant the proposal was
+ * drafted for (stored server-side when the proposal was saved, never from the
+ * model); a tenant admin always acts in their own tenant.
+ */
+export function executionCaller(caller: AgentCaller, doc: Pick<ProposedAction, 'tenant_id'>): AgentCaller {
+  return caller.role === 'superadmin' ? { ...caller, tenantId: doc.tenant_id ?? null } : caller
+}
+
 function resolveTool(deps: ActionDeps, name: string): AgentTool | null {
   const tool = deps.getTool(name)
   if (!tool || tool.kind !== 'write' || !tool.execute) return null
@@ -102,7 +111,7 @@ export async function confirmAction(caller: AgentCaller, id: string, deps: Actio
     return { ok: false, status: 403, error: e instanceof Error ? e.message : 'Not allowed', action: strip(doc) }
   }
 
-  const ctx: ToolContext = { caller, conversationId: doc.conversationId }
+  const ctx: ToolContext = { caller: executionCaller(caller, doc), conversationId: doc.conversationId, actionId: doc.id }
   let args: Record<string, unknown>
   try {
     args = (await tool.parse(doc.args, ctx)) as Record<string, unknown>
@@ -181,7 +190,7 @@ export async function editAction(caller: AgentCaller, id: string, rawArgs: unkno
   if (!rawArgs || typeof rawArgs !== 'object' || Array.isArray(rawArgs)) {
     return { ok: false, status: 422, error: 'Details must be an object.', action: strip(doc) }
   }
-  const ctx: ToolContext = { caller, conversationId: doc.conversationId }
+  const ctx: ToolContext = { caller: executionCaller(caller, doc), conversationId: doc.conversationId }
   let args: Record<string, unknown>
   let preview: { title: string; preview: Record<string, unknown> }
   try {

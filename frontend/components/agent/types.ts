@@ -5,6 +5,8 @@ export interface ConversationSummary {
   title: string
   created_at: string
   updated_at: string
+  /** Superadmin only: the organisation the conversation is scoped to (null = whole platform). */
+  tenant_id?: string | null
 }
 
 export type UiPart =
@@ -45,4 +47,5 @@ export interface AgentStatus {
   model: { provider: string; model: string } | null
   credits: { balance: number; allowance: number; resets_at: string | null } | null
   pricing?: string
+  role?: 'superadmin' | 'tenant_admin'
 }

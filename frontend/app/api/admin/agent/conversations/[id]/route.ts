@@ -40,7 +40,7 @@ export async function GET(_req: Request, { params }: Ctx) {
       created_at: d.created_at,
     }))
   return NextResponse.json({
-    conversation: { id: conv.id, title: conv.title, created_at: conv.created_at, updated_at: conv.updated_at, last_model: conv.last_model ?? null },
+    conversation: { id: conv.id, title: conv.title, created_at: conv.created_at, updated_at: conv.updated_at, last_model: conv.last_model ?? null, tenant_id: gate.caller.role === 'superadmin' ? conv.scope_tenant_id ?? null : gate.caller.tenantId },
     messages,
     actions,
   })

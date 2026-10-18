@@ -21,6 +21,7 @@ import {
   touchConversation,
   type AgentConversationDoc,
 } from '@/lib/agent/store'
+import { scopedCaller } from '@/lib/agent/scope-tenant'
 import { scanPrompt } from '@/lib/ai/prompt-guard'
 import { logAiUsage } from '@/lib/ai/cost-tracking'
 import { spendAiCredits } from '@/lib/user-credits'
@@ -30,15 +31,30 @@ export const MAX_USER_MESSAGE_CHARS = 8000
 /** Extra stream events beyond the contract's AgentEvent. */
 export type AgentStreamEvent =
   | AgentEvent
-  | { type: 'conversation'; id: string; title: string; created: boolean }
+  | { type: 'conversation'; id: string; title: string; created: boolean; tenantId?: string | null }
   | { type: 'model'; provider: string; model: string }
 
-export async function openConversation(caller: AgentCaller, conversationId: string | null | undefined, firstMessage: string): Promise<{ conv: AgentConversationDoc; created: boolean } | null> {
+/**
+ * `scopeTenantId` (superadmin only, already validated): undefined keeps the
+ * conversation's stored scope; null = whole platform; a string = that tenant.
+ */
+export async function openConversation(
+  caller: AgentCaller,
+  conversationId: string | null | undefined,
+  firstMessage: string,
+  scopeTenantId?: string | null,
+): Promise<{ conv: AgentConversationDoc; created: boolean } | null> {
+  const scope = caller.role === 'superadmin' ? scopeTenantId : undefined
   if (conversationId) {
     const conv = await getConversation(caller, conversationId)
-    return conv ? { conv, created: false } : null
+    if (!conv) return null
+    if (scope !== undefined && (conv.scope_tenant_id ?? null) !== scope) {
+      await touchConversation(caller, conv.id, { scope_tenant_id: scope })
+      conv.scope_tenant_id = scope
+    }
+    return { conv, created: false }
   }
-  return { conv: await createConversation(caller, makeTitle(firstMessage)), created: true }
+  return { conv: await createConversation(caller, makeTitle(firstMessage), scope ?? null), created: true }
 }
 
 export async function runChatTurn(opts: {
@@ -49,18 +65,20 @@ export async function runChatTurn(opts: {
   emit: (e: AgentStreamEvent) => void
 }): Promise<TurnResult & { credits: number }> {
   const { caller, conv, message, signal, emit } = opts
+  // Persistence stays keyed to the session caller; tools + knowledge act in the chosen tenant.
+  const actor = scopedCaller(caller, conv.scope_tenant_id)
   const prior = await loadMessages(caller, conv.id, 200)
   const history = buildHistory(prior)
   await appendUserMessage(caller, conv.id, message)
 
-  const tools = toolsFor(caller).filter((t: AgentTool) => canUseTool(t, caller))
+  const tools = toolsFor(actor).filter((t: AgentTool) => canUseTool(t, actor))
   const targets = await resolveProviderTargets(caller.userId)
   const provider = fallbackProvider(targets, { onRateLimited: markTargetRateLimited })
 
   let announced = ''
   const scan = scanPrompt(message)
   const result = await runAgentTurn(
-    { caller, conversationId: conv.id, history, userText: message, signal },
+    { caller: actor, conversationId: conv.id, history, userText: message, signal },
     {
       provider,
       tools,
