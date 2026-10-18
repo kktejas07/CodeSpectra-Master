@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { knowledgeOnSubmission } from '@/lib/rag/hooks'
 import { newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
@@ -250,6 +251,7 @@ export async function POST(
     if (!stored.ok) {
       return NextResponse.json({ error: 'This attempt was already submitted.' }, { status: 409 })
     }
+    knowledgeOnSubmission(examId, userId, (exam as { tenant_id?: unknown }).tenant_id)
     // The draft's answers belong to the attempt just stored; clear them so a
     // retake starts empty (start also resets them for a new attempt_no).
     await db.collection('exam_drafts').updateOne(

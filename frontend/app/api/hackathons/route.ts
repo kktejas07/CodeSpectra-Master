@@ -15,57 +15,14 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
-import {
-  hackathons,
-  newId,
-  nowIso,
-  type HackathonDoc,
-  type HackathonTask,
-  type HackathonRule,
-  type HackathonFeatures,
-  DEFAULT_FEATURES,
-} from '@/lib/db/qr-events'
-import { getGeneralSettings } from '@/lib/platform-general-settings-server'
+import { hackathons, nowIso, type HackathonDoc } from '@/lib/db/qr-events'
 import { eventListTenantFilter } from '@/lib/hackathons/tenant-scope'
-import { checkTaskProblems } from '@/lib/hackathons/admin-checks'
-
-function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
-  if (currentStatus === 'draft') return 'draft'
-  if (currentStatus === 'closed') return 'closed'
-  const now = Date.now()
-  const start = new Date(startsAt).getTime()
-  const end = new Date(endsAt).getTime()
-  if (now >= end) return 'closed'
-  if (now >= start) return 'live'
-  return 'open'
-}
+import { createHackathon, computeHackathonStatus as computeStatus } from '@/lib/services/hackathons'
 
 export const runtime = 'nodejs'
 
-function slugify(s: string): string {
-  return (
-    s
-      .toLowerCase()
-      .normalize('NFKD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 60) || `event-${Math.random().toString(36).slice(2, 8)}`
-  )
-}
-
 function isAdmin(role?: string | null): boolean {
   return ['superadmin', 'tenant_admin'].includes((role || '').toLowerCase())
-}
-
-function mergeFeatures(defaults: HackathonFeatures, overrides?: Partial<HackathonFeatures>): HackathonFeatures {
-  if (!overrides) return defaults
-  return {
-    ...defaults,
-    ...overrides,
-    rubric_criteria: overrides.rubric_criteria || defaults.rubric_criteria,
-    sponsor_tracks: overrides.sponsor_tracks || defaults.sponsor_tracks,
-  }
 }
 
 export async function GET(req: NextRequest) {
@@ -122,77 +79,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
   }
 
-  if (!body.name) return NextResponse.json({ error: 'name required' }, { status: 400 })
-  const numTeams = Math.min(1000, Math.max(1, Number(body.num_teams) || 8))
-  const maxPerTeam = Math.min(20, Math.max(1, Number(body.max_per_team) || 4))
-  const timeoutMin = Math.min(7 * 24 * 60, Math.max(5, Number(body.timeout_minutes) || 60))
-  const startsAt = body.starts_at ? new Date(body.starts_at) : new Date()
-  if (Number.isNaN(startsAt.getTime())) {
-    return NextResponse.json({ error: 'invalid starts_at' }, { status: 400 })
-  }
-  const endsAt = new Date(startsAt.getTime() + timeoutMin * 60_000)
-
-  // Ensure unique slug.
-  const col = await hackathons()
-  let slug = slugify(body.name)
-  let suffix = 0
-  while (await col.findOne({ slug })) {
-    suffix += 1
-    slug = `${slugify(body.name)}-${suffix}`
-  }
-
-  const tasks: HackathonTask[] = (body.tasks || []).map((t: any, i: number) => ({
-    problem_slug: String(t.problem_slug || ''),
-    problem_title: String(t.problem_title || ''),
-    points: Number(t.points) || 100,
-    difficulty: String(t.difficulty || 'medium'),
-    required: t.required !== false,
-    order: i,
-    ...(typeof t.time_limit_minutes === 'number' ? { time_limit_minutes: t.time_limit_minutes } : {}),
-  }))
-
-  const taskError = await checkTaskProblems(user, tasks.map((t) => t.problem_slug))
-  if (taskError) return NextResponse.json({ error: taskError }, { status: 403 })
-
-  const rulesHackathon: HackathonRule[] = (body.rules || []).map((r: any) => ({
-    type: (r.type as HackathonRule['type']) || 'general',
-    title: String(r.title || ''),
-    description: String(r.description || ''),
-  }))
-
-  const doc: HackathonDoc = {
-    id: newId(),
-    name: body.name,
-    slug,
-    description: body.description || '',
-    num_teams: numTeams,
-    max_per_team: maxPerTeam,
-    timeout_minutes: timeoutMin,
-    starts_at: startsAt.toISOString(),
-    ends_at: endsAt.toISOString(),
-    status: computeStatus(startsAt.toISOString(), endsAt.toISOString(), body.status || 'open'),
-    event_type: body.event_type === 'speed_contest' ? 'speed_contest' : 'hackathon',
-    per_problem_time_minutes: Math.min(1440, Math.max(1, Number(body.per_problem_time_minutes) || 30)),
-    solve_limit: body.solve_limit ? Number(body.solve_limit) : undefined,
-    tasks,
-    rules: rulesHackathon,
-    scoring: {
-      auto_grade: body.scoring?.auto_grade !== false,
-      points_per_problem: Number(body.scoring?.points_per_problem) || 100,
-      bonus_time: Number(body.scoring?.bonus_time) || 0,
-      penalty_per_attempt: Number(body.scoring?.penalty_per_attempt) || 0,
-    },
-    results_released: false,
-    banner_url: body.banner_url || '',
-    cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
-    features: mergeFeatures(DEFAULT_FEATURES, body.features),
-    created_by: user.id,
-    tenant_id: user.tenantId || null,
-    created_at: nowIso(),
-    updated_at: nowIso(),
-  }
-  await col.insertOne(doc)
-  const { _id: _omit, ...clean } = doc as HackathonDoc & { _id?: unknown }
-  void _omit
-  return NextResponse.json(clean, { status: 201 })
+  // Validation, problem checks and the new doc: lib/services/hackathons (shared with the admin agent).
+  const r = await createHackathon(user, body)
+  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+  return NextResponse.json(r.data, { status: 201 })
 }

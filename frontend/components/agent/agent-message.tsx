@@ -1,0 +1,180 @@
+'use client'
+
+import { useState } from 'react'
+import Link from 'next/link'
+import { AlertCircle, Check, ChevronDown, ExternalLink, FileText, Loader2, Sparkles, X } from 'lucide-react'
+import type { KnowledgeHit, ProposedAction } from '@/lib/agent/contract'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { cn } from '@/lib/utils'
+import { AgentMarkdown, safeHref } from './agent-markdown'
+import { ProposalCard } from './proposal-card'
+import { citationsOf, stepLabel } from './transcript'
+import type { ActionMap, UiItem, UiPart } from './types'
+
+type Step = Extract<UiPart, { type: 'step' }>
+
+const SOURCE_LABEL: Record<string, string> = {
+  problem: 'Problem', question: 'Question', course: 'Course', doc: 'Help', test: 'Test',
+  test_result_summary: 'Results', hackathon: 'Hackathon', codeathon: 'Codeathon', upload: 'Upload',
+  resume: 'Résumé', attempt_summary: 'Attempt',
+}
+
+export function UserBubble({ text }: { text: string }) {
+  return (
+    <div className="flex justify-end">
+      <div className="max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-primary px-4 py-2.5 text-[15px] leading-relaxed text-primary-foreground">
+        {text}
+      </div>
+    </div>
+  )
+}
+
+function StepIcon({ status }: { status: Step['status'] }) {
+  if (status === 'running') return <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden />
+  if (status === 'ok') return <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden />
+  return <X className="h-3.5 w-3.5 text-destructive" aria-hidden />
+}
+
+function ToolSteps({ steps }: { steps: Step[] }) {
+  const running = steps.some((s) => s.status === 'running')
+  const [open, setOpen] = useState(false)
+  const last = steps[steps.length - 1]
+  const heading = running
+    ? stepLabel(last.tool, last.args, true)
+    : steps.length === 1
+      ? stepLabel(last.tool, last.args, false)
+      : `${steps.length} steps`
+  return (
+    <div className="rounded-xl border border-border/70 bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+      >
+        {running ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" aria-hidden /> : <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />}
+        <span className="min-w-0 flex-1 truncate">{heading}</span>
+        <ChevronDown className={cn('h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none', open && 'rotate-180')} aria-hidden />
+      </button>
+      {open && (
+        <ol className="space-y-1.5 border-t border-border/70 px-3 py-2">
+          {steps.map((s) => (
+            <li key={s.id} className="flex items-start gap-2 text-sm">
+              <span className="mt-0.5"><StepIcon status={s.status} /></span>
+              <span className="min-w-0">
+                <span className="text-foreground">{stepLabel(s.tool, s.args, s.status === 'running')}</span>
+                {s.summary && s.status !== 'running' && <span className="text-muted-foreground"> — {s.summary}</span>}
+              </span>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  )
+}
+
+function CitationChips({ hits }: { hits: KnowledgeHit[] }) {
+  if (!hits.length) return null
+  return (
+    <div className="flex flex-wrap gap-1.5" aria-label="Sources">
+      {hits.slice(0, 10).map((h, i) => {
+        const href = h.url ? safeHref(h.url) : ''
+        return (
+          <Popover key={`${h.source_type}:${h.source_id}`}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+              >
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-semibold tabular-nums text-primary">{i + 1}</span>
+                <span className="truncate">{h.title || 'Source'}</span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 space-y-2" align="start">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <FileText className="h-3.5 w-3.5" aria-hidden />
+                {SOURCE_LABEL[h.source_type] ?? h.source_type}
+              </div>
+              <p className="text-sm font-semibold text-foreground">{h.title || 'Source'}</p>
+              {h.snippet && <p className="line-clamp-6 text-sm text-muted-foreground">{h.snippet}</p>}
+              {href && (
+                <Link
+                  href={href}
+                  target={href.startsWith('/') ? undefined : '_blank'}
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                >
+                  Open source <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                </Link>
+              )}
+            </PopoverContent>
+          </Popover>
+        )
+      })}
+    </div>
+  )
+}
+
+export function AssistantMessage({
+  item,
+  actions,
+  onConfirm,
+  onCancel,
+  onEdit,
+}: {
+  item: Extract<UiItem, { kind: 'assistant' }>
+  actions: ActionMap
+  onConfirm: (id: string) => Promise<string | null>
+  onCancel: (id: string) => Promise<string | null>
+  onEdit: (id: string, args: Record<string, unknown>) => Promise<string | null>
+}) {
+  // Group consecutive steps; proposals render right after their step group.
+  const blocks: ({ kind: 'text'; text: string } | { kind: 'steps'; steps: Step[] })[] = []
+  for (const p of item.parts) {
+    if (p.type === 'text') {
+      if (p.text.trim()) blocks.push({ kind: 'text', text: p.text })
+    } else {
+      const last = blocks[blocks.length - 1]
+      if (last?.kind === 'steps') last.steps.push(p)
+      else blocks.push({ kind: 'steps', steps: [p] })
+    }
+  }
+  const citations = citationsOf(item.parts)
+  const empty = !blocks.length && !item.error
+
+  return (
+    <div className="flex gap-3">
+      <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary" aria-hidden>
+        <Sparkles className="h-4 w-4" />
+      </span>
+      <div className="min-w-0 flex-1 space-y-3">
+        {empty && item.streaming && (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Thinking…
+          </p>
+        )}
+        {blocks.map((b, i) =>
+          b.kind === 'text' ? (
+            <AgentMarkdown key={i} text={b.text} />
+          ) : (
+            <div key={i} className="space-y-3">
+              <ToolSteps steps={b.steps} />
+              {b.steps
+                .map((s) => (s.actionId ? actions[s.actionId] : undefined))
+                .filter((a): a is ProposedAction => !!a)
+                .map((a) => (
+                  <ProposalCard key={a.id} action={a} onConfirm={onConfirm} onCancel={onCancel} onEdit={onEdit} />
+                ))}
+            </div>
+          ),
+        )}
+        {citations.length > 0 && <CitationChips hits={citations} />}
+        {item.error && (
+          <p className="flex items-start gap-2 rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {item.error}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}

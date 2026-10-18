@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { exams } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { getMongoDb } from '@/lib/mongodb'
+import { knowledgeOnTestChange } from '@/lib/rag/hooks'
 import { sanitizeExamQuestionList } from '@/lib/grading'
 import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, normalizeIdentityFields, normalizeSectionFields, attemptSummary, examAttemptPolicy, checkExamEntry, attemptTimeState, getExamDraft, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
 
@@ -133,6 +134,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
       data.questionList = sanitizeExamQuestionList(data.questionList)
     }
     await col.updateOne({ id }, { $set: { ...data, updatedAt: new Date().toISOString() } })
+    knowledgeOnTestChange(id, (exam as { tenant_id?: unknown }).tenant_id)
     const updated = await col.findOne({ id })
     return NextResponse.json(updated)
   } catch (error) {

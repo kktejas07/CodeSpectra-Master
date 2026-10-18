@@ -11,10 +11,10 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { newId, nowIso } from '@/lib/db/ids'
+import { recordHiringOutcomes } from '@/lib/services/outcomes'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import {
-  ensureOutcomeIndexes, OUTCOME_STATUSES, OUTCOMES_COLLECTION, parseOutcomeUpdate, type OutcomeStatus,
+  OUTCOME_STATUSES, OUTCOMES_COLLECTION, parseOutcomeUpdate, type OutcomeStatus,
 } from '@/lib/hiring-outcomes'
 
 export const runtime = 'nodejs'
@@ -62,59 +62,11 @@ export async function POST(request: Request) {
 
   const parsed = parseOutcomeUpdate(await request.json().catch(() => null))
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
-  const { exam_id, user_ids, status, rating } = parsed.value
-
   try {
-    const db = await getMongoDb()
-    const owned = await requireTenantEntity(db, 'exams', exam_id, gate.user)
-    if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
-    await ensureOutcomeIndexes(db)
-
-    // Only candidates who took this test.
-    const subs = await db.collection('exam_submissions')
-      .find({ exam_id, user_id: { $in: user_ids } }, { projection: { _id: 0, user_id: 1, email: 1 } }).toArray()
-    const emailByUser = new Map(subs.map((s) => [String(s.user_id), String(s.email || '')]))
-    const existing = new Map((await db.collection(OUTCOMES_COLLECTION)
-      .find({ exam_id, user_id: { $in: user_ids } }, { projection: { _id: 0 } }).toArray()).map((d) => [String(d.user_id), d]))
-
-    const at = nowIso()
-    const by = { by: gate.user.id, by_email: gate.user.email || '' }
-    const updated: string[] = []
-    const skipped: Array<{ user_id: string; reason: string }> = []
-
-    for (const uid of user_ids) {
-      if (!emailByUser.has(uid)) { skipped.push({ user_id: uid, reason: 'No submission for this test' }); continue }
-      const prev = existing.get(uid) as Record<string, unknown> | undefined
-      const prevStatus = (prev?.status as OutcomeStatus | undefined) ?? null
-      const nextStatus = status ?? prevStatus
-      if (rating && nextStatus !== 'hired') { skipped.push({ user_id: uid, reason: 'Ratings are for hired candidates' }); continue }
-      if (!status && !rating) continue
-
-      const set: Record<string, unknown> = { updated_at: at, email: emailByUser.get(uid) }
-      const history: Record<string, unknown>[] = []
-      if (status && status !== prevStatus) {
-        set.status = status
-        history.push({ at, ...by, kind: 'status', from: prevStatus, to: status })
-      }
-      if (rating) {
-        const key = `d${rating.period}`
-        const prevRating = (prev?.ratings as Record<string, { value?: number }> | undefined)?.[key]
-        set[`ratings.${key}`] = { value: rating.value, ...(rating.notes ? { notes: rating.notes } : {}), ...by, at }
-        history.push({ at, ...by, kind: 'rating', period: rating.period, from: prevRating?.value ?? null, to: rating.value, ...(rating.notes ? { notes: rating.notes } : {}) })
-      }
-      if (history.length === 0) continue
-      await db.collection(OUTCOMES_COLLECTION).updateOne(
-        { exam_id, user_id: uid },
-        {
-          $set: set,
-          $setOnInsert: { id: newId(), exam_id, user_id: uid, tenant_id: owned.doc.tenant_id ?? null, created_at: at },
-          $push: { history: { $each: history, $slice: -200 } },
-        } as never,
-        { upsert: true },
-      )
-      updated.push(uid)
-    }
-    return NextResponse.json({ ok: true, updated, skipped })
+    // Tenant check + history-keeping update: lib/services/outcomes (shared with the admin agent).
+    const r = await recordHiringOutcomes(gate.user, parsed.value)
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+    return NextResponse.json(r.data)
   } catch (e) {
     console.error('[hiring-outcomes] POST:', e)
     return NextResponse.json({ error: 'Failed to save outcomes' }, { status: 500 })

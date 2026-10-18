@@ -143,6 +143,11 @@ export class FakeCollection {
     applyUpdate(doc, update, false)
     return clone(doc)
   }
+  async deleteMany(filter: Doc) {
+    const before = this.docs.length
+    this.docs = this.docs.filter((d) => !matches(d, filter))
+    return { deletedCount: before - this.docs.length }
+  }
   async deleteOne(filter: Doc) {
     const i = this.docs.findIndex((d) => matches(d, filter))
     if (i >= 0) this.docs.splice(i, 1)

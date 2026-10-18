@@ -138,6 +138,10 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   // Hiring analytics: /api/admin/predictive-validity scopes tenant admins to their own tests.
   '/dashboard/admin/predictive-validity',
   '/dashboard/admin/sme-review',
+  // Admin AI copilot: every /api/admin/agent route scopes tenant admins to their organisation.
+  '/dashboard/admin/agent',
+  // Knowledge sources for the copilot: /api/admin/knowledge scopes tenant admins to their organisation.
+  '/dashboard/admin/knowledge',
 ]
 
 /**
@@ -358,6 +362,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/hiring-manager-report': 'Hiring Report',
   '/dashboard/admin/predictive-validity': 'Predictive Validity',
   '/dashboard/admin/sme-review': 'SME Review',
+  '/dashboard/admin/agent': 'AI copilot',
+  '/dashboard/admin/knowledge': 'Knowledge',
   '/companies': 'Companies',
 }
 

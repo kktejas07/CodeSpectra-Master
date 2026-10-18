@@ -1,10 +1,8 @@
-import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { getMongoDb } from '@/lib/mongodb'
 import { requireAdmin } from '@/lib/api-auth'
 import { listAllUsers, users, tenants } from '@/lib/db/admin'
-import { checkInviteTargets } from '@/lib/exam-access'
+import { createCandidateInvite } from '@/lib/services/invites'
 import { passwordProblem, tenantScope } from '@/lib/auth-account'
 import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link'
 import { auditAdmin } from '@/lib/admin-audit'
@@ -141,137 +139,21 @@ export async function POST(request: Request) {
   if (isProvision) return provisionAccount(gate.user, body, email, full_name, existing)
 
   // ── Assessment invite ──────────────────────────────────────────────────
-  const db = await getMongoDb()
-  const targetUrl = (typeof body.target_url === 'string' ? body.target_url : '/assessment').trim() || '/assessment'
-  const targets = await checkInviteTargets(db, gate.user, { target_url: targetUrl, assigned_assessments: body.assigned_assessments })
-  if (!targets.ok) return NextResponse.json({ error: targets.error }, { status: targets.status })
-
-  const allowedLanguages = Array.isArray(body.allowed_languages)
-    ? body.allowed_languages.filter((l): l is string => typeof l === 'string').slice(0, 50)
-    : []
-  const assignedAssessments: import('@/lib/db/admin').AssessmentStep[] =
-    Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0
-      ? body.assigned_assessments
-      : [
-          {
-            id: crypto.randomUUID(),
-            title: 'Assigned Assessment',
-            target_url: targetUrl,
-            type: (targetUrl.includes('cad')
-              ? 'cad'
-              : targetUrl.includes('identity')
-              ? 'identity'
-              : targetUrl.includes('problems')
-              ? 'coding'
-              : 'general') as any,
-            allowed_languages: allowedLanguages,
-            status: 'pending',
-          },
-        ]
-
+  // Logic shared with the admin agent: lib/services/invites createCandidateInvite.
   try {
-    const existingId = existing ? String((existing as { id?: unknown }).id || (existing as { _id: unknown })._id) : null
-    const isExistingUser = !!existing
-
-    const { candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
-
-    // Expire old pending invites for same email + exam
-    const invitesCol = await candidateInvites()
-    await invitesCol.updateMany(
-      { email, target_url: targetUrl, status: 'pending' },
-      { $set: { status: 'expired', updated_at: nowIso() } }
-    )
-
-    // Generate single-use secure candidate invite link
-    const inviteId = newId()
-    const inviteToken = crypto.randomUUID()
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const inviteUrl = `${appUrl}/assessment/invite/${inviteToken}`
-
-    await invitesCol.insertOne({
-      id: inviteId,
-      token: inviteToken,
-      user_id: existingId,
+    const r = await createCandidateInvite(gate.user, {
       email,
       full_name,
-      target_url: targetUrl,
-      ...(targets.examId ? { exam_id: targets.examId } : {}),
-      assigned_assessments: assignedAssessments,
-      allowed_languages: allowedLanguages,
-      invited_by: gate.user.id,
-      ...(gate.user.tenantId ? { tenant_id: gate.user.tenantId } : {}),
-      status: 'pending',
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      created_at: nowIso(),
-      delivery_status: 'sending',
-    } as never)
-
-    // Send assessment invite email via Postal
-    let welcomeEmailSent = false
-    let delivery = 'candidate_invite_link'
-    try {
-      const { sendEmail } = await import('@/lib/send-email')
-      const { emailTemplates } = await import('@/lib/email-templates')
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
-      const template = emailTemplates.assessmentInvite({
-        candidateName: full_name,
-        examTitle: (typeof body.exam_title === 'string' && body.exam_title.slice(0, 200)) || 'Technical Assessment',
-        inviteUrl,
-        expiresIn: expiresStr,
-      })
-      const cc = typeof body.cc_email === 'string' && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.cc_email.trim()) ? body.cc_email.trim() : undefined
-      const result = await sendEmail(email, template, cc)
-      welcomeEmailSent = result.success
-      delivery = result.provider
-
-      // Delivery lifecycle: sent (provider accepted) → delivered/opened via
-      // Postal webhook; failed when every provider throws. Never left on the
-      // initial 'sending' once we know the outcome.
-      await invitesCol.updateOne(
-        { id: inviteId },
-        {
-          $set: {
-            ...(result.postalMessageId ? { postal_message_id: result.postalMessageId } : {}),
-            delivery_status: result.success ? 'sent' : 'failed',
-            delivery_updated_at: new Date().toISOString(),
-            ...(result.success ? {} : { delivery_error: 'All email providers failed' }),
-          },
-        }
-      )
-    } catch {
-      // All providers failed — link still returned for manual copy
-      await invitesCol.updateOne(
-        { id: inviteId },
-        {
-          $set: {
-            delivery_status: 'failed',
-            delivery_updated_at: new Date().toISOString(),
-            delivery_error: 'All email providers failed',
-          },
-        }
-      ).catch(() => {})
-    }
-
-    await auditAdmin(gate.user, 'admin.candidate.invite', 'candidate_invite', `invite/${inviteId}`, `email=${email} target=${targetUrl} existing=${isExistingUser}`)
-
-    const existingCreated = (existing as { createdAt?: unknown } | null)?.createdAt
-    return NextResponse.json({
-      user: {
-        id: existingId,
-        email,
-        full_name: existing ? ((existing as { fullName?: string; name?: string }).fullName || (existing as { name?: string }).name || full_name) : full_name,
-        role: existing ? normalizeUserRole((existing as { role?: string }).role) : 'user',
-        tenant_id: existing ? ((existing as { tenantId?: string | null }).tenantId ?? null) : null,
-        created_at: existingCreated instanceof Date ? existingCreated.toISOString() : (existingCreated as string | undefined) ?? null,
-      },
-      invite_url: inviteUrl,
-      invite_token: inviteToken,
-      target_url: targetUrl,
-      welcomeEmailSent,
-      delivery,
-      is_existing_user: isExistingUser,
-    })
+      target_url: body.target_url,
+      exam_title: body.exam_title,
+      cc_email: body.cc_email,
+      assigned_assessments: body.assigned_assessments,
+      allowed_languages: body.allowed_languages,
+    }, existing as Record<string, unknown> | null)
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+    const { invite_id: _inviteId, ...payload } = r.data
+    void _inviteId
+    return NextResponse.json(payload)
   } catch (e: unknown) {
     const msg = 'Failed to create invite'
     console.error('[CodeSpectra] admin/users POST:', e)

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
+import { knowledgeOnEventChange } from '@/lib/rag/hooks'
 import { codeathons, codeathonRegistrations, nowIso } from '@/lib/db/content'
 import { codeathonProblemsVisible } from '@/lib/codeathon-run'
 import type { IdRouteContext } from '@/lib/app-route-context'
@@ -62,6 +63,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
       }
     }
     await col.updateOne({ id }, { $set: { ...data, updated_at: nowIso() } })
+    knowledgeOnEventChange('codeathon', id)
     const updated = await col.findOne({ id })
     return NextResponse.json(updated)
   } catch (error) {
@@ -88,6 +90,7 @@ export async function DELETE(_request: Request, { params }: IdRouteContext) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const res = await col.deleteOne({ id })
+    knowledgeOnEventChange('codeathon', id)
     if (res.deletedCount === 0) {
       return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     }

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { getGeneralSettings } from '@/lib/platform-general-settings-server'
+import { knowledgeOnEventChange } from '@/lib/rag/hooks'
+import { createCodeathon } from '@/lib/services/codeathons'
 import { isTenantStaff, publicCodeathonView } from '@/lib/exam-access'
 import { eventListTenantFilter } from '@/lib/hackathons/tenant-scope'
 
@@ -31,34 +32,10 @@ export async function POST(request: Request) {
   }
   try {
     const body = await request.json()
-    const db = await getMongoDb()
-    const now = new Date().toISOString()
-    const doc = {
-      id: crypto.randomUUID(),
-      title: body.title,
-      description: body.description || '',
-      difficulty: body.difficulty || 'Medium',
-      topics: body.topics || [],
-      rules: body.rules || '',
-      maxParticipants: body.maxParticipants || 0,
-      startDate: body.startDate || '',
-      endDate: body.endDate || '',
-      status: body.status || 'upcoming',
-      participants: 0,
-      prizePool: body.prizePool || '',
-      cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
-      problems: body.problems || [],
-      // New fields for team/individual mode
-      event_type: body.event_type || 'individual', // 'individual' | 'team'
-      team_size_min: body.team_size_min || 1,
-      team_size_max: body.team_size_max || 1,
-      problem_visibility: body.problem_visibility || 'during_contest', // 'during_contest' | 'after_start' | 'immediate'
-      tenant_id: gate.user.tenantId || null,
-      createdAt: now,
-      updatedAt: now,
-    }
-    await db.collection('codeathons').insertOne(doc)
-    return NextResponse.json(doc, { status: 201 })
+    // Shared with the admin agent: lib/services/codeathons createCodeathon.
+    const r = await createCodeathon(gate.user, body)
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+    return NextResponse.json(r.data, { status: 201 })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }
 
@@ -74,6 +51,7 @@ export async function DELETE(request: Request) {
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     if (!isTenantStaff(gate.user, existing)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     await db.collection('codeathons').deleteOne({ id })
+    knowledgeOnEventChange('codeathon', id)
     return NextResponse.json({ ok: true })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }

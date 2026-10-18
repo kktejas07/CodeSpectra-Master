@@ -124,6 +124,7 @@ describe('specific routes', () => {
       '/dashboard/admin/hackathons/edit/abc',
       '/dashboard/admin/codeathons',
       '/dashboard/admin/team',
+      '/dashboard/admin/agent',
     ]) {
       expect(as('tenant_admin')(p).ok).toBe(true)
       expect(as('user')(p)).toMatchObject({ ok: false, reason: 'forbidden' })

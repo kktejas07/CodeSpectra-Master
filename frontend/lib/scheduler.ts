@@ -241,6 +241,13 @@ export function startSchedulerLoop(): void {
       await recordCronRun('scheduler-loop', false, Date.now() - started, e instanceof Error ? e.message : String(e))
       console.error('[scheduler] tick error:', e)
     }
+    // Knowledge index queue + nightly sweep (lib/rag/ingest.ts). Never throws.
+    try {
+      const { runKnowledgeTick } = await import('./rag/ingest')
+      await runKnowledgeTick()
+    } catch (e) {
+      console.error('[scheduler] knowledge tick error:', e)
+    }
   }
 
   setTimeout(() => {

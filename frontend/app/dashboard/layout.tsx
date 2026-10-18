@@ -54,6 +54,8 @@ import {
   ChevronRight,
   ChevronDown,
   Bot,
+  BotMessageSquare,
+  LibraryBig,
   Sparkles,
   Sparkles as SparklesIcon,
   Camera as CameraIcon,
@@ -451,6 +453,8 @@ export default function DashboardLayout({
       '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': BrainCircuit,
+      '/dashboard/admin/agent': BotMessageSquare,
+      '/dashboard/admin/knowledge': LibraryBig,
       '/dashboard/admin/ai-inventory': Sparkles,
       [p.settings]: Settings,
       [p.security]: ShieldCheck,
@@ -521,8 +525,15 @@ export default function DashboardLayout({
     const PV = '/dashboard/admin/predictive-validity'
     const resumesAt = adminOrdered.indexOf('/dashboard/admin/resumes')
     if (isSuperAdmin(role) && resumesAt >= 0) adminOrdered.splice(resumesAt + 1, 0, PV)
+    // The AI copilot is shared too; superadmin sees it in "AI Tools" (after RAG, which starts the section).
+    const COPILOT = '/dashboard/admin/agent'
+    const ragAt = adminOrdered.indexOf('/dashboard/admin/rag')
+    if (isSuperAdmin(role) && ragAt >= 0) adminOrdered.splice(ragAt + 1, 0, COPILOT)
+    // Knowledge sources sit next to the copilot for superadmin (tenant admins get it in their own list).
+    const KNOWLEDGE = '/dashboard/admin/knowledge'
+    if (isSuperAdmin(role) && ragAt >= 0) adminOrdered.splice(ragAt + 2, 0, KNOWLEDGE)
     const tenantOrdered = isSuperAdmin(role)
-      ? TENANT_ADMIN_ROUTES.filter((r) => !EVENT_ADMIN_ROUTES.includes(r) && r !== PV)
+      ? TENANT_ADMIN_ROUTES.filter((r) => !EVENT_ADMIN_ROUTES.includes(r) && r !== PV && r !== COPILOT && r !== KNOWLEDGE)
       : TENANT_ADMIN_ROUTES
     const allRouteGroups = [ALL_USER_ROUTES, tenantOrdered, JUDGE_ROUTES, adminOrdered] as const
     const seen = new Set<string>()
