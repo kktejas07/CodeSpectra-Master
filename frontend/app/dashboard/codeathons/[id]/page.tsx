@@ -21,6 +21,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
 
 interface Problem {
   id: string
@@ -378,15 +379,30 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
             </span>
           }
           actions={
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyEventLink}
-              className="gap-1.5 text-xs font-semibold"
-            >
-              {copied ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Share2 className="h-3.5 w-3.5" />}
-              {copied ? 'Link copied' : 'Share event'}
-            </Button>
+            <>
+              {codeathon.status !== 'completed' && codeathon.status !== 'archived' && !(codeathon.endDate && new Date(codeathon.endDate).getTime() < Date.now()) && (
+                <AddEventToCalendar
+                  kind="codeathon"
+                  id={codeathon.id}
+                  title={codeathon.title}
+                  start={codeathon.startDate}
+                  end={codeathon.endDate}
+                  description={codeathon.description}
+                  path={`/dashboard/codeathons/${codeathon.id}`}
+                  status={codeathon.status}
+                  className="gap-1.5 text-xs font-semibold"
+                />
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={copyEventLink}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Share2 className="h-3.5 w-3.5" />}
+                {copied ? 'Link copied' : 'Share event'}
+              </Button>
+            </>
           }
         />
       </div>

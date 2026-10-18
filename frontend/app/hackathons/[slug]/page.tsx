@@ -29,6 +29,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -271,6 +272,19 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                   <Users className="h-4 w-4 text-primary" />
                   <span className="tabular-nums">{teams.length} / {hackathon.num_teams} teams</span>
                 </div>
+                {!isClosed && (
+                  <AddEventToCalendar
+                    kind="hackathon"
+                    id={hackathon.id}
+                    title={hackathon.name}
+                    start={hackathon.starts_at}
+                    end={hackathon.ends_at}
+                    description={hackathon.description}
+                    path={`/hackathons/${hackathon.slug}`}
+                    status={hackathon.status}
+                    className="h-auto rounded-lg py-2"
+                  />
+                )}
               </div>
             </Panel>
 

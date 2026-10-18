@@ -11,6 +11,8 @@ export type CalendarEvent = {
   /** ISO end — defaults to start + 1 hour */
   end?: string | Date
   url?: string
+  /** Stable UID so re-importing updates instead of duplicating. */
+  uid?: string
 }
 
 function pad(n: number) {
@@ -31,8 +33,45 @@ export function toIcsUtc(d: Date): string {
   )
 }
 
-function escapeText(s: string): string {
-  return s.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
+/** RFC 5545 TEXT escaping: backslash, comma, semicolon, newlines (CRLF, CR or LF). */
+export function escapeText(s: string): string {
+  return s
+    .replace(/\\/g, '\\\\')
+    .replace(/\r\n|\r|\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;')
+}
+
+/**
+ * RFC 5545 §3.1 line folding: content lines are at most 75 octets; longer
+ * lines continue on the next line after CRLF + one space. Never splits a
+ * multi-byte UTF-8 character.
+ */
+export function foldLine(line: string): string {
+  const enc = new TextEncoder()
+  if (enc.encode(line).length <= 75) return line
+  const parts: string[] = []
+  let cur = ''
+  let curBytes = 0
+  let limit = 75
+  for (const ch of line) {
+    const b = enc.encode(ch).length
+    if (curBytes + b > limit) {
+      parts.push(cur)
+      cur = ''
+      curBytes = 0
+      limit = 74 // continuation lines carry a leading space
+    }
+    cur += ch
+    curBytes += b
+  }
+  if (cur) parts.push(cur)
+  return parts.join('\r\n ')
+}
+
+/** URI values are not TEXT-escaped, but control characters are never allowed. */
+function cleanUri(u: string): string {
+  return u.replace(/[\u0000-\u001f\u007f]/g, '')
 }
 
 export function buildIcs(events: CalendarEvent[], calendarName = 'CodeSpectra'): string {
@@ -40,7 +79,7 @@ export function buildIcs(events: CalendarEvent[], calendarName = 'CodeSpectra'):
   const blocks = events.map((ev, i) => {
     const start = new Date(ev.start)
     const end = ev.end ? new Date(ev.end) : new Date(start.getTime() + 60 * 60 * 1000)
-    const uid = `cs-${Date.now()}-${i}@codespectra.ai`
+    const uid = ev.uid ? ev.uid.replace(/[^A-Za-z0-9@._:-]/g, '-') : `cs-${Date.now()}-${i}@codespectra.ai`
     const lines = [
       'BEGIN:VEVENT',
       `UID:${uid}`,
@@ -51,9 +90,9 @@ export function buildIcs(events: CalendarEvent[], calendarName = 'CodeSpectra'):
     ]
     if (ev.description) lines.push(`DESCRIPTION:${escapeText(ev.description)}`)
     if (ev.location) lines.push(`LOCATION:${escapeText(ev.location)}`)
-    if (ev.url) lines.push(`URL:${ev.url}`)
+    if (ev.url) lines.push(`URL:${cleanUri(ev.url)}`)
     lines.push('END:VEVENT')
-    return lines.join('\r\n')
+    return lines.map(foldLine).join('\r\n')
   })
 
   return [
@@ -62,10 +101,10 @@ export function buildIcs(events: CalendarEvent[], calendarName = 'CodeSpectra'):
     'PRODID:-//CodeSpectra//Courses//EN',
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
-    `X-WR-CALNAME:${escapeText(calendarName)}`,
+    foldLine(`X-WR-CALNAME:${escapeText(calendarName)}`),
     ...blocks,
     'END:VCALENDAR',
-  ].join('\r\n')
+  ].join('\r\n') + '\r\n'
 }
 
 /** Trigger a browser download of an .ics file. */
@@ -98,7 +137,7 @@ export function googleCalendarUrl(ev: CalendarEvent): string {
     action: 'TEMPLATE',
     text: ev.title,
     dates: `${fmt(start)}/${fmt(end)}`,
-    details: ev.description || '',
+    details: [ev.description, ev.url].filter(Boolean).join('\n\n'),
     location: ev.location || '',
   })
   return `https://calendar.google.com/calendar/render?${params.toString()}`

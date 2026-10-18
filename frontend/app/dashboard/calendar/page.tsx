@@ -24,10 +24,30 @@ type CalEvent = {
   end?: string | null
   url?: string | null
   source?: string
+  /** Derived from a hackathon/codeathon registration — not deletable here. */
+  readOnly?: boolean
+}
+
+type Filter = 'all' | 'personal' | 'hackathon' | 'codeathon'
+const FILTERS: Array<{ id: Filter; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'personal', label: 'My entries' },
+  { id: 'hackathon', label: 'Hackathons' },
+  { id: 'codeathon', label: 'Codeathons' },
+]
+
+function matchesFilter(ev: CalEvent, f: Filter): boolean {
+  if (f === 'all') return true
+  if (f === 'personal') return ev.source !== 'hackathon' && ev.source !== 'codeathon'
+  return ev.source === f
 }
 
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1)
+}
+
+function localKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function daysInMonth(d: Date) {
@@ -43,6 +63,7 @@ export default function CalendarPage() {
   const [title, setTitle] = useState('')
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
+  const [filter, setFilter] = useState<Filter>('all')
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
@@ -91,16 +112,21 @@ export default function CalendarPage() {
     void load()
   }, [load])
 
+  const visible = useMemo(() => items.filter((ev) => matchesFilter(ev, filter)), [items, filter])
+
+  // Keyed by local date, matching the grid cells below.
   const byDay = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
-    for (const ev of items) {
-      const key = new Date(ev.start).toISOString().slice(0, 10)
+    for (const ev of visible) {
+      const d = new Date(ev.start)
+      if (!Number.isFinite(d.getTime())) continue
+      const key = localKey(d)
       const list = map.get(key) || []
       list.push(ev)
       map.set(key, list)
     }
     return map
-  }, [items])
+  }, [visible])
 
   const cells = useMemo(() => {
     const first = startOfMonth(cursor)
@@ -110,7 +136,7 @@ export default function CalendarPage() {
     for (let i = 0; i < pad; i++) out.push({ date: null, key: `pad-${i}` })
     for (let d = 1; d <= total; d++) {
       const date = new Date(cursor.getFullYear(), cursor.getMonth(), d)
-      out.push({ date, key: date.toISOString().slice(0, 10) })
+      out.push({ date, key: localKey(date) })
     }
     return out
   }, [cursor])
@@ -161,8 +187,22 @@ export default function CalendarPage() {
           className="mb-0"
           icon={<CalendarDays aria-hidden />}
           title="Calendar"
-          description="Keep your study sessions and deadlines in one place. Courses also offer an .ics / Google Calendar export if you want them elsewhere."
+          description="Your study sessions, course deadlines, and the dates of hackathons and codeathons you've joined. Event pages also offer an .ics / Google Calendar export."
         />
+      </div>
+
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter calendar">
+        {FILTERS.map((f) => (
+          <Button
+            key={f.id}
+            size="sm"
+            variant={filter === f.id ? 'default' : 'outline'}
+            aria-pressed={filter === f.id}
+            onClick={() => setFilter(f.id)}
+          >
+            {f.label}
+          </Button>
+        ))}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
@@ -213,7 +253,13 @@ export default function CalendarPage() {
                         <p className="text-[11px] font-medium tabular-nums text-foreground px-0.5">{c.date.getDate()}</p>
                         <div className="mt-0.5 space-y-0.5">
                           {dayEvents.slice(0, 2).map((ev) => (
-                            <p key={ev.id} className="truncate rounded bg-primary/15 px-1 text-[10px] text-primary">
+                            <p
+                              key={ev.id}
+                              title={ev.title}
+                              className={`truncate rounded px-1 text-[10px] ${
+                                ev.readOnly ? 'bg-cs-accent/15 text-cs-accent-text' : 'bg-primary/15 text-primary'
+                              }`}
+                            >
                               {ev.title}
                             </p>
                           ))}
@@ -260,13 +306,22 @@ export default function CalendarPage() {
                 actionLabel="Try again"
                 onAction={() => void load()}
               />
-            ) : items.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No events yet. Add one here, or use “Add to calendar” on a course.
-              </p>
+            ) : visible.length === 0 ? (
+              <EmptyState
+                compact
+                illustration="calendar"
+                title={filter === 'all' ? 'Nothing scheduled yet' : 'Nothing here for this filter'}
+                description={
+                  filter === 'all'
+                    ? 'Add an entry here, join a hackathon or codeathon, or use “Add to calendar” on a course.'
+                    : 'Try another filter, or join an event to see its dates here.'
+                }
+                actionLabel={filter === 'all' ? 'Browse events' : undefined}
+                actionHref={filter === 'all' ? '/dashboard/events' : undefined}
+              />
             ) : (
               <ul className="max-h-80 space-y-2 overflow-y-auto">
-                {items
+                {visible
                   .slice()
                   .sort((a, b) => +new Date(a.start) - +new Date(b.start))
                   .map((ev) => (
@@ -280,14 +335,20 @@ export default function CalendarPage() {
                           </Link>
                         )}
                       </div>
-                      <button
-                        type="button"
-                        className="rounded-md p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"
-                        onClick={() => void remove(ev.id)}
-                        aria-label={`Delete ${ev.title}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {ev.readOnly ? (
+                        <span className="self-start rounded-full border border-border px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
+                          {ev.source}
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="rounded-md p-1 text-muted-foreground transition-colors hover:text-destructive focus-visible:outline-2 focus-visible:outline-primary"
+                          onClick={() => void remove(ev.id)}
+                          aria-label={`Delete ${ev.title}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </li>
                   ))}
               </ul>
