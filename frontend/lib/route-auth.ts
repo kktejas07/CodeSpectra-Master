@@ -98,18 +98,23 @@ async function firebaseCredentialStillValid(uid: string, iat: unknown): Promise<
   }
 }
 
-export async function getAPIUser(): Promise<APIUser | null> {
-  bootSchedulerOnce()
+/**
+ * Resolve the caller from raw credentials (the session cookie value and/or an
+ * `Authorization` header). Shared by getAPIUser and the proxy page gate
+ * (lib/page-access-server.ts), which cannot use next/headers.
+ */
+export async function getUserFromCredentials(creds: {
+  sessionCookie?: string | null
+  authorization?: string | null
+}): Promise<APIUser | null> {
   try {
-    const adminAuth = await getAdminAuthInstance()
-    const cookieStore = await cookies()
-    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
-
+    const sessionCookie = creds.sessionCookie || null
     if (sessionCookie) {
       // Own session JWT first (every sign-in path now issues one).
       const payload = await verifySessionToken(sessionCookie)
       if (payload) return buildAPIUser(payload.uid, payload.email)
       // Legacy Firebase session cookies (issued before OAuth moved to the JWT).
+      const adminAuth = await getAdminAuthInstance()
       if (adminAuth) {
         try {
           const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
@@ -121,14 +126,14 @@ export async function getAPIUser(): Promise<APIUser | null> {
       return null
     }
 
-    const headersList = await headers()
-    const authHeader = headersList.get('authorization')
+    const authHeader = creds.authorization || null
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7)
       // ponytail: own session JWTs (mobile-token endpoint, SecureStore-held)
       // must also authenticate API calls — Firebase is optional, this is not.
       const payload = await verifySessionToken(token)
       if (payload) return buildAPIUser(payload.uid, payload.email)
+      const adminAuth = await getAdminAuthInstance()
       if (adminAuth) {
         try {
           const decoded = await adminAuth.verifyIdToken(token, true)
@@ -143,6 +148,31 @@ export async function getAPIUser(): Promise<APIUser | null> {
     console.error('[CodeSpectra] Error getting API user:', error)
     return null
   }
+}
+
+export async function getAPIUser(): Promise<APIUser | null> {
+  bootSchedulerOnce()
+  try {
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
+    if (sessionCookie) return getUserFromCredentials({ sessionCookie })
+    const headersList = await headers()
+    return getUserFromCredentials({ authorization: headersList.get('authorization') })
+  } catch (error) {
+    console.error('[CodeSpectra] Error getting API user:', error)
+    return null
+  }
+}
+
+/** Page permissions for a role: stored `roles` doc merged with the static defaults (60s cache). */
+export async function getMergedPermissionsForRole(role: UserRole) {
+  const permsDb = await import('@/lib/permissions-db')
+  const stored = (await getPermissionsForRole(role)).map((p) => ({
+    resource: p.resource,
+    resourceType: (p.resource.startsWith('/') ? 'page' : 'entity') as import('@/lib/permissions-db').ResourceType,
+    actions: (p.actions || []) as import('@/lib/permissions-db').PermissionAction[],
+  }))
+  return permsDb.mergePermissions(stored, permsDb.getDefaultRolePermissions(role))
 }
 
 export async function requireAuth() {
@@ -226,27 +256,24 @@ export async function requirePageAccess(route: string, feature?: string) {
   if (!user) return { error: 'Unauthorized', status: 401 as const }
   if (user.role === 'superadmin') return { user }
   try {
-    const [{ decidePageAccess }, { mergeGeneralPlatformSettings }, permsDb] = await Promise.all([
+    const [{ decideRouteAccess }, { isFeatureLocked }, { mergeGeneralPlatformSettings }] = await Promise.all([
+      import('@/lib/page-access-map'),
       import('@/lib/page-access'),
       import('@/lib/platform-general-settings'),
-      import('@/lib/permissions-db'),
     ])
     const db = await getMongoDb()
     const general = await db.collection('platform_settings').findOne({ key: 'general' })
     const settings = mergeGeneralPlatformSettings(general?.value)
-    const stored = (await getPermissionsForRole(user.role)).map((p) => ({
-      resource: p.resource,
-      resourceType: (p.resource.startsWith('/') ? 'page' : 'entity') as import('@/lib/permissions-db').ResourceType,
-      actions: (p.actions || []) as import('@/lib/permissions-db').PermissionAction[],
-    }))
-    const permissions = permsDb.mergePermissions(stored, permsDb.getDefaultRolePermissions(user.role))
-    const decision = decidePageAccess({
-      role: user.role,
-      route,
-      feature,
+    if (feature && isFeatureLocked(feature, settings.locked_features ?? [])) {
+      return { error: 'This feature is not available yet', status: 403 as const }
+    }
+    // Same rule the proxy applies to the page (lib/page-access-map.ts). Plan
+    // gates stay with requirePlanFeature on the API that needs them.
+    const decision = decideRouteAccess({
+      pathname: route,
+      user: { role: user.role, tenantId: user.tenantId ?? null },
       lockedPages: settings.locked_pages ?? [],
-      lockedFeatures: settings.locked_features ?? [],
-      permissions,
+      permissions: await getMergedPermissionsForRole(user.role),
     })
     if (decision.ok) return { user }
     return decision.reason === 'locked'

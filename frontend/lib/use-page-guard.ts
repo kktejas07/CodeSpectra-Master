@@ -1,11 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useRoleGate } from '@/lib/use-role-gate'
-import { getRequiredRoleForRoute, isPlatformAdminRoute } from '@/lib/page-permissions'
-import { isSuperAdmin, isAdmin, isJudge, type UserRole } from '@/lib/rbac'
-import { routeCovers } from '@/lib/page-access'
+import { isSuperAdmin } from '@/lib/rbac'
+import { decideRouteAccess, resolveRouteAccess, roleMeets, type AccessRole } from '@/lib/page-access-map'
 
 /** Shared cache for locked pages & features — avoids per-hook fetches */
 interface LockedData { locked_pages: string[]; locked_features: string[] }
@@ -51,62 +50,76 @@ export function invalidateLockedPagesCache() {
   fetchPromise = null
 }
 
+/** The caller's page grants/revokes (/api/user/my-permissions), shared across hooks. */
+type PagePerm = { resource: string; actions: string[] }
+let cachedPerms: { key: string; perms: PagePerm[] } | null = null
+let permsPromise: { key: string; p: Promise<PagePerm[]> } | null = null
+
+export function fetchMyPagePermissions(key: string): Promise<PagePerm[]> {
+  if (cachedPerms?.key === key) return Promise.resolve(cachedPerms.perms)
+  if (permsPromise?.key === key) return permsPromise.p
+  const p = fetch('/api/user/my-permissions', { credentials: 'include' })
+    .then(r => r.ok ? r.json() : null)
+    .then((data: { readable?: unknown; denied?: unknown } | null) => {
+      const list = (v: unknown) => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+      const perms: PagePerm[] = [
+        ...list(data?.readable).map(resource => ({ resource, actions: ['read'] })),
+        ...list(data?.denied).map(resource => ({ resource, actions: [] as string[] })),
+      ]
+      cachedPerms = { key, perms }
+      return perms
+    })
+    .catch(() => { permsPromise = null; return [] as PagePerm[] })
+  permsPromise = { key, p }
+  return p
+}
+
+/**
+ * Client page guard (UX only — proxy.ts enforces the same rule on the server).
+ * Reads the one route → access map (lib/page-access-map.ts) for the current
+ * page; the argument is only used for paths the map does not cover.
+ */
 export function usePageGuard(
   routeOrRole: string | ('superadmin' | 'tenant_admin' | 'judge' | 'user') = 'user'
 ) {
   const gate = useRoleGate({ require: 'auth' })
   const pathname = usePathname()
   const router = useRouter()
-  const [dbAllowed, setDbAllowed] = useState<boolean | null>(null)
+  const [perms, setPerms] = useState<PagePerm[] | null>(null)
   const [lockedPages, setLockedPages] = useState<string[]>(() => cachedLockedData?.locked_pages ?? [])
   const [locksLoaded, setLocksLoaded] = useState(() => cachedLockedData !== null)
 
-  const requiredRole = typeof routeOrRole === 'string' && routeOrRole.startsWith('/')
-    ? getRequiredRoleForRoute(routeOrRole)
-    : routeOrRole as 'superadmin' | 'tenant_admin' | 'judge' | 'user'
+  const target = typeof routeOrRole === 'string' && routeOrRole.startsWith('/') ? routeOrRole : pathname
+  const mapped = resolveRouteAccess(target) !== null
+  const fallbackRole = (routeOrRole.startsWith('/') ? 'user' : routeOrRole) as AccessRole
+  const role = gate.user?.role ?? null
 
-  const platformAdminPage = isPlatformAdminRoute(pathname) || requiredRole === 'superadmin'
+  const decide = (permissions?: PagePerm[]) => {
+    if (!role) return { ok: false as const, reason: 'unauthenticated' as const }
+    if (!mapped) {
+      const ok = isSuperAdmin(role) || roleMeets(role, fallbackRole)
+      return ok ? { ok: true as const } : { ok: false as const, reason: 'forbidden' as const }
+    }
+    // The session's role is already effective (a tenant-less tenant admin is
+    // demoted server-side), so a tenant admin here belongs to an organisation.
+    return decideRouteAccess({
+      pathname: target,
+      user: { role, tenantId: role === 'tenant_admin' ? 'session' : null },
+      lockedPages,
+      permissions,
+    })
+  }
 
-  const staticAllowed = gate.user && (() => {
-    if (platformAdminPage) return isSuperAdmin(gate.user.role)
-    if (requiredRole === 'user') return true
-    if (requiredRole === 'tenant_admin') return isAdmin(gate.user.role)
-    if (requiredRole === 'judge') return isJudge(gate.user.role) || isAdmin(gate.user.role)
-    return false
-  })()
+  const first = gate.ready && locksLoaded ? decide() : null
+  const needsGrants = !!first && !first.ok && first.reason === 'forbidden' && mapped && !!role && !isSuperAdmin(role)
 
-  // DB grants cannot open platform-admin pages. Other extra pages still can.
+  // Only when the static rule says no: a role grant may still open the page.
   useEffect(() => {
-    if (staticAllowed || !gate.ready || !gate.user) {
-      setDbAllowed(!!staticAllowed)
-      return
-    }
-    if (platformAdminPage) {
-      setDbAllowed(false)
-      return
-    }
+    if (!needsGrants || !role) return
     let cancelled = false
-    const route = typeof routeOrRole === 'string' && routeOrRole.startsWith('/')
-      ? routeOrRole
-      : ''
-
-    if (!route) {
-      setDbAllowed(false)
-      return
-    }
-
-    // The caller's own role grants (any role can read these; the roles API is superadmin-only).
-    fetch('/api/user/my-permissions', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { readable?: unknown } | null) => {
-        if (cancelled) return
-        const readable = Array.isArray(data?.readable) ? (data!.readable as unknown[]).filter((x): x is string => typeof x === 'string') : []
-        setDbAllowed(readable.some(base => routeCovers(base, route)))
-      })
-      .catch(() => { setDbAllowed(false) })
-
+    fetchMyPagePermissions(role).then(p => { if (!cancelled) setPerms(p) })
     return () => { cancelled = true }
-  }, [staticAllowed, gate.ready, gate.user, routeOrRole, platformAdminPage])
+  }, [needsGrants, role])
 
   useEffect(() => {
     let cancelled = false
@@ -119,13 +132,10 @@ export function usePageGuard(
     return () => { cancelled = true }
   }, [])
 
-  const locked = gate.ready && locksLoaded && !(gate.user && isSuperAdmin(gate.user.role)) && (() => {
-    const base = pathname.split('?')[0]
-    return lockedPages.some(route => base === route || base.startsWith(route + '/'))
-  })()
-
-  const decided = gate.ready && locksLoaded && (staticAllowed || dbAllowed !== null)
-  const allowed = Boolean(decided && !locked && (staticAllowed || dbAllowed === true))
+  const final = needsGrants ? (perms ? decide(perms) : null) : first
+  const decided = final !== null
+  const allowed = Boolean(final?.ok)
+  const locked = !!final && !final.ok && final.reason === 'locked'
 
   useEffect(() => {
     if (!decided || allowed) return
@@ -135,7 +145,7 @@ export function usePageGuard(
   return {
     ready: allowed,
     allowed,
-    locked: !!locked,
+    locked,
     user: gate.user,
     loading: !decided || !allowed,
   }

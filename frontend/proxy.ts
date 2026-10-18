@@ -24,10 +24,50 @@ const CSP = [
 
 const HSTS = 'max-age=63072000; includeSubDomains; preload'
 
-export function proxy(request: NextRequest) {
+const SESSION_COOKIE = 'codespectra_session'
+
+/**
+ * Server check for every signed-in page (feature #10): the route → access map
+ * in lib/page-access-map.ts decides; role / status / tenant come from the DB
+ * via the session helper (short caches in lib/session and
+ * lib/page-access-server). Signed out → /auth/login; locked, forbidden or
+ * plan-gated → the branded /dashboard/locked page (rewrite, URL kept).
+ * Returns null when the request may continue.
+ */
+async function pageGate(request: NextRequest): Promise<NextResponse | null> {
+  const { pathname, search } = request.nextUrl
+  const { resolveRouteAccess, lockedPagePath } = await import('@/lib/page-access-map')
+  const access = resolveRouteAccess(pathname)
+  if (!access || access.auth === 'public') return null
+  try {
+    const { gatePageRequest } = await import('@/lib/page-access-server')
+    const result = await gatePageRequest({
+      pathname,
+      sessionCookie: request.cookies.get(SESSION_COOKIE)?.value ?? null,
+      authorization: request.headers.get('authorization'),
+    })
+    if (result.action === 'next') return null
+    if (result.action === 'login') {
+      const url = new URL('/auth/login', request.url)
+      url.searchParams.set('redirectTo', pathname + search)
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.rewrite(new URL(lockedPagePath(result.reason, pathname, result.feature), request.url))
+  } catch (e) {
+    // Fail closed: never render a guarded page we could not check.
+    console.error('[proxy] page gate failed:', e)
+    return NextResponse.rewrite(new URL(lockedPagePath('unavailable', pathname), request.url))
+  }
+}
+
+function isPageRequest(pathname: string): boolean {
+  return !pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && !pathname.includes('.')
+}
+
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  const response = NextResponse.next()
+  const response = (isPageRequest(pathname) ? await pageGate(request) : null) ?? NextResponse.next()
 
   // Global API rate limiting (best-effort edge layer). Generous threshold catches
   // only egregious abuse — per-route limits in Node handlers are the real guard.

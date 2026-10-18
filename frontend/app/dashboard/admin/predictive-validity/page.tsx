@@ -61,7 +61,7 @@ function corrCell(c: CorrelationResult) {
 }
 
 export default function PredictiveValidityPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const [data, setData] = useState<ApiResponse | null>(null)
   const [examId, setExamId] = useState('')
   const [loading, setLoading] = useState(true)

@@ -11,6 +11,7 @@
  */
 
 import type { UserRole } from '@/lib/types/rbac-types'
+import { resolveRouteAccess } from '@/lib/page-access-map'
 
 export interface PagePermission {
   route: string
@@ -53,7 +54,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   // Hiring & ATS
   '/dashboard/admin/jobs',
   '/dashboard/admin/resumes',
-  '/dashboard/admin/predictive-validity',
 
   // KYC & Verification
   '/dashboard/admin/kyc',
@@ -135,6 +135,8 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/interviews/feedback',
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
+  // Hiring analytics: /api/admin/predictive-validity scopes tenant admins to their own tests.
+  '/dashboard/admin/predictive-validity',
   '/dashboard/admin/sme-review',
 ]
 
@@ -189,6 +191,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/interviews/ai-mock',
   '/dashboard/interviews/ai-mock/setup',
   '/dashboard/mock-tests',
+  '/dashboard/mock-tests/history',
   '/dashboard/resumes',
   '/dashboard/assessments',
   '/dashboard/assessments/ai-fluency',
@@ -228,43 +231,11 @@ export const ALL_USER_ROUTES: string[] = [
 ]
 
 /**
- * Get the required role for a given route.
+ * Get the required (sidebar-audience) role for a given route — resolved from
+ * the one route → access map (lib/page-access-map.ts), most specific entry wins.
  */
 export function getRequiredRoleForRoute(pathname: string): UserRole {
-  const base = pathname.split('?')[0]
-
-  // Exact matches first — a child page registered with its own role (e.g.
-  // superadmin-only /dashboard/admin/assessments/bulk under tenant_admin
-  // /dashboard/admin/assessments) must not be shadowed by a parent prefix.
-  if (TENANT_ADMIN_ROUTES.includes(base)) return 'tenant_admin'
-  if (ADMIN_ONLY_ROUTES.includes(base)) return 'superadmin'
-  if (JUDGE_ROUTES.includes(base)) return 'judge'
-  if (ALL_USER_ROUTES.includes(base)) return 'user'
-
-  // Tenant admin routes (check first so /dashboard/admin/team matches before /dashboard/admin catch-all)
-  for (const route of TENANT_ADMIN_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'tenant_admin'
-  }
-
-  // Admin routes → superadmin
-  for (const route of ADMIN_ONLY_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'superadmin'
-  }
-
-  // Judge routes
-  for (const route of JUDGE_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'judge'
-  }
-
-  // All authenticated user routes
-  for (const route of ALL_USER_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'user'
-  }
-
-  // Default: any /dashboard/* route requires at least user auth
-  if (base.startsWith('/dashboard/')) return 'user'
-
-  return 'user'
+  return resolveRouteAccess(pathname.split('?')[0])?.navRole ?? 'user'
 }
 
 /** Platform-operator console. DB grants must not open these for non-superadmins. */
@@ -355,6 +326,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/interviews/ai-mock': 'AI Mock Interview',
   '/dashboard/interviews/ai-mock/setup': 'AI Mock Setup',
   '/dashboard/mock-tests': 'Mock Tests',
+  '/dashboard/mock-tests/history': 'Mock Test History',
   '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',

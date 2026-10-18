@@ -14,7 +14,6 @@ import {
   UserRole,
   isSuperAdmin,
   isTenantAdmin,
-  isJudge,
 } from '@/lib/rbac'
 import {
   ADMIN_ONLY_ROUTES,
@@ -25,7 +24,6 @@ import {
   ROUTE_LABELS,
   ADMIN_SECTIONS,
   USER_SECTIONS,
-  isPlatformAdminRoute,
 } from '@/lib/page-permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -130,7 +128,7 @@ import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
-import { PageLocked } from '@/components/page-locked'
+import { canShowInNav } from '@/lib/page-access-map'
 import { fetchLockedPages } from '@/lib/use-page-guard'
 import { resolveTourId } from '@/components/tour/tour-context'
 import { GuideDrawer } from '@/components/tour/guide-drawer'
@@ -255,21 +253,6 @@ export default function DashboardLayout({
       .catch(() => { if (!cancelled) setPermsLoaded(true) })
     return () => { cancelled = true }
   }, [userRole])
-
-  const currentPageLocked = (() => {
-    if (userRole && isSuperAdmin(userRole)) return false
-    const base = pathname.split('?')[0]
-    return lockedPages.some(route => base === route || base.startsWith(route + '/'))
-  })()
-
-  const lockedPageLabel = (() => {
-    const base = pathname.split('?')[0]
-    if (ROUTE_LABELS[base]) return ROUTE_LABELS[base]
-    for (const [route, label] of Object.entries(ROUTE_LABELS)) {
-      if (base.startsWith(route + '/')) return label
-    }
-    return null
-  })()
 
   const userProfile = useMemo(() => {
     if (!fbUser || !userRole) return null
@@ -533,8 +516,13 @@ export default function DashboardLayout({
     const adminOrdered = eventAt >= 0
       ? [...ADMIN_ONLY_ROUTES.slice(0, eventAt), ...EVENT_ADMIN_ROUTES, ...ADMIN_ONLY_ROUTES.slice(eventAt)]
       : [...ADMIN_ONLY_ROUTES, ...EVENT_ADMIN_ROUTES]
+    // Predictive validity is shared with tenant admins but stays in the
+    // superadmin "Hiring" section (after Resumes).
+    const PV = '/dashboard/admin/predictive-validity'
+    const resumesAt = adminOrdered.indexOf('/dashboard/admin/resumes')
+    if (isSuperAdmin(role) && resumesAt >= 0) adminOrdered.splice(resumesAt + 1, 0, PV)
     const tenantOrdered = isSuperAdmin(role)
-      ? TENANT_ADMIN_ROUTES.filter((r) => !EVENT_ADMIN_ROUTES.includes(r))
+      ? TENANT_ADMIN_ROUTES.filter((r) => !EVENT_ADMIN_ROUTES.includes(r) && r !== PV)
       : TENANT_ADMIN_ROUTES
     const allRouteGroups = [ALL_USER_ROUTES, tenantOrdered, JUDGE_ROUTES, adminOrdered] as const
     const seen = new Set<string>()
@@ -554,57 +542,28 @@ export default function DashboardLayout({
       }
     }
 
-    let leaves: NavLeaf[]
-    if (isSuperAdmin(role)) {
-      leaves = allLeaves
-    } else if (isTenantAdmin(role)) {
-      const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
-      leaves = allLeaves.filter(leaf => {
-        const route = leaf.href.split('?')[0]
-        return !route.startsWith('/dashboard/admin/') || tenantAdminSet.has(route)
-      })
-    } else if (isJudge(role)) {
-      const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])
-      leaves = allLeaves.filter(leaf => judgeSet.has(leaf.href.split('?')[0]))
-    } else {
-      const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
-      const judgeOnlySet = new Set(JUDGE_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
-      leaves = allLeaves.filter(leaf => {
-        const route = leaf.href.split('?')[0]
-        return route.startsWith('/dashboard') &&
-          !route.startsWith('/dashboard/admin/') &&
-          !route.startsWith(DASHBOARD_ROUTES.organization.team) &&
-          !tenantOnlySet.has(route) &&
-          !judgeOnlySet.has(route)
-      })
-    }
-
-    // When DB permissions are loaded they are the source of truth: they carry the
-    // role defaults (merged server-side) PLUS any pages superadmin explicitly
-    // granted beyond the static role arrays. So once loaded, ignore the static
-    // role filter above — otherwise granted pages never appear (the old bug).
-    if (permsLoaded && allowedRoutes.size > 0) {
-      leaves = allLeaves.filter(leaf => {
-        const checkRoute = leaf.route
-        if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) return true
-        return allowedRoutes.has(checkRoute) ||
-          Array.from(allowedRoutes).some(r => checkRoute.startsWith(r + '/'))
-      })
-    }
-
-    if (deniedRoutes.size > 0) {
-      leaves = leaves.filter(leaf =>
-        !deniedRoutes.has(leaf.route) &&
-        !Array.from(deniedRoutes).some(r => leaf.route.startsWith(r + '/'))
-      )
-    }
-
-    if (!isSuperAdmin(role)) {
-      leaves = leaves.filter(leaf => !isPlatformAdminRoute(leaf.route))
-    }
+    // One rule for the sidebar and the page itself (lib/page-access-map.ts):
+    // a link shows only when the page opens for this user — role, tenant,
+    // platform locks and role grants / revokes from /api/user/my-permissions.
+    // Plan-gated pages stay listed; they open an upgrade prompt.
+    const permissions = permsLoaded
+      ? [
+          ...Array.from(allowedRoutes, (resource) => ({ resource, actions: ['read'] as string[] })),
+          ...Array.from(deniedRoutes, (resource) => ({ resource, actions: [] as string[] })),
+        ]
+      : undefined
+    const leaves = allLeaves.filter((leaf) =>
+      canShowInNav({
+        pathname: leaf.route,
+        // The session role is effective: a tenant admin here has an organisation.
+        user: { role, tenantId: isTenantAdmin(role) ? 'session' : null },
+        lockedPages: effectiveLockedPages,
+        permissions,
+      }),
+    )
 
     return addSectionHeaders(leaves)
-  }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages])
+  }, [userProfile?.role, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
@@ -1170,11 +1129,9 @@ export default function DashboardLayout({
         {/* Page Content — full width with proper padding */}
         <main className={cn("w-full", isLessonPlayer ? "p-0" : "px-4 py-6 lg:px-8 lg:py-8")}>
           <div className={cn("w-full", !isLessonPlayer && "mx-auto max-w-[1400px]")}>
-            {currentPageLocked ? (
-              <PageLocked routeName={lockedPageLabel || undefined} />
-            ) : (
-              children
-            )}
+            {/* Locked / forbidden / plan-gated pages are swapped on the server
+                (proxy.ts → /dashboard/locked), so children is always the right page. */}
+            {children}
           </div>
         </main>
       </div>
