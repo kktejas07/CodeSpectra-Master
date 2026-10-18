@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { attemptSummary } from '@/lib/exam-access'
+import { attemptSummary, submissionSectionScores } from '@/lib/exam-access'
+import { OUTCOMES_COLLECTION } from '@/lib/hiring-outcomes'
 import { CAD_TASK_QID } from '@/lib/cad-submission'
 
 export async function GET(
@@ -62,6 +63,7 @@ export async function GET(
         }]
       : baseQuestions
     const attempts = attemptSummary(submission as Record<string, unknown>, exam as Record<string, unknown>)
+    const outcome = await db.collection(OUTCOMES_COLLECTION).findOne({ exam_id: examId, user_id: userId }, { projection: { _id: 0 } })
 
     return NextResponse.json({
       examTitle: exam.title,
@@ -84,7 +86,11 @@ export async function GET(
         question_timings: submission.question_timings || {},
         total_time_ms: submission.total_time_ms || 0,
         started_at: submission.started_at || null,
+        // Sectioned tests: per-section scores and the server's section clocks.
+        section_scores: submissionSectionScores(exam as Record<string, unknown>, submission as Record<string, unknown>),
+        section_timings: submission.section_timings || null,
       },
+      outcome: outcome || null,
       proctorEvents: events.map((e: Record<string, unknown>) => ({
         event_type: e.event_type,
         meta: e.meta || {},

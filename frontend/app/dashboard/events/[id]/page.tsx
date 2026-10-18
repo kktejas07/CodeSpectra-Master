@@ -36,6 +36,7 @@ import { average, blendFinal, collectHumanScores, judgeStats } from '@/lib/hacka
 import { normalizeSubmissionStatus, canTransition } from '@/lib/hackathons/submission-state'
 import { buildProjectReport } from '@/lib/hackathons/reporting'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
+import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -881,6 +882,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <Timer className="w-3.5 h-3.5" aria-hidden /> Starts in <Countdown targetIso={event.starts_at} />
                 </span>
               )}
+              <AddEventToCalendar
+                kind="hackathon"
+                id={event.id}
+                title={event.name}
+                start={event.starts_at}
+                end={event.ends_at}
+                description={event.description}
+                path={`/hackathons/${event.slug}`}
+                status={event.status}
+              />
             </>
           ) : undefined}
         />

@@ -4,7 +4,7 @@ import { exams } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { getMongoDb } from '@/lib/mongodb'
 import { sanitizeExamQuestionList } from '@/lib/grading'
-import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, normalizeIdentityFields, attemptSummary, examAttemptPolicy, checkExamEntry, attemptTimeState, getExamDraft, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
+import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, normalizeIdentityFields, normalizeSectionFields, attemptSummary, examAttemptPolicy, checkExamEntry, attemptTimeState, getExamDraft, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
 
 export async function GET(request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth().catch(() => ({ error: 'Unauthorized' }))
@@ -127,6 +127,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     normalizeCertificateFields(data)
     normalizeProctoringFields(data)
     normalizeIdentityFields(data)
+    normalizeSectionFields(data)
     // Same injection guard as PATCH /api/exams (see lib/grading.ts).
     if (Array.isArray(data.questionList)) {
       data.questionList = sanitizeExamQuestionList(data.questionList)

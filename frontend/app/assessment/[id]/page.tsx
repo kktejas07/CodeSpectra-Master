@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Illustration } from '@/components/illustrations/spot'
 import { INVITE_ONLY_MESSAGE } from '@/lib/exam-access'
+import type { CandidateSectionView } from '@/lib/exam-sections'
 
 interface Question {
   id: string
@@ -99,6 +100,24 @@ interface Exam {
   proctoring_mode?: 'standard' | 'strict'
   kind?: 'standard' | 'cad'
   attempts?: AttemptInfo
+  /** Ordered sections (titles, timing, question ids) — absent for tests without sections. */
+  sections?: Array<{ id: string; title: string; instructions?: string; time_limit_minutes: number | null; lock_after_leave: boolean; question_ids: string[] }>
+}
+
+/** Section payload from POST ./start and ./section. */
+interface SectionPayload {
+  sections?: CandidateSectionView[]
+  current_section_id?: string | null
+  questionList?: Question[]
+  answers?: Record<string, string | string[]>
+}
+
+/** Shuffle per section (stable seed), keeping the section order. */
+function orderBySections(list: Question[], sections: CandidateSectionView[] | null, seed: number | null): Question[] {
+  const shuffle = (qs: Question[]) => (qs.length > 1 && seed !== null ? shuffleArray(qs, seed) : qs)
+  if (!sections || sections.length === 0) return shuffle(list)
+  const byId = new Map(list.map((q) => [q.id, q]))
+  return sections.flatMap((s) => shuffle(s.question_ids.map((id) => byId.get(id)).filter((q): q is Question => !!q)))
 }
 
 /** Server entry check result from GET /api/exams/[id] (same checks as start/submit). */
@@ -149,6 +168,17 @@ export default function CandidateAssessmentPage() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [currentQIndex, setCurrentQIndex] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  /** Sectioned tests: server section state (null = no sections). */
+  const [sections, setSections] = useState<CandidateSectionView[] | null>(null)
+  const [currentSectionId, setCurrentSectionId] = useState<string | null>(null)
+  const [switchingSection, setSwitchingSection] = useState(false)
+  /** Leaving a lock-after-leave section: ask first. */
+  const [confirmLeave, setConfirmLeave] = useState<string | null>(null)
+  const [sectionTimeLeft, setSectionTimeLeft] = useState<number | null>(null)
+  /** Server clock − local clock, so section deadlines display in local time. */
+  const clockOffsetRef = useRef(0)
+  const sectionTimeUpRef = useRef<string | null>(null)
+  const questionSeedRef = useRef<number | null>(null)
 
   // Shuffle: map of question id -> shuffled options (stable per session)
   const [shuffledOpts, setShuffledOpts] = useState<Record<string, string[]>>({})
@@ -414,6 +444,92 @@ export default function CandidateAssessmentPage() {
     return () => clearInterval(timer)
   }, [exam, hasStarted, isSubmitted])
 
+  // ─── Sections (server-enforced; the page only follows the server state) ───
+  const currentSection = sections?.find((x) => x.id === currentSectionId) ?? null
+
+  /** Apply a section payload from the server (new state, newly visible questions). */
+  const applySectionPayload = useCallback((j: SectionPayload) => {
+    if (!Array.isArray(j.sections)) return
+    const secs = j.sections
+    const curId = j.current_section_id ?? null
+    setSections(secs)
+    setCurrentSectionId(curId)
+    setExam((prev) => {
+      if (!prev) return prev
+      const incoming = Array.isArray(j.questionList) ? j.questionList : []
+      const known = new Map(prev.questionList.map((q) => [q.id, q]))
+      for (const q of incoming) if (!known.has(q.id)) known.set(q.id, q)
+      const list = orderBySections([...known.values()], secs, questionSeedRef.current)
+      const first = curId ? list.findIndex((q) => secs.find((x) => x.id === curId)?.question_ids.includes(q.id)) : -1
+      if (first >= 0) setCurrentQIndex(first)
+      return { ...prev, questionList: list }
+    })
+  }, [])
+
+  /** Go to a section (or just sync the clock with `null`), saving this section's answers first. */
+  const goToSection = useCallback(async (targetId: string | null): Promise<SectionPayload | null> => {
+    if (!exam) return null
+    setSwitchingSection(true)
+    try {
+      const res = await csrfFetch(`/api/exams/${exam.id}/section`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section_id: targetId, answers: answersRef.current }),
+      })
+      const j = await res.json().catch(() => ({})) as SectionPayload & { error?: string }
+      applySectionPayload(j)
+      if (!res.ok) {
+        addToast({ type: 'error', title: 'Couldn’t change section', message: j.error })
+        return null
+      }
+      lastSavedRef.current = JSON.stringify(answersRef.current)
+      return j
+    } catch {
+      addToast({ type: 'error', title: 'Couldn’t change section', message: 'Check your connection and try again.' })
+      return null
+    } finally {
+      setSwitchingSection(false)
+    }
+  }, [exam, applySectionPayload, addToast])
+
+  const requestSection = (targetId: string) => {
+    if (switchingSection || targetId === currentSectionId) return
+    if (currentSection?.lock_after_leave) setConfirmLeave(targetId)
+    else void goToSection(targetId)
+  }
+
+  // Section countdown (only when the section ends before the whole test).
+  useEffect(() => {
+    if (!hasStarted || isSubmitted || !currentSection?.deadline) { setSectionTimeLeft(null); return }
+    const dl = Date.parse(currentSection.deadline) + clockOffsetRef.current
+    const overall = deadlineLocalRef.current
+    if (overall !== null && dl >= overall) { setSectionTimeLeft(null); return }
+    const tick = () => setSectionTimeLeft(Math.max(0, Math.round((dl - Date.now()) / 1000)))
+    tick()
+    const t = setInterval(tick, 1000)
+    return () => clearInterval(t)
+  }, [hasStarted, isSubmitted, currentSection?.id, currentSection?.deadline])
+
+  // Section time is up: move on (the server does the same on its next request).
+  useEffect(() => {
+    if (sectionTimeLeft !== 0 || !currentSection || sectionTimeUpRef.current === currentSection.id || isSubmitting) return
+    sectionTimeUpRef.current = currentSection.id
+    const idx = sections?.findIndex((x) => x.id === currentSection.id) ?? -1
+    const rest = sections ? [...sections.slice(idx + 1), ...sections.slice(0, Math.max(0, idx))] : []
+    const next = rest.find((x) => x.status === 'open' || x.status === 'upcoming')
+    void (async () => {
+      if (next) {
+        addToast({ type: 'warning', title: `Time is up for ${currentSection.title}`, message: `Moving on to ${next.title}.` })
+        await goToSection(next.id)
+      } else {
+        addToast({ type: 'warning', title: 'Time is up for the last section', message: 'Submitting your answers.' })
+        autoSubmitAttemptedRef.current = true
+        await submitAssessment(true)
+      }
+    })()
+  }, [sectionTimeLeft, currentSection, sections, isSubmitting])
+
   const handleStart = async () => {
     if (!exam || starting) return
     setStarting(true)
@@ -424,7 +540,7 @@ export default function CandidateAssessmentPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteToken: searchParams.get('inviteToken'), linkToken: searchParams.get('link') }),
       })
-      const j = await res.json().catch(() => ({})) as {
+      const j = await res.json().catch(() => ({})) as SectionPayload & {
         error?: string; expired?: boolean; questionList?: Question[]; started_at?: string; deadline?: string | null
         server_now?: string; answers?: Record<string, string | string[]>; attempt_no?: number
         identity_required?: boolean
@@ -440,6 +556,7 @@ export default function CandidateAssessmentPage() {
 
       const serverNow = j.server_now ? Date.parse(j.server_now) : Date.now()
       const offset = Date.now() - serverNow
+      clockOffsetRef.current = offset
       startedAtRef.current = Date.parse(j.started_at) + offset
       deadlineLocalRef.current = j.deadline ? Date.parse(j.deadline) + offset : null
       const no = j.attempt_no || attemptNo
@@ -448,13 +565,18 @@ export default function CandidateAssessmentPage() {
       // ponytail: per-candidate question shuffle, stable across refresh via an
       // email+exam seed. Answers/drafts/timings are keyed by question id, so
       // order is cosmetic — grading is unaffected.
-      let list = j.questionList
-      if (list.length > 1 && user) {
+      let seed: number | null = null
+      if (user) {
         const seedStr = `${user.email || user.uid}:${exam.id}`
-        let seed = 0
+        seed = 0
         for (const ch of seedStr) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0
-        list = shuffleArray(list, seed)
       }
+      questionSeedRef.current = seed
+      const secs = Array.isArray(j.sections) && j.sections.length > 0 ? j.sections : null
+      // Sectioned tests: shuffled within each section, sections stay in order.
+      const list = orderBySections(j.questionList, secs, seed)
+      setSections(secs)
+      setCurrentSectionId(secs ? (j.current_section_id ?? null) : null)
 
       // Resume: the server draft (any device) merged with this device's newer local copy.
       let local: Record<string, string | string[]> = {}
@@ -471,6 +593,10 @@ export default function CandidateAssessmentPage() {
       lastSavedRef.current = JSON.stringify(j.answers || {})
       setAnswers(merged)
       setExam({ ...exam, questionList: list })
+      if (secs && j.current_section_id) {
+        const first = list.findIndex((q) => secs.find((x) => x.id === j.current_section_id)?.question_ids.includes(q.id))
+        setCurrentQIndex(Math.max(0, first))
+      }
       setTimeLeft(deadlineLocalRef.current !== null ? Math.max(0, Math.round((deadlineLocalRef.current - Date.now()) / 1000)) : null)
       setHasStarted(true)
     } catch (e) {
@@ -763,6 +889,22 @@ export default function CandidateAssessmentPage() {
               <span className="text-muted-foreground">Format</span>
               <span className="font-semibold">{exam.duration > 0 ? 'Timed, submits automatically at zero' : 'No time limit'}</span>
             </div>
+            {exam.sections && exam.sections.length > 0 && (
+              <div className="border-t border-border pt-3">
+                <p className="mb-2 text-muted-foreground">Sections, in order</p>
+                <ol className="space-y-1.5">
+                  {exam.sections.map((sec, i) => (
+                    <li key={sec.id} className="flex items-start justify-between gap-3">
+                      <span className="font-medium"><span className="tabular-nums">{i + 1}.</span> {sec.title}</span>
+                      <span className="shrink-0 text-right text-xs text-muted-foreground">
+                        <span className="tabular-nums">{sec.question_ids.length}</span> questions · {sec.time_limit_minutes ? <><span className="tabular-nums">{sec.time_limit_minutes}</span> min</> : 'shares the test time'}
+                        {sec.lock_after_leave ? <><br />locks when you leave</> : null}
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
             {attemptInfo && attemptInfo.max > 1 && (
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Attempt</span>
@@ -827,7 +969,18 @@ export default function CandidateAssessmentPage() {
   }
 
   // Active Assessment UI
-  const currentQ = exam.questionList[currentQIndex]
+  // Sectioned tests: only the current section's questions are reachable.
+  const sectionQIds = currentSection ? new Set(currentSection.question_ids) : null
+  const navIdx = exam.questionList.map((q, i) => (!sectionQIds || sectionQIds.has(q.id) ? i : -1)).filter((i) => i >= 0)
+  const safeIdx = navIdx.includes(currentQIndex) ? currentQIndex : (navIdx[0] ?? 0)
+  const currentQ = exam.questionList[safeIdx] as Question | undefined
+  const posInNav = navIdx.indexOf(safeIdx)
+  const sectionPos = sections && currentSection ? sections.findIndex((x) => x.id === currentSection.id) : -1
+  const nextSection = sections && sectionPos >= 0
+    ? [...sections.slice(sectionPos + 1)].find((x) => x.status === 'open' || x.status === 'upcoming') ?? null
+    : null
+  const isAnsweredId = (id: string) => (Array.isArray(answers[id]) ? (answers[id] as string[]).length > 0 : !!answers[id])
+  const sectionStatusLabel: Record<string, string> = { upcoming: 'Not started', active: 'In progress', open: 'Started', locked: 'Locked', expired: 'Time is up' }
 
   return (
     <ExtensionGate bypass={extensionBypass}>
@@ -840,7 +993,11 @@ export default function CandidateAssessmentPage() {
         <header className="sticky top-0 z-30 border-b border-border bg-card px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shadow-xs">
         <div className="min-w-0">
           <h1 className="font-bold text-lg tracking-tight text-foreground truncate">{exam.title}</h1>
-          <p className="text-xs text-muted-foreground tabular-nums">Question {currentQIndex + 1} of {exam.questionList.length}</p>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {currentSection
+              ? <>Section {sectionPos + 1} of {sections!.length}: {currentSection.title} · question {posInNav + 1} of {navIdx.length}</>
+              : <>Question {safeIdx + 1} of {exam.questionList.length}</>}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
           {recordingConsent && hasStarted && (
@@ -850,6 +1007,13 @@ export default function CandidateAssessmentPage() {
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
               </span>
               Recording
+            </div>
+          )}
+          {sectionTimeLeft !== null && (
+            <div role="timer" aria-label="Time left in this section" className={`flex items-center gap-2 px-3 py-1.5 rounded-full border font-mono font-bold tabular-nums ${
+              sectionTimeLeft < 120 ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
+            }`}>
+              <span className="font-sans font-medium text-xs">Section</span>{formatTime(sectionTimeLeft)}
             </div>
           )}
           <div role="timer" aria-label="Time remaining" className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold tabular-nums transition-colors duration-300 ${
@@ -872,15 +1036,16 @@ export default function CandidateAssessmentPage() {
         {/* Left Side: Question List Sidebar */}
         <aside className="w-64 border-r border-border bg-muted/20 p-4 overflow-y-auto hidden md:block">
           <div className="mb-4 flex items-baseline justify-between">
-            <h3 className="text-sm font-semibold text-foreground">Questions</h3>
+            <h3 className="text-sm font-semibold text-foreground">{currentSection ? currentSection.title : 'Questions'}</h3>
             <span className="text-xs text-muted-foreground tabular-nums">
-              {exam.questionList.filter((q) => (Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).length > 0 : !!answers[q.id])).length}/{exam.questionList.length} answered
+              {navIdx.filter((i) => isAnsweredId(exam.questionList[i].id)).length}/{navIdx.length} answered
             </span>
           </div>
           <div className="space-y-2">
-            {exam.questionList.map((q, idx) => {
-              const isAnswered = Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).length > 0 : !!answers[q.id]
-              const isActive = idx === currentQIndex
+            {navIdx.map((idx, n) => {
+              const q = exam.questionList[idx]
+              const isAnswered = isAnsweredId(q.id)
+              const isActive = idx === safeIdx
               return (
                 <button
                   key={q.id}
@@ -891,21 +1056,91 @@ export default function CandidateAssessmentPage() {
                     isAnswered ? 'bg-primary/10 text-foreground border border-primary/20 hover:bg-primary/15' : 'bg-card text-foreground border border-border hover:bg-muted'
                   }`}
                 >
-                  <span className="truncate pr-2" title={q.title}><span className="tabular-nums">{idx + 1}.</span> {q.title}</span>
+                  <span className="truncate pr-2" title={q.title}><span className="tabular-nums">{n + 1}.</span> {q.title}</span>
                   {isAnswered && !isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                 </button>
               )
             })}
           </div>
+          {sections && (
+            <div className="mt-6 border-t border-border pt-4">
+              <h3 className="mb-2 text-sm font-semibold text-foreground">Sections</h3>
+              <ol className="space-y-2">
+                {sections.map((sec, i) => {
+                  const closed = sec.status === 'locked' || sec.status === 'expired'
+                  const active = sec.id === currentSectionId
+                  return (
+                    <li key={sec.id}>
+                      <button
+                        type="button"
+                        onClick={() => requestSection(sec.id)}
+                        disabled={closed || active || switchingSection}
+                        aria-current={active ? 'step' : undefined}
+                        className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default ${
+                          active ? 'border-primary bg-primary/10 text-foreground' : closed ? 'border-border bg-muted/40 text-muted-foreground' : 'border-border bg-card text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <span className="flex items-center gap-1.5 font-medium">
+                          {closed && <LockKeyhole className="h-3.5 w-3.5 shrink-0" aria-hidden />}
+                          <span className="truncate"><span className="tabular-nums">{i + 1}.</span> {sec.title}</span>
+                        </span>
+                        <span className="mt-0.5 block text-xs text-muted-foreground">
+                          {sectionStatusLabel[sec.status]} · <span className="tabular-nums">{sec.question_ids.length}</span> questions
+                          {sec.time_limit_minutes ? <> · <span className="tabular-nums">{sec.time_limit_minutes}</span> min</> : null}
+                          {sec.lock_after_leave && !closed ? ' · locks when you leave' : ''}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
+              </ol>
+            </div>
+          )}
         </aside>
 
         {/* Right Side: Question Active Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-10 bg-background">
           <div className="max-w-4xl mx-auto space-y-8">
+            {sections && (
+              <div className="md:hidden">
+                <label htmlFor="section-pick" className="mb-1 block text-xs font-medium text-muted-foreground">Section</label>
+                <select
+                  id="section-pick"
+                  className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={currentSectionId ?? ''}
+                  disabled={switchingSection}
+                  onChange={(e) => requestSection(e.target.value)}
+                >
+                  {sections.map((sec, i) => (
+                    <option key={sec.id} value={sec.id} disabled={sec.status === 'locked' || sec.status === 'expired'}>
+                      {i + 1}. {sec.title} ({sectionStatusLabel[sec.status]})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {currentSection?.instructions && (
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
+                <p className="mb-1 font-semibold">{currentSection.title}: instructions</p>
+                <p className="whitespace-pre-wrap text-muted-foreground">{currentSection.instructions}</p>
+                {currentSection.lock_after_leave && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Once you leave this section you can’t come back to it.</p>}
+              </div>
+            )}
+            {!currentQ ? (
+              <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                {sections && !currentSection
+                  ? 'All sections are finished. Submit your assessment to hand it in.'
+                  : 'No questions to show.'}
+                <div className="mt-4">
+                  <Button onClick={handleManualSubmit} className="gap-2"><Send className="h-4 w-4" /> Submit assessment</Button>
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{typeLabel(currentQ.type)}</Badge>
-                <span className="text-xs text-muted-foreground tabular-nums">Question {currentQIndex + 1} of {exam.questionList.length}</span>
+                <span className="text-xs text-muted-foreground tabular-nums">Question {posInNav + 1} of {navIdx.length}</span>
               </div>
               <h2 className="text-2xl font-bold tracking-tight text-foreground">{currentQ.title}</h2>
               <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg p-5 sm:p-6 rounded-2xl bg-card border border-border/70 text-foreground">
@@ -939,19 +1174,24 @@ export default function CandidateAssessmentPage() {
               />
             </div>
 
-            {/* Pagination Controls */}
+            {/* Pagination Controls (within the current section for sectioned tests) */}
             <div className="flex items-center justify-between gap-3 pt-8 border-t border-border mt-8 pb-12">
               <Button 
                 variant="outline" 
-                onClick={() => setCurrentQIndex(prev => Math.max(0, prev - 1))}
-                disabled={currentQIndex === 0}
+                onClick={() => setCurrentQIndex(navIdx[Math.max(0, posInNav - 1)] ?? safeIdx)}
+                disabled={posInNav <= 0}
               >
                 <ChevronLeft className="h-4 w-4 mr-2" /> Previous
               </Button>
               
-              {currentQIndex < exam.questionList.length - 1 ? (
-                <Button onClick={() => setCurrentQIndex(prev => Math.min(exam.questionList.length - 1, prev + 1))}>
+              {posInNav < navIdx.length - 1 ? (
+                <Button onClick={() => setCurrentQIndex(navIdx[posInNav + 1])}>
                   Next question <ChevronRight className="h-4 w-4 ml-2" />
+                </Button>
+              ) : nextSection ? (
+                <Button onClick={() => requestSection(nextSection.id)} disabled={switchingSection}>
+                  {switchingSection ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                  Next section: {nextSection.title} <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
                 <Button onClick={handleManualSubmit} variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -959,6 +1199,8 @@ export default function CandidateAssessmentPage() {
                 </Button>
               )}
             </div>
+            </>
+            )}
           </div>
         </div>
       </main>
@@ -981,6 +1223,22 @@ export default function CandidateAssessmentPage() {
             await submitAssessment(false)
           }}>
             Submit
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    <AlertDialog open={!!confirmLeave} onOpenChange={(o) => { if (!o) setConfirmLeave(null) }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Leave {currentSection?.title ?? 'this section'}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This section locks when you leave it. You won’t be able to come back or change these answers.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Stay here</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { const t = confirmLeave; setConfirmLeave(null); if (t) void goToSection(t) }}>
+            Leave and lock
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -40,6 +40,9 @@ import {
 } from '@/components/ui/dialog'
 import { Progress } from '@/components/ui/progress'
 import { EmptyState } from '@/components/ui/empty-state'
+import { CompareCandidates } from '@/components/assessment/CompareCandidates'
+import { HiringOutcomePanel, OutcomeBadge, OutcomeBulkDialog } from '@/components/assessment/HiringOutcome'
+import { OUTCOME_LABELS, isOutcomeStatus } from '@/lib/hiring-outcomes'
 
 
 interface CandidateResult {
@@ -73,7 +76,14 @@ interface CandidateResult {
   faceMatch?: number | null
   /** This candidate's certificate for the test, if one was issued. */
   certificate?: { id: string; revokedAt: string | null; verifyToken: string | null } | null
+  /** Sectioned tests: score per section. */
+  sectionScores?: SectionScoreRow[]
+  /** Recorded hiring outcome (shortlisted, hired, …). */
+  outcome?: string | null
+  totalTimeMs?: number | null
 }
+
+interface SectionScoreRow { id: string; title: string; score: number; max: number; percent: number | null }
 
 interface IdentityCheckInfo {
   method?: 'camera' | 'no_camera_upload' | null
@@ -91,6 +101,8 @@ interface Exam {
   level: string
   duration: number
   issue_certificates?: boolean
+  /** Ordered sections (id + title); empty for tests without sections. */
+  sections?: Array<{ id: string; title: string }>
   publicLinkViews?: number
   plagiarismReport?: {
     score: number
@@ -134,7 +146,10 @@ interface ReviewData {
     question_timings?: Record<string, number>
     total_time_ms?: number
     started_at?: string | null
+    section_scores?: SectionScoreRow[]
   }
+  /** Hiring outcome doc (status, ratings, history), if recorded. */
+  outcome?: { status?: string; ratings?: Record<string, { value: number; notes?: string; by_email?: string; at?: string }>; history?: Array<{ at: string; by_email?: string; kind: 'status' | 'rating'; from?: string | number | null; to?: string | number | null; period?: number; notes?: string }> } | null
   proctorEvents: Array<{ event_type: string; meta: Record<string, unknown>; created_at: string }>
   candidate: { name: string; email: string }
   /** CAD task attempts: uploaded files + design rationale (graded as the 'cad' question). */
@@ -327,6 +342,9 @@ export default function ExamResultsPage() {
   const [exam, setExam] = useState<Exam | null>(null)
   const [results, setResults] = useState<CandidateResult[]>([])
   const [loading, setLoading] = useState(true)
+  /** Compare view (2–4 candidate user ids) and bulk outcome dialog. */
+  const [compareIds, setCompareIds] = useState<string[] | null>(null)
+  const [outcomeIds, setOutcomeIds] = useState<string[] | null>(null)
   const [reviewCandidate, setReviewCandidate] = useState<CandidateResult | null>(null)
   const [reviewData, setReviewData] = useState<ReviewData | null>(null)
   const [reviewLoading, setReviewLoading] = useState(false)
@@ -443,9 +461,10 @@ export default function ExamResultsPage() {
     }
   }
 
-  const fetchData = useCallback(async () => {
+  /** `silent`: refresh rows in place (no skeleton, no redirect on error) — used after outcome edits. */
+  const fetchData = useCallback(async (silent = false) => {
     if (!params.id) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       const res = await fetch(`/api/admin/exams/${params.id}/results`, { credentials: 'include' })
       const json = await res.json()
@@ -459,9 +478,9 @@ export default function ExamResultsPage() {
       })))
     } catch {
       addToast({ type: 'error', title: 'Failed to load results' })
-      router.push('/dashboard/admin/assessments')
+      if (!silent) router.push('/dashboard/admin/assessments')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [params.id, router])
 
@@ -902,7 +921,8 @@ export default function ExamResultsPage() {
   }
 
   const exportCSV = () => {
-    const headers = ['Candidate', 'Email', 'Status', 'Score (%)', 'Submitted At', 'Integrity Flags', 'Graded', 'Released']
+    const secs = exam?.sections ?? []
+    const headers = ['Candidate', 'Email', 'Status', 'Score (%)', 'Submitted At', 'Integrity Flags', 'Graded', 'Released', 'Outcome', ...secs.map((x) => `${x.title} (%)`)]
     const rows = results.map((r: CandidateResult) => [
       r.name || '',
       r.email || '',
@@ -912,6 +932,11 @@ export default function ExamResultsPage() {
       String(r.proctoringFlags || 0),
       r.graded ? 'Yes' : 'No',
       r.released ? 'Yes' : 'No',
+      isOutcomeStatus(r.outcome) ? OUTCOME_LABELS[r.outcome] : '',
+      ...secs.map((x) => {
+        const sc = r.sectionScores?.find((y) => y.id === x.id)
+        return sc && sc.percent !== null ? String(sc.percent) : ''
+      }),
     ])
     // Candidate-controlled text (names) must not run as a spreadsheet formula.
     const cell = (c: unknown) => {
@@ -1425,6 +1450,27 @@ export default function ExamResultsPage() {
         </div>
       ),
     },
+    ...((exam?.sections?.length ?? 0) > 0 ? [{
+      key: 'sectionScores',
+      header: 'Sections',
+      cell: (row: CandidateResult) => (
+        row.sectionScores && row.sectionScores.length > 0 ? (
+          <ul className="space-y-0.5 text-[11px]">
+            {row.sectionScores.map((sc) => (
+              <li key={sc.id} className="flex justify-between gap-2">
+                <span className="max-w-[8rem] truncate text-muted-foreground" title={sc.title}>{sc.title}</span>
+                <span className="font-mono tabular-nums">{sc.percent !== null ? `${sc.percent}%` : '--'}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <span className="text-xs text-muted-foreground">--</span>
+      ),
+    } as DataTableColumn<CandidateResult>] : []),
+    {
+      key: 'outcome',
+      header: 'Outcome',
+      cell: (row: CandidateResult) => <OutcomeBadge status={row.outcome} />,
+    },
     {
       key: 'released',
       header: 'Released',
@@ -1760,6 +1806,32 @@ export default function ExamResultsPage() {
           searchPlaceholder="Search candidates..."
           bulkActions={[
             {
+              label: 'Compare',
+              variant: 'outline',
+              icon: <Eye className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (rowIds) => {
+                const uids = [...new Set(rowIds.map((id) => results.find((c) => c.id === id)).filter((r): r is CandidateResult => !!r && r.status === 'completed' && !!r.userId).map((r) => r.userId as string))]
+                if (uids.length < 2 || uids.length > 4) {
+                  addToast({ type: 'error', title: 'Select 2 to 4 candidates who submitted', message: `You selected ${uids.length} with a submission.` })
+                  return
+                }
+                setCompareIds(uids)
+              },
+            },
+            {
+              label: 'Record outcome',
+              variant: 'outline',
+              icon: <Award className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (rowIds) => {
+                const uids = [...new Set(rowIds.map((id) => results.find((c) => c.id === id)).filter((r): r is CandidateResult => !!r && r.status === 'completed' && !!r.userId).map((r) => r.userId as string))]
+                if (uids.length === 0) {
+                  addToast({ type: 'error', title: 'Select candidates who submitted this test' })
+                  return
+                }
+                setOutcomeIds(uids)
+              },
+            },
+            {
               label: bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : 'Grade with AI',
               variant: 'default',
               icon: bulkGradeIds ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />,
@@ -1801,6 +1873,25 @@ export default function ExamResultsPage() {
           ]}
         />
       </div>
+
+      {compareIds && exam && (
+        <CompareCandidates
+          examId={exam.id}
+          userIds={compareIds}
+          open={!!compareIds}
+          onOpenChange={(o) => { if (!o) setCompareIds(null) }}
+          onChanged={() => { void fetchData(true) }}
+        />
+      )}
+      {outcomeIds && exam && (
+        <OutcomeBulkDialog
+          open={!!outcomeIds}
+          onOpenChange={(o) => { if (!o) setOutcomeIds(null) }}
+          examId={exam.id}
+          userIds={outcomeIds}
+          onSaved={() => { void fetchData(true) }}
+        />
+      )}
 
       {reviewCandidate && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background print-review-overlay overflow-hidden">
@@ -1868,6 +1959,37 @@ export default function ExamResultsPage() {
                       )}
                     </div>
                   </div>
+
+                  {reviewData.submission.section_scores && reviewData.submission.section_scores.length > 0 && (
+                    <div className="rounded-lg border p-4">
+                      <h4 className="mb-2 text-sm font-semibold">Score by section</h4>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        {reviewData.submission.section_scores.map((sc) => (
+                          <div key={sc.id} className="rounded-lg border bg-muted/30 p-3">
+                            <p className="truncate text-xs text-muted-foreground" title={sc.title}>{sc.title}</p>
+                            <p className="text-lg font-bold tabular-nums">{sc.percent !== null ? `${sc.percent}%` : '--'}</p>
+                            <p className="text-xs text-muted-foreground tabular-nums">{sc.score}/{sc.max} points</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {(reviewCandidate.userId || reviewCandidate.id) && exam && (
+                    <HiringOutcomePanel
+                      key={`${reviewCandidate.userId || reviewCandidate.id}:${reviewData.outcome?.history?.length ?? 0}:${reviewData.outcome?.status ?? ''}`}
+                      examId={exam.id}
+                      userId={reviewCandidate.userId || reviewCandidate.id}
+                      outcome={reviewData.outcome ?? null}
+                      onSaved={async () => {
+                        const uid = reviewCandidate.userId || reviewCandidate.id
+                        const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
+                        const json = await res.json().catch(() => null)
+                        if (res.ok && json?.submission) setReviewData((prev) => (prev ? { ...prev, outcome: json.outcome ?? null } : prev))
+                        void fetchData(true)
+                      }}
+                    />
+                  )}
 
                   {/* Answer Review */}
                   <div className="space-y-3">

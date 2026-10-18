@@ -3,7 +3,8 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
-import { attemptTimeState, getExamDraft } from '@/lib/exam-access'
+import { applySectionUpdate, attemptTimeState, getExamDraft } from '@/lib/exam-access'
+import { resolveSections } from '@/lib/exam-sections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -35,7 +36,7 @@ export async function POST(
 
   try {
     const db = await getMongoDb()
-    const exam = await db.collection('exams').findOne({ id: examId }, { projection: { _id: 0, id: 1, duration: 1, ends_at: 1, questionList: 1, questions: 1 } })
+    const exam = await db.collection('exams').findOne({ id: examId }, { projection: { _id: 0, id: 1, duration: 1, ends_at: 1, questionList: 1, questions: 1, sections: 1 } })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
     const draft = await getExamDraft(db, examId, gate.user.id)
@@ -58,6 +59,14 @@ export async function POST(
       answers[k] = val
     }
     if (total > MAX_TOTAL_ANSWER_CHARS) return NextResponse.json({ error: 'Draft too large' }, { status: 400 })
+
+    // Sectioned test: only the current, still-open section's answers are kept;
+    // the section clock is applied (and saved) on the way.
+    if (resolveSections(exam as Record<string, unknown>).length > 0) {
+      const r = await applySectionUpdate(db, exam as Record<string, unknown>, gate.user.id, attemptNo, { kind: 'sync' }, answers)
+      if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+      return NextResponse.json({ ok: true, saved_at: nowIso(), current_section_id: r.state.current })
+    }
 
     // Only the running attempt's draft is written (a stale tab can't overwrite a retake).
     const res = await db.collection('exam_drafts').updateOne(

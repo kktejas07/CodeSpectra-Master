@@ -6,7 +6,7 @@ import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
-import { attemptTimeState, checkExamEntry, checkIdentityForAttempt, extensionRequired, getExamDraft, identitySummary, recordExamAttempt, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
+import { attemptTimeState, checkExamEntry, checkIdentityForAttempt, extensionRequired, getExamDraft, identitySummary, recordExamAttempt, sectionsAtSubmit, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -133,7 +133,11 @@ export async function POST(
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
     const draftAnswers = draft && draft.answers && typeof draft.answers === 'object' ? draft.answers as Record<string, unknown> : {}
-    const rawAnswers = late ? draftAnswers : (body.answers && typeof body.answers === 'object' ? body.answers : {})
+    const bodyAnswers = body.answers && typeof body.answers === 'object' && !Array.isArray(body.answers) ? body.answers : {}
+    // Sectioned test: closed sections (time over / locked) keep the answers
+    // the server saved; the browser's copy only counts for the open section.
+    const sectioned = sectionsAtSubmit(exam as Record<string, unknown>, draft, bodyAnswers, timeState.deadline)
+    const rawAnswers = late ? draftAnswers : (sectioned ? sectioned.answers : bodyAnswers)
     // Injection/DoS guard: answers are stored verbatim in MongoDB, so cap
     // per-answer and total size (16MB doc limit). Content stays untouched —
     // it is inert text, never eval'd; code runs only in the Piston sandbox.
@@ -232,6 +236,11 @@ export async function POST(
       ) - Date.parse(timeState.startedAt)),
       started_at: timeState.startedAt,
       deadline: timeState.deadline !== null ? new Date(timeState.deadline).toISOString() : null,
+      // Sections as taken (so later edits to the test don't remap these scores) and their clocks.
+      ...(sectioned ? {
+        sections: sectioned.sections,
+        section_timings: Object.fromEntries(sectioned.sections.map((s) => [s.id, sectioned.state.sections[s.id] ?? {}])),
+      } : {}),
       submitted_at: nowIso(),
       created_at: nowIso(),
     }

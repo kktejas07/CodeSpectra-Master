@@ -7,6 +7,11 @@
  */
 import type { Db, ObjectId } from 'mongodb'
 import type { APIUser } from '@/lib/route-auth'
+import {
+  advanceSections, editableQuestionIds, enterSection, initSectionsState, mergeSectionAnswers, normalizeSections,
+  parseSectionsState, resolveSections, sectionScores, type ExamSection, type SectionScore, type SectionsState,
+} from '@/lib/exam-sections'
+import { isScoredType } from '@/lib/question-types'
 
 type Doc = Record<string, unknown>
 
@@ -72,6 +77,10 @@ export function candidateExamView(doc: Doc): Doc {
   for (const k of STAFF_ONLY_EXAM_FIELDS) delete out[k]
   if (Array.isArray(doc.questionList)) out.questionList = doc.questionList.map(candidateQuestion)
   if (Array.isArray(doc.questions)) out.questions = doc.questions.map(candidateQuestion)
+  // Sections: resolved + whitelisted fields only (titles, instructions, timing, question ids).
+  const sections = resolveSections(doc)
+  if (sections.length) out.sections = sections
+  else delete out.sections
   return out
 }
 
@@ -557,6 +566,8 @@ export async function startExamAttempt(db: Db, examId: string, userId: string, a
         attempt_started_at: { $cond: [same, { $ifNull: ['$attempt_started_at', now] }, now] },
         answers: { $cond: [same, { $ifNull: ['$answers', { $literal: {} }] }, { $literal: {} }] },
         submitted_at: { $cond: [same, '$submitted_at', '$$REMOVE'] },
+        // Section clocks belong to one attempt (a retake starts them afresh).
+        sections_state: { $cond: [same, '$sections_state', '$$REMOVE'] },
         attempt_no: attemptNo,
         updated_at: now,
         created_at: { $ifNull: ['$created_at', now] },
@@ -571,6 +582,107 @@ export async function getExamDraft(db: Db, examId: string, userId: string): Prom
   return (await db.collection('exam_drafts').findOne({ exam_id: examId, user_id: userId }, { projection: { _id: 0 } })) as Doc | null
 }
 
+// ─── Sections: server-side section clocks ────────────────────────────────────
+//
+// The rules live in lib/exam-sections.ts (pure); this applies them to the
+// running attempt's draft. Every write is conditional on the state version it
+// read (sections_state.v), so two tabs can't interleave a switch.
+
+export type SectionOp = { kind: 'sync' } | { kind: 'enter'; sectionId: string }
+
+export type SectionUpdateResult =
+  | { ok: true; sections: ExamSection[]; state: SectionsState; answers: Record<string, unknown>; deadline: number | null }
+  | { ok: false; error: string; status: number; sections?: ExamSection[]; state?: SectionsState }
+
+/**
+ * Apply the section clock (and optionally a section switch and new answers)
+ * to the attempt in progress and save it. `incoming` answers are kept only for
+ * the section the candidate is in (after the clock is applied, before the
+ * switch). Tests without sections: { ok: false, status: 400 }.
+ */
+export async function applySectionUpdate(
+  db: Db,
+  exam: Doc,
+  userId: string,
+  attemptNo: number,
+  op: SectionOp,
+  incoming: Record<string, unknown> | null = null,
+  now: number = Date.now(),
+): Promise<SectionUpdateResult> {
+  const sections = resolveSections(exam)
+  if (sections.length === 0) return { ok: false, error: 'This test has no sections.', status: 400 }
+  const examId = String(exam.id)
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const draft = await getExamDraft(db, examId, userId)
+    const time = attemptTimeState(exam, draft, attemptNo, now)
+    if (time.status !== 'running' || draft?.submitted_at) {
+      return { ok: false, error: time.status === 'expired' ? 'Time is up for this attempt.' : 'No attempt in progress.', status: 409 }
+    }
+    const raw = draft?.sections_state as Doc | undefined
+    const rawV = raw && typeof raw === 'object' && typeof raw.v === 'number' ? raw.v : undefined
+    const parsed = parseSectionsState(raw, sections)
+    // First sync of the attempt: the first section starts with the attempt.
+    const startMs = parsed ? now : Math.min(now, Date.parse(time.startedAt) || now)
+    let state = parsed ?? initSectionsState(sections, startMs, time.deadline)
+    state = advanceSections(state, sections, now, time.deadline, EXAM_SUBMIT_GRACE_MS).state
+
+    const stored = draft?.answers && typeof draft.answers === 'object' ? (draft.answers as Record<string, unknown>) : {}
+    const answers = incoming ? mergeSectionAnswers(stored, incoming, editableQuestionIds(state, sections)) : stored
+
+    if (op.kind === 'enter') {
+      const r = enterSection(state, sections, op.sectionId, now, time.deadline, EXAM_SUBMIT_GRACE_MS)
+      if (!r.ok) return { ok: false, error: r.error, status: 409, sections, state: r.state }
+      state = r.state
+    }
+
+    const next: SectionsState = { ...state, v: (rawV ?? 0) + 1 }
+    const res = await db.collection('exam_drafts').updateOne(
+      {
+        exam_id: examId, user_id: userId, attempt_no: attemptNo, submitted_at: { $exists: false },
+        'sections_state.v': rawV === undefined ? { $exists: false } : rawV,
+      },
+      { $set: { sections_state: next, ...(incoming ? { answers } : {}), updated_at: new Date(now).toISOString() } },
+    )
+    if (res.matchedCount === 1) return { ok: true, sections, state: next, answers, deadline: time.deadline }
+  }
+  return { ok: false, error: 'Your test was updated in another tab. Reload to continue.', status: 409 }
+}
+
+/**
+ * Submit-time view of the sections (no write): the clock applied to the
+ * stored state, and the answers to keep — stored ones everywhere, the
+ * browser's only for the current open section. Null when the test has no sections.
+ */
+export function sectionsAtSubmit(
+  exam: Doc,
+  draft: Doc | null | undefined,
+  incoming: Record<string, unknown>,
+  deadline: number | null,
+  now: number = Date.now(),
+): { sections: ExamSection[]; state: SectionsState; answers: Record<string, unknown> } | null {
+  const sections = resolveSections(exam)
+  if (sections.length === 0) return null
+  const parsed = parseSectionsState(draft?.sections_state, sections)
+  const stored = draft?.answers && typeof draft.answers === 'object' ? (draft.answers as Record<string, unknown>) : {}
+  // An attempt that never synced sections (started before they were added): first section only.
+  const base = parsed ?? initSectionsState(sections, now, deadline)
+  const state = advanceSections(base, sections, now, deadline, EXAM_SUBMIT_GRACE_MS).state
+  return { sections, state, answers: mergeSectionAnswers(stored, incoming, editableQuestionIds(state, sections)) }
+}
+
+/**
+ * Per-section scores of a submission: the sections as the candidate took them
+ * (stored at submit), else the test's current sections. [] = no sections.
+ */
+export function submissionSectionScores(exam: Doc, sub: Doc): SectionScore[] {
+  const stored = Array.isArray(sub.sections) ? normalizeSections(sub.sections) : []
+  const sections = stored.length ? stored : resolveSections(exam)
+  if (!sections.length) return []
+  const questions = (Array.isArray(exam.questionList) ? exam.questionList : []) as Doc[]
+  const details = (Array.isArray(sub.details) ? sub.details : []) as Doc[]
+  return sectionScores(sections, questions, details, isScoredType)
+}
+
 // ─── Update allow-list ───────────────────────────────────────────────────────
 
 /** Fields an exam editor may change. Never id, _id, tenant_id, created_by, attempts/stats. */
@@ -579,8 +691,13 @@ export const EXAM_EDITABLE_FIELDS = [
   'starts_at', 'ends_at', 'require_token_links', 'require_id_verification', 'require_face_capture',
   'cert_template', 'degree_type', 'branch', 'screening_type', 'techStack',
   'questions', 'questionList', 'published', 'access_type', 'status', 'allow_retake', 'max_attempts',
-  'issue_certificates', 'proctoring_mode', 'kind', 'cad_points', 'no_camera_policy',
+  'issue_certificates', 'proctoring_mode', 'kind', 'cad_points', 'no_camera_policy', 'sections',
 ] as const
+
+/** Coerce `sections` from an editor body (call after pickFields). Question ids are re-checked when read (resolveSections). */
+export function normalizeSectionFields(data: Doc): void {
+  if ('sections' in data) data.sections = normalizeSections(data.sections)
+}
 
 // ─── Identity check (ID photo + live face photo) ─────────────────────────────
 //

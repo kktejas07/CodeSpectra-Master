@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
-import { attemptSummary, PROCTOR_INFO_EVENT_TYPES } from '@/lib/exam-access'
+import { attemptSummary, submissionSectionScores, PROCTOR_INFO_EVENT_TYPES } from '@/lib/exam-access'
+import { resolveSections, type SectionScore } from '@/lib/exam-sections'
+import { outcomesByUser } from '@/lib/hiring-outcomes'
 import { examCertificatesByUser } from '@/lib/db/certifications'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
@@ -109,7 +111,13 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       faceMatch?: number | null
       /** This candidate's certificate for the exam, if one was issued. */
       certificate?: { id: string; revokedAt: string | null; verifyToken: string | null } | null
+      /** Per-section scores (sectioned tests only). */
+      sectionScores?: SectionScore[]
+      /** Recorded hiring outcome for this test, if any. */
+      outcome?: string | null
+      totalTimeMs?: number | null
     }
+    const outcomes = await outcomesByUser(db, id)
     // Certificates for this exam, by holder (for revoke on the results page).
     const certByUser = await examCertificatesByUser(id, submissions.map((s) => String(s.id)))
     const attemptFields = (sub: Record<string, unknown> | undefined) => {
@@ -123,6 +131,9 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         ...(sub.kind ? { kind: String(sub.kind) } : {}),
         ...identityFields(sub),
         certificate: certByUser.get(String(sub.user_id || '')) ?? null,
+        sectionScores: submissionSectionScores(exam as Record<string, unknown>, sub),
+        outcome: (outcomes.get(String(sub.user_id || ''))?.status as string | undefined) ?? null,
+        totalTimeMs: typeof sub.total_time_ms === 'number' ? sub.total_time_ms : null,
       }
     }
     const identityFields = (sub: Record<string, unknown>) => {
@@ -249,6 +260,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         plagiarismReport: exam.plagiarism_report || null,
         passing_score: Number.isFinite(Number(exam.passing_score)) && exam.passing_score !== null ? Number(exam.passing_score) : null,
         issue_certificates: exam.issue_certificates !== false,
+        sections: resolveSections(exam as Record<string, unknown>).map((s) => ({ id: s.id, title: s.title })),
       },
       results,
       plagiarism,

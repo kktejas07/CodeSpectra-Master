@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
+import { submissionSectionScores } from '@/lib/exam-access'
+import { resolveSections } from '@/lib/exam-sections'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAdmin()
@@ -19,6 +21,16 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       return NextResponse.json({ error: owned.error }, { status: owned.status })
     }
     const examTitle = owned.doc?.title || 'Exam'
+    const examDoc = owned.doc as Record<string, unknown>
+    const sectionMeta = resolveSections(examDoc)
+    const sectionCells = (sub: Record<string, unknown> | undefined): string[] => {
+      if (!sectionMeta.length) return []
+      const scores = sub ? submissionSectionScores(examDoc, sub) : []
+      return sectionMeta.map((m) => {
+        const sc = scores.find((x) => x.id === m.id)
+        return sc && sc.percent !== null ? `${sc.percent}%` : '--'
+      })
+    }
 
     const invites = await db.collection('candidate_invites').find({
       $or: [
@@ -63,6 +75,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       proctoringFlags: number
       released: string
       deliveryStatus: string
+      sections: string[]
     }
 
     const latestInviteByEmail = new Map<string, typeof invites[0]>()
@@ -98,6 +111,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         proctoringFlags: 0,
         released: sub?.released_at ? 'Yes' : 'No',
         deliveryStatus: inv.delivery_status || '--',
+        sections: sectionCells(sub as Record<string, unknown> | undefined),
       })
     }
 
@@ -118,6 +132,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         proctoringFlags: 0,
         released: sub.released_at ? 'Yes' : 'No',
         deliveryStatus: '--',
+        sections: sectionCells(sub as Record<string, unknown>),
       })
       if (fetched.email) seenEmails.add(fetched.email.toLowerCase())
     }
@@ -131,6 +146,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       'Score (%)',
       'Submitted At',
       'Score Released',
+      ...sectionMeta.map((m) => `${m.title} (%)`),
     ]
 
     const csvRows = results.map(r => [
@@ -142,10 +158,16 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       r.score,
       r.submittedAt,
       r.released,
+      ...r.sections,
     ])
 
     const csvString = [headers, ...csvRows]
-      .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+      // Candidate-controlled text must not run as a spreadsheet formula.
+      .map(row => row.map(cell => {
+        let v = String(cell ?? '')
+        if (v !== '--' && /^[=+\-@\t\r]/.test(v)) v = `'${v}`
+        return `"${v.replace(/"/g, '""')}"`
+      }).join(','))
       .join('\r\n')
 
     const csvContent = '\uFEFF' + csvString

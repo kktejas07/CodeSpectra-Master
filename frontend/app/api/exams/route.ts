@@ -6,7 +6,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 import { sanitizeExamQuestion, sanitizeExamQuestionList } from '@/lib/grading'
-import { isExamStaff, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, normalizeIdentityFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP, NEW_EXAM_PASS_PERCENT } from '@/lib/exam-access'
+import { isExamStaff, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, normalizeIdentityFields, normalizeSectionFields, EXAM_EDITABLE_FIELDS, MAX_ATTEMPTS_CAP, NEW_EXAM_PASS_PERCENT } from '@/lib/exam-access'
 import { revokeExamCertificates } from '@/lib/db/certifications'
 import { writeAuditLog, auditLogAction } from '@/lib/db/misc'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
@@ -363,6 +363,7 @@ export async function PATCH(request: Request) {
     normalizeCertificateFields(updates)
     normalizeProctoringFields(updates)
     normalizeIdentityFields(updates)
+    normalizeSectionFields(updates)
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id })
     if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })

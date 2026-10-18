@@ -9,7 +9,9 @@
  *
  * Body: { inviteToken?, linkToken? }
  * 403 { identity_required: true } — run POST ./identity first (per the test's settings).
- * 200: { questionList, started_at, deadline, server_now, answers, attempt_no }
+ * 200: { questionList, started_at, deadline, server_now, answers, attempt_no,
+ *        sections?, current_section_id? } — sectioned tests only hand out the
+ *        questions of sections the candidate has entered (see ./section).
  * 410: { expired: true } — time is up; the page submits (the server finalises
  *      the attempt from the saved draft).
  */
@@ -17,7 +19,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
-import { attemptTimeState, candidateExamView, checkExamEntry, checkIdentityForAttempt, getExamDraft, startExamAttempt } from '@/lib/exam-access'
+import { applySectionUpdate, attemptTimeState, candidateExamView, checkExamEntry, checkIdentityForAttempt, getExamDraft, startExamAttempt } from '@/lib/exam-access'
+import { candidateSectionsView, resolveSections, visibleQuestionIds } from '@/lib/exam-sections'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -83,15 +86,28 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const view = candidateExamView(exam)
+    let questionList = (Array.isArray(view.questionList) ? view.questionList : (Array.isArray(view.questions) ? view.questions : [])) as Array<Record<string, unknown>>
+    let answers = draft.answers && typeof draft.answers === 'object' ? draft.answers : {}
+    let sectionFields: Record<string, unknown> = {}
+    if (resolveSections(exam).length > 0) {
+      // Section clocks: start (or resume) them on the server.
+      const sec = await applySectionUpdate(db, exam, userId, access.attemptNo, { kind: 'sync' })
+      if (!sec.ok) return NextResponse.json({ error: sec.error }, { status: sec.status })
+      const visible = visibleQuestionIds(sec.sections, sec.state)
+      questionList = questionList.filter((q) => visible.has(String(q.id)))
+      answers = sec.answers
+      sectionFields = { sections: candidateSectionsView(sec.sections, sec.state), current_section_id: sec.state.current }
+    }
     return NextResponse.json({
       ok: true,
-      questionList: Array.isArray(view.questionList) ? view.questionList : (Array.isArray(view.questions) ? view.questions : []),
+      questionList,
       started_at: state.startedAt,
       deadline: state.deadline !== null ? new Date(state.deadline).toISOString() : null,
       server_now: new Date().toISOString(),
-      answers: draft.answers && typeof draft.answers === 'object' ? draft.answers : {},
+      answers,
       attempt_no: access.attemptNo,
       max_attempts: access.maxAttempts,
+      ...sectionFields,
     })
   } catch (e) {
     console.error('[exams/start] POST:', e)

@@ -9,6 +9,7 @@ import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Scene } from '@/components/illustrations/scenes'
 import { SoftGlow } from '@/components/visuals'
+import { OUTCOME_LABELS, OUTCOME_STATUSES, type OutcomeStatus } from '@/lib/hiring-outcomes'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend, LineChart, Line,
@@ -63,6 +64,15 @@ export default function RecruiterAnalyticsPage() {
   const { startTour, setTourSeen } = useTour()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
+  /** Hiring outcomes recorded on assessment results pages (counts only). */
+  const [outcomes, setOutcomes] = useState<{ counts: Record<OutcomeStatus, number>; total: number } | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/hiring-outcomes?summary=1', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (j && j.counts) setOutcomes(j) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch('/api/recruiter/analytics')
@@ -197,6 +207,21 @@ export default function RecruiterAnalyticsPage() {
           className={data.flaggedSessions > 0 ? '[&>span:first-child]:border-red-500/20 [&>span:first-child]:bg-red-500/10 [&>span:first-child]:text-red-600 dark:[&>span:first-child]:text-red-400' : undefined}
         />
       </div>
+
+      {outcomes && outcomes.total > 0 && (
+        <Panel>
+          <h2 className="mb-1 text-lg font-semibold text-foreground">Hiring outcomes</h2>
+          <p className="mb-4 text-sm text-muted-foreground">Recorded by your team on assessment results.</p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {OUTCOME_STATUSES.map((st) => (
+              <div key={st} className="rounded-2xl border border-border/70 p-3">
+                <div className="text-2xl font-bold tabular-nums text-foreground">{outcomes.counts[st] ?? 0}</div>
+                <div className="text-xs text-muted-foreground">{OUTCOME_LABELS[st]}</div>
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
 
       {/* Interview Volume Trends */}
       {data.recentInterviews.length > 2 && (

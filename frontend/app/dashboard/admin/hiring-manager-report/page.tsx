@@ -10,6 +10,8 @@ import type { APIUser } from '@/lib/route-auth'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { RefreshCw, Users, Trophy } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { OUTCOME_LABELS, OUTCOME_STATUSES, type OutcomeStatus } from '@/lib/hiring-outcomes'
 
 interface Candidate {
   id: string
@@ -24,6 +26,8 @@ export default function HiringManagerReportPage() {
   const gate = usePageGuard('tenant_admin')
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [loading, setLoading] = useState(true)
+  /** Hiring outcomes recorded on the results pages, by status. */
+  const [outcomes, setOutcomes] = useState<{ counts: Record<OutcomeStatus, number>; total: number } | null>(null)
 
   const fetchData = async () => {
     setLoading(true)
@@ -31,6 +35,8 @@ export default function HiringManagerReportPage() {
       const res = await fetch('/api/admin/hiring-reports', { credentials: 'include' })
       const json = await res.json()
       setCandidates(json.data || [])
+      const oRes = await fetch('/api/admin/hiring-outcomes?summary=1', { credentials: 'include' })
+      if (oRes.ok) setOutcomes(await oRes.json())
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }
@@ -67,6 +73,23 @@ export default function HiringManagerReportPage() {
           icon={<Trophy />}
         />
       </div>
+
+      {outcomes && (
+        <div className="rounded-3xl border border-border/70 bg-card p-5">
+          <p className="mb-3 text-sm font-medium text-muted-foreground">
+            Hiring outcomes recorded <span className="tabular-nums">({outcomes.total})</span>
+          </p>
+          {outcomes.total === 0 ? (
+            <p className="text-sm text-muted-foreground">None yet. Record them from a test’s results page (select candidates, then “Record outcome”).</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {OUTCOME_STATUSES.map((st) => (
+                <Badge key={st} variant="outline" className="text-xs">{OUTCOME_LABELS[st]}: <span className="ml-1 tabular-nums">{outcomes.counts[st] ?? 0}</span></Badge>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <SkeletonTable rows={6} />

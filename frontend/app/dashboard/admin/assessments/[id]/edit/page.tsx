@@ -20,6 +20,8 @@ import { canonicalType, metaFor, QUESTION_TYPES } from '@/lib/question-types'
 import { CODE_LANGUAGES } from '@/lib/code-languages'
 import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { SectionsEditor } from '@/components/assessment/SectionsEditor'
+import type { ExamSection } from '@/lib/exam-sections'
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
   mcq: <List className="h-3 w-3 mr-1" />,
@@ -154,6 +156,8 @@ interface Exam {
   /** cad = file-upload CAD task at /assessment/[id]/cad. */
   kind?: 'standard' | 'cad'
   cad_points?: number
+  /** Ordered test sections (lib/exam-sections.ts); absent = one implicit section. */
+  sections?: ExamSection[]
 }
 
 /** Map one imported JSON item into the exam's Question shape. */
@@ -979,6 +983,16 @@ export default function ExamReviewPage() {
           </Button>
         </div>
       </div>
+
+      {exam.kind !== 'cad' && exam.questionList.length > 0 && (
+        <SectionsEditor
+          examId={exam.id}
+          questions={exam.questionList}
+          initial={exam.sections}
+          durationMinutes={Number(exam.duration) || 0}
+          onSaved={(secs) => setExam((cur) => (cur ? { ...cur, sections: secs } : cur))}
+        />
+      )}
 
       <Panel className="space-y-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
