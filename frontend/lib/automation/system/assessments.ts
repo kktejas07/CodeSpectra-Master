@@ -407,6 +407,8 @@ export const ASSESSMENT_AUTOMATIONS: SystemAutomation[] = [
     refs: ['AU-02', 'A-007'],
     cadence: { kind: 'interval', minutes: 5 },
     run: async (now) => finalizeAbandonedAttempts(now),
+    // Finalising the attempt IS the event: with this off, nothing is finalised and nothing is emitted.
+    emits: ['attempt.abandoned'],
   },
   {
     id: 'integrity-review',

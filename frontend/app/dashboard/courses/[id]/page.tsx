@@ -1,5 +1,6 @@
 'use client'
 
+import { useHref } from '@/hooks/use-browser-value'
 import { useEffect, useState, use, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -102,6 +103,7 @@ function formatDuration(seconds: number): string {
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
   const addToast = useToast()
+  const pageHref = useHref()
   const resolved = use(params)
   const courseId = resolved.id
 
@@ -506,7 +508,7 @@ const handleEnroll = async () => {
                 </Tooltip>
                 <AddToCalendarButton
                   courseTitle={course.title}
-                  courseUrl={typeof window !== 'undefined' ? window.location.href : ''}
+                  courseUrl={pageHref}
                 />
                 <div className="relative">
                   <Tooltip>

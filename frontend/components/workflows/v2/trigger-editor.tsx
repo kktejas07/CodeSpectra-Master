@@ -8,7 +8,7 @@ import { useState } from 'react'
 import { Copy, KeyRound } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import CronPicker from '@/components/workflows/cron-picker'
-import { EVENT_TYPES, eventTypeDef } from '@/lib/automation/event-types'
+import { eventTypeDef, eventTypesFor } from '@/lib/automation/event-types'
 import type { Condition } from '@/lib/automation/conditions'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConditionEditor, selectClass } from './fields'
@@ -28,17 +28,21 @@ const OPTIONS: { value: TriggerValue['trigger']; label: string; hint: string }[]
   { value: 'manual', label: 'Only when I run it', hint: 'Use Run now' },
 ]
 
-export function TriggerEditor({ value, onChange, workflowId, hookUrl, secretHint }: {
+export function TriggerEditor({ value, onChange, workflowId, hookUrl, secretHint, platform = false }: {
   value: TriggerValue
   onChange: (v: TriggerValue) => void
   workflowId: string
   hookUrl: string
   secretHint?: string | null
+  /** Platform (superadmin, no organisation) workflow: platform-wide events are offered too. */
+  platform?: boolean
 }) {
   const [secret, setSecret] = useState<string | null>(null)
   const [hint, setHint] = useState<string | null>(secretHint ?? null)
   const [err, setErr] = useState<string | null>(null)
-  const groups = [...new Set(EVENT_TYPES.map((e) => e.group))]
+  // Organisation workflows never receive platform-wide events (blog, events feed), so they aren't offered.
+  const events = eventTypesFor(platform)
+  const groups = [...new Set(events.map((e) => e.group))]
   const def = value.event_type ? eventTypeDef(value.event_type) : undefined
 
   async function rotate() {
@@ -76,11 +80,12 @@ export function TriggerEditor({ value, onChange, workflowId, hookUrl, secretHint
               <option value="">Choose an event…</option>
               {groups.map((g) => (
                 <optgroup key={g} label={g}>
-                  {EVENT_TYPES.filter((e) => e.group === g).map((e) => <option key={e.type} value={e.type}>{e.label}</option>)}
+                  {events.filter((e) => e.group === g).map((e) => <option key={e.type} value={e.type}>{e.label}</option>)}
                 </optgroup>
               ))}
             </select>
             {def && <p className="text-xs text-muted-foreground">{def.description}</p>}
+            {!def && value.event_type && <p className="text-xs text-muted-foreground">Custom event <code className="font-mono">{value.event_type}</code></p>}
           </div>
           {def && (
             <ConditionEditor

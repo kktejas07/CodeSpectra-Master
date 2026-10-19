@@ -43,7 +43,7 @@ type LoopRow = RunMeta & {
   name: string
   what: string
   recommend: string
-  status: 'running' | 'disabled'
+  status: 'running' | 'disabled' | 'not_seen' | 'failing' | 'stale'
 }
 
 type HttpJob = RunMeta & {

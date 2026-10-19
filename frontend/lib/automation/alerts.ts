@@ -31,9 +31,10 @@ export function chatPayload(a: AdminAlert, appUrl: string): Record<string, unkno
   return { text: `${icon} *${a.title}*\n${a.detail}${link}` }
 }
 
-export async function postChatWebhook(url: string, body: Record<string, unknown>): Promise<void> {
+export async function postChatWebhook(url: string, body: Record<string, unknown>, signal?: AbortSignal): Promise<void> {
   if (!isAllowedChatWebhook(url)) throw new Error('Not a Slack/Teams incoming webhook URL')
-  const res = await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000) })
+  const timeout = AbortSignal.timeout(10_000)
+  const res = await safeFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: signal ? AbortSignal.any([timeout, signal]) : timeout })
   if (!res.ok) throw new Error(`Webhook answered ${res.status}`)
 }
 

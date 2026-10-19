@@ -313,6 +313,11 @@ export async function updateSellerProfile(seller: SellerDoc, raw: unknown): Prom
     if (phone && !/^\+?\d{8,15}$/.test(phone)) throw new MktError(400, 'Enter a valid phone number with country code.')
     set.phone = phone
   }
+  // CORE-021: opt in to platform-wide coupons on this store's items (the seller pays its share).
+  if (b.accepts_platform_coupons !== undefined && !seller.is_platform) {
+    set.accepts_platform_coupons = b.accepts_platform_coupons === true
+    await audit(seller.user_id, b.accepts_platform_coupons === true ? 'seller.platform_coupons_on' : 'seller.platform_coupons_off', seller.id)
+  }
   if (b.whatsapp_opt_in !== undefined) set.whatsapp_opt_in = b.whatsapp_opt_in === true && !!(set.phone ?? seller.phone)
   if (b.contact_email !== undefined) {
     const e = str(b.contact_email, 200)

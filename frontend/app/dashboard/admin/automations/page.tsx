@@ -4,10 +4,12 @@
  * Built-in automations (superadmin): switch each one on or off, see when it
  * last ran and how it went, run a sweep now, and set alert channels,
  * retention periods and WhatsApp template names.
+ * Health: every scheduled background job (last run, failures, stale), queue
+ * backlog, and failures after all retries with a Retry button.
  */
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { BellRing, CheckCircle2, Loader2, Play, XCircle, Zap } from 'lucide-react'
+import { BellRing, CheckCircle2, Loader2, Lock, Play, RotateCcw, XCircle, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -15,7 +17,9 @@ import { Switch } from '@/components/ui/switch'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, Section, StatCard } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { eventTypeDef } from '@/lib/automation/event-types'
 
 interface AutomationRow {
   id: string
@@ -24,6 +28,8 @@ interface AutomationRow {
   group: string
   refs: string[]
   enabled: boolean
+  locked?: boolean
+  emits?: string[]
   schedule: string | null
   triggers: string[]
   can_run_now: boolean
@@ -35,12 +41,37 @@ interface AutomationRow {
   last_result: unknown
 }
 
+interface JobRow {
+  id: string
+  label: string
+  group: string
+  everyMinutes: number
+  optional?: boolean
+  last_run_at: string | null
+  last_status: 'ok' | 'error' | null
+  last_error: string | null
+  runs: number
+  failures: number
+  state: 'ok' | 'failing' | 'stale' | 'never'
+}
+
 interface Data {
   items: AutomationRow[]
   tick: { last_run_at: string; last_status: string } | null
   queues: Record<string, number>
-  dead_letters: { id: string; kind: string; ref: string; error: string; created_at: string; detail?: Record<string, unknown> }[]
+  backlog?: { oldest_event: string | null; oldest_email: string | null; oldest_job: string | null; oldest_run: string | null }
+  jobs?: JobRow[]
+  dead_letters: { id: string; kind: string; ref: string; error: string; created_at: string; retried_at?: string; detail?: Record<string, unknown> }[]
   config: Record<string, unknown>
+}
+
+const STATE_LABEL: Record<JobRow['state'], string> = { ok: 'Healthy', failing: 'Failing', stale: 'Stopped', never: 'Not run yet' }
+const STATE_ORDER: Record<JobRow['state'], number> = { failing: 0, stale: 1, never: 2, ok: 3 }
+
+function every(minutes: number): string {
+  if (minutes < 60) return `every ${minutes} min`
+  if (minutes < 1440) return `every ${Math.round(minutes / 60)} h`
+  return minutes >= 10080 ? 'weekly' : 'daily'
 }
 
 function ago(iso: string | null): string {
@@ -66,7 +97,9 @@ const NUM_FIELDS: { key: string; label: string; help: string }[] = [
 
 export default function AutomationsPage() {
   const gate = usePageGuard('superadmin')
+  const confirm = useConfirm()
   const [data, setData] = useState<Data | null>(null)
+  const [showAllJobs, setShowAllJobs] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -86,6 +119,10 @@ export default function AutomationsPage() {
       wa_template_payment: String(c.wa_template_payment ?? ''),
       wa_template_event: String(c.wa_template_event ?? ''),
       wa_template_language: String(c.wa_template_language ?? 'en'),
+      wa_template_notification: String(c.wa_template_notification ?? ''),
+      wa_template_hiring: String(c.wa_template_hiring ?? ''),
+      wa_template_newsletter: String(c.wa_template_newsletter ?? ''),
+      whatsapp_unofficial_enabled: c.whatsapp_unofficial_enabled === true ? '1' : '',
     })
   }, [])
 
@@ -112,8 +149,21 @@ export default function AutomationsPage() {
     }
   }
 
+  async function toggle(a: AutomationRow, on: boolean) {
+    if (!on && a.emits?.length) {
+      const names = a.emits.map((t) => eventTypeDef(t)?.label || t).join(', ')
+      const ok = await confirm({ title: `Switch off “${a.title}”?`, description: `Workflows that start on ${names} stop while this is off, because those events only happen when it runs.` })
+      if (!ok) return
+    }
+    await post({ action: 'toggle', id: a.id, enabled: on }, `t:${a.id}`)
+  }
+
   const groups = data ? [...new Set(data.items.map((i) => i.group))] : []
   const q = data?.queues || {}
+  const bl = data?.backlog
+  const jobs = [...(data?.jobs || [])].sort((x, y) => STATE_ORDER[x.state] - STATE_ORDER[y.state] || x.label.localeCompare(y.label))
+  const unhealthy = jobs.filter((j) => j.state === 'failing' || j.state === 'stale' || (j.state === 'never' && !j.optional))
+  const shownJobs = showAllJobs ? jobs : unhealthy
 
   return (
     <div className="space-y-6">
@@ -131,10 +181,35 @@ export default function AutomationsPage() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard label="Scheduler" value={data.tick ? ago(data.tick.last_run_at) : 'not seen yet'} hint={data.tick?.last_status === 'error' ? 'Last pass had an error' : 'Last automation pass'} />
-            <StatCard label="Events waiting" value={String(q.eventsPending ?? 0)} hint={`${q.eventsDead ?? 0} gave up`} />
-            <StatCard label="Emails to retry" value={String(q.outboxPending ?? 0)} hint={`${q.outboxDead ?? 0} gave up · ${q.suppressed ?? 0} suppressed`} />
-            <StatCard label="Waiting runs / jobs" value={`${q.runsWaiting ?? 0} / ${q.jobsPending ?? 0}`} hint={`${q.jobsDead ?? 0} jobs gave up`} />
+            <StatCard label="Events waiting" value={String(q.eventsPending ?? 0)} hint={`${q.eventsDead ?? 0} gave up${bl?.oldest_event ? ` · oldest ${ago(bl.oldest_event)}` : ''}`} />
+            <StatCard label="Emails to retry" value={String(q.outboxPending ?? 0)} hint={`${q.outboxDead ?? 0} gave up · ${q.suppressed ?? 0} suppressed${bl?.oldest_email ? ` · oldest ${ago(bl.oldest_email)}` : ''}`} />
+            <StatCard label="Waiting runs / jobs" value={`${q.runsWaiting ?? 0} / ${q.jobsPending ?? 0}`} hint={`${q.jobsDead ?? 0} jobs gave up${bl?.oldest_job ? ` · job overdue since ${ago(bl.oldest_job)}` : ''}`} />
           </div>
+
+          <Section title="Background job health">
+            <Panel className="overflow-hidden p-0" data-testid="automation-health">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-4 py-3 text-sm">
+                {unhealthy.length === 0
+                  ? <span className="flex items-center gap-2 text-foreground"><CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" aria-hidden /> All {jobs.length} scheduled jobs ran on time.</span>
+                  : <span className="flex items-center gap-2 text-foreground"><XCircle className="h-4 w-4 text-destructive" aria-hidden /> {unhealthy.length} of {jobs.length} jobs need attention.</span>}
+                <Button size="sm" variant="ghost" className="ml-auto" onClick={() => setShowAllJobs((v) => !v)} aria-expanded={showAllJobs}>{showAllJobs ? 'Show problems only' : 'Show all jobs'}</Button>
+              </div>
+              {shownJobs.length > 0 && (
+                <ul className="divide-y divide-border/60">
+                  {shownJobs.map((j) => (
+                    <li key={j.id} className="flex flex-col gap-1 px-4 py-2.5 text-xs sm:flex-row sm:items-center sm:gap-3">
+                      <Badge variant={j.state === 'failing' || j.state === 'stale' ? 'destructive' : 'outline'} className="self-start sm:w-24 sm:justify-center">{STATE_LABEL[j.state]}</Badge>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-medium text-foreground">{j.label}</span>
+                        <span className="block text-muted-foreground">{j.group} · {every(j.everyMinutes)}{j.optional ? ' · only when switched on' : ''}{j.state === 'failing' && j.last_error ? ` · ${j.last_error}` : ''}</span>
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">Last run {ago(j.last_run_at)}{j.failures > 0 ? ` · ${j.failures} failed of ${j.runs}` : ''}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Panel>
+          </Section>
 
           {groups.map((g) => (
             <Section key={g} title={g}>
@@ -147,11 +222,14 @@ export default function AutomationsPage() {
                           <h3 className="text-sm font-semibold text-foreground">{a.title}</h3>
                           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{a.description}</p>
                         </div>
-                        <Switch checked={a.enabled} disabled={busy === `t:${a.id}`} onCheckedChange={(on) => post({ action: 'toggle', id: a.id, enabled: on }, `t:${a.id}`)} aria-label={`${a.title}: ${a.enabled ? 'on' : 'off'}`} />
+                        {a.locked
+                          ? <Badge variant="outline" className="shrink-0 gap-1"><Lock className="h-3 w-3" aria-hidden /> Always on</Badge>
+                          : <Switch checked={a.enabled} disabled={busy === `t:${a.id}`} onCheckedChange={(on) => void toggle(a, on)} aria-label={`${a.title}: ${a.enabled ? 'on' : 'off'}`} />}
                       </div>
                       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                         {a.schedule && <Badge variant="outline">{a.schedule}</Badge>}
                         {a.triggers.map((t) => <Badge key={t} variant="outline">on {t}</Badge>)}
+                        {(a.emits || []).map((t) => <Badge key={`e-${t}`} variant="outline">emits {t}</Badge>)}
                         {a.refs.map((r) => <span key={r} className="font-mono">{r}</span>)}
                       </div>
                       <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-border/60 pt-3 text-xs">
@@ -203,9 +281,29 @@ export default function AutomationsPage() {
                   <Input id="wa-event" value={cfg.wa_template_event || ''} onChange={(e) => setCfg({ ...cfg, wa_template_event: e.target.value })} placeholder="event_reminder" />
                   <p className="text-xs text-muted-foreground">2 values (event name, time left). Only people who agreed to WhatsApp get it.</p>
                 </div>
+                {([
+                  ['wa_template_notification', 'WhatsApp template: notifications', 'notification_update', 'Results, hackathon updates, test reminders. 3 values (title, message, link).'],
+                  ['wa_template_hiring', 'WhatsApp template: hiring updates', 'hiring_update', 'Background checks, HR forms, interviews. 3 values (title, message, link). Empty = notifications template.'],
+                  ['wa_template_newsletter', 'WhatsApp template: newsletters', 'newsletter_update', 'Newsletter campaigns (Meta “marketing” category). 3 values (title, message, link).'],
+                ] as const).map(([key, label, ph, help]) => (
+                  <div key={key} className="space-y-1">
+                    <label htmlFor={`cfg-${key}`} className="text-xs font-medium text-muted-foreground">{label}</label>
+                    <Input id={`cfg-${key}`} value={cfg[key] || ''} onChange={(e) => setCfg({ ...cfg, [key]: e.target.value })} placeholder={ph} />
+                    <p className="text-xs text-muted-foreground">{help}</p>
+                  </div>
+                ))}
+                <div className="space-y-1 md:col-span-2">
+                  <label className="flex items-start gap-3 text-sm text-foreground">
+                    <Switch checked={cfg.whatsapp_unofficial_enabled === '1'} onCheckedChange={(on) => setCfg({ ...cfg, whatsapp_unofficial_enabled: on ? '1' : '' })} aria-label="Allow the unofficial WhatsApp gateway" className="mt-0.5" />
+                    <span>
+                      <span className="block font-medium">Allow the unofficial WhatsApp gateway (OpenWA)</span>
+                      <span className="block text-xs text-muted-foreground">Off by default. Used only when no approved Meta template is set for a message, and still only for people who agreed to WhatsApp and haven’t replied STOP. Numbers can be banned for bulk messages sent this way.</span>
+                    </span>
+                  </label>
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button disabled={!!busy} onClick={() => post({ action: 'config', config: { ...Object.fromEntries(NUM_FIELDS.map((f) => [f.key, cfg[f.key]])), alert_emails: cfg.alert_emails, wa_template_payment: cfg.wa_template_payment, wa_template_event: cfg.wa_template_event, wa_template_language: cfg.wa_template_language || 'en', ...(webhook.trim() ? { alert_webhook_url: webhook.trim() } : {}) } }, 'cfg', 'Settings saved.').then(() => setWebhook(''))}>
+                <Button disabled={!!busy} onClick={() => post({ action: 'config', config: { ...Object.fromEntries(NUM_FIELDS.map((f) => [f.key, cfg[f.key]])), alert_emails: cfg.alert_emails, wa_template_payment: cfg.wa_template_payment, wa_template_event: cfg.wa_template_event, wa_template_language: cfg.wa_template_language || 'en', wa_template_notification: cfg.wa_template_notification, wa_template_hiring: cfg.wa_template_hiring, wa_template_newsletter: cfg.wa_template_newsletter, whatsapp_unofficial_enabled: cfg.whatsapp_unofficial_enabled === '1', ...(webhook.trim() ? { alert_webhook_url: webhook.trim() } : {}) } }, 'cfg', 'Settings saved.').then(() => setWebhook(''))}>
                   {busy === 'cfg' && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />} Save settings
                 </Button>
                 <Button variant="outline" disabled={!!busy} onClick={() => post({ action: 'test-alert' }, 'alert', 'Test alert sent.')}><BellRing className="h-4 w-4" aria-hidden /> Send a test alert</Button>
@@ -220,7 +318,7 @@ export default function AutomationsPage() {
             </Panel>
           </Section>
 
-          <Section title="Recent failures">
+          <Section title="Failures after all retries">
             {!data.dead_letters.length ? (
               <p className="text-sm text-muted-foreground">Nothing has failed after all retries.</p>
             ) : (
@@ -229,8 +327,18 @@ export default function AutomationsPage() {
                   {data.dead_letters.map((d) => (
                     <li key={d.id} className="flex flex-col gap-1 px-4 py-2.5 text-xs sm:flex-row sm:items-center sm:gap-3">
                       <Badge variant="outline" className="self-start">{d.kind}</Badge>
-                      <span className="min-w-0 flex-1 break-words text-foreground">{d.error}</span>
+                      <span className="min-w-0 flex-1 break-words text-foreground">
+                        {d.error}
+                        {typeof d.detail?.workflow === 'string' && <span className="block text-muted-foreground">Workflow “{d.detail.workflow}”</span>}
+                      </span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">{ago(d.created_at)}</span>
+                      {d.retried_at
+                        ? <span className="shrink-0 text-muted-foreground">Retried {ago(d.retried_at)}</span>
+                        : (
+                          <Button size="sm" variant="outline" className="shrink-0 self-start" disabled={!!busy} onClick={() => post({ action: 'retry-dead', id: d.id }, `dl:${d.id}`, 'Queued for another try.')} data-testid={`retry-dead-${d.id}`}>
+                            {busy === `dl:${d.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden /> : <RotateCcw className="h-3.5 w-3.5" aria-hidden />} Retry
+                          </Button>
+                        )}
                     </li>
                   ))}
                 </ul>

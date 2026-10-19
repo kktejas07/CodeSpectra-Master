@@ -12,6 +12,9 @@
  *   sale                 S   +T   held
  *   commission           S   −C   held   (same release time as the sale)
  *   commission           ∅   +C   held   (platform revenue, seller_id null)
+ * Platform-funded coupon share F on a line (CORE-021): the sale is T + F, commission is on
+ * T + F, and the platform books −F (type 'adjustment'), so the seller is paid as if
+ * there were no coupon.
  * Shipping (per line, excluding its tax) goes to that line's seller (no commission).
  * A refund of p on a line reverses p from the seller and the proportional
  * commission from the platform.
@@ -48,10 +51,22 @@ export function splitLine(lineTotal: number, bps: number): { commission: number;
 }
 
 /** The line's commission, trusting the purchase snapshot only when it adds up. */
-export function lineCommission(line: Pick<OrderLine, 'line_total' | 'commission_bps' | 'commission_amount' | 'seller_earnings'>): number {
+export function lineCommission(line: Pick<OrderLine, 'line_total' | 'commission_bps' | 'commission_amount' | 'seller_earnings' | 'platform_funded'>): number {
   const c = line.commission_amount
-  if (Number.isInteger(c) && c >= 0 && c <= line.line_total && c + line.seller_earnings === line.line_total) return c
-  return splitLine(line.line_total, Math.min(MAX_BPS, Math.max(0, line.commission_bps || 0))).commission
+  const value = sellerValue(line)
+  if (Number.isInteger(c) && c >= 0 && c <= value && c + line.seller_earnings === value) return c
+  return splitLine(value, Math.min(MAX_BPS, Math.max(0, line.commission_bps || 0))).commission
+}
+
+/** Platform-funded coupon share on a line (0 when none / invalid). */
+export function platformFunded(line: Pick<OrderLine, 'platform_funded'>): number {
+  const f = line.platform_funded
+  return Number.isInteger(f) && (f as number) > 0 ? (f as number) : 0
+}
+
+/** What the seller's side of the line is worth: what the buyer paid (ex-tax) + the platform-funded share. */
+export function sellerValue(line: Pick<OrderLine, 'line_total' | 'platform_funded'>): number {
+  return line.line_total + platformFunded(line)
 }
 
 // ─── Pure entry builders ─────────────────────────────────────────────────────
@@ -86,7 +101,11 @@ export function buildSaleEntries(order: Order, settings: Pick<MarketplaceSetting
     })
     const c = lineCommission(line)
     const base = { order_id: order.id, line_id: line.id, currency: order.currency, available_at, kind: line.kind }
-    entries.push({ ...base, idem_key: `sale:${order.id}:${line.id}`, seller_id: line.seller_id, type: 'sale', amount: line.line_total, note: line.title?.slice(0, 120) })
+    entries.push({ ...base, idem_key: `sale:${order.id}:${line.id}`, seller_id: line.seller_id, type: 'sale', amount: sellerValue(line), note: line.title?.slice(0, 120) })
+    const funded = platformFunded(line)
+    if (funded > 0) {
+      entries.push({ ...base, idem_key: `coupon_funding:${order.id}:${line.id}`, seller_id: null, type: 'adjustment', amount: -funded, note: 'Platform-funded coupon' })
+    }
     if (c > 0) {
       entries.push({ ...base, idem_key: `commission:${order.id}:${line.id}`, seller_id: line.seller_id, type: 'commission', amount: -c, note: `${line.commission_bps / 100}% commission` })
       entries.push({ ...base, idem_key: `platform_commission:${order.id}:${line.id}`, seller_id: null, type: 'commission', amount: c })
@@ -162,6 +181,13 @@ export function buildRefundEntries(
     if (!p) return
     const c = l.line_total ? Math.floor((p * lineCommission(l) + Math.floor(l.line_total / 2)) / l.line_total) : 0
     entries.push({ ...base, line_id: l.id, seller_id: l.seller_id, type: 'refund', amount: -p, idem_key: `refund:${order.id}:${l.id}:${key}`, kind: l.kind })
+    // Platform-funded coupon: the seller also returns that share, back to the platform.
+    const f = platformFunded(l)
+    const q = f && l.line_total ? Math.floor((p * f + Math.floor(l.line_total / 2)) / l.line_total) : 0
+    if (q > 0) {
+      entries.push({ ...base, line_id: l.id, seller_id: l.seller_id, type: 'adjustment', amount: -q, idem_key: `refund_coupon_funding:${order.id}:${l.id}:${key}`, note: 'Platform-funded coupon returned on refund' })
+      entries.push({ ...base, line_id: l.id, seller_id: null, type: 'adjustment', amount: q, idem_key: `refund_platform_coupon_funding:${order.id}:${l.id}:${key}`, note: 'Platform-funded coupon reversed on refund' })
+    }
     if (c > 0) {
       entries.push({ ...base, line_id: l.id, seller_id: l.seller_id, type: 'commission', amount: c, idem_key: `refund_commission:${order.id}:${l.id}:${key}`, note: 'Commission returned on refund' })
       entries.push({ ...base, line_id: l.id, seller_id: null, type: 'commission', amount: -c, idem_key: `refund_platform_commission:${order.id}:${l.id}:${key}`, note: 'Commission reversed on refund' })

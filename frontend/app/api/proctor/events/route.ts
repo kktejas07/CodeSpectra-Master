@@ -4,6 +4,7 @@ import { proctorEvents, newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { sanitizeProctorMeta } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 
 const SESSION_KINDS = ['exam', 'problem', 'interview'] as const
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const ua = req.headers.get('user-agent') || ''
     const parsed = parseUserAgent(ua)
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    const ip = clientIpOrEmpty(req)
 
     const col = await proctorEvents()
     const doc = {

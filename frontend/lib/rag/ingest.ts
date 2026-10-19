@@ -18,7 +18,7 @@ import { acquireRedisLock, releaseRedisLock } from '@/lib/upstash-rate-limit'
 import { chunkText, contentHash } from './chunk'
 import { embedTexts, availableEmbedModels } from './embed'
 import { effectiveVisibility } from './acl'
-import { loadSource, listSourceIds, SWEEP_LIMIT } from './sources'
+import { iterateSourceIds, loadSource } from './sources'
 import { ragChunks, ragMeta, ragSources } from './store'
 import {
   KNOWLEDGE_SOURCE_TYPES, TENANT_TYPES, sourceKey, tenantKey,
@@ -28,6 +28,11 @@ import {
 const nowIso = () => new Date().toISOString()
 const LOCK_MS = 5 * 60_000
 const MAX_ATTEMPTS = 3
+
+/** Backoff before retry n (1-based): 1, 4, 16 … minutes, capped at 1 hour. */
+export function retryBackoffMs(attempt: number): number {
+  return Math.min(60 * 60_000, 60_000 * 4 ** Math.max(0, attempt - 1))
+}
 
 // ─── Dominant model (keep one model per corpus where possible) ───────────────
 
@@ -43,11 +48,13 @@ export async function dominantEmbeddingModel(): Promise<string | null> {
       { $sort: { n: -1 } },
       { $limit: 1 },
     ]).toArray()
-    dominant = { model: rows[0]?._id ?? null, at: Date.now() }
+    const model = rows[0]?._id ?? null
+    // Only a real model is cached: "no vectors yet" must not hide the first vectors for 10 minutes.
+    dominant = model ? { model, at: Date.now() } : null
+    return model
   } catch {
-    dominant = { model: null, at: Date.now() }
+    return null
   }
-  return dominant.model
 }
 
 // ─── Index / remove ──────────────────────────────────────────────────────────
@@ -198,7 +205,8 @@ async function claimNext(): Promise<RagSourceDoc | null> {
   return col.findOneAndUpdate(
     {
       $or: [
-        { status: 'queued' },
+        // queued_at in the future = a retry waiting out its backoff (RAG-006).
+        { status: 'queued', $or: [{ queued_at: { $lte: now.toISOString() } }, { queued_at: null }] },
         { status: 'indexing', locked_until: { $lt: now.toISOString() } },
       ],
     },
@@ -223,9 +231,11 @@ export async function processKnowledgeQueue(opts: { max?: number; budgetMs?: num
       failed++
       const msg = (e instanceof Error ? e.message : String(e)).slice(0, 300)
       const retry = (row.attempts ?? 1) < MAX_ATTEMPTS
+      // RAG-006: retries back off exponentially (1, 4, 16 min) instead of hammering in the same tick.
+      const backoffMs = retryBackoffMs(row.attempts ?? 1)
       await col.updateOne(
         { id: row.id, queued_at: row.queued_at ?? null },
-        { $set: { status: retry ? 'queued' : 'failed', error: msg, locked_until: null, updated_at: nowIso() } },
+        { $set: { status: retry ? 'queued' : 'failed', error: msg, locked_until: null, updated_at: nowIso(), ...(retry ? { queued_at: new Date(Date.now() + backoffMs).toISOString() } : {}) } },
       )
       console.error(`[rag] indexing ${row.id} failed:`, msg)
     }
@@ -242,7 +252,11 @@ export interface SweepScope {
   force?: boolean
 }
 
-/** Queue every source in scope, plus stored rows whose source disappeared (they get removed). */
+/**
+ * Queue every source in scope, plus stored rows whose source disappeared (they
+ * get removed). RAG-005: ids are paged (no per-type ceiling) and the orphan
+ * check pages through the stored rows too, so it always runs.
+ */
 export async function sweepKnowledge(scope: SweepScope = {}): Promise<{ queued: number; byType: Record<string, number> }> {
   const db = await getMongoDb()
   const col = await ragSources()
@@ -252,17 +266,24 @@ export async function sweepKnowledge(scope: SweepScope = {}): Promise<{ queued: 
   let queued = 0
   for (const type of types) {
     try {
-      const ids = await listSourceIds(db, type, scope.tenantId ?? null)
-      const known = new Set(ids)
-      const items: EnqueueItem[] = ids.map((id) => ({ type, id, tenantId: scope.tenantId ?? undefined }))
-      if (ids.length < SWEEP_LIMIT) {
-        const stored = await col.find(
-          { type, ...(scope.tenantId ? { tenant_id: scope.tenantId } : {}) },
-          { projection: { _id: 0, source_id: 1 } },
-        ).limit(SWEEP_LIMIT * 2).toArray()
-        for (const s of stored) if (!known.has(s.source_id)) items.push({ type, id: s.source_id })
+      const known = new Set<string>()
+      let n = 0
+      for await (const page of iterateSourceIds(db, type, scope.tenantId ?? null)) {
+        for (const id of page) known.add(id)
+        n += await enqueueKnowledge(page.map((id) => ({ type, id, tenantId: scope.tenantId ?? undefined })), { force: scope.force })
       }
-      const n = await enqueueKnowledge(items, { force: scope.force })
+      // Orphans: stored rows whose source is gone (the loader removes them).
+      let after: string | null = null
+      for (;;) {
+        const stored: { source_id: string }[] = await col.find(
+          { type, ...(scope.tenantId ? { tenant_id: scope.tenantId } : {}), ...(after !== null ? { source_id: { $gt: after } } : {}) },
+          { projection: { _id: 0, source_id: 1 } },
+        ).sort({ source_id: 1 }).limit(5000).toArray()
+        const orphans = stored.filter((r) => !known.has(r.source_id)).map((r) => ({ type, id: r.source_id }))
+        if (orphans.length) n += await enqueueKnowledge(orphans)
+        if (stored.length < 5000) break
+        after = stored[stored.length - 1].source_id
+      }
       byType[type] = n
       queued += n
     } catch (e) {
@@ -271,6 +292,101 @@ export async function sweepKnowledge(scope: SweepScope = {}): Promise<{ queued: 
     }
   }
   return { queued, byType }
+}
+
+/** Account deleted (RAG-004): remove that person's résumé + attempt sources in every organisation. */
+export async function purgeUserKnowledge(userId: string): Promise<number> {
+  if (!userId) return 0
+  const [chunks, sources] = await Promise.all([ragChunks(), ragSources()])
+  const esc = userId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const filter = { $or: [
+    { type: 'resume', source_id: { $regex: `:${esc}$` } },
+    { type: 'attempt_summary', source_id: { $regex: `:${esc}$` } },
+  ] }
+  const rows = await sources.find(filter as never, { projection: { _id: 0, type: 1, source_id: 1 } }).limit(5000).toArray()
+  for (const r of rows) await chunks.deleteMany({ source_type: r.type, source_id: r.source_id })
+  await sources.deleteMany(filter as never)
+  return rows.length
+}
+
+/**
+ * RAG-006 / RAG-011 maintenance (hourly): re-queue sources indexed without
+ * vectors once a provider answers again, and re-embed sources stored with a
+ * minority embedding model into the corpus's dominant model (so vector search,
+ * which only compares one model, sees them).
+ */
+export async function requeueEmbeddingGaps(limit = 500): Promise<{ missing: number; minority: number }> {
+  const models = await availableEmbedModels()
+  if (!models.length) return { missing: 0, minority: 0 }
+  const col = await ragSources()
+  const missing = await col.find({ embedding_missing: true, status: { $in: ['ready', 'failed'] } }, { projection: { _id: 0, type: 1, source_id: 1, tenant_id: 1 } }).limit(limit).toArray()
+  if (missing.length) await enqueueKnowledge(missing.map((r) => ({ type: r.type, id: r.source_id, tenantId: r.tenant_id })), { force: true })
+  const dominantModel = await dominantEmbeddingModel()
+  let minority: { type: KnowledgeSourceType; source_id: string; tenant_id: string | null }[] = []
+  if (dominantModel && models.includes(dominantModel)) {
+    minority = await col.find({ status: 'ready', embedding_model: { $nin: [dominantModel, null] } }, { projection: { _id: 0, type: 1, source_id: 1, tenant_id: 1 } }).limit(limit).toArray()
+    if (minority.length) await enqueueKnowledge(minority.map((r) => ({ type: r.type, id: r.source_id, tenantId: r.tenant_id })), { force: true })
+  }
+  return { missing: missing.length, minority: minority.length }
+}
+
+/** Run `fn` at most once per `key` value (stored in rag_meta; a lost race just skips). */
+async function oncePer(key: string, value: string, fn: () => Promise<unknown>): Promise<boolean> {
+  const meta = await ragMeta()
+  const res = await meta.updateOne({ key, value: { $ne: value } }, { $set: { value, updated_at: nowIso() } })
+  if (res.modifiedCount === 0) {
+    const exists = await meta.findOne({ key })
+    if (exists) return false
+    try { await meta.insertOne({ key, value, updated_at: nowIso() }) } catch { return false }
+  }
+  await fn()
+  return true
+}
+
+/** Vector health (RAG-010 / RAG-011): alert admins when search runs keyword-only or the in-process scan is capped. */
+export async function vectorHealthAlert(now = new Date()): Promise<string | null> {
+  const [models, chunks] = await Promise.all([availableEmbedModels(), ragChunks()])
+  const total = await chunks.estimatedDocumentCount().catch(() => 0)
+  let problem: string | null = null
+  if (!models.length && total > 0) problem = 'No embedding provider is answering, so knowledge search is keyword-only. Add an OpenAI / OpenRouter or Gemini key in Settings → AI.'
+  else {
+    const { atlasVectorAvailable, INPROC_MAX_SCAN } = await import('./search')
+    if (!(await atlasVectorAvailable()) && total > INPROC_MAX_SCAN) {
+      problem = `The knowledge base has ${total.toLocaleString('en-US')} chunks and no Atlas vector index, so each query's vector search reads at most ${INPROC_MAX_SCAN.toLocaleString('en-US')} chunks (within the caller's tenant / type scope) and may miss relevant content. Create the Atlas vector index (recommended; definition in lib/rag/search.ts). Raising RAG_INPROC_MAX_SCAN trades recall for memory and Mongo I/O on every query.`
+    }
+  }
+  if (!problem) return null
+  try {
+    const { sendAdminAlert } = await import('@/lib/automation/alerts')
+    await sendAdminAlert({ key: 'rag-vector-health', title: 'Knowledge search is degraded', detail: problem, severity: 'warning', link: '/dashboard/admin/knowledge', windowMinutes: 24 * 60 }, now)
+  } catch (e) {
+    console.error('[rag] vector health alert failed:', e)
+  }
+  return problem
+}
+
+/** Weekly live evaluation with an alert on regressions (RAG-020). Mondays after 03:00 UTC. */
+export async function maybeWeeklyLiveEval(now = new Date()): Promise<boolean> {
+  if (now.getUTCDay() !== 1 || now.getUTCHours() < 3) return false
+  const week = now.toISOString().slice(0, 10)
+  return oncePer('weekly_live_eval', week, async () => {
+    const { runLiveEval, listEvalRuns } = await import('./eval/live')
+    const before = (await listEvalRuns(1)).runs[0] ?? null
+    const run = await runLiveEval({ userId: 'system:rag-weekly-eval', role: 'superadmin', tenantId: null })
+    const s5 = run.metrics.success[5] ?? 0
+    const leaks = (run.acl?.golden_leaks ?? 0) + (run.acl?.probe_leaks ?? 0)
+    const dropped = before && before.questions_run > 0 && run.questions_run > 0 && s5 < before.success_at_5 - 0.05
+    if (leaks > 0 || dropped) {
+      const { sendAdminAlert } = await import('@/lib/automation/alerts')
+      await sendAdminAlert({
+        key: 'rag-weekly-eval',
+        title: leaks > 0 ? 'Knowledge search leaked data in the weekly check' : 'Knowledge search quality dropped',
+        detail: leaks > 0 ? `${leaks} access-control leak(s) in the weekly live evaluation. Open the knowledge page now.` : `success@5 fell from ${(before!.success_at_5 * 100).toFixed(1)}% to ${(s5 * 100).toFixed(1)}%.`,
+        severity: leaks > 0 ? 'critical' : 'warning',
+        link: '/dashboard/admin/knowledge',
+      }, now).catch((e) => console.error('[rag] eval alert failed:', e))
+    }
+  })
 }
 
 /** Once per UTC day after 02:00: full sweep. */
@@ -305,6 +421,19 @@ export async function runKnowledgeTick(): Promise<void> {
     locked = await acquireRedisLock(lockKey, 90)
     if (!locked) return
     await maybeNightlySweep().catch((e) => console.error('[rag] nightly sweep failed:', e))
+    const now = new Date()
+    const hour = now.toISOString().slice(0, 13)
+    await oncePer('hourly_maintenance', hour, async () => {
+      await requeueEmbeddingGaps().catch((e) => console.error('[rag] embedding re-queue failed:', e))
+      await vectorHealthAlert(now).catch((e) => console.error('[rag] vector health check failed:', e))
+    }).catch((e) => console.error('[rag] hourly maintenance failed:', e))
+    await maybeWeeklyLiveEval(now).catch((e) => console.error('[rag] weekly live eval failed:', e))
+    // AGT-007: weekly copilot behaviour eval rides the same scheduler tick.
+    const { weeklyEvalDue, runWeeklyCopilotEval } = await import('@/lib/agent/eval/weekly')
+    if (weeklyEvalDue(now)) {
+      await oncePer('weekly_copilot_eval', now.toISOString().slice(0, 10), () => runWeeklyCopilotEval(now))
+        .catch((e) => console.error('[agent] weekly copilot eval failed:', e))
+    }
     await processKnowledgeQueue({ budgetMs: 40_000, max: 200 })
   } catch (e) {
     console.error('[rag] tick failed:', e)

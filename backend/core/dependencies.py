@@ -175,13 +175,11 @@ async def check_rate_limit(
 
 
 def client_ip(request: Request) -> str:
-    """Extract client IP from headers or direct connection."""
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    if request.client:
-        return request.client.host or "unknown"
-    return "unknown"
+    """Client IP; forwarding headers are trusted only from TRUSTED_PROXY_CIDRS."""
+    from core.net import resolve_client_ip
+
+    peer = request.client.host if request.client else None
+    return resolve_client_ip(peer, request.headers)
 
 
 # ── Key resolution ──────────────────────────────────────────────
@@ -319,7 +317,10 @@ def build_chat(
     if not key:
         key = resolve_key(provider)
     ensure_key(key, provider)
-    base_url = endpoint_override or ""
+    # SEC-001: never let a request choose where the platform key is sent.
+    from core.ai_endpoints import assert_endpoint_allowed
+
+    base_url = assert_endpoint_allowed(endpoint_override)
     if provider == "opencode" and (
         not base_url
         or "openrouter.ai" in base_url

@@ -119,8 +119,9 @@ export type CandidateWhatsAppRoute = 'meta' | 'unofficial' | 'none'
  * Which channel carries candidate WhatsApp updates (audit A-031). Pure.
  * The official Meta Cloud API whenever it is configured (same setup as bot
  * screening). The unofficial OpenWA gateway (lib/whatsapp.ts) only when the
- * platform explicitly opts in with ATS_WHATSAPP_UNOFFICIAL=1 — numbers can be
- * banned for bulk sends through it.
+ * platform explicitly opts in (Admin → Automations → WhatsApp, or
+ * WHATSAPP_UNOFFICIAL=1 / ATS_WHATSAPP_UNOFFICIAL=1) — numbers can be banned
+ * for bulk sends through it.
  */
 export function candidateWhatsAppRoute(o: { metaReady: boolean; phoneNumberId: string | null; unofficialEnabled: boolean }): CandidateWhatsAppRoute {
   if (o.metaReady && o.phoneNumberId) return 'meta'
@@ -131,6 +132,9 @@ async function whatsapp(job: AtsJob, candidate: AtsCandidate, vars: TemplateVars
   // Consent is a hard gate: no message without an explicit opt-in on record.
   if (!candidate.phone || candidate.consent?.whatsapp !== true) return
   try {
+    // A STOP reply to our number wins over the consent on record (AUTO-061).
+    const { isWhatsAppOptedOut, unofficialWhatsAppEnabled } = await import('@/lib/whatsapp-send')
+    if (await isWhatsAppOptedOut(candidate.phone, (candidate.consent as { whatsapp_at?: string } | undefined)?.whatsapp_at ?? null)) return
     const cfgMod = await import('./screening/config')
     const { pickRegionNumbers } = await import('./screening/regions')
     const cfg = await cfgMod.getPlatformConfig()
@@ -139,7 +143,7 @@ async function whatsapp(job: AtsJob, candidate: AtsCandidate, vars: TemplateVars
     const route = candidateWhatsAppRoute({
       metaReady: cfgMod.whatsappReady(cfg),
       phoneNumberId: numbers.whatsapp_phone_number_id,
-      unofficialEnabled: process.env.ATS_WHATSAPP_UNOFFICIAL === '1',
+      unofficialEnabled: await unofficialWhatsAppEnabled(),
     })
     if (route === 'none') return
     if (route === 'unofficial') {

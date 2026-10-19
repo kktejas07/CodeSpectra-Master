@@ -3,7 +3,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { BadgeCheck, CalendarClock, Download, Package, Truck } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
-import { getAppOrigin } from '@/lib/app-origin'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { breadcrumbJsonLd, productJsonLd } from '@/lib/seo/jsonld'
+import { getSiteOrigin } from '@/lib/seo/settings'
+import { JsonLd } from '@/components/seo/json-ld'
 import { categoryLabel, getProductBySlug, productReviews, relatedProducts, type PublicProduct } from '@/lib/marketplace/catalog'
 import { formatMinor } from '@/lib/marketplace/pricing'
 import { BuyBox } from '@/components/marketplace/buy-box'
@@ -20,15 +23,16 @@ const plain = (md: string) => md.replace(/[#*_`>[\]()!-]/g, ' ').replace(/\s+/g,
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
   const found = await getProductBySlug(slug).catch(() => null)
-  if (!found) return { title: 'Item not found | CodeSpectra marketplace', robots: { index: false } }
+  if (!found) return { title: 'Item not found', robots: { index: false } }
   const p = found.product
-  const description = plain(p.description_md).slice(0, 160)
-  return {
-    title: `${p.title} | CodeSpectra marketplace`,
-    description,
-    alternates: { canonical: `/marketplace/p/${p.slug}` },
-    openGraph: { title: p.title, description, url: `/marketplace/p/${p.slug}`, type: 'website', images: p.images?.[0] ? [{ url: p.images[0] }] : undefined },
-  }
+  return buildMetadata({
+    title: p.title,
+    description: plain(p.description_md) || `${p.title} on the CodeSpectra marketplace.`,
+    path: `/marketplace/p/${p.slug}`,
+    kind: 'product',
+    image: p.images?.[0] || undefined,
+    ogSubtitle: `${formatMinor(p.price, p.currency)} · ${categoryLabel(p.category)} · by ${found.seller.display_name}`,
+  })
 }
 
 function deliveryText(p: PublicProduct): string {
@@ -48,23 +52,39 @@ export default async function ProductPage({ params }: Props) {
   if (!found) notFound()
   const { product: p, seller, raw } = found
   const [reviews, related] = await Promise.all([productReviews(p.id).catch(() => []), relatedProducts(raw).catch(() => [])])
-  const url = `${getAppOrigin()}/marketplace/p/${p.slug}`
+  const site = await getSiteOrigin()
   const KindIcon = p.kind === 'digital' ? Download : p.kind === 'service' ? CalendarClock : Truck
   const inStock = p.kind !== 'physical' || (p.variants?.length ? p.variants.some((v) => v.stock == null || v.stock > 0) : p.stock == null || p.stock > 0)
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': p.kind === 'service' ? 'Service' : 'Product',
-    name: p.title,
-    description: plain(p.description_md).slice(0, 500),
-    image: p.images?.length ? p.images : undefined,
-    brand: { '@type': 'Brand', name: seller.display_name },
-    ...(p.kind !== 'service' ? { offers: { '@type': 'Offer', price: (p.price / 100).toFixed(2), priceCurrency: p.currency, availability: inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock', url } } : {}),
-    ...(p.rating?.count ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: p.rating.avg, reviewCount: p.rating.count } } : {}),
-  }
-
+  const path = `/marketplace/p/${p.slug}`
+  const jsonLd = [
+    productJsonLd({
+      site,
+      path,
+      kind: p.kind,
+      name: p.title,
+      description: plain(p.description_md).slice(0, 500),
+      sku: p.variants?.[0]?.sku || p.id,
+      images: p.images,
+      priceMinor: p.price,
+      currency: p.currency,
+      inStock,
+      sellerName: seller.display_name,
+      sellerPath: `/marketplace/s/${seller.slug}`,
+      category: categoryLabel(p.category),
+      rating: p.rating ?? null,
+      shipping: p.shipping ? { dispatchDays: p.shipping.dispatch_days, shipsFromCountry: p.shipping.ships_from } : null,
+      isCourse: p.category === 'courses',
+    }),
+    breadcrumbJsonLd([
+      { name: 'Home', path: '/' },
+      { name: 'Marketplace', path: '/marketplace' },
+      { name: categoryLabel(p.category), path: `/marketplace?category=${encodeURIComponent(p.category)}` },
+      { name: p.title, path },
+    ], site),
+  ]
   return (
     <PublicPageWrapper>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <JsonLd data={jsonLd} />
       <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         <div className="mb-6 flex items-center justify-between gap-4">
           <nav aria-label="Breadcrumb" className="min-w-0 text-sm text-cs-ink-soft">
@@ -94,7 +114,7 @@ export default async function ProductPage({ params }: Props) {
             />
             <p className="flex items-start gap-2 rounded-2xl bg-cs-paper p-4 text-sm text-cs-ink-soft"><KindIcon className="mt-0.5 h-4 w-4 shrink-0 text-cs-accent-text" aria-hidden />{deliveryText(p)}</p>
             {p.digital && <p className="text-xs text-cs-ink-soft">{p.digital.files} file{p.digital.files === 1 ? '' : 's'}{p.digital.download_limit ? ` · up to ${p.digital.download_limit} downloads` : ''}{p.digital.license_note ? ` · ${p.digital.license_note}` : ''}</p>}
-            <ShareButtons url={url} title={p.title} />
+            <ShareButtons url={`${site}${path}`} title={p.title} />
           </div>
         </div>
 
@@ -107,7 +127,7 @@ export default async function ProductPage({ params }: Props) {
             <div className="flex items-center gap-3">
               {seller.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={seller.logo_url} alt="" className="h-12 w-12 rounded-xl object-cover" />
+                <img src={seller.logo_url} alt={`${seller.display_name} logo`} width={48} height={48} loading="lazy" decoding="async" className="h-12 w-12 rounded-xl object-cover" />
               ) : <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-cs-accent/10 text-cs-accent-text"><Package className="h-5 w-5" aria-hidden /></span>}
               <div className="min-w-0">
                 <p className="truncate font-semibold text-cs-ink">{seller.display_name}</p>

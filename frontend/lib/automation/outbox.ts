@@ -118,6 +118,9 @@ export interface OutboxMessage {
   category?: string
   campaignId?: string
   attachments?: { name: string; content_type: string; data: string }[]
+  /** Kept so a retried email still carries List-Unsubscribe etc. */
+  headers?: Record<string, string>
+  fromName?: string
 }
 
 const MAX_ATTACHMENT_CHARS = 8_000_000
@@ -135,6 +138,8 @@ export async function enqueueFailedEmail(msg: OutboxMessage, error: string, now 
       html: msg.html,
       category: msg.category || 'transactional',
       campaign_id: msg.campaignId || null,
+      headers: msg.headers || null,
+      from_name: msg.fromName || null,
       // Huge attachments are not kept; the retry sends without them and says so in the log.
       attachments: attachSize <= MAX_ATTACHMENT_CHARS ? msg.attachments || [] : [],
       attachments_dropped: attachSize > MAX_ATTACHMENT_CHARS,
@@ -170,6 +175,8 @@ export async function processOutbox(now = new Date(), limit = 50, budgetMs = 20_
       category: String(row.category || 'transactional'),
       campaignId: row.campaign_id ? String(row.campaign_id) : undefined,
       attachments: Array.isArray(row.attachments) && row.attachments.length ? row.attachments : undefined,
+      headers: row.headers && typeof row.headers === 'object' ? (row.headers as Record<string, string>) : undefined,
+      fromName: typeof row.from_name === 'string' ? row.from_name : undefined,
       outboxId: String(row.id),
     })
     const attempts = Number(row.attempts || 1) + 1

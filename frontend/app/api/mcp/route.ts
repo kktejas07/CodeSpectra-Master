@@ -29,6 +29,7 @@ import { xpEvents } from '@/lib/db/leaderboard'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireAuth } from '@/lib/route-auth'
 import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 import { sanitizeRegex } from '@/lib/sanitize'
 
 export const runtime = 'nodejs'
@@ -175,7 +176,7 @@ async function toolCall(name: string, args: Record<string, unknown>) {
       return jsonContent({
         user: { id: u.id, username: u.username ?? null, name: u.name || u.fullName || null },
         xp,
-        level: xpToLevel(xp),
+        level: xpToLevel(xp, (await getGamificationConfig()).levels),
       })
     }
     case 'get_leaderboard': {
@@ -198,6 +199,7 @@ async function toolCall(name: string, args: Record<string, unknown>) {
         ])
         .toArray()
       const db = await getMongoDb()
+      const { levels } = await getGamificationConfig()
       const ids = rows.map((r) => String(r._id))
       // xp_events.user_id is the user's `id` field (not the Mongo _id).
       const users = (await db
@@ -214,7 +216,7 @@ async function toolCall(name: string, args: Record<string, unknown>) {
             userId: r._id,
             name: u?.fullName || u?.name || 'Learner',
             xp: r.total,
-            level: xpToLevel(r.total as number),
+            level: xpToLevel(r.total as number, levels),
           }
         }),
       })

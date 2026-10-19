@@ -121,7 +121,8 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   allow_registration: true,
   email_notifications: true,
   maintenance_mode: false,
-  require_email_verification: false,
+  // SEC-006: on by default; legacy accounts are grandfathered (lib/auth-policy).
+  require_email_verification: true,
   show_public_leaderboard: true,
   enable_chatbot: true,
   platform_currency: 'USD',

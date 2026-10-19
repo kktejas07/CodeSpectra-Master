@@ -42,6 +42,8 @@ export const BUILTIN_VARS: VarOption[] = [
   { path: 'vars.yesterday', label: '24 hours ago', group: 'Built-in' },
   { path: 'vars.sevenDaysAgo', label: '7 days ago', group: 'Built-in' },
   { path: 'vars.thirtyDaysAgo', label: '30 days ago', group: 'Built-in' },
+  { path: 'vars.inOneHour', label: 'An hour from now', group: 'Built-in' },
+  { path: 'vars.inOneDay', label: '24 hours from now', group: 'Built-in' },
   { path: 'vars.app_url', label: 'Site address', group: 'Built-in' },
   { path: 'workflow.name', label: 'Workflow name', group: 'Built-in' },
   { path: 'run.id', label: 'Run id', group: 'Built-in' },

@@ -6,7 +6,7 @@ import { EmptyState } from '@/components/ui/empty-state'
  * superadmin has Maintenance mode on (lib/auth-policy.ts). Platform admins
  * keep full access.
  */
-export const metadata: Metadata = { title: 'Down for maintenance' }
+export const metadata: Metadata = { title: 'Down for maintenance', robots: { index: false, follow: false } }
 export const dynamic = 'force-dynamic'
 
 export default function MaintenancePage() {

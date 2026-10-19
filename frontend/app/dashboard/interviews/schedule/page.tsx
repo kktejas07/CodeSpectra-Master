@@ -21,7 +21,6 @@ export default function ScheduleInterviewPage() {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [users, setUsers] = useState<{ id: string; email: string; name?: string }[]>([])
   const [form, setForm] = useState({
     title: '',
     type: 'technical',
@@ -31,13 +30,6 @@ export default function ScheduleInterviewPage() {
     duration_minutes: 60,
     resume_info: '',
   })
-
-  useEffect(() => {
-    fetch('/api/admin/users', { cache: 'no-store' })
-      .then((r) => r.ok ? r.json() : [])
-      .then((d) => setUsers(d.users || d.items || []))
-      .catch(() => {})
-  }, [])
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
@@ -70,15 +62,13 @@ export default function ScheduleInterviewPage() {
     if (!form.title || !form.role || !form.candidate_email) return
     setBusy(true); setError(null)
     try {
-      const candidate = users.find((u) => u.email.toLowerCase() === form.candidate_email.toLowerCase())
-      if (!candidate) throw new Error(`User with email "${form.candidate_email}" not found`)
-
       const res = await csrfFetch('/api/interviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: form.title, type: form.type, role: form.role,
-          candidate_id: candidate.id,
+          // Resolved on the server (scoped to candidates + your organisation).
+          candidate_email: form.candidate_email.trim(),
           scheduled_at: new Date(form.scheduled_at).toISOString(),
           duration_minutes: form.duration_minutes,
           resume_info: form.resume_info || undefined,
@@ -139,7 +129,7 @@ export default function ScheduleInterviewPage() {
         <div>
           <Label htmlFor="iv-email">Candidate email</Label>
           <Input id="iv-email" value={form.candidate_email} onChange={(e) => setForm((f) => ({ ...f, candidate_email: e.target.value }))} placeholder="candidate@company.com" type="email" />
-          <p className="text-xs text-muted-foreground mt-1">Must be a registered user on the platform</p>
+          <p className="text-xs text-muted-foreground mt-1">The email the candidate signed up to CodeSpectra with.</p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           <div>

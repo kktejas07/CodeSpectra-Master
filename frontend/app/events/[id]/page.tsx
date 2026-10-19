@@ -9,6 +9,11 @@ import { NotifyBox } from '@/components/events-feed/notify-box'
 import { getFeedEvent, listPublishedFeed } from '@/lib/events-feed/query'
 import { countryName, formatRange, KIND_LABELS, MODE_LABELS, toPublic, withUtm } from '@/lib/events-feed/public'
 import type { PublicFeedEvent } from '@/lib/events-feed/types'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { breadcrumbJsonLd, eventJsonLd, type QA } from '@/lib/seo/jsonld'
+import { getSiteOrigin } from '@/lib/seo/settings'
+import { JsonLd } from '@/components/seo/json-ld'
+import { FaqList } from '@/components/seo/faq-list'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,11 +25,35 @@ async function load(id: string): Promise<PublicFeedEvent | null> {
   return (await listPublishedFeed().catch(() => [])).find((e) => e.id === id) || null
 }
 
+/** Internal hackathons have their real page under /hackathons — canonicalise there (SEO-018). */
+function canonicalFor(ev: PublicFeedEvent): string {
+  return ev.internal && ev.url.startsWith('/') && !ev.url.startsWith('//') ? ev.url.split('?')[0] : `/events/${ev.id}`
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params
   const ev = await load(id)
-  if (!ev) return { title: 'Event not found — CodeSpectra' }
-  return { title: `${ev.title} — Events | CodeSpectra`, description: ev.summary.slice(0, 160), alternates: { canonical: `/events/${ev.id}` } }
+  if (!ev) return { title: 'Event not found', robots: { index: false, follow: true } }
+  const when = ev.starts_at ? formatRange(ev.starts_at, ev.ends_at, 'UTC') : ''
+  return buildMetadata({
+    title: `${ev.title}: ${KIND_LABELS[ev.kind]}`,
+    description: ev.summary,
+    path: `/events/${ev.id}`,
+    canonical: canonicalFor(ev),
+    kind: 'event',
+    image: ev.image || undefined,
+    ogSubtitle: [when, ev.mode === 'online' ? 'Online' : [ev.city, ev.country && countryName(ev.country)].filter(Boolean).join(', ')].filter(Boolean).join(' · '),
+  })
+}
+
+function eventFaqs(ev: PublicFeedEvent, where: string): QA[] {
+  const out: QA[] = []
+  if (ev.starts_at) out.push({ q: `When is ${ev.title}?`, a: `${formatRange(ev.starts_at, ev.ends_at, 'UTC')} (UTC).` })
+  out.push({ q: `Where does ${ev.title} take place?`, a: ev.mode === 'online' ? 'It runs online.' : ev.mode === 'hybrid' ? `It is hybrid: online and in person at ${where}.` : `In person at ${where}.` })
+  if (ev.registration_deadline) out.push({ q: 'When does registration close?', a: `${new Date(ev.registration_deadline).toUTCString().replace(':00 GMT', ' UTC')}.` })
+  out.push({ q: 'How do I register?', a: ev.internal ? 'Open the event page on CodeSpectra and sign in to register your team.' : `Register on the organiser’s site${ev.organiser ? ` (${ev.organiser})` : ''}; CodeSpectra lists the event and links to it.` })
+  if (ev.prize_text) out.push({ q: 'Are there prizes?', a: `Yes: ${ev.prize_text}.` })
+  return out
 }
 
 export default async function EventDetailPage({ params }: Props) {
@@ -33,15 +62,29 @@ export default async function EventDetailPage({ params }: Props) {
   if (!ev) notFound()
   const where = ev.mode === 'online' ? 'Online' : [ev.city, ev.country && countryName(ev.country)].filter(Boolean).join(', ') || MODE_LABELS[ev.mode]
   const ended = ev.ends_at ? Date.parse(ev.ends_at) < Date.now() : false
-  const jsonLd = {
-    '@context': 'https://schema.org', '@type': 'Event', name: ev.title, startDate: ev.starts_at || undefined, endDate: ev.ends_at || undefined,
-    eventAttendanceMode: ev.mode === 'online' ? 'https://schema.org/OnlineEventAttendanceMode' : ev.mode === 'hybrid' ? 'https://schema.org/MixedEventAttendanceMode' : 'https://schema.org/OfflineEventAttendanceMode',
-    location: ev.mode === 'online' ? { '@type': 'VirtualLocation', url: ev.url } : { '@type': 'Place', name: where, address: where },
-    organizer: ev.organiser ? { '@type': 'Organization', name: ev.organiser } : undefined, url: ev.url, description: ev.summary,
-  }
+  const site = await getSiteOrigin()
+  const faqs = eventFaqs(ev, where)
+  const jsonLd = [
+    eventJsonLd({
+      name: ev.title,
+      description: ev.summary,
+      startsAt: ev.starts_at,
+      endsAt: ev.ends_at,
+      mode: ev.mode,
+      url: ev.internal ? `${site}${canonicalFor(ev)}` : ev.url,
+      pageUrl: canonicalFor(ev),
+      city: ev.city,
+      country: ev.country,
+      organiser: ev.organiser,
+      image: ev.image,
+      free: ev.internal,
+      registrationDeadline: ev.registration_deadline,
+    }, site),
+    breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Events', path: '/events' }, { name: ev.title, path: `/events/${ev.id}` }], site),
+  ]
   return (
     <PublicPageWrapper>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <JsonLd data={jsonLd} />
       <div className="mx-auto grid max-w-[1100px] gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_320px] lg:px-8">
         <article className="min-w-0 space-y-6">
           <Link href="/events" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-4 w-4" /> All events</Link>
@@ -56,9 +99,9 @@ export default async function EventDetailPage({ params }: Props) {
           </div>
           {ev.image && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={ev.image} alt="" referrerPolicy="no-referrer" className="max-h-72 w-full rounded-3xl border border-border/70 object-cover" />
+            <img src={ev.image} alt={`${ev.title} banner`} width={1200} height={480} fetchPriority="high" decoding="async" referrerPolicy="no-referrer" className="aspect-[5/2] max-h-72 w-full rounded-3xl border border-border/70 object-cover" />
           )}
-          <p className="max-w-[65ch] text-lg leading-relaxed text-foreground">{ev.summary}</p>
+          <p className="speakable-summary max-w-[65ch] text-lg leading-relaxed text-foreground">{ev.summary}</p>
           <dl className="grid gap-4 rounded-3xl border border-border/70 bg-card p-6 sm:grid-cols-2">
             <div><dt className="text-sm text-muted-foreground">When</dt><dd className="mt-1 font-medium tabular-nums text-foreground">{formatRange(ev.starts_at, ev.ends_at, 'UTC')} <span className="text-muted-foreground">(UTC)</span></dd></div>
             <div><dt className="text-sm text-muted-foreground">Where</dt><dd className="mt-1 font-medium text-foreground">{where}</dd></div>
@@ -81,6 +124,10 @@ export default async function EventDetailPage({ params }: Props) {
             )}
           </div>
           {!ev.internal && <p className="text-xs text-muted-foreground">This summary is written by CodeSpectra from the organiser’s public listing. Check the organiser’s page for rules and eligibility.</p>}
+          <section aria-labelledby="event-faq" className="pt-4">
+            <h2 id="event-faq" className="mb-4 text-xl font-semibold text-foreground">Event FAQ</h2>
+            <FaqList items={faqs} idPrefix="event-faq" schema={false} />
+          </section>
         </article>
         <aside className="lg:pt-10"><NotifyBox compact /></aside>
       </div>

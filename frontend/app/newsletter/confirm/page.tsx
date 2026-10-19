@@ -1,7 +1,11 @@
+import { privateMetadata } from '@/lib/seo/metadata'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { ConfirmSubscription } from './confirm-subscription'
 
 export const dynamic = 'force-dynamic'
+
+// Personal confirmation link (token in the query string).
+export const metadata = privateMetadata('Confirm subscription')
 
 /** Landing page for the "confirm your subscription" email link. */
 export default async function NewsletterConfirmPage({

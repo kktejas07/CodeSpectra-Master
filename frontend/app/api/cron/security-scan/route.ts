@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
+import { withCronWindow } from '@/lib/automation/job-lease'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
 
@@ -74,7 +75,8 @@ async function postImpl(req: Request) {
 }
 
 /** GET — latest report + lightweight history (superadmin). */
-export const POST = withCronHeartbeat('security-scan', postImpl)
+// One run per week across replicas and external crons (AUTO-041).
+export const POST = withCronWindow('security-scan', 10080, withCronHeartbeat('security-scan', postImpl))
 
 export async function GET() {
   const gate = await requireSuperAdmin()

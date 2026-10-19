@@ -12,7 +12,8 @@ import type { Currency } from './contract'
 import { newId, nowIso } from './db'
 import { CartError, findCart, priceInputs, resolveLines } from './cart'
 import { getSettings } from './settings'
-import { chargeable, computeQuote, couponDiscount, type Quote } from './pricing'
+import { chargeable, computeQuote, type Quote, type QuoteCoupon } from './pricing'
+import { planMarketplaceCoupon } from '@/lib/billing/coupon-rules'
 import { reserveAll, releaseAll, type StockItem } from './stock'
 import { holdSlot, releaseBookings } from './booking'
 import { orders, RESERVATION_MS, type OrderDoc, type OrderLineDoc } from './order-doc'
@@ -59,7 +60,7 @@ async function nextOrderNumber(): Promise<string> {
   return `CS-${year}-${String(seq).padStart(6, '0')}`
 }
 
-interface Priced { quote: Quote; inputs: ReturnType<typeof priceInputs>; resolved: Awaited<ReturnType<typeof resolveLines>>; currency: Currency; coupon: { id: string; code: string } | null; couponError: string | null }
+interface Priced { quote: Quote; inputs: ReturnType<typeof priceInputs>; resolved: Awaited<ReturnType<typeof resolveLines>>; currency: Currency; coupon: { id: string; code: string; funded_by?: 'platform' | 'seller'; seller_id?: string | null } | null; couponError: string | null }
 
 /** Server-side quote for the signed-in buyer's cart (+ optional coupon). Throws CartError. */
 export async function priceCart(userId: string, couponCode?: string | null): Promise<Priced> {
@@ -73,17 +74,32 @@ export async function priceCart(userId: string, couponCode?: string | null): Pro
   const base = computeQuote(inputs, { currency: cart.currency, settings })
   let coupon: Priced['coupon'] = null
   let couponError: string | null = null
-  let discount = 0
+  let split: QuoteCoupon | null = null
   if (couponCode) {
-    const v = await validateCoupon(couponCode)
+    const v = await validateCoupon(couponCode, { target: 'marketplace', currency: cart.currency })
     if (!v.valid || !v.coupon) couponError = v.error || 'Invalid coupon.'
-    else if (v.coupon.discount_type === 'trial') couponError = 'This coupon is for plans only.'
     else {
-      discount = couponDiscount(base.subtotal, v.coupon)
-      coupon = { id: v.coupon.id, code: v.coupon.code }
+      // CORE-021: platform coupons only touch platform items, opted-in sellers' items
+      // (seller-funded) or — when the coupon is platform-funded — everyone's, with the
+      // platform paying; seller coupons only their own items.
+      const plan = planMarketplaceCoupon(
+        resolved.map((r, i) => ({
+          seller_id: r.product.seller_id,
+          is_platform: !!r.seller?.is_platform,
+          accepts_platform_coupons: !!(r.seller as { accepts_platform_coupons?: boolean } | null)?.accepts_platform_coupons,
+          gross: inputs[i].unit_price * inputs[i].qty,
+        })),
+        v.coupon,
+        cart.currency,
+      )
+      if (plan.error) couponError = plan.error
+      else if (plan.amount > 0) {
+        split = { amount: plan.amount, eligible: plan.eligible, platformFunded: plan.platformFunded }
+        coupon = { id: v.coupon.id, code: v.coupon.code, funded_by: v.coupon.seller_id ? 'seller' : plan.platformFunded.some(Boolean) ? 'platform' : 'seller', seller_id: v.coupon.seller_id ?? null }
+      }
     }
   }
-  const quote = discount ? computeQuote(inputs, { currency: cart.currency, settings, discount }) : base
+  const quote = split ? computeQuote(inputs, { currency: cart.currency, settings, coupon: split }) : base
   return { quote, inputs, resolved, currency: cart.currency, coupon, couponError }
 }
 
@@ -134,6 +150,7 @@ export async function createCheckout(user: { id: string; email: string }, input:
       tax: p.tax,
       shipping_amount: p.shipping_amount,
       line_total: p.base,
+      ...(p.platform_funded > 0 ? { platform_funded: p.platform_funded } : {}),
       commission_bps: inputs[i].commission_bps,
       commission_amount: p.commission_amount,
       seller_earnings: p.seller_earnings,

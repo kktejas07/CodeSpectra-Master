@@ -13,7 +13,7 @@ import {
 import {
   createCodeathon, previewCodeathonRelease, releaseCodeathonResults, codeathonProblemFromLibrary,
 } from '@/lib/services/codeathons'
-import { generateCodingProblem, logGeneratedProblem, saveGeneratedProblem, shapeGeneratedProblem } from '@/lib/services/problems'
+import { generateCodingProblem, logGeneratedProblem, saveGeneratedProblem, shapeGeneratedProblem, verifyGeneratedProblem } from '@/lib/services/problems'
 import { writeTool } from '../define'
 import {
   argsObject, optDate, optEnum, optInt, optObject, optObjectArray, optString, optStringArray, reqDateArg, reqString, isEmail, type Raw,
@@ -194,15 +194,23 @@ export const createHackathonTool = writeTool<CreateHackathonArgs>({
     if (gen) a.generate_problems = gen
     return a
   },
+  draftInputs: (a) => ({ title: a.title, generate_problems: a.generate_problems ?? null }),
   async propose(a, ctx) {
     if (ctx.caller.role === 'tenant_admin' && !ctx.caller.tenantId) throw new ToolInputError('Your account is not linked to an organisation.')
     const lib = await libraryProblems(ctx.caller, (a.problems ?? []).map((p) => p.slug))
     const judges = await resolveJudges(ctx.caller, a.judges ?? [])
-    const generated: Array<Record<string, unknown>> = []
-    for (let i = 0; i < (a.generate_problems?.count ?? 0); i++) {
+    // Edit with the same generation inputs: keep the problems the admin already saw (AGT-002).
+    const prior = await openDraft<HackathonDraft>('create_hackathon', ctx.caller, a[DRAFT_KEY])
+    const generated: Array<Record<string, unknown>> = prior?.generated ? [...prior.generated] : []
+    const testNotes: string[] = []
+    for (let i = generated.length; i < (a.generate_problems?.count ?? 0); i++) {
       const g = await generateCodingProblem(ctx.caller.userId, { difficulty: a.generate_problems?.difficulty, topics: a.generate_problems?.topics, role: a.title })
       if (!g) throw new ToolInputError('The AI problem generator is unavailable right now. Pick library problems instead, or try again.')
-      generated.push(g)
+      // AGT-025: hidden tests checked against a reference solution before anyone competes on them.
+      const v = await verifyGeneratedProblem(g)
+      if (v.verification.verified !== true) testNotes.push(`“${shapeGeneratedProblem(v.result).title}”: ${v.verification.note}`)
+      else if (v.verification.dropped.length) testNotes.push(`“${shapeGeneratedProblem(v.result).title}”: ${v.verification.note}`)
+      generated.push(v.result)
     }
     a[DRAFT_KEY] = await sealDraft('create_hackathon', ctx.caller, { generated } satisfies HackathonDraft)
     const ends = new Date(new Date(a.starts_at).getTime() + a.duration_minutes * MIN).toISOString()
@@ -210,6 +218,7 @@ export const createHackathonTool = writeTool<CreateHackathonArgs>({
     if (new Date(a.starts_at).getTime() < Date.now()) warnings.push('The start time is in the past.')
     if (!lib.length && !generated.length) warnings.push('No problems yet — add some before publishing.')
     if (!judges.length) warnings.push('No judges assigned yet.')
+    warnings.push(...testNotes)
     return {
       title: `Create hackathon “${clip(a.title, 80)}” (draft)`,
       preview: {
@@ -242,7 +251,7 @@ export const createHackathonTool = writeTool<CreateHackathonArgs>({
       generated = []
       for (let i = 0; i < a.generate_problems.count; i++) {
         const g = await generateCodingProblem(ctx.caller.userId, { difficulty: a.generate_problems.difficulty, topics: a.generate_problems.topics, role: a.title })
-        if (g) generated.push(g)
+        if (g) generated.push((await verifyGeneratedProblem(g)).result)
       }
     }
     const tasks = lib.map((p, i) => taskOf(p, a.problems?.[i]?.points))

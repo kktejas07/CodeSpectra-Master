@@ -2,12 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import type { AgentEvent, ProposedAction } from '@/lib/agent/contract'
+import type { ProposalBundle, ProposedAction } from '@/lib/agent/contract'
+import type { AgentLoopEvent } from '@/lib/agent/run'
 import { applyEvent, itemsFromMessages } from './transcript'
-import type { ActionMap, AgentStatus, ConversationSummary, StoredMessage, UiItem } from './types'
+import type { ActionMap, AgentStatus, BundleMap, ConversationSummary, StoredMessage, UiItem } from './types'
 
 type StreamEvent =
-  | AgentEvent
+  | AgentLoopEvent
   | { type: 'conversation'; id: string; title: string; created: boolean; tenantId?: string | null }
   | { type: 'model'; provider: string; model: string }
 
@@ -26,6 +27,7 @@ export function useAgentChat() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [items, setItems] = useState<UiItem[]>([])
   const [actions, setActions] = useState<ActionMap>({})
+  const [bundles, setBundles] = useState<BundleMap>({})
   const [loadingConv, setLoadingConv] = useState(false)
   const [streaming, setStreaming] = useState(false)
   const [status, setStatus] = useState<AgentStatus | null>(null)
@@ -65,6 +67,7 @@ export function useAgentChat() {
     setActiveId(id)
     setItems([])
     setActions({})
+    setBundles({})
     if (!id) return
     setLoadingConv(true)
     try {
@@ -73,11 +76,12 @@ export function useAgentChat() {
         setError(await errorOf(r))
         return
       }
-      const d = (await r.json()) as { conversation?: { tenant_id?: string | null }; messages: StoredMessage[]; actions: ProposedAction[] }
+      const d = (await r.json()) as { conversation?: { tenant_id?: string | null }; messages: StoredMessage[]; actions: ProposedAction[]; bundles?: ProposalBundle[] }
       if (activeRef.current !== id) return
       if (d.conversation && 'tenant_id' in d.conversation) setScope(d.conversation.tenant_id ?? null)
       setItems(itemsFromMessages(d.messages ?? []))
       setActions(Object.fromEntries((d.actions ?? []).map((a) => [a.id, a])))
+      setBundles(Object.fromEntries((d.bundles ?? []).map((b) => [b.id, b])))
     } catch {
       setError('Could not load this conversation.')
     } finally {
@@ -108,6 +112,7 @@ export function useAgentChat() {
       })
       if (!res.ok || !res.body) {
         const msg = res.status === 402 ? 'You are out of AI credits. They refresh with your plan each month.' : await errorOf(res)
+        // 429 carries the budget / rate-limit reason from the server.
         update((it) => ({ ...it, streaming: false, error: msg }))
         return
       }
@@ -137,6 +142,11 @@ export function useAgentChat() {
             setLiveModel(ev.model)
           } else {
             if (ev.type === 'proposal') setActions((prev) => ({ ...prev, [ev.action.id]: ev.action }))
+            if (ev.type === 'subagent_event' && ev.event.type === 'proposal') {
+              const a = ev.event.action
+              setActions((prev) => ({ ...prev, [a.id]: a }))
+            }
+            if (ev.type === 'bundle') setBundles((prev) => ({ ...prev, [ev.bundle.id]: ev.bundle }))
             const e = ev
             update((it) => applyEvent(it, e))
           }
@@ -162,6 +172,24 @@ export function useAgentChat() {
     return r.ok ? null : d.error || `Request failed (${r.status})`
   }, [])
 
+  /** Confirm / cancel a whole bundle: steps run in order and stop at the first failure. */
+  const actOnBundle = useCallback(async (id: string, verb: 'confirm' | 'cancel'): Promise<string | null> => {
+    const r = await csrfFetch(`/api/admin/agent/bundles/${encodeURIComponent(id)}/${verb}`, { method: 'POST' })
+    const d = (await r.json().catch(() => ({}))) as { bundle?: ProposalBundle; actions?: ProposedAction[]; error?: string }
+    if (d.bundle) setBundles((prev) => ({ ...prev, [id]: d.bundle! }))
+    if (d.actions?.length) setActions((prev) => ({ ...prev, ...Object.fromEntries(d.actions!.map((a) => [a.id, a])) }))
+    if (verb === 'confirm') void refreshStatus()
+    return r.ok ? null : d.error || `Request failed (${r.status})`
+  }, [refreshStatus])
+
+  /** The tool's parameter schema + editable args of a pending proposal (AGT-005 form editor). */
+  const loadEditForm = useCallback(async (id: string): Promise<{ schema: Record<string, unknown> | null; args: Record<string, unknown> } | string> => {
+    const r = await fetch(`/api/admin/agent/actions/${encodeURIComponent(id)}`, { credentials: 'include', cache: 'no-store' })
+    const d = (await r.json().catch(() => ({}))) as { schema?: Record<string, unknown> | null; editable_args?: Record<string, unknown>; error?: string }
+    if (!r.ok) return d.error || `Request failed (${r.status})`
+    return { schema: d.schema ?? null, args: d.editable_args ?? {} }
+  }, [])
+
   const editArgs = useCallback(async (id: string, args: Record<string, unknown>): Promise<string | null> => {
     const r = await csrfFetch(`/api/admin/agent/actions/${encodeURIComponent(id)}`, {
       method: 'PATCH',
@@ -170,8 +198,9 @@ export function useAgentChat() {
     })
     const d = (await r.json().catch(() => ({}))) as { action?: ProposedAction; error?: string }
     if (d.action) setActions((prev) => ({ ...prev, [id]: d.action! }))
+    void refreshStatus()
     return r.ok ? null : d.error || `Request failed (${r.status})`
-  }, [])
+  }, [refreshStatus])
 
   const rename = useCallback(async (id: string, title: string) => {
     const r = await csrfFetch(`/api/admin/agent/conversations/${encodeURIComponent(id)}`, {
@@ -193,9 +222,10 @@ export function useAgentChat() {
   }, [open])
 
   return {
-    conversations, loadingList, activeId, items, actions, loadingConv, streaming, status, liveModel, error,
+    conversations, loadingList, activeId, items, actions, bundles, loadingConv, streaming, status, liveModel, error,
     isSuper, scope, setScope,
     open, send, stop, confirm: (id: string) => actOn(id, 'confirm'), cancel: (id: string) => actOn(id, 'cancel'),
-    editArgs, rename, remove,
+    confirmBundle: (id: string) => actOnBundle(id, 'confirm'), cancelBundle: (id: string) => actOnBundle(id, 'cancel'),
+    loadEditForm, editArgs, rename, remove, refreshStatus,
   }
 }

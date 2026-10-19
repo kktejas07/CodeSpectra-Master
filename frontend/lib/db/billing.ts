@@ -121,6 +121,16 @@ export interface BillingCouponDoc {
   valid_until?: string
   active: boolean
   trial_duration_days?: number
+  /** Flat coupons: the currency `discount_value` is in (CORE-018). Missing on legacy coupons = INR. */
+  currency?: 'INR' | 'USD'
+  /** Set when a legacy flat coupon was given INR by the migration; cleared once an admin saves it. */
+  currency_migrated_at?: string | null
+  /** Where it can be used (default all). Seller coupons are always marketplace-only. */
+  applies_to?: 'all' | 'plans' | 'marketplace'
+  /** Platform coupons on third-party marketplace items (CORE-021). Default platform_items_only. */
+  marketplace_funding?: 'platform_items_only' | 'platform_funded'
+  /** Seller coupon: created by this marketplace seller, only for their items, seller-funded. */
+  seller_id?: string | null
   created_at: string
   created_by?: string
   redemptions?: Array<{ user_id: string; user_name?: string; user_email?: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string; status?: 'reserved' | 'redeemed' }>

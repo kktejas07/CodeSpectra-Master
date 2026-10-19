@@ -59,7 +59,8 @@ async function handle(req: NextRequest) {
             <p style="color:#9ca3af;font-size:12px;margin-top:24px">You can turn off the daily digest in <a href="${appUrl}/dashboard/notifications/preferences">notification preferences</a>.</p>
           </div>`
         const r = await deliverOrDefer(user.id, {
-          email: { to: user.email, subject: `Your CodeSpectra daily digest (${items.length > 10 ? '10+' : items.length} new)`, html },
+          // 'engagement': honours unsubscribes and gets the one-click unsubscribe link + headers (AUTO-052).
+          email: { to: user.email, subject: `Your CodeSpectra daily digest (${items.length > 10 ? '10+' : items.length} new)`, html, category: 'engagement' },
         })
         if (r === 'deferred') deferred++
         else sent++

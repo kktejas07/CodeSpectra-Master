@@ -29,7 +29,7 @@ export const EVAL_RUNS_COLLECTION = 'rag_eval_runs'
 export const PROBE_TENANT = 'rag-eval-probe'
 const MAX_PROBE_TENANTS = 3
 const PROBES_PER_TENANT = 6
-const MASKED_TYPES = new Set<string>(['resume', 'attempt_summary'])
+const MASKED_TYPES = new Set<string>(['resume', 'attempt_summary', 'ats_application'])
 
 export interface EvalRunDoc {
   id: string

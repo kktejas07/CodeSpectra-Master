@@ -28,17 +28,23 @@ type CalEvent = {
   readOnly?: boolean
 }
 
-type Filter = 'all' | 'personal' | 'hackathon' | 'codeathon'
+type Filter = 'all' | 'personal' | 'hackathon' | 'codeathon' | 'interview' | 'assessment' | 'booking' | 'event'
 const FILTERS: Array<{ id: Filter; label: string }> = [
   { id: 'all', label: 'All' },
   { id: 'personal', label: 'My entries' },
+  { id: 'interview', label: 'Interviews' },
+  { id: 'assessment', label: 'Test deadlines' },
+  { id: 'booking', label: 'Bookings' },
+  { id: 'event', label: 'Saved events' },
   { id: 'hackathon', label: 'Hackathons' },
   { id: 'codeathon', label: 'Codeathons' },
 ]
+const DERIVED = new Set(['hackathon', 'codeathon', 'assessment', 'booking', 'event'])
 
 function matchesFilter(ev: CalEvent, f: Filter): boolean {
   if (f === 'all') return true
-  if (f === 'personal') return ev.source !== 'hackathon' && ev.source !== 'codeathon'
+  // Interviews pinned at booking are personal entries with source 'interview' — they count as interviews.
+  if (f === 'personal') return !DERIVED.has(String(ev.source)) && ev.source !== 'interview'
   return ev.source === f
 }
 
@@ -187,7 +193,7 @@ export default function CalendarPage() {
           className="mb-0"
           icon={<CalendarDays aria-hidden />}
           title="Calendar"
-          description="Your study sessions, course deadlines, and the dates of hackathons and codeathons you've joined. Event pages also offer an .ics / Google Calendar export."
+          description="Your study sessions, interviews, test deadlines, booked sessions, saved events and the hackathons and codeathons you've joined. Event pages also offer an .ics / Google Calendar export."
         />
       </div>
 

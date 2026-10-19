@@ -98,11 +98,16 @@ beforeEach(() => {
 })
 
 describe('registry', () => {
-  it('exposes every tool with unique snake_case names and no payment/user-deletion tools', () => {
+  it('exposes every tool with unique snake_case names, no user deletion, and money only as superadmin proposals', () => {
     const names = ALL_TOOLS.map((t) => t.name)
     expect(new Set(names).size).toBe(names.length)
     for (const n of names) expect(n).toMatch(/^[a-z]+(_[a-z]+)*$/)
-    expect(names.some((n) => /pay|refund|charge|delete_user|remove_user/.test(n))).toBe(false)
+    expect(names.some((n) => /delete_user|remove_user|charge/.test(n))).toBe(false)
+    // Refund / payout decisions are drafts with the money risk, platform admins only.
+    for (const t of ALL_TOOLS.filter((x) => /refund|payout/.test(x.name) && x.kind === 'write')) {
+      expect(t.risk).toBe('money')
+      expect(t.roles).toEqual(['superadmin'])
+    }
     for (const t of ALL_TOOLS) {
       expect(t.parameters.type).toBe('object')
       expect(t.kind === 'read' ? t.risk === 'none' && !!t.run : t.risk !== 'none' && !!t.propose && !!t.execute).toBe(true)
@@ -110,7 +115,8 @@ describe('registry', () => {
   })
 
   it('toolsFor gives admins the tools and nobody else anything', () => {
-    expect(toolsFor(A).length).toBe(ALL_TOOLS.length)
+    expect(toolsFor(A).length).toBe(ALL_TOOLS.filter((t) => t.roles.includes('tenant_admin')).length)
+    expect(toolsFor(A).every((t) => t.roles.includes('tenant_admin'))).toBe(true)
     expect(toolsFor(SUPER).length).toBe(ALL_TOOLS.length)
     expect(toolsFor({ userId: 'x', role: 'tenant_admin', tenantId: null })).toEqual([])
     expect(toolsFor({ userId: 'x', role: 'user' as never, tenantId: 't' })).toEqual([])

@@ -9,7 +9,7 @@ import { requireAdmin, type APIUser } from '@/lib/route-auth'
 import type { WorkflowDoc } from '@/lib/db/leaderboard'
 import { normalizeSteps, validateDefinition, type StepDef } from './steps-catalog'
 import { conditionProblems, type Condition } from './conditions'
-import { isKnownEventType } from './event-types'
+import { isEmittableEventType } from './event-types'
 import { col } from './store'
 
 export type WorkflowGate = { user: APIUser; tenantId: string | null; platform: boolean } | { error: string; status: 401 | 403 }
@@ -34,6 +34,32 @@ export async function loadWorkflow(g: { platform: boolean; tenantId: string | nu
   if (!id || id.length > 80) return null
   const c = await col<WorkflowDoc>('workflows')
   return (await c.findOne({ id, ...workflowScope(g) }, { projection: { _id: 0 } })) as WorkflowDoc | null
+}
+
+export interface BuiltinOverlap {
+  id: string
+  title: string
+  enabled: boolean
+}
+
+/**
+ * For workflows made from a template that sends the same messages as a
+ * built-in automation (AUTO-020): which built-in, and whether it is on.
+ * Customers never get both (shared de-duplication keys); the UI offers to
+ * switch the built-in off.
+ */
+export async function builtinOverlaps(wfs: Pick<WorkflowDoc, 'id' | 'template_id'>[]): Promise<Record<string, BuiltinOverlap>> {
+  const out: Record<string, BuiltinOverlap> = {}
+  const { templateById } = await import('./templates')
+  const withTpl = wfs.map((w) => ({ w, tpl: w.template_id ? templateById(w.template_id) : undefined })).filter((x) => x.tpl?.replaces)
+  if (!withTpl.length) return out
+  const { systemAutomationById } = await import('./system/registry')
+  const { isAutomationEnabled } = await import('./settings')
+  for (const { w, tpl } of withTpl) {
+    const a = systemAutomationById(tpl!.replaces!)
+    if (a) out[w.id] = { id: a.id, title: a.title, enabled: await isAutomationEnabled(a.id, a.defaultOn !== false) }
+  }
+  return out
 }
 
 /** Never send secrets to the browser. */
@@ -64,7 +90,7 @@ export function prepareWorkflowUpdate(current: Partial<WorkflowDoc>, body: Recor
   if ('cron_expression' in body) set.cron_expression = String(body.cron_expression ?? '').trim().slice(0, 100)
   if ('event_type' in body) {
     const t = body.event_type
-    if (t !== null && t !== '' && !isKnownEventType(t)) errors.push('Unknown event type')
+    if (t !== null && t !== '' && !isEmittableEventType(t)) errors.push('Unknown event type')
     else set.event_type = (t as string) || null
   }
   if ('event_filter' in body) {

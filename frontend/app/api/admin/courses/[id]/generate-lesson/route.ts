@@ -4,6 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { generateLessonVideo, normalizeTargetMinutes, buildLessonContext } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath } from '@/lib/courses/lesson-mp4'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,6 +89,7 @@ export async function POST(
       { id: courseId },
       { $set: { sections: sectionsUpdate, updated_at: new Date().toISOString() } }
     )
+    knowledgeOnLibraryChange('course', courseId)
 
     return NextResponse.json({
       success: true,

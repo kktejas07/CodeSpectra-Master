@@ -31,7 +31,8 @@ export default function SupportPage() {
   const [replies, setReplies] = useState<{ id: string; message: string; user_email: string; created_at: string }[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
-  const [isAdmin] = useState(typeof window !== 'undefined' && (document.cookie.includes('role=superadmin') || document.cookie.includes('role=tenant_admin')))
+  // W4-10: role from the auth context (same on server and client), not document.cookie in render.
+  const isAdmin = gate.user?.role === 'superadmin' || gate.user?.role === 'tenant_admin'
 
   const [showForm, setShowForm] = useState(false)
   const [subject, setSubject] = useState('')

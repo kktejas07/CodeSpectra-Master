@@ -65,6 +65,7 @@ function matchCond(values: any[], cond: any): boolean {
       case '$lte': return values.some((v) => expand(v).some((x) => x != null && x <= (arg as any)))
       case '$exists': return arg ? values.some((v) => v !== undefined) : values.every((v) => v === undefined)
       case '$size': return values.some((v) => Array.isArray(v) && v.length === arg)
+      case '$all': { const flat = values.flatMap((v) => expand(v)); return (arg as any[]).every((a) => flat.some((x) => eq(x, a))) }
       case '$not': return !matchCond(values, arg)
       case '$regex': {
         const re = new RegExp(arg as string, (cond as Doc).$options || '')
@@ -170,7 +171,17 @@ function applyUpdate(doc: Doc, update: Doc, inserting: boolean, filter: Doc = {}
           case '$setOnInsert': if (inserting) set(doc, path, clone(val)); break
           case '$inc': set(doc, path, (get(doc, path) || 0) + (val as number)); break
           case '$addToSet': { const a = get(doc, path) || []; if (!a.some((x: any) => eq(x, val))) a.push(clone(val)); set(doc, path, a); break }
-          case '$push': { const a = get(doc, path) || []; a.push(clone(val)); set(doc, path, a); break }
+          case '$push': {
+            const a = get(doc, path) || []
+            if (isObj(val) && '$each' in val) {
+              a.push(...clone(val.$each as any[]))
+              const sl = (val as Doc).$slice
+              set(doc, path, typeof sl === 'number' ? (sl < 0 ? a.slice(sl) : a.slice(0, sl)) : a)
+            } else { a.push(clone(val)); set(doc, path, a) }
+            break
+          }
+          case '$min': { const cur = get(doc, path); if (cur === undefined || val < cur) set(doc, path, clone(val)); break }
+          case '$max': { const cur = get(doc, path); if (cur === undefined || val > cur) set(doc, path, clone(val)); break }
           case '$pull': {
             const a = get(doc, path)
             if (Array.isArray(a)) set(doc, path, a.filter((x: any) => !(isObj(val) ? elemMatches(x, val) : eq(x, val))))
@@ -224,6 +235,14 @@ export class FakeCollection {
       next: async () => clone(rows[0] ?? null),
     }
     return cursor
+  }
+  async distinct(key: string, filter: Doc = {}) {
+    const out: any[] = []
+    for (const d of this.docs.filter((x) => matches(x, filter))) {
+      const v = get(d, key)
+      for (const x of Array.isArray(v) ? v : [v]) if (x !== undefined && !out.some((o) => eq(o, x))) out.push(x)
+    }
+    return out
   }
   async countDocuments(filter: Doc = {}) {
     return this.docs.filter((d) => matches(d, filter)).length

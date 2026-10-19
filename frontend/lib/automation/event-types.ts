@@ -10,6 +10,15 @@
  *
  * Adding an event: add it here (type, label, fields, sample) — the builder's
  * trigger picker and variable picker read this list.
+ *
+ * Tenancy (AUTO-001): emit() attaches the organisation of the user / buyer in
+ * the payload when the caller doesn't pass one, so organisation workflows see
+ * their members' events. Events with `scope: 'platform'` (the public blog and
+ * events feed) belong to no organisation: they are hidden from organisation
+ * trigger pickers and organisation workflows can't use them.
+ *
+ * Product analytics (lib/analytics) can become triggers later through the
+ * reserved `analytics.<name>` namespace (see lib/automation/emit.ts).
  */
 
 export interface EventField {
@@ -25,6 +34,8 @@ export interface EventTypeDef {
   description: string
   fields: EventField[]
   sample: Record<string, unknown>
+  /** 'platform' = not tied to an organisation (platform workflows only). Default 'tenant'. */
+  scope?: 'tenant' | 'platform'
 }
 
 const f = (key: string, label: string, type: EventField['type'] = 'string'): EventField => ({ key, label, type })
@@ -104,9 +115,15 @@ export const EVENT_TYPES: readonly EventTypeDef[] = [
   },
   {
     type: 'interview.scheduled', label: 'Interview scheduled', group: 'Hiring',
-    description: 'A hiring or standalone interview was booked or rescheduled.',
-    fields: [f('interview_id', 'Interview id'), f('kind', 'hiring or standalone'), f('title', 'Title'), f('candidate_name', 'Candidate name'), f('candidate_email', 'Candidate email'), f('scheduled_at', 'Starts at', 'date'), f('duration_min', 'Duration (minutes)', 'number'), f('join_url', 'Join link')],
-    sample: { interview_id: 'i_sample', kind: 'hiring', title: 'Technical interview', candidate_name: 'Asha Rao', candidate_email: 'asha@example.com', scheduled_at: '2026-01-10T10:00:00.000Z', duration_min: 45, join_url: 'https://codespectra.ai/interview/join' },
+    description: 'A hiring or standalone interview was booked or moved to a new time (a move emits it again; waiting runs for the old time are cancelled).',
+    fields: [f('interview_id', 'Interview id'), f('kind', 'hiring or standalone'), f('title', 'Title'), f('candidate_name', 'Candidate name'), f('candidate_email', 'Candidate email'), f('scheduled_at', 'Starts at', 'date'), f('duration_min', 'Duration (minutes)', 'number'), f('join_url', 'Join link'), f('rescheduled', 'Moved from another time', 'boolean')],
+    sample: { interview_id: 'i_sample', kind: 'hiring', title: 'Technical interview', candidate_name: 'Asha Rao', candidate_email: 'asha@example.com', scheduled_at: '2026-01-10T10:00:00.000Z', duration_min: 45, join_url: 'https://codespectra.ai/interview/join', rescheduled: false },
+  },
+  {
+    type: 'interview.cancelled', label: 'Interview cancelled', group: 'Hiring',
+    description: 'A standalone interview was cancelled or deleted (waiting runs for it are cancelled).',
+    fields: [f('interview_id', 'Interview id'), f('kind', 'hiring or standalone'), f('title', 'Title'), f('candidate_name', 'Candidate name'), f('candidate_email', 'Candidate email'), f('scheduled_at', 'Was due at', 'date')],
+    sample: { interview_id: 'i_sample', kind: 'standalone', title: 'Technical interview', candidate_name: 'Asha Rao', candidate_email: 'asha@example.com', scheduled_at: '2026-01-10T10:00:00.000Z' },
   },
   {
     type: 'interview.completed', label: 'Interview completed', group: 'Hiring',
@@ -157,13 +174,13 @@ export const EVENT_TYPES: readonly EventTypeDef[] = [
     sample: { order_id: 'm_sample', buyer_id: 'u_sample', buyer_email: 'asha@example.com', tracking_url: 'https://track.example.com/123', carrier: 'Delhivery' },
   },
   {
-    type: 'learn.post.published', label: 'Knowledge post published', group: 'Content',
+    type: 'learn.post.published', label: 'Knowledge post published', group: 'Content', scope: 'platform',
     description: 'A new post went live on the learn blog.',
     fields: [f('post_id', 'Post id'), f('title', 'Title'), f('url', 'Link'), f('summary', 'Summary'), f('tags', 'Tags', 'array')],
     sample: { post_id: 'p_sample', title: 'How hash maps really work', url: 'https://codespectra.ai/learn/hash-maps', summary: 'Buckets, probing and load factors in plain words.', tags: ['dsa'] },
   },
   {
-    type: 'events_feed.new_event', label: 'New event in the events feed', group: 'Content',
+    type: 'events_feed.new_event', label: 'New event in the events feed', group: 'Content', scope: 'platform',
     description: 'A new hackathon or coding event was added to the public events feed.',
     fields: [f('event_id', 'Event id'), f('title', 'Title'), f('url', 'Link'), f('starts_at', 'Starts at', 'date'), f('mode', 'Online or offline'), f('city', 'City'), f('source', 'Source')],
     sample: { event_id: 'ev_sample', title: 'Hyderabad AI hack night', url: 'https://codespectra.ai/events/ev_sample', starts_at: '2026-02-01T12:30:00.000Z', mode: 'offline', city: 'Hyderabad', source: 'partner' },
@@ -180,4 +197,27 @@ export function eventTypeDef(type: string): EventTypeDef | undefined {
 
 export function isKnownEventType(type: unknown): type is string {
   return typeof type === 'string' && BY_TYPE.has(type)
+}
+
+/** Events with no organisation: platform workflows only (AUTO-001). */
+export function isPlatformOnlyEvent(type: string | null | undefined): boolean {
+  return !!type && BY_TYPE.get(type)?.scope === 'platform'
+}
+
+/** Events an organisation (platform = false) or platform (true) workflow may trigger on. */
+export function eventTypesFor(platform: boolean): EventTypeDef[] {
+  return EVENT_TYPES.filter((e) => platform || e.scope !== 'platform')
+}
+
+/** Reserved namespace for product-analytics events (lib/automation/emit.ts). */
+export const ANALYTICS_EVENT_PREFIX = 'analytics.'
+const ANALYTICS_RE = /^analytics\.[a-z0-9][a-z0-9_.-]{0,62}$/
+
+export function isAnalyticsEventType(type: unknown): type is string {
+  return typeof type === 'string' && ANALYTICS_RE.test(type)
+}
+
+/** Catalog events plus `analytics.<name>`: what the bus accepts and a trigger may name. */
+export function isEmittableEventType(type: unknown): type is string {
+  return isKnownEventType(type) || isAnalyticsEventType(type)
 }

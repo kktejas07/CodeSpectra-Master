@@ -17,6 +17,13 @@ export async function GET() {
       return NextResponse.json({ code: null, url: null, total_referrals: 0, completed_referrals: 0, pending_referrals: 0, total_xp_earned: 0, total_commission_earned: 0, referrals: [] })
     }
 
+    // Pending referrals may have qualified since (e-mail verified + first graded activity).
+    const pending = await col.find({ referrer_id: userId, kind: 'redemption', status: 'pending' }, { projection: { referred_id: 1 } }).limit(20).toArray()
+    if (pending.length) {
+      const { completeReferralIfEligible } = await import('@/lib/referral-service')
+      for (const p of pending) await completeReferralIfEligible(db, String(p.referred_id)).catch(() => {})
+    }
+
     const referrals = await col.find({ referrer_id: userId, referred_id: { $ne: '' } }).sort({ created_at: -1 }).toArray()
 
     const userCol = db.collection('user')

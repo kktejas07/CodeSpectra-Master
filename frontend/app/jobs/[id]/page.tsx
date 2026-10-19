@@ -1,303 +1,137 @@
-'use client'
-import { formatDate } from '@/lib/format-datetime'
-
-import { use, useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+/**
+ * /jobs/[id] — server-rendered job posting for Google for Jobs: unique
+ * metadata, JobPosting + Breadcrumb JSON-LD, an answer-first "at a glance"
+ * block and FAQ, and a real 404 for unknown or closed posts (SEO-009/023).
+ * Applying stays in the client island (JobDetailClient).
+ */
+import type { Metadata } from 'next'
+import { notFound } from 'next/navigation'
+import { cache } from 'react'
 import { PublicPageWrapper } from '@/app/public-layout'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Textarea } from '@/components/ui/textarea'
-import { Label } from '@/components/ui/label'
-import {
-  ArrowLeft, Building2, MapPinIcon, DollarSign, Clock, Briefcase,
-  CheckCircle, Loader2, AlertCircle, ExternalLink, Users, Calendar,
-} from 'lucide-react'
-import { useAuth } from '@/lib/auth-context'
-import { csrfFetch } from '@/lib/csrf-fetch'
-import { useCurrency } from '@/lib/use-currency'
-import { Illustration } from '@/components/illustrations/spot'
-import { AtsApplyForm } from './ats-apply-form'
+import { JsonLd } from '@/components/seo/json-ld'
+import { FaqList } from '@/components/seo/faq-list'
+import { jobs } from '@/lib/db/content'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { breadcrumbJsonLd, employmentType, jobPostingJsonLd, jobValidThrough, parseJobLocation, type QA } from '@/lib/seo/jsonld'
+import { getSiteOrigin } from '@/lib/seo/settings'
+import { formatDate } from '@/lib/format-datetime'
+import { JobDetailClient, type JobPosting } from './job-detail-client'
 
-interface JobPosting {
-  id: string
-  title: string
-  company: string | null
-  location: string | null
-  job_type: string | null
-  experience_level: string | null
-  description: string | null
-  requirements: string | null
-  benefits: string | null
-  skills: string[]
-  salary: { min: number; max: number; currency: string } | null
-  applicants: number
-  created_at: string
-  is_active: boolean
-  /** Set when the posting is run through the hiring pipeline (lib/ats). */
-  ats_job_id?: string | null
-}
+export const dynamic = 'force-dynamic'
 
-function formatSalary(salary: JobPosting['salary'], symbol: string) {
-  if (!salary) return null
-  const fmt = (n: number) =>
-    salary.currency === 'INR'
-      ? `${symbol}${(n / 100000).toFixed(1)}L`
-      : `${symbol}${(n / 1000).toFixed(0)}k`
-  return `${fmt(salary.min)} – ${fmt(salary.max)}`
-}
+type Params = Promise<{ id: string }>
 
-export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const router = useRouter()
-  const { symbol } = useCurrency()
-  const { user: authUser } = useAuth()
-  const [job, setJob] = useState<JobPosting | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [applying, setApplying] = useState(false)
-  const [applySuccess, setApplySuccess] = useState(false)
-  const [alreadyApplied, setAlreadyApplied] = useState(false)
-  const [coverLetter, setCoverLetter] = useState('')
-  const [applyError, setApplyError] = useState<string | null>(null)
-
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/jobs/${id}`)
-      if (!res.ok) { setError('Job not found'); return }
-      const data = await res.json()
-      setJob(data)
-    } catch { setError('Failed to load job') } finally { setLoading(false) }
-  }, [id])
-
-  useEffect(() => { load() }, [load])
-
-  const handleApply = async () => {
-    if (!authUser) { router.push(`/auth/login?redirect=${encodeURIComponent(`/jobs/${id}`)}`); return }
-    setApplying(true); setApplyError(null)
-    try {
-      // csrfFetch attaches (and if needed bootstraps) the CSRF token.
-      const res = await csrfFetch(`/api/jobs/${id}/apply`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coverLetter }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (data.alreadyApplied) {
-        setAlreadyApplied(true)
-      } else if (data.success) {
-        setApplySuccess(true)
-        setJob(j => j ? { ...j, applicants: j.applicants + 1 } : j)
-      } else {
-        setApplyError(data.error || 'Failed to apply')
-      }
-    } catch { setApplyError('Something went wrong') } finally { setApplying(false) }
+/** Public view of an active posting (same projection rules as GET /api/jobs/[id]). */
+const loadJob = cache(async (id: string): Promise<(JobPosting & { updated_at?: string | null; valid_through?: string | null }) | null> => {
+  try {
+    const doc = await (await jobs()).findOne({ id, is_active: true }, { projection: { _id: 0, created_by: 0, tenant_id: 0 } })
+    if (!doc) return null
+    const d = doc as unknown as Record<string, unknown>
+    return {
+      id: String(d.id),
+      title: String(d.title || ''),
+      company: (d.company as string) ?? null,
+      location: (d.location as string) ?? null,
+      job_type: (d.job_type as string) ?? null,
+      experience_level: (d.experience_level as string) ?? null,
+      description: (d.description as string) ?? null,
+      requirements: (d.requirements as string) ?? null,
+      benefits: (d.benefits as string) ?? null,
+      skills: Array.isArray(d.skills) ? (d.skills as unknown[]).map(String) : [],
+      salary: (d.salary as JobPosting['salary']) ?? null,
+      applicants: Number(d.applicants) || 0,
+      created_at: String(d.created_at || new Date(0).toISOString()),
+      updated_at: (d.updated_at as string) ?? null,
+      valid_through: (d.valid_through as string) ?? null,
+      is_active: true,
+      ats_job_id: (d.ats_job_id as string) ?? null,
+    }
+  } catch (e) {
+    console.error('[jobs] load failed:', (e as Error)?.message)
+    throw e
   }
+})
 
-  if (loading) return (
-    <PublicPageWrapper>
-      <div className="flex justify-center py-24">
-        <Loader2 className="h-6 w-6 animate-spin text-cs-ink-soft motion-reduce:animate-none" aria-label="Loading job" />
-      </div>
-    </PublicPageWrapper>
-  )
+function salaryText(s: JobPosting['salary']): string | null {
+  if (!s || !(Number(s.min) > 0)) return null
+  const f = (n: number) => new Intl.NumberFormat('en', { style: 'currency', currency: s.currency || 'USD', maximumFractionDigits: 0 }).format(n)
+  return Number(s.max) > Number(s.min) ? `${f(s.min)} – ${f(s.max)} a year` : `${f(s.min)} a year`
+}
 
-  if (error || !job) return (
-    <PublicPageWrapper>
-      <div className="mx-auto max-w-2xl px-4 py-24 text-center">
-        <Illustration name="not-found" className="mx-auto w-40" />
-        <p className="mt-3 text-lg font-semibold text-cs-ink">{error || 'Job not found'}</p>
-        <p className="mt-1 text-sm text-cs-ink-soft">It may have been filled or removed. The job board has every open role.</p>
-        <Button variant="outline" className="mt-5 rounded-full" onClick={() => router.push('/jobs')}>
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to jobs
-        </Button>
-      </div>
-    </PublicPageWrapper>
-  )
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const { id } = await params
+  const job = await loadJob(id).catch(() => null)
+  if (!job) return { title: 'Job not found', robots: { index: false, follow: true } }
+  const where = job.location ? ` in ${job.location}` : ''
+  const lead = (job.description || '').replace(/\s+/g, ' ').trim()
+  return buildMetadata({
+    title: `${job.title}${job.company ? ` at ${job.company}` : ''}`,
+    description: `${job.company ? `${job.company} is hiring` : 'Hiring'}: ${job.title}${where}${job.job_type ? ` (${job.job_type})` : ''}. ${lead}`,
+    path: `/jobs/${job.id}`,
+    kind: 'job',
+    ogSubtitle: [job.company, job.location, job.job_type].filter(Boolean).join(' · '),
+  })
+}
 
-  const salary = formatSalary(job.salary, symbol)
+export default async function JobPage({ params }: { params: Params }) {
+  const { id } = await params
+  const job = await loadJob(id)
+  if (!job) notFound()
+  const site = await getSiteOrigin()
+  const loc = parseJobLocation(job.location, job.job_type)
+  const salary = salaryText(job.salary)
+  const validThrough = jobValidThrough(job)
+  const types = employmentType(job.job_type).map((t) => t.replace('_', '-').toLowerCase())
+
+  const facts: { term: string; value: string }[] = [
+    { term: 'Company', value: job.company || 'Not stated' },
+    { term: 'Location', value: loc.remote ? `Remote${job.location && !/^remote$/i.test(job.location.trim()) ? ` (${job.location})` : ''}` : job.location || 'Not stated' },
+    { term: 'Job type', value: job.job_type || types.join(', ') },
+    ...(job.experience_level ? [{ term: 'Experience', value: job.experience_level }] : []),
+    ...(salary ? [{ term: 'Salary', value: salary }] : []),
+    { term: 'Posted', value: formatDate(job.created_at) },
+  ]
+  const faqs: QA[] = [
+    { q: `How do I apply for the ${job.title} role?`, a: job.ats_job_id ? 'Use the application form on this page; you can attach your résumé without creating an account.' : 'Sign in to CodeSpectra (free) and submit your application from this page, with an optional cover letter.' },
+    { q: 'Is this job remote?', a: loc.remote ? `Yes, it is listed as remote${loc.countries.length ? ` for candidates in ${loc.countries.join(', ')}` : ''}.` : `No, it is listed${job.location ? ` in ${job.location}` : ' as on-site'}.` },
+    ...(salary ? [{ q: 'What does it pay?', a: `The posted range is ${salary}.` }] : []),
+    ...(job.skills.length ? [{ q: 'Which skills are required?', a: job.skills.join(', ') + '.' }] : []),
+  ]
 
   return (
     <PublicPageWrapper>
-      <div className="relative isolate overflow-hidden border-b border-cs-grid">
-        <div aria-hidden className="absolute -top-32 right-[-10%] -z-10 h-[420px] w-[520px] rounded-full bg-[#2f5be7]/10 blur-3xl" />
-        <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8 lg:py-14">
-          <Link href="/jobs" className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-cs-ink-soft hover:text-cs-accent-text">
-            <ArrowLeft className="h-4 w-4" aria-hidden /> All jobs
-          </Link>
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h1 className="cs-display max-w-[24ch] text-4xl sm:text-5xl">{job.title}</h1>
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-cs-ink-soft">
-                {job.company && (
-                  <span className="flex items-center gap-1.5">
-                    <Building2 className="h-4 w-4" aria-hidden />{job.company}
-                  </span>
-                )}
-                {job.location && (
-                  <span className="flex items-center gap-1.5">
-                    <MapPinIcon className="h-4 w-4" aria-hidden />{job.location}
-                  </span>
-                )}
-                {job.job_type && (
-                  <span className="flex items-center gap-1.5">
-                    <Briefcase className="h-4 w-4" aria-hidden />{job.job_type}
-                  </span>
-                )}
-                {job.experience_level && (
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4" aria-hidden />{job.experience_level}
-                  </span>
-                )}
-                <span className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4" aria-hidden /><span className="tabular-nums">{job.applicants}</span> applicant{job.applicants !== 1 ? 's' : ''}
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" aria-hidden />
-                  Posted {formatDate(job.created_at)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+      <JsonLd
+        data={[
+          jobPostingJsonLd(job, site),
+          breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Jobs', path: '/jobs' }, { name: job.title, path: `/jobs/${job.id}` }], site),
+        ]}
+      />
+      <JobDetailClient initialJob={job} />
+      <section aria-labelledby="job-glance" className="mx-auto max-w-5xl px-4 pb-16 sm:px-6 lg:px-8">
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-          <div className="space-y-6">
-            {job.description && (
-              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
-                <h2 className="mb-3 text-lg font-bold text-cs-ink">About the role</h2>
-                <div className="max-w-[72ch] whitespace-pre-wrap text-[15px] leading-7 text-cs-ink-soft">
-                  {job.description}
+          <div className="space-y-8">
+            <div className="speakable-summary rounded-3xl border border-cs-grid bg-cs-sheet p-6">
+              <h2 id="job-glance" className="mb-4 text-lg font-bold text-cs-ink">Job at a glance</h2>
+              <dl className="grid gap-4 sm:grid-cols-2">
+                {facts.map((f) => (
+                  <div key={f.term}>
+                    <dt className="text-sm text-cs-ink-soft">{f.term}</dt>
+                    <dd className="mt-0.5 font-medium text-cs-ink">{f.value}</dd>
+                  </div>
+                ))}
+                <div>
+                  <dt className="text-sm text-cs-ink-soft">Apply by</dt>
+                  <dd className="mt-0.5 font-medium text-cs-ink"><time dateTime={validThrough}>{formatDate(validThrough)}</time> (while the post stays open)</dd>
                 </div>
-              </section>
-            )}
-
-            {job.requirements && (
-              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
-                <h2 className="mb-3 text-lg font-bold text-cs-ink">Requirements</h2>
-                <div className="max-w-[72ch] whitespace-pre-wrap text-[15px] leading-7 text-cs-ink-soft">
-                  {job.requirements}
-                </div>
-              </section>
-            )}
-
-            {job.benefits && (
-              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
-                <h2 className="mb-3 text-lg font-bold text-cs-ink">Benefits</h2>
-                <div className="max-w-[72ch] whitespace-pre-wrap text-[15px] leading-7 text-cs-ink-soft">
-                  {job.benefits}
-                </div>
-              </section>
-            )}
-
-            {job.skills && job.skills.length > 0 && (
-              <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
-                <h2 className="mb-3 text-lg font-bold text-cs-ink">Skills</h2>
-                <div className="flex flex-wrap gap-2">
-                  {job.skills.map(s => (
-                    <Badge key={s} variant="secondary" className="bg-cs-accent/10 text-cs-accent-text">{s}</Badge>
-                  ))}
-                </div>
-              </section>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none sticky top-20 p-5">
-              {salary && (
-                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-cs-accent/20 bg-cs-accent/5 p-3">
-                  <DollarSign className="h-4 w-4 text-cs-accent-text" aria-hidden />
-                  <span className="text-sm font-semibold tabular-nums text-cs-ink">{salary}</span>
-                </div>
-              )}
-
-              {applySuccess ? (
-                <div className="py-4 text-center" role="status">
-                  <Illustration name="success" className="mx-auto mb-2 w-32" />
-                  <p className="font-semibold text-cs-ink">Application submitted!</p>
-                  <p className="mt-1 text-sm text-cs-ink-soft">Good luck with your application.</p>
-                </div>
-              ) : alreadyApplied ? (
-                <div className="text-center py-4">
-                  <CheckCircle className="mx-auto mb-2 h-10 w-10 text-cs-ink-soft" aria-hidden />
-                  <p className="font-semibold text-cs-ink">Already applied</p>
-                  <p className="mt-1 text-sm text-cs-ink-soft">Your application is under review.</p>
-                </div>
-              ) : (
-                <>
-                  <p className="mb-3 text-base font-bold text-cs-ink">
-                    Apply for this position
-                  </p>
-                  {job.ats_job_id ? (
-                    <AtsApplyForm
-                      atsJobId={job.ats_job_id}
-                      signedIn={!!authUser}
-                      defaultName={authUser?.displayName || ''}
-                      hourlyAllowed={/contract/i.test(job.job_type || '')}
-                      onApplied={(already) => {
-                        if (already) setAlreadyApplied(true)
-                        else { setApplySuccess(true); setJob(j => j ? { ...j, applicants: j.applicants + 1 } : j) }
-                      }}
-                    />
-                  ) : authUser ? (
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="cover-letter" className="text-xs text-cs-ink">Cover letter (optional)</Label>
-                        <Textarea
-                          id="cover-letter"
-                          rows={3}
-                          value={coverLetter}
-                          onChange={e => setCoverLetter(e.target.value)}
-                          placeholder="Tell the company why you're a great fit…"
-                          className="text-sm"
-                        />
-                      </div>
-                      {applyError && (
-                        <p role="alert" className="flex items-center gap-1 text-xs text-cs-flag">
-                          <AlertCircle className="h-3 w-3" aria-hidden />{applyError}
-                        </p>
-                      )}
-                      <Button className="h-11 w-full rounded-full" onClick={handleApply} disabled={applying}>
-                        {applying ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
-                        {applying ? 'Submitting…' : 'Submit application'}
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 text-center">
-                      <p className="text-sm text-cs-ink-soft">Sign in to apply for this position</p>
-                      <Button className="h-11 w-full rounded-full" onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(`/jobs/${id}`)}`)}>
-                        Sign in to apply
-                      </Button>
-                      <p className="text-xs text-cs-ink-soft">
-                        Don&apos;t have an account?{' '}
-                        <Link href="/signup" className="font-medium text-cs-accent-text hover:underline">Sign up free</Link>
-                      </p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              <div className="mt-4 border-t border-cs-grid pt-4 text-center text-xs text-cs-ink-soft">
-                <span className="flex items-center justify-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Posted {formatDate(job.created_at)}
-                </span>
-                <span className="flex items-center justify-center gap-1 mt-1">
-                  <Users className="h-3 w-3" aria-hidden />
-                  <span className="tabular-nums">{job.applicants}</span> applicant{job.applicants !== 1 ? 's' : ''}
-                </span>
-              </div>
+              </dl>
             </div>
-
-            <Button variant="outline" className="w-full gap-1.5 rounded-full" asChild>
-              <Link href="/jobs"><ArrowLeft className="h-4 w-4" /> Back to jobs</Link>
-            </Button>
+            <div>
+              <h2 className="mb-4 text-lg font-bold text-cs-ink">Questions about this job</h2>
+              <FaqList items={faqs} idPrefix="job-faq" schema={false} />
+            </div>
           </div>
         </div>
-      </div>
+      </section>
     </PublicPageWrapper>
   )
 }

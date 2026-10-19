@@ -148,10 +148,10 @@ export default function KnowledgePage() {
 
   const loadStats = useCallback(async () => {
     try {
-      const r = await fetch('/api/admin/knowledge/stats', { credentials: 'include' })
+      const r = await fetch(`/api/admin/knowledge/stats${tenantParam ? `?tenant=${encodeURIComponent(tenantParam)}` : ''}`, { credentials: 'include' })
       if (r.ok) setStats(await r.json())
     } catch { /* stats are optional */ }
-  }, [])
+  }, [tenantParam])
 
   const loadSources = useCallback(async () => {
     setLoading(true)

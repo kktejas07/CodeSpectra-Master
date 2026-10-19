@@ -16,7 +16,12 @@ import { getPublishedPost, relatedPosts } from '@/lib/learn/queries'
 import { extractToc } from '@/lib/learn/markdown'
 import { postUrl } from '@/lib/learn/share'
 import { categoryLabel } from '@/lib/learn/types'
-import { getAppOrigin } from '@/lib/app-origin'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { articleJsonLd, breadcrumbJsonLd, faqJsonLd } from '@/lib/seo/jsonld'
+import { extractFaqs, extractKeyTakeaways, wordCount } from '@/lib/seo/learn-extract'
+import { getSiteOrigin } from '@/lib/seo/settings'
+import { JsonLd } from '@/components/seo/json-ld'
+import { AnswerSummary, SPEAKABLE_SELECTORS } from '@/components/seo/answer-summary'
 import { formatDate } from '@/lib/format-datetime'
 
 export const dynamic = 'force-dynamic'
@@ -26,25 +31,21 @@ type Params = Promise<{ slug: string }>
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params
   const post = await getPublishedPost(slug).catch(() => null)
-  if (!post) return { title: 'Post not found | CodeSpectra Learn' }
-  const url = `/learn/${encodeURIComponent(post.slug)}`
-  return {
-    title: `${post.title} | CodeSpectra Learn`,
+  if (!post) return { title: 'Post not found', robots: { index: false, follow: true } }
+  const path = `/learn/${encodeURIComponent(post.slug)}`
+  return buildMetadata({
+    title: post.title,
     description: post.summary,
+    path,
+    kind: 'article',
+    type: 'article',
+    image: `${path}/opengraph-image`,
+    publishedTime: post.published_at,
+    modifiedTime: post.updated_at,
+    section: categoryLabel(post.category),
+    tags: post.tags,
     keywords: post.tags,
-    alternates: { canonical: url },
-    openGraph: {
-      type: 'article',
-      title: post.title,
-      description: post.summary,
-      url,
-      publishedTime: post.published_at ?? undefined,
-      modifiedTime: post.updated_at,
-      section: categoryLabel(post.category),
-      tags: post.tags,
-    },
-    twitter: { card: 'summary_large_image', title: post.title, description: post.summary },
-  }
+  })
 }
 
 function safeDate(iso?: string | null): string {
@@ -62,31 +63,42 @@ export default async function LearnPostPage({ params }: { params: Params }) {
   if (!post) notFound()
   const related = await relatedPosts(post).catch(() => [])
   const toc = extractToc(post.body).filter((t) => t.level === 2)
-  const origin = getAppOrigin()
+  const origin = await getSiteOrigin()
   const url = postUrl(origin, post.slug)
+  const path = `/learn/${encodeURIComponent(post.slug)}`
+  const faqs = extractFaqs(post.body)
+  const takeaways = extractKeyTakeaways(post.body)
+  const autoPublished = post.reviewed_by === 'auto-approve'
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'TechArticle',
-    headline: post.title,
-    description: post.summary,
-    datePublished: post.published_at,
-    dateModified: post.updated_at,
-    url,
-    mainEntityOfPage: url,
-    image: `${url}/opengraph-image`,
-    keywords: post.tags.join(', '),
-    articleSection: categoryLabel(post.category),
-    proficiencyLevel: post.level === 'beginner' ? 'Beginner' : 'Expert',
-    inLanguage: 'en',
-    author: { '@type': 'Organization', name: 'CodeSpectra' },
-    publisher: { '@type': 'Organization', name: 'CodeSpectra', url: origin },
-    ...(post.sources.length ? { citation: post.sources.map((s) => s.url) } : {}),
-  }
+  const jsonLd = [
+    articleJsonLd({
+      site: origin,
+      type: 'TechArticle',
+      path,
+      headline: post.title,
+      description: post.summary,
+      datePublished: post.published_at,
+      dateModified: post.updated_at,
+      image: `${path}/opengraph-image`,
+      section: categoryLabel(post.category),
+      keywords: post.tags,
+      citations: post.sources.map((s) => s.url),
+      proficiencyLevel: post.level === 'beginner' ? 'Beginner' : 'Expert',
+      wordCount: wordCount(post.body),
+      speakable: SPEAKABLE_SELECTORS,
+    }),
+    breadcrumbJsonLd([
+      { name: 'Home', path: '/' },
+      { name: 'Learn', path: '/learn' },
+      { name: categoryLabel(post.category), path: `/learn?category=${post.category}` },
+      { name: post.title, path },
+    ], origin),
+    faqJsonLd(faqs),
+  ]
 
   return (
     <PublicPageWrapper>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
+      <JsonLd data={jsonLd} />
       <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 pb-20 pt-28 sm:px-6 lg:px-8">
         <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
           <Link href="/learn" className="hover:text-foreground">Learn</Link>
@@ -111,9 +123,12 @@ export default async function LearnPostPage({ params }: { params: Params }) {
             <p className="mt-4 max-w-[65ch] text-lg leading-relaxed text-muted-foreground">{post.summary}</p>
             <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-6 text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden /><span className="tabular-nums">{post.reading_minutes}</span> min read</span>
-              {post.published_at ? <span>{safeDate(post.published_at)}</span> : null}
+              {post.published_at ? <time dateTime={post.published_at}>{safeDate(post.published_at)}</time> : null}
             </div>
             <ShareBar slug={post.slug} url={url} title={post.title} summary={post.summary} className="mt-5" countView />
+
+            {/* Answer-first summary for snippets, AI answers and voice (speakable). */}
+            <AnswerSummary className="mt-8 max-w-[72ch]" label="Key takeaways" answer={post.summary} points={takeaways} />
 
             <LearnMarkdown content={post.body} className="mt-8 max-w-[72ch]" />
 
@@ -128,10 +143,14 @@ export default async function LearnPostPage({ params }: { params: Params }) {
             )}
 
             <section className="mt-10 max-w-[72ch] rounded-3xl border border-border bg-muted/30 p-5 text-sm text-muted-foreground">
-              <h2 className="font-semibold text-foreground">About this post</h2>
+              <h2 className="font-semibold text-foreground">About this post and its sources</h2>
               <p className="mt-1">
-                Written by the CodeSpectra learning bot in its own words and reviewed by our team before publishing.
-                {post.sources.length ? ' The pages it learned from are linked below.' : ''}
+                {autoPublished
+                  ? 'Written by the CodeSpectra learning bot in its own words and published after automated quality checks; our editors review it afterwards.'
+                  : 'Written by the CodeSpectra learning bot in its own words and reviewed by our team before publishing.'}
+                {post.sources.length ? ' The pages it learned from are cited below.' : ''}{' '}
+                <Link href="/editorial-policy" className="text-primary hover:underline">Editorial policy</Link>
+                {post.updated_at ? <> · Last updated <time dateTime={post.updated_at}>{safeDate(post.updated_at)}</time></> : null}
               </p>
               {post.sources.length > 0 && (
                 <ul className="mt-3 space-y-1">

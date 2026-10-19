@@ -12,12 +12,14 @@
  * DELETE /api/exams/[id]/links?linkId=... — revoke (soft; audit retained)
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAdmin, requireAuth } from '@/lib/route-auth'
+import { limitRequest } from '@/lib/rate-limit'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { getAppOrigin } from '@/lib/app-origin'
 import type { IdRouteContext } from '@/lib/app-route-context'
-import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
+import { clientIpOrEmpty } from '@/lib/client-ip'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -92,12 +94,8 @@ function parseUserAgent(ua: string | null): { device_type: string; browser: stri
 }
 
 function getClientIp(req: NextRequest): string | null {
-  // Trust forwarded headers from reverse proxy (Dokploy/Traefik/Cloudflare)
-  const forwarded = req.headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0].trim()
-  const realIp = req.headers.get('x-real-ip')
-  if (realIp) return realIp
-  return null
+  // SEC-021: forwarding headers only from TRUSTED_PROXY_CIDRS.
+  return clientIpOrEmpty(req) || null
 }
 
 async function logLinkUsage(
@@ -130,13 +128,12 @@ async function logLinkUsage(
 }
 
 export async function POST(req: NextRequest, ctx: IdRouteContext) {
-  const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  // W4-05: requireAdmin (role + tenant + admin 2FA), rate-limited like bulk invites.
+  const gate = await requireAdmin().catch(() => null)
+  if (!gate) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const limited = await limitRequest(req, 'exam-links-create', gate.user.id, 30, 60_000)
+  if (limited) return limited
   const { id: examId } = await ctx.params
   const body = (await req.json().catch(() => ({}))) as {
     type?: string
@@ -162,13 +159,22 @@ export async function POST(req: NextRequest, ctx: IdRouteContext) {
   const maxUses = body.max_uses == null || body.max_uses === 0 ? null : Math.max(1, Math.floor(Number(body.max_uses) || 0)) || null
 
   let token = newId()
+  let quota: import('@/lib/services/invite-quota').InviteQuotaResult | null = null
+  let inviteDoc: { id: string; email: string; full_name: string; token: string; expires_at: string; exam_id: string; [k: string]: unknown } | null = null
   if (type === 'invited') {
     const email = (body.email || '').trim().toLowerCase()
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'A valid email is required for invited links' }, { status: 400 })
     }
+    // W4-05: same plan cap as bulk invites (atomic reservation).
+    const tenantForQuota = typeof exam.tenant_id === 'string' && exam.tenant_id ? exam.tenant_id : null
+    const { reserveInviteQuota } = await import('@/lib/services/invite-quota')
+    quota = await reserveInviteQuota(db, { tenantId: tenantForQuota, actorRole: gate.user.role, count: 1 })
+    if (!quota.ok) {
+      return NextResponse.json({ error: quota.error, code: quota.code, limit: quota.limit, remaining: quota.remaining }, { status: quota.status })
+    }
     token = crypto.randomUUID()
-    await db.collection('candidate_invites').insertOne({
+    inviteDoc = {
       id: newId(),
       token,
       user_id: '',
@@ -183,7 +189,17 @@ export async function POST(req: NextRequest, ctx: IdRouteContext) {
       created_at: now,
       updated_at: now,
       exam_id: examId,
-    })
+      exam_ids: [examId],
+      ...(typeof exam.tenant_id === 'string' && exam.tenant_id ? { tenant_id: exam.tenant_id } : {}),
+      delivery_status: 'sending',
+    }
+    try {
+      await db.collection('candidate_invites').insertOne(inviteDoc)
+    } catch (e) {
+      const { releaseInviteQuota } = await import('@/lib/services/invite-quota')
+      if (quota) await releaseInviteQuota(db, quota)
+      throw e
+    }
   }
 
   const doc: AssessmentLinkDoc = {
@@ -199,7 +215,13 @@ export async function POST(req: NextRequest, ctx: IdRouteContext) {
     created_at: now,
   }
   await (await linksCol()).insertOne(doc)
-  return NextResponse.json({ ...doc, url: linkUrl(req, examId, type, token) }, { status: 201 })
+  // CORE-009: an invited link is e-mailed to the candidate (status recorded on the invite).
+  let delivery_status: 'sent' | 'failed' | undefined
+  if (inviteDoc) {
+    const { sendInviteEmail } = await import('@/lib/services/bulk-invites')
+    delivery_status = await sendInviteEmail(db, inviteDoc, typeof exam.title === 'string' ? exam.title : 'Technical assessment')
+  }
+  return NextResponse.json({ ...doc, url: linkUrl(req, examId, type, token), ...(delivery_status ? { delivery_status } : {}) }, { status: 201 })
 }
 
 export async function GET(req: NextRequest, ctx: IdRouteContext) {
@@ -211,7 +233,7 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
   // Public validate path — the entry gate calls this; the token IS the
   // secret, so no session is required. Logs usage with IP/device/timestamp.
   if (token) {
-    const rl = rateLimitSlidingWindow(`link-check:${getClientIp(req) || 'unknown'}`, 60, 10 * 60_000)
+    const rl = await rateLimitRedis(`link-check:${getClientIp(req) || 'unknown'}`, 60, 10 * 60_000)
     if (!rl.ok) return NextResponse.json({ valid: false, error: 'Too many requests. Please try again shortly.' }, { status: 429 })
     const col = await linksCol()
     const link = await col.findOne({ exam_id: examId, token })

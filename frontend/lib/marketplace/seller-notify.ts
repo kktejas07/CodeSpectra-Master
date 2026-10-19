@@ -61,8 +61,9 @@ export async function notifySeller(seller: SellerDoc, type: string, title: strin
     if (seller.is_platform) return void (await notifyAdmins(type, title, message, link))
     await deliver(seller.user_id, seller.contact_email || (await userEmail(seller.user_id)), type, title, message, link)
     if (seller.whatsapp_opt_in && seller.phone) {
-      const { sendWhatsAppText } = await import('@/lib/whatsapp')
-      await sendWhatsAppText(seller.phone, `*${title}*\n\n${message}${link ? `\n\n${base()}${link}` : ''}`.slice(0, 1000)).catch(() => {})
+      // Opt-in, STOP opt-outs and the official channel: lib/whatsapp-send (AUTO-060).
+      const { sendWhatsAppWithOptIn } = await import('@/lib/whatsapp-send')
+      await sendWhatsAppWithOptIn(seller.phone, true, { kind: 'marketplace', title, text: message.slice(0, 900), link: link ? `${base()}${link}` : '' }).catch(() => null)
     }
   } catch (e) {
     console.error('[marketplace] seller notify failed:', type, (e as Error)?.message)

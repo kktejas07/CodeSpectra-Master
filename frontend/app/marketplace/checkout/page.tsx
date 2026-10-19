@@ -4,7 +4,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { CheckoutClient } from '@/components/marketplace/checkout-client'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Checkout | CodeSpectra marketplace', robots: { index: false, follow: false } }
+export const metadata: Metadata = { title: { absolute: 'Checkout | CodeSpectra marketplace' }, robots: { index: false, follow: false } }
 
 export default async function CheckoutPage() {
   const user = await getAPIUser()

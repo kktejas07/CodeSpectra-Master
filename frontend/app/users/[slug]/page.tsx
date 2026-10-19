@@ -1,4 +1,5 @@
 'use client'
+import { useBrowserValue } from '@/hooks/use-browser-value'
 import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState, use } from 'react'
@@ -64,7 +65,7 @@ export default function UserProfilePage({
   const { slug } = use(params)
   // Disable gate checking if it's preview mode, but we still need auth to see others profiles?
   // User requested ?preview=true to see how others see them.
-  const isPreview = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('preview') === 'true'
+  const isPreview = useBrowserValue(() => new URLSearchParams(window.location.search).get('preview') === 'true', false)
   
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()

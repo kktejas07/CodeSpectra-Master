@@ -21,7 +21,8 @@ image layers/history. Set them in Dokploy's environment (or `docker-compose.yml`
 | `MONGODB_URI`, `MONGODB_DB_NAME` | Database | Atlas / your Mongo |
 | `NEXT_PUBLIC_APP_URL` | Public origin (links in emails, webhooks, signed URLs) | e.g. `https://codespectra.ai` (build arg + runtime) |
 | `SESSION_SECRET` | Signs sessions (32+ chars). Without it one is generated and stored in Mongo. | `openssl rand -hex 32` |
-| `SECRETS_ENCRYPTION_KEY` | AES-GCM key for API keys saved in Admin → Settings (`platform_settings.secrets`), authenticator secrets, and (fallback) identity photos. **Keep it out of the database.** Without it the key is derived from the boot-time `SESSION_SECRET` env — which Docker fills from Mongo (`scripts/hydrate-runtime-secrets.mjs`), so it gives no protection against a DB leak. | `openssl rand -hex 32` |
+| `SECRETS_ENCRYPTION_KEY` | AES-GCM key for API keys saved in Admin → Settings (`platform_settings.secrets`), authenticator secrets, and (fallback) identity photos. **Keep it out of the database.** **A production server refuses to start without it** (`instrumentation.ts`, SEC-018; emergency override `ALLOW_DERIVED_ENCRYPTION_KEYS=1`). Data sealed earlier with the session-derived key stays readable and is re-sealed with this key. | `openssl rand -hex 32` |
+| `INTERNAL_BACKEND_SECRET` | Shared secret for frontend → FastAPI calls; the backend refuses `/internal/*` without it (SEC-001). Same value in `backend/.env`. | `openssl rand -hex 32` |
 | `ATS_ENCRYPTION_KEY` | Encrypts tenants' meeting / BGV vendor credentials and BGV documents (32+ chars). Rotating it means tenants reconnect providers. | `openssl rand -hex 32` |
 | `CRON_SECRET` | Bearer token for `/api/cron/*` (only needed on serverless, see §2; set it anyway so the endpoints are not open in dev-like setups). | `openssl rand -hex 32` |
 
@@ -29,8 +30,13 @@ image layers/history. Set them in Dokploy's environment (or `docker-compose.yml`
 
 | Variable | What it does |
 |---|---|
-| `IDENTITY_MEDIA_KEY` | Separate key for exam ID photos, selfies and face templates (falls back to `SECRETS_ENCRYPTION_KEY`, then the session secret). Rotating it makes stored photos unreadable. |
+| `IDENTITY_MEDIA_KEY` | Separate key for exam ID photos, selfies and face templates (falls back to `SECRETS_ENCRYPTION_KEY`). Media sealed with an earlier key stays readable. |
+| `IDENTITY_MEDIA_KEY_PREVIOUS` / `SECRETS_ENCRYPTION_KEY_PREVIOUS` | Comma-separated old key values, used only to **read** media and proctoring recordings sealed before a rotation. Rotation: set the new key, move the old value here, restart. Each recording chunk stores a key fingerprint (`key_id`) so the right key is tried first; keep old values until those recordings pass retention. |
+| `TRUSTED_PROXY_CIDRS` / `TRUST_CF_CONNECTING_IP` | Which peers may set the client IP headers (default none). See `06-Reverse-Proxy.md`. |
+| `AI_ENDPOINT_ALLOWLIST` | Extra AI base URLs the backend may send keys to (built-ins + endpoints saved in Admin → Settings are always allowed). |
 | `MARKETPLACE_ENCRYPTION_KEY` | Marketplace seller payout details (32+ chars). |
+| `MKT_INVOICE_LEGAL_NAME` / `MKT_INVOICE_ADDRESS` / `MKT_INVOICE_GSTIN` | Legal name, address and GSTIN printed on marketplace tax invoices. Without them invoices go out as "CodeSpectra" with no address or GSTIN — set them before selling in INR. |
+| `S3_*` / `R2_*` (Admin → Settings → Storage) | Also used for proctoring session recordings (encrypted, ~1-minute chunks). Without object storage recordings go to MongoDB GridFS — fine for small volumes, plan for ~350 MB per recorded test hour. `RECORDING_MAX_BYTES_PER_ATTEMPT` caps one attempt (default 1.5 GB). |
 | `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | Rate limits and **scheduler locks** across replicas. Required if you run more than one frontend replica. |
 | `INTERNAL_BACKEND_URL` / `INTERNAL_BACKEND_SECRET` | FastAPI backend (AI, ClamAV scan). |
 | `PISTON_URL` | Code runner, internal only: `http://piston:2000/api/v2`. |
@@ -92,8 +98,12 @@ Base URL = `NEXT_PUBLIC_APP_URL`.
 
 ## 5. Network and security checklist
 
-- Only the frontend (80/3000 behind your proxy) is public. Piston: internal only.
-  Backend `:8001`: bind to localhost or remove the mapping if nothing outside needs it.
+- Only the reverse proxy (80/443) is public. Compose binds the frontend to
+  `127.0.0.1:3000` and publishes no backend or Piston port — see `06-Reverse-Proxy.md`.
+- Mongo backup scripts read `MONGO_BACKUP_URI` from `/etc/codespectra/mongo-backup.env`;
+  rotate the password that used to be committed (`06-Reverse-Proxy.md`, SEC-017).
+- New email/password sign-ups must verify their email before signing in
+  (default on; accounts created before this change are grandfathered).
 - `Permissions-Policy` allows camera + microphone for our own origin (voice
   interviews, LiveKit, proctoring). Don't add `microphone=()` at the proxy/CDN.
 - Admin → Settings → Product & access: "Require 2FA for admins" is on by default

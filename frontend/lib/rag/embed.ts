@@ -123,13 +123,16 @@ export async function availableEmbedModels(): Promise<string[]> {
  */
 export async function embedTexts(
   texts: string[],
-  opts: { preferModels?: string[]; feature?: string; userId?: string } = {},
+  opts: { preferModels?: string[]; feature?: string; userId?: string; onlyModels?: string[] } = {},
 ): Promise<EmbedResult | null> {
   if (!texts.length) return null
   const order = [
     ...(opts.preferModels ?? []).map((m) => BACKENDS.find((b) => b.model === m)).filter((b): b is Backend => !!b),
     ...BACKENDS,
-  ].filter((b, i, arr) => arr.indexOf(b) === i)
+  ]
+    .filter((b, i, arr) => arr.indexOf(b) === i)
+    // RAG-011: a query must be embedded with the corpus model, or not at all.
+    .filter((b) => !opts.onlyModels || opts.onlyModels.includes(b.model))
 
   for (const b of order) {
     const auth = await backendKey(b)

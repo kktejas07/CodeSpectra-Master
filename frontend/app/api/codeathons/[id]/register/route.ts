@@ -8,6 +8,7 @@ import {
 } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { codeathonWindow } from '@/lib/codeathon-run'
+import { codeathonVisibleTo } from '@/lib/hackathons/tenant-scope'
 
 export async function POST(request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth()
@@ -22,7 +23,7 @@ export async function POST(request: Request, { params }: IdRouteContext) {
     // The codeathon must exist, be published, and not be over or full.
     const codeCol = await codeathons()
     const codeathon = await codeCol.findOne({ id }) as (Record<string, any> | null)
-    if (!codeathon || codeathon.status === 'draft') return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+    if (!codeathon || !codeathonVisibleTo(gate.user, codeathon)) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     if (codeathonWindow(codeathon).ended) return NextResponse.json({ error: 'This codeathon has ended' }, { status: 409 })
 
     const regCol = await codeathonRegistrations()

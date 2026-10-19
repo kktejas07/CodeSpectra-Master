@@ -15,6 +15,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { getMongoDb } from '@/lib/mongodb'
+import { getAPIUser } from '@/lib/route-auth'
+import { verifyPurposeToken } from '@/lib/session'
+import { GITHUB_STATE_COOKIE, checkGithubCallbackBinding } from '@/lib/github-oauth-state'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,15 +47,21 @@ export async function GET(req: NextRequest) {
   if (!code || !state) return fail(req, 'missing code or state')
 
   const db = await getMongoDb()
-  const stateRow = await db
-    .collection('github_oauth_states')
-    .findOne({ state })
-  if (!stateRow) return fail(req, 'invalid or expired state')
-  // Consume the state immediately so it cannot be replayed.
-  await db.collection('github_oauth_states').deleteOne({ state })
-
-  const ageMs = Date.now() - new Date(stateRow.created_at).getTime()
-  if (ageMs > 10 * 60 * 1000) return fail(req, 'state expired (>10m)')
+  // Consume atomically so a state can be used exactly once.
+  const stateRow = await db.collection('github_oauth_states').findOneAndDelete({ state })
+  const user = await getAPIUser()
+  const cookie = await verifyPurposeToken<{ state: string; uid: string }>('github_connect', req.cookies.get(GITHUB_STATE_COOKIE)?.value)
+  const binding = checkGithubCallbackBinding({ state, stateRow, cookie, userId: user?.id ?? null })
+  if (!binding.ok || !stateRow) {
+    const msg = binding.ok ? 'invalid or expired state' : {
+      invalid_state: 'invalid or expired state',
+      expired: 'state expired (>10m)',
+      not_signed_in: 'sign in, then connect GitHub again',
+      browser_mismatch: 'this GitHub connection was started in another browser — start again here',
+      user_mismatch: 'this GitHub connection was started by a different account',
+    }[binding.reason]
+    return fail(req, msg)
+  }
 
   const secrets = await readServerSecrets()
   const clientId = secrets.github_client_id?.trim()
@@ -72,6 +81,7 @@ export async function GET(req: NextRequest) {
         client_secret: clientSecret,
         code,
         redirect_uri: `${appOrigin(req)}/api/github/oauth/callback`,
+        ...(typeof stateRow.code_verifier === 'string' ? { code_verifier: stateRow.code_verifier } : {}),
       }),
     })
     tokenJson = (await tokenRes.json()) as typeof tokenJson
@@ -142,5 +152,7 @@ export async function GET(req: NextRequest) {
   const back = new URL(stateRow.redirect || '/dashboard/admin/settings', appOrigin(req))
   back.searchParams.set('github', 'connected')
   if (ghUser.login) back.searchParams.set('login', ghUser.login)
-  return NextResponse.redirect(back.toString(), { status: 302 })
+  const res = NextResponse.redirect(back.toString(), { status: 302 })
+  res.cookies.set(GITHUB_STATE_COOKIE, '', { path: '/api/github/oauth', maxAge: 0 })
+  return res
 }

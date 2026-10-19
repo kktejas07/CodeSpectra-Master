@@ -160,11 +160,15 @@ export class PaymentService {
       const coupons = await billingCoupons()
       const coupon = await coupons.findOne({ id: couponId })
       if (!coupon) throw new CheckoutError('coupon_unavailable', 'That coupon is no longer available.')
+      // CORE-018: a flat coupon only applies to orders in its own currency; seller coupons never apply to plans.
+      const { couponUsableFor } = await import('@/lib/billing/coupon-rules')
+      const usable = couponUsableFor(coupon, 'plans', plan.currency)
+      if (!usable.ok) throw new CheckoutError('coupon_unavailable', usable.error)
       // Atomic: counts against max_uses now, one per user (D20).
       if (!(await reserveCouponUse(couponId, userId))) {
         throw new CheckoutError('coupon_unavailable', 'That coupon is no longer available.')
       }
-      plan = { ...plan, amount_paise: calculateDiscount(plan.amount_paise, coupon) }
+      plan = { ...plan, amount_paise: calculateDiscount(plan.amount_paise, coupon, plan.currency) }
     }
 
     if (plan.amount_paise <= 0) {

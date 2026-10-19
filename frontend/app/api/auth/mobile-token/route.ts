@@ -91,7 +91,7 @@ export async function POST(request: Request) {
     {
       const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
       const { signInBlock } = await import('@/lib/auth-policy')
-      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified }, { method: 'mobile' })
+      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified, email_verification_required: user.email_verification_required }, { method: 'mobile' })
       if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
     }
 
@@ -101,6 +101,19 @@ export async function POST(request: Request) {
       const isValid = await consumeTotp(user, totpToken)
       if (!isValid) await recordAuthFailure('login', ident, rawIp)
       if (!isValid) return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })
+    }
+
+    // SEC-009: an admin past the 2FA grace period must turn 2FA on (web) first —
+    // a 30-day mobile token must not be a way around it.
+    {
+      const { getAdmin2faState } = await import('@/lib/admin-2fa')
+      const tfa = await getAdmin2faState(uid, role).catch(() => ({ status: 'ok' as const }))
+      if (tfa.status === 'required') {
+        return NextResponse.json(
+          { error: 'Turn on two-factor authentication on the web (Account → Security) before signing in on mobile.', code: 'admin_2fa_required' },
+          { status: 403 },
+        )
+      }
     }
 
     // ponytail: 30d matches a mobile session (no cookies to refresh); logout

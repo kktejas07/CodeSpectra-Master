@@ -69,21 +69,6 @@ export async function startWorkflowRun(wf: WorkflowDoc, opts: StartOptions): Pro
   const runs = await col<WorkflowRunDoc>('workflow_runs')
   const now = new Date()
   const ts = now.toISOString()
-  if (!opts.dryRun) {
-    try {
-      await consumeQuota(wf.tenant_id, 'runs', now)
-    } catch (e) {
-      if (e instanceof QuotaExceededError) {
-        const blocked: WorkflowRunDoc = baseRun(wf, opts, ts)
-        blocked.status = 'failed'
-        blocked.error = e.message
-        blocked.finished_at = ts
-        await runs.insertOne(blocked).catch(() => {})
-        return { run: blocked, duplicate: false }
-      }
-      throw e
-    }
-  }
   const run = baseRun(wf, opts, ts)
   try {
     await runs.insertOne(run)
@@ -93,6 +78,20 @@ export async function startWorkflowRun(wf: WorkflowDoc, opts: StartOptions): Pro
       if (existing) return { run: existing, duplicate: true }
     }
     throw e
+  }
+  // Counted only once the run really exists: a duplicate start (second cron tick, webhook
+  // redelivery) is a no-op above and uses no quota (AUTO-015).
+  if (!opts.dryRun) {
+    try {
+      await consumeQuota(wf.tenant_id, 'runs', now)
+    } catch (e) {
+      if (e instanceof QuotaExceededError) {
+        const blocked = { status: 'failed' as const, error: e.message, finished_at: ts, updated_at: ts }
+        await runs.updateOne({ id: run.id }, { $set: blocked })
+        return { run: { ...run, ...blocked }, duplicate: false }
+      }
+      throw e
+    }
   }
   if (opts.inline === false) return { run, duplicate: false }
   const done = await processRun(run.id, wf)
@@ -136,10 +135,21 @@ export async function processRun(runId: string, wfHint?: WorkflowDoc): Promise<W
     { returnDocument: 'after', projection: { _id: 0 } },
   )) as WorkflowRunDoc | null
   if (!claimed) return null
-  const wf = wfHint && wfHint.id === claimed.workflow_id ? wfHint : ((await (await col<WorkflowDoc>('workflows')).findOne({ id: claimed.workflow_id }, { projection: { _id: 0 } })) as WorkflowDoc | null)
-  if (!wf) {
+  const loaded = wfHint && wfHint.id === claimed.workflow_id ? wfHint : ((await (await col<WorkflowDoc>('workflows')).findOne({ id: claimed.workflow_id }, { projection: { _id: 0 } })) as WorkflowDoc | null)
+  if (!loaded) {
     await runs.updateOne({ id: runId }, { $set: { status: 'cancelled', error: 'Workflow was deleted', finished_at: nowIso(), lease_until: null } })
     return null
+  }
+  // W4-08: scheduled copilot reports re-check their creator on every run.
+  let wf: WorkflowDoc = loaded
+  if (loaded.template_id === 'copilot-scheduled-task' && claimed.trigger_kind !== 'test') {
+    const { authoriseCopilotScheduleRun } = await import('@/lib/agent/schedule-guard')
+    const ok = await authoriseCopilotScheduleRun(loaded as never) as WorkflowDoc | null
+    if (!ok) {
+      await runs.updateOne({ id: runId }, { $set: { status: 'cancelled', error: 'The admin who scheduled this report no longer has access — workflow switched off', finished_at: nowIso(), lease_until: null } })
+      return null
+    }
+    wf = ok
   }
 
   const state: RunState = { step_state: { ...(claimed.step_state || {}) }, logs: [...((claimed.steps || []) as RunState['logs'])] }

@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
         if (Object.keys(set).length) {
           await userCol.updateOne({ _id: existing._id } as never, { $set: { ...set, updatedAt: new Date() } })
           await revokeAllUserSessions(existingId).catch(() => {})
+          if (set.tenantId !== undefined) await import('@/lib/agent/schedule-guard').then((m) => m.disableSchedulesCreatedBy(existingId)).catch(() => 0)
           await auditAdmin(gate.user, 'admin.member.move', 'user', `user/${existingId}`, Object.entries(set).map(([k, v]) => `${k}=${String(v)}`).join(' '), 'warning')
         }
       }

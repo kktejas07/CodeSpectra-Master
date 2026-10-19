@@ -40,11 +40,17 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Leave REMOTION_BROWSER_EXECUTABLE unset so Remotion uses chrome-headless-shell
 # (glibc binary via gcompat). Override only if you install a working Chromium.
 WORKDIR /app
+# SEC-023: build and run as the image's unprivileged `node` user (uid 1000).
+# Everything the app writes at runtime goes to /tmp (mkdtemp) or /app/.next.
+# docker-cli stays for the optional admin "containers" panel; it only works if
+# an operator deliberately mounts the Docker socket (and adds the group).
+RUN chown node:node /app
+USER node
 # patches/ must exist before yarn install — postinstall runs patch-package
-COPY package.json yarn.lock ./
-COPY patches ./patches
+COPY --chown=node:node package.json yarn.lock ./
+COPY --chown=node:node patches ./patches
 RUN yarn install --frozen-lockfile
-COPY . .
+COPY --chown=node:node . .
 # ponytail: self-host face-api models (~6.7MB) so verification never depends
 # on a third-party CDN at runtime (outages/throttling/regional blocks stalled
 # face capture with zero feedback). Best-effort: the loader falls back to
@@ -58,9 +64,11 @@ RUN chmod +x scripts/docker-entrypoint.sh \
 RUN yarn build
 # ponytail: busybox wget is the probe (no curl in node:22-alpine). Compose
 # healthcheck overrides this when deployed via compose; this covers plain builds.
-# NOTE: no USER switch — the entrypoint/hydrate + Remotion/chromium paths assume
-# root; adding one needs appuser creation + chown and is out of scope here.
 HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s CMD wget -q -O- http://localhost:80/api/health >/dev/null 2>&1 || exit 1
+# Port 80 as non-root: Docker grants the bind via net.ipv4.ip_unprivileged_port_start=0
+# (default since Docker 20.10). Override PORT if your runtime doesn't.
+ENV PORT=80
 EXPOSE 80
 ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
-CMD ["npx", "next", "start", "-p", "80"]
+# scripts/server.mjs = `next start` + the real socket peer for client-IP checks (SEC-021).
+CMD ["node", "scripts/server.mjs"]

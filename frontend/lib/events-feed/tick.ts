@@ -45,7 +45,15 @@ export async function tickEventsFeed(now: Date = new Date()): Promise<string[]> 
   if (settings.digest_enabled && local.dow === settings.digest_day && local.h === settings.digest_hour) {
     const { isoWeekKey, runDigest } = await import('./notify')
     const week = isoWeekKey(now, settings.digest_timezone)
-    if (await claimDigestWeek(week).catch(() => false)) await job('events-feed-digest', () => runDigest(now, settings, week))
+    // Leased, not marked done up front: a crash mid-way is retried within the digest hour and the
+    // per-subscriber ledger skips everyone who already got it (AUTO-044).
+    const { runLeasedJob } = await import('@/lib/automation/job-lease')
+    const r = await runLeasedJob('events-feed-digest', week, async () => {
+      const out = await runDigest(now, settings, week)
+      await claimDigestWeek(week).catch(() => false) // last_digest_week marker
+      return out
+    }, { now, leaseMs: 20 * 60_000, maxAttempts: 3, retryAfterMs: 10 * 60_000 })
+    if (r.ran && r.ok) ran.push('events-feed-digest')
   }
   return ran
 }

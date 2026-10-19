@@ -113,3 +113,34 @@ export function interviewPatch(role: InterviewRole, body: unknown, now: string):
   if (questions) set.questions = questions
   return { set }
 }
+
+// ─── Scheduling: who can be booked as the candidate (CORE-015) ─────────────
+
+const EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,}$/
+
+/** Lower-cased, trimmed e-mail, or null when it isn't one. */
+export function normalizeCandidateEmail(v: unknown): string | null {
+  if (typeof v !== 'string') return null
+  const e = v.trim().toLowerCase()
+  return e.length <= 254 && EMAIL_RE.test(e) ? e : null
+}
+
+/**
+ * A scheduler may book any account that is not a member of ANOTHER
+ * organisation: candidates (no tenant) or people in their own tenant.
+ * Superadmins may book anyone. Pure.
+ */
+export function canScheduleCandidate(
+  scheduler: { role: string; tenantId: string | null },
+  candidateTenantId: string | null,
+): boolean {
+  if (scheduler.role === 'superadmin') return true
+  return !candidateTenantId || candidateTenantId === scheduler.tenantId
+}
+
+/**
+ * W4-16: the only answer when an interview candidate can't be used — the same
+ * for an unknown e-mail, another organisation's member, or a bad id, so the
+ * scheduling form can't be used to learn who has an account.
+ */
+export const CANDIDATE_UNAVAILABLE = "We couldn't schedule this interview for that candidate. Check the email address; the candidate needs a CodeSpectra account under that email (they can sign up or apply to one of your jobs first)."

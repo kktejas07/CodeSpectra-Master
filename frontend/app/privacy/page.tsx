@@ -1,6 +1,11 @@
 import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
 import { SoftGlow } from '@/components/visuals'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const seoRoute = publicRoute('/privacy')!
+export const metadata = buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/privacy' })
 
 export default function PrivacyPage() {
   return (

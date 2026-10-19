@@ -39,7 +39,7 @@ export async function startDunning(p: Doc): Promise<void> {
   const sub = await db.collection('billing_subscriptions').findOne({ id: subId }, { projection: { past_due_since: 1 } })
   const episode = String(sub?.past_due_since || p.grace_ends_at || ts.slice(0, 10))
   try {
-    await c.insertOne({ subscription_id: subId, episode, user_id: userId, status: 'active', started_at: ts, sent: [], amount_minor: Number(p.amount_minor) || 0, currency: p.currency || null, created_at: ts })
+    await c.insertOne({ subscription_id: subId, episode, grace_ref: typeof p.grace_ends_at === 'string' ? p.grace_ends_at : null, user_id: userId, status: 'active', started_at: ts, sent: [], amount_minor: Number(p.amount_minor) || 0, currency: p.currency || null, created_at: ts })
   } catch { /* already running for this episode */ }
   await runDunning(new Date(), subId)
 }
@@ -72,6 +72,8 @@ export async function runDunning(now = new Date(), onlySub?: string): Promise<{ 
     if (user.email) {
       await sendAutomationEmail({
         to: user.email, userId: user.id, category: 'billing', urgent: true, onceKey: `dunning:${String(d.subscription_id)}:${String(d.episode)}:${step.key}`,
+        // Same key as the "Payment dunning" template (AUTO-020).
+        dedupe: { kind: 'dunning', ref: `${String(d.subscription_id)}:${String(d.grace_ref || d.episode)}:${step.key}` },
         subject,
         heading: step.final ? 'Your plan ends soon' : 'We couldn’t take your payment',
         bodyText: `Hi ${user.name || 'there'},\n\nWe couldn’t renew ${plan}. Your access continues until ${fmtDate(graceEnd)} — update your card before then to keep it.${step.final ? '\n\nThis is our last reminder.' : ''}`,
@@ -101,26 +103,59 @@ async function stopDunningForUser(userId: string): Promise<void> {
 
 // ─── AU-04 expiry reminders ─────────────────────────────────────────────────
 
-export async function runExpiryReminders(now = new Date()): Promise<{ reminded: number; expired: number }> {
+/** Plans due a 7 / 3 / 1-day reminder now (shared by the reminder emails and the always-on signals sweep). */
+export async function expiringSubscriptions(now = new Date()): Promise<{ sub: Doc; day: 7 | 3 | 1 }[]> {
   const db = await getMongoDb()
   const { stripeAutoRenewEnabled } = await import('@/lib/stripe-client')
   const autoRenew = stripeAutoRenewEnabled()
   const horizon = new Date(now.getTime() + 7 * 86_400_000).toISOString()
   const subs = (await db.collection('billing_subscriptions').find({ status: 'active', ends_at: { $gt: now.toISOString(), $lte: horizon } }).limit(5000).toArray()) as Doc[]
-  const settings = await getSystemSettings()
-  let reminded = 0
+  const out: { sub: Doc; day: 7 | 3 | 1 }[] = []
   for (const s of subs) {
     if (!needsExpiryReminder(s as never, autoRenew)) continue
     const day = expiryReminderDay(String(s.ends_at), now)
-    if (!day) continue
+    if (day) out.push({ sub: s, day })
+  }
+  return out
+}
+
+/** Plans whose paid period ended in the last two days (Stripe plans that will renew are left out). */
+export async function endedSubscriptions(now = new Date()): Promise<Doc[]> {
+  const db = await getMongoDb()
+  const ended = (await db.collection('billing_subscriptions').find({ ends_at: { $lte: now.toISOString(), $gte: new Date(now.getTime() - 2 * 86_400_000).toISOString() } }, { projection: { id: 1, user_id: 1, plan_id: 1, ends_at: 1, status: 1, billing_mode: 1, cancel_at_period_end: 1 } }).limit(5000).toArray()) as Doc[]
+  return ended.filter((s) => !(s.billing_mode === 'stripe_subscription' && !s.cancel_at_period_end && s.status === 'active'))
+}
+
+/** Event signals for plans (always on, see ./signals.ts — AUTO-003). */
+export async function emitSubscriptionSignals(now = new Date()): Promise<{ expiring: number; expired: number }> {
+  const out = { expiring: 0, expired: 0 }
+  for (const { sub: s, day } of await expiringSubscriptions(now)) {
+    const user = await userOf(String(s.user_id))
+    if (!user) continue
+    const r = await emit('subscription.expiring', { subscription_id: s.id, user_id: user.id, email: user.email, plan_id: s.plan_id, ends_at: s.ends_at, days_left: day, renew_url: '/dashboard/billing' }, { idempotencyKey: `subscription.expiring:${String(s.id)}:${String(s.ends_at)}:${day}` })
+    if (r.id) out.expiring++
+  }
+  for (const s of await endedSubscriptions(now)) {
+    const user = await userOf(String(s.user_id))
+    const r = await emit('subscription.expired', { subscription_id: s.id, user_id: s.user_id, email: user?.email ?? null, plan_id: s.plan_id, ended_at: s.ends_at }, { idempotencyKey: `subscription.expired:${String(s.id)}:${String(s.ends_at)}` })
+    if (r.id) out.expired++
+  }
+  return out
+}
+
+export async function runExpiryReminders(now = new Date()): Promise<{ reminded: number }> {
+  const settings = await getSystemSettings()
+  let reminded = 0
+  for (const { sub: s, day } of await expiringSubscriptions(now)) {
     if (!(await claimOnce(`expiry:${String(s.id)}:${String(s.ends_at)}:${day}`))) continue
     const user = await userOf(String(s.user_id))
     if (!user) continue
     const renewUrl = '/dashboard/billing'
-    void emit('subscription.expiring', { subscription_id: s.id, user_id: user.id, email: user.email, plan_id: s.plan_id, ends_at: s.ends_at, days_left: day, renew_url: renewUrl }, { idempotencyKey: `subscription.expiring:${String(s.id)}:${String(s.ends_at)}:${day}` })
     if (user.email) {
       await sendAutomationEmail({
         to: user.email, userId: user.id, category: 'billing',
+        // Same key as the "Plan expiry reminders" template: a customer never gets both (AUTO-020).
+        dedupe: { kind: 'plan-expiry', ref: `${String(s.id)}:${String(s.ends_at)}:${day}` },
         subject: day === 1 ? 'Your CodeSpectra plan ends tomorrow' : `Your CodeSpectra plan ends in ${day} days`,
         heading: `${day === 1 ? 'One day' : `${day} days`} left on your plan`,
         bodyText: `Your ${String(s.plan_id || 'plan')} ends on ${fmtDate(String(s.ends_at))}. Renew now to keep your tests, events and certificates without a break.`,
@@ -136,17 +171,7 @@ export async function runExpiryReminders(now = new Date()): Promise<{ reminded: 
     }
     reminded++
   }
-  // Plans that ended in the last two days → subscription.expired (once per period).
-  const ended = (await db.collection('billing_subscriptions').find({ ends_at: { $lte: now.toISOString(), $gte: new Date(now.getTime() - 2 * 86_400_000).toISOString() } }, { projection: { id: 1, user_id: 1, plan_id: 1, ends_at: 1, status: 1, billing_mode: 1, cancel_at_period_end: 1 } }).limit(5000).toArray()) as Doc[]
-  let expired = 0
-  for (const s of ended) {
-    if (s.billing_mode === 'stripe_subscription' && !s.cancel_at_period_end && s.status === 'active') continue // Stripe will renew
-    if (!(await claimOnce(`expired:${String(s.id)}:${String(s.ends_at)}`))) continue
-    const user = await userOf(String(s.user_id))
-    void emit('subscription.expired', { subscription_id: s.id, user_id: s.user_id, email: user?.email ?? null, plan_id: s.plan_id, ended_at: s.ends_at }, { idempotencyKey: `subscription.expired:${String(s.id)}:${String(s.ends_at)}` })
-    expired++
-  }
-  return { reminded, expired }
+  return { reminded }
 }
 
 // ─── AU-05 reconciliation ───────────────────────────────────────────────────
@@ -245,7 +270,7 @@ export const BILLING_AUTOMATIONS: SystemAutomation[] = [
   {
     id: 'plan-expiry',
     title: 'Plan expiry reminders',
-    description: 'Prepaid plans (PhonePe / Razorpay) and Stripe plans with auto-renew off get an email and in-app reminder 7, 3 and 1 day before they end (WhatsApp on the last day if they agreed).',
+    description: 'Prepaid plans (PhonePe / Razorpay) and Stripe plans with auto-renew off get an email and in-app reminder 7, 3 and 1 day before they end (WhatsApp on the last day if they agreed). The plan events for workflows come from “Event signals”, so they keep flowing when this is off.',
     group: 'Billing',
     refs: ['AU-04', 'A-023'],
     cadence: { kind: 'daily', hourUtc: 3, minuteUtc: 30 },

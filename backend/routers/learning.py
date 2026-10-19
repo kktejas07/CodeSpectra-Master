@@ -10,10 +10,17 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 
-from core.auth import require_auth
+from core.ai_endpoints import prime_endpoint_allowlist
+from core.auth import require_auth, require_internal_secret
 from core.dependencies import check_rate_limit, client_ip
 
-router = APIRouter(prefix="/internal/learning", tags=["learning-adaptive"])
+# SEC-001/SEC-002: /internal/* is service-to-service only — the Next.js app
+# authenticates the user and calls us with x-internal-secret.
+router = APIRouter(
+    prefix="/internal/learning",
+    tags=["learning-adaptive"],
+    dependencies=[Depends(require_internal_secret), Depends(prime_endpoint_allowlist)],
+)
 
 from models.ai import GenerateCourseReq
 from services.ai import handle_generate_course, parse_json_response

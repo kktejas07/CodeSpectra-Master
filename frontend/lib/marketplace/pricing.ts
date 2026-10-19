@@ -11,12 +11,15 @@
  *                otherwise it is added on top.
  *  - commission (bps snapshot) is taken on the line's net excluding tax (`base`); the seller
  *    earns the rest, so base = commission_amount + seller_earnings = OrderLine.line_total, which
- *    is what lib/marketplace/ledger.ts credits. Tax stays with the platform (remitted centrally);
+ *    is what lib/marketplace/ledger.ts credits. A platform-funded coupon (CORE-021) leaves the
+ *    seller whole: commission + earnings are computed on base + platform_funded (the discount
+ *    ex-tax), and the ledger books platform_funded against the platform. Tax stays with the platform (remitted centrally);
  *    shipping is credited by the ledger from Order.shipping_total.
  *
  * The server recomputes everything at checkout — client amounts are never trusted.
  */
 import type { Currency, ItemKind, MarketplaceSettings } from './contract'
+import { couponAmountOff, type CouponRuleFields } from '@/lib/billing/coupon-rules'
 
 export interface PriceLineInput {
   key: string
@@ -37,6 +40,8 @@ export interface PricedLine {
   tax: number
   /** net excluding tax = commission_amount + seller_earnings (OrderLine.line_total) */
   base: number
+  /** Part of the discount (ex-tax) the platform pays; commission + earnings = base + platform_funded. */
+  platform_funded: number
   commission_amount: number
   seller_earnings: number
 }
@@ -82,19 +87,22 @@ export function taxOn(amount: number, bps: number, inclusive: boolean): number {
   return inclusive ? Math.round((amount * bps) / (10_000 + bps)) : Math.round((amount * bps) / 10_000)
 }
 
-/** Discount for a coupon (same semantics as lib/coupon-service calculateDiscount), clamped. */
-export function couponDiscount(subtotal: number, coupon: { discount_type: string; discount_value: number } | null | undefined): number {
-  if (!coupon) return 0
-  const value = Number(coupon.discount_value)
-  if (!Number.isFinite(value) || value <= 0) return 0
-  if (coupon.discount_type === 'percentage') return Math.min(subtotal, Math.floor(subtotal * (Math.min(100, value) / 100)))
-  if (coupon.discount_type === 'flat') return Math.min(subtotal, Math.round(value * 100))
-  return 0 // 'trial' coupons are plan-only
+/**
+ * Discount for a coupon over the whole subtotal (seller-funded), clamped.
+ * Flat coupons need the order currency (CORE-018); prefer planMarketplaceCoupon,
+ * which also decides which lines are eligible and who pays (CORE-021).
+ */
+export function couponDiscount(subtotal: number, coupon: CouponRuleFields | null | undefined, currency: Currency): number {
+  if (!coupon || coupon.discount_type === 'trial') return 0 // 'trial' coupons are plan-only
+  return couponAmountOff(subtotal, coupon, currency)
 }
+
+/** Coupon split for computeQuote: total, eligible lines, and lines whose share the platform pays. */
+export interface QuoteCoupon { amount: number; eligible: boolean[]; platformFunded: boolean[] }
 
 export function computeQuote(
   lines: PriceLineInput[],
-  opts: { currency: Currency; settings: Pick<MarketplaceSettings, 'tax'>; discount?: number },
+  opts: { currency: Currency; settings: Pick<MarketplaceSettings, 'tax'>; discount?: number; coupon?: QuoteCoupon | null },
 ): Quote {
   const taxBps = taxBpsFor(opts.currency, opts.settings)
   const inclusive = !!opts.settings.tax.prices_include_tax
@@ -104,8 +112,13 @@ export function computeQuote(
     return l.unit_price * l.qty
   })
   const subtotal = gross.reduce((a, b) => a + b, 0)
-  const discountTotal = Math.max(0, Math.min(subtotal, Math.floor(opts.discount ?? 0)))
-  const discounts = allocateProRata(discountTotal, gross)
+  // A coupon discounts only its eligible lines; a plain `discount` spreads over every line.
+  const eligible = opts.coupon ? lines.map((_, i) => !!opts.coupon!.eligible[i]) : lines.map(() => true)
+  const funded = opts.coupon ? lines.map((_, i) => !!opts.coupon!.platformFunded[i] && eligible[i]) : lines.map(() => false)
+  const eligibleGross = gross.map((g, i) => (eligible[i] ? g : 0))
+  const cap = eligibleGross.reduce((a, b) => a + b, 0)
+  const discountTotal = Math.max(0, Math.min(cap, Math.floor(opts.coupon ? opts.coupon.amount : opts.discount ?? 0)))
+  const discounts = allocateProRata(discountTotal, eligibleGross)
   const net = gross.map((g, i) => g - discounts[i])
 
   // Shipping per seller group of physical lines.
@@ -130,8 +143,11 @@ export function computeQuote(
     const itemTax = taxOn(net[i], taxBps, inclusive)
     const shipTax = taxOn(shipping[i], taxBps, inclusive)
     const base = inclusive ? net[i] - itemTax : net[i]
+    // Platform-funded share: the seller is paid as if there were no discount.
+    const sellerBase = funded[i] && discounts[i] > 0 ? (inclusive ? gross[i] - taxOn(gross[i], taxBps, true) : gross[i]) : base
+    const platformFunded = Math.max(0, sellerBase - base)
     const bps = Math.max(0, Math.min(10_000, Math.round(l.commission_bps)))
-    const commission = Math.round((base * bps) / 10_000)
+    const commission = Math.round((sellerBase * bps) / 10_000)
     return {
       key: l.key,
       gross: gross[i],
@@ -140,8 +156,9 @@ export function computeQuote(
       shipping_amount: inclusive ? shipping[i] - shipTax : shipping[i],
       tax: itemTax + shipTax,
       base,
+      platform_funded: platformFunded,
       commission_amount: commission,
-      seller_earnings: base - commission,
+      seller_earnings: sellerBase - commission,
     }
   })
   const shippingTotal = shipping.reduce((a, b) => a + b, 0)

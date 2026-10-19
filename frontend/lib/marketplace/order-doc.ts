@@ -36,7 +36,8 @@ export interface OrderDoc extends Order {
   contact_phone?: string | null
   /** buyer's IANA time zone at checkout (e-mail times) */
   buyer_tz?: string | null
-  coupon?: { id: string; code: string } | null
+  /** funded_by: who pays the discount (CORE-021); seller_id set for a seller's own coupon. */
+  coupon?: { id: string; code: string; funded_by?: 'platform' | 'seller'; seller_id?: string | null } | null
   tax_bps?: number
   prices_include_tax?: boolean
   /** stock + slot holds made at checkout; released if unpaid after RESERVATION_MS */

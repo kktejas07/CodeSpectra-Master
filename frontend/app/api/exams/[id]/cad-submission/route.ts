@@ -26,6 +26,7 @@ import {
 } from '@/lib/cad-submission'
 
 import { toMediaRef } from '@/lib/identity-media'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const db = await getMongoDb()
 
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    const clientIp = clientIpOrEmpty(req)
     if (clientIp) {
       const blocked = await db.collection('ip_blocklist').find({ active: { $ne: false } }).toArray()
       if (blocked.some((entry) => isIpInCidr(clientIp, String(entry.ip)))) {

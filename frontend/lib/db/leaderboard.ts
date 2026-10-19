@@ -276,8 +276,16 @@ export async function awardXp(args: {
     created_at: nowIso(),
   }
   await col.insertOne(doc)
+  // CORE-006: a referred user's first graded activity completes their referral (pays the referrer).
+  if (GRADED_REASONS.has(args.reason)) {
+    void import('@/lib/referral-service')
+      .then(async (m) => m.completeReferralIfEligible(await db(), args.userId))
+      .catch((e) => console.error('[referral] completion check failed:', (e as Error)?.message))
+  }
   return doc.id
 }
+
+const GRADED_REASONS = new Set<XpReason>(['submission_accepted', 'first_blood', 'exam_passed', 'certification_passed', 'challenge_completed', 'arena_solved', 'codeathon_result', 'hackathon_score'])
 
 /**
  * Compute a user's total XP from `xp_events` aggregation.

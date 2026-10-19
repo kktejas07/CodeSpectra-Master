@@ -4,7 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { knowledgeOnEventChange } from '@/lib/rag/hooks'
 import { createCodeathon } from '@/lib/services/codeathons'
 import { isTenantStaff, publicCodeathonView } from '@/lib/exam-access'
-import { eventListTenantFilter } from '@/lib/hackathons/tenant-scope'
+import { codeathonListFilter } from '@/lib/hackathons/tenant-scope'
 
 export async function GET(request: Request) {
   const gate = await requireAuth()
@@ -12,7 +12,8 @@ export async function GET(request: Request) {
   try {
     const db = await getMongoDb()
     // Company admins: own organization only. Superadmin: everything, or ?tenant=global|<id>.
-    const filter = eventListTenantFilter(gate.user, new URL(request.url).searchParams.get('tenant'))
+    // Everyone else: published codeathons that are public or their organisation's (CORE-014).
+    const filter = codeathonListFilter(gate.user, new URL(request.url).searchParams.get('tenant'))
     const docs = await db.collection('codeathons').find(filter).toArray()
     // Participants never get hidden test cases (they are the grading key).
     const data = docs.map((d) => (isTenantStaff(gate.user, d) ? d : publicCodeathonView(d)))

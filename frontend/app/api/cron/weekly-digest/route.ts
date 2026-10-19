@@ -61,7 +61,8 @@ async function postImpl(req: NextRequest) {
               <p style="color:#9ca3af;font-size:12px;margin-top:24px">You can turn off the weekly report in <a href="${appUrl}/dashboard/notifications/preferences">notification preferences</a>.</p>
             </div>
           `
-        const r = await deliverOrDefer(user.id, { email: { to: user.email, subject, html } })
+        // 'engagement': honours unsubscribes and gets the one-click unsubscribe link + headers (AUTO-052).
+        const r = await deliverOrDefer(user.id, { email: { to: user.email, subject, html, category: 'engagement' } })
         if (r === 'deferred') deferred++
         else sent++
       } catch (e) {

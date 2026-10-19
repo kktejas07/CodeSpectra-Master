@@ -1,5 +1,6 @@
 'use client'
 
+import { isFullscreen, requestFullscreenSafe } from '@/lib/proctoring/fullscreen'
 import { useEffect, useRef, useCallback } from 'react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -380,7 +381,7 @@ export function RealTimeProctor({
     if (!enabled) return
 
     const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
+      if (!isFullscreen(document as never)) {
         sendEventRef('fullscreen_exit', { timestamp: new Date().toISOString() })
       }
     }
@@ -398,10 +399,16 @@ export function RealTimeProctor({
     if (!enabled || !enforceFullscreen) return
     let armed = true
 
+    let reportedUnsupported = false
     const request = () => {
-      if (document.fullscreenElement) return
-      document.documentElement.requestFullscreen().catch(() => {
-        sendEventRef('fullscreen_unavailable', { reason: 'request_rejected' })
+      if (isFullscreen(document as never)) return
+      requestFullscreenSafe(document.documentElement as never).then((r) => {
+        if (r === 'rejected') sendEventRef('fullscreen_unavailable', { reason: 'request_rejected' })
+        // No fullscreen API at all (iPhone Safari): log once, not on every tap.
+        if (r === 'unsupported' && !reportedUnsupported) {
+          reportedUnsupported = true
+          sendEventRef('fullscreen_unavailable', { reason: 'unsupported_browser' })
+        }
       })
     }
     const onGesture = () => {

@@ -46,6 +46,8 @@ export type KnowledgeSourceType =
   | 'attempt_summary' // candidate attempt + proctoring summary — tenant scoped, staff only
   | 'marketplace_product' // published marketplace products from approved sellers (public)
   | 'external_event' // events feed: published external hackathons / contests (public)
+  | 'ats_job' // hiring pipeline job: title, JD, requirements, pipeline — tenant scoped
+  | 'ats_application' // applicant: stage, match summary, résumé highlights (PII-minimised) — tenant scoped, staff only
 
 export type KnowledgeVisibility = 'public' | 'platform_admin' | 'tenant'
 
@@ -205,4 +207,39 @@ export interface AgentMessage {
  */
 export interface ToolContext {
   actionId?: string
+}
+
+/**
+ * ADDITION (agent loop v2): edit flow passes the stored args so a write tool
+ * can keep its sealed AI draft when the generation inputs did not change (AGT-002).
+ */
+export interface ToolContext {
+  priorArgs?: Record<string, unknown>
+}
+
+/** ADDITION (agent loop v2): proposals drafted together as one bundle, executed in order. */
+export interface ProposedAction {
+  bundle_id?: string
+  bundle_index?: number
+}
+
+export interface ProposalBundle {
+  id: string
+  conversationId: string
+  title: string
+  summary?: string
+  action_ids: string[]
+  status: 'pending' | 'executing' | 'done' | 'failed' | 'partial' | 'cancelled' | 'expired'
+  created_by: string
+  tenant_id: string | null
+  created_at: string
+  expires_at: string
+  /** Per step, filled while executing. */
+  results?: { action_id: string; ok: boolean; message: string; status: ProposedAction['status'] }[]
+  stopped_at?: number | null
+}
+
+/** ADDITION (RAG-011): how a hit was retrieved — 'keyword_only' when vector search was unavailable. */
+export interface KnowledgeHit {
+  retrieval?: 'hybrid' | 'keyword_only'
 }

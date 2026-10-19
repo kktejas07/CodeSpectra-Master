@@ -30,6 +30,7 @@ import {
   type MembershipChoice,
 } from '@/lib/ats/access-rules'
 import { ATS_INVITE_TTL_DAYS, newInviteNonce, signInviteToken, verifyInviteToken, type InviteTokenPayload } from '@/lib/ats/invite-token'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 
 export * from '@/lib/ats/access-rules'
 
@@ -265,7 +266,7 @@ export async function isAssignedInterviewer(actor: AtsActor, applicationId: stri
 // ─── Audit ──────────────────────────────────────────────────────────────────
 
 export async function auditAts(actor: Pick<AtsActor, 'userId' | 'tenantId'>, action: string, resourceType: string, resource: string, detail?: string, req?: Request): Promise<void> {
-  const ip = req ? (req.headers.get('x-forwarded-for') || '').split(',')[0]?.trim() || req.headers.get('x-real-ip') || '' : ''
+  const ip = clientIpOrEmpty(req)
   await writeAuditLog({
     action,
     outcome: 'success',

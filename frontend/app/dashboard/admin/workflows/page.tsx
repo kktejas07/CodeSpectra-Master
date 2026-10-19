@@ -52,6 +52,7 @@ interface Workflow {
   last_run_at?: string | null
   last_run_status?: string | null
   template_id?: string | null
+  builtin_overlap?: { id: string; title: string; enabled: boolean } | null
   updated_at: string
 }
 
@@ -65,6 +66,7 @@ interface TemplateSummary {
   setup: string | null
   step_count: number
   platform_only: boolean
+  replaces: { id: string; title: string } | null
 }
 
 function triggerSummary(w: Pick<Workflow, 'trigger' | 'event_type' | 'cron_expression'>): string {
@@ -254,6 +256,20 @@ export default function WorkflowsPage() {
     if (res.ok) setTemplates(json.items || [])
   }
 
+  async function switchOffBuiltin(id: string) {
+    setBusy(true)
+    setError(null)
+    try {
+      await api('/api/admin/automations', 'POST', { action: 'toggle', id, enabled: false })
+      setNotice('Built-in automation switched off. This workflow now sends these messages on its own.')
+      await load(draft?.id ?? null)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function remove() {
     if (!draft) return
     if (!(await confirm({ title: 'Delete workflow', description: `Delete “${draft.name}”? Waiting runs are cancelled.` }))) return
@@ -352,6 +368,18 @@ export default function WorkflowsPage() {
               </div>
               <Textarea aria-label="Description" value={draft.description || ''} onChange={(e) => patch({ description: e.target.value })} rows={2} placeholder="What does this workflow do?" className="text-sm" />
 
+              {draft.builtin_overlap?.enabled && (
+                <div className="flex flex-col gap-2 rounded-2xl border border-border/70 bg-muted/30 p-3 text-sm sm:flex-row sm:items-center" role="note" data-testid="workflow-builtin-overlap">
+                  <p className="flex-1 text-xs text-muted-foreground">
+                    The built-in automation <strong className="font-medium text-foreground">{draft.builtin_overlap.title}</strong> sends the same messages. Nobody gets both — whichever sends first wins and the other is skipped.
+                    {platform && !draft.tenant_id ? ' Switch the built-in off if this workflow should own these messages.' : ''}
+                  </p>
+                  {platform && !draft.tenant_id && (
+                    <Button size="sm" variant="outline" disabled={busy} onClick={() => switchOffBuiltin(draft.builtin_overlap!.id)}>Switch off built-in</Button>
+                  )}
+                </div>
+              )}
+
               {(problems.length > 0 || serverProblems.length > 0) && (
                 <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm" role="status">
                   <p className="flex items-center gap-2 font-medium text-foreground"><AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden /> Fix before switching on</p>
@@ -377,6 +405,7 @@ export default function WorkflowsPage() {
                       workflowId={draft.id}
                       hookUrl={`${hookBase}/api/workflows/hooks/${draft.id}`}
                       secretHint={draft.webhook_secret_hint}
+                      platform={platform && !draft.tenant_id}
                     />
                   </section>
                   <section className="space-y-2">
@@ -431,6 +460,7 @@ export default function WorkflowsPage() {
                 <p className="mt-1 flex-1 text-xs text-muted-foreground">{t.description}</p>
                 <p className="mt-2 text-xs text-muted-foreground">{t.trigger === 'event' && t.event_type ? `When: ${eventTypeDef(t.event_type)?.label || t.event_type}` : t.trigger === 'schedule' ? 'On a schedule' : t.trigger} · {t.step_count} steps</p>
                 {t.setup && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Setup: {t.setup}</p>}
+                {t.replaces && <p className="mt-1 text-xs text-muted-foreground">Same messages as the built-in “{t.replaces.title}”: duplicates are skipped, so nobody gets both.</p>}
                 <Button size="sm" className="mt-3 self-start" onClick={() => create(t.id)} disabled={busy} data-testid={`template-use-${t.id}`}>Use template</Button>
               </li>
             ))}

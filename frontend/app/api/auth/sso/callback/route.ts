@@ -10,6 +10,7 @@ import { normalizeUserRole } from '@/lib/rbac'
 import { updateUserLastLogin } from '@/lib/db/admin'
 import { accountBlockReason } from '@/lib/auth-account'
 import { readTextCapped, safeFetch } from '@/lib/url-safety'
+import { credentialResetUpdate, notifyCredentialReset, oauthLinkDecision } from '@/lib/auth-linking'
 
 /** IdP endpoints are admin-configured URLs: SSRF-checked on every hop, bodies capped. */
 async function idpJson(url: string, init: RequestInit = {}): Promise<{ ok: boolean; status: number; json: any }> {
@@ -174,6 +175,17 @@ export async function GET(req: NextRequest) {
       null
 
     if (!user) {
+      // CORE-001: sign-up switches apply before an account is created. Maintenance always
+      // blocks; "Allow registration" off blocks unless this person has a pending invitation
+      // to the provider's organisation.
+      const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+      const { registrationBlock } = await import('@/lib/auth-policy')
+      const invited = !!providerTenant && !!(await db.collection('organization_invitations').findOne(
+        { organization_id: providerTenant, email: userEmail, status: 'pending', expires_at: { $gt: new Date().toISOString() } },
+        { projection: { _id: 1 } },
+      ))
+      const closed = registrationBlock(await getGeneralSettingsCached(), { invited })
+      if (closed) return fail(closed.code === 'maintenance' ? 'maintenance' : 'registration_closed')
       // Create new user with SSO provisioning. Only `user` / `tenant_admin`
       // are ever assigned here, and tenant_admin only with a tenant.
       const wanted = normalizeUserRole(provider.default_role || 'user')
@@ -186,6 +198,7 @@ export async function GET(req: NextRequest) {
         role: newRole,
         provider: 'sso',
         sso_provider_id: provider.id,
+        emailVerified: true,
         created_at: nowDate.toISOString(),
         updated_at: nowDate.toISOString(),
         createdAt: nowDate,
@@ -195,6 +208,20 @@ export async function GET(req: NextRequest) {
       const result = await users.insertOne(newUser)
       user = { ...newUser, _id: result.insertedId } as typeof user & Record<string, unknown>
     } else {
+      // SEC-006: an account whose email we never verified may have been
+      // pre-registered by someone else. The IdP just proved ownership, so clear
+      // any planted password / 2FA / face login and sessions before using it.
+      if (oauthLinkDecision(user as { emailVerified?: unknown }, true) === 'link_after_reset') {
+        const existingUid = String(user.id || user._id)
+        const { revokeAllUserSessions } = await import('@/lib/session')
+        await revokeAllUserSessions(existingUid)
+        const reset = credentialResetUpdate(String(user.firebase_uid || ''))
+        if (!user.firebase_uid) delete reset.$set.firebase_uid
+        reset.$set.email_verified_via = 'sso_link'
+        await users.updateOne({ _id: user._id }, reset as never)
+        user = (await users.findOne({ _id: user._id })) || user
+        void notifyCredentialReset(String(user.email || userEmail), 'single sign-on')
+      }
       const set: Record<string, unknown> = {}
       // Update existing user's SSO provider if not set
       if (!user.sso_provider_id) set.sso_provider_id = provider.id

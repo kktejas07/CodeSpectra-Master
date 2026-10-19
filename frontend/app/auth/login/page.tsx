@@ -56,6 +56,8 @@ function loginErrorMessage(code: string | null): string | null {
       return "This account has been deactivated. Contact your administrator.";
     case "sso_maintenance":
       return "We’re doing some maintenance right now. Please try again a little later.";
+    case "sso_registration_closed":
+      return "New sign-ups are closed right now. Ask your organisation’s admin to invite you, then sign in again.";
     case "access_denied":
       return "Sign-in was cancelled. Choose a sign-in method to try again.";
     default:

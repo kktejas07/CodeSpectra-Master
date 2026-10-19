@@ -6,7 +6,7 @@
  * definition never reaches the engine.
  */
 import { conditionProblems, type Condition } from './conditions'
-import { isKnownEventType } from './event-types'
+import { isAnalyticsEventType, isKnownEventType, isPlatformOnlyEvent } from './event-types'
 
 export type FieldKind = 'text' | 'textarea' | 'number' | 'select' | 'json' | 'condition' | 'boolean' | 'list'
 
@@ -44,8 +44,14 @@ export const READ_COLLECTIONS = [
   'user', 'exams', 'exam_submissions', 'ats_applications', 'ats_candidates', 'ats_jobs', 'ats_interviews',
   'hackathons', 'hackathon_teams', 'codeathons', 'codeathon_registrations', 'certification_attempts',
   'billing_subscriptions', 'billing_orders', 'automation_events', 'problems', 'submissions', 'xp_events',
-  'ai_chat_sessions', 'ai_code_reviews', 'github_webhook_events', 'interview_sessions',
+  'ai_chat_sessions', 'ai_code_reviews', 'github_webhook_events', 'interviews', 'mkt_orders',
 ] as const
+
+/** Old names still accepted in saved workflows → the real collection (AUTO-030: standalone interviews live in `interviews`). */
+export const READ_COLLECTION_ALIASES: Readonly<Record<string, string>> = { interview_sessions: 'interviews' }
+
+/** Retries a side-effect step gets when the admin leaves the field empty (builder and engine agree, AUTO-010). */
+export const DEFAULT_STEP_RETRIES = 2
 
 export const UPDATE_COLLECTIONS = ['ats_applications', 'ats_candidates', 'user', 'exams'] as const
 
@@ -178,7 +184,7 @@ export const STEP_TYPES: readonly StepTypeDef[] = [
   {
     type: 'for_each', label: 'For each', group: 'Logic', sideEffect: false, container: 'loop',
     description: 'Run the inner steps once per item of a list (max 100). Use {{item}} and {{index}}.',
-    fields: [t('items', 'List', { required: true, placeholder: '{{steps.lookup.output}}' })],
+    fields: [t('items', 'List', { required: true, placeholder: '{{steps.lookup}}', help: 'A step’s result is {{steps.<step id>}} — e.g. the records a “Look up records” step found.' })],
   },
   {
     type: 'log', label: 'Log a note', group: 'Logic', sideEffect: false,
@@ -259,6 +265,41 @@ export function normalizeSteps(raw: unknown, depth = 0): StepDef[] {
 }
 
 const CRON_RE = /^(\S+\s+){4}\S+$/
+const CRON_FIELDS: readonly { name: string; min: number; max: number }[] = [
+  { name: 'minute', min: 0, max: 59 },
+  { name: 'hour', min: 0, max: 23 },
+  { name: 'day of month', min: 1, max: 31 },
+  { name: 'month', min: 1, max: 12 },
+  { name: 'day of week', min: 0, max: 7 },
+]
+
+/** Pure: does one cron field select at least one valid value (same syntax as lib/scheduler isDue)? */
+function cronFieldOk(token: string, min: number, max: number): boolean {
+  let any = false
+  for (const piece of token.split(',')) {
+    const m = /^(\*|\d+(?:-\d+)?)(?:\/(\d+))?$/.exec(piece.trim())
+    if (!m) return false
+    if (m[2] !== undefined && Number(m[2]) < 1) return false
+    let lo = min
+    let hi = max
+    if (m[1] !== '*') {
+      const [a, b] = m[1].split('-')
+      lo = Number(a)
+      hi = b === undefined ? lo : Number(b)
+    }
+    if (lo < min || hi > max || lo > hi) return false
+    any = true
+  }
+  return any
+}
+
+/** Problems with a 5-field cron expression (AUTO-013: "every day at 9" must not save as a schedule that never runs). */
+export function cronProblems(expr: unknown): string[] {
+  const s = typeof expr === 'string' ? expr.trim() : ''
+  if (!CRON_RE.test(s)) return ['Schedule needs a 5-part cron expression (minute hour day month weekday)']
+  const parts = s.split(/\s+/)
+  return CRON_FIELDS.flatMap((f, i) => (cronFieldOk(parts[i], f.min, f.max) ? [] : [`Schedule: the ${f.name} field "${parts[i]}" is not valid (${f.min}–${f.max}, *, ranges a-b, lists a,b or steps */n)`]))
+}
 
 /**
  * Validate a v2 workflow definition. `platform` = superadmin (global) workflow.
@@ -267,9 +308,12 @@ const CRON_RE = /^(\S+\s+){4}\S+$/
 export function validateDefinition(def: { trigger: string; cron_expression?: string | null; event_type?: string | null; event_filter?: unknown; steps: StepDef[] }, opts: { platform: boolean }): string[] {
   const errs: string[] = []
   if (!['manual', 'schedule', 'webhook', 'event'].includes(def.trigger)) errs.push('Pick a trigger')
-  if (def.trigger === 'schedule' && !(typeof def.cron_expression === 'string' && CRON_RE.test(def.cron_expression.trim()))) errs.push('Schedule needs a 5-part cron expression')
+  if (def.trigger === 'schedule') errs.push(...cronProblems(def.cron_expression))
   if (def.trigger === 'event') {
-    if (!isKnownEventType(def.event_type)) errs.push('Pick the event that starts this workflow')
+    const analytics = isAnalyticsEventType(def.event_type)
+    if (!isKnownEventType(def.event_type) && !(analytics && opts.platform)) errs.push('Pick the event that starts this workflow')
+    // AUTO-001: platform events (blog, events feed) belong to no organisation — they would never start an organisation workflow.
+    else if (!opts.platform && isPlatformOnlyEvent(def.event_type)) errs.push('That event is platform-wide and never reaches organisation workflows — pick another event')
     errs.push(...conditionProblems(def.event_filter).map((p) => `Trigger filter: ${p}`))
   }
   const total = countSteps(def.steps)

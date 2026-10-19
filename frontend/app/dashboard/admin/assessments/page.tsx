@@ -527,7 +527,11 @@ export default function AdminExamsPage() {
       if (!res.ok) throw new Error(json.error || 'Failed to create link')
       setLinkCreatedUrl(json.url)
       navigator.clipboard.writeText(json.url).catch(() => {})
-      addToast({ type: 'success', title: `Link copied — ${linkExpirySummary(json.expires_at)}${json.max_uses ? `, max ${json.max_uses} uses` : ''}` })
+      addToast({
+        type: json.delivery_status === 'failed' ? 'warning' : 'success',
+        title: `Link copied — ${linkExpirySummary(json.expires_at)}${json.max_uses ? `, max ${json.max_uses} uses` : ''}`,
+        ...(json.delivery_status === 'sent' ? { message: `Invite emailed to ${linkEmail.trim()}.` } : json.delivery_status === 'failed' ? { message: "The invite email couldn't be sent — share the copied link yourself." } : {}),
+      })
       void fetchLinks(linkExam.id)
     } catch (err: unknown) {
       addToast({ type: 'error', title: err instanceof Error ? err.message : 'Failed to create link' })
@@ -637,11 +641,9 @@ export default function AdminExamsPage() {
           icon={<BookOpen />}
           actions={
             <>
-              {gate.user?.role === 'superadmin' && (
-                <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
-                  <Upload className="w-4 h-4" />Bulk schedule
-                </Button>
-              )}
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
+                <Upload className="w-4 h-4" />Invite candidates
+              </Button>
               <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
                 <LayoutDashboard className="w-4 h-4" />Pipeline
               </Button>

@@ -6,6 +6,7 @@ import { markOrderRefunded } from '@/lib/billing-plans'
 import { writeAuditLog } from '@/lib/db/misc'
 import { notify } from '@/lib/notifications'
 import { clientLimiterKeyFromRequest, rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -47,10 +48,9 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
         : NextResponse.json({ error: 'Only paid payments can be marked as refunded.' }, { status: 409 })
     }
 
-    const fwd = req.headers.get('x-forwarded-for') || ''
     await writeAuditLog({
       actor: gate.user.email,
-      actorIp: req.headers.get('cf-connecting-ip') || fwd.split(',')[0]?.trim() || '',
+      actorIp: clientIpOrEmpty(req),
       action: 'billing.order.mark_refunded',
       resource: result.order.id,
       resourceType: 'billing_order',

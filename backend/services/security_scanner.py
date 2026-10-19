@@ -57,12 +57,16 @@ def scan_file_for_viruses(file_bytes: bytes) -> bool:
         logger.warning("[clamav] connection failed to %s:%s: %s", CLAMD_HOST, CLAMD_PORT, e)
         raise HTTPException(502, "Security scanner is currently offline.")
 
-    if "OK" in response:
-        return True
-    if "FOUND" in response:
-        parts = response.split()
-        virus_name = parts[1] if len(parts) > 1 else "Unknown"
+    # clamd replies "stream: OK" or "stream: <Signature> FOUND". Check FOUND
+    # first and require an exact ": OK" suffix for clean — a signature name
+    # that merely contains "OK" (e.g. Doc.Dropper.OKX) must never pass.
+    resp = response.rstrip("\0").strip()
+    if resp.endswith("FOUND"):
+        body = resp[: -len("FOUND")].strip()
+        virus_name = body.split(":", 1)[1].strip() if ":" in body else (body or "Unknown")
         logger.warning("[clamav] malware detected: %s", virus_name)
         raise HTTPException(400, f"Security Error: Malicious file detected ({virus_name}).")
-    logger.warning("[clamav] unexpected response: %r", response)
+    if resp.endswith(": OK") or resp == "OK":
+        return True
+    logger.warning("[clamav] unexpected response: %r", resp[:200])
     raise HTTPException(502, "Security scanner is currently offline.")

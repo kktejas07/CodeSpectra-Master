@@ -10,18 +10,16 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { AllFiltersDialog, type FilterState } from '@/components/listings/all-filters-dialog'
-import { Loader2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { MOCK_TESTS, mockTestQuery } from '@/lib/mock-tests'
 
-const QUIZZES = [
-  { id: 'tcs-software-engineer', company: 'TCS', role: 'Software Engineer', type: 'Tech', level: 'Entry-level', href: '/dashboard/mock-tests/tcs-software-engineer' },
-  { id: 'google-sde', company: 'Google', role: 'SDE', type: 'Tech', level: 'Mid-level', href: '/dashboard/mock-tests/google-sde' },
-  { id: 'amazon-sde', company: 'Amazon', role: 'SDE I', type: 'Tech', level: 'Entry-level', href: '/dashboard/mock-tests/amazon-sde' },
-  { id: 'ey-data-analyst', company: 'EY', role: 'Data Analyst', type: 'Data', level: 'Entry-level', href: '/dashboard/mock-tests/ey-data-analyst' },
-  { id: 'fractal-data-scientist', company: 'Fractal', role: 'Data Scientist', type: 'Data', level: 'Advanced', href: '/dashboard/mock-tests/fractal-data-scientist' },
-]
+// One catalogue with Mock Tests (A-049 / CORE-002): every mock test is a quiz here, so
+// nothing is missing or duplicated when the catalogue changes.
+const QUIZZES = MOCK_TESTS.map((t) => ({ ...t, href: `/dashboard/mock-tests/${t.id}?${mockTestQuery(t.company, t.role)}` }))
+const CATEGORIES = [...new Set(MOCK_TESTS.map((t) => t.type as string))]
+const LEVELS = [...new Set(MOCK_TESTS.map((t) => t.level as string))]
 
 export default function QuizzesPage() {
   const gate = usePageGuard('user')
@@ -136,8 +134,8 @@ export default function QuizzesPage() {
         onOpenChange={setOpen}
         value={filters}
         onApply={setFilters}
-        categories={['Tech', 'Data']}
-        experienceLevels={['Entry-level', 'Mid-level', 'Advanced']}
+        categories={CATEGORIES}
+        experienceLevels={LEVELS}
       />
     </div>
   )

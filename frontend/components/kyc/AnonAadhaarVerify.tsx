@@ -29,6 +29,7 @@ type Sdk = {
   AnonAadhaarProvider: ComponentType<{ _useTestAadhaar?: boolean; children: ReactNode }>
   LogInWithAnonAadhaar: ComponentType<{
     nullifierSeed: number | bigint
+    signal?: string
     fieldsToReveal?: Array<
       'revealAgeAbove18' | 'revealGender' | 'revealPinCode' | 'revealState'
     >
@@ -44,6 +45,17 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
   const [done, setDone] = useState(false)
   const [revealed, setRevealed] = useState<Revealed | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // SEC-026: the server-issued signal binds the proof to this account.
+  const [signal, setSignal] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/kyc/anon-aadhaar', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!cancelled && j && typeof j.signal === 'string') setSignal(j.signal) })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -70,7 +82,7 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
     )
   }
 
-  if (!sdk) {
+  if (!sdk || !signal) {
     return (
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading Anon Aadhaar…
@@ -122,6 +134,7 @@ function AnonAadhaarPanel({ purpose, nullifierSeed, useTestAadhaar = true, onVer
           <div className="flex flex-wrap items-center gap-3">
             <LogInWithAnonAadhaar
               nullifierSeed={seedNum}
+              signal={signal}
               fieldsToReveal={[
                 'revealAgeAbove18',
                 'revealGender',

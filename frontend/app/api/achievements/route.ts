@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 
 /**
  * GET /api/achievements
@@ -25,7 +26,7 @@ export async function GET() {
       ])
       .toArray()
     const totalXp = xpAgg[0]?.total ?? 0
-    const level = xpToLevel(totalXp)
+    const level = xpToLevel(totalXp, (await getGamificationConfig()).levels)
 
     const solvedCount = await db.collection('submissions').countDocuments({ user_id: userId, status: 'accepted' })
     const hasReason = async (reason: string) => Boolean(await db.collection('xp_events').findOne({ user_id: userId, reason }))

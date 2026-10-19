@@ -4,7 +4,7 @@
  * it, and save it as an unpublished draft owned by the caller's organisation.
  */
 import { ToolInputError } from '@/lib/agent/contract'
-import { generateCodingProblem, logGeneratedProblem, saveGeneratedProblem, shapeGeneratedProblem } from '@/lib/services/problems'
+import { generateCodingProblem, logGeneratedProblem, saveGeneratedProblem, shapeGeneratedProblem, verifyGeneratedProblem, type TestVerification } from '@/lib/services/problems'
 import { writeTool } from '../define'
 import { argsObject, optEnum, optString, optStringArray } from '../args'
 import { serviceUser } from '../scope'
@@ -44,10 +44,21 @@ export const createProblemTool = writeTool<CreateProblemArgs>({
       ...(lang ? { language_hint: lang } : {}),
     }
   },
+  draftInputs: (a) => ({ role: a.role, difficulty: a.difficulty, topics: a.topics, language_hint: a.language_hint }),
   async propose(a, ctx) {
-    const result = await generateCodingProblem(ctx.caller.userId, a)
-    if (!result) throw new ToolInputError('The AI problem generator is unavailable right now. Try again in a moment.')
-    a[DRAFT_KEY] = await sealDraft('create_problem', ctx.caller, { result })
+    // Edit with the same inputs: reuse the sealed draft (no second generation, same problem).
+    const prior = await openDraft<{ result: Record<string, unknown>; verification?: TestVerification }>('create_problem', ctx.caller, a[DRAFT_KEY])
+    let result = prior?.result ?? null
+    let verification = prior?.verification ?? null
+    if (!result) {
+      const generated = await generateCodingProblem(ctx.caller.userId, a)
+      if (!generated) throw new ToolInputError('The AI problem generator is unavailable right now. Try again in a moment.')
+      // AGT-025: run a reference solution over every test; wrong hidden tests are dropped.
+      const v = await verifyGeneratedProblem(generated)
+      result = v.result
+      verification = v.verification
+    }
+    a[DRAFT_KEY] = await sealDraft('create_problem', ctx.caller, { result, verification })
     const s = shapeGeneratedProblem(result)
     const samples = s.test_cases.filter((t) => t.is_sample)
     return {
@@ -57,14 +68,19 @@ export const createProblemTool = writeTool<CreateProblemArgs>({
         statement: clip(result.statement_md, 1500),
         tests: { sample: samples.length, hidden: s.test_cases.length - samples.length },
         sample_tests: samples.slice(0, 3).map((t) => ({ input: clip(t.stdin, 200), output: clip(t.expected_stdout, 200) })),
-        warnings: s.test_cases.length === 0 ? ['The generator returned no test cases; the problem cannot be graded until you add some.'] : [],
+        test_check: verification ? { verified: verification.verified === true ? 'Yes' : verification.verified === null ? 'Not run' : 'No', checked: verification.total, passed: verification.passed, removed: verification.dropped.length, note: verification.note } : null,
+        warnings: [
+          ...(s.test_cases.length === 0 ? ['The generator returned no test cases; the problem cannot be graded until you add some.'] : []),
+          ...(verification && verification.verified !== true ? [verification.note] : []),
+        ],
       },
     }
   },
   async execute(a, ctx) {
     const user = serviceUser(ctx.caller)
     const draft = await openDraft<{ result: Record<string, unknown> }>('create_problem', ctx.caller, a[DRAFT_KEY])
-    const result = draft?.result ?? (await generateCodingProblem(user.id, a))
+    const fresh = draft?.result ? null : await generateCodingProblem(user.id, a)
+    const result = draft?.result ?? (fresh ? (await verifyGeneratedProblem(fresh)).result : null)
     if (!result) return { ok: false, message: 'The AI problem generator is unavailable right now. Try again in a moment.' }
     const saved = await saveGeneratedProblem(user, result, { mode: 'draft' })
     await logGeneratedProblem(user.id, result, saved.id)

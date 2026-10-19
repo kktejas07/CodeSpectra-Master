@@ -151,6 +151,11 @@ export async function PATCH(
   const securityChange = roleChanged || tenantChanged || deactivating || body.password !== undefined || body.email !== undefined
   if (securityChange) await revokeAllUserSessions(targetId)
   else invalidateAuthProfile(targetId)
+  // W4-08: their scheduled copilot reports stop (the run-time check would too).
+  if (roleChanged || tenantChanged || deactivating) {
+    const { disableSchedulesCreatedBy } = await import('@/lib/agent/schedule-guard')
+    await disableSchedulesCreatedBy(targetId).catch(() => 0)
+  }
 
   const changed = [
     ...Object.keys(updates).map((k) => (k === 'role' || k === 'status' || k === 'tenantId' ? `${k}=${String(updates[k])}` : k)),
@@ -220,6 +225,7 @@ export async function DELETE(
   // End every session before the account disappears (the token would
   // otherwise keep working until it expires).
   await revokeAllUserSessions(targetId).catch(() => {})
+  await import('@/lib/agent/schedule-guard').then((m) => m.disableSchedulesCreatedBy(targetId)).catch(() => 0)
 
   try {
     const adminAuth = await getAdminAuthInstance()

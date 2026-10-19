@@ -69,9 +69,15 @@ describe('RAG offline evaluation', () => {
     expect(report.chunk_stats.embedded_chunks).toBe(report.chunk_stats.chunks)
     // One hit per source.
     expect(hybrid.metrics.duplicate_hit_rate).toBe(0)
-    // Quality floors (measured values sit above these; see the report).
-    expect(keyword.metrics.success[5]).toBeGreaterThanOrEqual(0.75)
-    expect(hybrid.metrics.success[5]).toBeGreaterThanOrEqual(0.8)
-    expect(hybrid.metrics.mrr).toBeGreaterThanOrEqual(0.6)
+    // RAG-020 CI gate: quality floors a few points under the measured values
+    // (wave 4: keyword s@5 93.9%, MRR 0.840; hybrid s@5 92.9%, MRR 0.836).
+    expect(keyword.metrics.success[5]).toBeGreaterThanOrEqual(0.9)
+    expect(keyword.metrics.mrr).toBeGreaterThanOrEqual(0.78)
+    expect(hybrid.metrics.success[5]).toBeGreaterThanOrEqual(0.88)
+    expect(hybrid.metrics.mrr).toBeGreaterThanOrEqual(0.78)
+    // The hiring sources (RAG-001) are indexed and findable.
+    const hiring = keyword.results.filter((r) => r.id.startsWith('hr-'))
+    expect(hiring.length).toBeGreaterThanOrEqual(5)
+    expect(hiring.every((r) => r.success[5])).toBe(true)
   }, 120_000)
 })

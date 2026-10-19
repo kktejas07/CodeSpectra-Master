@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { requireAdmin } from '@/lib/api-auth'
-import { listAllUsers, users, tenants } from '@/lib/db/admin'
+import { listUsersPage, users, tenants } from '@/lib/db/admin'
 import { createCandidateInvite } from '@/lib/services/invites'
 import { passwordProblem, tenantScope } from '@/lib/auth-account'
 import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link'
@@ -20,17 +20,19 @@ export async function GET(req: NextRequest) {
   try {
     // tenant_admins see only their own tenant; no tenant ⇒ nothing (never "all").
     const scope = tenantScope(gate.user)
-    if (scope.kind === 'none') return NextResponse.json({ users: [] })
-    const usersList = await listAllUsers(scope.kind === 'tenant' ? { tenantId: scope.tenantId } : {})
-
-    const search = req.nextUrl.searchParams.get('search')?.trim().toLowerCase()
-  const filtered = search
-    ? usersList.filter((u) => {
-        const name = ((u.fullName ?? u.name ?? '') as string).toLowerCase()
-        const email = (u.email || '').toLowerCase()
-        return name.includes(search) || email.includes(search)
-      })
-    : usersList
+    if (scope.kind === 'none') return NextResponse.json({ users: [], total: 0, page: 1, has_more: false })
+    // CORE-019: search, paging and projection happen in MongoDB (was: every user doc, filtered in JS).
+    const sp = req.nextUrl.searchParams
+    const page = Math.max(1, Number(sp.get('page')) || 1)
+    const limit = Math.min(1000, Math.max(1, Number(sp.get('limit')) || 1000))
+    const ids = (sp.get('ids') || '').split(',').map((x) => x.trim()).filter((x) => /^[A-Za-z0-9_-]{1,128}$/.test(x))
+    const { rows: filtered, total } = await listUsersPage({
+      ...(scope.kind === 'tenant' ? { tenantId: scope.tenantId } : {}),
+      search: sp.get('search') || sp.get('q'),
+      ids: ids.length ? ids : null,
+      page,
+      limit,
+    })
 
   const rows = filtered.map((u) => {
       const profile: ProfileRow = {
@@ -74,7 +76,10 @@ export async function GET(req: NextRequest) {
 
     // Enrich with tenant names (only the caller's own for a tenant admin)
     const tenantCol = await tenants()
-    const tenantList = await tenantCol.find(scope.kind === 'tenant' ? { id: scope.tenantId } : {}).toArray()
+    const tenantIds = [...new Set(rows.map((r) => (r as any).tenant_id).filter(Boolean))] as string[]
+    const tenantList = tenantIds.length
+      ? await tenantCol.find(scope.kind === 'tenant' ? { id: scope.tenantId } : { id: { $in: tenantIds } }, { projection: { _id: 0, id: 1, name: 1 } }).toArray()
+      : []
     const tenantNameById = new Map(tenantList.map((t) => [t.id, t.name]))
 
     for (const row of rows) {
@@ -82,7 +87,7 @@ export async function GET(req: NextRequest) {
       if (tid) (row as any).tenant_name = tenantNameById.get(tid) || tid
     }
 
-    return NextResponse.json({ users: rows })
+    return NextResponse.json({ users: rows, total, page, has_more: page * limit < total })
   } catch (e: unknown) {
     const msg = 'Failed to list users'
     console.error('[CodeSpectra] admin/users GET:', e)

@@ -21,6 +21,7 @@ import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { isIpBlocked, isIpOutsideWhitelist, trackDeviceFingerprint, recordSecurityEvent } from '@/lib/db/security'
 import { writeAuditLog } from '@/lib/db/misc'
 import { trustCurrentDevice } from '@/lib/trusted-devices'
+import { credentialResetUpdate, notifyCredentialReset, oauthLinkDecision } from '@/lib/auth-linking'
 
 export const runtime = 'nodejs'
 
@@ -33,6 +34,12 @@ interface VerifiedIdToken {
   email: string
   emailVerified: boolean
   name?: string
+  /** When the user actually authenticated with the provider (not token refresh). */
+  authTime?: Date
+}
+
+function authTimeOf(v: unknown): Date | undefined {
+  return typeof v === 'number' && Number.isFinite(v) ? new Date(v * 1000) : undefined
 }
 
 type OAuthMethod = 'google' | 'github'
@@ -45,7 +52,7 @@ async function verifyFirebaseIdToken(idToken: string): Promise<VerifiedIdToken |
       // checkRevoked: a password reset / "sign out everywhere" revokes refresh
       // tokens, so a still signed-in Firebase client can't mint a new session.
       const d = await auth.verifyIdToken(idToken, true)
-      return { uid: d.uid, email: (d.email || '').toLowerCase().trim(), emailVerified: d.email_verified === true, name: d.name }
+      return { uid: d.uid, email: (d.email || '').toLowerCase().trim(), emailVerified: d.email_verified === true, name: d.name, authTime: authTimeOf(d.auth_time) }
     } catch {
       return null
     }
@@ -65,6 +72,7 @@ async function verifyFirebaseIdToken(idToken: string): Promise<VerifiedIdToken |
       email: String(payload.email || '').toLowerCase().trim(),
       emailVerified: payload.email_verified === true,
       name: typeof payload.name === 'string' ? payload.name : undefined,
+      authTime: authTimeOf(payload.auth_time),
     }
   } catch {
     return null
@@ -91,9 +99,31 @@ async function resolveOAuthAccount(t: VerifiedIdToken, allowCreate = true): Prom
     const escaped = t.email.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const byEmail = await col.findOne({ $or: [{ email: t.email }, { email: { $regex: `^${escaped}$`, $options: 'i' } }] } as never)
     if (byEmail) {
-      if (!t.emailVerified) return { kind: 'conflict' }
-      await col.updateOne({ _id: (byEmail as { _id: unknown })._id } as never, { $set: { firebase_uid: t.uid, updatedAt: new Date() } })
-      return { kind: 'ok', doc: byEmail as never, created: false, linked: true }
+      // SEC-006: never link into an account whose email we never verified
+      // without first removing every credential someone else may have planted.
+      const decision = oauthLinkDecision(byEmail as { emailVerified?: unknown }, t.emailVerified)
+      if (decision === 'conflict') return { kind: 'conflict' }
+      const id = (byEmail as { _id: unknown })._id
+      if (decision === 'link') {
+        await col.updateOne({ _id: id } as never, { $set: { firebase_uid: t.uid, updatedAt: new Date() } })
+        return { kind: 'ok', doc: byEmail as never, created: false, linked: true }
+      }
+      const uid = String((byEmail as { id?: unknown }).id || id)
+      // Sign out everywhere first (bumps session_version, drops trusted devices,
+      // revokes Firebase refresh tokens), then strip credentials and link.
+      const { revokeAllUserSessions } = await import('@/lib/session')
+      await revokeAllUserSessions(uid)
+      await col.updateOne({ _id: id } as never, credentialResetUpdate(t.uid) as never)
+      void recordSecurityEvent({
+        type: 'auth.oauth_link_reset',
+        severity: 'warning',
+        user_id: uid,
+        email: t.email,
+        detail: 'Google/GitHub sign-in to an unverified email account: password, 2FA, face login and sessions were reset before linking',
+      }).catch(() => {})
+      void notifyCredentialReset(t.email, 'Google/GitHub')
+      const fresh = await col.findOne({ _id: id } as never)
+      return { kind: 'ok', doc: (fresh || byEmail) as never, created: false, linked: true }
     }
   }
 
@@ -246,7 +276,7 @@ export async function POST(request: NextRequest) {
     await setSessionCookie({ uid, email, role })
     // A verified Google/GitHub sign-in: trust this browser for face sign-in.
     await trustCurrentDevice(uid, request.headers.get('user-agent'))
-    if (loginMethod) await updateUserLastLogin(uid, loginMethod).catch(() => {})
+    if (loginMethod) await updateUserLastLogin(uid, loginMethod, token.authTime ? { reauthAt: token.authTime } : {}).catch(() => {})
     await recordOAuthSession(request, uid, email, visitorId)
     await writeAuditLog({ action: 'auth.oauth_login', outcome: 'success', actor: email, actorIp: rawIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', detail: resolved.linked ? 'linked to existing account by verified email' : resolved.created ? 'account created' : undefined, user_id: uid }).catch(() => {})
     return NextResponse.json({ ok: true, user: { id: uid, email, role, name: (doc.fullName || doc.name || null) as string | null } })

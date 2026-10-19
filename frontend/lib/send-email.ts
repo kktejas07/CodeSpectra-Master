@@ -9,6 +9,11 @@ export interface SendEmailOptions {
   outboxId?: string
   /** Send even to a suppressed (hard-bounced / complained) address. Admin tests only. */
   skipSuppression?: boolean
+  /** Extra headers (List-Unsubscribe…), plain-text part, Reply-To, From display name. */
+  headers?: Record<string, string>
+  text?: string
+  replyTo?: string
+  fromName?: string
 }
 
 export interface SendEmailResult {
@@ -39,7 +44,7 @@ export async function sendEmail(to: string, template: { subject: string; html: s
 
   try {
     const { sendEmailViaPostal } = await import('@/lib/transactional-mail')
-    const result = await sendEmailViaPostal({ to, subject: template.subject, html: template.html, cc, attachments: opts?.attachments })
+    const result = await sendEmailViaPostal({ to, subject: template.subject, html: template.html, cc, attachments: opts?.attachments, headers: opts?.headers, text: opts?.text, replyTo: opts?.replyTo, fromName: opts?.fromName })
     postalMessageId = result.messageId
     logger.email(`[Email] Sent via Postal`, { to, subject: template.subject })
   } catch (e) {
@@ -53,7 +58,7 @@ export async function sendEmail(to: string, template: { subject: string; html: s
   if (error && !opts?.outboxId) {
     try {
       const { enqueueFailedEmail } = await import('@/lib/automation/outbox')
-      queued = await enqueueFailedEmail({ to, subject: template.subject, html: template.html, cc, category: opts?.category, campaignId: opts?.campaignId, attachments: opts?.attachments }, error)
+      queued = await enqueueFailedEmail({ to, subject: template.subject, html: template.html, cc, category: opts?.category, campaignId: opts?.campaignId, attachments: opts?.attachments, headers: opts?.headers, fromName: opts?.fromName }, error)
     } catch { /* the outbox is best-effort */ }
   }
 

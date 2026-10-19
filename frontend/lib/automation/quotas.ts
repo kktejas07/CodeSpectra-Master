@@ -8,7 +8,8 @@ export type QuotaKind = 'runs' | 'emails' | 'whatsapp' | 'webhooks' | 'ai'
 
 export const TENANT_LIMITS: Record<QuotaKind, number> = {
   runs: 2000,
-  emails: 1000,
+  // Organisation workflows send from the platform's domain (AUTO-012): kept modest.
+  emails: 500,
   whatsapp: 200,
   webhooks: 2000,
   ai: 200,
@@ -46,6 +47,17 @@ export async function consumeQuota(tenantId: string | null | undefined, kind: Qu
     { upsert: true, returnDocument: 'after' },
   )
   if (overLimit(Number(row?.count || 0), kind)) throw new QuotaExceededError(kind)
+}
+
+/**
+ * Count a step's side effect once, however often the step is retried
+ * (AUTO-015). `ref` = `${runId}:${stepKey}`.
+ */
+export async function consumeQuotaOnce(tenantId: string | null | undefined, kind: QuotaKind, ref: string, now = new Date()): Promise<void> {
+  if (!tenantId) return
+  const { claimOnce } = await import('./store')
+  if (!(await claimOnce(`quota:${kind}:${ref}`))) return
+  await consumeQuota(tenantId, kind, now)
 }
 
 export async function quotaUsage(tenantId: string, now = new Date()): Promise<Record<QuotaKind, { used: number; limit: number }>> {

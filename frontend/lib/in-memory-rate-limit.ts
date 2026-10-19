@@ -1,3 +1,5 @@
+import { clientIpFromRequest } from '@/lib/client-ip'
+
 /** In-process sliding-window limiter (best-effort per server instance; good for dev / single-node). */
 
 const buckets = new Map<string, number[]>()
@@ -28,16 +30,8 @@ export function rateLimitSlidingWindow(
 
 export function clientLimiterKeyFromRequest(request: Request, userId: string | null): string {
   if (userId) return `u:${userId}`
-  const h = request.headers as Headers
-  // Behind Cloudflare, x-forwarded-for's first hop is a Cloudflare edge IP
-  // (shared by every user) — rate-limiting/auto-blocking on it punished the
-  // whole CDN edge. Prefer cf-connecting-ip / x-real-ip which carry the real
-  // client address, then fall back to the forwarded chain.
-  const cf = h.get('cf-connecting-ip')?.trim()
-  const real = h.get('x-real-ip')?.trim()
-  const xf = h.get('x-forwarded-for')?.split(',')[0]?.trim()
-  const ip = cf || real || xf || 'unknown'
-  return `ip:${ip}`
+  // SEC-021: forwarding headers count only from TRUSTED_PROXY_CIDRS (lib/client-ip).
+  return `ip:${clientIpFromRequest(request)}`
 }
 
 // AI-specific rate limit: authenticated users get 30 requests/min, anonymous get 5/min

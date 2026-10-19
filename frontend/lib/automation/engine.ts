@@ -15,7 +15,7 @@
 import { evaluateCondition, type Condition } from './conditions'
 import { interpolate, interpolateDeep, interpolateString, type Ctx } from './interpolate'
 import { clampRetries, clampTimeoutMs, nextRetry, STEP_BACKOFF, withTimeout } from './backoff'
-import type { StepDef } from './steps-catalog'
+import { DEFAULT_STEP_RETRIES, stepTypeDef, type StepDef } from './steps-catalog'
 
 export interface StepState {
   status: 'done' | 'skipped' | 'failed' | 'waiting' | 'retry_wait'
@@ -49,6 +49,8 @@ export interface ExecInfo {
   key: string
   attempt: number
   dryRun: boolean
+  /** Aborted when the step times out — executors pass it to their network calls. */
+  signal?: AbortSignal
 }
 
 export interface EngineEnv {
@@ -282,7 +284,10 @@ export async function advance(steps: StepDef[], baseCtx: Ctx, state: RunState, e
       try {
         let out: unknown
         if (step.type === 'log') out = { message: interpolateString(raw.message ?? '', local) }
-        else out = await withTimeout(env.exec(step, cfg, raw, local, { key, attempt, dryRun: env.dryRun }), clampTimeoutMs(raw.timeout_ms), `"${step.label || step.type}" timed out`)
+        else {
+          const ac = new AbortController()
+          out = await withTimeout(env.exec(step, cfg, raw, local, { key, attempt, dryRun: env.dryRun, signal: ac.signal }), clampTimeoutMs(raw.timeout_ms), `"${step.label || step.type}" timed out`, ac)
+        }
         const stored = clampOutput(out)
         state.step_state[key] = { status: 'done', output: stored, attempts: attempt }
         log(key, step, true, t0, attempt, { output: stored })
@@ -291,7 +296,8 @@ export async function advance(steps: StepDef[], baseCtx: Ctx, state: RunState, e
       } catch (e) {
         const error = errMsg(e)
         log(key, step, false, t0, attempt, { error })
-        const retries = env.dryRun ? 0 : clampRetries(raw.retries)
+        // Same default as the builder: side-effect steps retry twice unless the admin set a number (AUTO-010).
+        const retries = env.dryRun ? 0 : clampRetries(raw.retries, 5, stepTypeDef(step.type)?.sideEffect ? DEFAULT_STEP_RETRIES : 0)
         const decision = nextRetry(attempt, retries, STEP_BACKOFF, env.now())
         if (decision.retry && decision.at && env.persistent && !isPermanent(e)) {
           state.step_state[key] = { status: 'retry_wait', attempts: attempt, resume_at: decision.at.toISOString(), error }

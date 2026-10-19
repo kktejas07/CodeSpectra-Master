@@ -32,6 +32,8 @@ export interface Seller {
   status: 'pending' | 'approved' | 'suspended' | 'rejected'
   /** null = platform default (marketplace_settings.default_commission_bps) */
   commission_bps: number | null
+  /** Opted in to platform-wide coupons on their items (they pay the discount). Default false (CORE-021). */
+  accepts_platform_coupons?: boolean
   kyc: { status: 'not_started' | 'submitted' | 'verified' | 'rejected'; pan_last4?: string; gstin?: string; tax_id_last4?: string; submitted_at?: string }
   payout: { method: 'bank' | 'upi' | 'stripe_connect' | null; account_ref?: string | null; verified: boolean }
   created_at: string
@@ -83,6 +85,8 @@ export interface OrderLine {
   commission_bps: number // snapshot at purchase
   commission_amount: number
   seller_earnings: number
+  /** Platform-funded coupon share (ex-tax): commission_amount + seller_earnings = line_total + platform_funded (CORE-021). */
+  platform_funded?: number
   fulfilment: { status: FulfilmentStatus; carrier?: string; tracking_no?: string; tracking_url?: string; shipped_at?: string; delivered_at?: string; booking?: { start: string; end: string; join_url?: string; meeting_id?: string } | null; downloads_used?: number }
 }
 

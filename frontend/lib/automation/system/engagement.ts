@@ -30,6 +30,7 @@ async function onboardingVerify(p: Doc): Promise<unknown> {
   if (!u?.email || u.emailVerified === true || u.isActive === false || u.deleted_at) return { skipped: true }
   return sendAutomationEmail({
     to: String(u.email), userId: String(u.id || u._id), category: 'engagement', onceKey: `onboard-verify:${String(u.id || u._id)}`,
+    dedupe: { kind: 'onboard-verify', ref: String(u.id || u._id) },
     subject: 'One step left: confirm your email',
     heading: 'Confirm your email to get started',
     bodyText: `Hi ${nameOf(u)},\n\nYou’re nearly set up. Sign in and press “Resend verification” on your dashboard to get a fresh link — it unlocks tests, events and certificates.`,
@@ -60,12 +61,30 @@ async function onboardingTips(p: Doc): Promise<unknown> {
 
 // ─── AU-11 abandoned marketplace checkout ───────────────────────────────────
 
+/**
+ * Pure (AUTO-033): should an "abandoned cart" email go out for this order?
+ * Only when the checkout is still unpaid or ran out of time — never after the
+ * buyer cancelled, restarted checkout (order replaced), paid, or the gateway
+ * declined (that already sends its own "payment did not go through" email) —
+ * and never when the buyer paid a newer order since.
+ */
+export function abandonedCartDecision(order: { status?: string; cancelled_reason?: string | null } | null, hasLaterPaidOrder: boolean): 'send' | 'skip' {
+  if (!order || hasLaterPaidOrder) return 'skip'
+  if (order.status === 'pending_payment') return 'send'
+  if (order.status === 'cancelled' && order.cancelled_reason === 'expired') return 'send'
+  return 'skip'
+}
+
 async function abandonedCheckout(p: Doc): Promise<unknown> {
   const db = await getMongoDb()
   const orderId = String(p.order_id || '')
   if (!orderId) return { skipped: true }
-  const paid = await db.collection('automation_events').countDocuments({ type: 'marketplace.order.paid', 'payload.order_id': orderId }, { limit: 1 })
-  if (paid) return { skipped: 'paid' }
+  const order = (await db.collection('mkt_orders').findOne({ id: orderId }, { projection: { _id: 0, id: 1, status: 1, cancelled_reason: 1, buyer_id: 1, created_at: 1 } })) as Doc | null
+  const buyer = String(order?.buyer_id || p.buyer_id || '')
+  const later = order && buyer
+    ? await db.collection('mkt_orders').countDocuments({ buyer_id: buyer, id: { $ne: orderId }, created_at: { $gt: String(order.created_at || '') }, status: { $nin: ['pending_payment', 'cancelled'] } }, { limit: 1 })
+    : 0
+  if (abandonedCartDecision(order as never, later > 0) === 'skip') return { skipped: order ? `order ${String(order.status)}${order.cancelled_reason ? ` (${String(order.cancelled_reason)})` : ''}` : 'order not found' }
   const email = typeof p.buyer_email === 'string' ? p.buyer_email : ''
   if (!email) return { skipped: 'no email' }
   const raw = String(p.resume_url || '')
@@ -74,42 +93,61 @@ async function abandonedCheckout(p: Doc): Promise<unknown> {
   const url = raw.startsWith('/') && !raw.startsWith('//') ? raw : raw.startsWith(origin + '/') ? raw : '/marketplace'
   return sendAutomationEmail({
     to: email, userId: typeof p.buyer_id === 'string' ? p.buyer_id : null, category: 'engagement', onceKey: `checkout:${orderId}`,
-    subject: 'You left something in your cart',
-    heading: 'Your order is saved',
-    bodyText: 'You started a checkout on the CodeSpectra marketplace but didn’t finish. Pick up where you left off — it only takes a minute.',
-    cta: { label: 'Resume checkout', url },
+    dedupe: { kind: 'checkout', ref: orderId },
+    subject: 'Your cart is waiting',
+    heading: 'Your cart is waiting',
+    bodyText: 'You started a checkout on the CodeSpectra marketplace but didn’t finish. Items aren’t held for long — pick up where you left off while they’re still available.',
+    cta: { label: 'Back to checkout', url },
     reason: 'You got this email because you started a checkout on CodeSpectra.',
   })
 }
 
 // ─── AU-12 re-engagement + streak saver ─────────────────────────────────────
 
-export async function runReengagement(now = new Date()): Promise<{ emailed: number }> {
+/** People who reached 7 / 14 / 30 days without a sign-in today (shared with the signals sweep). */
+export async function inactiveUsers(now = new Date()): Promise<{ user: Doc; uid: string; days: number; last: string }[]> {
   const db = await getMongoDb()
-  let emailed = 0
+  const out: { user: Doc; uid: string; days: number; last: string }[] = []
   for (const days of INACTIVE_STEPS) {
     const from = new Date(now.getTime() - (days + 1) * 86_400_000)
     const to = new Date(now.getTime() - days * 86_400_000)
-    const users = (await db.collection('user').find({ lastLoginAt: { $gte: from, $lt: to }, isActive: { $ne: false }, deleted_at: { $exists: false }, email: { $type: 'string' } }, { projection: { id: 1, _id: 1, email: 1, name: 1, fullName: 1, lastLoginAt: 1, tenantId: 1 } }).limit(2000).toArray()) as Doc[]
+    const users = (await db.collection('user').find({ lastLoginAt: { $gte: from, $lt: to }, isActive: { $ne: false }, deleted_at: { $exists: false }, email: { $type: 'string' } }, { projection: { id: 1, _id: 1, email: 1, name: 1, fullName: 1, lastLoginAt: 1, tenantId: 1, organizationId: 1 } }).limit(2000).toArray()) as Doc[]
     for (const u of users) {
-      const uid = String(u.id || u._id)
-      const bucket = inactivityBucket(u.lastLoginAt as Date, now)
-      if (bucket !== days) continue
-      const last = (u.lastLoginAt as Date).toISOString()
-      if (!(await claimOnce(`inactive:${uid}:${days}:${last.slice(0, 10)}`))) continue
-      void emit('user.inactive', { user_id: uid, email: u.email, name: u.fullName || u.name || null, days, last_login_at: last }, { tenantId: (u.tenantId as string) ?? null, idempotencyKey: `user.inactive:${uid}:${days}:${last.slice(0, 10)}` })
-      const out = await sendAutomationEmail({
-        to: String(u.email), userId: uid, category: 'engagement',
-        subject: days >= 30 ? 'We saved your progress — come back anytime' : 'Today’s coding challenge is waiting',
-        heading: days >= 30 ? `It’s been a while, ${nameOf(u)}` : `Ready for a quick one, ${nameOf(u)}?`,
-        bodyText: days >= 30
-          ? 'Your problems, certificates and progress are still here. New practice problems and events were added while you were away.'
-          : 'A ten-minute problem is the easiest way to keep your skills sharp. Today’s challenge is ready.',
-        cta: { label: 'Solve today’s challenge', url: '/dashboard/arena' },
-        reason: 'You got this email because you have a CodeSpectra account and haven’t signed in for a while.',
-      })
-      if (out === 'sent' || out === 'deferred' || out === 'queued') emailed++
+      const lastLogin = u.lastLoginAt instanceof Date ? u.lastLoginAt : new Date(String(u.lastLoginAt))
+      if (inactivityBucket(lastLogin, now) !== days) continue
+      out.push({ user: u, uid: String(u.id || u._id), days, last: lastLogin.toISOString() })
     }
+  }
+  return out
+}
+
+/** user.inactive for workflows (always on, see ./signals.ts — AUTO-003). */
+export async function emitInactivitySignals(now = new Date()): Promise<number> {
+  let n = 0
+  for (const { user: u, uid, days, last } of await inactiveUsers(now)) {
+    const tenantId = typeof u.tenantId === 'string' ? u.tenantId : typeof u.organizationId === 'string' ? u.organizationId : null
+    const r = await emit('user.inactive', { user_id: uid, email: u.email, name: u.fullName || u.name || null, days, last_login_at: last }, { tenantId, idempotencyKey: `user.inactive:${uid}:${days}:${last.slice(0, 10)}` })
+    if (r.id) n++
+  }
+  return n
+}
+
+export async function runReengagement(now = new Date()): Promise<{ emailed: number }> {
+  let emailed = 0
+  for (const { user: u, uid, days, last } of await inactiveUsers(now)) {
+    if (!(await claimOnce(`inactive:${uid}:${days}:${last.slice(0, 10)}`))) continue
+    const out = await sendAutomationEmail({
+      to: String(u.email), userId: uid, category: 'engagement',
+      dedupe: { kind: 're-engagement', ref: `${uid}:${days}:${last}` },
+      subject: days >= 30 ? 'We saved your progress — come back anytime' : 'Today’s coding challenge is waiting',
+      heading: days >= 30 ? `It’s been a while, ${nameOf(u)}` : `Ready for a quick one, ${nameOf(u)}?`,
+      bodyText: days >= 30
+        ? 'Your problems, certificates and progress are still here. New practice problems and events were added while you were away.'
+        : 'A ten-minute problem is the easiest way to keep your skills sharp. Today’s challenge is ready.',
+      cta: { label: 'Solve today’s challenge', url: '/dashboard/arena' },
+      reason: 'You got this email because you have a CodeSpectra account and haven’t signed in for a while.',
+    })
+    if (out === 'sent' || out === 'deferred' || out === 'queued') emailed++
   }
   return { emailed }
 }
@@ -155,6 +193,7 @@ async function certificateFollowUp(p: Doc): Promise<unknown> {
   const linkedin = linkedInAddUrl({ title, verifyUrl, issuedAt: String(p.issued_at || new Date().toISOString()), certId: verify.split('/').pop() || undefined })
   return sendAutomationEmail({
     to: String(u.email), userId: String(u.id || u._id), category: 'engagement', onceKey: `cert-follow:${verify || title}`,
+    dedupe: { kind: 'cert-follow', ref: verify || title },
     subject: `Add your “${title}” certificate to LinkedIn`,
     heading: 'Show off your certificate',
     bodyText: `Congratulations again, ${nameOf(u)}! Recruiters can check your “${title}” certificate in one click. Add it to your LinkedIn profile — the details are filled in for you.`,
@@ -217,7 +256,7 @@ export const ENGAGEMENT_AUTOMATIONS: SystemAutomation[] = [
   {
     id: 're-engagement',
     title: 'Re-engagement emails',
-    description: 'Daily: invites people back after 7, 14 and 30 days without signing in (once each), and emits user.inactive for workflows.',
+    description: 'Daily: invites people back after 7, 14 and 30 days without signing in (once each). The user.inactive event for workflows comes from “Event signals”, so it keeps flowing when this is off.',
     group: 'Engagement',
     refs: ['AU-12'],
     cadence: { kind: 'daily', hourUtc: 4 },

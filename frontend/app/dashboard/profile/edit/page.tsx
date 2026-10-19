@@ -107,6 +107,7 @@ export default function EditProfileWizard() {
   const [newEmail, setNewEmail] = useState('')
   const [emailOtpSent, setEmailOtpSent] = useState(false)
   const [emailOtp, setEmailOtp] = useState('')
+  const [emailReauth, setEmailReauth] = useState('')
   const [emailBusy, setEmailBusy] = useState(false)
   const [careerSearch, setCareerSearch] = useState('')
   const [aadhaarDeferredNote, setAadhaarDeferredNote] = useState(true)
@@ -533,9 +534,9 @@ export default function EditProfileWizard() {
                     <div className="flex gap-2 relative">
                       <div className="relative flex-1">
                         <Input type="email" value={basic.email || user?.email || ''} readOnly className="bg-muted text-muted-foreground pr-8 w-full cursor-not-allowed" />
-                        {(basic.email || user?.email) && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label="Verified" />}
+                        {(basic.email || user?.email) && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label="Saved" />}
                       </div>
-                      <Button type="button" variant="outline" className="shrink-0 text-xs text-primary" onClick={() => { setShowEmailUpdate(true); setEmailOtpSent(false); setEmailOtp(''); setNewEmail('') }}>Update</Button>
+                      <Button type="button" variant="outline" className="shrink-0 text-xs text-primary" onClick={() => { setShowEmailUpdate(true); setEmailOtpSent(false); setEmailOtp(''); setNewEmail(''); setEmailReauth('') }}>Update</Button>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -601,7 +602,7 @@ export default function EditProfileWizard() {
                       <div className="flex flex-1 gap-2">
                         <div className="relative flex-1">
                           <Input placeholder="Enter mobile number" value={basic.phone} onChange={e => setBasic({...basic, phone: e.target.value})} className={isPhoneVerified ? "bg-muted text-muted-foreground pr-8 cursor-not-allowed" : "pr-8"} readOnly={isPhoneVerified} />
-                          {isPhoneVerified && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label="Verified" />}
+                          {isPhoneVerified && <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400 absolute right-3 top-1/2 -translate-y-1/2" aria-label="Saved" />}
                         </div>
                         {!isPhoneVerified && basic.phone.length > 5 && (
                           <Button variant="outline" className="shrink-0 text-xs text-primary" onClick={async () => {
@@ -1461,6 +1462,13 @@ export default function EditProfileWizard() {
               <Label>New email</Label>
               <Input aria-label="New email" type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="you@example.com" disabled={emailOtpSent} />
             </div>
+            {!emailOtpSent && (
+              <div className="space-y-2">
+                <Label>Current password or authenticator code</Label>
+                <Input aria-label="Current password or authenticator code" type="password" autoComplete="current-password" value={emailReauth} onChange={e => setEmailReauth(e.target.value)} placeholder="Confirm it's you" />
+                <p className="text-xs text-muted-foreground">Signed in with Google or GitHub and no password? Leave this empty — it works within 15 minutes of signing in.</p>
+              </div>
+            )}
             {emailOtpSent && (
               <div className="space-y-2">
                 <Label>Verification code</Label>
@@ -1473,10 +1481,11 @@ export default function EditProfileWizard() {
                 <Button type="button" disabled={emailBusy || !newEmail.includes('@')} onClick={async () => {
                   setEmailBusy(true)
                   try {
-                    const res = await csrfFetch('/api/user/email-change/request', { method: 'POST', body: JSON.stringify({ email: newEmail.trim() }) })
+                    const res = await csrfFetch('/api/user/email-change/request', { method: 'POST', body: JSON.stringify({ email: newEmail.trim(), password: emailReauth, code: emailReauth }) })
                     const json = await res.json()
                     if (!res.ok) throw new Error(json.error || 'Failed')
                     setEmailOtpSent(true)
+                    setEmailReauth('')
                     addToast({ type: 'success', title: 'Code sent to new email' })
                   } catch (e: any) {
                     addToast({ type: 'error', title: e?.message || 'Could not send code' })
@@ -1507,11 +1516,11 @@ export default function EditProfileWizard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !phoneVerifyBusy && setPhoneOtpSent(false)}>
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Verify mobile</h3>
+              <h3 className="text-base font-semibold">Save mobile number</h3>
               <button aria-label="Close" type="button" onClick={() => setPhoneOtpSent(false)}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">
-              SMS OTP needs a paid gateway. For now we email a code to your current login email to confirm this number. SMS can be added later.
+              We emailed a code to your login email to confirm it's you changing this number. The number is saved, not SMS-verified.
             </p>
             <div className="space-y-2">
               <Label>Code from email</Label>
@@ -1530,7 +1539,7 @@ export default function EditProfileWizard() {
                   if (!res.ok) throw new Error(json.error || 'Invalid code')
                   setIsPhoneVerified(true)
                   setPhoneOtpSent(false)
-                  addToast({ type: 'success', title: 'Mobile verified' })
+                  addToast({ type: 'success', title: 'Mobile number saved' })
                 } catch (e: any) {
                   addToast({ type: 'error', title: e?.message || 'Verification failed' })
                 } finally { setPhoneVerifyBusy(false) }

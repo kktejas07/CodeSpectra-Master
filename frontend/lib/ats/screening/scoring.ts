@@ -5,7 +5,7 @@
  */
 import { backendComplete } from '@/lib/ai/backend'
 import { extractJson, platformModelOverrides } from '@/lib/interviews/ai-mock-engine'
-import { scanPrompt } from '@/lib/ai/prompt-guard'
+import { scanUntrusted as scanPrompt } from '@/lib/ai/untrusted-input'
 import { knockouts, normaliseAnswer } from './answers'
 import type { ScreeningQuestion } from './types'
 

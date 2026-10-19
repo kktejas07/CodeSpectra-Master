@@ -9,10 +9,12 @@ import Link from 'next/link'
 import { LearnPostCardView } from '@/components/learn/post-card'
 import type { LearnPostCard } from '@/lib/learn/types'
 
-export function LearnSection() {
-  const [posts, setPosts] = useState<LearnPostCard[]>([])
+export function LearnSection({ initialPosts }: { initialPosts?: LearnPostCard[] } = {}) {
+  const [posts, setPosts] = useState<LearnPostCard[]>(initialPosts ?? [])
 
   useEffect(() => {
+    // Server-loaded (landing page) — already in the HTML, no client refetch.
+    if (initialPosts) return
     let alive = true
     const get = (qs: string) => fetch(`/api/learn?${qs}`).then((r) => (r.ok ? r.json() : { items: [] })).then((d) => (d.items ?? []) as LearnPostCard[]).catch(() => [] as LearnPostCard[])
     Promise.all([get('featured=1&limit=3'), get('limit=3')]).then(([featured, latest]) => {
@@ -21,7 +23,7 @@ export function LearnSection() {
       setPosts([...featured, ...latest].filter((p) => !seen.has(p.slug) && seen.add(p.slug)).slice(0, 3))
     })
     return () => { alive = false }
-  }, [])
+  }, [initialPosts])
 
   if (posts.length === 0) return null
 

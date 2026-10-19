@@ -17,12 +17,13 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ScoresPanel } from '@/components/admin/analytics/scores-panel'
 import { ProctoringPanel } from '@/components/admin/analytics/proctoring-panel'
+import { InsightsPanel } from '@/components/admin/analytics/insights-panel'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import {
   BarChart3, Users, Eye, Activity, Globe, Monitor, Smartphone, Tablet,
   RefreshCw, Loader2, TrendingUp, ArrowUp, ArrowDown,
   Search, Download, Trash2, Zap, MousePointer, Gauge, Filter, UserCheck,
-  Award, Shield,
+  Award, Shield, Sparkles,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -215,7 +216,7 @@ export default function AnalyticsPage() {
   const gate = usePageGuard('/dashboard/admin/analytics')
 
   const [range, setRange] = useState('24h')
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('insights')
 
   const [overview, setOverview] = useState<OverviewData | null>(null)
   const [pagesData, setPagesData] = useState<PagesData | null>(null)
@@ -559,6 +560,9 @@ export default function AnalyticsPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1">
+          <TabsTrigger value="insights" className="gap-1.5">
+            <Sparkles className="h-4 w-4" /> Insights
+          </TabsTrigger>
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -596,6 +600,11 @@ export default function AnalyticsPage() {
             <Shield className="h-4 w-4" /> Proctoring
           </TabsTrigger>
         </TabsList>
+
+        {/* ─── Insights: KPIs, acquisition, content, usage, funnels, cohorts, revenue, AI, vitals ── */}
+        <TabsContent value="insights" className="space-y-6">
+          <InsightsPanel />
+        </TabsContent>
 
         {/* ─── Tab 1: Overview ─────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-6">

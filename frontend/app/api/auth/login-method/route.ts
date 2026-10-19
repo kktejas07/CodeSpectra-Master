@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { updateUserLastLogin } from '@/lib/db/admin'
+import { recordLoginMethod } from '@/lib/db/admin'
 import { createUserSession } from '@/lib/db/sessions'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
@@ -18,7 +18,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    await updateUserLastLogin(user.id, method as 'google' | 'github' | 'email' | 'sso')
+    // SEC-011: label only. lastLoginAt / reauth_at are set by the real sign-in
+    // routes; a session alone must not refresh "signed in recently".
+    await recordLoginMethod(user.id, method as 'google' | 'github' | 'email' | 'sso')
 
     const ip = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
     const ua = request.headers.get('user-agent') || 'Unknown device'

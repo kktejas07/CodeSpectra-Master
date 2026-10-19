@@ -41,7 +41,8 @@ export function tenantFilter(caller: AgentCaller): Record<string, unknown> {
 /** Same rule as lib/exam-access isTenantStaff, for a loaded record. */
 export function canManage(caller: AgentCaller, doc: { tenant_id?: unknown } | null | undefined): boolean {
   if (!doc) return false
-  if (caller.role === 'superadmin') return true
+  // AGT-004: a superadmin scoped to one organisation stays inside it (plus platform records).
+  if (caller.role === 'superadmin') return !caller.tenantId || doc.tenant_id == null || doc.tenant_id === '' || doc.tenant_id === caller.tenantId
   return caller.role === 'tenant_admin' && !!caller.tenantId && doc.tenant_id === caller.tenantId
 }
 

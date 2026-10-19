@@ -170,7 +170,7 @@ function PricingContent() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: couponCode }),
+        body: JSON.stringify({ code: couponCode, target: 'plans', currency: checkoutPlan?.currency ?? planCurrency ?? undefined }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {

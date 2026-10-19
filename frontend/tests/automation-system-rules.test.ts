@@ -208,7 +208,8 @@ describe('certificates (AU-16) and quotas', () => {
   })
   it('keys quotas per tenant and day', () => {
     expect(quotaKey('t1', 'emails', D('2026-01-01T23:59:00Z'))).toBe('t1:2026-01-01:emails')
-    expect(overLimit(1001, 'emails')).toBe(true)
-    expect(overLimit(1000, 'emails')).toBe(false)
+    // AUTO-012: organisation workflows send from the platform's domain — 500 a day.
+    expect(overLimit(501, 'emails')).toBe(true)
+    expect(overLimit(500, 'emails')).toBe(false)
   })
 })

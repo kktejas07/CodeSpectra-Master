@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { notifySuperAdmins } from '@/lib/notifications'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 export async function GET(request: NextRequest) {
   const user = await getAPIUser()
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     await db.collection('courses').insertOne(newCourse)
+    knowledgeOnLibraryChange('course', newCourse.id)
     
     // Send notification
     await notifySuperAdmins({

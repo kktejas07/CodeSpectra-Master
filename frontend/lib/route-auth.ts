@@ -195,6 +195,8 @@ export async function requireAdmin() {
   if (user.role === 'tenant_admin' && !user.tenantId) {
     return { error: 'Forbidden - Admin access required', status: 403 as const }
   }
+  const tfa = await admin2faApiBlock(user)
+  if (tfa) return tfa
   return { user }
 }
 
@@ -206,7 +208,32 @@ export async function requireSuperAdmin() {
   if (user.role !== 'superadmin') {
     return { error: 'Forbidden - Superadmin access required', status: 403 as const }
   }
+  const tfa = await admin2faApiBlock(user)
+  if (tfa) return tfa
   return { user }
+}
+
+/**
+ * SEC-009 / A-041: required admin 2FA applies to the admin API too, not only
+ * to pages — after the same grace period a stolen admin password alone can no
+ * longer drive /api/admin/*. The 2FA setup routes use requireAuth, so the
+ * admin can always turn it on.
+ */
+export async function admin2faApiBlock(user: Pick<APIUser, 'id' | 'role'>): Promise<{ error: string; status: 403; code: 'admin_2fa_required' } | null> {
+  try {
+    const { getAdmin2faState } = await import('@/lib/admin-2fa')
+    if ((await getAdmin2faState(user.id, user.role)).status === 'required') {
+      return {
+        error: 'Turn on two-factor authentication to use admin tools (Account → Security).',
+        status: 403 as const,
+        code: 'admin_2fa_required' as const,
+      }
+    }
+  } catch (e) {
+    // Settings/DB unreachable: same behaviour as the page gate (don't lock admins out).
+    console.error('[route-auth] admin 2FA check failed:', (e as Error)?.message)
+  }
+  return null
 }
 
 /**

@@ -19,7 +19,7 @@ import { notify } from '@/lib/notifications'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso, productsCol, sellersCol } from './db'
 import { orders, type OrderDoc, type OrderLineDoc } from './order-doc'
-import { fetchGatewayState, isMarketplaceTxn } from './gateways'
+import { closePaymentPage, fetchGatewayState, isMarketplaceTxn } from './gateways'
 import { recordSale } from './ledger'
 import { releaseAll, takeOne } from './stock'
 import { linePaid } from './pricing'
@@ -92,6 +92,14 @@ export async function runPostPayment(orderId: string): Promise<void> {
   const col = await orders()
   let order = await col.findOne({ id: orderId }, { projection: { _id: 0 } })
   if (!order || order.payment.status === 'pending' || order.payment.status === 'failed') return
+
+  // A checkout the buyer replaced with a newer one was still paid in its old tab (PhonePe can't
+  // be closed, or Stripe's expire failed). The newer order is the real one: refund this in full
+  // instead of fulfilling the same cart twice (CORE-022).
+  if (shouldRefundReplaced(order)) {
+    await refundReplacedOrder(orderId)
+    return
+  }
 
   // A. Stock + slots. Normal case: the checkout holds become permanent. Late payment after
   //    the holds were released: try to take them again; what can't be honoured is refunded.
@@ -195,6 +203,29 @@ export async function runPostPayment(orderId: string): Promise<void> {
   }
 }
 
+/** Pure: a paid order that had been cancelled because the buyer started a newer checkout. */
+export function shouldRefundReplaced(order: Pick<OrderDoc, 'cancelled_reason' | 'payment'>): boolean {
+  return order.cancelled_reason === 'replaced' && order.payment.status !== 'pending' && order.payment.status !== 'failed'
+}
+
+/** Full refund of a late-paid replaced order; nothing is fulfilled or re-reserved. Idempotent. */
+async function refundReplacedOrder(orderId: string): Promise<void> {
+  const col = await orders()
+  const order = await col.findOne({ id: orderId }, { projection: { _id: 0 } })
+  if (!order) return
+  // The sale is booked first so the refund entries have something to reverse (ledger stays balanced).
+  const marker = `refund_replaced-${orderId}`
+  if (!order.post?.[marker]) await recordSale(order)
+  const open = order.lines.filter((l) => !l.refund_lock && !(l.refunded_amount ?? 0))
+  const { refundLines } = await import('./orders')
+  if (open.length || order.post?.[marker]) {
+    await refundLines(orderId, open.map((l) => l.id), open.reduce((a, l) => a + linePaid(l), 0), `replaced-${orderId}`, { reason: 'replaced_checkout', restock: false })
+  }
+  if (await claimStep(orderId, 'replaced_email')) {
+    await notify({ user_id: order.buyer_id, type: 'mkt.refund_processed', title: `Order ${order.number} refunded`, message: 'You paid for an older checkout after starting a new one. Your newer order is the one we keep, so this payment has been refunded in full.', link: `/dashboard/orders/${order.id}`, icon: 'alert-circle' }).catch(() => null)
+  }
+}
+
 /** Full refund of a paid order that carried a discount it can't redeem; nothing is fulfilled. Idempotent. */
 async function refundCouponConflict(orderId: string): Promise<void> {
   const col = await orders()
@@ -228,6 +259,8 @@ async function release(orderId: string, why: 'failed' | 'expired' | 'replaced' |
   await releaseBookings(orderId)
   // The coupon use reserved for this order goes back (a later new checkout may use it).
   if (order.coupon) await releaseCouponReservation(order.coupon.id, order.buyer_id, orderId).catch((e) => console.error('[marketplace] coupon release failed', (e as Error)?.message))
+  // CORE-022: the buyer started a new checkout — close the old payment page so it can't be paid too.
+  if (why === 'replaced') await closePaymentPage(order)
   if (why === 'failed' && (await claimStep(orderId, 'failed_email'))) {
     await sendPaymentFailed(order)
     await notify({ user_id: order.buyer_id, type: 'mkt.payment_failed', title: 'Payment did not go through', message: `Nothing was charged for order ${order.number}. Your cart is still saved.`, link: '/marketplace/cart', icon: 'alert-circle' }).catch(() => null)

@@ -27,16 +27,42 @@ import {
   touchConversation,
   type AgentActionDoc,
 } from '@/lib/agent/store'
+import type { UsageEntry } from '@/lib/agent/metering'
 
 export interface ActionDeps {
   getTool: (name: string) => AgentTool | undefined
   audit?: (actor: { id: string }, action: string, resource: string, detail: string, severity: 'info' | 'warning' | 'critical') => Promise<void>
   now?: () => Date
+  /** Meter AI generation that propose() runs during an edit (AGT-002). */
+  meter?: <T>(fn: () => Promise<T>) => Promise<{ value: T; usage: Omit<UsageEntry, 'kind'>[] }>
+  /** Crash recovery: the ledger row of an action (lib/agent/tools/ledger.ts). */
+  ledgerFor?: (actionId: string) => Promise<{ status: string; result?: { ok: boolean; message: string; link?: string; data?: unknown } } | null>
 }
 
 export type ActionOutcome =
-  | { ok: true; status: 200; action: ProposedAction; replayed?: boolean }
+  | { ok: true; status: 200; action: ProposedAction; replayed?: boolean; usage?: Omit<UsageEntry, 'kind'>[] }
   | { ok: false; status: 400 | 403 | 404 | 409 | 410 | 422; error: string; action?: ProposedAction }
+
+/** An action stuck in 'executing' longer than this is recovered (AGT-003). */
+export const STALE_EXECUTING_MS = 15 * 60 * 1000
+
+/**
+ * AGT-003: a confirmed action whose process died mid-run stays 'executing'.
+ * After STALE_EXECUTING_MS: if the ledger recorded a result, finish the action
+ * with it; otherwise put it back to 'pending' so the admin can confirm again
+ * (the ledger re-claims the stale run, so nothing runs twice concurrently).
+ */
+export async function recoverStaleAction(caller: AgentCaller, doc: AgentActionDoc, deps: Pick<ActionDeps, 'ledgerFor'>, now: Date): Promise<AgentActionDoc | null> {
+  if (doc.status !== 'executing' && doc.status !== 'confirmed') return null
+  const since = Date.parse(doc.executing_at || doc.updated_at || doc.created_at)
+  if (!Number.isFinite(since) || now.getTime() - since < STALE_EXECUTING_MS) return null
+  const ledger = await deps.ledgerFor?.(doc.id).catch(() => null)
+  if (ledger?.status === 'done' && ledger.result) {
+    const r = ledger.result
+    return transitionAction(caller, doc.id, doc.status, { status: r.ok ? 'done' : 'failed', result: { ok: !!r.ok, message: String(r.message || '').slice(0, 500), ...(r.link ? { link: r.link } : {}) }, finished_at: now.toISOString() })
+  }
+  return transitionAction(caller, doc.id, doc.status, { status: 'pending', expires_at: new Date(now.getTime() + PROPOSAL_TTL_MS).toISOString() })
+}
 
 function strip(doc: AgentActionDoc): ProposedAction {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -91,10 +117,17 @@ function resolveTool(deps: ActionDeps, name: string): AgentTool | null {
   return tool
 }
 
-export async function confirmAction(caller: AgentCaller, id: string, deps: ActionDeps): Promise<ActionOutcome> {
+export async function confirmAction(caller: AgentCaller, id: string, deps: ActionDeps, opts: { fromBundle?: boolean } = {}): Promise<ActionOutcome> {
   const now = deps.now?.() ?? new Date()
   await expireStaleActions(now).catch(() => 0)
-  const existing = await getAction(caller, id)
+  let existing = await getAction(caller, id)
+  if (existing && (existing.status === 'executing' || existing.status === 'confirmed')) {
+    existing = (await recoverStaleAction(caller, existing, deps, now)) ?? existing
+  }
+  // Bundled steps run only from the bundle, in order (lib/agent/bundles.ts).
+  if (existing?.bundle_id && !opts.fromBundle && existing.status === 'pending') {
+    return { ok: false, status: 409, error: 'This step is part of a bundle. Confirm the bundle to run its steps in order.', action: strip(existing) }
+  }
   // Idempotent replay: a finished action returns its stored result.
   if (existing && (existing.status === 'done' || existing.status === 'failed')) {
     return { ok: true, status: 200, action: strip(existing), replayed: true }
@@ -190,12 +223,20 @@ export async function editAction(caller: AgentCaller, id: string, rawArgs: unkno
   if (!rawArgs || typeof rawArgs !== 'object' || Array.isArray(rawArgs)) {
     return { ok: false, status: 422, error: 'Details must be an object.', action: strip(doc) }
   }
-  const ctx: ToolContext = { caller: executionCaller(caller, doc), conversationId: doc.conversationId }
+  // priorArgs lets the tool keep its sealed AI draft when the generation inputs did not change (AGT-002).
+  const ctx: ToolContext = { caller: executionCaller(caller, doc), conversationId: doc.conversationId, priorArgs: doc.args }
   let args: Record<string, unknown>
   let preview: { title: string; preview: Record<string, unknown> }
+  let usage: Omit<UsageEntry, 'kind'>[] = []
   try {
     args = (await tool.parse(rawArgs, ctx)) as Record<string, unknown>
-    preview = await tool.propose(args, ctx)
+    if (deps.meter) {
+      const m = await deps.meter(() => tool.propose!(args, ctx))
+      preview = m.value
+      usage = m.usage
+    } else {
+      preview = await tool.propose(args, ctx)
+    }
   } catch (e) {
     if (e instanceof ToolPermissionError) return { ok: false, status: 403, error: e.message, action: strip(doc) }
     const msg = e instanceof ToolInputError ? e.message : 'These details could not be used.'
@@ -211,5 +252,5 @@ export async function editAction(caller: AgentCaller, id: string, rawArgs: unkno
     const cur = await getAction(caller, id)
     return { ok: false, status: 409, error: 'This proposal changed while you were editing it.', ...(cur ? { action: strip(cur) } : {}) }
   }
-  return { ok: true, status: 200, action: strip(updated) }
+  return { ok: true, status: 200, action: strip(updated), ...(usage.length ? { usage } : {}) }
 }

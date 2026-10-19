@@ -302,8 +302,9 @@ export async function parseResumeText(
   if (opts.ai === false || clipped.trim().length < 40) return { parsed: heur, flags: [] }
   let flags: string[] = []
   try {
-    const { scanPrompt } = await import('@/lib/ai/prompt-guard')
-    flags = scanPrompt(clipped).reasons
+    // Untrusted-input scan = prompt-guard + screening/grading manipulation (AGT-020 hardening).
+    const { scanUntrusted } = await import('@/lib/ai/untrusted-input')
+    flags = scanUntrusted(clipped).reasons
     // ponytail: a flagged résumé is still parsed — just not by the model.
     if (flags.length) return { parsed: heur, flags }
     const [{ backendComplete }, { platformModelOverrides, extractJson }] = await Promise.all([

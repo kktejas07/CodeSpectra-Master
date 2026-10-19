@@ -46,6 +46,7 @@ function parseJsonObject(res: { ok: boolean; json?: unknown; text?: string; raw?
 async function rewriteTitle(originalTitle: string): Promise<string> {
   try {
     const res = await backendComplete({
+      cache: false, // AGT-022: a generator must never replay a cached batch
       systemMessage: `You are an expert editor. Rewrite the given title to be unique, engaging, and completely different from the original.
 Rules:
 - Keep the core topic/meaning
@@ -102,6 +103,7 @@ async function extractFacts(args: {
 
   try {
     const res = await backendComplete({
+      cache: false, // AGT-022: a generator must never replay a cached batch
       systemMessage: `You are a research desk. Extract ONLY verifiable facts. Return strict JSON:
 {
   "angle": "one-line angle for students/builders",
@@ -141,6 +143,7 @@ async function writePost(args: {
     .join('\n')
 
   const res = await backendComplete({
+    cache: false, // AGT-022: a generator must never replay a cached batch
     systemMessage: `You are a CodeSpectra staff writer. Write ONLY from facts. Do not invent.
 Audience: Indian students + early-career engineers.
 Structure: <h2>What happened</h2><p>...</p><h2>Why builders should care</h2><p>...</p><h2>What to practice this week</h2><ul><li>...</li></ul><h2>Sources</h2><ul><li><a href="URL">label</a></li></ul>

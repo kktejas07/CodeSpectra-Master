@@ -11,10 +11,12 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { api, StatusBadge } from '@/components/marketplace/seller/shared'
 import { SellerOverview } from '@/components/marketplace/seller/overview'
+import { SellerSalesAnalytics } from '@/components/marketplace/seller/sales-analytics'
 import { SellerProducts } from '@/components/marketplace/seller/products'
 import { SellerBookings, SellerOrders, SellerReturns } from '@/components/marketplace/seller/fulfilment'
 import { SellerEarnings, SellerPayouts, SellerReviews } from '@/components/marketplace/seller/money'
 import { SellerSettings, type SellerMe } from '@/components/marketplace/seller/settings'
+import { SellerCoupons } from '@/components/marketplace/seller/coupons'
 
 interface Me {
   seller: SellerMe | null
@@ -25,8 +27,8 @@ interface Me {
 }
 
 const TABS = [
-  ['overview', 'Overview'], ['products', 'Products'], ['orders', 'Orders'], ['bookings', 'Bookings'], ['returns', 'Returns'],
-  ['earnings', 'Earnings'], ['payouts', 'Payouts'], ['reviews', 'Reviews'], ['settings', 'Settings'],
+  ['overview', 'Overview'], ['analytics', 'Analytics'], ['products', 'Products'], ['orders', 'Orders'], ['bookings', 'Bookings'], ['returns', 'Returns'],
+  ['earnings', 'Earnings'], ['payouts', 'Payouts'], ['coupons', 'Coupons'], ['reviews', 'Reviews'], ['settings', 'Settings'],
 ] as const
 
 function SellerDashboard() {
@@ -102,12 +104,14 @@ function SellerDashboard() {
           </TabsList>
         </div>
         <TabsContent value="overview"><SellerOverview asPlatform={asPlatform} onGo={(t) => go(t)} /></TabsContent>
+        <TabsContent value="analytics"><SellerSalesAnalytics asPlatform={asPlatform} /></TabsContent>
         <TabsContent value="products"><SellerProducts asPlatform={asPlatform} editId={sp.get('edit')} currencyHint={currencyHint} /></TabsContent>
         <TabsContent value="orders"><SellerOrders asPlatform={asPlatform} /></TabsContent>
         <TabsContent value="bookings"><SellerBookings asPlatform={asPlatform} /></TabsContent>
         <TabsContent value="returns"><SellerReturns asPlatform={asPlatform} /></TabsContent>
         <TabsContent value="earnings"><SellerEarnings asPlatform={asPlatform} /></TabsContent>
         <TabsContent value="payouts"><SellerPayouts asPlatform={asPlatform} minPayout={me.min_payout} payoutReady={s.payout.verified && !!s.payout.method} /></TabsContent>
+        <TabsContent value="coupons"><SellerCoupons asPlatform={asPlatform} defaultCurrency={currencyHint} /></TabsContent>
         <TabsContent value="reviews"><SellerReviews asPlatform={asPlatform} /></TabsContent>
         <TabsContent value="settings"><SellerSettings seller={s} asPlatform={asPlatform} effectiveBps={me.effective_commission_bps} stripeConfigured={me.stripe_configured} onSaved={load} /></TabsContent>
       </Tabs>

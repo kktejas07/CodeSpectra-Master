@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from '@/components/ui/switch'
-import { nextStepId, STEP_TYPES, stepTypeDef, type StepDef } from '@/lib/automation/steps-catalog'
+import { DEFAULT_STEP_RETRIES, nextStepId, STEP_TYPES, stepTypeDef, type StepDef } from '@/lib/automation/steps-catalog'
 import type { Condition } from '@/lib/automation/conditions'
 import { ConditionEditor, JsonField, selectClass, VarField } from './fields'
 import { BUILTIN_VARS, priorStepVariables, triggerVariables, type TriggerInfo } from './variables'
@@ -116,7 +116,7 @@ function StepForm({ step, onChange, root, trigger }: { step: StepDef; onChange: 
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground" htmlFor={`${step.id}-retries`}>Retries (0–5)</label>
-              <Input id={`${step.id}-retries`} inputMode="numeric" value={String(cfg.retries ?? 2)} onChange={(e) => setCfg('retries', Math.max(0, Math.min(5, Number(e.target.value) || 0)))} className="h-9 text-sm" />
+              <Input id={`${step.id}-retries`} inputMode="numeric" value={String(cfg.retries ?? DEFAULT_STEP_RETRIES)} onChange={(e) => setCfg('retries', Math.max(0, Math.min(5, Number(e.target.value) || 0)))} className="h-9 text-sm" />
             </div>
             <div className="space-y-1">
               <label className="text-xs text-muted-foreground" htmlFor={`${step.id}-timeout`}>Timeout (seconds)</label>

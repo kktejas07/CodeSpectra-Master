@@ -16,6 +16,8 @@ import {
 import { ok, fail, type ServiceResult, type ServiceUser } from './result'
 
 /** Create a codeathon (POST /api/codeathons). */
+import { codeathonCreateDefaults } from '@/lib/hackathons/tenant-scope'
+
 export async function createCodeathon(user: ServiceUser, body: Record<string, any>): Promise<ServiceResult<Record<string, unknown>>> {
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') return fail(403, 'Forbidden')
   // A company admin without an organization would create an unowned (platform) event.
@@ -32,7 +34,8 @@ export async function createCodeathon(user: ServiceUser, body: Record<string, an
     maxParticipants: body.maxParticipants || 0,
     startDate: body.startDate || '',
     endDate: body.endDate || '',
-    status: body.status || 'upcoming',
+    // CORE-014: new codeathons start as drafts (hidden from participants) unless published.
+    ...codeathonCreateDefaults(user, body),
     participants: 0,
     prizePool: body.prizePool || '',
     cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,

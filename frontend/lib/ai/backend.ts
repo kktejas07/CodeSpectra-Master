@@ -16,11 +16,11 @@
  * - Fallback to environment variables
  */
 
-const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
-const BACKEND = process.env.INTERNAL_BACKEND_URL
-  || ((process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production')
-    ? PROD_BACKEND
-    : 'http://localhost:8001')
+import { internalBackendUrl } from '@/lib/ai/internal-backend-url'
+import { estimateTokens, reportAiUsage } from '@/lib/ai/usage-meter'
+
+// AGT-027: INTERNAL_BACKEND_URL is required in production (no baked-in host).
+const backendBase = () => internalBackendUrl()
 
 async function getBackendSecrets(): Promise<{
   anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string; groq: string
@@ -116,7 +116,7 @@ interface ChatStreamArgs {
  */
 export async function backendChatStream(args: ChatStreamArgs): Promise<Response> {
   const headers = await backendHeaders({ apiKeyOverride: args.apiKeyOverride })
-  const res = await fetch(`${BACKEND}/internal/ai/chat`, {
+  const res = await fetch(`${backendBase()}/internal/ai/chat`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -250,6 +250,15 @@ export async function backendComplete(args: {
   try {
     const res = await backendCompleteWithFallback(args)
     fireAndForgetUsage(args, res, Date.now() - start, true, injectionFlags)
+    // AGT-002: charge the real tokens to whoever metered this call (e.g. an agent proposal).
+    const tk = extractUsageTokens(res)
+    reportAiUsage({
+      provider: res.provider || args.providerOverride || 'unknown',
+      model: res.model || args.modelOverride || 'unknown',
+      inputTokens: tk.promptTokens ?? estimateTokens(`${args.systemMessage}\n${args.userMessage}`),
+      outputTokens: tk.completionTokens ?? estimateTokens(res.raw || res.text || (res.json ? JSON.stringify(res.json) : '')),
+      feature: args.feature,
+    })
     if (cacheable && cacheKey && res.ok && (res.text !== undefined || res.json !== undefined)) {
       try {
         const { setCachedCompletion } = await import('@/lib/ai/semantic-cache')
@@ -271,7 +280,7 @@ export async function backendGet<T = unknown>(
 ): Promise<T> {
   const h = await backendHeaders()
   const allHeaders = { ...h, ...headers }
-  const res = await fetch(`${BACKEND}${path}`, {
+  const res = await fetch(`${backendBase()}${path}`, {
     method: 'GET',
     headers: allHeaders,
   })
@@ -287,7 +296,7 @@ export async function backendPost<T = unknown>(
   opts?: { providerOverride?: string; modelOverride?: string; modelRole?: 'reasoning' | 'fast'; endpointOverride?: string; apiKeyOverride?: string },
 ): Promise<T> {
   const headers = await backendHeaders({ apiKeyOverride: opts?.apiKeyOverride })
-  const res = await fetch(`${BACKEND}${path}`, {
+  const res = await fetch(`${backendBase()}${path}`, {
     method: 'POST',
     headers,
     body: JSON.stringify({

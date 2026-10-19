@@ -202,6 +202,8 @@ export function builtinVars(now: Date, appUrl: string): Record<string, string> {
     sevenDaysAgo: ago(7),
     thirtyDaysAgo: ago(30),
     oneHourAgo: new Date(now.getTime() - 3_600_000).toISOString(),
+    inOneHour: new Date(now.getTime() + 3_600_000).toISOString(),
+    inOneDay: new Date(now.getTime() + 86_400_000).toISOString(),
     app_url: appUrl.replace(/\/+$/, ''),
   }
 }

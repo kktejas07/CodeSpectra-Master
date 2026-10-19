@@ -13,6 +13,7 @@ import { parseMetaWebhook } from '@/lib/ats/screening/webhook-parse'
 import { handleCallStatus, handleInbound, tickScreening } from '@/lib/ats/screening/machine'
 import { claimEvent, releaseEvent } from '@/lib/ats/screening/store'
 import { handleWhatsAppInbound } from '@/lib/subscriptions'
+import { applyWhatsAppKeyword } from '@/lib/whatsapp-send'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,6 +61,9 @@ export async function POST(req: NextRequest) {
       // redelivery the screening result is unknown, so no keyword reply is sent (the opt-out
       // itself is still applied).
       await run(`wa:subs:${m.id}`, () => handleWhatsAppInbound({ from: m.from, text: m.text || m.replyTitle || null, at: m.at }, { replied: screening === undefined || screening === 'handled' }))
+      // STOP / START for every WhatsApp message we send (preferences, candidates, sellers, the
+      // phone-level opt-out list — AUTO-061). Its own claimed event, so a failed write is redelivered.
+      await run(`wa:optout:${m.id}`, () => applyWhatsAppKeyword({ from: m.from, text: m.text || m.replyTitle || null, at: m.at }))
     }
     for (const c of calls) await run(`wa:${c.eventId}`, () => handleCallStatus(c))
   } catch (e) {

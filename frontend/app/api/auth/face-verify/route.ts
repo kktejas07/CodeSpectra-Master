@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     {
       const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
       const { signInBlock } = await import('@/lib/auth-policy')
-      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified }, { method: 'face' })
+      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified, email_verification_required: user.email_verification_required }, { method: 'face' })
       if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
     }
     const trusted = !!(await trustedDeviceFor(uid))

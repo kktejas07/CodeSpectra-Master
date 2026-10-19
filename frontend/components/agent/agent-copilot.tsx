@@ -14,12 +14,13 @@ import { useAgentChat } from './use-agent-chat'
 import { ConversationList } from './conversation-list'
 import { AssistantMessage, UserBubble } from './agent-message'
 import { TenantPicker } from './tenant-picker'
+import { UsagePanel } from './usage-panel'
 
 export const STARTER_PROMPTS = [
   'Create a backend engineer test from this job description',
-  'Set up a campus hackathon next month',
-  'Who should we shortlist for the Java test?',
-  "Send reminders to candidates who haven't started",
+  'Set up a campus drive next month: a test, a hackathon and invites',
+  'Who should we shortlist for the Backend Engineer job?',
+  'Every Monday at 9:00, email me new applicants',
 ]
 
 export function AgentStatusBadges({ chat }: { chat: ReturnType<typeof useAgentChat> }) {
@@ -43,6 +44,7 @@ export function AgentStatusBadges({ chat }: { chat: ReturnType<typeof useAgentCh
             : 'No model is set in the platform AI settings, so the copilot uses the first available backup model.'}
         </TooltipContent>
       </Tooltip>
+      <UsagePanel isSuper={chat.isSuper} budget={chat.status?.budget ?? null} />
       {credits && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -98,6 +100,7 @@ export function AgentCopilot({ chat }: { chat: ReturnType<typeof useAgentChat> }
   )
 
   const empty = !chat.items.length && !chat.loadingConv
+  const lastAssistantId = [...chat.items].reverse().find((i) => i.kind === 'assistant')?.id
 
   return (
     <div className="grid min-h-[calc(100dvh-13rem)] gap-4 lg:h-[calc(100dvh-13rem)] lg:grid-cols-[16rem_1fr]">
@@ -169,9 +172,15 @@ export function AgentCopilot({ chat }: { chat: ReturnType<typeof useAgentChat> }
                     key={it.id}
                     item={it}
                     actions={chat.actions}
+                    bundles={chat.bundles}
                     onConfirm={chat.confirm}
                     onCancel={chat.cancel}
                     onEdit={chat.editArgs}
+                    onConfirmBundle={chat.confirmBundle}
+                    onCancelBundle={chat.cancelBundle}
+                    loadEditForm={chat.loadEditForm}
+                    onAnswer={(t) => { stickRef.current = true; void chat.send(t) }}
+                    canAnswer={!chat.streaming && it.id === lastAssistantId}
                   />
                 ),
               )}

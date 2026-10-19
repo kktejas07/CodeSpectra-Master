@@ -136,8 +136,85 @@ const RESUME_DRAFTS: Doc[] = [
     skills: 'Python, Spark, Airflow, SQL',
   } },
 ]
+/**
+ * RAG-004: only résumés a candidate attached to an organisation's job posting
+ * are indexed for it. The drafts above are private and must never be indexed —
+ * the uploaded résumés below (same content) are what each person shared.
+ * u-lena has a private draft only (an ACL probe checks it stays out).
+ */
+RESUME_DRAFTS.push({ user_id: 'u-lena', updated_at: iso('2026-08-05'), data: {
+  summary: 'Embedded firmware engineer writing Rust for battery management systems.',
+  skills: 'Rust, embedded C, CAN bus, RTOS',
+} })
+
 const RESUMES: Doc[] = [
-  { user_id: 'u-omar', is_primary: true, uploaded_at: iso('2026-08-20'), file_name: 'omar-cv.pdf', text_content: 'Omar Haddad. Business intelligence analyst. Power BI, SQL Server, SSIS. Built finance KPI dashboards. omar@example.test +91 98765 43210' },
+  { id: 'r-priya', user_id: 'u-priya', is_primary: true, uploaded_at: iso('2026-09-01'), file_name: 'priya-raman.pdf', text_content: 'Priya Raman. Bengaluru. Backend engineer with six years building payment systems in Go and Node.js. Senior software engineer at Razorpay (2022–2026): owned the refunds service; moved settlement jobs to Kubernetes; cut p99 latency of the payouts API by 40%. Software engineer at Freshworks (2019–2022): built webhook delivery with retries and idempotency keys. B.Tech Computer Science, NIT Trichy, 2019. Skills: Go, Node.js, PostgreSQL, Kafka, Kubernetes, Redis. priya@example.test +91 90000 11111' },
+  { id: 'r-arjun', user_id: 'u-arjun', is_primary: true, uploaded_at: iso('2026-08-11'), file_name: 'arjun-mehta.pdf', text_content: 'Arjun Mehta. Mobile developer focused on React Native apps for e-commerce. Mobile developer at Meesho (2021–2026): shipped the React Native checkout; Expo, Redux Toolkit, offline caching. Skills: React Native, TypeScript, Expo, Redux.' },
+  { id: 'r-mei', user_id: 'u-mei', is_primary: true, uploaded_at: iso('2026-07-30'), file_name: 'mei-chen.pdf', text_content: 'Mei Chen. Data analyst who builds Tableau dashboards and writes a lot of SQL. Analyst at Swiggy (2023–2026): weekly retention dashboards in Tableau; dbt models; A/B test readouts. Skills: SQL, Tableau, dbt, Python, Excel.' },
+  { id: 'r-sam', user_id: 'u-sam', is_primary: true, uploaded_at: iso('2026-08-02'), file_name: 'sam-patel.pdf', text_content: 'Sam Patel. Generalist engineer moving into data engineering; Airflow and Spark pipelines. Engineer at Zoho (2020–2026): Airflow DAGs, Spark batch jobs, internal admin tools. Skills: Python, Spark, Airflow, SQL.' },
+  { id: 'r-omar', user_id: 'u-omar', is_primary: true, uploaded_at: iso('2026-08-20'), file_name: 'omar-cv.pdf', text_content: 'Omar Haddad. Business intelligence analyst. Power BI, SQL Server, SSIS. Built finance KPI dashboards. omar@example.test +91 98765 43210' },
+]
+
+const JOB_POSTINGS: Doc[] = [
+  { id: 'acme-jp-backend', tenant_id: TENANT_A, title: 'Backend engineer (payments)', is_active: true },
+  { id: 'acme-jp-mobile', tenant_id: TENANT_A, title: 'React Native developer', is_active: true },
+  { id: 'globex-jp-analyst', tenant_id: TENANT_B, title: 'Data analyst II', is_active: true },
+  { id: 'globex-jp-dataeng', tenant_id: TENANT_B, title: 'Data engineer', is_active: true },
+]
+
+const JOB_APPLICATIONS: Doc[] = [
+  { id: 'ja-1', job_id: 'acme-jp-backend', user_id: 'u-priya', resume_id: 'r-priya', status: 'submitted', applied_at: iso('2026-09-02') },
+  { id: 'ja-2', job_id: 'acme-jp-mobile', user_id: 'u-arjun', resume_id: 'r-arjun', status: 'submitted', applied_at: iso('2026-09-02') },
+  { id: 'ja-3', job_id: 'acme-jp-backend', user_id: 'u-sam', resume_id: 'r-sam', status: 'submitted', applied_at: iso('2026-09-03') },
+  { id: 'ja-4', job_id: 'globex-jp-dataeng', user_id: 'u-sam', resume_id: 'r-sam', status: 'submitted', applied_at: iso('2026-09-03') },
+  { id: 'ja-5', job_id: 'globex-jp-analyst', user_id: 'u-mei', resume_id: 'r-mei', status: 'submitted', applied_at: iso('2026-09-04') },
+  { id: 'ja-6', job_id: 'globex-jp-analyst', user_id: 'u-omar', resume_id: 'r-omar', status: 'submitted', applied_at: iso('2026-09-04') },
+  // u-lena applied without attaching a résumé: nothing of hers is indexed.
+  { id: 'ja-7', job_id: 'acme-jp-backend', user_id: 'u-lena', resume_id: null, status: 'submitted', applied_at: iso('2026-09-05') },
+]
+
+// ─── Hiring pipeline (ATS) — RAG-001 ────────────────────────────────────────
+
+const PIPELINE = [
+  { id: 's_applied', type: 'applied', name: 'Applied' },
+  { id: 's_screening', type: 'screening', name: 'Screening' },
+  { id: 's_interview', type: 'virtual_interview', name: 'Technical interview' },
+  { id: 's_rejected', type: 'rejected', name: 'Rejected' },
+]
+
+const ATS_JOBS: Doc[] = [
+  { id: 'acme-job-sre', tenant_id: TENANT_A, title: 'Site reliability engineer (SRE)', status: 'open', location: 'Bengaluru', work_mode: 'hybrid', employment_type: 'full_time', experience_min: 4, experience_max: 8, openings: 2,
+    skills: ['Kubernetes', 'Terraform', 'Prometheus', 'Grafana', 'Linux'],
+    criteria: { must_have_skills: ['Kubernetes', 'Terraform'], nice_to_have_skills: ['Prometheus', 'Grafana'], keywords: [], pass_score: 60, use_ai_match: false, must_have_required: false },
+    description: 'Keep the payments platform up: run the on-call rotation, write incident postmortems, own observability with Prometheus and Grafana, and manage infrastructure as code with Terraform.',
+    requirements: 'Four or more years running production Kubernetes; infrastructure as code; strong Linux and networking basics.', pipeline: PIPELINE },
+  { id: 'globex-job-ml', tenant_id: TENANT_B, title: 'Machine learning engineer — demand forecasting', status: 'open', location: 'Remote', work_mode: 'remote', employment_type: 'full_time', experience_min: 3, experience_max: 6, openings: 1,
+    skills: ['Python', 'LightGBM', 'MLflow', 'time series'],
+    criteria: { must_have_skills: ['Python', 'time series'], nice_to_have_skills: ['MLflow'], keywords: [], pass_score: 60, use_ai_match: false, must_have_required: false },
+    description: 'Build the models that forecast electricity demand for Globex plants, from feature pipelines to monitored production models.',
+    requirements: 'Gradient boosting or deep learning for time-series forecasting; experiment tracking; deploying models to production.', pipeline: PIPELINE },
+]
+
+const ATS_CANDIDATES: Doc[] = [
+  { id: 'c-ravi', tenant_id: TENANT_A, name: 'Ravi Kumar', email: 'ravi@example.test', phone: '+919811122233', tags: ['referral'],
+    parsed: { skills: ['Kubernetes', 'Terraform', 'Prometheus', 'Grafana', 'Go'], titles: ['Site reliability engineer'], companies: ['Flipkart'], total_years: 6, education: [{ degree: 'B.E.', field: 'Electronics', institution: 'PES University' }], summary: 'SRE who led the move of checkout services to Kubernetes.', parser: 'heuristic' },
+    resume: { file_name: 'ravi.pdf', text: 'Ravi Kumar — ravi@example.test — +91 98111 22233. Site reliability engineer at Flipkart. Led migration of checkout services to Kubernetes, wrote Terraform modules for every environment, built Prometheus alerting and Grafana dashboards, ran blameless postmortems.', uploaded_at: iso('2026-09-10') } },
+  { id: 'c-nina', tenant_id: TENANT_A, name: 'Nina Rossi', email: 'nina@example.test', phone: null, tags: [],
+    parsed: { skills: ['Vue', 'Nuxt', 'CSS'], titles: ['Frontend developer'], companies: ['Zalando'], total_years: 3, education: [], summary: 'Frontend developer building Vue storefronts.', parser: 'heuristic' },
+    resume: { file_name: 'nina.pdf', text: 'Nina Rossi. Frontend developer building Vue and Nuxt storefronts at Zalando.', uploaded_at: iso('2026-09-11') } },
+  { id: 'c-tom', tenant_id: TENANT_B, name: 'Tom Becker', email: 'tom@example.test', phone: null, tags: [],
+    parsed: { skills: ['Python', 'LightGBM', 'MLflow', 'Airflow'], titles: ['Data scientist'], companies: ['E.ON'], total_years: 4, education: [{ degree: 'M.Sc.', field: 'Statistics', institution: 'TU Munich' }], summary: 'Forecasts grid load with gradient boosting.', parser: 'heuristic' },
+    resume: { file_name: 'tom.pdf', text: 'Tom Becker. Data scientist at E.ON forecasting grid load with LightGBM; experiment tracking in MLflow; Airflow pipelines feeding a feature store.', uploaded_at: iso('2026-09-12') } },
+]
+
+const ATS_APPLICATIONS: Doc[] = [
+  { id: 'app-ravi', tenant_id: TENANT_A, job_id: 'acme-job-sre', candidate_id: 'c-ravi', client_id: null, stage_id: 's_screening', stage_entered_at: iso('2026-09-12'), status: 'active',
+    match: { score: 86, breakdown: {}, missing_must: [], reasons: ['Has Kubernetes and Terraform', 'Six years of SRE work'] }, results: [], history: [], source: 'referral', created_at: iso('2026-09-10'), updated_at: iso('2026-09-12'),
+    compensation: { current: 3_200_000, expected: 4_000_000, currency: 'INR', period: 'year' } },
+  { id: 'app-nina', tenant_id: TENANT_A, job_id: 'acme-job-sre', candidate_id: 'c-nina', client_id: null, stage_id: 's_applied', stage_entered_at: iso('2026-09-11'), status: 'withdrawn',
+    match: { score: 22, breakdown: {}, missing_must: ['Kubernetes', 'Terraform'], reasons: [] }, results: [], history: [], source: 'apply_page', created_at: iso('2026-09-11'), updated_at: iso('2026-09-13') },
+  { id: 'app-tom', tenant_id: TENANT_B, job_id: 'globex-job-ml', candidate_id: 'c-tom', client_id: null, stage_id: 's_interview', stage_entered_at: iso('2026-09-15'), status: 'active',
+    match: { score: 78, breakdown: {}, missing_must: [], reasons: ['Time-series forecasting with LightGBM'] }, results: [], history: [], source: 'apply_page', created_at: iso('2026-09-12'), updated_at: iso('2026-09-15') },
 ]
 
 // ─── Events ──────────────────────────────────────────────────────────────────
@@ -286,8 +363,15 @@ export const SYNTHETIC_OWNERS: Record<string, { tenant: string | null; adminOnly
   for (const s of SUBMISSIONS) {
     const t = (EXAMS.find((e) => e.id === s.exam_id)?.tenant_id as string | null) ?? null
     out[`attempt_summary:${s.exam_id}:${s.user_id}`] = { tenant: t, adminOnly: !t }
-    out[`resume:${t ?? '_platform'}:${s.user_id}`] = { tenant: t, adminOnly: !t }
   }
+  // Résumés: owned by the organisation the candidate applied to with that résumé (RAG-004).
+  for (const a of JOB_APPLICATIONS) {
+    const t = (JOB_POSTINGS.find((j) => j.id === a.job_id)?.tenant_id as string | null) ?? null
+    out[`resume:${t ?? '_platform'}:${a.user_id}`] = { tenant: t, adminOnly: !t }
+  }
+  out['resume:acme:u-lena'] = { tenant: TENANT_A, adminOnly: false }
+  for (const j of ATS_JOBS) out[`ats_job:${j.id}`] = { tenant: j.tenant_id as string, adminOnly: false }
+  for (const a of ATS_APPLICATIONS) out[`ats_application:${a.id}`] = { tenant: a.tenant_id as string, adminOnly: false }
   for (const h of HACKATHONS) out[`hackathon:${h.id}`] = { tenant: (h.tenant_id as string | null) ?? null, adminOnly: !h.tenant_id && h.status === 'draft' }
   for (const c of CODEATHONS) out[`codeathon:${c.id}`] = { tenant: null, adminOnly: false }
   for (const c of COURSES) out[`course:${c.id}`] = { tenant: null, adminOnly: false }
@@ -310,6 +394,11 @@ export async function seedEvalCorpus(db: InsertableDb, problems: readonly Doc[])
   await put('proctor_events', PROCTOR_EVENTS)
   await put('resume_drafts', RESUME_DRAFTS)
   await put('resumes', RESUMES)
+  await put('job_postings', JOB_POSTINGS)
+  await put('job_applications', JOB_APPLICATIONS)
+  await put('ats_jobs', ATS_JOBS)
+  await put('ats_candidates', ATS_CANDIDATES)
+  await put('ats_applications', ATS_APPLICATIONS)
   await put('hackathons', HACKATHONS)
   await put('codeathons', CODEATHONS)
   await put('courses', COURSES)

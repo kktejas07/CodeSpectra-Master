@@ -80,12 +80,16 @@ async function sendFormLink(form: AtsHrFormDoc, candidate: AtsCandidate, job: At
       console.error('[ats/hr] email failed:', (e as Error)?.message)
     }
   }
-  // Consent is a hard gate for WhatsApp.
+  // Consent is a hard gate for WhatsApp (checked again, with STOP opt-outs, by lib/whatsapp-send).
   if (candidate.phone && candidate.consent?.whatsapp === true) {
     try {
-      const { sendWhatsAppText } = await import('@/lib/whatsapp')
-      await sendWhatsAppText(candidate.phone, `${renderText(kind === 'invite' ? 'Hi {{candidate_name}}, please confirm your compensation details for {{job_title}} at {{company}} by {{due}}:' : 'Reminder: please confirm your compensation details for {{job_title}} by {{due}}:', vars)} ${url}`.slice(0, 1000))
-      ok = true
+      const { sendWhatsAppToCandidate } = await import('@/lib/whatsapp-send')
+      const r = await sendWhatsAppToCandidate(candidate, {
+        kind: 'hiring', title: subject,
+        text: renderText(kind === 'invite' ? 'Hi {{candidate_name}}, please confirm your compensation details for {{job_title}} at {{company}} by {{due}}.' : 'Reminder: please confirm your compensation details for {{job_title}} by {{due}}.', vars).slice(0, 900),
+        link: url,
+      })
+      if (r.sent) ok = true
     } catch (e) {
       console.error('[ats/hr] whatsapp failed:', (e as Error)?.message)
     }

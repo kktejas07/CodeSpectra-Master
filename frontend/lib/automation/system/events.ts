@@ -16,7 +16,7 @@ import type { SystemAutomation } from './types'
 
 type Doc = Record<string, unknown>
 
-interface Moment {
+export interface Moment {
   kind: 'hackathon' | 'codeathon'
   id: string
   name: string
@@ -28,7 +28,7 @@ interface Moment {
   userIds: () => Promise<string[]>
 }
 
-async function collectMoments(now: Date): Promise<Moment[]> {
+export async function collectMoments(now: Date): Promise<Moment[]> {
   const db = await getMongoDb()
   const lo = now.toISOString()
   const hi = new Date(now.getTime() + 24 * 3_600_000).toISOString()
@@ -60,6 +60,17 @@ async function collectMoments(now: Date): Promise<Moment[]> {
   return out
 }
 
+/** hackathon.starting for workflows (always on, see ./signals.ts — AUTO-003). */
+export async function emitEventSignals(now = new Date()): Promise<number> {
+  let n = 0
+  for (const m of await collectMoments(now)) {
+    const users = await m.userIds()
+    const r = await emit('hackathon.starting', { event_id: m.id, event_kind: m.kind, event_name: m.name, phase: m.phase, hours_left: Math.max(1, Math.round((Date.parse(m.at) - now.getTime()) / 3_600_000)), at: m.at, url: m.url, participants: users.length }, { tenantId: m.tenantId, idempotencyKey: `hackathon.starting:${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}` })
+    if (r.id) n++
+  }
+  return n
+}
+
 export async function runEventReminders(now = new Date(), budgetMs = 40_000): Promise<{ moments: number; reminders: number }> {
   const started = Date.now()
   const db = await getMongoDb()
@@ -70,7 +81,6 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
   for (const m of moments) {
     const users = await m.userIds()
     const left = hoursLeftLabel(m.at, now)
-    void emit('hackathon.starting', { event_id: m.id, event_kind: m.kind, event_name: m.name, phase: m.phase, hours_left: Math.max(1, Math.round((Date.parse(m.at) - now.getTime()) / 3_600_000)), at: m.at, url: m.url, participants: users.length }, { tenantId: m.tenantId, idempotencyKey: `hackathon.starting:${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}` })
     for (const uid of users) {
       if (Date.now() - started > budgetMs) return { moments: moments.length, reminders }
       if (!(await claimOnce(`evrem:${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}:${uid}`))) continue

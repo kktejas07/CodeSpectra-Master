@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
-import { normalizeBankQuestion, questionBank, bankContentHash, deriveTitleFromQuestion, type BankQuestionDoc } from '@/lib/question-bank'
+import { normalizeBankQuestion, questionBank, bankContentHash, bankTitleKey, deriveTitleFromQuestion, existingBankKeys, withBankKeys, type BankQuestionDoc } from '@/lib/question-bank'
 import { BRANCHES, DEGREE_TYPES } from '@/lib/engineering-catalog'
 import { buildTypeInstructions, buildExtraFieldHint } from '@/lib/question-gen-prompt'
 import { isCodingType } from '@/lib/question-types'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 export const runtime = 'nodejs'
 
@@ -72,9 +73,6 @@ export async function POST(request: NextRequest) {
     }
 
     const col = await questionBank()
-    const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
-    const seen = new Set(existing.map((d: any) => bankContentHash(d)))
-    const seenTitles = new Set(existing.map((d: any) => (d.title || '').toLowerCase().replace(/\s+/g, ' ').trim()))
 
     const inserted: BankQuestionDoc[] = []
     let skipped = 0
@@ -86,6 +84,7 @@ export async function POST(request: NextRequest) {
     for (const fb of FALLBACKS) {
       try {
         const res = await backendComplete({
+          cache: false, // AGT-022: a generator must never replay a cached batch
           systemMessage: 'You generate precise, non-duplicate assessment questions. Output strict JSON.',
           userMessage: buildPrompt({ ...body, count: requestBatchSize }),
           responseFormat: 'json',
@@ -113,6 +112,7 @@ export async function POST(request: NextRequest) {
     if (!rawItems.length) {
       // Last resort: retry parsing the raw text.
       const res = await backendComplete({
+        cache: false, // AGT-022: a generator must never replay a cached batch
         systemMessage: 'You generate precise, non-duplicate assessment questions. Output strict JSON.',
         userMessage: prompt,
         responseFormat: 'json',
@@ -125,6 +125,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // CORE-031: check only these candidates against the bank (indexed $in), not the whole bank.
+    const candidates = rawItems.slice(0, count)
+      .map((item) => normalizeBankQuestion({ ...(item as Record<string, unknown>), source: 'ai' }))
+    const known = await existingBankKeys(
+      col,
+      candidates.filter(Boolean).map((d) => bankContentHash(d!)),
+      candidates.filter(Boolean).map((d) => bankTitleKey(d!.title)),
+    )
+    const seen = known.hashes
+    const seenTitles = known.titles
     const toInsert: BankQuestionDoc[] = []
     for (const item of rawItems.slice(0, count)) {
       const doc = normalizeBankQuestion({ ...(item as Record<string, unknown>), source: 'ai' })
@@ -141,10 +151,11 @@ export async function POST(request: NextRequest) {
       const hash = bankContentHash(doc)
       if (seen.has(hash)) { skipped++; continue }
       seen.add(hash)
-      seenTitles.add((doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim())
-      toInsert.push(doc)
+      seenTitles.add(bankTitleKey(doc.title))
+      toInsert.push(withBankKeys(doc))
     }
     if (toInsert.length) await col.insertMany(toInsert)
+    knowledgeOnLibraryChange('question', toInsert.map((q) => q.id))
     inserted.push(...toInsert)
 
     if (inserted.length === 0 && skipped === 0 && rawItems.length === 0) {

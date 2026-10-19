@@ -1,7 +1,7 @@
 /** GET /learn/rss.xml — RSS 2.0 feed of the latest published Learn posts. */
 import { latestPublished } from '@/lib/learn/queries'
 import { escapeHtml } from '@/lib/safe-html'
-import { getAppOrigin } from '@/lib/app-origin'
+import { getSiteOrigin } from '@/lib/seo/settings'
 import { postUrl } from '@/lib/learn/share'
 import { categoryLabel } from '@/lib/learn/types'
 
@@ -9,7 +9,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  const origin = getAppOrigin()
+  const origin = await getSiteOrigin()
   let posts: Awaited<ReturnType<typeof latestPublished>> = []
   try {
     posts = await latestPublished(50)

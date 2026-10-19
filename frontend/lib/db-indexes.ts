@@ -23,12 +23,22 @@ export const HOT_INDEXES: Record<string, Spec[]> = {
     { key: { email: 1, status: 1 } },
     { key: { tenant_id: 1, created_at: -1 } },
     { key: { postal_message_id: 1 }, options: { sparse: true } },
+    // Bulk invite e-mail queue + per-batch status (lib/services/bulk-invites.ts).
+    { key: { delivery_status: 1, delivery_next_at: 1 } },
+    // Hourly invite reminders + nightly expiry (AUTO-071).
+    { key: { status: 1, expires_at: 1 } },
+    { key: { batch_id: 1 }, options: { sparse: true } },
   ],
   exam_submissions: [
     { key: { exam_id: 1, user_id: 1, created_at: -1 } },
     { key: { user_id: 1, created_at: -1 } },
   ],
-  exam_drafts: [{ key: { exam_id: 1, user_id: 1 } }],
+  exam_drafts: [
+    { key: { exam_id: 1, user_id: 1 } },
+    // Abandoned-attempt sweep (every 5 min) — AUTO-071.
+    { key: { attempt_started_at: 1 } },
+    { key: { abandoned_checked_at: 1 }, options: { sparse: true } },
+  ],
   exams: [
     { key: { id: 1 } },
     { key: { tenant_id: 1, created_at: -1 } },
@@ -45,7 +55,26 @@ export const HOT_INDEXES: Record<string, Spec[]> = {
     { key: { reason: 1, created_at: -1 } },
     { key: { created_at: -1 } },
   ],
-  proctor_events: [{ key: { session_kind: 1, session_id: 1, user_id: 1 } }],
+  proctor_events: [
+    { key: { session_kind: 1, session_id: 1, user_id: 1 } },
+    // Nightly retention delete + integrity review by session — AUTO-071.
+    { key: { created_at: 1 } },
+    { key: { session_id: 1 } },
+  ],
+  // ── Background-job queries (AUTO-071) ──────────────────────────────────────
+  submissions: [{ key: { status: 1, created_at: -1 } }, { key: { user_id: 1, created_at: -1 } }],
+  user: [{ key: { lastLoginAt: 1 } }, { key: { role: 1 } }],
+  billing_subscriptions: [{ key: { status: 1, ends_at: 1 } }, { key: { user_id: 1 } }],
+  automation_events: [{ key: { 'payload.order_id': 1 }, options: { sparse: true } }],
+  admin_audit_logs: [{ key: { action: 1, created_at: -1 } }],
+  email_logs: [{ key: { created_at: -1 } }],
+  codeathon_registrations: [{ key: { codeathon_id: 1 } }],
+  hackathon_teams: [{ key: { hackathon_id: 1 } }],
+  interviews: [{ key: { status: 1, scheduled_at: 1 } }],
+  workflow_runs: [{ key: { 'trigger_payload.interview_id': 1, status: 1 }, options: { sparse: true } }],
+  mkt_payouts: [{ key: { status: 1, paying_at: 1 } }],
+  mkt_orders: [{ key: { buyer_id: 1, created_at: -1 } }],
+  whatsapp_optouts: [{ key: { key: 1 }, options: { unique: true } }],
   notification_deferred: [{ key: { status: 1, deliver_after: 1 } }],
   identity_media: [
     { key: { id: 1 }, options: { unique: true } },

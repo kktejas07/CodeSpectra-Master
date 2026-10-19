@@ -7,7 +7,7 @@
  */
 import { readTextCapped, safeFetch } from '@/lib/url-safety'
 import { htmlToText } from '@/lib/signals/research'
-import { scanPrompt } from '@/lib/ai/prompt-guard'
+import { scanUntrusted as scanPrompt } from '@/lib/ai/untrusted-input'
 import { hostAllowed } from './quality'
 
 export interface ReferencePage {

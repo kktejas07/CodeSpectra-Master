@@ -18,4 +18,11 @@ export interface SystemAutomation {
   jobs?: { type: string; handler: JobHandler }[]
   /** Some automations are essential plumbing — they can be paused but default on. */
   defaultOn?: boolean
+  /** Always on: the switch is hidden and toggling is refused (event signals other features depend on). */
+  locked?: boolean
+  /**
+   * Event types that only exist while this automation is on. Switching it off
+   * stops workflows that trigger on them (the admin page warns about that).
+   */
+  emits?: string[]
 }

@@ -76,16 +76,18 @@ export default function DayPage() {
   const [activeProblem, setActiveProblem] = useState<string>('')
   const problem = useMemo(() => dayData?.problems.find(p => p.id === activeProblem) ?? null, [dayData, activeProblem])
 
-  const [language, setLanguage] = useState(() => {
-    if (typeof window === 'undefined') return 'python'
-    try { return localStorage.getItem('100-days-language') || 'python' } catch { return 'python' }
-  })
+  // W4-10: stored choices are read after mount, never in a useState initialiser.
+  const [language, setLanguage] = useState('python')
+  useEffect(() => {
+    try { const v = localStorage.getItem('100-days-language'); if (v) setLanguage(v) } catch { /* storage blocked */ }
+  }, [])
   const [code, setCode] = useState('')
   const [running, setRunning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<RunResponse | null>(null)
   const [bottomTab, setBottomTab] = useState<'testcases' | 'results'>('testcases')
-  const [completedProblems, setCompletedProblems] = useState<Set<string>>(() => getCompletedProblems(day))
+  const [completedProblems, setCompletedProblems] = useState<Set<string>>(() => new Set())
+  useEffect(() => { setCompletedProblems(getCompletedProblems(day)) }, [day])
   const codeRef = useRef(code)
   codeRef.current = code
 

@@ -5,9 +5,9 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { newId, nowIso, type WorkflowDoc } from '@/lib/db/leaderboard'
-import { publicWorkflow, requireWorkflowAdmin, workflowScope } from '@/lib/automation/access'
+import { builtinOverlaps, publicWorkflow, requireWorkflowAdmin, workflowScope } from '@/lib/automation/access'
 import { col } from '@/lib/automation/store'
-import { templateById } from '@/lib/automation/templates'
+import { templateAvailableTo, templateById } from '@/lib/automation/templates'
 import { MAX_TENANT_WORKFLOWS, quotaUsage } from '@/lib/automation/quotas'
 import { OLD_SEED_NAMES, STARTER_WORKFLOWS } from '@/lib/automation/seeds'
 import { auditAdmin } from '@/lib/admin-audit'
@@ -43,8 +43,9 @@ export async function GET(req: NextRequest) {
   if (g.platform) await seedPlatformWorkflows()
   const c = await col<WorkflowDoc>('workflows')
   const items = (await c.find(workflowScope(g, req.nextUrl.searchParams.get('tenant')), { projection: { _id: 0 } }).sort({ created_at: -1 }).limit(500).toArray()) as WorkflowDoc[]
+  const overlaps = await builtinOverlaps(items)
   return NextResponse.json({
-    items: items.map(publicWorkflow),
+    items: items.map((w) => ({ ...publicWorkflow(w), ...(overlaps[w.id] ? { builtin_overlap: overlaps[w.id] } : {}) })),
     scope: g.platform ? 'platform' : 'tenant',
     ...(g.tenantId ? { quota: await quotaUsage(g.tenantId), max_workflows: MAX_TENANT_WORKFLOWS } : {}),
   })
@@ -64,7 +65,9 @@ export async function POST(req: NextRequest) {
   const name = String(body.name ?? '').trim()
   const tpl = typeof body.template_id === 'string' ? templateById(body.template_id) : undefined
   if (body.template_id && !tpl) return NextResponse.json({ error: 'Unknown template' }, { status: 400 })
-  if (tpl?.platformOnly && !g.platform) return NextResponse.json({ error: 'This template is only available to platform admins' }, { status: 403 })
+  const tenantTarget = !g.platform || (typeof body.tenant_id === 'string' && !!body.tenant_id)
+  // AUTO-001: platform-only data, or an event that never reaches organisations — it could never run for them.
+  if (tpl && !templateAvailableTo(tpl, !tenantTarget)) return NextResponse.json({ error: 'This template uses platform-wide data or events, so it can’t run for an organisation' }, { status: g.platform ? 400 : 403 })
   if (!name && !tpl) return NextResponse.json({ error: 'name required' }, { status: 400 })
   if (name.length > 120) return NextResponse.json({ error: 'Name is too long' }, { status: 400 })
 

@@ -136,19 +136,24 @@ export default function UsersManagement() {
     return () => window.clearInterval(t)
   }, [])
 
-  /** Poll full list periodically (picks up auth `last_sign_in_at` and other users’ heartbeats). */
+  /**
+   * Refresh when the admin comes back to the tab (at most every 2 minutes).
+   * CORE-019: the old 30-second poll re-downloaded the whole user list forever.
+   */
   useEffect(() => {
-    const t = window.setInterval(() => {
-      void loadUsers().then(() => setLoadError(false)).catch(() => {
-        /* errors surfaced on first load */
-      })
-    }, 30_000)
-    return () => window.clearInterval(t)
+    let last = Date.now()
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 120_000) return
+      last = Date.now()
+      void loadUsers().then(() => setLoadError(false)).catch(() => { /* errors surfaced on first load */ })
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [loadUsers])
 
   /**
    * Realtime updates from Supabase were removed in the MongoDB migration.
-   * The 30-second polling loop above keeps the directory fresh enough; for
+   * The on-focus refresh above keeps the directory fresh enough; for
    * sub-second updates re-introduce MongoDB Change Streams behind an SSE
    * endpoint in a future phase.
    */

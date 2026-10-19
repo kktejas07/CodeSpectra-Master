@@ -1,3 +1,5 @@
+import { clientIpFromRequest } from '@/lib/client-ip'
+
 /**
  * Edge-safe sliding-window rate limiter for middleware.
  * Best-effort per worker instance (same ceiling as the Node in-memory limiter) —
@@ -24,7 +26,5 @@ export function edgeRateLimit(key: string, maxHits: number, windowMs: number): {
 }
 
 export function edgeClientKey(request: Request): string {
-  const h = request.headers as Headers
-  const xf = h.get('x-forwarded-for')
-  return xf?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
+  return clientIpFromRequest(request)
 }

@@ -131,7 +131,7 @@ export function aggregate(results: readonly QuestionResult[]): AggregateMetrics 
 
 // ─── ACL oracle ──────────────────────────────────────────────────────────────
 
-const STAFF_ONLY = new Set(['resume', 'attempt_summary', 'question'])
+const STAFF_ONLY = new Set(['resume', 'attempt_summary', 'question', 'ats_application'])
 
 /**
  * Independent restatement of the access rule (not lib/rag/acl.ts, so a bug

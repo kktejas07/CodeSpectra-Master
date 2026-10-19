@@ -49,18 +49,18 @@ Write an ORIGINAL explainer in your own words. Hard rules:
 Return ONLY a JSON object with exactly this shape:
 {
   "title": "clear, specific title (8–100 chars)",
-  "summary": "one or two sentences on what the reader will learn (40–300 chars)",
+  "summary": "answer-first: one or two sentences that directly answer 'what is it and why does it matter' — usable on its own as a search snippet (40–300 chars)",
   "level": "beginner" | "intermediate" | "advanced",
   "tags": ["3–6 lowercase tags"],
   "sections": {
-    "concept": "what it is — definition and where it fits (markdown, 150–400 words)",
+    "concept": "what it is (markdown, 150–400 words). START with a one-sentence definition (\"X is …\") that answers the question directly, then where it fits. END with a line **Key takeaways** followed by 3 short bullet points",
     "intuition": "an analogy or mental model that makes it click (markdown)",
     "steps": "step-by-step walkthrough, ideally on a small worked example (markdown, numbered list)",
     "complexity": ${args.algorithm ? '{ "rows": [{ "case": "best/average/worst or operation", "time": "O(...)", "space": "O(...)" }], "notes": "markdown" }' : '{ "rows": [...] , "notes": "..." } or null when complexity does not apply'},
     "code_examples": [{ "language": "one of: ${args.languages.join(', ')}", "code": "complete code", "explanation": "1–3 sentences" }],
     "use_cases": ["3–5 concrete real-world uses"],
     "common_mistakes": ["3–5 mistakes and how to avoid them"],
-    "interview_questions": [{ "question": "...", "answer": "concise model answer" }],
+    "interview_questions": [{ "question": "a question a learner or interviewer would actually ask, phrased as a full question", "answer": "concise, self-contained model answer that starts with the direct answer (these also power the post's FAQ)" }],
     "further_reading": [{ "title": "page title", "url": "https://… official docs or encyclopedic page" }]
   }
 }
@@ -68,7 +68,7 @@ ${args.proseFirst
     ? `Code examples are optional for this topic; include them only where they genuinely help (e.g. a config file, a test, a pipeline definition).`
     : `Include one code example in EACH of these languages: ${langs}.`}
 For further_reading prefer the reference URLs you were given and official documentation; only cite pages you are confident exist.
-Write 3–5 interview questions.`
+Write 3–5 interview questions. Prefer concrete, checkable facts (complexities, definitions, standard names) and attribute numbers to the cited source; never invent statistics.`
 }
 
 export function buildUserMessage(topic: Pick<LearnTopicDoc, 'title' | 'category' | 'level' | 'tags' | 'series'>, pages: ReferencePage[], extra: { rejectHint?: string | null; retryErrors?: string[] } = {}): string {
@@ -357,22 +357,25 @@ export async function runLearnTick(now: Date = new Date()): Promise<{ published:
   } catch (e) {
     console.error('[learn] publish due failed:', (e as Error)?.message)
   }
-  // Weekly "new on Learn" subscriber digest (claimed once per ISO week).
+  // Weekly "new on Learn" subscriber digest. The week is leased (not marked done up front):
+  // a crash or failed sends mid-way are retried, and the per-subscriber delivery ledger
+  // keeps everyone who already got it from getting it twice (AUTO-044).
   try {
     const { isDigestTime, runLearnDigest } = await import('./digest')
     if (isDigestTime(now)) {
       const { isoWeekKey } = await import('@/lib/events-feed/notify')
       const week = isoWeekKey(now, 'UTC')
-      const { claimDigestWeek } = await import('./store')
-      if (await claimDigestWeek(week)) {
-        const started = Date.now()
+      const { runLeasedJob } = await import('@/lib/automation/job-lease')
+      await runLeasedJob('learn-digest', week, async () => {
         const r = await runLearnDigest(now, week)
-        await recordCronRun('learn-digest', r.failed === 0, Date.now() - started, r.failed ? `${r.failed} of ${r.sent + r.failed} emails failed` : undefined)
-      }
+        if (r.failed) throw new Error(`${r.failed} of ${r.sent + r.failed} emails failed`)
+        const { claimDigestWeek } = await import('./store')
+        await claimDigestWeek(week) // last_digest_week marker for the admin page
+        return r
+      }, { now, leaseMs: 30 * 60_000, maxAttempts: 3, retryAfterMs: 10 * 60_000 })
     }
   } catch (e) {
     console.error('[learn] digest failed:', (e as Error)?.message)
-    await recordCronRun('learn-digest', false, 0, (e as Error)?.message).catch(() => undefined)
   }
   const day = now.toISOString().slice(0, 10)
   if (_doneDay === day) return report

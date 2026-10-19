@@ -6,15 +6,37 @@ import { HeroIllustration, PageHero } from '@/components/landing/page-hero'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ProductCard } from '@/components/marketplace/product-card'
 import { CartDrawerButton } from '@/components/marketplace/cart-drawer'
+import { buildMetadata } from '@/lib/seo/metadata'
 import { STORE_CATEGORIES, browseProducts, parseBrowseParams, type BrowseQuery } from '@/lib/marketplace/catalog'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Marketplace — books, courses, mentoring and mock interviews | CodeSpectra',
-  description: 'Buy books, courses, e-books, templates and merch, or book mentoring and mock interviews with CodeSpectra and approved sellers.',
-  alternates: { canonical: '/marketplace' },
-  openGraph: { title: 'CodeSpectra marketplace', description: 'Books, courses, e-books, templates, merch, mentoring and mock interviews.', url: '/marketplace', type: 'website' },
+/**
+ * Hub and per-category pages (?category=x alone) are indexable with their own
+ * canonical; search, sort, price, rating, kind, seller and page variants are
+ * noindex,follow (SEO-021) so crawl budget goes to items.
+ */
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }): Promise<Metadata> {
+  const q = parseBrowseParams(await searchParams)
+  const cat = q.category ? STORE_CATEGORIES.find((c) => c.id === q.category) : null
+  const variant = !!(q.q || q.kind || q.currency || q.min != null || q.max != null || q.rating || q.seller || (q.sort && q.sort !== 'relevance') || (q.page && q.page > 1))
+  if (cat) {
+    return buildMetadata({
+      title: `${cat.label} on the CodeSpectra marketplace`,
+      description: `Browse ${cat.label.toLowerCase()} for developers and engineers, sold by CodeSpectra and approved sellers.`,
+      path: '/marketplace',
+      canonical: `/marketplace?category=${encodeURIComponent(cat.id)}`,
+      kind: 'product',
+      noIndex: variant ? 'follow' : false,
+    })
+  }
+  return buildMetadata({
+    title: 'Marketplace: books, courses and mock interviews',
+    description: 'Buy books, courses, e-books, templates and merch, or book mentoring and mock interviews with CodeSpectra and approved sellers.',
+    path: '/marketplace',
+    kind: 'product',
+    noIndex: variant || q.category ? 'follow' : false,
+  })
 }
 
 const SORTS = [

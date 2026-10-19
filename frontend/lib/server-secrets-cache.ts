@@ -15,7 +15,7 @@
  */
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
-import { decryptSecretsRecord, encryptSecretsRecord, secretsEncryptionKey } from '@/lib/secrets-crypto'
+import { decryptSecretsRecord, decryptWithOneKey, encryptSecretValue, encryptSecretsRecord, isEncryptedSecret, secretsEncryptionKey } from '@/lib/secrets-crypto'
 import { SECRET_FIELDS } from '@/lib/server-secrets-fields'
 
 export const SERVER_SECRETS_PLATFORM_KEY = 'secrets'
@@ -175,6 +175,16 @@ export type ServerSecretsRecord = {
   custom_api_key?: string
   custom_endpoint?: string
   custom_model?: string
+  // --- Analytics & tracking (Settings → Analytics; public browser ids, validated in lib/analytics/integrations.ts)
+  ga4_measurement_id?: string
+  gtm_container_id?: string
+  posthog_project_key?: string
+  posthog_host?: string
+  clarity_project_id?: string
+  meta_pixel_id?: string
+  linkedin_partner_id?: string
+  analytics_retention_days?: string
+  analytics_custom_events?: string
 }
 
 interface PlatformSettingDoc {
@@ -214,7 +224,7 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
       const stored = (doc?.value as Record<string, unknown>) || {}
       const { plain, needsMigration } = decryptSecretsRecord(stored, SECRET_FIELDS as string[])
       cached = plain as ServerSecretsRecord
-      if (needsMigration) void migratePlaintextSecrets(col, stored)
+      if (needsMigration) void migratePlaintextSecrets(col, stored, plain as Record<string, unknown>)
     } catch (e) {
       console.error('[CodeSpectra] server secrets load:', e)
       cached = {}
@@ -232,7 +242,7 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
 
 let migrating = false
 /** Lazy migration: encrypt plain-text secret values left from older builds. */
-async function migratePlaintextSecrets(col: Collection<PlatformSettingDoc>, stored: Record<string, unknown>): Promise<void> {
+async function migratePlaintextSecrets(col: Collection<PlatformSettingDoc>, stored: Record<string, unknown>, plain: Record<string, unknown> = {}): Promise<void> {
   if (migrating) return
   migrating = true
   try {
@@ -240,6 +250,16 @@ async function migratePlaintextSecrets(col: Collection<PlatformSettingDoc>, stor
     const $set: Record<string, unknown> = {}
     for (const [k, v] of Object.entries(sealed)) {
       if (v !== stored[k]) $set[`value.${k}`] = v
+    }
+    // SEC-018: values still sealed with the legacy session-derived key are
+    // re-sealed with SECRETS_ENCRYPTION_KEY.
+    const key = secretsEncryptionKey()
+    if (key) {
+      for (const [k, v] of Object.entries(stored)) {
+        if (isEncryptedSecret(v) && decryptWithOneKey(v, key) === null && typeof plain[k] === 'string' && plain[k]) {
+          $set[`value.${k}`] = encryptSecretValue(plain[k] as string, key)
+        }
+      }
     }
     if (Object.keys($set).length === 0) return
     // Per-field compare-and-set: never overwrite a value another write changed meanwhile.

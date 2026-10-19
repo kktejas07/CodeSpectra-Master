@@ -7,28 +7,38 @@ import { isPlatformAdminRoute } from '@/lib/page-permissions'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+/**
+ * GET /api/notifications[?before=<created_at>&limit=N] — newest first, N ≤ 100 (default 100).
+ * `before` pages to older ones (CORE-008); `has_more` says whether there are more.
+ * `unread` counts all unread notifications, not just this page.
+ */
+export async function GET(req: NextRequest) {
   try {
     const user = await getAPIUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const col = await notifications()
-    const list = await col
-      .find({ user_id: user.id })
-      .sort({ created_at: -1 })
-      .limit(100)
-      .toArray()
+    const sp = req.nextUrl.searchParams
+    const before = sp.get('before')
+    const limit = Math.min(100, Math.max(1, Number(sp.get('limit')) || 100))
+    const filter: Record<string, unknown> = { user_id: user.id }
+    if (before && !Number.isNaN(Date.parse(before))) filter.created_at = { $lt: before }
 
-    const unread = list.filter((n) => !n.is_read).length
+    const col = await notifications()
+    const [rows, unread] = await Promise.all([
+      col.find(filter as never).sort({ created_at: -1 }).limit(limit + 1).toArray(),
+      col.countDocuments({ user_id: user.id, is_read: { $ne: true } } as never),
+    ])
+    const has_more = rows.length > limit
+    const list = rows.slice(0, limit)
     const items = isSuperAdmin(user.role) ? list : list.map(n => {
       const link = typeof n.link === 'string' ? n.link : ''
       return isPlatformAdminRoute(link) ? { ...n, link: '/dashboard/profile' } : n
     })
 
-    return NextResponse.json({ items, unread })
+    return NextResponse.json({ items, unread, has_more, next_before: has_more ? list[list.length - 1]?.created_at ?? null : null })
   } catch (error) {
     console.error('[notifications] GET:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Could not load notifications' }, { status: 500 })
   }
 }
 

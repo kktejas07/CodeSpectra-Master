@@ -146,6 +146,17 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'ats_microsoft_tenant',
   'livekit_url',
   'livekit_api_key',
+  // Analytics & tracking (public browser ids — Settings → Analytics)
+  'ga4_measurement_id',
+  'gtm_container_id',
+  'posthog_project_key',
+  'posthog_host',
+  'clarity_project_id',
+  'meta_pixel_id',
+  'linkedin_partner_id',
+  'analytics_retention_days',
+  // W4-06: extra client custom-event names accepted by /api/analytics/collect (comma-separated)
+  'analytics_custom_events',
 ]
 
 /** Keys shown on Admin → Settings → Hiring integrations (env fallback = KEY.toUpperCase()). */

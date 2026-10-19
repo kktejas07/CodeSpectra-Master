@@ -162,6 +162,7 @@ export async function buildExamQuestionList(input: QuestionDraftInput): Promise<
         'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number' + (allowedTypes.includes('coding') ? ', test_cases?:[{input:string, output:string}] (coding only)' : '') + '}.\n' +
         'Never repeat content. Return exactly ' + remaining + ' items.'
       const aiRes = await backendComplete({
+        cache: false, // AGT-022: a generator must never replay a cached batch
         systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
         userMessage: aiPrompt,
         responseFormat: 'json',

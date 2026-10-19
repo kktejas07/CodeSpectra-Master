@@ -22,9 +22,10 @@ import type { IdCardRoleVariant } from '@/lib/db/qr-events'
 import {
   getOrCreateIdCardToken,
   idCardTokens,
-  xpToLevel,
 } from '@/lib/db/qr-events'
 import { getUserXp } from '@/lib/db/leaderboard'
+import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 import { generateQrSvg } from '@/lib/qr'
 import { allowedBadgeVariant } from '@/lib/auth-account'
 
@@ -54,7 +55,7 @@ export async function GET(req: NextRequest) {
   const tokenDoc = await getOrCreateIdCardToken(user.id, variant, snapshot)
 
   const xp = await getUserXp(user.id)
-  const level = xpToLevel(xp)
+  const level = xpToLevel(xp, (await getGamificationConfig()).levels)
 
   // Compute solved-count + simple achievement seeds from submissions.
   const dbi = await getMongoDb()

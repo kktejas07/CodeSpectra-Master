@@ -949,7 +949,7 @@ export function pickFields(body: unknown, allowed: readonly string[]): Doc {
 export const CODEATHON_EDITABLE_FIELDS = [
   'title', 'description', 'difficulty', 'topics', 'rules', 'maxParticipants', 'startDate', 'endDate',
   'status', 'prizePool', 'cert_template', 'problems', 'event_type', 'team_size_min', 'team_size_max',
-  'problem_visibility', 'tracks',
+  'problem_visibility', 'tracks', 'visibility',
 ] as const
 
 /** Participant view of a codeathon problem: hidden test cases removed. */

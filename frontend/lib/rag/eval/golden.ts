@@ -94,6 +94,12 @@ export const GOLDEN_QUESTIONS: GoldenQuestion[] = [
   real({ id: 'dc-26', type: 'doc', query: 'where to configure edge caching and redirect rules', expect: [PAGE('admin-help')] }),
   real({ id: 'dc-31', type: 'doc', query: 'how do I report a security vulnerability I found', expect: [PAGE('security')] }),
   real({ id: 'dc-32', type: 'doc', query: 'is anyone rejected automatically because of a proctoring flag', expect: [PAGE('security')] }),
+  // RAG-002: guides for the newer modules.
+  real({ id: 'dc-33', type: 'doc', query: 'what happens when a candidate reaches the background verification stage', expect: [D('user', 'background-checks-guide')] }),
+  real({ id: 'dc-34', type: 'doc', query: 'how do sellers get paid out from the store', expect: [D('user', 'marketplace-guide')] }),
+  real({ id: 'dc-35', type: 'doc', query: 'install an automation template and rerun a failed run', expect: [D('user', 'workflows-guide')] }),
+  real({ id: 'dc-36', type: 'doc', query: 'how is the copilot charged and what is a bundle of drafts', expect: [D('user', 'admin-copilot-guide')] }),
+  real({ id: 'dc-37', type: 'doc', query: 'stage SLA days and match score for applicants', expect: [D('user', 'hiring-pipeline-guide')] }),
   real({ id: 'dc-27', type: 'doc', kind: 'multi_hop', all: true, query: 'set the github webhook secret, then check deliveries in the audit logs', expect: [D('user', 'webhooks-guide'), D('user', 'admin-guide')] }),
   real({ id: 'dc-28', type: 'doc', kind: 'multi_hop', all: true, query: 'Pro plan scan limits and how to upgrade from the billing page', expect: [D('public', 'pricing'), D('user', 'billing-guide')] }),
   real({ id: 'dc-29', type: 'doc', as: 'tenant_b', query: 'do you honour do not track', expect: [PAGE('cookies')] }),
@@ -130,6 +136,18 @@ export const GOLDEN_QUESTIONS: GoldenQuestion[] = [
   synth({ id: 'pl-06', type: 'upload', query: 'how platform staff should write interview feedback', expect: ['upload:plat-up-handbook'] }),
   synth({ id: 'pl-07', type: 'upload', query: 'globex data analyst job requirements', expect: ['upload:globex-jd-analyst'] }),
   synth({ id: 'pl-08', type: 'test', query: 'aptitude round for campus drives', expect: ['test:plat-t-aptitude'] }),
+
+  // ── Hiring pipeline (RAG-001): jobs + applicants, staff only ─────────────
+  synth({ id: 'hr-01', type: 'ats_job', as: 'tenant_a', query: 'what observability tools does our SRE opening ask for', expect: ['ats_job:acme-job-sre'] }),
+  synth({ id: 'hr-02', type: 'ats_job', as: 'tenant_b', query: 'requirements for the electricity demand forecasting ML role', expect: ['ats_job:globex-job-ml'] }),
+  synth({ id: 'hr-03', type: 'ats_application', as: 'tenant_a', query: 'which applicants have Terraform and Prometheus experience', expect: ['ats_application:app-ravi'] }),
+  synth({ id: 'hr-04', type: 'ats_application', as: 'tenant_b', query: 'candidate who forecasts grid load with gradient boosting', expect: ['ats_application:app-tom'] }),
+  synth({ id: 'hr-05', type: 'ats_application', as: 'tenant_a', kind: 'multi_hop', all: true, query: 'compare Ravi Kumar with the site reliability engineer job requirements', expect: ['ats_application:app-ravi', 'ats_job:acme-job-sre'] }),
+  synth({ id: 'hr-06', type: 'ats_job', kind: 'keyword', query: 'Machine learning engineer demand forecasting', expect: ['ats_job:globex-job-ml'] }),
+  synth({ id: 'acl-12', type: 'ats_application', as: 'tenant_b', kind: 'acl_negative', query: 'SRE applicants with Terraform Prometheus Kubernetes', expect: [], forbid: ['ats_application:app-ravi', 'ats_job:acme-job-sre'] }),
+  synth({ id: 'acl-13', type: 'ats_application', as: 'tenant_a', kind: 'acl_negative', query: 'Nina Rossi Vue Nuxt frontend applicant', expect: [], forbid: ['ats_application:app-nina'] }),
+  synth({ id: 'acl-14', type: 'resume', as: 'tenant_a', kind: 'acl_negative', query: 'Lena Rust embedded firmware battery management', expect: [], forbid: ['resume:acme:u-lena'] }),
+  synth({ id: 'acl-15', type: 'ats_job', as: 'tenant_a', kind: 'acl_negative', query: 'LightGBM MLflow demand forecasting machine learning job', expect: [], forbid: ['ats_job:globex-job-ml', 'ats_application:app-tom'] }),
 
   // ── ACL negatives: must return nothing from these sources ────────────────
   // ── Marketplace products + events feed (public catalogue) ───────────────

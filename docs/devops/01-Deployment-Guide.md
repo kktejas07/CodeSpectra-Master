@@ -76,7 +76,7 @@ frontend:
       NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
       NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
-  ports: ["3000:80"]
+  ports: ["127.0.0.1:3000:80"]
   environment:
     - PISTON_URL=http://piston:2000/api/v2
   depends_on:
@@ -95,7 +95,7 @@ backend:
   build:
     context: ./backend
     dockerfile: Dockerfile
-  ports: ["8001:8000"]
+  expose: ["8000"]   # internal only — no published port
   environment:
     - NEXTJS_INTERNAL_URL=http://frontend:80
   env_file:
@@ -298,13 +298,9 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    location /api/ {
-        proxy_pass http://localhost:8001;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+    # No /api/ → backend block: the backend is internal-only (SEC-001/022).
+    # Everything goes to the frontend. See 06-Reverse-Proxy.md for the
+    # client-IP headers (TRUSTED_PROXY_CIDRS).
 }
 ```
 

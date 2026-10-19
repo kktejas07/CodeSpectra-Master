@@ -13,8 +13,24 @@ export async function GET() {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
-    const coupons = await (await billingCoupons()).find({}, { projection: { _id: 0 } }).sort({ created_at: -1 }).toArray()
-    return NextResponse.json({ coupons })
+    const col = await billingCoupons()
+    // CORE-018 one-time migration (idempotent): legacy flat coupons had no currency and were
+    // applied in any currency. They were created in INR, so pin them to INR and tell the admin.
+    const migrated = await col.updateMany(
+      { discount_type: 'flat', currency: { $exists: false } } as never,
+      { $set: { currency: 'INR', currency_migrated_at: nowIso() } },
+    )
+    if (migrated.modifiedCount > 0) {
+      await auditAdmin(gate.user, 'admin.coupon.currency_migration', 'coupon', 'coupons', `${migrated.modifiedCount} flat coupons set to INR`)
+    }
+    const coupons = await col.find({}, { projection: { _id: 0 } }).sort({ created_at: -1 }).toArray()
+    const needsReview = coupons.filter((c) => c.discount_type === 'flat' && c.currency_migrated_at).map((c) => c.code)
+    return NextResponse.json({
+      coupons,
+      notices: needsReview.length
+        ? [`${needsReview.length} fixed-amount coupon${needsReview.length === 1 ? '' : 's'} (${needsReview.slice(0, 10).join(', ')}${needsReview.length > 10 ? '…' : ''}) had no currency and now only apply to INR orders. Open each one, check the currency and save to confirm.`]
+        : [],
+    })
   } catch (error) {
     console.error('[admin/coupons]', error)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
@@ -43,6 +59,10 @@ export async function POST(req: NextRequest) {
       valid_until: v.valid_until || undefined,
       active: true,
       trial_duration_days: v.trial_duration_days ?? undefined,
+      ...(v.discount_type === 'flat' ? { currency: v.currency } : {}),
+      applies_to: v.applies_to ?? 'all',
+      marketplace_funding: v.marketplace_funding ?? 'platform_items_only',
+      seller_id: null,
       created_by: gate.user.id,
       created_at: nowIso(),
     }
@@ -73,6 +93,12 @@ export async function PATCH(req: NextRequest) {
     if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
     const $set = parsed.value as Record<string, unknown>
     if (Object.keys($set).length === 0) return NextResponse.json({ error: 'nothing to update' }, { status: 400 })
+    const effectiveType = ($set.discount_type as string | undefined) ?? existing.discount_type
+    if (effectiveType === 'flat' && !$set.currency && !existing.currency) {
+      return NextResponse.json({ error: 'Choose the currency for a fixed-amount coupon' }, { status: 400 })
+    }
+    // Saving a currency confirms it (clears the migration notice).
+    if ($set.currency) $set.currency_migrated_at = null
     await couponsCol.updateOne({ id }, { $set })
     await auditAdmin(gate.user, 'admin.coupon.update', 'coupon', `coupon/${id}`, JSON.stringify($set))
     return NextResponse.json({ ok: true })

@@ -29,6 +29,7 @@ import {
   ChevronsUpDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { parseCandidateText, validateRows } from '@/lib/assessment-invite-rows'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface ExamOption {
@@ -47,10 +48,14 @@ interface ParsedCandidate {
   error?: string
 }
 
-const STEPS = ['Select assessment', 'Upload CSV', 'Preview', 'Schedule', 'Confirm']
+const STEPS = ['Select assessment', 'Add candidates', 'Preview', 'Schedule', 'Confirm']
+const MAX_ROWS = 500
+
+interface InviteStatus { id: string; email: string; delivery_status: string; delivery_error?: string | null }
 
 export default function BulkSchedulePage() {
-  const gate = usePageGuard('superadmin')
+  // Company admins invite to their own organisation's tests (the API enforces it).
+  const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -71,7 +76,32 @@ export default function BulkSchedulePage() {
   const [customMessage, setCustomMessage] = useState('')
 
   const [sending, setSending] = useState(false)
-  const [result, setResult] = useState<{ created: number; failed: number; errors: { email: string; reason: string }[] } | null>(null)
+  const [result, setResult] = useState<{ created: number; failed: number; batch_id: string; errors: { email: string; reason: string }[] } | null>(null)
+  const [statuses, setStatuses] = useState<InviteStatus[]>([])
+  const [pasted, setPasted] = useState('')
+
+  // Poll per-invite delivery status until nothing is waiting (max ~3 minutes).
+  useEffect(() => {
+    if (!result?.batch_id || !selectedExamId) return
+    let stop = false
+    let tries = 0
+    const tick = async () => {
+      if (stop) return
+      tries++
+      try {
+        const r = await fetch(`/api/admin/assessments/bulk?examId=${encodeURIComponent(selectedExamId)}&batch=${encodeURIComponent(result.batch_id)}`, { credentials: 'include' })
+        const j = await r.json()
+        if (r.ok) {
+          setStatuses(j.invites || [])
+          const waiting = (j.invites || []).some((x: InviteStatus) => x.delivery_status === 'queued' || x.delivery_status === 'sending')
+          if (!waiting || tries > 60) return
+        }
+      } catch { /* retry */ }
+      setTimeout(tick, 3000)
+    }
+    tick()
+    return () => { stop = true }
+  }, [result?.batch_id, selectedExamId])
 
   useEffect(() => {
     fetch('/api/exams', { credentials: 'include' })
@@ -81,80 +111,19 @@ export default function BulkSchedulePage() {
       .finally(() => setLoadingExams(false))
   }, [])
 
-  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
+  /** CSV file or pasted list → preview rows (same parser + checks the server uses). */
   const parseCsv = useCallback((text: string, fileName: string) => {
-    // Strip BOM
-    const clean = text.replace(/^\uFEFF/, '').trim()
-    if (!clean) {
-      addToast({ type: 'error', title: 'Empty file' })
+    const rows = parseCandidateText(text)
+    if (!rows.length) {
+      addToast({ type: 'error', title: 'No candidates found', message: 'Add an email column, or paste one email per line.' })
       return
     }
-
-    const lines = clean.split(/\r?\n/).filter(l => l.trim())
-    if (lines.length === 0) {
-      addToast({ type: 'error', title: 'No rows found' })
-      return
-    }
-
-    // Detect header: first row contains 'email' (case-insensitive)
-    const firstLine = lines[0].toLowerCase()
-    const hasHeader = firstLine.includes('email')
-    const startIdx = hasHeader ? 1 : 0
-
-    // Parse header columns if present
-    const headerCols = hasHeader
-      ? lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z]/g, ''))
-      : []
-
-    const emailIdx = headerCols.findIndex(c => c === 'email')
-    const nameIdx = headerCols.findIndex(c => c === 'name')
-    const companyIdx = headerCols.findIndex(c => c === 'company')
-    const roleIdx = headerCols.findIndex(c => c === 'role' || c === 'jobtitle' || c === 'position')
-
-    const parsed: ParsedCandidate[] = []
-    const seenEmails = new Set<string>()
-
-    for (let i = startIdx; i < lines.length; i++) {
-      const cells = lines[i].split(',').map(c => c.trim().replace(/^"(.*)"$/, '$1').replace(/^'(.*)'$/, '$1'))
-      if (cells.length === 0 || cells.every(c => !c)) continue
-
-      let email = '', name = '', company = '', role = ''
-
-      if (emailIdx >= 0) {
-        email = (cells[emailIdx] || '').trim()
-        name = nameIdx >= 0 ? (cells[nameIdx] || '').trim() : ''
-        company = companyIdx >= 0 ? (cells[companyIdx] || '').trim() : ''
-        role = roleIdx >= 0 ? (cells[roleIdx] || '').trim() : ''
-      } else {
-        // Fallback: first cell with @ is email
-        const atIdx = cells.findIndex(c => c.includes('@'))
-        if (atIdx >= 0) {
-          email = cells[atIdx].trim()
-          name = cells[atIdx === 0 ? 1 : 0]?.trim() || ''
-          company = cells[atIdx === 0 ? 2 : (atIdx === 1 ? 2 : 1)]?.trim() || ''
-          role = ''
-        } else {
-          email = cells[0]?.trim() || ''
-        }
-      }
-
-      const isValidEmail = EMAIL_RE.test(email)
-      const isDuplicate = seenEmails.has(email.toLowerCase())
-      const error = !isValidEmail ? 'Invalid email format' : isDuplicate ? 'Duplicate email' : undefined
-      seenEmails.add(email.toLowerCase())
-
-      parsed.push({
-        id: `row-${i}`,
-        email,
-        name: name || email.split('@')[0],
-        company,
-        role,
-        status: !isValidEmail || isDuplicate ? 'invalid' : 'valid',
-        error,
-      })
-    }
-
+    const { valid, errors } = validateRows(rows)
+    const parsed: ParsedCandidate[] = [
+      ...valid.map((c, i) => ({ id: `ok-${i}`, email: c.email, name: c.name || c.email.split('@')[0], company: c.company || '', role: c.role || '', status: 'valid' as const })),
+      ...errors.map((e, i) => ({ id: `bad-${i}`, email: e.email, name: '', company: '', role: '', status: 'invalid' as const, error: e.reason })),
+    ]
+    if (valid.length > MAX_ROWS) addToast({ type: 'warning', title: `Up to ${MAX_ROWS} candidates per batch`, message: 'Only the first ones will be sent; send the rest in another batch.' })
     setCandidates(parsed)
     setCsvFileName(fileName)
     setStep(2)
@@ -185,6 +154,7 @@ export default function BulkSchedulePage() {
     try {
       const validCandidates = candidates
         .filter(c => c.status === 'valid')
+        .slice(0, MAX_ROWS)
         .map(c => ({ email: c.email, name: c.name, company: c.company, role: c.role }))
 
       const res = await csrfFetch('/api/admin/assessments/bulk', {
@@ -202,9 +172,11 @@ export default function BulkSchedulePage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed')
       setResult(data)
+      setStatuses(data.invites || [])
       addToast({
         type: data.failed === 0 ? 'success' : 'warning',
-        title: `${data.created} invite(s) sent, ${data.failed} failed`,
+        title: `${data.created} invite(s) queued${data.failed ? `, ${data.failed} skipped` : ''}`,
+        message: 'Emails are going out now — watch each status below.',
       })
     } catch (err: any) {
       addToast({ type: 'error', title: err.message || 'Failed to send invites' })
@@ -245,8 +217,8 @@ export default function BulkSchedulePage() {
       {/* Header */}
       <PageHeader
         className="mb-0"
-        title="Bulk schedule assessments"
-        description="Upload a CSV of candidates and invite them all to one assessment."
+        title="Invite candidates"
+        description="Upload a CSV or paste emails to invite candidates to one assessment. Each candidate gets their own link by email."
         icon={<Upload />}
       />
 
@@ -328,7 +300,7 @@ export default function BulkSchedulePage() {
         {/* Step 1: Upload CSV */}
         {step === 1 && (
           <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Upload CSV</h2>
+            <h2 className="text-lg font-semibold">Add candidates</h2>
             <p className="text-sm text-muted-foreground">
               CSV columns: <code className="bg-muted px-1 rounded">email</code> (required),
               <code className="bg-muted px-1 rounded">name</code>,
@@ -363,9 +335,24 @@ export default function BulkSchedulePage() {
               }}
             />
 
+            <div className="grid gap-2">
+              <Label htmlFor="paste-emails">Or paste emails</Label>
+              <Textarea
+                id="paste-emails"
+                rows={5}
+                value={pasted}
+                onChange={e => setPasted(e.target.value)}
+                placeholder={'jane@example.com\nRavi Kumar <ravi@example.com>\nalex@example.com, sam@example.com'}
+              />
+              <p className="text-xs text-muted-foreground">One per line or separated by commas. Up to {MAX_ROWS} per batch.</p>
+            </div>
+
             <div className="flex justify-between">
               <Button variant="outline" onClick={() => setStep(0)}>
                 <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              <Button disabled={!pasted.trim()} onClick={() => parseCsv(pasted, 'Pasted list')}>
+                Preview <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -482,7 +469,7 @@ export default function BulkSchedulePage() {
               </Button>
               <Button onClick={handleSend} disabled={sending} className="gap-2">
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {sending ? 'Sending...' : `Send ${validCount} invite(s)`}
+                {sending ? 'Sending...' : `Send ${Math.min(validCount, MAX_ROWS)} invite(s)`}
               </Button>
             </div>
           </div>
@@ -499,10 +486,30 @@ export default function BulkSchedulePage() {
                   <AlertTriangle className="h-6 w-6 text-amber-600 dark:text-amber-400" />
                 )}
                 <div>
-                  <p className="font-semibold text-lg">{result.created} invite(s) sent successfully</p>
-                  {result.failed > 0 && <p className="text-amber-700 dark:text-amber-400">{result.failed} failed</p>}
+                  <p className="font-semibold text-lg">{result.created} invite(s) created</p>
+                  {result.failed > 0 && <p className="text-amber-700 dark:text-amber-400">{result.failed} skipped</p>}
                 </div>
               </div>
+              {statuses.length > 0 && (
+                <div className="mt-4 max-h-80 overflow-y-auto rounded-xl border border-border bg-card">
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-left text-xs text-muted-foreground"><th className="px-3 py-2">Email</th><th className="px-3 py-2">Email status</th></tr></thead>
+                    <tbody>
+                      {statuses.map(s => (
+                        <tr key={s.id} className="border-t border-border/60">
+                          <td className="px-3 py-2 font-mono text-xs">{s.email}</td>
+                          <td className="px-3 py-2">
+                            <Badge variant={s.delivery_status === 'sent' || s.delivery_status === 'delivered' || s.delivery_status === 'opened' ? 'success' : s.delivery_status === 'failed' ? 'danger' : 'outline'}>
+                              {({ queued: 'Waiting', sending: 'Sending', sent: 'Sent', retrying: 'Retrying', failed: 'Failed', delivered: 'Delivered', opened: 'Opened' } as Record<string, string>)[s.delivery_status] || s.delivery_status}
+                            </Badge>
+                            {s.delivery_error && <span className="ml-2 text-xs text-muted-foreground">{s.delivery_error}</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               {result.errors.length > 0 && (
                 <div className="mt-3 space-y-1 text-sm">
                   {result.errors.map((e, i) => (
@@ -517,8 +524,8 @@ export default function BulkSchedulePage() {
               <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>
                 Back to assessments
               </Button>
-              <Button onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
-                View pipeline
+              <Button onClick={() => router.push(`/dashboard/admin/assessments/${selectedExamId}/results`)}>
+                View results
               </Button>
             </div>
           </div>

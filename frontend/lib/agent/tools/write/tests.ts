@@ -286,10 +286,16 @@ export const createTestTool = writeTool<CreateTestArgs>({
     if (total > 100) throw new ToolInputError('A test can have at most 100 questions.')
     return a
   },
+  draftInputs: (a) => ({
+    title: a.title, role: a.role, experience_band: a.experience_band, skills: a.skills, screening_type: a.screening_type,
+    question_count: a.question_count, difficulty: a.difficulty, sections: a.sections, question_ids: a.question_ids,
+    job_description: a.job_description, job_description_upload_id: a.job_description_upload_id,
+  }),
   async propose(a, ctx) {
     // Plan limit first — a friendly stop before any AI work.
     unwrap(await checkAssessmentLimit(serviceUser(ctx.caller)))
-    const draft = await buildTestDraft(ctx.caller, a)
+    // Edit that only changed settings: keep the questions the admin already reviewed (AGT-002).
+    const draft = (await openDraft<TestDraft>('create_test', ctx.caller, a[DRAFT_KEY])) ?? await buildTestDraft(ctx.caller, a)
     if (draft.questionList.length === 0) {
       throw new ToolInputError("I couldn't find or generate questions for this test. Try other skills or question types, or pick questions with search_question_bank.")
     }
@@ -513,13 +519,15 @@ export const updateTestTool = writeTool<UpdateTestArgs>({
     }
     return a
   },
+  draftInputs: (a) => ({ test_id: a.test_id, add_question_ids: a.add_question_ids, generate_questions: a.generate_questions ?? null }),
   async propose(a, ctx) {
     const exam = await loadExam(ctx.caller, a.test_id)
     const current = (exam.questionList || []) as Doc[]
     const remove = a.remove_question_ids ?? []
     const unknown = remove.filter((id) => !current.some((q) => String(q.id) === id))
     if (unknown.length) throw new ToolInputError(`Not on this test: ${unknown.slice(0, 5).join(', ')}. Use get_test to see question ids.`)
-    const added = await questionsToAdd(exam, a)
+    const prior = await openDraft<UpdateDraft>('update_test', ctx.caller, a[DRAFT_KEY])
+    const added = prior && prior.base === (exam.updatedAt ?? null) ? prior.added : await questionsToAdd(exam, a)
     if (a.generate_questions && added.length === (a.add_question_ids?.length ?? 0)) {
       throw new ToolInputError("I couldn't generate the extra questions. Try other topics or types.")
     }

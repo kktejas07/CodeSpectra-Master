@@ -10,6 +10,7 @@ import { isScoredType, isDeterministicType } from '@/lib/question-types'
 import { attemptTimeState, checkExamEntry, checkIdentityForAttempt, extensionRequired, getExamDraft, identitySummary, recordExamAttempt, sectionsAtSubmit, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 
 import { toMediaRef } from '@/lib/identity-media'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -62,7 +63,7 @@ export async function POST(
 
     // IP blocking check (supports CIDR notation) — reuse shared matcher from
     // lib/db/security.ts instead of duplicating the bit-math inline.
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    const clientIp = clientIpOrEmpty(req)
     if (clientIp) {
       const blockedEntries = await db.collection('ip_blocklist').find({
         active: { $ne: false },
@@ -232,7 +233,7 @@ export async function POST(
       device_info: { 
         ua: req.headers.get('user-agent') || '', 
         ...parseUserAgent(req.headers.get('user-agent') || ''), 
-        ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '',
+        ip: clientIpOrEmpty(req),
         geo: req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || null
       },
       // Timing data

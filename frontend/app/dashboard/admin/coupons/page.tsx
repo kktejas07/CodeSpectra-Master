@@ -38,6 +38,11 @@ interface Coupon {
   valid_until?: string
   active: boolean
   created_at: string
+  currency?: 'INR' | 'USD'
+  currency_migrated_at?: string | null
+  applies_to?: 'all' | 'plans' | 'marketplace'
+  marketplace_funding?: 'platform_items_only' | 'platform_funded'
+  seller_id?: string | null
 }
 
 export default function CouponsAdminPage() {
@@ -61,10 +66,16 @@ export default function CouponsAdminPage() {
   const [validUntil, setValidUntil] = useState('')
   const [currency, setCurrency] = useState('USD')
   const CURRENCY_MAP: Record<string, string> = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
+  // Per-coupon fields (CORE-018 / CORE-021).
+  const [couponCurrency, setCouponCurrency] = useState<'INR' | 'USD'>('INR')
+  const [appliesTo, setAppliesTo] = useState<'all' | 'plans' | 'marketplace'>('all')
+  const [funding, setFunding] = useState<'platform_items_only' | 'platform_funded'>('platform_items_only')
+  const [notices, setNotices] = useState<string[]>([])
 
   const openCreate = () => {
     setEditCoupon(null)
     setCode(''); setType('percentage'); setValue(''); setTrialDays(''); setMaxUses(''); setValidUntil('')
+    setCouponCurrency(currency === 'USD' ? 'USD' : 'INR'); setAppliesTo('all'); setFunding('platform_items_only')
     setCreateOpen(true)
   }
 
@@ -75,6 +86,9 @@ export default function CouponsAdminPage() {
     setTrialDays(c.trial_duration_days ? String(c.trial_duration_days) : '')
     setMaxUses(c.max_uses ? String(c.max_uses) : '')
     setValidUntil(c.valid_until ? c.valid_until.slice(0, 16) : '')
+    setCouponCurrency(c.currency === 'USD' ? 'USD' : 'INR')
+    setAppliesTo(c.applies_to ?? 'all')
+    setFunding(c.marketplace_funding ?? 'platform_items_only')
     setCreateOpen(true)
   }
 
@@ -86,6 +100,7 @@ export default function CouponsAdminPage() {
       if (!res.ok) throw new Error('Failed to fetch coupons')
       const data = await res.json()
       setCoupons(data.coupons || [])
+      setNotices(Array.isArray(data.notices) ? data.notices : [])
       setLoadError(false)
     } catch (err: any) { setLoadError(true); addToast({ type: 'error', title: 'Error', message: err.message }) }
     finally { setLoading(false) }
@@ -104,7 +119,7 @@ export default function CouponsAdminPage() {
     const missing = userIds.filter(id => !redemptionUsers[id])
     if (!missing.length) return
     let cancelled = false
-    fetch('/api/admin/users', { credentials: 'include' })
+    fetch(`/api/admin/users?ids=${encodeURIComponent(missing.slice(0, 200).join(','))}`, { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled || !data?.users) return
@@ -140,6 +155,9 @@ export default function CouponsAdminPage() {
           max_uses: maxUses ? Number(maxUses) : 0,
           valid_until: validUntil || undefined,
           trial_duration_days: type === 'trial' ? Number(trialDays) : undefined,
+          currency: type === 'flat' ? couponCurrency : undefined,
+          applies_to: appliesTo,
+          marketplace_funding: funding,
         })
       })
       const data = await res.json()
@@ -172,7 +190,18 @@ export default function CouponsAdminPage() {
   const columns: DataTableColumn<Coupon>[] = [
     { key: 'code', header: 'Code', cell: (r) => <span className="font-mono font-semibold text-foreground">{r.code}</span> },
     { key: 'discount', header: 'Discount',
-      cell: (r) => r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `${CURRENCY_MAP[currency] || currency}${r.discount_value}` },
+      cell: (r) => (
+        <span className="flex flex-wrap items-center gap-1.5">
+          {r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `${CURRENCY_MAP[r.currency || 'INR']}${r.discount_value} (${r.currency || 'INR'} orders only)`}
+          {r.currency_migrated_at && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400">Check currency</Badge>}
+        </span>
+      ) },
+    { key: 'scope', header: 'Where', cell: (r) => (
+      <span className="text-xs text-muted-foreground">
+        {r.seller_id ? 'One seller (seller-funded)' : r.applies_to === 'plans' ? 'Plans' : r.applies_to === 'marketplace' ? 'Marketplace' : 'Plans + marketplace'}
+        {!r.seller_id && r.applies_to !== 'plans' && <><br />{r.marketplace_funding === 'platform_funded' ? 'All sellers, platform pays' : 'CodeSpectra items + opted-in sellers'}</>}
+      </span>
+    ) },
     { key: 'usage', header: 'Usage', cell: (r) => <span className="tabular-nums">{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
     { key: 'status', header: 'Status',
       cell: (r) => r.active ? <Badge variant="outline" className="border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400">Active</Badge> : <Badge variant="secondary">Inactive</Badge> },
@@ -205,6 +234,10 @@ export default function CouponsAdminPage() {
         actions={<Button onClick={openCreate}><Plus className="h-4 w-4 mr-2" /> New coupon</Button>}
       />
 
+      {notices.map((n) => (
+        <div key={n} role="status" className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-300">{n}</div>
+      ))}
+
       {!loading && (
         <div className="grid gap-4 sm:grid-cols-3">
           <StatCard label="Coupons" value={coupons.length} icon={<Tag />} />
@@ -230,7 +263,7 @@ export default function CouponsAdminPage() {
                 <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percentage">Percentage (%)</SelectItem>
-                  <SelectItem value="flat">Flat amount ({currency})</SelectItem>
+                  <SelectItem value="flat">Fixed amount</SelectItem>
                   <SelectItem value="trial">Free trial (days)</SelectItem>
                 </SelectContent>
               </Select>
@@ -239,6 +272,43 @@ export default function CouponsAdminPage() {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="value" className="text-right">Value</Label>
               <Input id="value" type="number" value={value} onChange={e => setValue(e.target.value)} className="col-span-3" placeholder={type === 'percentage' ? "20" : "500"} />
+            </div>)}
+            {type === 'flat' && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="coupon-currency" className="text-right">Currency</Label>
+              <Select value={couponCurrency} onValueChange={(v: 'INR' | 'USD') => setCouponCurrency(v)}>
+                <SelectTrigger id="coupon-currency" className="col-span-3"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INR">INR (₹) — only INR orders</SelectItem>
+                  <SelectItem value="USD">USD ($) — only USD orders</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>)}
+            {type !== 'trial' && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="applies-to" className="text-right">Use on</Label>
+              <Select value={appliesTo} onValueChange={(v: 'all' | 'plans' | 'marketplace') => setAppliesTo(v)}>
+                <SelectTrigger id="applies-to" className="col-span-3"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Plans and marketplace</SelectItem>
+                  <SelectItem value="plans">Plans only</SelectItem>
+                  <SelectItem value="marketplace">Marketplace only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>)}
+            {type !== 'trial' && appliesTo !== 'plans' && (
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label htmlFor="funding" className="text-right pt-2">Other sellers</Label>
+              <div className="col-span-3 space-y-1">
+                <Select value={funding} onValueChange={(v: 'platform_items_only' | 'platform_funded') => setFunding(v)}>
+                  <SelectTrigger id="funding"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="platform_items_only">Don&apos;t discount their items</SelectItem>
+                    <SelectItem value="platform_funded">Discount them — CodeSpectra pays</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Sellers who opted in to platform promotions are always included and pay their share.</p>
+              </div>
             </div>)}
             {type === 'trial' && (
             <div className="grid grid-cols-4 items-center gap-4">

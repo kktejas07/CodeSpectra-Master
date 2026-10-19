@@ -3,12 +3,26 @@ import type { NextRequest } from 'next/server'
 import { checkCsrf, CSRF_COOKIE, CSRF_HEADER } from '@/lib/csrf'
 import { edgeRateLimit, edgeClientKey } from '@/lib/edge-rate-limit'
 import { isCsrfExempt } from '@/lib/csrf-exempt'
+import { isPublicMarketingPath } from '@/lib/seo/public-routes'
 import { PERMISSIONS_POLICY } from '@/lib/security-headers'
+import { TAG_CONNECT_HOSTS, TAG_FRAME_HOSTS, TAG_SCRIPT_HOSTS } from '@/lib/analytics/integrations'
+import { bearerSkipsCsrf, impersonationBlocked, isPageRequestPath, loginCsrfBlocked } from '@/lib/request-guards'
+
+// Optional analytics / ad tags (Admin → Settings → Analytics) load only after
+// visitor consent (components/analytics/third-party-tags.tsx); their hosts are
+// listed once in lib/analytics/integrations.ts.
+function withTagHosts(directive: string): string {
+  const name = directive.split(' ')[0]
+  if (name === 'script-src' || name === 'script-src-elem') return `${directive} ${TAG_SCRIPT_HOSTS.join(' ')}`
+  if (name === 'connect-src') return `${directive} ${TAG_CONNECT_HOSTS.join(' ')}`
+  if (name === 'frame-src') return `${directive} ${TAG_FRAME_HOSTS.join(' ')}`
+  return directive
+}
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com",
-  "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com",
+  "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
   "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https: http:",
@@ -21,7 +35,7 @@ const CSP = [
   "base-uri 'self'",
   "form-action 'self'",
   "manifest-src 'self'",
-].join('; ')
+].map(withTagHosts).join('; ')
 
 const HSTS = 'max-age=63072000; includeSubDomains; preload'
 
@@ -68,7 +82,8 @@ async function pageGate(request: NextRequest): Promise<NextResponse | null> {
 }
 
 function isPageRequest(pathname: string): boolean {
-  return !pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && !pathname.includes('.')
+  // SEC-016: only real asset extensions skip the page gate (lib/request-guards).
+  return isPageRequestPath(pathname)
 }
 
 export async function proxy(request: NextRequest) {
@@ -94,6 +109,19 @@ export async function proxy(request: NextRequest) {
 
   const secureFlag = process.env.NODE_ENV === 'production' ? 'Secure;' : ''
 
+  if (pathname.startsWith('/api/')) {
+    // SEC-012: CSRF-exempt sign-in endpoints accept JSON only, never cross-site
+    // (blocks login-CSRF via a text/plain HTML form).
+    if (loginCsrfBlocked(request.method, pathname, request.headers)) {
+      return NextResponse.json({ error: 'Unsupported request' }, { status: 415 })
+    }
+    // SEC-010: an admin "viewing as" a user cannot change the account's
+    // credentials, delete it, or move money (claim `imp` in the session JWT).
+    if (impersonationBlocked(request.method, pathname, request.cookies.get(SESSION_COOKIE)?.value)) {
+      return NextResponse.json({ error: 'Not available while viewing as another user. Stop impersonating first.' }, { status: 403 })
+    }
+  }
+
   // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)
   if (pathname.startsWith('/api/') && !isCsrfExempt(pathname)) {
     // Bearer-authenticated callers (the mobile app, server-to-server clients)
@@ -101,7 +129,9 @@ export async function proxy(request: NextRequest) {
     // meaningful — there is nothing to forge. Cross-site scripting cannot
     // mint a Bearer header the way it can replay a cookie, so these requests
     // skip the double-submit check and get a fresh cookie for later use.
-    const bearer = request.headers.get('authorization')?.startsWith('Bearer ') ?? false
+    // SEC-025: …but only when no session cookie is present — getAPIUser
+    // prefers the cookie, so a junk Bearer header must not unlock CSRF.
+    const bearer = bearerSkipsCsrf(request.headers, !!request.cookies.get(SESSION_COOKIE)?.value)
     if (!bearer) {
       const csrf = checkCsrf(request)
       if (!csrf.pass) {
@@ -118,8 +148,11 @@ export async function proxy(request: NextRequest) {
   }
 
   // Also set CSRF cookie on page loads so document.cookie can always read it
-  // (Cloudflare Bot Fight Mode may intercept API calls before the cookie is set)
-  if (!pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && !request.cookies.get(CSRF_COOKIE)) {
+  // (Cloudflare Bot Fight Mode may intercept API calls before the cookie is set).
+  // Not on public marketing/content pages or files (sitemaps, llms.txt, OG images):
+  // a Set-Cookie there stops CDN caching (SEO-004), and csrfFetch bootstraps the
+  // token on demand for the few public forms.
+  if (isPageRequest(pathname) && !isPublicMarketingPath(pathname) && !request.cookies.get(CSRF_COOKIE)) {
     const token = crypto.getRandomValues(new Uint8Array(32))
     const hex = Array.from(token).map(b => b.toString(16).padStart(2, '0')).join('')
     response.headers.append(

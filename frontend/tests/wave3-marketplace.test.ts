@@ -16,7 +16,7 @@ const gw = vi.hoisted(() => ({ refund: vi.fn(async (..._a: unknown[]) => ({ ok: 
 vi.mock('@/lib/marketplace/gateways', () => ({
   gatewayRefund: (...a: unknown[]) => gw.refund(...a),
   fetchGatewayState: vi.fn(async () => ({ state: 'pending' })),
-  isMarketplaceTxn: (t: string) => /^MKT/.test(t),
+  isMarketplaceTxn: (t: string) => /^MKT/.test(t), closePaymentPage: vi.fn(async () => true),
   pickGateway: vi.fn(async () => 'stripe'),
   startPayment: vi.fn(),
 }))
@@ -413,5 +413,31 @@ describe('GSTIN: full on the buyer tax invoice only', () => {
     const html = buildInvoiceHtml(o as unknown as OrderDoc, { s1: { name: 'Shop', gstin: await sellerInvoiceGstin(s) } }, { name: 'CodeSpectra' })
     expect(html).toContain('GSTIN 36ABCDE1234F1Z5')
     expect(html).not.toContain('PAN')
+  })
+})
+
+describe('CORE-022 replaced checkout', () => {
+  it('closes the old payment page and refunds (does not fulfil) a late payment on it', async () => {
+    const { abandonOrder } = await import('@/lib/marketplace/settle')
+    const gws = await import('@/lib/marketplace/gateways')
+    const unf = { fulfilment: { status: 'unfulfilled', downloads_used: 0 } }
+    const o = await seedOrder({
+      status: 'pending_payment',
+      payment: { gateway: 'phonepe', status: 'pending', ref: 'MKTorder000001' },
+      reservation: { status: 'held', expires_at: new Date(Date.now() + 60_000).toISOString(), items: [] },
+    } as never, [line('l1', unf), line('l2', unf)])
+    expect(await abandonOrder(o.id, 'replaced')).toBe(true)
+    expect(vi.mocked(gws.closePaymentPage)).toHaveBeenCalledTimes(1)
+
+    // The buyer pays in the old tab anyway (PhonePe pages can't be closed).
+    expect(await settlePaid(o.id, { amount: o.grand_total, currency: 'INR', txn: 'T1' })).toBe('paid')
+    const after = await getOrder()
+    expect(gw.refund).toHaveBeenCalledTimes(1)
+    expect(gw.refund.mock.calls[0][1]).toBe(o.grand_total)
+    expect(after.lines.every((l) => l.fulfilment.status === 'cancelled')).toBe(true) // refunded, never delivered
+    expect(after.payment.refunded_total).toBe(o.grand_total)
+    // Replays don't refund twice.
+    await settlePaid(o.id, { amount: o.grand_total, currency: 'INR', txn: 'T1' })
+    expect(gw.refund).toHaveBeenCalledTimes(1)
   })
 })

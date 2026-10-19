@@ -1,4 +1,5 @@
 'use client'
+import { useOrigin } from '@/hooks/use-browser-value'
 import { AiAnalyticsDashboard } from "./AiAnalyticsDashboard"
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
@@ -55,8 +56,10 @@ import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloud
 import { LlmSettingsTabs } from '@/components/dashboard/settings/llm-settings-tabs'
 import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
+import { SeoSettingsSection } from '@/components/dashboard/settings/seo-section'
 import { KycSettingsSection } from '@/components/dashboard/settings/kyc-section'
 import { HiringIntegrationsSection } from '@/components/dashboard/settings/hiring-integrations-section'
+import { AnalyticsSettingsSection } from '@/components/dashboard/settings/analytics-section'
 import { useToast } from '@/lib/toast-context'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
@@ -309,6 +312,11 @@ const emptySecretsDraft = (): SecretsDraft => ({
   typesafe_api_key: '',
   internal_backend_secret: '',
 })
+
+/** W4-10: the browser origin, read after mount ('<APP_URL>' until then). */
+function AppOrigin() {
+  return <>{useOrigin('<APP_URL>')}</>
+}
 
 function EmailTemplatesSection() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
@@ -1383,6 +1391,14 @@ function SystemSettingsInner() {
               <HiringIntegrationsSection />
             ) : null}
 
+            {section === 'analytics' ? (
+              <AnalyticsSettingsSection />
+            ) : null}
+
+            {section === 'seo' ? (
+              <SeoSettingsSection />
+            ) : null}
+
            {section === 'mail' ? (
         <Card className="rounded-3xl border-border/70 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
@@ -1714,9 +1730,9 @@ function SystemSettingsInner() {
             <div className="flex items-center justify-between gap-4 p-6">
               <div className="min-w-0 space-y-0.5">
                 <Label htmlFor="identity_media_retention_days" className="text-foreground">
-                  Keep ID photos and selfies (days)
+                  Keep ID photos, selfies and session recordings (days)
                 </Label>
-                <p className="text-sm text-muted-foreground">Exam identity photos and face scans are deleted this many days after the test closes</p>
+                <p className="text-sm text-muted-foreground">Exam identity photos, face scans and proctoring video are deleted this many days after the test closes</p>
               </div>
               <Input
                 id="identity_media_retention_days"
@@ -2181,7 +2197,7 @@ function SystemSettingsInner() {
                     </a>{' '}
                     and set the Authorization callback URL to{' '}
                     <code className="break-all">
-                      {(typeof window !== 'undefined' ? window.location.origin : '<APP_URL>')}
+                      <AppOrigin />
                       /api/github/oauth/callback
                     </code>
                     .

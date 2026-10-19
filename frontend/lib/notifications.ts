@@ -115,10 +115,12 @@ interface NotifyInput {
   send_email?: boolean
   /** Skip the FCM push fan-out for this notification. */
   skip_push?: boolean
-  /** Send WhatsApp notification (if configured and user has phone). */
+  /**
+   * Also send WhatsApp — only to users who agreed to WhatsApp messages, through
+   * the official Meta Cloud API with an approved template (lib/whatsapp-send;
+   * the unofficial gateway only when a superadmin explicitly enabled it).
+   */
   send_whatsapp?: boolean
-  /** WhatsApp phone number override (if not in user profile). */
-  whatsapp_phone?: string
   /**
    * Bypass the user's quiet hours for email/push/WhatsApp. Defaults to true
    * for `security` notifications, false otherwise (deferred to window end).
@@ -171,12 +173,12 @@ async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promis
     type Payload = import('@/lib/notifications-delivery').DeliveryPayload
     const payload: Payload = {}
     const wantsEmail = !!input.send_email
-    const wantsWhatsApp = !!(input.send_whatsapp || input.whatsapp_phone)
+    const wantsWhatsApp = !!input.send_whatsapp
     const db = wantsEmail || wantsWhatsApp ? await getMongoDb() : null
-    const user = db
+    const user = db && wantsEmail
       ? await db.collection('user').findOne(
           { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
-          { projection: { email: 1, phone: 1, phone_number: 1, whatsapp: 1 } },
+          { projection: { email: 1 } },
         )
       : null
     const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -204,6 +206,8 @@ async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promis
       if (typePref?.enabled !== false && channelPref?.enabled !== false) {
         payload.email = {
           to: String(user.email),
+          // Unsubscribes are honoured and the link added (AUTO-052); billing/security can't be unsubscribed from.
+          category: doc.category === 'security' ? 'security' : doc.category === 'billing' ? 'billing' : 'transactional',
           subject: doc.title,
           html: `<div style="font-family:sans-serif;padding:24px;max-width:480px">
                 <h2 style="margin:0 0 8px">${esc(doc.title)}</h2>
@@ -215,12 +219,12 @@ async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promis
       }
     }
 
-    if (wantsWhatsApp) {
-      const phone = input.whatsapp_phone || String(user?.phone || user?.phone_number || user?.whatsapp || '')
-      if (phone) {
-        let text = `*${doc.title}*\n\n${doc.message}`
-        if (doc.link) text += `\n\n${base}${doc.link}`
-        payload.whatsapp = { phone, text }
+    if (wantsWhatsApp && db) {
+      // Consent, opt-outs and the channel are checked when it is sent (lib/whatsapp-send).
+      // Here: the per-type switch only.
+      const typePref = await db.collection('notification_preferences').findOne({ user_id: input.user_id, type: input.type }, { projection: { enabled: 1, whatsapp: 1 } })
+      if (typePref?.enabled !== false && typePref?.whatsapp !== false) {
+        payload.whatsapp = { title: doc.title, text: doc.message, link: doc.link ? `${base}${doc.link}` : '' }
       }
     }
 

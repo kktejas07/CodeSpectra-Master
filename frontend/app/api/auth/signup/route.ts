@@ -60,8 +60,7 @@ export async function POST(request: Request) {
         )
       }
     } else {
-      void import('@/lib/automation/events').then(({ emit }) => emit('user.created', { user_id: uid, email: normalizedEmail, name: name || null, method: 'email', email_verified: false, created_at: now.toISOString() }, { idempotencyKey: `user.created:${uid}` })).catch((e) => console.error('[automation] emit failed:', e))
-    await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: previewEmail, actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'info', detail: 'IP throttle bypassed via valid assessment invite', user_id: previewEmail })
+      await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: previewEmail, actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'info', detail: 'IP throttle bypassed via valid assessment invite', user_id: previewEmail })
     }
 
     if (await isIpBlocked(rawIp)) {
@@ -173,12 +172,21 @@ export async function POST(request: Request) {
       passwordHash,
       role: 'user',
       emailVerified: false,
+      // SEC-006: marks accounts created under the verify-first rule (legacy
+      // accounts without it are grandfathered by lib/auth-policy signInBlock).
+      email_verification_required: policy.require_email_verification === true,
       session_version: 1,
       verification_token_hash: verifyTokenHash,
       verification_token_expires: verifyTokenExpires,
       createdAt: now,
       updatedAt: now,
     } as any)
+
+    // SEC-013: every email signup fires user.created (welcome/onboarding flows),
+    // only after the account really exists. Idempotent per user id.
+    void import('@/lib/automation/events')
+      .then(({ emit }) => emit('user.created', { user_id: uid, email: normalizedEmail, name: name || null, method: 'email', email_verified: false, created_at: now.toISOString() }, { idempotencyKey: `user.created:${uid}` }))
+      .catch((e) => console.error('[automation] emit failed:', (e as Error)?.message))
 
     // Invites sent before this account existed carry no user_id — attach them.
     await db.collection('candidate_invites').updateMany(
@@ -211,6 +219,15 @@ export async function POST(request: Request) {
           metadata: { userAgent },
         })
       }
+    }
+
+    // CORE-005: a referral code sent with the sign-up is recorded now (pending until the account
+    // is verified and completes a first graded activity) — with email verification on, the
+    // browser has no session to apply it afterwards.
+    if (typeof raw.referral_code === 'string' && raw.referral_code) {
+      const { recordReferralRedemption } = await import('@/lib/referral-service')
+      await recordReferralRedemption(db, { id: uid, email: normalizedEmail }, raw.referral_code)
+        .catch((e) => console.error('[Signup] referral not recorded:', (e as Error)?.message))
     }
 
     // Send welcome email

@@ -5,6 +5,7 @@
  * request per file so each shows its own progress and result), add by hand,
  * CSV import and talent-pool suggestions.
  */
+import { useOrigin } from '@/hooks/use-browser-value'
 import { useCallback, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Check, CheckCircle2, Copy, FileUp, Loader2, Sparkles, UploadCloud, UserPlus, XCircle } from 'lucide-react'
@@ -50,7 +51,8 @@ function ShareLink({ job }: { job: AtsJob }) {
   const [copied, setCopied] = useState(false)
   const path = publicPath(job)
   const live = job.is_public && job.status === 'open' && !!path
-  const url = path && typeof window !== 'undefined' ? `${window.location.origin}${path}` : path ?? ''
+  const origin = useOrigin()
+  const url = path && origin ? `${origin}${path}` : path ?? ''
   return (
     <Panel>
       <Section title="Public apply link" description="Share it on job boards, LinkedIn or WhatsApp. Every application is screened automatically.">

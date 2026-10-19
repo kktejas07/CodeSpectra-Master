@@ -3,7 +3,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { ManagePreferences } from '@/components/subscriptions/manage-preferences'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Your updates — CodeSpectra', robots: { index: false } }
+export const metadata: Metadata = { title: { absolute: 'Your updates | CodeSpectra' }, robots: { index: false } }
 
 /** Manage / unsubscribe page linked from every email footer (s = subscriber id, t = manage token). */
 export default async function ManageSubscriptionPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {

@@ -1,8 +1,11 @@
 /**
- * WhatsApp notification sender via OpenWA gateway.
+ * Unofficial WhatsApp transport via an OpenWA gateway.
  *
- * Universal utility — used by the notification system, newsletter campaigns,
- * and any other feature that needs to send WhatsApp messages.
+ * Do not call this from features: send through lib/whatsapp-send.ts, which
+ * checks consent and STOP opt-outs and prefers the official Meta Cloud API
+ * with approved templates (AUTO-060). The text senders here refuse to send
+ * unless a superadmin explicitly enabled the unofficial gateway, and never
+ * to a phone that replied STOP.
  *
  * OpenWA v0.18 REST API:
  *   Text:  POST {base_url}/api/sessions/{sessionId}/messages/send-text
@@ -90,12 +93,20 @@ export function normalizePhone(phone: string, defaultCountryCode?: string): stri
 }
 
 /**
- * Send a text message via WhatsApp.
+ * Send a text message through the unofficial gateway. Refused unless the
+ * gateway is explicitly enabled (Admin → Automations, or WHATSAPP_UNOFFICIAL=1)
+ * and refused for phones that opted out. Consent is the caller's job — use
+ * lib/whatsapp-send.ts, which checks it.
  */
 export async function sendWhatsAppText(
   phone: string,
   text: string,
 ): Promise<WhatsAppSendResult> {
+  const { unofficialWhatsAppEnabled, isWhatsAppOptedOut } = await import('@/lib/whatsapp-send')
+  if (!(await unofficialWhatsAppEnabled())) {
+    return { success: false, phone, error: 'The unofficial WhatsApp gateway is switched off (Admin → Automations → WhatsApp).' }
+  }
+  if (await isWhatsAppOptedOut(phone, null)) return { success: false, phone, error: 'This number opted out of WhatsApp messages' }
   const config = await getConfig()
   if (!config) {
     return { success: false, phone, error: 'WhatsApp not configured' }
@@ -138,6 +149,9 @@ export async function sendWhatsAppImage(
   imageUrl: string,
   caption?: string,
 ): Promise<WhatsAppSendResult> {
+  const { unofficialWhatsAppEnabled, isWhatsAppOptedOut } = await import('@/lib/whatsapp-send')
+  if (!(await unofficialWhatsAppEnabled())) return { success: false, phone, error: 'The unofficial WhatsApp gateway is switched off' }
+  if (await isWhatsAppOptedOut(phone, null)) return { success: false, phone, error: 'This number opted out of WhatsApp messages' }
   const config = await getConfig()
   if (!config) {
     return { success: false, phone, error: 'WhatsApp not configured' }

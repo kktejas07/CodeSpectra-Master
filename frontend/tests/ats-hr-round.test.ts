@@ -292,7 +292,10 @@ describe('HR round flow', () => {
   }
 
   it('sends the form on entry (email + WhatsApp with consent), once', async () => {
-    const { app } = await seed()
+    // No approved Meta template in this test: the unofficial gateway is used only because it is
+    // explicitly enabled (lib/whatsapp-send, AUTO-060).
+    process.env.WHATSAPP_UNOFFICIAL = '1'
+    const { app } = await seed().finally(() => { delete process.env.WHATSAPP_UNOFFICIAL })
     expect(app.stage_id).toBe('s_hr')
     const forms = await (await atsHrForms()).find({}).toArray()
     expect(forms).toHaveLength(1)

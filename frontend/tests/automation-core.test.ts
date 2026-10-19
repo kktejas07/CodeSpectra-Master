@@ -222,8 +222,21 @@ describe('engine', () => {
     const r1 = await advance([{ id: 'x', type: 'email.send', config: { retries: 5 } }], {}, fresh(), e1)
     expect(r1).toEqual({ status: 'failed', failed_key: 'x', error: 'bad config' })
     const e2 = env({ exec: async (s) => { if (s.id === 'x') throw new Error('nope'); return 1 } })
-    const r2 = await advance([{ id: 'x', type: 'email.send', config: { continue_on_error: true } }, { id: 'y', type: 'log', config: { message: 'still here' } }], {}, fresh(), e2)
+    const r2 = await advance([{ id: 'x', type: 'email.send', config: { retries: 0, continue_on_error: true } }, { id: 'y', type: 'log', config: { message: 'still here' } }], {}, fresh(), e2)
     expect(r2.status).toBe('partial')
+  })
+
+  it('retries side-effect steps twice by default, like the builder shows (AUTO-010)', async () => {
+    let calls = 0
+    const e = env({ exec: async () => { calls++; throw new Error('Postal 503') } })
+    const state = fresh()
+    const r = await advance([{ id: 'x', type: 'email.send', config: {} }], {}, state, e)
+    expect(r.status).toBe('waiting')
+    expect(state.step_state.x).toMatchObject({ status: 'retry_wait', attempts: 1 })
+    // Data / logic steps are not retried unless asked.
+    const r2 = await advance([{ id: 'q', type: 'mongo.find', config: {} }], {}, fresh(), e)
+    expect(r2.status).toBe('failed')
+    expect(calls).toBe(2)
   })
 
   it('re-runs from the failed step only', async () => {

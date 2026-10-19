@@ -19,14 +19,14 @@ export function Gallery({ images, title }: { images: string[]; title: string }) 
     <div className="space-y-3">
       <div className="aspect-square w-full overflow-hidden rounded-3xl border border-cs-grid bg-cs-paper">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={images[i]} alt={`${title} — image ${i + 1} of ${images.length}`} className="h-full w-full object-cover" />
+        <img src={images[i]} alt={`${title} — image ${i + 1} of ${images.length}`} width={800} height={800} fetchPriority={i === 0 ? 'high' : 'auto'} decoding="async" className="h-full w-full object-cover" />
       </div>
       {images.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-1">
           {images.map((src, k) => (
             <button key={src + k} type="button" onClick={() => setI(k)} aria-label={`Show image ${k + 1}`} aria-current={k === i} className={`h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 ${k === i ? 'border-cs-accent' : 'border-transparent'}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt="" className="h-full w-full object-cover" />
+              <img src={src} alt="" width={64} height={64} loading="lazy" decoding="async" className="h-full w-full object-cover" />
             </button>
           ))}
         </div>

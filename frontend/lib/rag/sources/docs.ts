@@ -13,7 +13,7 @@ import path from 'path'
 import type { ExtractedSource } from '../types'
 
 export const DOC_PAGE_SOURCES: Record<string, { file: string; title: string; url: string; kind: 'faq' | 'legal' | 'help' }> = {
-  'page:faq': { file: 'app/faq/page.tsx', title: 'Frequently asked questions', url: '/faq', kind: 'faq' },
+  'page:faq': { file: 'lib/seo/faq-content.ts', title: 'Frequently asked questions', url: '/faq', kind: 'faq' },
   'page:privacy': { file: 'app/privacy/page.tsx', title: 'Privacy policy', url: '/privacy', kind: 'legal' },
   'page:terms': { file: 'app/terms/page.tsx', title: 'Terms of service', url: '/terms', kind: 'legal' },
   'page:cookies': { file: 'app/cookies/page.tsx', title: 'Cookie policy', url: '/cookies', kind: 'legal' },

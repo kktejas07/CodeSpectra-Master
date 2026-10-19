@@ -23,9 +23,18 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}))
   const phone = String(body.phone || '').replace(/\D/g, '')
-  const countryCode = String(body.countryCode || '+91')
-  if (phone.length < 6) {
+  const countryCode = String(body.countryCode || '+91').trim()
+  // SEC-014: validated before it is stored or echoed into the email HTML.
+  if (!/^\+\d{1,4}$/.test(countryCode)) {
+    return NextResponse.json({ error: 'Choose a valid country code' }, { status: 400 })
+  }
+  if (phone.length < 6 || phone.length > 15) {
     return NextResponse.json({ error: 'Enter a valid mobile number' }, { status: 400 })
+  }
+  const { rateLimitRedis } = await import('@/lib/upstash-rate-limit')
+  const limit = await rateLimitRedis(`phone-verify:${user.id}`, 5, 3600_000)
+  if (!limit.ok) {
+    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.` }, { status: 429 })
   }
 
   const code = String(randomInt(100000, 999999))
@@ -38,6 +47,7 @@ export async function POST(req: NextRequest) {
         phone,
         countryCode,
         code,
+        attempts: 0,
         expiresAt: new Date(Date.now() + TTL_MS),
         createdAt: new Date(),
       },
@@ -47,11 +57,11 @@ export async function POST(req: NextRequest) {
 
   await sendEmail(user.email, {
     subject: 'Confirm your mobile number on CodeSpectra',
-    html: `<p>Confirm mobile <strong>${countryCode} ${phone}</strong>.</p><p>Your code is <strong>${code}</strong> (expires in 15 minutes).</p><p>SMS OTP will be available once an SMS provider is configured.</p>`,
+    html: `<p>Save mobile <strong>${countryCode} ${phone}</strong> to your profile.</p><p>Your code is <strong>${code}</strong> (expires in 15 minutes).</p><p>This confirms the change came from you; the number itself is marked verified only once SMS verification is available.</p>`,
   }, undefined, { category: 'transactional' })
 
   return NextResponse.json({
     ok: true,
-    message: 'Verification code sent to your login email (SMS coming later)',
+    message: 'Confirmation code sent to your login email',
   })
 }

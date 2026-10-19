@@ -92,6 +92,25 @@ export async function fetchGatewayState(order: OrderDoc): Promise<GatewayState> 
   return { state: 'pending' }
 }
 
+/**
+ * Close the payment page of an order that will not be paid (replaced by a newer checkout,
+ * CORE-022). Stripe: expire the Checkout Session so the old tab can't take money. PhonePe has
+ * no cancel API — a late PhonePe payment on a replaced order is refunded in settle.ts.
+ * Best effort: returns false when the session could not be expired (already paid/expired, or Stripe down).
+ */
+export async function closePaymentPage(order: Pick<OrderDoc, 'payment'>): Promise<boolean> {
+  const ref = order.payment.ref
+  if (order.payment.gateway !== 'stripe' || !ref || !ref.startsWith('cs_')) return false
+  try {
+    const stripe = await getStripeClient()
+    await stripe.checkout.sessions.expire(ref)
+    return true
+  } catch (e) {
+    console.error('[marketplace] could not expire replaced checkout session', (e as Error)?.message?.slice(0, 160))
+    return false
+  }
+}
+
 /** Refund through the gateway. `refundRef` is unique per refund (idempotency on both gateways). */
 export async function gatewayRefund(order: OrderDoc, amount: number, refundRef: string): Promise<{ ok: boolean; ref: string }> {
   if (amount <= 0) return { ok: true, ref: 'zero' }

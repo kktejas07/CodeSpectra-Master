@@ -2,7 +2,9 @@ services:
   piston:
     # ponytail: intentionally :latest — ghcr.io/engineer-man/piston publishes no
     # verifiable versioned tags (only `latest` on the package page as of 2026-09-06).
-    image: ghcr.io/engineer-man/piston:latest
+    # SEC-023: pin by digest in production, e.g.
+    # PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<digest> (docker buildx imagetools inspect …)
+    image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}
     container_name: codespectra-piston
     cap_add:
       - SYS_ADMIN
@@ -34,8 +36,11 @@ services:
         NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
     container_name: codespectra-frontend
+    # SEC-022: loopback only. Put Caddy/Nginx (or Cloudflare Tunnel) in front —
+    # see docs/devops/06-Reverse-Proxy.md — and set TRUSTED_PROXY_CIDRS to the
+    # proxy's address so client IPs are read from X-Forwarded-For.
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     # Runtime-only secrets (never build args — they would be baked into the image).
     environment:
       - PISTON_URL=http://piston:2000/api/v2
@@ -44,7 +49,18 @@ services:
       - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:-}
       - ATS_ENCRYPTION_KEY=${ATS_ENCRYPTION_KEY:-}
       - IDENTITY_MEDIA_KEY=${IDENTITY_MEDIA_KEY:-}
+      # SEC-018: production refuses to boot without SECRETS_ENCRYPTION_KEY
+      # (instrumentation.ts). Emergency override only: ALLOW_DERIVED_ENCRYPTION_KEYS=1.
+      - ALLOW_DERIVED_ENCRYPTION_KEYS=${ALLOW_DERIVED_ENCRYPTION_KEYS:-}
       - CRON_SECRET=${CRON_SECRET:-}
+      - INTERNAL_BACKEND_URL=http://backend:8000
+      - INTERNAL_BACKEND_SECRET=${INTERNAL_BACKEND_SECRET:-}
+      # SEC-021 / W4-01: forwarding headers are trusted only from these peers.
+      # Default = Docker's bridge range (172.16.0.0/12), which is where a
+      # host-level Caddy/Nginx (via the published 127.0.0.1 port) connects from.
+      # Override with your proxy/overlay subnet — docs/devops/06-Reverse-Proxy.md.
+      - TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS:-172.16.0.0/12,127.0.0.1}
+      - TRUST_CF_CONNECTING_IP=${TRUST_CF_CONNECTING_IP:-false}
     depends_on:
       piston:
         condition: service_healthy
@@ -88,10 +104,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: codespectra-backend
-    ports:
-      - "8001:8000"
+    # SEC-001/SEC-022: no published port. Only the frontend/course-worker reach
+    # it on the compose network (http://backend:8000), with x-internal-secret.
+    expose:
+      - "8000"
     environment:
       - NEXTJS_INTERNAL_URL=http://frontend:80
+    # INTERNAL_BACKEND_SECRET comes from backend/.env (or the Mongo copy) and
+    # must equal the frontend's — the backend refuses /internal/* without it.
     env_file:
       - ./backend/.env
     depends_on:

@@ -14,23 +14,33 @@ import { getMongoDb } from '@/lib/mongodb'
 export interface WhatsAppRecipient {
   phone: string
   source: 'preferences' | 'subscription' | 'candidate'
+  /** When the person agreed (an opt-out by STOP after this wins; AUTO-061). */
+  consented_at?: string | null
+}
+
+/** A recipient whose phone replied STOP after agreeing is no recipient (AUTO-061). */
+async function notOptedOut(r: WhatsAppRecipient | null): Promise<WhatsAppRecipient | null> {
+  if (!r) return null
+  const { isWhatsAppOptedOut } = await import('@/lib/whatsapp-send')
+  return (await isWhatsAppOptedOut(r.phone, r.consented_at ?? null)) ? null : r
 }
 
 export async function whatsappRecipientForUser(userId: string): Promise<WhatsAppRecipient | null> {
   if (!userId) return null
   const db = await getMongoDb()
-  const pref = await db.collection('notification_preferences').findOne({ user_id: userId, type: 'whatsapp' }, { projection: { enabled: 1, phone: 1 } }).catch(() => null)
+  const pref = await db.collection('notification_preferences').findOne({ user_id: userId, type: 'whatsapp' }, { projection: { enabled: 1, phone: 1, updated_at: 1, created_at: 1 } }).catch(() => null)
   if (pref?.enabled === true) {
     const phone = typeof pref.phone === 'string' && pref.phone ? pref.phone : null
     const user = phone ? null : await db.collection('user').findOne({ $or: [{ id: userId }, { _id: userId as never }] }, { projection: { phone: 1, mobile: 1, phone_number: 1 } }).catch(() => null)
     const p = phone || String(user?.phone || user?.mobile || user?.phone_number || '')
-    if (p) return { phone: p, source: 'preferences' }
+    const r = p ? await notOptedOut({ phone: p, source: 'preferences', consented_at: (pref.updated_at || pref.created_at || null) as string | null }) : null
+    if (r) return r
   }
   const sub = await db
     .collection('subscriptions')
-    .findOne({ user_id: userId, whatsapp_status: 'active', whatsapp_consent: { $ne: null }, phone: { $type: 'string' } }, { projection: { phone: 1 } })
+    .findOne({ user_id: userId, whatsapp_status: 'active', whatsapp_consent: { $ne: null }, phone: { $type: 'string' } }, { projection: { phone: 1, whatsapp_consent: 1 } })
     .catch(() => null)
-  if (sub?.phone) return { phone: String(sub.phone), source: 'subscription' }
+  if (sub?.phone) return notOptedOut({ phone: String(sub.phone), source: 'subscription', consented_at: (sub.whatsapp_consent?.at as string) || null })
   return null
 }
 
@@ -41,7 +51,7 @@ export async function whatsappRecipientForCandidate(candidateId: string, tenantI
     .collection('ats_candidates')
     .findOne({ id: candidateId, ...(tenantId ? { tenant_id: tenantId } : {}) }, { projection: { phone: 1, consent: 1 } })
     .catch(() => null)
-  if (c?.consent?.whatsapp === true && typeof c.phone === 'string' && c.phone) return { phone: c.phone, source: 'candidate' }
+  if (c?.consent?.whatsapp === true && typeof c.phone === 'string' && c.phone) return notOptedOut({ phone: c.phone, source: 'candidate', consented_at: (c.consent?.whatsapp_at as string) || null })
   return null
 }
 

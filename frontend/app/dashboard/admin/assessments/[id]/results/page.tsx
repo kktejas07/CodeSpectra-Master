@@ -9,7 +9,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard, Award } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard, Award, Film } from 'lucide-react'
 import { SkeletonStats, SkeletonTable, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useDateFormat } from '@/lib/use-platform-timezone'
@@ -1511,6 +1511,11 @@ export default function ExamResultsPage() {
                   <Eye className="h-4 w-4" /> Review
                 </DropdownMenuItem>
               )}
+              {(row.userId || row.status === 'completed') && (
+                <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/recordings?user=${encodeURIComponent(row.userId || row.id)}`)} className="gap-2">
+                  <Film className="h-4 w-4" /> Recordings
+                </DropdownMenuItem>
+              )}
               {row.status === 'completed' && row.graded === false && (
                 <DropdownMenuItem disabled className="gap-2 text-amber-700 dark:text-amber-400">
                   <Clock className="h-4 w-4" /> Grading Pending
@@ -1601,6 +1606,11 @@ export default function ExamResultsPage() {
           title={<>Results: {exam.title}</>}
           description="Review submissions, grade open answers, check proctoring and release scores to candidates."
           icon={<CheckCheck />}
+          actions={
+            <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/recordings`)}>
+              <Film className="h-4 w-4" /> Recordings
+            </Button>
+          }
         />
         <div className="flex flex-wrap items-center gap-2">
             <Badge variant="outline">{exam.level}</Badge>

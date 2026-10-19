@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
+import { withCronWindow } from '@/lib/automation/job-lease'
 import { ebooksCol } from '@/lib/db/ebooks'
 import { generateEbookDraft, topicForDay } from '@/lib/ebooks-generate'
 // topicForDay exported as topicForDay
@@ -67,7 +68,8 @@ async function postImpl(req: NextRequest) {
   return NextResponse.json({ ok: true, usedAi, slug: ebook.slug, topic, status: ebook.status })
 }
 
-export const POST = withCronHeartbeat('ebooks-daily', postImpl)
+// One run per day across replicas and external crons (AUTO-041).
+export const POST = withCronWindow('ebooks-daily', 1440, withCronHeartbeat('ebooks-daily', postImpl))
 
 export async function GET(req: NextRequest) {
   return POST(req)

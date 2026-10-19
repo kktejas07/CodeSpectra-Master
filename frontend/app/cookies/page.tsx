@@ -1,6 +1,11 @@
 import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
 import { SoftGlow } from '@/components/visuals'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const seoRoute = publicRoute('/cookies')!
+export const metadata = buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/cookies' })
 
 export default function CookiesPage() {
   return (
@@ -58,6 +63,30 @@ export default function CookiesPage() {
                   <td className="px-4 py-3 align-top">Supports administrative impersonation for troubleshooting (admin accounts only)</td>
                   <td className="px-4 py-3 align-top">Session duration</td>
                 </tr>
+                <tr>
+                  <td className="px-4 py-3 align-top">Your cookie choices</td>
+                  <td className="px-4 py-3 align-top">Essential</td>
+                  <td className="px-4 py-3 align-top">Remembers which optional categories you allowed (cs_consent)</td>
+                  <td className="px-4 py-3 align-top">1 year</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 align-top">Product analytics</td>
+                  <td className="px-4 py-3 align-top">Optional (analytics)</td>
+                  <td className="px-4 py-3 align-top">A random id on your device (cs_aid, cs_sid) so we can see which pages and features help. Without your consent we only count visits, using a daily-changing code on our server that cannot identify you</td>
+                  <td className="px-4 py-3 align-top">Until you withdraw consent; session id 30 minutes</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 align-top">Analytics tools</td>
+                  <td className="px-4 py-3 align-top">Optional (analytics)</td>
+                  <td className="px-4 py-3 align-top">Google Analytics, Google Tag Manager, PostHog or Microsoft Clarity, if we enable them</td>
+                  <td className="px-4 py-3 align-top">Set by each provider</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-3 align-top">Advertising</td>
+                  <td className="px-4 py-3 align-top">Optional (marketing)</td>
+                  <td className="px-4 py-3 align-top">Meta Pixel or LinkedIn Insight, if we enable them, to measure ad visits and sign-ups</td>
+                  <td className="px-4 py-3 align-top">Set by each provider</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -78,12 +107,17 @@ export default function CookiesPage() {
           <ul className="list-disc space-y-2 pl-5 marker:text-cs-accent-text">
             <li><strong className="font-semibold text-cs-ink">Authentication cookies:</strong> Session cookies for Google/GitHub sign-in</li>
             <li><strong className="font-semibold text-cs-ink">Razorpay:</strong> Payment processing cookies (only if billing features are used)</li>
-            <li><strong className="font-semibold text-cs-ink">Analytics:</strong> Performance and usage data collection</li>
+            <li><strong className="font-semibold text-cs-ink">Analytics and advertising:</strong> Only after you allow them in the cookie banner or Cookie settings</li>
           </ul>
         </section>
 
         <section className="space-y-4">
           <h2 className="scroll-mt-24 border-b border-cs-grid pb-2 text-xl font-bold tracking-tight text-cs-ink sm:text-2xl">5. Managing Cookies</h2>
+          <p>
+            Optional cookies are off until you allow them. Change or withdraw your choice at any time from{' '}
+            <button type="button" data-cookie-settings className="font-semibold text-cs-accent-text underline-offset-4 hover:underline">Cookie settings</button>
+            {' '}(also linked in the footer) — withdrawing is as easy as giving consent and deletes our analytics id from your device.
+          </p>
           <p>You can manage cookies through your browser settings:</p>
           <ul className="list-disc space-y-2 pl-5 marker:text-cs-accent-text">
             <li><strong className="font-semibold text-cs-ink">Chrome:</strong> Settings → Privacy and Security → Cookies</li>
@@ -98,8 +132,8 @@ export default function CookiesPage() {
         <section className="space-y-4">
           <h2 className="scroll-mt-24 border-b border-cs-grid pb-2 text-xl font-bold tracking-tight text-cs-ink sm:text-2xl">6. Do Not Track (DNT)</h2>
           <p>
-            We respect Do Not Track signals. When a DNT signal is detected, we disable analytics
-            and non-essential tracking. The Service continues to function normally with only
+            We respect Do Not Track and Global Privacy Control signals. When either is detected,
+            optional analytics stays off unless you turn it on yourself, and advertising cookies are never set. The Service continues to function normally with only
             essential cookies.
           </p>
         </section>

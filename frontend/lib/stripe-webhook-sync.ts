@@ -322,14 +322,19 @@ export async function syncInvoicePaymentFailed(invoice: Stripe.Invoice, now: Dat
     provider: 'stripe', kind: 'renewal', grace_ends_at: graceEnd,
   }, { idempotencyKey: `payment.failed:stripe:${invoice.id}` })).catch((e) => console.error('[automation] emit failed:', e))
 
-  notify({
-    user_id: sub.user_id,
-    type: 'billing.payment_failed',
-    title: 'Payment failed',
-    message: `We couldn't renew your plan. Update your payment method by ${new Date(graceEnd).toUTCString().slice(0, 16)} to keep access.`,
-    icon: 'alert-circle',
-    link: '/dashboard/billing',
-  }).catch(() => {})
+  // The dunning automation sends the day-0 notice (bell + email) for this event; only notify
+  // here when it is switched off, so the user never gets two "Payment failed" bells (AUTO-034).
+  const dunningOn = await import('@/lib/automation/settings').then(({ isAutomationEnabled }) => isAutomationEnabled('dunning')).catch(() => false)
+  if (!dunningOn) {
+    notify({
+      user_id: sub.user_id,
+      type: 'billing.payment_failed',
+      title: 'Payment failed',
+      message: `We couldn't renew your plan. Update your payment method by ${new Date(graceEnd).toUTCString().slice(0, 16)} to keep access.`,
+      icon: 'alert-circle',
+      link: '/dashboard/billing',
+    }).catch(() => {})
+  }
 }
 
 /**

@@ -10,6 +10,12 @@ const HOUR = 3_600_000
 
 export type Cadence = { kind: 'interval'; minutes: number } | { kind: 'daily'; hourUtc: number; minuteUtc?: number } | { kind: 'weekly'; weekdayUtc: number; hourUtc: number }
 
+/** Normal minutes between two runs of a cadence (for stale-heartbeat checks). */
+export function cadenceMinutes(c: Cadence): number {
+  if (c.kind === 'interval') return Math.max(1, Math.floor(c.minutes))
+  return c.kind === 'daily' ? 1440 : 10080
+}
+
 /**
  * The window a run belongs to, or null when the job is not due yet in this
  * period. Two ticks in the same window produce the same key, so a job claims

@@ -35,6 +35,7 @@ import {
 import { Illustration } from '@/components/illustrations/spot'
 import { INVITE_ONLY_MESSAGE } from '@/lib/exam-access'
 import type { CandidateSectionView } from '@/lib/exam-sections'
+import { isMobileUserAgent } from '@/lib/proctoring/fullscreen'
 
 interface Question {
   id: string
@@ -194,6 +195,9 @@ export default function CandidateAssessmentPage() {
 
   // Recording Consent
   const [recordingConsent, setRecordingConsent] = useState(false)
+  // Phones can't share the screen or (iPhone) go full screen — tell candidates before they start.
+  const [onMobile, setOnMobile] = useState(false)
+  useEffect(() => { setOnMobile(isMobileUserAgent(navigator.userAgent)) }, [])
 
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -919,6 +923,13 @@ export default function CandidateAssessmentPage() {
               <strong>Before you start:</strong> once you begin, the timer cannot be paused. If the timer reaches zero, your assessment will be automatically submitted regardless of completion. Ensure you have a stable internet connection and {exam.duration} minutes of uninterrupted time.
             </p>
           </div>
+
+          {onMobile && (
+            <div role="note" className="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 p-3 rounded-xl flex items-start gap-2 text-sm">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+              <span><strong>Use a laptop or desktop computer.</strong> Phones and tablets can&apos;t share the screen or stay in full screen, so a proctored test may be flagged or cut short here.</span>
+            </div>
+          )}
 
           <label className="flex items-start gap-3 cursor-pointer p-3 rounded-xl border border-border bg-muted/20 transition-colors hover:border-primary/40">
             <input

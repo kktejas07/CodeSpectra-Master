@@ -94,6 +94,8 @@ jobs:
           backend/tests/test_item_bank_and_generic_plugins.py
           backend/tests/test_text_to_cad_generator.py
           backend/tests/test_webhooks_and_compliance.py
+          backend/tests/test_security_scan.py
+          backend/tests/test_internal_security.py
           -q
         timeout-minutes: 10
 
@@ -147,6 +149,56 @@ jobs:
           BASE_URL=http://127.0.0.1:3000 node scripts/ci-smoke.mjs || (echo '--- server log ---'; tail -n 200 /tmp/next.log; exit 1)
         timeout-minutes: 5
 
+  e2e:
+    name: Browser smoke (Playwright)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # setup-node's yarn cache restores via the cache API
+      actions: read
+    # Same throwaway MongoDB as the build smoke (no secrets, no real data).
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    defaults:
+      run:
+        working-directory: frontend
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+        env:
+          SESSION_SECRET: ci-secret
+      # Chromium only (+ its OS deps); the version matches @playwright/test in package.json.
+      - run: npx playwright install --with-deps chromium
+      # A-063 / CORE-032: a small real-browser suite (e2e/ci-smoke.spec.ts) against the built app.
+      - name: Playwright smoke
+        env:
+          NODE_ENV: production
+          CI: '1'
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB_NAME: codespectra_e2e
+          NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
+          SKIP_AUTO_INDEXES: '1'
+          CRON_SECRET: ci-cron-secret
+          BASE_URL: http://127.0.0.1:3000
+        # Throwaway keys generated per run (keeps the secret scanner clean).
+        run: |
+          export SESSION_SECRET="$(openssl rand -hex 32)"
+          export SECRETS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+          npx next start -p 3000 -H 127.0.0.1 > /tmp/next-e2e.log 2>&1 &
+          for i in $(seq 1 90); do curl -fsS -o /dev/null http://127.0.0.1:3000/auth/login && break; sleep 1; done
+          npx playwright test e2e/ci-smoke.spec.ts || (echo '--- server log ---'; tail -n 200 /tmp/next-e2e.log; exit 1)
+        timeout-minutes: 8
+
   dep-audit:
     name: Dependency audit (yarn + pip)
     runs-on: ubuntu-latest
@@ -179,15 +231,17 @@ jobs:
           code=$?
           if [ $((code & 16)) -ne 0 ]; then echo "Critical vulnerabilities found"; exit 1; fi
           exit 0
-      # Informational for now: starlette 0.37.2 + ecdsa have known vulns
-      # (pip-audit exits nonzero). Upgrading starlette is a major bump with
-      # FastAPI-compat risk — do it via a Dependabot PR with tests, then
-      # drop `continue-on-error` to make this step blocking.
-      - name: pip-audit (informational)
+      # SEC-028: fail on any NEW high advisory (known unfixable ones are listed
+      # with a reason in scripts/audit-gate.mjs).
+      - name: Yarn audit (new highs)
+        working-directory: frontend
+        run: (yarn audit --groups dependencies --json || true) | node scripts/audit-gate.mjs
+      # Blocking since wave 4 (SEC-004/SEC-028): python-jose (+ ecdsa) was
+      # replaced by PyJWT and pip-audit reports no known vulnerabilities.
+      - name: pip-audit
         run: |
           pip install pip-audit
           pip-audit -r backend/requirements.txt --desc
-        continue-on-error: true
 
   secrets:
     name: Secret scan (gitleaks)

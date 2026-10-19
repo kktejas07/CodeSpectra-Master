@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { nowIso, type WorkflowDoc } from '@/lib/db/leaderboard'
-import { loadWorkflow, prepareWorkflowUpdate, publicWorkflow, requireWorkflowAdmin } from '@/lib/automation/access'
+import { builtinOverlaps, loadWorkflow, prepareWorkflowUpdate, publicWorkflow, requireWorkflowAdmin } from '@/lib/automation/access'
 import { col } from '@/lib/automation/store'
 import { auditAdmin } from '@/lib/admin-audit'
 import { getAppOrigin } from '@/lib/app-origin'
@@ -53,7 +53,8 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const changed = Object.keys(set).join(', ')
   await auditAdmin(g.user, 'is_active' in body && set.is_active !== wf.is_active ? (set.is_active ? 'workflow.enable' : 'workflow.disable') : 'workflow.update', 'workflow', wf.id, `${wf.name}: ${changed}`.slice(0, 480))
   const updated = (await c.findOne({ id: wf.id }, { projection: { _id: 0 } })) as WorkflowDoc
-  return NextResponse.json({ ...publicWorkflow(updated), ...(errors.length ? { warnings: errors } : {}) })
+  const overlap = (await builtinOverlaps([updated]))[updated.id]
+  return NextResponse.json({ ...publicWorkflow(updated), ...(overlap ? { builtin_overlap: overlap } : {}), ...(errors.length ? { warnings: errors } : {}) })
 }
 
 export async function DELETE(_req: NextRequest, ctx: Ctx) {

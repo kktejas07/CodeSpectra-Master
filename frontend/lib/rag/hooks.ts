@@ -47,3 +47,27 @@ export function knowledgeOnLearnPost(postId: unknown): void {
   if (typeof postId !== 'string' || !postId) return
   void enqueueKnowledge({ type: 'doc', id: `learn:${postId}`, tenantId: null })
 }
+
+/** Library content changed (problem / question-bank item / course): reindex within a minute, not at the nightly sweep (RAG-003). */
+export function knowledgeOnLibraryChange(type: 'problem' | 'question' | 'course', ids: unknown): void {
+  const list = (Array.isArray(ids) ? ids : [ids]).filter((x): x is string => typeof x === 'string' && !!x)
+  if (list.length) void enqueueKnowledge(list.map((id) => ({ type, id, tenantId: null })))
+}
+
+/** Hiring pipeline job created / edited / closed / deleted (RAG-001). */
+export function knowledgeOnAtsJob(jobId: unknown, tenantId?: unknown): void {
+  if (typeof jobId !== 'string' || !jobId) return
+  void enqueueKnowledge({ type: 'ats_job', id: jobId, tenantId: tid(tenantId) })
+}
+
+/** Application created / moved / rejected / withdrawn (RAG-001). */
+export function knowledgeOnAtsApplication(appIds: unknown, tenantId?: unknown): void {
+  const list = (Array.isArray(appIds) ? appIds : [appIds]).filter((x): x is string => typeof x === 'string' && !!x)
+  if (list.length) void enqueueKnowledge(list.map((id) => ({ type: 'ats_application' as const, id, tenantId: tid(tenantId) })))
+}
+
+/** Account deleted: drop the person's résumé / attempt sources everywhere (RAG-004). */
+export function knowledgeOnUserDeleted(userId: unknown): void {
+  if (typeof userId !== 'string' || !userId) return
+  void import('./ingest').then(({ purgeUserKnowledge }) => purgeUserKnowledge(userId)).catch((e) => console.error('[rag] purge on account deletion failed:', e))
+}

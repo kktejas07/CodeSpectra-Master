@@ -13,6 +13,7 @@
 import { certificationAttempts, newAttemptId, newAttemptToken } from '@/lib/db/certifications'
 import { awardXp, getUserXp, type XpReason } from '@/lib/db/leaderboard'
 import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 import { getMongoDb } from '@/lib/mongodb'
 import { notify } from '@/lib/notifications'
 import type { Document, Filter } from 'mongodb'
@@ -37,10 +38,12 @@ export interface AwardXpResult {
 
 export async function awardXpWithLevelUp(args: AwardXpArgs): Promise<AwardXpResult> {
   const { userId, amount, reason } = args
-  if (amount <= 0) return { xpEventId: null, xp: await getUserXp(userId), level: xpToLevel(await getUserXp(userId)), leveledUp: false }
+  // CORE-003: levels follow the thresholds set in Admin → Settings → Gamification.
+  const { levels } = await getGamificationConfig()
+  if (amount <= 0) { const cur = await getUserXp(userId); return { xpEventId: null, xp: cur, level: xpToLevel(cur, levels), leveledUp: false } }
 
   const before = await getUserXp(userId)
-  const beforeLevel = xpToLevel(before)
+  const beforeLevel = xpToLevel(before, levels)
 
   const xpEventId = await awardXp({
     userId,
@@ -57,7 +60,7 @@ export async function awardXpWithLevelUp(args: AwardXpArgs): Promise<AwardXpResu
   }
 
   const xp = before + amount
-  const level = xpToLevel(xp)
+  const level = xpToLevel(xp, levels)
   const leveledUp = level > beforeLevel
 
   if (!args.quiet) {

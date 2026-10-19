@@ -34,8 +34,8 @@ export async function aiSummarise(e: ExternalEvent): Promise<{ summary: string; 
   if (!shouldSummarise(e)) return null
   const desc = String(e.raw_description).slice(0, 6000)
   try {
-    const { scanPrompt } = await import('@/lib/ai/prompt-guard')
-    if (scanPrompt(desc).flagged) return null
+    const { scanUntrusted } = await import('@/lib/ai/untrusted-input')
+    if (scanUntrusted(desc).flagged) return null
     const [{ backendComplete }, { platformModelOverrides, extractJson }] = await Promise.all([
       import('@/lib/ai/backend'),
       import('@/lib/interviews/ai-mock-engine'),

@@ -15,15 +15,18 @@ import type { SystemAutomation } from './types'
 
 const HOUR = 3_600_000
 
-/** Heartbeats we expect, with their normal interval in minutes. */
-export const EXPECTED_HEARTBEATS: Record<string, number> = {
-  'scheduler-loop': 1,
-  'ats-screening': 1,
-  'ats-sla': 1440,
-  'trial-expiry': 1440,
-  'auto:email-outbox': 1,
-  'auto:payment-reconciliation': 15,
-  'auto:event-reminders': 10,
+/**
+ * Heartbeats we expect, with their normal interval in minutes: every job in
+ * the shared registry (lib/automation/job-registry.ts) plus every scheduled
+ * built-in automation (`auto:<id>`), so a new job is watched automatically.
+ */
+export async function expectedHeartbeatMap(): Promise<Record<string, number>> {
+  const { expectedHeartbeats } = await import('../job-registry')
+  const { SYSTEM_AUTOMATIONS } = await import('./registry')
+  const { cadenceMinutes } = await import('./rules')
+  const out = expectedHeartbeats()
+  for (const a of SYSTEM_AUTOMATIONS) if (a.cadence && a.run) out[`auto:${a.id}`] = cadenceMinutes(a.cadence)
+  return out
 }
 
 export async function runOpsAlerts(now = new Date()): Promise<{ alerts: number }> {
@@ -35,8 +38,13 @@ export async function runOpsAlerts(now = new Date()): Promise<{ alerts: number }
   }
 
   // 1. Cron heartbeats that stopped.
-  const rows = (await db.collection('cron_runs').find({ id: { $in: Object.keys(EXPECTED_HEARTBEATS) } }, { projection: { _id: 0 } }).toArray()) as unknown as CronHeartbeat[]
-  const stale = staleCrons(rows, EXPECTED_HEARTBEATS, now)
+  const expected = await expectedHeartbeatMap()
+  // Only jobs whose switch is on are expected to beat.
+  const { isAutomationEnabled } = await import('../settings')
+  const { SYSTEM_AUTOMATIONS } = await import('./registry')
+  for (const a of SYSTEM_AUTOMATIONS) if (!(await isAutomationEnabled(a.id, a.defaultOn !== false))) delete expected[`auto:${a.id}`]
+  const rows = (await db.collection('cron_runs').find({ id: { $in: Object.keys(expected) } }, { projection: { _id: 0 } }).toArray()) as unknown as CronHeartbeat[]
+  const stale = staleCrons(rows, expected, now)
   if (stale.length) await fire({ key: `cron-stale:${stale.sort().join(',')}`, title: 'Scheduled jobs stopped running', detail: `No recent run for: ${stale.join(', ')}. Check the app server (or the /api/cron/tick schedule on serverless hosts).`, severity: 'critical', link: '/dashboard/admin/cron-jobs' })
   const failing = rows.filter((r) => r.last_status === 'error' && Date.parse(r.last_run_at) > now.getTime() - HOUR)
   if (failing.length) await fire({ key: `cron-failing:${failing.map((r) => r.id).sort().join(',')}`, title: 'Scheduled jobs are failing', detail: `Last run failed for: ${failing.map((r) => r.id).join(', ')}.`, severity: 'warning', link: '/dashboard/admin/cron-jobs' })
@@ -80,6 +88,21 @@ export async function runOpsAlerts(now = new Date()): Promise<{ alerts: number }
 
 // ─── AU-14 hygiene ──────────────────────────────────────────────────────────
 
+/** Audit actions that mean "this account was deleted" (self-service and admin). */
+export const DELETION_ACTIONS = ['user.delete_self', 'admin.user.delete', 'admin.user_delete', 'user.delete'] as const
+
+/**
+ * The deleted account's id from an audit row (AUTO-031). Admin deletions log
+ * the ADMIN as user_id and the deleted account as resource 'user/<id>', so
+ * the resource always wins; only a self-deletion may fall back to user_id.
+ */
+export function deletedUserIdFromAudit(row: { action?: string; user_id?: string; resource?: string }): string | null {
+  const res = String(row.resource || '')
+  if (res.startsWith('user/') && res.length > 5) return res.slice(5)
+  if (row.action === 'user.delete_self' && typeof row.user_id === 'string' && row.user_id) return row.user_id
+  return null
+}
+
 export async function runDataHygiene(now = new Date()): Promise<Record<string, number>> {
   const db = await getMongoDb()
   const cfg = (await getSystemSettings()).config
@@ -111,14 +134,14 @@ export async function runDataHygiene(now = new Date()): Promise<Record<string, n
   ).catch(() => ({ modifiedCount: 0 }))
   out.invites_expired = inv.modifiedCount || 0
 
-  // Accounts deleted by their owners: scrub personal data left in organisation records.
-  const deletions = (await db.collection('admin_audit_logs').find({ action: { $in: ['user.delete_self', 'admin.user_delete', 'user.delete'] }, created_at: { $gte: ago(7) } }, { projection: { user_id: 1, resource: 1 } }).limit(500).toArray()) as { user_id?: string; resource?: string }[]
+  // Accounts deleted by their owners or by an admin: scrub personal data left in organisation records.
+  const deletions = (await db.collection('admin_audit_logs').find({ action: { $in: [...DELETION_ACTIONS] }, created_at: { $gte: ago(7) } }, { projection: { action: 1, user_id: 1, resource: 1 } }).limit(500).toArray()) as { action?: string; user_id?: string; resource?: string }[]
   let anonymised = 0
   for (const d of deletions) {
-    const uid = String(d.user_id || String(d.resource || '').replace(/^user\//, ''))
-    if (!uid || !(await claimOnce(`anon:${uid}`))) continue
+    const uid = deletedUserIdFromAudit(d)
+    if (!uid) continue
     const still = await db.collection('user').countDocuments({ $or: [{ id: uid }, { _id: uid as never }] }, { limit: 1 })
-    if (still) continue
+    if (still || !(await claimOnce(`anon:${uid}`))) continue
     await Promise.allSettled([
       db.collection('exam_submissions').updateMany({ user_id: uid }, { $set: { email: null, anonymised_at: nowIso() }, $unset: { id_photo: '', face_photo: '', device_info: '' } }),
       db.collection('exam_identity_checks').deleteMany({ user_id: uid }),

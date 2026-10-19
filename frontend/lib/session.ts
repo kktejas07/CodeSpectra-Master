@@ -99,6 +99,8 @@ export interface SessionPayload {
   ver?: number
   /** Per-session id, so one sign-out can revoke just this session. */
   sid?: string
+  /** SEC-010: id of the superadmin impersonating this user (short-lived token). */
+  imp?: string
 }
 
 // ─── Auth profile loader (short cache) ──────────────────────────────────────
@@ -255,15 +257,16 @@ export async function readSessionCookie(): Promise<SessionPayload | null> {
   return raw ? verifySessionToken(raw) : null
 }
 
-export async function setSessionCookie(payload: SessionPayload): Promise<void> {
-  const token = await signSessionToken(payload)
+export async function setSessionCookie(payload: SessionPayload, opts: { maxAgeSec?: number } = {}): Promise<void> {
+  const maxAge = opts.maxAgeSec ?? 60 * 60 * 24 * 7
+  const token = await signSessionToken(payload, `${maxAge}s`)
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge,
   })
 }
 

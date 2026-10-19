@@ -234,7 +234,8 @@ export async function rateLimitFixedWindow(
 ): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
   const { url, token } = await resolveConfig()
   if (!url || !token) {
-    return rateLimitSlidingWindow(memoryKey, maxHits, windowMs)
+    // A-043: without Redis, count in Mongo so every instance shares the limit.
+    return (await mongoFixedWindow(redisKey, maxHits, windowMs)) ?? rateLimitSlidingWindow(memoryKey, maxHits, windowMs)
   }
   const ttlSec = Math.ceil(windowMs / 1000) + 30
 
@@ -273,8 +274,55 @@ export async function rateLimitFixedWindow(
     }
     return { ok: true }
   } catch (e) {
-    console.warn('[CodeSpectra] Redis rate limit failed, using memory:', (e as Error).message)
-    return rateLimitSlidingWindow(memoryKey, maxHits, windowMs)
+    console.warn('[CodeSpectra] Redis rate limit failed, using shared/in-memory fallback:', (e as Error).message)
+    return (await mongoFixedWindow(redisKey, maxHits, windowMs)) ?? rateLimitSlidingWindow(memoryKey, maxHits, windowMs)
+  }
+}
+
+// ─── Mongo-backed fallback counter (A-043) ──────────────────────────────────
+// Used only when Redis is not configured / failing. One small doc per key and
+// window bucket with a TTL index. If Mongo is slow or down the caller falls
+// back to the in-process window, and Mongo is skipped for 60s so a DB outage
+// never adds latency to every request.
+let _mongoRlDownUntil = 0
+let _mongoRlIndexed = false
+const MONGO_RL_TIMEOUT_MS = 1500
+
+async function mongoFixedWindow(
+  key: string,
+  maxHits: number,
+  windowMs: number,
+): Promise<{ ok: true } | { ok: false; retryAfterSec: number } | null> {
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST) return null
+  if (!process.env.MONGODB_URI && !process.env.MONGO_URL) return null
+  if (Date.now() < _mongoRlDownUntil) return null
+  try {
+    const work = (async () => {
+      const { getMongoDb } = await import('@/lib/mongodb')
+      const col = (await getMongoDb()).collection<{ _id: string; count: number; expires_at: Date }>('rate_limit_counters')
+      if (!_mongoRlIndexed) {
+        _mongoRlIndexed = true
+        await col.createIndex({ expires_at: 1 }, { expireAfterSeconds: 0, name: 'rate_limit_counters_ttl' }).catch(() => {})
+      }
+      const doc = await col.findOneAndUpdate(
+        { _id: key },
+        { $inc: { count: 1 }, $setOnInsert: { expires_at: new Date(Date.now() + windowMs + 30_000) } },
+        { upsert: true, returnDocument: 'after' },
+      )
+      return Number(doc?.count ?? 1)
+    })()
+    const count = await Promise.race([
+      work,
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error('mongo rate-limit timeout')), MONGO_RL_TIMEOUT_MS)),
+    ])
+    if (count > maxHits) {
+      const elapsed = Date.now() % windowMs
+      return { ok: false, retryAfterSec: Math.max(1, Math.ceil((windowMs - elapsed) / 1000)) }
+    }
+    return { ok: true }
+  } catch {
+    _mongoRlDownUntil = Date.now() + 60_000
+    return null
   }
 }
 

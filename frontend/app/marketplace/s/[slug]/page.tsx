@@ -7,20 +7,26 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ProductCard } from '@/components/marketplace/product-card'
 import { CartDrawerButton } from '@/components/marketplace/cart-drawer'
 import { browseProducts, getSellerBySlug } from '@/lib/marketplace/catalog'
+import { buildMetadata } from '@/lib/seo/metadata'
 
 export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ page?: string }> }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params
   const s = await getSellerBySlug(slug).catch(() => null)
-  if (!s) return { title: 'Seller not found | CodeSpectra marketplace', robots: { index: false } }
-  return {
-    title: `${s.display_name} | CodeSpectra marketplace`,
-    description: (s.bio || `Items sold by ${s.display_name} on the CodeSpectra marketplace.`).slice(0, 160),
-    alternates: { canonical: `/marketplace/s/${s.slug}` },
-  }
+  if (!s) return { title: 'Seller not found', robots: { index: false } }
+  const paged = (Number((await searchParams).page) || 1) > 1
+  return buildMetadata({
+    title: `${s.display_name}: seller on CodeSpectra marketplace`,
+    description: s.bio || `Items sold by ${s.display_name} on the CodeSpectra marketplace.`,
+    path: `/marketplace/s/${s.slug}`,
+    kind: 'product',
+    type: 'profile',
+    image: s.logo_url || undefined,
+    noIndex: paged ? 'follow' : false,
+  })
 }
 
 export default async function SellerPage({ params, searchParams }: Props) {

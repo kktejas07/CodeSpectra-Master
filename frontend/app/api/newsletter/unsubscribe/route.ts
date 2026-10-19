@@ -8,16 +8,13 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { newsletterSubscribers, nowIso } from '@/lib/db/newsletter'
-import { createHmac } from 'node:crypto'
+import { verifyNewsletterUnsubToken } from '@/lib/newsletter-token'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function verifyHmacToken(email: string, token: string): boolean {
-  const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'codespectra-default-secret'
-  const expected = createHmac('sha256', secret).update(email.toLowerCase()).digest('hex').slice(0, 16)
-  return token === expected
-}
+// SEC-019: server-derived key, constant-time compare (lib/newsletter-token).
+const verifyHmacToken = (email: string, token: string) => verifyNewsletterUnsubToken(email, token)
 
 export async function POST(req: NextRequest) {
   const url = new URL(req.url)
@@ -29,7 +26,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
   }
 
-  if (!token || !verifyHmacToken(email, token)) {
+  if (!token || !(await verifyHmacToken(email, token))) {
     return NextResponse.json({ error: 'Invalid unsubscribe token' }, { status: 403 })
   }
 
@@ -54,7 +51,7 @@ export async function GET(req: NextRequest) {
 
   if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 })
 
-  if (!token || !verifyHmacToken(email, token)) {
+  if (!token || !(await verifyHmacToken(email, token))) {
     return NextResponse.json({ error: 'Invalid unsubscribe token' }, { status: 403 })
   }
 

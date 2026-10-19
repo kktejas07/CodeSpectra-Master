@@ -12,17 +12,37 @@ import { NotifyBox } from '@/components/events-feed/notify-box'
 import { listPublished, parseListParams, publishedSeries } from '@/lib/learn/queries'
 import { LEARN_CATEGORIES, LEARN_LEVELS, categoryLabel } from '@/lib/learn/types'
 import { cn } from '@/lib/utils'
+import { buildMetadata } from '@/lib/seo/metadata'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = {
-  title: 'Learn — algorithms, system design and engineering practices | CodeSpectra',
-  description: 'Free, original explainers on algorithms, data structures, system design, design patterns, testing, security and engineering methodologies — with code in Python, JavaScript and Java.',
-  alternates: { canonical: '/learn', types: { 'application/rss+xml': '/learn/rss.xml' } },
-  openGraph: { title: 'CodeSpectra Learn', description: 'Original explainers on algorithms, system design and engineering practices.', type: 'website', url: '/learn' },
-}
-
 type SP = Promise<Record<string, string | string[] | undefined>>
+
+/**
+ * Hub + one indexable page per category (?category=x, self-canonical). Search,
+ * tag, level, series and page variants are noindex,follow so crawlers follow
+ * the posts without indexing endless filter combinations.
+ */
+export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
+  const p = parseListParams(await searchParams)
+  const cat = p.category && LEARN_CATEGORIES.some((c) => c.id === p.category) ? p.category : null
+  const other = !!(p.q || p.tag || p.level || p.series || (p.page && p.page > 1))
+  const base = cat
+    ? buildMetadata({
+        title: `${categoryLabel(cat)} explainers and tutorials`,
+        description: `Free, original ${categoryLabel(cat).toLowerCase()} explainers from CodeSpectra Learn, with runnable code, interview questions and practice problems.`,
+        path: '/learn',
+        canonical: `/learn?category=${encodeURIComponent(cat)}`,
+        noIndex: other ? 'follow' : false,
+      })
+    : buildMetadata({
+        title: 'Learn: algorithms, system design and engineering',
+        description: 'Free, original explainers on algorithms, data structures, system design, design patterns, testing and security, with code in Python, JavaScript and Java.',
+        path: '/learn',
+        noIndex: other ? 'follow' : false,
+      })
+  return { ...base, alternates: { ...base.alternates, types: { 'application/rss+xml': '/learn/rss.xml' } } }
+}
 
 function hrefWith(base: Record<string, string | null | undefined>, patch: Record<string, string | null>): string {
   const sp = new URLSearchParams()

@@ -81,6 +81,15 @@ export async function POST(req: NextRequest) {
       created_at: now,
     })
 
+    // CORE-024: the footer sign-up also asks for event + Learn updates in the shared
+    // subscriptions store (double opt-in e-mail from there), so one sign-up covers both.
+    void import('@/lib/subscriptions')
+      .then(({ subscribe }) => subscribe(
+        { email, phone: null, phone_country: null, user_id: null, channels: ['email'], topics: ['events', 'blog'], whatsapp_consent: false, timezone: null, source: 'footer-newsletter' },
+        { emailVerified: false },
+      ))
+      .catch((e) => console.error('[newsletter] subscriptions sync failed:', (e as Error)?.message))
+
     return NextResponse.json({ ok: true }, { status: 201 })
   } catch (e) {
     console.error('[newsletter] subscribe error:', e)

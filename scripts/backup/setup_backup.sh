@@ -20,6 +20,18 @@ echo "Making scripts executable..."
 chmod +x /root/backup_mongo.sh
 chmod +x /root/bin/pre-op-safeguard.sh
 
+echo "Preparing credentials file (SEC-017: no password in the scripts)..."
+mkdir -p /etc/codespectra
+if [ ! -f /etc/codespectra/mongo-backup.env ]; then
+  umask 077
+  cat > /etc/codespectra/mongo-backup.env <<'ENVEOF'
+# Fill in, then: chmod 600 /etc/codespectra/mongo-backup.env
+# MONGO_BACKUP_URI="mongodb://<user>:<password>@localhost:27017/?authSource=admin"
+ENVEOF
+  echo "⚠️  Edit /etc/codespectra/mongo-backup.env and set MONGO_BACKUP_URI before the first run."
+fi
+chmod 600 /etc/codespectra/mongo-backup.env
+
 echo "Initializing backup log file..."
 touch /var/log/mongo_backup.log
 chmod 640 /var/log/mongo_backup.log

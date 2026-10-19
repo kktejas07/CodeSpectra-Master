@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { dicebearUrl } from '@/lib/avatar'
 import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 import { assignRanks, parseLeaderboardQuery, rankFromAbove } from '@/lib/leaderboard-calc'
 import { countAbove, getLeaderboardSnapshot } from '@/lib/leaderboard-cache'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
       : []
     const byId = new Map(users.map((u) => [String(u.id), u]))
 
+    const levels = (await getGamificationConfig()).levels
     const ranked = assignRanks(
       totals
         .filter((t) => byId.has(String(t._id)))
@@ -44,7 +46,7 @@ export async function GET(req: NextRequest) {
 
     const entries: LeaderboardEntryDTO[] = ranked.map((r) => {
       const u = byId.get(r.userId)!
-      const level = xpToLevel(r.xp)
+      const level = xpToLevel(r.xp, levels)
       return {
         rank: r.rank,
         userId: r.userId,

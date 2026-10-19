@@ -47,10 +47,15 @@ export function nextRetry(attempts: number, maxRetries: number, policy: BackoffP
   return { retry: true, at: new Date(now.getTime() + backoffDelayMs(attempts, policy, rand)) }
 }
 
-/** Clamp a user-supplied retries count. */
-export function clampRetries(v: unknown, max = 5): number {
+/**
+ * Clamp a user-supplied retries count. Empty / not a number → `def`
+ * (the engine passes 2 for side-effect steps — the same default the builder
+ * shows, AUTO-010).
+ */
+export function clampRetries(v: unknown, max = 5, def = 0): number {
+  if (v === undefined || v === null || v === '') return Math.max(0, Math.min(max, def))
   const n = Math.floor(Number(v))
-  return Number.isFinite(n) ? Math.max(0, Math.min(max, n)) : 0
+  return Number.isFinite(n) ? Math.max(0, Math.min(max, n)) : Math.max(0, Math.min(max, def))
 }
 
 /** Clamp a user-supplied step timeout (ms). */
@@ -59,10 +64,17 @@ export function clampTimeoutMs(v: unknown, def = 30_000, max = 120_000): number 
   return Number.isFinite(n) && n > 0 ? Math.max(1_000, Math.min(max, n)) : def
 }
 
-/** Reject if `p` takes longer than `ms`. */
-export function withTimeout<T>(p: Promise<T>, ms: number, label = 'timed out'): Promise<T> {
+/**
+ * Reject if `p` takes longer than `ms`. Pass the controller whose signal the
+ * work listens to: it is aborted on timeout, so the call is cancelled instead
+ * of finishing (and side-effecting) after the step was marked failed (AUTO-011).
+ */
+export function withTimeout<T>(p: Promise<T>, ms: number, label = 'timed out', controller?: AbortController): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${label} after ${Math.round(ms / 1000)}s`)), ms)
+    const t = setTimeout(() => {
+      controller?.abort(new Error(`${label} after ${Math.round(ms / 1000)}s`))
+      reject(new Error(`${label} after ${Math.round(ms / 1000)}s`))
+    }, ms)
     p.then(
       (v) => {
         clearTimeout(t)

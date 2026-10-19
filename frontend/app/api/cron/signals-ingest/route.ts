@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isCronAuthorized } from '@/lib/cron-auth'
 import { sanitizeArticleHtml, safeHttpUrl, escapeHtml } from '@/lib/safe-html'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
+import { withCronWindow } from '@/lib/automation/job-lease'
 import { SIGNAL_FEEDS } from '@/lib/signals/feeds'
 import { fetchFeedItems } from '@/lib/signals/rss'
 import { rewriteSignal } from '@/lib/signals/rewrite'
@@ -103,7 +104,8 @@ async function postImpl(req: NextRequest) {
   })
 }
 
-export const POST = withCronHeartbeat('signals-ingest', postImpl)
+// One run per 6-hour window across replicas and external crons (AUTO-041).
+export const POST = withCronWindow('signals-ingest', 360, withCronHeartbeat('signals-ingest', postImpl))
 
 export async function GET(req: NextRequest) {
   return POST(req)

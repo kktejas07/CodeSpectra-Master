@@ -22,9 +22,19 @@ export interface SystemAutomationConfig {
   wa_template_payment?: string
   wa_template_event?: string
   wa_template_language?: string
+  /** Generic templates (values: title, message, link) for notices, hiring updates and newsletters. */
+  wa_template_notification?: string
+  wa_template_hiring?: string
+  wa_template_newsletter?: string
+  /**
+   * Allow the unofficial OpenWA gateway when no approved Meta template fits
+   * (AUTO-060). Off by default: numbers can be banned for it. Still only to
+   * people who agreed to WhatsApp messages.
+   */
+  whatsapp_unofficial_enabled?: boolean
 }
 
-export const CONFIG_DEFAULTS: Required<Omit<SystemAutomationConfig, 'alert_webhook_url' | 'alert_emails' | 'wa_template_payment' | 'wa_template_event'>> = {
+export const CONFIG_DEFAULTS: Required<Omit<SystemAutomationConfig, 'alert_webhook_url' | 'alert_emails' | 'wa_template_payment' | 'wa_template_event' | 'wa_template_notification' | 'wa_template_hiring' | 'wa_template_newsletter' | 'whatsapp_unofficial_enabled'>> = {
   hiring_idle_days: 5,
   retention_proctor_days: 180,
   retention_email_log_days: 180,
@@ -116,7 +126,7 @@ export async function saveSystemConfig(raw: Record<string, unknown>, by: string)
     if (bad.length) errs.push(`Not an email address: ${bad.slice(0, 3).join(', ')}`)
     else set['config.alert_emails'] = list.slice(0, 20)
   }
-  for (const k of ['wa_template_payment', 'wa_template_event'] as const) {
+  for (const k of ['wa_template_payment', 'wa_template_event', 'wa_template_notification', 'wa_template_hiring', 'wa_template_newsletter'] as const) {
     if (raw[k] === undefined) continue
     const v = String(raw[k] || '').trim()
     if (v && !/^[a-z0-9_]{1,512}$/.test(v)) errs.push(`${k}: template names use lowercase letters, digits and _`)
@@ -126,6 +136,10 @@ export async function saveSystemConfig(raw: Record<string, unknown>, by: string)
     const v = String(raw.wa_template_language || '').trim()
     if (v && !/^[a-z]{2}(_[A-Z]{2})?$/.test(v)) errs.push('wa_template_language looks like en or en_US')
     else set['config.wa_template_language'] = v || 'en'
+  }
+  if (raw.whatsapp_unofficial_enabled !== undefined) {
+    if (typeof raw.whatsapp_unofficial_enabled !== 'boolean') errs.push('whatsapp_unofficial_enabled must be true or false')
+    else set['config.whatsapp_unofficial_enabled'] = raw.whatsapp_unofficial_enabled
   }
   if (errs.length) return errs
   const c = await col('automation_settings')

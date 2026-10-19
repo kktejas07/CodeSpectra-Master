@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { getUserById } from '@/lib/db/admin'
 import { clearSessionCookie, revokeAllUserSessions } from '@/lib/session'
-import { consumeTotp } from '@/lib/totp'
+import { verifyReauth } from '@/lib/reauth'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
-
-const RECENT_SIGN_IN_MS = 15 * 60_000
 
 /**
  * Personal data removed with the account. Assessment, hackathon and billing
@@ -56,23 +53,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    let reauthed = false
-    if (typeof user.passwordHash === 'string' && user.passwordHash) {
-      reauthed = !!password && (await bcrypt.compare(password, user.passwordHash))
-      if (!reauthed) return NextResponse.json({ error: 'That password is incorrect.' }, { status: 403 })
-    } else if (user.totp_enabled && typeof user.totp_secret === 'string') {
-      reauthed = !!code && (await consumeTotp(user, code))
-      if (!reauthed) return NextResponse.json({ error: 'Enter a current code from your authenticator app.', needs: 'code' }, { status: 403 })
-    } else {
-      const last = user.lastLoginAt ? new Date(user.lastLoginAt as string).getTime() : 0
-      reauthed = Date.now() - last < RECENT_SIGN_IN_MS
-      if (!reauthed) {
-        return NextResponse.json(
-          { error: 'For your security, sign out and sign in again, then delete your account within 15 minutes.', needs: 'recent_sign_in' },
-          { status: 403 },
-        )
-      }
-    }
+    // SEC-011: password, else authenticator code, else a REAL sign-in within
+    // 15 minutes (reauth_at — never refreshed by a session alone).
+    const reauth = await verifyReauth(user as never, { password, code })
+    if (!reauth.ok) return NextResponse.json({ error: reauth.error, needs: reauth.needs }, { status: reauth.status })
 
     const db = await getMongoDb()
     if (user.role === 'superadmin') {
@@ -85,10 +69,16 @@ export async function POST(request: NextRequest) {
     const uid = String(user.id || user._id)
     // Kill every session (this device included) before the account disappears.
     await revokeAllUserSessions(uid)
+    await import('@/lib/agent/schedule-guard').then((m) => m.disableSchedulesCreatedBy(uid)).catch(() => 0)
 
     await Promise.allSettled(CASCADE.map(({ collection, field }) => db.collection(collection).deleteMany({ [field]: uid })))
+    // SEC-027: ID photos, selfies and KYC records go with the account.
+    const { purgeUserIdentityData } = await import('@/lib/identity-media')
+    await purgeUserIdentityData(uid).catch((e) => console.error('[DeleteAccount] identity purge failed:', (e as Error)?.message))
     // Candidate invites keep the invite history but drop the link to the account.
     await db.collection('candidate_invites').updateMany({ user_id: uid }, { $set: { user_id: null } }).catch(() => {})
+    // RAG-004: the person's résumé / attempt summaries leave the knowledge index everywhere.
+    await import('@/lib/rag/hooks').then((h) => h.knowledgeOnUserDeleted(uid)).catch(() => {})
 
     await db.collection('user').deleteOne({ _id: user._id } as never)
 

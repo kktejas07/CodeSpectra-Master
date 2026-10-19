@@ -5,12 +5,14 @@ import { DeviceShowcase } from '@/components/visuals'
 import { EventsExplorer } from '@/components/events-feed/events-explorer'
 import { listPublishedFeed } from '@/lib/events-feed/query'
 import { getAppOrigin } from '@/lib/app-origin'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
 
-export const metadata: Metadata = {
-  title: 'Events — hackathons, codeathons and buildathons worldwide | CodeSpectra',
-  description: 'Upcoming hackathons, codeathons, buildathons, CTFs and coding contests from around the world, plus CodeSpectra’s own events. Filter by format, country, theme and deadline, and get notified by email or WhatsApp.',
-  alternates: { canonical: '/events' },
-}
+const route = publicRoute('/events')!
+export const metadata: Metadata = (() => {
+  const m = buildMetadata({ title: route.title, description: route.description, path: '/events', kind: 'event' })
+  return { ...m, alternates: { ...m.alternates, types: { 'application/rss+xml': '/events/feed.xml' } } }
+})()
 
 // Rendered per request so the build never needs a DB connection.
 export const dynamic = 'force-dynamic'

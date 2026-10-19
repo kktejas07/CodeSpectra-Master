@@ -7,13 +7,15 @@ import { ArrowRight, Sparkles } from 'lucide-react'
 import { formatRange, KIND_LABELS, MODE_LABELS } from '@/lib/events-feed/public'
 import type { PublicFeedEvent } from '@/lib/events-feed/types'
 
-export function UpcomingEventsStrip() {
-  const [events, setEvents] = useState<PublicFeedEvent[] | null>(null)
+export function UpcomingEventsStrip({ initialEvents }: { initialEvents?: PublicFeedEvent[] } = {}) {
+  const [events, setEvents] = useState<PublicFeedEvent[] | null>(initialEvents ?? null)
   useEffect(() => {
+    // Server-loaded (landing page) — already in the HTML, no client refetch.
+    if (initialEvents) return
     let off = false
     fetch('/api/events-feed?limit=6').then((r) => (r.ok ? r.json() : { events: [] })).then((d) => { if (!off) setEvents(d.events || []) }).catch(() => { if (!off) setEvents([]) })
     return () => { off = true }
-  }, [])
+  }, [initialEvents])
   if (!events?.length) return null
   return (
     <section className="border-b border-cs-grid" aria-labelledby="upcoming-events-title">

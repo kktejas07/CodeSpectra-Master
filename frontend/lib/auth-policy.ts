@@ -5,10 +5,14 @@
  *   maintenance_mode            — on: only platform admins (superadmin) can sign in or
  *                                 open signed-in pages; everyone else (tenant admins
  *                                 included — they are customers) sees /maintenance.
- *   require_email_verification  — on: email/password accounts must click the link
- *                                 before they can sign in (accounts created before the
- *                                 switch, which have no emailVerified field, are not
- *                                 locked out — only an explicit emailVerified:false is).
+ *   require_email_verification  — on (the default since SEC-006): email/password
+ *                                 accounts must click the link before they can sign in.
+ *                                 Safe migration: only accounts created with the
+ *                                 `email_verification_required: true` marker (every
+ *                                 signup from now on) are held back. Legacy accounts
+ *                                 (no marker / no emailVerified field) keep signing in;
+ *                                 their unverified state still blocks Google/GitHub
+ *                                 linking (lib/auth-linking.ts).
  * The decisions are pure (unit tested); routes load settings via getGeneralSettingsCached.
  */
 import type { GeneralPlatformSettings } from '@/lib/platform-general-settings'
@@ -34,13 +38,18 @@ export function registrationBlock(s: Policy, opts: { invited?: boolean } = {}): 
 
 export function signInBlock(
   s: Policy,
-  user: { role?: unknown; emailVerified?: unknown },
+  user: { role?: unknown; emailVerified?: unknown; email_verification_required?: unknown },
   opts: { method?: 'password' | 'oauth' | 'face' | 'mobile' } = {},
 ): PolicyBlock | null {
   if (s.maintenance_mode && !isMaintenanceBypassRole(user.role)) {
     return { status: 503, code: 'maintenance', error: 'We’re doing some maintenance right now. Please try again a little later.' }
   }
-  if (s.require_email_verification && user.emailVerified === false && !isMaintenanceBypassRole(user.role)) {
+  if (
+    s.require_email_verification &&
+    user.emailVerified === false &&
+    user.email_verification_required === true &&
+    !isMaintenanceBypassRole(user.role)
+  ) {
     return {
       status: 403,
       code: 'email_unverified',

@@ -285,7 +285,7 @@ describe('source extractors', () => {
   })
 
   it('docs: the real FAQ page parses into questions', () => {
-    const src = fs.readFileSync(path.resolve(__dirname, '../app/faq/page.tsx'), 'utf-8')
+    const src = fs.readFileSync(path.resolve(__dirname, '../lib/seo/faq-content.ts'), 'utf-8')
     const md = faqSourceToMarkdown(src)
     expect(md).toContain('### What is CodeSpectra?')
     expect(md.split('### ').length).toBeGreaterThan(8)

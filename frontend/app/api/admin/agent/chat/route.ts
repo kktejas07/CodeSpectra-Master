@@ -12,7 +12,8 @@ import { limitRequest } from '@/lib/rate-limit'
 import { getUserAiCredits, outOfCredits } from '@/lib/user-credits'
 import { MAX_USER_MESSAGE_CHARS, openConversation, runChatTurn, type AgentStreamEvent } from '@/lib/agent/service'
 import { AllProvidersFailedError } from '@/lib/agent/providers'
-import { parseScopeRequest, tenantExists } from '@/lib/agent/scope-tenant'
+import { parseScopeRequest, scopedCaller, tenantExists } from '@/lib/agent/scope-tenant'
+import { checkBudget, getBudgetSettings } from '@/lib/agent/usage'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,7 +24,10 @@ export async function POST(req: Request): Promise<Response> {
   if ('response' in gate) return gate.response
   const { caller } = gate
 
-  const limited = await limitRequest(req, 'admin-agent-chat', caller.userId, 12, 60_000)
+  // Per-user message rate limits are admin-configurable (copilot usage settings).
+  const settings = await getBudgetSettings()
+  const limited = (await limitRequest(req, 'admin-agent-chat', caller.userId, settings.user_messages_per_minute, 60_000))
+    ?? (await limitRequest(req, 'admin-agent-chat-hour', caller.userId, settings.user_messages_per_hour, 60 * 60_000))
   if (limited) return limited
 
   const body = await readJson(req)
@@ -52,6 +56,10 @@ export async function POST(req: Request): Promise<Response> {
   if (!opened) return NextResponse.json({ error: 'Conversation not found' }, { status: 404 })
   const { conv, created } = opened
 
+  // Organisation budget (daily / monthly tokens) before any model call.
+  const budget = await checkBudget(scopedCaller(caller, conv.scope_tenant_id))
+  if (!budget.ok) return NextResponse.json({ error: budget.reason, budget: { daily: budget.daily, monthly: budget.monthly } }, { status: 429 })
+
   const abort = new AbortController()
   const onAbort = () => abort.abort()
   req.signal?.addEventListener('abort', onAbort)
@@ -75,7 +83,7 @@ export async function POST(req: Request): Promise<Response> {
           const friendly = /unavailable|No AI model/i.test(r.error || '') ? r.error! : 'The AI model failed to answer. Try again in a moment.'
           send({ type: 'error', message: friendly })
         }
-        send({ type: 'done', usage: { input_tokens: r.usage.inputTokens, output_tokens: r.usage.outputTokens, credits: r.credits } })
+        send({ type: 'done', usage: { input_tokens: r.charge.inputTokens, output_tokens: r.charge.outputTokens, credits: r.credits } })
       } catch (e) {
         console.error('[agent/chat] turn failed:', e)
         send({ type: 'error', message: e instanceof AllProvidersFailedError ? e.message : 'Something went wrong. Try again.' })

@@ -6,6 +6,7 @@
  *   A-003  24 h / 1 h reminders for standalone (non-ATS) interviews
  */
 import { getMongoDb } from '@/lib/mongodb'
+import { interviewSessions } from '@/lib/db/interviews'
 import { sendAutomationEmail, tenantAdminUsers } from '../mailer'
 import { claimOnce } from '../store'
 import { configValue, getSystemSettings } from '../settings'
@@ -43,6 +44,9 @@ export async function runHiringNudges(now = new Date()): Promise<{ recruitersNot
         if (!(await claimOnce(`hiring-cand:${stageKey}:${nudge}`))) continue
         const cand = (await db.collection('ats_candidates').findOne({ id: app.candidate_id, tenant_id: job.tenant_id }, { projection: { email: 1, name: 1 } })) as Doc | null
         if (!cand?.email) continue
+        // AUTO-035: an open test invite already gets its own reminder (/api/cron/exam-reminders, 24 h before
+        // it closes) — one owner per reminder, so skip the nudge for candidates with an open invite.
+        if (nudge === 'assessment_pending' && (await db.collection('candidate_invites').countDocuments({ email: { $in: [...new Set([String(cand.email), String(cand.email).toLowerCase()])] }, status: { $in: ['pending', 'active'] } }, { limit: 1 }))) continue
         const title = String(job.title || 'the role')
         await sendAutomationEmail({
           to: String(cand.email), category: 'hiring', onceKey: `hiring-cand-mail:${stageKey}:${nudge}`,
@@ -77,12 +81,17 @@ export async function runHiringNudges(now = new Date()): Promise<{ recruitersNot
   return { recruitersNotified, candidatesReminded }
 }
 
+/**
+ * A-003 / AUTO-030: 24 h and 1 h reminders for standalone interviews. They live
+ * in the `interviews` collection (lib/db/interviews.ts interviewSessions()) —
+ * the sweep used to read a collection nobody writes to and never sent.
+ */
 export async function runStandaloneInterviewReminders(now = new Date()): Promise<{ reminders: number }> {
   const db = await getMongoDb()
-  const rows = (await db.collection('interview_sessions').find({
+  const rows = (await (await interviewSessions()).find({
     status: 'scheduled',
     scheduled_at: { $gt: now.toISOString(), $lte: new Date(now.getTime() + 24 * 3_600_000).toISOString() },
-  }, { projection: { _id: 0, id: 1, title: 1, role: 1, scheduled_at: 1, duration_minutes: 1, interviewer_id: 1, candidate_id: 1 } }).limit(500).toArray()) as Doc[]
+  }, { projection: { _id: 0, id: 1, title: 1, role: 1, scheduled_at: 1, duration_minutes: 1, interviewer_id: 1, candidate_id: 1 } }).limit(500).toArray()) as unknown as Doc[]
   let reminders = 0
   const { notify } = await import('@/lib/notifications')
   for (const iv of rows) {
@@ -98,6 +107,8 @@ export async function runStandaloneInterviewReminders(now = new Date()): Promise
       if (!u?.email) continue
       await sendAutomationEmail({
         to: String(u.email), userId: uid, category: 'hiring', urgent: win === '1h', onceKey: `iv-standalone-mail:${String(iv.id)}:${String(iv.scheduled_at)}:${win}:${who}`,
+        // Same key as the "Interview reminders" template: never two reminders (AUTO-020 / AUTO-021).
+        dedupe: { kind: 'interview-reminder', ref: `${String(iv.id)}:${String(iv.scheduled_at)}:${win}` },
         subject: `Reminder: interview in ${left}`,
         heading: `Your interview starts in ${left}`,
         bodyText: `${String(iv.title || 'Interview')}${iv.role ? ` — ${String(iv.role)}` : ''}\nStarts: ${when}\nDuration: ${Number(iv.duration_minutes) || 60} minutes${who === 'candidate' ? '\n\nJoin a few minutes early and check your camera and microphone.' : ''}`,

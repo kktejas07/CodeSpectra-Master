@@ -21,6 +21,12 @@ export interface AgentMessageDoc {
   summary?: string
   citations?: KnowledgeHit[]
   action_id?: string
+  /** Loop v2 UI facts (persisted so a reloaded conversation shows the same thing). */
+  action_ids?: string[]
+  bundle_id?: string
+  plan?: { id: string; title: string; tool?: string; status: string }[]
+  clarify?: { question: string; options?: string[] }
+  specialist?: string
   /** App-generated notes (action confirmed/cancelled) — sent to the model, not shown as chat bubbles. */
   kind?: 'action_update'
   hidden?: boolean

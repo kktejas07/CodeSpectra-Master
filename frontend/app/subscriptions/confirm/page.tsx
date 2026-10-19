@@ -3,7 +3,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { ConfirmBox } from '@/components/subscriptions/confirm-box'
 
 export const dynamic = 'force-dynamic'
-export const metadata: Metadata = { title: 'Confirm your subscription — CodeSpectra', robots: { index: false } }
+export const metadata: Metadata = { title: { absolute: 'Confirm your subscription | CodeSpectra' }, robots: { index: false } }
 
 /** Landing page for the double opt-in email link. Confirms on a button press (POST), not on load. */
 export default async function SubscriptionConfirmPage({ searchParams }: { searchParams: Promise<{ t?: string | string[] }> }) {

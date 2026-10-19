@@ -1,9 +1,12 @@
-'use client'
-
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { HeroIllustration, PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 import { ExternalLink, Award, BookOpen, ShieldCheck, Code2 } from 'lucide-react'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const route = publicRoute('/open-source')!
+export const metadata = buildMetadata({ title: route.title, description: route.description, path: '/open-source' })
 
 /**
  * /open-source — public attribution page.

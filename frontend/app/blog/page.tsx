@@ -1,3 +1,6 @@
+import type { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
 import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
@@ -21,6 +24,14 @@ function formatDate(iso?: string | null) {
   } catch {
     return ''
   }
+}
+
+const seoRoute = publicRoute('/blog')!
+
+/** Hub indexable; search and category filters are noindex,follow (SEO-021). */
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; q?: string }> }): Promise<Metadata> {
+  const sp = await searchParams
+  return buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/blog', kind: 'article', noIndex: sp.category || sp.q ? 'follow' : false })
 }
 
 export default async function BlogIndexPage({

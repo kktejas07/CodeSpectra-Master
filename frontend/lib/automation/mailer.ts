@@ -35,23 +35,52 @@ export const CATEGORY_LABEL: Record<MailCategory, string> = {
 
 // ─── Unsubscribe tokens ─────────────────────────────────────────────────────
 
-function unsubscribeKey(): string {
-  return process.env.AUTOMATION_LINK_SECRET || process.env.SESSION_SECRET || process.env.CRON_SECRET || 'codespectra-dev-unsubscribe'
+/**
+ * Key for signing unsubscribe links (AUTO-051). Never a public constant in
+ * production: without AUTOMATION_LINK_SECRET / SESSION_SECRET / CRON_SECRET it
+ * is derived from SECRETS_ENCRYPTION_KEY, and with none of them links are not
+ * rendered (the footer points to the preferences page instead) and no token
+ * verifies.
+ */
+export function unsubscribeKey(): string | null {
+  const direct = process.env.AUTOMATION_LINK_SECRET || process.env.SESSION_SECRET || process.env.CRON_SECRET
+  if (direct) return direct
+  const enc = process.env.SECRETS_ENCRYPTION_KEY
+  if (enc) return createHmac('sha256', enc).update('codespectra:unsubscribe-links:v1').digest('base64url')
+  return process.env.NODE_ENV === 'production' ? null : 'codespectra-dev-unsubscribe'
 }
 
 export function unsubscribeToken(email: string, scope: string): string {
-  return createHmac('sha256', unsubscribeKey()).update(`unsub:${email.toLowerCase()}:${scope}`).digest('base64url').slice(0, 32)
+  const key = unsubscribeKey()
+  if (!key) throw new Error('Unsubscribe links need AUTOMATION_LINK_SECRET (or SESSION_SECRET / SECRETS_ENCRYPTION_KEY)')
+  return createHmac('sha256', key).update(`unsub:${email.toLowerCase()}:${scope}`).digest('base64url').slice(0, 32)
 }
 
 export function verifyUnsubscribeToken(email: string, scope: string, token: string): boolean {
+  if (!unsubscribeKey()) return false
   const a = Buffer.from(unsubscribeToken(email, scope))
   const b = Buffer.from(String(token || ''))
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
-export function unsubscribeUrl(email: string, scope: string): string {
+/** Signed one-click link, or null when no signing secret is configured. */
+export function unsubscribeUrl(email: string, scope: string): string | null {
+  if (!unsubscribeKey()) return null
   const q = new URLSearchParams({ e: email.toLowerCase(), s: scope, t: unsubscribeToken(email, scope) })
   return `${getAppOrigin()}/api/automation/unsubscribe?${q.toString()}`
+}
+
+/**
+ * RFC 8058 one-click headers (Gmail / Yahoo bulk-sender rules, AUTO-050).
+ * Not for billing / security mail (those can't be unsubscribed from).
+ */
+export function listUnsubscribeHeaders(email: string, category: MailCategory | 'engagement'): Record<string, string> | undefined {
+  if (CRITICAL.has(category as MailCategory)) return undefined
+  const url = unsubscribeUrl(email, category)
+  if (!url) return undefined
+  const mailto = (process.env.EMAIL_UNSUBSCRIBE_MAILTO || '').trim()
+  const parts = [`<${url}>`, ...(/^[^\s@<>]+@[^\s@<>]+$/.test(mailto) ? [`<mailto:${mailto}?subject=unsubscribe>`] : [])]
+  return { 'List-Unsubscribe': parts.join(', '), 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' }
 }
 
 export async function isUnsubscribed(email: string, category: MailCategory): Promise<boolean> {
@@ -106,7 +135,7 @@ export interface MailContent {
   preheader?: string
 }
 
-export function renderAutomationEmail(content: MailContent, footer: { unsubscribeUrl: string; manageUrl: string; category: MailCategory }): string {
+export function renderAutomationEmail(content: MailContent, footer: { unsubscribeUrl: string | null; manageUrl: string; category: MailCategory }): string {
   const body = content.bodyHtml ?? textToParagraphs(content.bodyText || '')
   const href = content.cta ? safeHref(content.cta.url) : null
   const button = href && content.cta
@@ -125,8 +154,8 @@ export function renderAutomationEmail(content: MailContent, footer: { unsubscrib
     </td></tr>
     <tr><td style="padding:18px 28px;border-top:1px solid #e3e7f1;font-size:12px;line-height:1.6;color:#4b5563">
       ${escapeHtmlText(reason)}<br/>
-      <a href="${escapeHtmlText(footer.manageUrl)}" style="color:#2F5BE7">Manage email preferences</a> ·
-      <a href="${escapeHtmlText(footer.unsubscribeUrl)}" style="color:#2F5BE7">${CRITICAL.has(footer.category) ? 'Unsubscribe from other automated email' : `Unsubscribe from ${escapeHtmlText(CATEGORY_LABEL[footer.category])}`}</a>
+      <a href="${escapeHtmlText(footer.manageUrl)}" style="color:#2F5BE7">Manage email preferences</a>${footer.unsubscribeUrl ? ` ·
+      <a href="${escapeHtmlText(footer.unsubscribeUrl)}" style="color:#2F5BE7">${CRITICAL.has(footer.category) ? 'Unsubscribe from other automated email' : `Unsubscribe from ${escapeHtmlText(CATEGORY_LABEL[footer.category])}`}</a>` : ''}
     </td></tr>
   </table>
 </div></body></html>`
@@ -144,6 +173,29 @@ export interface AutomationMail extends MailContent {
   onceKey?: string
   /** Ignore quiet hours. */
   urgent?: boolean
+  /**
+   * Cross-sender de-duplication (AUTO-020): a built-in automation and a
+   * workflow template that send the same message use the same kind + ref, so
+   * the customer gets it once whichever fires first. The recipient is part of
+   * the key, so a workflow can only ever suppress a message to the address it
+   * is itself emailing.
+   */
+  dedupe?: { kind: DedupeKind; ref: string } | null
+  /** From display name, e.g. "Acme via CodeSpectra" (organisation workflows). */
+  fromName?: string
+}
+
+/** Messages that both a built-in automation and a template can send. */
+export const DEDUPE_KINDS = ['plan-expiry', 'dunning', 'onboard-verify', 're-engagement', 'checkout', 'cert-follow', 'interview-reminder'] as const
+export type DedupeKind = (typeof DEDUPE_KINDS)[number]
+
+export function isDedupeKind(v: unknown): v is DedupeKind {
+  return typeof v === 'string' && (DEDUPE_KINDS as readonly string[]).includes(v)
+}
+
+/** Ledger key for one logical message to one address. Pure. */
+export function dedupeKey(kind: DedupeKind, ref: string, to: string): string {
+  return `dedupe:${kind}:${String(ref).slice(0, 200)}:${to.toLowerCase()}`
 }
 
 export type MailOutcome = 'sent' | 'deferred' | 'queued' | 'duplicate' | 'skipped_unsubscribed' | 'skipped_preferences' | 'skipped_suppressed' | 'skipped_invalid' | 'failed'
@@ -166,31 +218,43 @@ export async function sendAutomationEmail(mail: AutomationMail): Promise<MailOut
   const userId = mail.userId ?? (await userForEmail(db, to))?.id ?? null
   if (userId && !CRITICAL.has(mail.category) && (await emailChannelOff(db, userId))) return 'skipped_preferences'
   if (mail.onceKey && !(await claimOnce(`mail:${mail.onceKey}`, { to_hash: to.length }))) return 'duplicate'
+  const dKey = mail.dedupe && isDedupeKind(mail.dedupe.kind) && mail.dedupe.ref ? dedupeKey(mail.dedupe.kind, mail.dedupe.ref, to) : null
+  if (dKey && !(await claimOnce(dKey))) {
+    if (mail.onceKey) await releaseClaim(`mail:${mail.onceKey}`)
+    return 'duplicate'
+  }
+  const release = async () => {
+    if (mail.onceKey) await releaseClaim(`mail:${mail.onceKey}`)
+    if (dKey) await releaseClaim(dKey)
+  }
 
+  const unsubScope = CRITICAL.has(mail.category) ? 'engagement' : mail.category
   const html = renderAutomationEmail(mail, {
-    unsubscribeUrl: unsubscribeUrl(to, CRITICAL.has(mail.category) ? 'engagement' : mail.category),
+    unsubscribeUrl: unsubscribeUrl(to, unsubScope),
     manageUrl: `${getAppOrigin()}/dashboard/notifications/preferences`,
     category: mail.category,
   })
   const subject = mail.subject.replace(/[\r\n]+/g, ' ').slice(0, 200)
+  const headers = listUnsubscribeHeaders(to, mail.category)
+  const fromName = mail.fromName
 
   try {
     if (userId && !mail.urgent) {
       const { deliverOrDefer } = await import('@/lib/notifications-delivery')
-      const r = await deliverOrDefer(userId, { email: { to, subject, html } })
+      const r = await deliverOrDefer(userId, { email: { to, subject, html, headers, fromName, category: mail.category, managed: true } })
       if (r === 'deferred') return 'deferred'
       return 'sent'
     }
     const { sendEmail } = await import('@/lib/send-email')
-    const r = await sendEmail(to, { subject, html }, undefined, { category: 'notification' })
+    const r = await sendEmail(to, { subject, html }, undefined, { category: 'notification', headers, fromName })
     if (r.success) return 'sent'
     if (r.suppressed) return 'skipped_suppressed'
     if (r.queued) return 'queued'
-    if (mail.onceKey) await releaseClaim(`mail:${mail.onceKey}`)
+    await release()
     return 'failed'
   } catch (e) {
     console.error('[automation/mailer] send failed:', e)
-    if (mail.onceKey) await releaseClaim(`mail:${mail.onceKey}`)
+    await release()
     return 'failed'
   }
 }

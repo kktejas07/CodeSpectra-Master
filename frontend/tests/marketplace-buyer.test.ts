@@ -23,7 +23,7 @@ vi.mock('@/lib/notifications', () => ({ notify: vi.fn(async () => null) }))
 vi.mock('@/lib/db/billing', () => ({ finalizeCouponRedemption: vi.fn(async () => true), reserveCouponUse: vi.fn(async () => true) }))
 const refunds = { refundLines: vi.fn(async () => {}) }
 vi.mock('@/lib/marketplace/orders', () => ({ refundLines: (...a: unknown[]) => refunds.refundLines(...(a as [])) }))
-vi.mock('@/lib/marketplace/gateways', () => ({ fetchGatewayState: vi.fn(async () => ({ state: 'pending' })), isMarketplaceTxn: (t: string) => /^MKT/.test(t) }))
+vi.mock('@/lib/marketplace/gateways', () => ({ fetchGatewayState: vi.fn(async () => ({ state: 'pending' })), isMarketplaceTxn: (t: string) => /^MKT/.test(t), closePaymentPage: vi.fn(async () => true) }))
 
 import { allocateProRata, chargeable, computeQuote, couponDiscount, currencyDecision, linePaid, taxOn } from '@/lib/marketplace/pricing'
 import { cancelEligibility, canReview, needsModeration, refundEligibility } from '@/lib/marketplace/rules'
@@ -79,9 +79,9 @@ describe('pricing (minor units)', () => {
   })
 
   it('coupon discount is clamped and every line adds up to the grand total', () => {
-    expect(couponDiscount(5000, { discount_type: 'percentage', discount_value: 10 })).toBe(500)
-    expect(couponDiscount(5000, { discount_type: 'flat', discount_value: 80 })).toBe(5000)
-    expect(couponDiscount(5000, { discount_type: 'trial', discount_value: 30 })).toBe(0)
+    expect(couponDiscount(5000, { discount_type: 'percentage', discount_value: 10 }, 'INR')).toBe(500)
+    expect(couponDiscount(5000, { discount_type: 'flat', discount_value: 80 }, 'INR')).toBe(5000)
+    expect(couponDiscount(5000, { discount_type: 'trial', discount_value: 30 }, 'INR')).toBe(0)
     for (const settings of [TAX_IN, TAX_ADD]) {
       const q = computeQuote([
         { key: 'a', seller_id: 's1', kind: 'physical', unit_price: 3333, qty: 3, commission_bps: 1500, shipping: { fee: 499 } },

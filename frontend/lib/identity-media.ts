@@ -17,7 +17,8 @@
  *    closing date count from the attempt). Purged daily by lib/platform-cron.ts.
  *
  * Key: IDENTITY_MEDIA_KEY (32+ chars), else SECRETS_ENCRYPTION_KEY, else
- * derived from the session secret. Rotating it makes old photos unreadable.
+ * derived from the session secret. To rotate, put the old value in
+ * IDENTITY_MEDIA_KEY_PREVIOUS / SECRETS_ENCRYPTION_KEY_PREVIOUS (read-only).
  */
 import { createHash } from 'node:crypto'
 import { Binary, type Db } from 'mongodb'
@@ -43,10 +44,25 @@ export interface IdentityMediaDoc {
 }
 
 async function mediaKey(): Promise<Uint8Array> {
-  const env = (process.env.IDENTITY_MEDIA_KEY || process.env.SECRETS_ENCRYPTION_KEY || '').trim()
-  if (env.length >= 32) return new Uint8Array(createHash('sha256').update(`identity-media:${env}`).digest())
+  return (await mediaKeys())[0]
+}
+
+/**
+ * [current key, …older keys still accepted for reading]. SEC-018: once
+ * IDENTITY_MEDIA_KEY / SECRETS_ENCRYPTION_KEY is set, media sealed earlier with
+ * the session-derived key stays readable (new media uses the env key).
+ */
+async function mediaKeys(): Promise<Uint8Array[]> {
   const { deriveServerKey } = await import('@/lib/session')
-  return deriveServerKey('identity-media')
+  const legacy = await deriveServerKey('identity-media')
+  const keys: Uint8Array[] = []
+  const prev = [process.env.IDENTITY_MEDIA_KEY_PREVIOUS, process.env.SECRETS_ENCRYPTION_KEY_PREVIOUS].flatMap((v) => String(v || '').split(','))
+  for (const v of [process.env.IDENTITY_MEDIA_KEY, process.env.SECRETS_ENCRYPTION_KEY, ...prev]) {
+    const env = (v || '').trim()
+    if (env.length >= 32) keys.push(new Uint8Array(createHash('sha256').update(`identity-media:${env}`).digest()))
+  }
+  keys.push(legacy)
+  return keys
 }
 async function viewKey(): Promise<Uint8Array> {
   const { deriveServerKey } = await import('@/lib/session')
@@ -156,7 +172,12 @@ export async function readMediaBytes(doc: IdentityMediaDoc): Promise<Buffer | nu
     const d = row?.data as Binary | Buffer | undefined
     box = d ? (Buffer.isBuffer(d) ? d : Buffer.from((d as Binary).buffer)) : null
   }
-  return box ? decryptBytesWithKey(await mediaKey(), box) : null
+  if (!box) return null
+  for (const k of await mediaKeys()) {
+    const out = decryptBytesWithKey(k, box)
+    if (out) return out
+  }
+  return null
 }
 
 /** Signed 5-minute URL for one photo, bound to the viewer. Legacy data URLs pass through. */
@@ -181,7 +202,11 @@ export async function sealFaceTemplate(descriptor: number[]): Promise<string> {
 export async function openFaceTemplate(v: unknown): Promise<number[] | null> {
   if (Array.isArray(v)) return v.length === 128 && v.every((x) => typeof x === 'number') ? (v as number[]) : null
   if (typeof v !== 'string' || !v.startsWith('v1.')) return null
-  const s = decryptWithKey(await mediaKey(), v)
+  let s: string | null = null
+  for (const k of await mediaKeys()) {
+    s = decryptWithKey(k, v)
+    if (s) break
+  }
   if (!s) return null
   try {
     const arr = JSON.parse(s)
@@ -231,11 +256,11 @@ export async function purgeExpiredIdentityMedia(now: Date = new Date(), maxExams
   let purged = 0
 
   // 1) Exams with stored media older than the cutoff (necessary condition).
-  const examIds = (await meta.distinct('exam_id', { created_at: { $lt: cutoffIso } })).slice(0, maxExams) as string[]
-  for (const examId of examIds) {
-    const exam = await db.collection('exams').findOne({ id: examId }, { projection: { _id: 0, ends_at: 1, status: 1, updatedAt: 1, archived_at: 1 } })
-    const closeAt = examCloseAt(exam as { ends_at?: unknown; status?: unknown; updatedAt?: unknown; archived_at?: unknown } | null)
-    if (closeAt !== null && closeAt >= cutoff) continue // closed too recently (or still open with an end date ahead)
+  // W4-14: open exams are skipped without consuming maxExams.
+  const candidates = (await meta.distinct('exam_id', { created_at: { $lt: cutoffIso } })) as string[]
+  const { examsDueForPurge } = await import('@/lib/proctoring/recordings')
+  const due = await examsDueForPurge(db, candidates, cutoff, (e) => examCloseAt(e as Parameters<typeof examCloseAt>[0]), maxExams)
+  for (const { examId, closeAt } of due) {
     const filter = closeAt === null ? { exam_id: examId, created_at: { $lt: cutoffIso } } : { exam_id: examId }
     const docs = (await meta.find(filter, { projection: { _id: 0 } }).toArray()) as IdentityMediaDoc[]
     await deleteMedia(db, docs)
@@ -257,5 +282,34 @@ export async function purgeExpiredIdentityMedia(now: Date = new Date(), maxExams
     await db.collection('exams').updateOne({ id: e.id }, { $set: { identity_media_purged_at: now.toISOString() } })
     purged++
   }
+
+  // 3) Proctoring session recordings follow the same retention (audit CORE-011).
+  try {
+    const { purgeExpiredRecordings } = await import('@/lib/proctoring/recordings')
+    await purgeExpiredRecordings(db, cutoff, (e) => examCloseAt(e as Parameters<typeof examCloseAt>[0]), maxExams)
+  } catch (e) {
+    console.error('[identity-media] recording purge failed:', (e as Error)?.message)
+  }
   return purged
+}
+
+/**
+ * Account deletion (SEC-027): remove every ID photo / selfie the user ever
+ * submitted (object storage + DB), strip photo refs from their exam records,
+ * and delete their KYC sessions. Exam results themselves stay with the
+ * organisation that owns them. Returns counts for the audit log.
+ */
+export async function purgeUserIdentityData(userId: string): Promise<{ media: number; kyc: number }> {
+  const { db, meta } = await cols()
+  const docs = (await meta.find({ user_id: userId }, { projection: { _id: 0 } }).toArray()) as IdentityMediaDoc[]
+  await deleteMedia(db, docs)
+  const at = new Date().toISOString()
+  for (const col of ['exam_identity_checks', 'exam_submissions']) {
+    await db.collection(col).updateMany(
+      { user_id: userId, $or: [{ id_photo: { $type: 'string' } }, { face_photo: { $type: 'string' } }] },
+      { $set: { id_photo: null, face_photo: null, identity_media_purged_at: at } },
+    ).catch(() => {})
+  }
+  const kyc = await db.collection('kyc_sessions').deleteMany({ user_id: userId }).catch(() => ({ deletedCount: 0 }))
+  return { media: docs.length, kyc: kyc.deletedCount ?? 0 }
 }

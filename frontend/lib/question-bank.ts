@@ -81,6 +81,59 @@ export async function questionBank(): Promise<Collection<BankQuestionDoc>> {
 
 const nowIso = (): string => new Date().toISOString()
 
+// ─── De-duplication by stored keys (CORE-031) ───────────────────────────────
+//
+// Each question stores `content_hash` (bankContentHash) and `title_key`, both
+// indexed, so generate/import check only the new candidates with $in instead
+// of loading the whole bank on every call. Older rows are backfilled once per
+// process (only rows still missing the key are read).
+
+/** Lower-cased, whitespace-collapsed title. Pure. */
+export function bankTitleKey(title: unknown): string {
+  return String(title || '').toLowerCase().replace(/\s+/g, ' ').trim()
+}
+
+let keysReady: Promise<void> | null = null
+export function ensureBankDedupeKeys(col: Collection<BankQuestionDoc>): Promise<void> {
+  if (!keysReady) {
+    keysReady = (async () => {
+      try {
+        await col.createIndex({ content_hash: 1 } as never, { name: 'question_bank_content_hash', sparse: true })
+        await col.createIndex({ title_key: 1 } as never, { name: 'question_bank_title_key', sparse: true })
+        for (let round = 0; round < 1000; round++) {
+          const batch = await col.find({ content_hash: { $exists: false } } as never, { projection: { _id: 1, id: 1, question: 1, title: 1, type: 1, difficulty: 1, branch: 1, options: 1, answer: 1 } }).limit(1000).toArray()
+          if (!batch.length) break
+          await col.bulkWrite(batch.map((d) => ({
+            updateOne: { filter: { _id: (d as { _id: unknown })._id } as never, update: { $set: { content_hash: bankContentHash(d), title_key: bankTitleKey(d.title) } } as never },
+          })))
+        }
+      } catch (e) {
+        keysReady = null // retry next call
+        console.error('[question-bank] dedupe key backfill failed:', (e as Error)?.message)
+      }
+    })()
+  }
+  return keysReady
+}
+
+/** Which of these hashes / title keys already exist (two indexed $in queries). */
+export async function existingBankKeys(col: Collection<BankQuestionDoc>, hashes: string[], titleKeys: string[]): Promise<{ hashes: Set<string>; titles: Set<string> }> {
+  await ensureBankDedupeKeys(col)
+  const [h, t] = await Promise.all([
+    hashes.length ? col.find({ content_hash: { $in: [...new Set(hashes)] } } as never, { projection: { _id: 0, content_hash: 1 } }).toArray() : [],
+    titleKeys.length ? col.find({ title_key: { $in: [...new Set(titleKeys.filter(Boolean))] } } as never, { projection: { _id: 0, title_key: 1 } }).toArray() : [],
+  ])
+  return {
+    hashes: new Set(h.map((d) => String((d as { content_hash?: unknown }).content_hash))),
+    titles: new Set(t.map((d) => String((d as { title_key?: unknown }).title_key))),
+  }
+}
+
+/** Stamp the dedupe keys on a doc before insert. */
+export function withBankKeys<T extends Partial<BankQuestionDoc>>(doc: T): T & { content_hash: string; title_key: string } {
+  return Object.assign(doc, { content_hash: bankContentHash(doc), title_key: bankTitleKey(doc.title) })
+}
+
 function normString(v: unknown, max = 2000): string {
   if (typeof v !== 'string') return ''
   const s = v.trim()

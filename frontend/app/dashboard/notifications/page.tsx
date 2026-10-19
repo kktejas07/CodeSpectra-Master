@@ -1,7 +1,7 @@
 'use client'
 import { formatDate } from '@/lib/format-datetime'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -148,6 +148,11 @@ export default function NotificationsPage() {
   const [newsletterError, setNewsletterError] = useState('')
 
   const [loadError, setLoadError] = useState(false)
+  // Older pages (CORE-008): the poll refreshes the newest page; "Show older" appends these.
+  const [older, setOlder] = useState<Notification[]>([])
+  const [nextBefore, setNextBefore] = useState<string | null>(null)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const olderLoadedRef = useRef(false)
 
   const load = useCallback(async () => {
     try {
@@ -157,6 +162,7 @@ export default function NotificationsPage() {
       if (data.items) {
         setItems(data.items)
         setUnreadCount(data.unread || 0)
+        if (!olderLoadedRef.current) setNextBefore(data.next_before ?? null)
       }
       setLoadError(false)
     } catch { setLoadError(true) } finally { setLoading(false) }
@@ -218,8 +224,22 @@ export default function NotificationsPage() {
 
   if (!gate.ready) return null
 
+  const loadOlder = async () => {
+    if (!nextBefore || loadingOlder) return
+    setLoadingOlder(true)
+    try {
+      const res = await fetch(`/api/notifications?before=${encodeURIComponent(nextBefore)}`, { cache: 'no-store' })
+      if (!res.ok) throw new Error('failed')
+      const data = await res.json()
+      olderLoadedRef.current = true
+      setOlder((prev) => [...prev, ...(data.items || [])])
+      setNextBefore(data.next_before ?? null)
+    } catch { /* keep the button; the user can try again */ } finally { setLoadingOlder(false) }
+  }
+
   const markAllRead = async () => {
     await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })
+    setOlder((prev) => prev.map((n) => ({ ...n, is_read: true })))
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
     setUnreadCount(0)
   }
@@ -227,12 +247,15 @@ export default function NotificationsPage() {
   const markRead = async (id: string) => {
     await csrfFetch(`/api/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) })
     setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
+    setOlder((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
     setUnreadCount((c) => Math.max(0, c - 1))
   }
 
+  const seen = new Set(items.map((n) => n.id))
+  const allItems = [...items, ...older.filter((n) => !seen.has(n.id))]
   const filtered = category === 'all'
-    ? items
-    : items.filter((n) => (n.category || 'general') === category || n.type.startsWith(category))
+    ? allItems
+    : allItems.filter((n) => (n.category || 'general') === category || n.type.startsWith(category))
 
   const IconComponent = (icon: string) => ICON_MAP[icon] || Bell
 
@@ -341,6 +364,13 @@ export default function NotificationsPage() {
               </div>
             )
           })}
+          {nextBefore && (
+            <div className="flex justify-center pt-2">
+              <Button type="button" variant="outline" onClick={loadOlder} disabled={loadingOlder}>
+                {loadingOlder ? 'Loading…' : 'Show older'}
+              </Button>
+            </div>
+          )}
         </div>
       )}
       </div>

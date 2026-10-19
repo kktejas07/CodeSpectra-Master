@@ -4,6 +4,11 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 import { Scene } from '@/components/illustrations/scenes'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const seoRoute = publicRoute('/careers')!
+export const metadata = buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/careers' })
 
 /*
  * No open roles are listed. Do not add job openings here unless they are real

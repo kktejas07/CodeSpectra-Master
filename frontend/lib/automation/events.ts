@@ -13,12 +13,18 @@
  * Anything that fails is retried from the outbox by the scheduler with
  * backoff; after the last attempt it is dead-lettered.
  *
+ * Tenancy (AUTO-001): when the caller doesn't pass `tenantId`, emit()
+ * resolves it from the user / buyer in the payload (their organisation), so
+ * organisation workflows see sign-ups, payments, plans and marketplace orders
+ * of their members. Platform-scoped events (blog, events feed) never carry one.
+ * Pass `tenantId: null` explicitly for "no organisation".
+ *
  * emit() never throws and never blocks the caller on dispatch.
  */
 import type { WorkflowDoc } from '@/lib/db/leaderboard'
 import { evaluateCondition } from './conditions'
 import { backoffDelayMs, JOB_BACKOFF } from './backoff'
-import { isKnownEventType } from './event-types'
+import { isAnalyticsEventType, isEmittableEventType, isPlatformOnlyEvent } from './event-types'
 import { col, deadLetter, isDuplicateKeyError, newId, nowIso, sanitizePayload } from './store'
 
 export interface AutomationEventDoc {
@@ -38,6 +44,7 @@ export interface AutomationEventDoc {
 }
 
 export interface EmitOptions {
+  /** The organisation the event belongs to. Omit to resolve it from the payload's user / buyer; null = none. */
   tenantId?: string | null
   /** Same key twice = one event (e.g. `payment.succeeded:${orderId}`). */
   idempotencyKey?: string
@@ -47,19 +54,84 @@ export interface EmitOptions {
 
 export const EVENT_MAX_ATTEMPTS = 5
 
+/** Payload keys that name the user an event is about (first match wins). */
+const SUBJECT_KEYS = ['user_id', 'buyer_id'] as const
+
+/** Pure: which user's organisation an event belongs to (null = none to look up). */
+export function tenantSubject(type: string, payload: Record<string, unknown>): string | null {
+  if (isPlatformOnlyEvent(type)) return null
+  for (const k of SUBJECT_KEYS) {
+    const v = payload[k]
+    if (typeof v === 'string' && v && v.length <= 128) return v
+  }
+  return null
+}
+
+/**
+ * The organisation of an event (AUTO-001): the explicit option when given,
+ * else the organisation of the payload's user / buyer. Never throws.
+ */
+export async function resolveEventTenant(type: string, payload: Record<string, unknown>, explicit: string | null | undefined): Promise<string | null> {
+  if (isPlatformOnlyEvent(type)) return null
+  if (explicit !== undefined) return explicit
+  const uid = tenantSubject(type, payload)
+  if (!uid) return null
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const u = await (await getMongoDb()).collection('user').findOne({ $or: [{ id: uid }, { _id: uid as never }] }, { projection: { tenantId: 1, organizationId: 1 } })
+    const t = u?.tenantId ?? u?.organizationId
+    return typeof t === 'string' && t.trim() ? t.trim() : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Fill payload fields every emitter should send but some don't (pure):
+ *   certificate.issued  linkedin_url (AUTO-022)
+ */
+export function enrichPayload(type: string, payload: Record<string, unknown>, appOrigin: string): Record<string, unknown> {
+  if (type === 'certificate.issued' && !payload.linkedin_url && typeof payload.verify_url === 'string' && payload.verify_url) {
+    const verify = payload.verify_url.startsWith('/') ? `${appOrigin.replace(/\/+$/, '')}${payload.verify_url}` : payload.verify_url
+    const issued = typeof payload.issued_at === 'string' && !Number.isNaN(Date.parse(payload.issued_at)) ? payload.issued_at : new Date().toISOString()
+    const d = new Date(issued)
+    const q = new URLSearchParams({
+      startTask: 'CERTIFICATION_NAME', name: String(payload.title || 'Certificate').slice(0, 200), organizationName: 'CodeSpectra',
+      issueYear: String(d.getUTCFullYear()), issueMonth: String(d.getUTCMonth() + 1), certUrl: verify,
+      certId: verify.split('/').pop() || '',
+    })
+    return { ...payload, linkedin_url: `https://www.linkedin.com/profile/add?${q.toString()}` }
+  }
+  return payload
+}
+
+/** Analytics events are only stored when some active workflow listens for them (cached briefly). */
+const listenerCache = new Map<string, { at: number; v: boolean }>()
+async function hasActiveListener(type: string): Promise<boolean> {
+  const hit = listenerCache.get(type)
+  if (hit && Date.now() - hit.at < 60_000) return hit.v
+  const v = !!(await (await col('workflows')).findOne({ trigger: 'event', event_type: type, is_active: true }, { projection: { _id: 1 } }))
+  if (listenerCache.size > 500) listenerCache.clear()
+  listenerCache.set(type, { at: Date.now(), v })
+  return v
+}
+
 export async function emit(type: string, payload: Record<string, unknown>, opts: EmitOptions = {}): Promise<{ id: string | null; duplicate: boolean }> {
   try {
-    if (!isKnownEventType(type)) {
+    if (!isEmittableEventType(type)) {
       console.warn('[automation/events] unknown event type, not emitted:', type)
       return { id: null, duplicate: false }
     }
+    if (isAnalyticsEventType(type) && !(await hasActiveListener(type))) return { id: null, duplicate: false }
     const c = await col<AutomationEventDoc>('automation_events')
     const ts = nowIso()
+    const { getAppOrigin } = await import('@/lib/app-origin')
+    const clean = enrichPayload(type, sanitizePayload(payload), getAppOrigin())
     const doc: AutomationEventDoc = {
       id: newId(),
       type,
-      payload: sanitizePayload(payload),
-      tenant_id: opts.tenantId ?? null,
+      payload: clean,
+      tenant_id: await resolveEventTenant(type, clean, opts.tenantId),
       ...(opts.idempotencyKey ? { idempotency_key: opts.idempotencyKey.slice(0, 300) } : {}),
       status: 'pending',
       attempts: 0,

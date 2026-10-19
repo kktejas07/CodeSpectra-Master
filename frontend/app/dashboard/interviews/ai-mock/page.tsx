@@ -76,7 +76,14 @@ export default function AiMockSessionPage() {
     try {
       const raw = sessionStorage.getItem(`aimock_${sessionId}`)
       if (!raw) {
-        router.push('/dashboard/interviews/ai-mock/setup')
+        // Reopened from history / another tab: a finished session shows its saved report (CORE-016).
+        fetch(`/api/interviews/ai-mock?id=${encodeURIComponent(sessionId)}`, { cache: 'no-store' })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => {
+            if (j?.session?.status === 'completed') setStatus('completed')
+            else router.push('/dashboard/interviews/ai-mock/setup')
+          })
+          .catch(() => router.push('/dashboard/interviews/ai-mock/setup'))
         return
       }
       const data: StoredSession = JSON.parse(raw)
@@ -272,12 +279,13 @@ export default function AiMockSessionPage() {
     }
   }
 
-  if (!gate.ready || !stored) return null
+  if (!gate.ready) return null
 
   // Report view
-  if (status === 'completed') {
-    return <ReportView sessionId={sessionId!} router={router} />
+  if (status === 'completed' && sessionId) {
+    return <ReportView sessionId={sessionId} router={router} />
   }
+  if (!stored) return null
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)]">
@@ -516,11 +524,18 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
   const [transcriptOpen, setTranscriptOpen] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
     const raw = sessionStorage.getItem(`aimock_report_${sessionId}`)
     if (raw) {
-      try { setReport(JSON.parse(raw)) } catch { /* ignore */ }
+      try { setReport(JSON.parse(raw)); setLoading(false); return } catch { /* fall back to the server copy */ }
     }
-    setLoading(false)
+    // The server keeps every finished report (CORE-016).
+    fetch(`/api/interviews/ai-mock?id=${encodeURIComponent(sessionId)}`, { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (!cancelled && j?.report) setReport(j.report) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
   }, [sessionId])
 
   if (loading) {
@@ -536,7 +551,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
   if (!report) {
     return (
       <div className="text-center text-muted-foreground py-12">
-        <p>We couldn&apos;t find this report. Reports are kept in this browser tab only — start a new practice interview to get a fresh one.</p>
+        <p>We couldn&apos;t load this report. It may still be generating — try again in a minute, or start a new practice interview.</p>
         <Button variant="outline" className="mt-4" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>
           Start new interview
         </Button>

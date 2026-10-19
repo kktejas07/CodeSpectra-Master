@@ -1,7 +1,8 @@
 'use client'
+import { useOrigin } from '@/hooks/use-browser-value'
 import { formatDate } from '@/lib/format-datetime'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import QRCode from 'qrcode'
 import { Card } from '@/components/ui/card'
@@ -53,10 +54,8 @@ export default function CertVerifyPage() {
   )
   const [qrDataUrl, setQrDataUrl] = useState<string>('')
 
-  const verifyUrl = useMemo(
-    () => (typeof window !== 'undefined' ? `${window.location.origin}/cert/verify/${token}` : ''),
-    [token],
-  )
+  const origin = useOrigin()
+  const verifyUrl = origin ? `${origin}/cert/verify/${token}` : ''
 
   useEffect(() => {
     let active = true

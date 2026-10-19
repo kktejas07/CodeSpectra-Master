@@ -128,8 +128,6 @@ import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
-import { WebVitalsReporter } from '@/components/dashboard/web-vitals-reporter'
-import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
@@ -854,8 +852,6 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
       <ActivityHeartbeat />
-      <WebVitalsReporter />
-      <AnalyticsTracker />
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 
