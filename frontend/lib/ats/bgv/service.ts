@@ -27,9 +27,13 @@ import { deleteDocuments, MAX_DOCS_PER_CASE, storeDocument } from './storage'
 import { fieldActive, missingItems, sanitizeCheckData } from './validate'
 import { getVendor, VendorError, type VendorContext, type VendorPii } from './vendors'
 import { notifyTeam, sendFinalAdverse, sendInfoRequest, sendInvite, sendPreAdverse } from './notify'
-import { DECIDED, type BgvCaseDoc, type BgvCheck, type BgvCheckStatus, type BgvSettingsDoc } from './types'
+import { DECIDED, type BgvCaseDoc, type BgvCheck, type BgvCheckStatus, type BgvDocument, type BgvSettingsDoc } from './types'
 
 export const PORTAL_TTL_DAYS = 30
+/** Candidate self-service "send me a new link": once per case per 10 minutes. */
+export const RESEND_EVERY_MS = 10 * 60_000
+/** A case left in 'consider' this long without a decision is closed (so retention applies). */
+export const CONSIDER_MAX_DAYS = 90
 const OPEN: BgvCaseDoc['status'][] = ['invited', 'in_progress', 'submitted', 'verifying', 'consider']
 
 // ─── Small helpers ───────────────────────────────────────────────────────────
@@ -71,6 +75,10 @@ export async function claimSend(caseId: string, key: string): Promise<boolean> {
   return r.modifiedCount === 1
 }
 
+export async function releaseSend(caseId: string, key: string): Promise<void> {
+  await (await bgvCases()).updateOne({ id: caseId }, { $pull: { sent: key } })
+}
+
 export async function portalLink(c: Pick<BgvCaseDoc, 'id' | 'token_nonce'>): Promise<string> {
   const token = signPortalToken(await bgvLinkKey(), c.id, c.token_nonce, Date.now() + PORTAL_TTL_DAYS * 86_400_000)
   return `${getAppOrigin()}/bgv/${token}`
@@ -100,8 +108,9 @@ async function mutate(c: Pick<BgvCaseDoc, 'id' | 'tenant_id'>, fn: (cur: BgvCase
     next.updated_at = later(cur.updated_at)
     next.status = rollUpStatus(next)
     if ((next.status === 'clear' || next.status === 'failed' || next.status === 'cancelled') && !next.closed_at) next.closed_at = next.updated_at
+    if (next.status === 'consider' && cur.status !== 'consider') next.consider_at = next.updated_at
     // Fields written by atomic claims elsewhere are never overwritten from a stale read.
-    const { id: _i, tenant_id: _t, sent: _s, vendor_events: _v, result_recorded: _r, ...set } = next
+    const { id: _i, tenant_id: _t, sent: _s, vendor_events: _v, result_recorded: _r, link_resent_at: _l, ...set } = next
     const r = await col.updateOne({ id: cur.id, tenant_id: cur.tenant_id, updated_at: cur.updated_at }, { $set: set })
     if (r.matchedCount) {
       await afterChange(cur, next)
@@ -118,7 +127,8 @@ async function afterChange(prev: BgvCaseDoc, next: BgvCaseDoc): Promise<void> {
   if (next.status === 'clear') {
     await recordOutcome(next, 'pass', `Background verification clear — ${caseSummary(next, label)}${next.decision?.outcome === 'pass' ? ' (approved by the hiring team)' : ''}`)
   } else if (next.status === 'failed' && next.decision?.outcome === 'fail') {
-    await recordOutcome(next, 'fail', `Background verification not passed — ${caseSummary(next, label)}${next.decision.note ? `. ${next.decision.note}` : ''}`)
+    // The recruiter's free-text note stays on the case (staff only); stage summaries reach hiring managers.
+    await recordOutcome(next, 'fail', `Background verification not passed — ${caseSummary(next, label)}`)
   } else if (next.status === 'consider' && (await claimSend(next.id, 'consider_notice'))) {
     const { job } = await loadRefs(next)
     await notifyTeam(next, job?.recruiter_ids || [], 'Background check needs a decision', `${next.candidate_name} (${next.job_title}): ${caseSummary(next, label)}`)
@@ -205,16 +215,24 @@ export async function createCaseForStage(
   try {
     await col.insertOne({ ...doc })
   } catch (e) {
-    if ((e as { code?: number })?.code === 11000) return col.findOne({ entry_key: ctx.idempotencyKey }, { projection: { _id: 0 } })
-    throw e
+    if ((e as { code?: number })?.code !== 11000) throw e
+    // Retried stage entry: the case exists — still make sure the invite went out (claims make this idempotent).
+    const existing = (await col.findOne({ entry_key: ctx.idempotencyKey }, { projection: { _id: 0 } })) as BgvCaseDoc | null
+    if (existing && OPEN.includes(existing.status) && !existing.purged_at) await sendInitialInvite(existing, ctx)
+    return existing
   }
-  const company = await companyName(doc.tenant_id, ctx.job.client_id)
+  await sendInitialInvite(doc, ctx)
+  return doc
+}
+
+async function sendInitialInvite(doc: BgvCaseDoc, ctx: Pick<StageHandlerContext, 'job' | 'candidate'>): Promise<void> {
   if (doc.candidate_email) {
-    if (await claimSend(doc.id, 'invite')) await sendInvite(doc, ctx.candidate, await portalLink(doc), company, 'invite')
+    if (!(await claimSend(doc.id, 'invite'))) return
+    const ok = await sendInvite(doc, ctx.candidate, await portalLink(doc), await companyName(doc.tenant_id, ctx.job.client_id), 'invite')
+    if (!ok) await releaseSend(doc.id, 'invite') // a retried stage entry tries again
   } else if (await claimSend(doc.id, 'no_email')) {
     await notifyTeam(doc, ctx.job.recruiter_ids || [], 'Background check link not sent', `${doc.candidate_name} has no email address. Add one and resend the background check link.`)
   }
-  return doc
 }
 
 async function claimTeamNotice(key: string): Promise<boolean> {
@@ -260,7 +278,13 @@ export async function resendFromExpiredToken(token: unknown): Promise<boolean> {
   const p = verifyPortalToken(await bgvLinkKey(), token, { ignoreExpiry: true })
   if (!p) return false
   const c = (await (await bgvCases()).findOne({ id: p.i }, { projection: { _id: 0 } })) as BgvCaseDoc | null
-  if (!c || c.token_nonce !== p.n || c.purged_at || c.status === 'cancelled' || !c.candidate_email) return false
+  if (!c || c.token_nonce !== p.n || c.purged_at || !OPEN.includes(c.status) || !c.candidate_email) return false
+  // Per-case throttle (the route also limits per IP): at most one fresh link every RESEND_EVERY_MS.
+  const r = await (await bgvCases()).updateOne(
+    { id: c.id, tenant_id: c.tenant_id, $or: [{ link_resent_at: { $in: [null, undefined] } }, { link_resent_at: { $lt: new Date(Date.now() - RESEND_EVERY_MS).toISOString() } }] } as never,
+    { $set: { link_resent_at: nowIso() } },
+  )
+  if (!r.modifiedCount) return false
   const { job, candidate } = await loadRefs(c)
   await sendInvite(c, candidate, await portalLink(c), await companyName(c.tenant_id, job?.client_id ?? null), 'resend')
   return true
@@ -392,6 +416,14 @@ function slotDef(c: BgvCaseDoc, type: BgvCheckType, slot: string, item: number |
   return def.group?.documents.find((d) => d.slot === slot) || null
 }
 
+/** Pure: per-slot and per-case file caps (throws a user-facing 400). */
+export function assertDocRoom(c: Pick<BgvCaseDoc, 'checks'>, type: BgvCheckType, slot: string, item: number | null, multiple: number | undefined): void {
+  const k = c.checks.find((x) => x.type === type)
+  const already = (k?.documents || []).filter((d) => d.slot === slot && d.item === item).length
+  if (already >= (multiple || 1)) throw new AtsError(400, multiple ? `You can upload up to ${multiple} files here. Remove one first.` : 'Remove the current file first.')
+  if (c.checks.reduce((n, x) => n + x.documents.length, 0) >= MAX_DOCS_PER_CASE) throw new AtsError(400, 'Too many files on this verification.')
+}
+
 export async function uploadDocument(c: BgvCaseDoc, p: { type: unknown; slot: unknown; item: unknown; name: string; bytes: Uint8Array }): Promise<BgvCaseDoc> {
   const k0 = findCheck(c, p.type)
   if (!checkEditable(c, k0)) throw new AtsError(409, c.consent ? 'This part can no longer be changed' : 'Give your consent first')
@@ -400,14 +432,13 @@ export async function uploadDocument(c: BgvCaseDoc, p: { type: unknown; slot: un
   if (item !== null && (!Number.isInteger(item) || item < 0 || item > 20)) throw new AtsError(400, 'Invalid item')
   const sd = slotDef(c, k0.type, slot, item)
   if (!sd) throw new AtsError(400, 'Unknown document')
-  const already = k0.documents.filter((d) => d.slot === slot && d.item === item).length
-  if (already >= (sd.multiple || 1)) throw new AtsError(400, sd.multiple ? `You can upload up to ${sd.multiple} files here. Remove one first.` : 'Remove the current file first.')
-  if (c.checks.reduce((n, k) => n + k.documents.length, 0) >= MAX_DOCS_PER_CASE) throw new AtsError(400, 'Too many files on this verification.')
+  assertDocRoom(c, k0.type, slot, item, sd.multiple)
   const doc = await storeDocument({ tenantId: c.tenant_id, caseId: c.id, slot, item, name: p.name, bytes: p.bytes })
   try {
     return await mutate(c, (cur) => {
       const k = findCheck(cur, k0.type)
       if (!checkEditable(cur, k)) throw new AtsError(409, 'This part can no longer be changed')
+      assertDocRoom(cur, k0.type, slot, item, sd.multiple) // re-checked on the fresh read: parallel uploads can't exceed the caps
       k.documents.push(doc)
       k.updated_at = nowIso()
       return cur
@@ -502,10 +533,14 @@ export async function orderVendor(c: BgvCaseDoc): Promise<BgvCaseDoc> {
   const vendor = getVendor(c.vendor)
   if (vendor.id === 'manual') return c
   if (!vendor.ready) throw new AtsError(400, `${vendor.label} isn't available yet. Use manual verification.`)
+  // Atomic claim: concurrent submit / assign can't place two orders with the vendor.
+  const claim = `vendor_order:${vendor.id}`
+  if (!(await claimSend(c.id, claim))) throw new AtsError(409, 'Already sent to this vendor')
   let res
   try {
     res = await vendor.order(await vendorContext(c))
   } catch (e) {
+    await releaseSend(c.id, claim)
     if (e instanceof VendorError) {
       await notifyTeam(c, [], 'Background check vendor error', `${c.candidate_name}: ${e.message}`)
       throw new AtsError(e.status >= 500 ? 502 : 400, e.message)
@@ -527,20 +562,46 @@ export async function orderVendor(c: BgvCaseDoc): Promise<BgvCaseDoc> {
 /** Apply vendor per-check results (webhook / poll). Verifier decisions already made stay. */
 export async function applyVendorResults(c: BgvCaseDoc, results: { type: BgvCheckType; status: BgvCheckStatus; notes?: string | null; vendor_ref?: string | null }[]): Promise<BgvCaseDoc> {
   if (!results.length) return c
-  return mutate(c, (cur) => {
-    let changed = false
-    for (const r of results) {
-      const k = cur.checks.find((x) => x.type === r.type)
-      if (!k || DECIDED.has(k.status) || k.status === r.status) continue
-      k.status = r.status
-      if (r.notes) k.notes = clip(`${k.notes ? `${k.notes}\n` : ''}${r.notes}`, 2000)
-      if (r.vendor_ref) k.vendor_ref = r.vendor_ref
-      if (DECIDED.has(r.status)) { k.verified_by = `vendor:${cur.vendor}`; k.verified_at = nowIso() }
+  return mutate(c, (cur) => applyVendorResultsTo(cur, results))
+}
+
+/**
+ * Pure: vendor results onto a case (null = no change). Closed / purged cases
+ * don't change. While an adverse action is open the results are frozen: each
+ * is recorded once as a pending note for the verifier, not applied.
+ */
+export function applyVendorResultsTo(cur: BgvCaseDoc, results: { type: BgvCheckType; status: BgvCheckStatus; notes?: string | null; vendor_ref?: string | null }[]): BgvCaseDoc | null {
+  if (cur.purged_at || cur.status === 'clear' || cur.status === 'failed' || cur.status === 'cancelled') return null
+  const frozen = adverseOpen(cur)
+  let changed = false
+  for (const r of results) {
+    const k = cur.checks.find((x) => x.type === r.type)
+    if (!k || DECIDED.has(k.status) || k.status === r.status) continue
+    if (frozen) {
+      const line = `Vendor update received during adverse action (not applied): ${r.status}${r.notes ? ` — ${clip(r.notes, 500)}` : ''}`
+      if ((k.notes || '').includes(line)) continue
+      k.notes = clip(`${k.notes ? `${k.notes}\n` : ''}${line}`, 4000)
       k.updated_at = nowIso()
       changed = true
+      continue
     }
-    return changed ? cur : null
-  })
+    k.status = r.status
+    if (r.notes) {
+      k.notes = clip(`${k.notes ? `${k.notes}\n` : ''}${r.notes}`, 2000)
+      k.vendor_notes = clip(r.notes, 1000) // neutral vendor finding: the only note a candidate notice may quote
+    }
+    if (r.vendor_ref) k.vendor_ref = r.vendor_ref
+    if (DECIDED.has(r.status)) { k.verified_by = `vendor:${cur.vendor}`; k.verified_at = nowIso() }
+    k.updated_at = nowIso()
+    changed = true
+  }
+  return changed ? cur : null
+}
+
+/** A pre-adverse notice went out and the action is neither withdrawn nor final. */
+export function adverseOpen(c: Pick<BgvCaseDoc, 'adverse_action'>): boolean {
+  const a = c.adverse_action
+  return !!a?.pre_adverse_sent_at && !a.withdrawn_at && !a.final_sent_at
 }
 
 /** Checkr webhook (signature verified by the caller). Idempotent per event id. */
@@ -569,6 +630,7 @@ export async function handleVendorEvent(tenantId: string, vendorId: string, ev: 
 
 // ─── Verifier workflow ───────────────────────────────────────────────────────
 
+const PRE_ADVERSE_SENDING = 'pre_adverse_sending'
 const MARKABLE: BgvCheckStatus[] = ['in_progress', 'verified', 'discrepancy', 'unable_to_verify', 'waived']
 
 export async function markCheck(actor: AtsActor, c: BgvCaseDoc, type: unknown, status: unknown, notes: unknown): Promise<BgvCaseDoc> {
@@ -643,15 +705,24 @@ export async function decide(actor: AtsActor, c: BgvCaseDoc, decision: unknown, 
     if (c.adverse_action?.pre_adverse_sent_at && !c.adverse_action.withdrawn_at) throw new AtsError(409, 'The pre-adverse notice was already sent — send the final notice after the waiting period')
     if (!c.candidate_email) throw new AtsError(409, 'The candidate has no email address for the pre-adverse notice')
     const settings = await getBgvSettings(c.tenant_id)
-    const next = await mutate(c, (cur) => {
-      if (cur.status !== 'consider') return null
-      cur.adverse_action = startAdverse(new Date(), settings.adverse_waiting_days, text, actor.userId)
-      return cur
-    })
-    const { job } = await loadRefs(next)
-    const finalOn = new Date(next.adverse_action!.earliest_final_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
-    await sendPreAdverse(next, await companyName(next.tenant_id, job?.client_id ?? null), finalOn)
-    return { case: next, adverse_started: true }
+    // FCRA: the adverse action starts only once the candidate actually got the notice.
+    // Claim → send → persist on success; on failure release the claim and surface the error.
+    if (!(await claimSend(c.id, PRE_ADVERSE_SENDING))) throw new AtsError(409, 'The pre-adverse notice is already being sent')
+    try {
+      const adverse = startAdverse(new Date(), settings.adverse_waiting_days, text, actor.userId)
+      const { job } = await loadRefs(c)
+      const finalOn = new Date(adverse.earliest_final_at!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+      const ok = await sendPreAdverse({ ...c, adverse_action: adverse }, await companyName(c.tenant_id, job?.client_id ?? null), finalOn)
+      if (!ok) throw new AtsError(502, "The pre-adverse notice couldn't be emailed, so the adverse action was not started. Check the candidate's email address and try again.")
+      const next = await mutate(c, (cur) => {
+        if (adverseOpen(cur)) return null
+        cur.adverse_action = adverse
+        return cur
+      })
+      return { case: next, adverse_started: true }
+    } finally {
+      await releaseSend(c.id, PRE_ADVERSE_SENDING)
+    }
   }
   const next = await mutate(c, (cur) => {
     if (cur.status !== 'consider') return null
@@ -662,19 +733,26 @@ export async function decide(actor: AtsActor, c: BgvCaseDoc, decision: unknown, 
 }
 
 export async function sendFinalAdverseAction(actor: AtsActor, c: BgvCaseDoc): Promise<BgvCaseDoc> {
+  if (c.status !== 'consider') throw new AtsError(409, 'A final adverse notice can only follow a "consider" result')
   if (!canSendFinalAdverse(c.adverse_action)) {
     throw new AtsError(409, c.adverse_action?.earliest_final_at ? `The waiting period ends on ${new Date(c.adverse_action.earliest_final_at).toUTCString().slice(0, 16)}` : 'Send the pre-adverse notice first')
   }
   const { job } = await loadRefs(c)
   const company = await companyName(c.tenant_id, job?.client_id ?? null)
-  const next = await mutate(c, (cur) => {
-    if (!canSendFinalAdverse(cur.adverse_action)) return null
+  // One final notice per pre-adverse notice; recorded only once it was actually sent.
+  const key = `final_adverse:${c.adverse_action!.pre_adverse_sent_at}`
+  if (!(await claimSend(c.id, key))) throw new AtsError(409, 'The final notice was already sent')
+  if (!(await sendFinalAdverse(c, company))) {
+    await releaseSend(c.id, key)
+    await notifyTeam(c, job?.recruiter_ids || [], 'Final adverse action notice not sent', `We couldn't email the final adverse action notice to ${c.candidate_name}. Nothing was recorded — check the email address and try again.`)
+    throw new AtsError(502, "The final notice couldn't be emailed. Nothing was recorded — try again.")
+  }
+  return mutate(c, (cur) => {
+    if (cur.status !== 'consider' || !canSendFinalAdverse(cur.adverse_action)) return null
     cur.adverse_action = { ...cur.adverse_action!, final_sent_at: nowIso() }
     cur.decision = { outcome: 'fail', by: actor.userId, at: nowIso(), note: cur.adverse_action.reason ?? null }
     return cur
   })
-  if (next.adverse_action?.final_sent_at && (await claimSend(next.id, 'final_adverse'))) await sendFinalAdverse(next, company)
-  return next
 }
 
 export async function withdrawAdverse(actor: AtsActor, c: BgvCaseDoc): Promise<BgvCaseDoc> {
@@ -710,30 +788,60 @@ export async function revealSensitive(c: BgvCaseDoc, type: unknown): Promise<Rec
   return (await decryptSensitive<Record<string, string>>(k.enc)) || {}
 }
 
-export async function documentViewUrl(c: BgvCaseDoc, docId: unknown): Promise<{ url: string; name: string; type: string }> {
+export async function documentViewUrl(c: BgvCaseDoc, docId: unknown, viewerId: string): Promise<{ url: string; name: string; type: string }> {
   const doc = c.checks.flatMap((k) => k.documents).find((d) => d.id === docId)
   if (!doc) throw new AtsError(404, 'File not found')
-  const token = await fileViewToken(c.tenant_id, c.id, doc.id)
+  const token = await fileViewToken(c.tenant_id, c.id, doc.id, viewerId)
   return { url: `/api/ats/bgv/files/${token}`, name: doc.name, type: doc.type }
 }
 
 /** Erase the candidate's BGV data now (on request); the outcome summary stays. */
 export async function eraseCaseData(c: BgvCaseDoc, reason: 'retention' | 'candidate_request'): Promise<BgvCaseDoc> {
-  const docs = c.checks.flatMap((k) => k.documents)
   const col = await bgvCases()
   const fresh = (await col.findOne({ id: c.id, tenant_id: c.tenant_id }, { projection: { _id: 0 } })) as BgvCaseDoc | null
   if (!fresh) throw new AtsError(404, 'Background check not found')
+  // Every file anyone knew about: the caller's copy, the fresh read and an earlier failed attempt.
+  const docs = docUnion(c.checks.flatMap((k) => k.documents), fresh.checks.flatMap((k) => k.documents), fresh.purge_pending?.docs || [])
   const { doc } = purgedCase(fresh, reason)
   // An open case is cancelled by an erase (nothing left to verify).
   if (OPEN.includes(doc.status)) { doc.status = 'cancelled'; doc.closed_at = doc.closed_at || nowIso() }
   doc.token_nonce = newNonce()
+  // Files first: purged_at is set only once every file is gone. On failure the case data is still
+  // erased, and the remaining files are kept on purge_pending for the sweep to retry.
+  let failed = false
+  try {
+    await deleteDocuments(c.tenant_id, c.id, docs)
+  } catch (e) {
+    failed = true
+    console.error('[ats/bgv] erase: file delete failed, will retry', c.id, e)
+  }
+  if (failed) {
+    doc.purged_at = null
+    doc.purge_pending = { reason, docs: docs.map((d) => ({ id: d.id, storage: d.storage })), at: nowIso() }
+  } else {
+    doc.purge_pending = null
+  }
   const { id: _i, tenant_id: _t, ...set } = doc
   await col.updateOne({ id: c.id, tenant_id: c.tenant_id }, { $set: set })
-  await deleteDocuments(c.tenant_id, c.id, docs.length ? docs : fresh.checks.flatMap((k) => k.documents))
+  if (failed) throw new AtsError(502, "Some files couldn't be deleted yet. The data is erased and the files will be retried automatically.")
   return doc
 }
 
+/** Pure: documents from several lists, once each (by id). */
+export function docUnion<T extends Pick<BgvDocument, 'id' | 'storage'>>(...lists: T[][]): T[] {
+  const seen = new Map<string, T>()
+  for (const l of lists) for (const d of l) if (d?.id && !seen.has(d.id)) seen.set(d.id, d)
+  return [...seen.values()]
+}
+
 // ─── Scheduler sweep ─────────────────────────────────────────────────────────
+
+/** Pure: has this case sat in 'consider' longer than CONSIDER_MAX_DAYS? */
+export function considerExpired(c: Pick<BgvCaseDoc, 'status' | 'consider_at' | 'updated_at'>, now = new Date()): boolean {
+  if (c.status !== 'consider') return false
+  const since = Date.parse(c.consider_at || c.updated_at)
+  return Number.isFinite(since) && now.getTime() - since >= CONSIDER_MAX_DAYS * 86_400_000
+}
 
 export async function runBgvSweep(now = new Date()): Promise<{ reminded: number; expired: number; cancelled: number; vendor: number; purged: number }> {
   const col = await bgvCases()
@@ -751,8 +859,17 @@ export async function runBgvSweep(now = new Date()): Promise<{ reminded: number;
       const { app, job, candidate } = await loadRefs(c)
       // Candidate left the stage (moved / rejected / withdrawn): cancel quietly.
       if (!app || app.status === 'withdrawn' || app.stage_id !== c.stage_id || !isCurrentEntry(app, c.entry_key)) {
-        if (!c.result_recorded) {
-          await mutate(c, (cur) => { if (!OPEN.includes(cur.status)) return null; cur.status = 'cancelled'; return cur })
+        // Always closed (sets closed_at), so the retention purge runs even when an outcome was recorded.
+        await mutate(c, (cur) => { if (!OPEN.includes(cur.status)) return null; cur.status = 'cancelled'; return cur })
+        out.cancelled++
+        continue
+      }
+      // Left in 'consider' too long without a decision: close it so retention applies.
+      if (considerExpired(c, now)) {
+        const next = await mutate(c, (cur) => { if (!considerExpired(cur, now)) return null; cur.status = 'cancelled'; return cur })
+        if (next.status === 'cancelled') {
+          await notifyTeam(c, job?.recruiter_ids || [], 'Background check closed without a decision',
+            `${c.candidate_name}'s background check (${c.job_title}) waited ${CONSIDER_MAX_DAYS} days for a decision and was closed. Start a new one from the candidate's page if needed.`)
           out.cancelled++
         }
         continue
@@ -789,6 +906,17 @@ export async function runBgvSweep(now = new Date()): Promise<{ reminded: number;
       }
     } catch (e) {
       console.error('[ats/bgv] sweep failed for case', c.id, e)
+    }
+  }
+
+  // Erasures whose file deletes failed earlier: retry.
+  const pending = (await col.find({ purge_pending: { $type: 'object' } } as never, { projection: { _id: 0 } }).limit(100).toArray()) as BgvCaseDoc[]
+  for (const c of pending) {
+    try {
+      await eraseCaseData(c, c.purge_pending!.reason)
+      out.purged++
+    } catch (e) {
+      console.error('[ats/bgv] purge retry failed for case', c.id, e)
     }
   }
 

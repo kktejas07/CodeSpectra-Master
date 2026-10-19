@@ -74,7 +74,8 @@ export function reportText(c: BgvCaseDoc, company: string): string {
     `Region: ${REGION_LABELS[c.region]}`,
     c.vendor !== 'manual' ? `Consumer reporting agency / vendor: ${c.vendor}${c.vendor_report_ref ? ` (report ${c.vendor_report_ref})` : ''}` : 'Verified by the employer (no consumer reporting agency)',
     '',
-    ...c.checks.map((k) => `- ${CHECK_LABEL(c.region, k.type)}: ${STATUS_WORDS[k.status] || k.status}${k.status === 'discrepancy' || k.status === 'unable_to_verify' ? (k.notes ? ` — ${k.notes}` : '') : ''}`),
+    // Only the vendor's neutral finding is quoted — internal verifier notes never leave the hiring team.
+    ...c.checks.map((k) => `- ${CHECK_LABEL(c.region, k.type)}: ${STATUS_WORDS[k.status] || k.status}${(k.status === 'discrepancy' || k.status === 'unable_to_verify') && k.vendor_notes ? ` — ${k.vendor_notes}` : ''}`),
   ]
   return lines.join('\n')
 }

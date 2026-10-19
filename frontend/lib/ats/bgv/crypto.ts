@@ -5,7 +5,7 @@
  *
  *  - portal link:   kind "bgv",  subject = case id, nonce = case.token_nonce
  *  - document view: kind "bgvf", subject = document id, tenant + case in payload,
- *                   5-minute expiry (the "short-lived signed URL")
+ *                   viewer's user id, 5-minute expiry (the "short-lived signed URL")
  *  - sensitive fields (PAN, SSN, licence no.) → encryptJson (credentials key)
  *  - document bytes → same AES-GCM scheme, binary (v1 | iv | tag | ciphertext)
  */
@@ -34,12 +34,20 @@ export function verifyPortalToken(k: Uint8Array, token: unknown, opts: { now?: n
   return verifyToken(k, token, PORTAL, opts.ignoreExpiry ? 0 : opts.now ?? Date.now())
 }
 
-export async function fileViewToken(tenantId: string, caseId: string, docId: string, now = Date.now()): Promise<string> {
-  return signToken(await bgvFileKey(), { k: FILE, i: docId, n: caseId, t: tenantId, e: now + FILE_URL_TTL_MS })
+/** Bound to the viewer: the file route serves it only to the same signed-in user. */
+export async function fileViewToken(tenantId: string, caseId: string, docId: string, userId: string, now = Date.now()): Promise<string> {
+  return signFileViewToken(await bgvFileKey(), tenantId, caseId, docId, userId, now)
 }
-export async function verifyFileViewToken(token: unknown): Promise<{ tenantId: string; caseId: string; docId: string } | null> {
-  const p = verifyToken(await bgvFileKey(), token, FILE)
-  return p && p.t ? { tenantId: p.t, caseId: p.n, docId: p.i } : null
+export async function verifyFileViewToken(token: unknown): Promise<{ tenantId: string; caseId: string; docId: string; userId: string } | null> {
+  return parseFileViewToken(await bgvFileKey(), token)
+}
+/** Pure (unit tested). */
+export function signFileViewToken(k: Uint8Array, tenantId: string, caseId: string, docId: string, userId: string, now = Date.now()): string {
+  return signToken(k, { k: FILE, i: docId, n: caseId, t: tenantId, u: userId, e: now + FILE_URL_TTL_MS })
+}
+export function parseFileViewToken(k: Uint8Array, token: unknown, now = Date.now()): { tenantId: string; caseId: string; docId: string; userId: string } | null {
+  const p = verifyToken(k, token, FILE, now)
+  return p && p.t && p.u ? { tenantId: p.t, caseId: p.n, docId: p.i, userId: p.u } : null
 }
 
 // ─── Binary AES-GCM (documents) ──────────────────────────────────────────────

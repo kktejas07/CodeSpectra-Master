@@ -18,8 +18,9 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   try {
     const { caseId, docId } = await params
     const c = await loadCase(g.actor, caseId, 'verify')
-    const r = await documentViewUrl(c, docId)
-    await auditAts(g.actor, 'ats.bgv.document.view', 'ats_bgv_case', c.id, `document ${docId} (${r.name})`, req)
+    const r = await documentViewUrl(c, docId, g.actor.userId)
+    // Doc id + type only: file names can carry personal data.
+    await auditAts(g.actor, 'ats.bgv.document.view', 'ats_bgv_case', c.id, `document ${String(docId).slice(0, 64)} (${r.type})`, req)
     return json(r)
   } catch (e) {
     return errorResponse(e, 'bgv document')

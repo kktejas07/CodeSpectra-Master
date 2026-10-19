@@ -44,7 +44,7 @@ export default function HrFormPage() {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`/api/ats/hr-form?token=${encodeURIComponent(token)}`, { cache: 'no-store' })
+      const r = await fetch('/api/ats/hr-form', { cache: 'no-store', headers: { 'X-Hr-Form-Token': token } })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) { setLoadError(j.error || 'This link is not valid.'); return }
       setInfo(j)

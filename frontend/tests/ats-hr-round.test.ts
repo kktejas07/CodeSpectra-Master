@@ -82,6 +82,9 @@ describe('parseCompensation', () => {
     expect(parseCompensation({ experience_level: 'fresher', expected_ctc: 60, period: 'hour', currency: 'USD' }, { source: 'apply', allowHourly: true }).ok).toBe(true)
     expect(parseCompensation({ experience_level: 'fresher', expected_ctc: 60, period: 'hour', currency: 'USD' }, { source: 'apply', allowHourly: false }).ok).toBe(false)
     expect(parseCompensation({ experience_level: 'fresher', expected_ctc: 600, period: 'hour', currency: 'INR' }, { source: 'apply' }).ok).toBe(false)
+    // only the supported currencies
+    expect(parseCompensation({ experience_level: 'fresher', expected_ctc: 600000, currency: 'XYZ' }, { source: 'apply' }).ok).toBe(false)
+    expect(parseCompensation({ experience_level: 'fresher', expected_ctc: 600000, currency: 'eur' }, { source: 'apply' })).toMatchObject({ ok: true, value: { currency: 'EUR' } })
     expect(periodsFor('USD', true)).toContain('hour')
     expect(periodsFor('INR', true)).not.toContain('hour')
   })

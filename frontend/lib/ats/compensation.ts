@@ -82,7 +82,9 @@ export function parseCompensation(raw: unknown, opts: ParseCompOptions): CompPar
   const level = parseExperienceLevel(r.experience_level)
   if (!level) return { ok: false, errors: ['Tell us whether you are a fresher or experienced'] }
 
-  const cur = typeof r.currency === 'string' && /^[A-Za-z]{3}$/.test(r.currency.trim()) ? r.currency.trim().toUpperCase() : currencyForCountry(opts.country)
+  const curRaw = typeof r.currency === 'string' ? r.currency.trim().toUpperCase() : ''
+  if (curRaw && !(COMP_CURRENCIES as readonly string[]).includes(curRaw)) errors.push(`Choose a currency: ${COMP_CURRENCIES.join(', ')}`)
+  const cur = curRaw && (COMP_CURRENCIES as readonly string[]).includes(curRaw) ? curRaw : currencyForCountry(opts.country)
   const periodRaw = typeof r.period === 'string' ? r.period.trim().toLowerCase() : ''
   const period: CompPeriod = (COMP_PERIODS as string[]).includes(periodRaw) ? (periodRaw as CompPeriod) : 'year'
   if (!periodsFor(cur, opts.allowHourly !== false).includes(period)) errors.push('Hourly pay is only available for US contract roles, in US dollars')

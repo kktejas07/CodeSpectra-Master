@@ -8,12 +8,12 @@ export const dynamic = 'force-dynamic'
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 const GONE = 'This link has expired or was replaced by a newer one. Check your latest email from the hiring team.'
 
-/** GET ?token= — public (signed link): the candidate's HR compensation form with their figures prefilled. */
+/** GET (header X-Hr-Form-Token) — public (signed link): the candidate's HR compensation form with their figures prefilled. Never in the query string. */
 export async function GET(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-hr-form-get', null, 60, 60_000)
   if (limited) return limited
   try {
-    const ctx = await formFromToken(new URL(req.url).searchParams.get('token'))
+    const ctx = await formFromToken(req.headers.get('x-hr-form-token'))
     if (!ctx) return NextResponse.json({ error: GONE }, { status: 404, headers: NO_STORE })
     return NextResponse.json(await candidateFormView(ctx), { headers: NO_STORE })
   } catch (e) {

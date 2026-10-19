@@ -38,7 +38,10 @@ export interface BgvCheck {
   /** AES-GCM box of the sensitive values (PAN, SSN, licence number). Never sent to the browser. */
   enc?: string | null
   documents: BgvDocument[]
+  /** internal verifier + vendor timeline (staff only) */
   notes?: string | null
+  /** latest neutral vendor finding — the only note candidate notices may quote */
+  vendor_notes?: string | null
   verified_by?: string | null
   verified_at?: string | null
   vendor_ref?: string | null
@@ -120,6 +123,12 @@ export interface BgvCaseDoc {
   stage_name: string
   client_visible: boolean
   closed_at: string | null
+  /** when the case last entered 'consider' (auto-closed after CONSIDER_MAX_DAYS) */
+  consider_at?: string | null
+  /** last candidate self-service link resend (per-case throttle) */
+  link_resent_at?: string | null
+  /** an erase whose file deletes failed: the files still to delete (retried by the sweep) */
+  purge_pending?: { reason: 'retention' | 'candidate_request'; docs: Pick<BgvDocument, 'id' | 'storage'>[]; at: string } | null
   /** retention purge ran: documents + data deleted, outcome kept */
   purged_at?: string | null
   purge_reason?: 'retention' | 'candidate_request' | null

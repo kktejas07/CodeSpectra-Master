@@ -100,7 +100,7 @@ describe('Aadhaar is never stored beyond the last 4 digits', () => {
     expect(aadhaarLast4('123456789012')).toBe('9012')
   })
   it('masks 12-digit runs in free text of identity / Aadhaar checks', () => {
-    expect(stripAadhaar('my aadhaar 1234-5678-9012 ok')).toBe('my aadhaar XXXX XXXX 9012 ok')
+    expect(stripAadhaar('my aadhaar 1234-5678-9012 ok')).toBe('my aadhaar XXXX-XXXX-9012 ok')
     const r = sanitizeCheckData('IN', 'identity', { full_name: 'Asha 123456789012 Rao' })
     expect(String(r.data.full_name)).not.toContain('123456789012')
   })
@@ -318,5 +318,110 @@ describe('misc', () => {
     expect(detectDocType('a.jpg', Buffer.from([0xff, 0xd8, 0xff, 0xe0]))).toBe('image/jpeg')
     expect(detectDocType('a.pdf', Buffer.from('<html>'))).toBeNull()
     expect(detectDocType('a.exe', Buffer.from('%PDF-'))).toBeNull()
+  })
+})
+
+// ─── Security review fixes ───────────────────────────────────────────────────
+import { adverseOpen, applyVendorResultsTo, assertDocRoom, considerExpired, CONSIDER_MAX_DAYS, docUnion } from '@/lib/ats/bgv/service'
+import { parseFileViewToken, signFileViewToken } from '@/lib/ats/bgv/crypto'
+import { reportText } from '@/lib/ats/bgv/notify'
+import { readCapped } from '@/lib/ats/bgv/storage'
+import type { BgvDocument } from '@/lib/ats/bgv/types'
+
+const docOf = (id: string, slot = 'pan_card', item: number | null = null): BgvDocument =>
+  ({ id, slot, item, name: `${id}.pdf`, type: 'application/pdf', size: 10, storage: 's3', scanned: true, uploaded_at: NOW })
+
+describe('Aadhaar stripping on every India free-text field', () => {
+  it('masks 12-digit runs with any separators (spaces, dots, hyphens, newlines) as XXXX-XXXX-last4', () => {
+    for (const t of ['1234 5678 9012', '1234.5678.9012', '1234-5678-9012', '1234\n5678\n9012', '123456789012', '1234 - 5678 . 9012', '1 2 3 4 5 6 7 8 9 0 1 2']) {
+      expect(stripAadhaar(`id ${t} end`)).toBe('id XXXX-XXXX-9012 end')
+    }
+    expect(stripAadhaar('call 98765 43210 or 1234567890123')).toBe('call 98765 43210 or 1234567890123') // 10 and 13 digits stay
+  })
+  it('applies to non-identity checks (employment reason for leaving) but not to fixed-format fields', () => {
+    const r = sanitizeCheckData('IN', 'employment', { employers: [{ reason: 'Moved city.\nAadhaar 1234 5678\n9012 for HR', current: false }] })
+    const items = r.data.employers as Record<string, unknown>[]
+    expect(String(items[0].reason)).toContain('XXXX-XXXX-9012')
+    expect(JSON.stringify(r.data)).not.toMatch(/5678/)
+    expect(sanitizeCheckData('IN', 'uan_epfo', { uan: '100123456789' }).data.uan).toBe('100123456789')
+  })
+  it('leaves US free text alone', () => {
+    const r = sanitizeCheckData('US', 'employment', { employers: [{ reason: 'ref 1234 5678 9012', current: false }] })
+    expect(JSON.stringify(r.data)).toContain('1234 5678 9012')
+  })
+})
+
+describe('vendor results vs adverse action / closed cases', () => {
+  const res = [{ type: 'identity' as const, status: 'verified' as const, notes: 'Name matches' }]
+  it('applies normally and keeps the vendor note separately', () => {
+    const next = applyVendorResultsTo(kase({ status: 'verifying', submitted_at: NOW, checks: [check('identity', 'in_progress')] }), res)!
+    expect(next.checks[0]).toMatchObject({ status: 'verified', vendor_notes: 'Name matches', verified_by: 'vendor:manual' })
+  })
+  it('is frozen while an adverse action is open (recorded once as a pending note)', () => {
+    const c = kase({ status: 'consider', submitted_at: NOW, checks: [check('identity', 'in_progress')], adverse_action: startAdverse(new Date(NOW), 5, null, 'u1') })
+    expect(adverseOpen(c)).toBe(true)
+    const next = applyVendorResultsTo(c, res)!
+    expect(next.checks[0].status).toBe('in_progress')
+    expect(next.checks[0].notes).toMatch(/not applied.*verified/)
+    expect(applyVendorResultsTo(next, res)).toBeNull() // same update again: no duplicate note
+    expect(adverseOpen({ adverse_action: { ...c.adverse_action!, withdrawn_at: NOW } })).toBe(false)
+  })
+  it('never changes closed or purged cases', () => {
+    for (const status of ['clear', 'failed', 'cancelled'] as const) {
+      expect(applyVendorResultsTo(kase({ status, checks: [check('identity', 'in_progress')] }), res)).toBeNull()
+    }
+    expect(applyVendorResultsTo(kase({ status: 'verifying', purged_at: NOW, checks: [check('identity', 'in_progress')] }), res)).toBeNull()
+  })
+})
+
+describe('pre-adverse attachment', () => {
+  it('quotes only the vendor finding, never internal verifier notes', () => {
+    const c = kase({ checks: [check('identity', 'discrepancy', { notes: 'Priya: candidate seemed evasive on the call', vendor_notes: 'Date of birth mismatch' }), check('pan', 'unable_to_verify', { notes: 'Internal: NSDL down' })] })
+    const t = reportText(c, 'Acme')
+    expect(t).toContain('Date of birth mismatch')
+    expect(t).not.toMatch(/evasive|Priya|NSDL|Internal/)
+  })
+})
+
+describe('document view tokens are bound to the viewer', () => {
+  const k = randomBytes(32)
+  it('carries the user id and rejects other kinds / expiry', () => {
+    const tok = signFileViewToken(k, 't1', 'case1', 'd1', 'u-rec', 1_000)
+    expect(parseFileViewToken(k, tok, 2_000)).toEqual({ tenantId: 't1', caseId: 'case1', docId: 'd1', userId: 'u-rec' })
+    expect(parseFileViewToken(k, tok, 1_000 + 5 * 60_000 + 1)).toBeNull()
+    expect(parseFileViewToken(k, signPortalToken(k, 'case1', 'n', 10_000), 2_000)).toBeNull()
+    // an unbound (old-format) token is refused
+    expect(parseFileViewToken(k, signToken(k, { k: 'bgvf' as never, i: 'd1', n: 'case1', t: 't1', e: 10_000 }), 2_000)).toBeNull()
+  })
+})
+
+describe('upload caps', () => {
+  it('per-slot and per-case limits (re-checked on the fresh read inside mutate)', () => {
+    const c = kase({ checks: [check('pan', 'not_started', { documents: [docOf('d1')] }), check('identity')] })
+    expect(() => assertDocRoom(c, 'pan', 'pan_card', null, undefined)).toThrow(/Remove the current file/)
+    expect(() => assertDocRoom(c, 'pan', 'pan_card', null, 2)).not.toThrow()
+    expect(() => assertDocRoom(c, 'identity', 'photo_id', null, undefined)).not.toThrow()
+    const full = kase({ checks: [check('pan', 'not_started', { documents: Array.from({ length: 80 }, (_, i) => docOf(`x${i}`, 'other', i)) }), check('identity')] })
+    expect(() => assertDocRoom(full, 'identity', 'photo_id', null, undefined)).toThrow(/Too many files/)
+  })
+  it('stops reading a body past the cap', async () => {
+    const big = new Request('http://x/u', { method: 'POST', body: new Uint8Array(2048) })
+    expect(await readCapped(big, 1024)).toBeNull()
+    const ok = await readCapped(new Request('http://x/u', { method: 'POST', body: new Uint8Array(100) }), 1024)
+    expect(ok?.byteLength).toBe(100)
+  })
+})
+
+describe('erase + retention helpers', () => {
+  it('erase deletes the union of the caller\'s, fresh and pending file lists', () => {
+    expect(docUnion([docOf('a'), docOf('b')], [docOf('b'), docOf('c')], [docOf('d')]).map((d) => d.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+  it('a case left in consider is closed after the max age', () => {
+    const day = 86_400_000
+    const at = new Date(Date.parse(NOW) - (CONSIDER_MAX_DAYS + 1) * day).toISOString()
+    expect(considerExpired(kase({ status: 'consider', consider_at: at }), new Date(NOW))).toBe(true)
+    expect(considerExpired(kase({ status: 'consider', consider_at: NOW }), new Date(NOW))).toBe(false)
+    expect(considerExpired(kase({ status: 'consider', updated_at: at }), new Date(NOW))).toBe(true) // older cases: updated_at
+    expect(considerExpired(kase({ status: 'verifying', consider_at: at }), new Date(NOW))).toBe(false)
   })
 })

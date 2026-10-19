@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, { params }: IdRouteContext) {
       }
     })
     return json({
-      application: applicationViewFor(actor, app),
+      application: applicationViewFor(actor, app, job),
       candidate: cand ? candidateViewFor(actor, cand, { settings }) : null,
       job: jobViewFor(actor, job),
       interviews: ivs,

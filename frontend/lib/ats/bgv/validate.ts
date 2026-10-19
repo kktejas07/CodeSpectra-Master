@@ -34,11 +34,19 @@ export function maskTail(v: string, keep = 4): string {
   return s.length <= keep ? '*'.repeat(s.length) : '*'.repeat(s.length - keep) + s.slice(-keep)
 }
 
-/** Aadhaar-looking 12-digit runs (with optional spaces / dashes). */
-const AADHAAR_RUN = /(?<!\d)(\d{4})[ -]?(\d{4})[ -]?(\d{4})(?!\d)/g
+/**
+ * Aadhaar-looking runs: 12 digits with any separators between them (spaces,
+ * newlines, dots, hyphens; up to 3 per gap) → XXXX-XXXX-1234 (last 4 kept).
+ * ponytail: also masks other 12-digit runs in free text (e.g. +91 phone typed
+ * into a note) — over-masking is the safe side.
+ */
+const AADHAAR_RUN = /(?<!\d)\d(?:[\s.\-]{0,3}\d){11}(?!\d)/g
 export function stripAadhaar(text: string): string {
-  return text.replace(AADHAAR_RUN, (_m, _a, _b, c: string) => `XXXX XXXX ${c}`)
+  return text.replace(AADHAAR_RUN, (m) => `XXXX-XXXX-${m.replace(/\D/g, '').slice(-4)}`)
 }
+
+/** Free-text answers (no fixed format) — where an Aadhaar number could be typed in passing. */
+const isFreeText = (f: FieldDef) => (f.type === 'text' || f.type === 'textarea') && !f.pattern && !f.sensitive
 
 /** Only the last 4 digits of whatever was typed (a full Aadhaar never gets through). */
 export function aadhaarLast4(v: unknown): string | null {
@@ -114,7 +122,7 @@ function sanitizeFields(fields: FieldDef[], raw: Values, aadhaarSafe: boolean, p
     if (v === undefined) continue
     const err = formatError(f, v)
     if (err) { out.errors.push(prefix + err); continue }
-    data[f.key] = typeof v === 'string' && aadhaarSafe ? stripAadhaar(v) : v
+    data[f.key] = typeof v === 'string' && aadhaarSafe && isFreeText(f) ? stripAadhaar(v) : v
   }
   return data
 }
@@ -128,7 +136,8 @@ export function sanitizeCheckData(region: BgvRegion, type: BgvCheckType, raw: un
   const def = checkDef(region, type)
   if (!def || !def.candidate_input) return out
   const r = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Values
-  const aadhaarSafe = region === 'IN' && (type === 'aadhaar' || type === 'identity')
+  // India: strip Aadhaar numbers from every free-text answer on every check (not just identity / aadhaar).
+  const aadhaarSafe = region === 'IN'
   out.data = sanitizeFields(def.fields, r, aadhaarSafe, '', out)
   if (def.group) {
     const items = Array.isArray(r[def.group.key]) ? (r[def.group.key] as unknown[]).slice(0, def.group.max) : []

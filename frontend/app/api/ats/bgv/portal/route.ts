@@ -8,12 +8,12 @@ export const dynamic = 'force-dynamic'
 
 const EXPIRED = 'This link has expired or was replaced by a newer one.'
 
-/** GET ?token= — public (signed link): the candidate's verification. */
+/** GET (header X-Bgv-Token) — public (signed link): the candidate's verification. Never in the query string (logs / Referer). */
 export async function GET(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-bgv-portal-get', null, 60, 60_000)
   if (limited) return limited
   try {
-    const c = await caseFromToken(new URL(req.url).searchParams.get('token'))
+    const c = await caseFromToken(req.headers.get('x-bgv-token'))
     if (!c) return NextResponse.json({ error: EXPIRED, code: 'expired' }, { status: 404, headers: NO_STORE })
     return NextResponse.json(await portalView(c), { headers: NO_STORE })
   } catch (e) {

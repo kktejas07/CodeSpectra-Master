@@ -11,6 +11,7 @@ import { isMeetingProvider } from '@/lib/ats/interviews/providers'
 import { interviewErrorResponse, NO_STORE } from '@/lib/ats/interviews/http'
 import { limitRequest } from '@/lib/rate-limit'
 import { canSeeCompensation } from '@/lib/ats/compensation'
+import { STAFF_ONLY_RESULT_STAGES } from '@/lib/ats/access-rules'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -47,12 +48,10 @@ export async function GET(req: NextRequest, { params }: Ctx) {
         stage_id: app.stage_id,
         status: app.status,
         match: app.match ? { score: app.match.score, reasons: app.match.reasons?.slice(0, 6) || [] } : null,
-        // HR round / BGV summaries can carry compensation or verification detail: staff with salary access only.
-        results: (app.results || []).map((r) => {
-          const t = job?.pipeline.find((st) => st.id === r.stage_id)?.type
-          const hide = (t === 'hr_round' || t === 'bgv') && !canSeeCompensation(actor.role)
-          return { stage_id: r.stage_id, outcome: r.outcome, score: r.score ?? null, summary: hide ? null : r.summary || null, at: r.at }
-        }),
+        // HR round / BGV results (even the outcome) are compensation / verification data: staff with salary access only.
+        results: (app.results || [])
+          .filter((r) => canSeeCompensation(actor.role) || (!!job && !STAFF_ONLY_RESULT_STAGES.has(String(job.pipeline.find((st) => st.id === r.stage_id)?.type))))
+          .map((r) => ({ stage_id: r.stage_id, outcome: r.outcome, score: r.score ?? null, summary: r.summary || null, at: r.at })),
       } : null,
       job: job ? { id: job.id, title: job.title, stages: job.pipeline.map((s) => ({ id: s.id, name: s.name, type: s.type })) } : null,
       self_schedule_link: selfLink,

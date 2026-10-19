@@ -202,9 +202,14 @@ export function jobViewFor(actor: Pick<AtsActor, 'role'>, job: AtsJob): AtsJob {
  * The part of an application this actor may read. Staff: everything.
  * Interviewers: stage, status, match score and per-stage outcome/score (no
  * match reasons, result summaries — bot screens carry salary / notice answers —
- * or move reasons). Clients: stage, status and match score only.
+ * or move reasons), never HR-round / BGV results (`job` gives the stage types;
+ * without it those can't be told apart, so interviewers get no results).
+ * Clients: stage, status and match score only.
  */
-export function applicationViewFor(actor: Pick<AtsActor, 'role'>, app: AtsApplication): AtsApplication {
+/** Stage types whose results (even pass / fail) are compensation or background-check data. */
+export const STAFF_ONLY_RESULT_STAGES: ReadonlySet<string> = new Set(['hr_round', 'bgv'])
+
+export function applicationViewFor(actor: Pick<AtsActor, 'role'>, app: AtsApplication, job?: Pick<AtsJob, 'pipeline'> | null): AtsApplication {
   if (FULL_RECORD_ROLES.has(actor.role)) return app
   const base = {
     id: app.id,
@@ -225,7 +230,9 @@ export function applicationViewFor(actor: Pick<AtsActor, 'role'>, app: AtsApplic
   if (actor.role === 'interviewer') {
     return {
       ...base,
-      results: (app.results || []).map((r) => ({ stage_id: r.stage_id, outcome: r.outcome, score: r.score ?? null, at: r.at })),
+      results: job
+        ? (app.results || []).filter((r) => !STAFF_ONLY_RESULT_STAGES.has(String(job.pipeline?.find((s) => s.id === r.stage_id)?.type))).map((r) => ({ stage_id: r.stage_id, outcome: r.outcome, score: r.score ?? null, at: r.at }))
+        : [],
       history: (app.history || []).map((h) => ({ from: h.from, to: h.to, at: h.at, by: h.by, auto: h.auto })),
     }
   }

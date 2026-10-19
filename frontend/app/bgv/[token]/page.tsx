@@ -103,7 +103,7 @@ export default function BgvPortalPage() {
     let off = false
     ;(async () => {
       try {
-        const r = await fetch(`/api/ats/bgv/portal?token=${encodeURIComponent(token)}`, { cache: 'no-store' })
+        const r = await fetch('/api/ats/bgv/portal', { cache: 'no-store', headers: { 'X-Bgv-Token': token } })
         const j = await r.json().catch(() => ({}))
         if (off) return
         if (!r.ok) setLoadError(j.error || 'This link is not valid.')

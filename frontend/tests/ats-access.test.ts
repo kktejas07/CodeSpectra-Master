@@ -279,12 +279,23 @@ describe('record redaction (application / job views)', () => {
   })
 
   it('interviewers: outcomes and scores, no summaries, match reasons or move reasons', () => {
-    const v = applicationViewFor(actor('interviewer'), full)
+    const v = applicationViewFor(actor('interviewer'), full, job())
     expect(v.match).toEqual({ score: 72, breakdown: {}, missing_must: [], reasons: [] })
     expect(v.results).toEqual([{ stage_id: 's_bot', outcome: 'pass', score: 80, at: '2026-01-01' }])
     expect(v.history[0]).not.toHaveProperty('reason')
     expect(v.pending_move).toBeNull()
     expect(JSON.stringify(v)).not.toMatch(/LPA|Low score|Notice/)
+  })
+
+  it('interviewers never see HR-round or BGV results, not even the outcome', () => {
+    const j = job({ pipeline: [...PIPELINE, stage('s_hr', 'hr_round' as never), stage('s_bgv', 'bgv' as never)] })
+    const a = app({ results: [
+      { stage_id: 's_bot', outcome: 'pass', score: 80, summary: 'x', at: '2026-01-01' },
+      { stage_id: 's_hr', outcome: 'pass', summary: 'CTC 18 LPA', at: '2026-01-02' },
+      { stage_id: 's_bgv', outcome: 'fail', summary: 'Discrepancy', at: '2026-01-03' },
+    ] })
+    expect(applicationViewFor(actor('interviewer'), a, j).results.map((r) => r.stage_id)).toEqual(['s_bot'])
+    expect(applicationViewFor(actor('interviewer'), a).results).toEqual([]) // no job: fail closed
   })
 
   it('clients: stage + score only', () => {

@@ -27,6 +27,25 @@ export function detectDocType(name: string, bytes: Uint8Array): DocMime | null {
   return null
 }
 
+/** The request body, or null once it passes `max` bytes (stops reading; Content-Length can lie). */
+export async function readCapped(req: Request, max: number): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (!req.body) return new Uint8Array(0)
+  const reader = req.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) { await reader.cancel().catch(() => {}); return null }
+    chunks.push(value)
+  }
+  const out = new Uint8Array(total)
+  let o = 0
+  for (const c of chunks) { out.set(c, o); o += c.byteLength }
+  return out
+}
+
 const s3Key = (tenantId: string, caseId: string, id: string) => `ats-bgv/${tenantId}/${caseId}/${id}`
 
 async function s3(): Promise<typeof import('@/lib/s3-storage') | null> {
@@ -68,12 +87,18 @@ export async function readDocument(tenantId: string, caseId: string, doc: Pick<B
   return box ? decryptBytes(box) : null
 }
 
+/** Deletes every file it can; throws (after trying all) when any object-storage delete failed. */
 export async function deleteDocuments(tenantId: string, caseId: string, docs: Pick<BgvDocument, 'id' | 'storage'>[]): Promise<void> {
   if (!docs.length) return
+  const failed: string[] = []
   const s3Docs = docs.filter((d) => d.storage === 's3')
   if (s3Docs.length) {
     const store = await s3()
-    if (store) for (const d of s3Docs) await store.s3DeleteObject(s3Key(tenantId, caseId, d.id)).catch((e) => console.error('[ats/bgv] s3 delete failed', d.id, e))
+    if (!store) failed.push(...s3Docs.map((d) => d.id)) // storage unconfigured: can't confirm the delete
+    else for (const d of s3Docs) {
+      await store.s3DeleteObject(s3Key(tenantId, caseId, d.id)).catch((e) => { failed.push(d.id); console.error('[ats/bgv] s3 delete failed', d.id, e) })
+    }
   }
   await (await bgvFiles()).deleteMany({ tenant_id: tenantId, case_id: caseId, id: { $in: docs.map((d) => d.id) } })
+  if (failed.length) throw new Error(`BGV file delete failed for ${failed.length} file(s)`)
 }
