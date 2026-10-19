@@ -45,10 +45,10 @@ describe('getRoundRobinKey legacy fallback', () => {
     const { getMongoDb } = await import('@/lib/mongodb')
     vi.mocked(getMongoDb).mockResolvedValue(mockLlmDoc({ provider: 'anthropic', model: 'x', endpoint: '', api_key: RAW, keys: {} }) as never)
     vi.doMock('@/lib/server-secrets-cache', async (orig) => ({ ...(await orig<object>()), readServerSecrets: async () => ({}) }))
-    process.env.GROQ_API_KEY = 'gsk-env-key-1234567890'
+    process.env.GROQ_API_KEY = 'fake-groq-env-key'
     try {
       const { getApiKey } = await import('@/lib/ai/get-api-key')
-      expect((await getApiKey('groq' as never))?.key).toBe('gsk-env-key-1234567890')
+      expect((await getApiKey('groq' as never))?.key).toBe('fake-groq-env-key')
       expect(await getApiKey('openai' as never).then((r) => r?.key ?? null)).not.toBe(RAW)
     } finally {
       delete process.env.GROQ_API_KEY
