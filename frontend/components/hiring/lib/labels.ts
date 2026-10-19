@@ -4,6 +4,7 @@
  */
 import type {
   ApplicationStatus,
+  BgvCheckType,
   BotChannel,
   CandidateSource,
   JobStatus,
@@ -23,6 +24,8 @@ export const STAGE_TYPE_LABELS: Record<StageType, string> = {
   hired: 'Hired',
   rejected: 'Rejected',
   custom: 'Custom step',
+  hr_round: 'HR round',
+  bgv: 'Background verification',
 }
 
 export const STAGE_TYPE_HINTS: Record<StageType, string> = {
@@ -37,6 +40,34 @@ export const STAGE_TYPE_HINTS: Record<StageType, string> = {
   hired: 'Candidate accepted the offer.',
   rejected: 'Not moving forward.',
   custom: 'Any other step you track by hand.',
+  hr_round: 'Candidate confirms compensation; HR records the decision.',
+  bgv: 'India or US background checks with a secure document portal.',
+}
+
+export const BGV_CHECK_LABELS: Record<BgvCheckType, string> = {
+  identity: 'Identity',
+  address: 'Address',
+  education: 'Education',
+  employment: 'Employment history',
+  reference: 'References',
+  criminal: 'Criminal record',
+  pan: 'PAN',
+  aadhaar: 'Aadhaar (masked)',
+  uan_epfo: 'UAN / EPFO',
+  court_record: 'Court records',
+  ssn_trace: 'SSN trace',
+  county_criminal: 'County criminal',
+  federal_criminal: 'Federal criminal',
+  national_criminal: 'National criminal database',
+  sex_offender: 'Sex offender registry',
+  mvr: 'Motor vehicle record',
+  drug_test: 'Drug test',
+}
+
+export const BGV_VENDOR_LABELS: Record<string, string> = {
+  manual: 'Manual (your team verifies)',
+  checkr: 'Checkr (US)',
+  simulated: 'Simulated (testing)',
 }
 
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {

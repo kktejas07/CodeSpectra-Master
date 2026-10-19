@@ -19,6 +19,8 @@ type Ctx = { params: Promise<{ id: string }> }
 /** Stage types whose results a client may read (bot screens can carry salary / notice answers). */
 const CLIENT_RESULT_TYPES: ReadonlySet<StageType> = new Set(['screening', 'assessment', 'virtual_interview', 'f2f_interview', 'client_review', 'offer', 'hired'])
 
+const PRIVATE_SUMMARY_TYPES: ReadonlySet<StageType> = new Set(['hr_round', 'bgv'])
+
 const REC_WEIGHT = { strong_yes: 2, yes: 1, no: -1, strong_no: -2 } as const
 
 /**
@@ -65,7 +67,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
         match: a.match ? { score: a.match.score, reasons: a.match.reasons.slice(0, 6), missing_must: a.match.missing_must } : null,
         results: a.results
           .filter((r) => { const s = stageById.get(r.stage_id); return !!s && (CLIENT_RESULT_TYPES.has(s.type) || visibleIds.includes(s.id)) })
-          .map((r) => ({ stage_name: stageById.get(r.stage_id)?.name || r.stage_id, outcome: r.outcome, score: r.score ?? null, summary: r.summary ?? null, at: r.at })),
+          // HR round / BGV summaries can carry compensation or verification detail: outcome only.
+          .map((r) => ({ stage_name: stageById.get(r.stage_id)?.name || r.stage_id, outcome: r.outcome, score: r.score ?? null, summary: PRIVATE_SUMMARY_TYPES.has(stageById.get(r.stage_id)?.type as StageType) ? null : r.summary ?? null, at: r.at })),
         scorecards: interviews
           .filter((iv) => iv.application_id === a.id && (iv.scorecards || []).length)
           .map((iv) => {

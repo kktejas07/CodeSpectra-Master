@@ -295,7 +295,7 @@ function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
   }
   return (
     <Panel>
-      <Section title="Import a CSV" description="Header row with name, email, phone, country and resume_url. Up to 1,000 rows.">
+      <Section title="Import a CSV" description="Header row with name, email, phone, country and resume_url — optionally experience (fresher or experienced), current_ctc, expected_ctc, currency, period and notice_days. Up to 1,000 rows.">
         {!preview ? (
           <Button variant="outline" className="rounded-full" onClick={() => input.current?.click()}><FileUp aria-hidden /> Choose CSV</Button>
         ) : (

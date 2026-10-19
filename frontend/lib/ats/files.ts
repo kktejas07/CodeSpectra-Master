@@ -19,7 +19,8 @@ export function safeFileName(raw: string): string {
   return base.replace(/[\u0000-\u001f"<>|:*?]/g, '_').slice(0, 200) || 'resume'
 }
 
-async function virusScan(bytes: Buffer, filename: string): Promise<void> {
+/** ClamAV scan through the backend; fail closed. Also used by BGV documents (lib/ats/bgv/storage.ts). */
+export async function virusScan(bytes: Buffer, filename: string): Promise<void> {
   const { backendPost } = await import('@/lib/ai/backend')
   try {
     await Promise.race([

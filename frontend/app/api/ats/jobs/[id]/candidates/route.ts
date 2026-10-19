@@ -2,13 +2,15 @@ import { NextRequest } from 'next/server'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { addFromPool, addManualCandidate, parseCandidateCsv } from '@/lib/ats/intake'
 import { auditAts } from '@/lib/ats/access'
+import { parseCompensation } from '@/lib/ats/compensation'
 import { bodyOf, errorResponse, gate, json, loadJob } from '@/lib/ats/http'
 import { limitRequest } from '@/lib/rate-limit'
 
 /**
  * POST /api/ats/jobs/[id]/candidates
- *  { mode: "manual", name, email?, phone?, country?, resume_text?, resume_url?, tags? }
- *  { mode: "csv", csv: "name,email,phone,country,resume_url\n…" }   (≤1000 rows)
+ *  { mode: "manual", name, email?, phone?, country?, resume_text?, resume_url?, tags?, compensation? }
+ *  { mode: "csv", csv: "name,email,phone,country,resume_url\n…" }   (≤1000 rows; optional
+ *     header columns experience, current_ctc, expected_ctc, currency, period, notice_days)
  *  { mode: "pool", ids: [candidate id | "user:<id>"] }              (talent pool)
  */
 export async function POST(req: NextRequest, { params }: IdRouteContext) {
@@ -25,6 +27,12 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
     if (mode === 'manual') {
       const str = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : null)
       if (!str(body.email, 254) && !str(body.phone, 40)) return json({ error: 'Add an email or phone number' }, 400)
+      let compensation = null
+      if (body.compensation && typeof body.compensation === 'object') {
+        const c = parseCompensation(body.compensation, { source: 'recruiter', country: str(body.country, 2), confirmedAt: null })
+        if (!c.ok) return json({ error: c.errors[0], errors: c.errors }, 400)
+        compensation = c.value
+      }
       const r = await addManualCandidate(job, {
         name: str(body.name, 120) || undefined,
         email: str(body.email, 254),
@@ -34,6 +42,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
         resume_url: str(body.resume_url, 2000),
         source: body.source === 'referral' ? 'referral' : 'manual',
         tags: Array.isArray(body.tags) ? body.tags.filter((t): t is string => typeof t === 'string').map((t) => t.slice(0, 40)).slice(0, 10) : [],
+        compensation,
       })
       await auditAts(g.actor, 'ats.candidate.add', 'ats_application', r.application.id, 'manual', req)
       return json({ application_id: r.application.id, candidate_id: r.candidate.id, duplicate: !r.created }, r.created ? 201 : 200)
@@ -47,7 +56,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
       for (const row of rows) {
         if (row.error) { results.push({ line: row.line, ok: false, error: row.error }); continue }
         try {
-          const r = await addManualCandidate(job, { name: row.name, email: row.email, phone: row.phone, country: row.country, resume_url: row.resume_url, source: 'csv' })
+          const r = await addManualCandidate(job, { name: row.name, email: row.email, phone: row.phone, country: row.country, resume_url: row.resume_url, source: 'csv', compensation: row.compensation ?? null })
           results.push({ line: row.line, ok: true, application_id: r.application.id, duplicate: !r.created })
         } catch (e) {
           console.error('[ats/csv] row failed', row.line, e)

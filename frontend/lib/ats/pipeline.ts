@@ -3,13 +3,36 @@
  * counts are passed in), so the job routes and tests share the same rules.
  */
 import type {
-  AtsJob, BotChannel, JobStatus, MeetingProvider, PipelineStage, ScreeningCriteria, StageConfig, StageType,
+  AtsJob, BgvCheckType, BgvConfig, BgvRegion, BotChannel, HrRoundConfig, JobStatus, MeetingProvider, PipelineStage, ScreeningCriteria, StageConfig, StageType,
 } from './contract'
 
 export const STAGE_TYPES: StageType[] = [
   'applied', 'screening', 'assessment', 'bot_screen', 'virtual_interview', 'f2f_interview',
-  'client_review', 'offer', 'hired', 'rejected', 'custom',
+  'client_review', 'hr_round', 'bgv', 'offer', 'hired', 'rejected', 'custom',
 ]
+
+// ─── HR round + BGV config rules (shared with the pipeline builder UI) ───────
+
+/** Checks each BGV region supports ('auto' allows the union; the case resolves the region). */
+export const BGV_CHECKS_BY_REGION: Record<BgvRegion, BgvCheckType[]> = {
+  IN: ['identity', 'address', 'education', 'employment', 'reference', 'pan', 'aadhaar', 'uan_epfo', 'court_record', 'criminal'],
+  US: ['identity', 'address', 'education', 'employment', 'reference', 'ssn_trace', 'county_criminal', 'federal_criminal', 'national_criminal', 'sex_offender', 'mvr', 'drug_test'],
+}
+/** Sensible starting set per region. */
+export const DEFAULT_BGV_CHECKS: Record<BgvRegion | 'auto', BgvCheckType[]> = {
+  IN: ['identity', 'pan', 'address', 'education', 'employment', 'uan_epfo', 'court_record'],
+  US: ['identity', 'ssn_trace', 'county_criminal', 'national_criminal', 'education', 'employment'],
+  auto: ['identity', 'address', 'education', 'employment'],
+}
+export function bgvChecksFor(region: BgvRegion | 'auto'): BgvCheckType[] {
+  return region === 'auto' ? [...new Set([...BGV_CHECKS_BY_REGION.IN, ...BGV_CHECKS_BY_REGION.US])] : BGV_CHECKS_BY_REGION[region]
+}
+export const BGV_VENDORS = ['manual', 'checkr', 'simulated'] as const
+export const DEFAULT_HR_ROUND: HrRoundConfig = { kind: 'hr_round', collect_compensation: true, interview: null, form_deadline_days: 3 }
+export const DEFAULT_BGV: BgvConfig = {
+  kind: 'bgv', region: 'auto', checks: DEFAULT_BGV_CHECKS.auto, vendor: 'manual', form_deadline_days: 7,
+  employment_years: 7, address_years: 7, references_count: 2, critical_checks: ['identity'],
+}
 export const TERMINAL_TYPES: StageType[] = ['hired', 'rejected']
 const BOT_CHANNELS: BotChannel[] = ['whatsapp_chat', 'whatsapp_call', 'phone_call']
 const PROVIDERS: MeetingProvider[] = ['livekit', 'zoom', 'google_meet', 'teams', 'manual']
@@ -44,7 +67,8 @@ const DEFAULT_SCORECARD = {
 
 /**
  * Default pipeline: applied → screening → assessment → bot_screen →
- * virtual_interview → f2f_interview → client_review → offer → hired (+ rejected).
+ * virtual_interview → f2f_interview → client_review → hr_round → bgv → offer
+ * → hired (+ rejected).
  * client_review is left out when the job has no client.
  */
 export function defaultPipeline(opts: { examId?: string | null; hasClient?: boolean } = {}): PipelineStage[] {
@@ -79,6 +103,8 @@ export function defaultPipeline(opts: { examId?: string | null; hasClient?: bool
     ...(opts.hasClient
       ? [{ id: 's_client_review', type: 'client_review', name: 'Client review', advance: 'approval', on_fail: 'review', client_visible: true, notify: { client: true }, config: { kind: 'client_review' } } as PipelineStage]
       : []),
+    { id: 's_hr_round', type: 'hr_round', name: 'HR round', advance: 'approval', on_fail: 'review', sla_days: 14, config: { ...DEFAULT_HR_ROUND } },
+    { id: 's_bgv', type: 'bgv', name: 'Background verification', advance: 'approval', on_fail: 'review', sla_days: null, config: { ...DEFAULT_BGV, checks: [...DEFAULT_BGV.checks], critical_checks: [...DEFAULT_BGV.critical_checks!] } },
     { id: 's_offer', type: 'offer', name: 'Offer', advance: 'approval', on_fail: 'review', notify: { email: true }, config: { kind: 'offer', template: null } },
     { id: 's_hired', type: 'hired', name: 'Hired', advance: 'auto', on_fail: 'review', notify: { email: true } },
     { id: 's_rejected', type: 'rejected', name: 'Rejected', advance: 'auto', on_fail: 'reject', notify: { email: true } },
@@ -203,6 +229,45 @@ function sanitizeConfig(type: StageType, raw: unknown, errors: string[], label: 
       return { kind: 'offer', template: str(c.template, 5000) || null }
     case 'custom':
       return { kind: 'custom' }
+    case 'hr_round': {
+      const iv = c.interview && typeof c.interview === 'object' ? (c.interview as Record<string, unknown>) : null
+      const mode = iv?.mode === 'f2f' ? 'f2f' : 'virtual'
+      return {
+        kind: 'hr_round',
+        collect_compensation: c.collect_compensation === undefined ? true : bool(c.collect_compensation),
+        form_deadline_days: numOrNull(c.form_deadline_days, 1, 30) ?? 3,
+        interview: iv
+          ? {
+              mode,
+              ...(mode === 'virtual' ? { provider: (PROVIDERS as string[]).includes(String(iv.provider)) ? (iv.provider as MeetingProvider) : 'livekit' } : {}),
+              duration_min: Math.round(numOrNull(iv.duration_min, 10, 240) ?? 30),
+              panel_ids: strList(iv.panel_ids, 10, 128),
+            }
+          : null,
+      }
+    }
+    case 'bgv': {
+      const region: BgvRegion | 'auto' = c.region === 'IN' || c.region === 'US' ? c.region : 'auto'
+      if (c.region !== undefined && !['IN', 'US', 'auto'].includes(String(c.region))) errors.push(`${label}: region must be India, USA or automatic`)
+      const allowed = new Set<string>(bgvChecksFor(region))
+      const given = c.checks === undefined ? DEFAULT_BGV_CHECKS[region] : strList(c.checks, 30, 40)
+      const bad = given.filter((x) => !allowed.has(x))
+      if (bad.length) errors.push(`${label}: ${bad.join(', ')} ${bad.length === 1 ? 'is' : 'are'} not available for ${region === 'auto' ? 'background checks' : region === 'IN' ? 'India' : 'the USA'}`)
+      const checks = given.filter((x): x is BgvCheckType => allowed.has(x))
+      if (!checks.length) errors.push(`${label}: choose at least one check`)
+      const crit = strList(c.critical_checks, 30, 40).filter((x): x is BgvCheckType => (checks as string[]).includes(x))
+      const vendorRaw = str(c.vendor, 40).toLowerCase()
+      const vendor = /^[a-z0-9_-]{1,40}$/.test(vendorRaw) ? vendorRaw : 'manual'
+      const n = (v: unknown, lo: number, hi: number) => { const x = numOrNull(v, lo, hi); return x === null ? null : Math.round(x) }
+      return {
+        kind: 'bgv', region, checks, vendor,
+        critical_checks: crit,
+        form_deadline_days: n(c.form_deadline_days, 1, 60) ?? 7,
+        ...(n(c.employment_years, 1, 15) !== null ? { employment_years: n(c.employment_years, 1, 15)! } : {}),
+        ...(n(c.address_years, 1, 15) !== null ? { address_years: n(c.address_years, 1, 15)! } : {}),
+        ...(n(c.references_count, 0, 5) !== null ? { references_count: n(c.references_count, 0, 5)! } : {}),
+      }
+    }
     default:
       return undefined
   }
@@ -261,6 +326,7 @@ export function validatePipeline(
     if (n > 1) errors.push(`The pipeline can only have one "${t}" stage`)
   }
   if (stages.length && stages[0].type !== 'applied') errors.push('The first stage must be "applied"')
+  if (stages.filter((s) => s.type === 'bgv').length > 1) errors.push('The pipeline can only have one background verification stage')
   for (const s of stages) {
     if (s.type !== 'assessment') continue
     const examId = s.config?.kind === 'assessment' ? s.config.exam_id : null
@@ -268,6 +334,20 @@ export function validatePipeline(
     if (!examId && opts.requireRunnable) errors.push(`${s.name}: choose an assessment before opening the job`)
   }
   return errors
+}
+
+/**
+ * Advice that doesn't block saving: background verification normally follows
+ * the HR round (compensation confirmed), and comes before hired.
+ */
+export function pipelineWarnings(stages: readonly PipelineStage[]): string[] {
+  const out: string[] = []
+  const iBgv = stages.findIndex((s) => s.type === 'bgv')
+  const iHr = stages.findIndex((s) => s.type === 'hr_round')
+  if (iBgv >= 0 && (iHr < 0 || iHr > iBgv)) out.push('Background verification usually comes after the HR round, once compensation is confirmed.')
+  const iHired = stages.findIndex((s) => s.type === 'hired')
+  if (iBgv >= 0 && iHired >= 0 && iBgv > iHired) out.push('Background verification should come before "Hired".')
+  return out
 }
 
 /**

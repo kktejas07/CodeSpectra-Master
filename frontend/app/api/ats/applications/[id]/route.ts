@@ -47,6 +47,8 @@ export async function GET(req: NextRequest, { params }: IdRouteContext) {
       job: jobViewFor(actor, job),
       interviews: ivs,
       calls: (calls as unknown as ScreeningCallDoc[]).map(publicCall),
+      // Lets the UI show staff-only panels (compensation, HR round); the API enforces it.
+      me: { role: actor.role },
     })
   } catch (e) {
     return errorResponse(e, 'application GET')

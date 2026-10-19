@@ -4,7 +4,8 @@
  * Apply form for jobs run through the hiring pipeline (job_postings rows with
  * `ats_job_id`). Signed-in applicants apply in one click (their primary résumé
  * is used unless they attach one); guests give name, email, phone and a résumé.
- * Posts to /api/ats/public/jobs/[id]/apply.
+ * Everyone says whether they are a fresher (expected CTC) or experienced
+ * (current / last drawn CTC). Posts to /api/ats/public/jobs/[id]/apply.
  */
 import { useState } from 'react'
 import { Loader2, AlertCircle, Paperclip } from 'lucide-react'
@@ -15,6 +16,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { CompensationFields, draftToBody, emptyDraft, type CompDraft } from '@/components/hiring/compensation-fields'
+import { currencyForCountry, parseCompensation } from '@/lib/ats/compensation'
 
 const ACCEPT = '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown'
 const MAX_MB = 5
@@ -43,11 +46,14 @@ export function AtsApplyForm({
   atsJobId,
   signedIn,
   defaultName,
+  hourlyAllowed = false,
   onApplied,
 }: {
   atsJobId: string
   signedIn: boolean
   defaultName?: string
+  /** contract roles may be paid by the hour (US dollars) */
+  hourlyAllowed?: boolean
   onApplied: (alreadyApplied: boolean) => void
 }) {
   const [name, setName] = useState(defaultName || '')
@@ -56,9 +62,8 @@ export function AtsApplyForm({
   const [country, setCountry] = useState<string>('IN')
   const [location, setLocation] = useState('')
   const [cover, setCover] = useState('')
-  const [notice, setNotice] = useState('')
-  const [currentSalary, setCurrentSalary] = useState('')
-  const [expectedSalary, setExpectedSalary] = useState('')
+  const [comp, setComp] = useState<CompDraft>(() => emptyDraft('IN'))
+  const [currencyTouched, setCurrencyTouched] = useState(false)
   const [file, setFile] = useState<File | null>(null)
   const [consentWa, setConsentWa] = useState(false)
   const [consentCalls, setConsentCalls] = useState(false)
@@ -72,15 +77,25 @@ export function AtsApplyForm({
     setError(null)
     if (file && file.size > MAX_MB * 1024 * 1024) { setError(`Résumés can be up to ${MAX_MB} MB`); return }
     if (!signedIn && !file) { setError('Attach your résumé'); return }
+    const checked = parseCompensation(draftToBody(comp), { source: 'apply', country, allowHourly: hourlyAllowed })
+    if (!checked.ok) { setError(checked.errors[0]); return }
     const fd = new FormData()
     fd.set('name', name)
     if (!signedIn) { fd.set('email', email); fd.set('captcha', captcha || '') }
     fd.set('phone', withDialCode(phone, country))
     fd.set('country', country)
     fd.set('location', location)
-    fd.set('notice_days', notice)
-    fd.set('current_salary', currentSalary)
-    fd.set('expected_salary', expectedSalary)
+    fd.set('experience_level', comp.experience_level)
+    fd.set('currency', comp.currency)
+    fd.set('period', comp.period)
+    fd.set('expected_ctc', comp.expected_ctc)
+    fd.set('notice_days', comp.notice_days)
+    if (comp.experience_level === 'experienced') {
+      fd.set('current_ctc', comp.current_ctc)
+      fd.set('currently_employed', String(comp.currently_employed))
+      fd.set('ctc_fixed', comp.fixed)
+      fd.set('ctc_variable', comp.variable)
+    }
     fd.set('cover_letter', cover)
     fd.set('consent_whatsapp', String(consentWa))
     fd.set('consent_calls', String(consentCalls))
@@ -124,7 +139,11 @@ export function AtsApplyForm({
           <select
             aria-label="Country code"
             value={country}
-            onChange={(e) => setCountry(e.target.value)}
+            onChange={(e) => {
+              setCountry(e.target.value)
+              // Currency follows the country until the applicant picks one.
+              if (!currencyTouched) setComp((c) => ({ ...c, currency: currencyForCountry(e.target.value), period: 'year' }))
+            }}
             className="h-9 w-28 shrink-0 rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {COUNTRIES.map((c) => <option key={c.iso} value={c.iso}>{c.iso} {c.dial}</option>)}
@@ -136,20 +155,18 @@ export function AtsApplyForm({
         <Label htmlFor="apply-location" className="text-xs text-cs-ink">Current city (optional)</Label>
         <Input id="apply-location" autoComplete="address-level2" value={location} onChange={(e) => setLocation(e.target.value)} />
       </div>
-      <div className="grid grid-cols-1 gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="apply-notice" className="text-xs text-cs-ink">Notice period (days)</Label>
-          <Input id="apply-notice" inputMode="numeric" placeholder="30" value={notice} onChange={(e) => setNotice(e.target.value.replace(/[^\d]/g, '').slice(0, 3))} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="apply-current-salary" className="text-xs text-cs-ink">Current salary / year</Label>
-          <Input id="apply-current-salary" inputMode="numeric" placeholder="Optional" value={currentSalary} onChange={(e) => setCurrentSalary(e.target.value.replace(/[^\d]/g, '').slice(0, 11))} />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="apply-expected-salary" className="text-xs text-cs-ink">Expected salary / year</Label>
-          <Input id="apply-expected-salary" inputMode="numeric" placeholder="Optional" value={expectedSalary} onChange={(e) => setExpectedSalary(e.target.value.replace(/[^\d]/g, '').slice(0, 11))} />
-        </div>
-      </div>
+      <CompensationFields
+        idPrefix="apply-comp"
+        value={comp}
+        hourlyAllowed={hourlyAllowed}
+        labelClassName="text-cs-ink"
+        compact
+        onChange={(next) => {
+          if (next.currency !== comp.currency) setCurrencyTouched(true)
+          setComp(next)
+        }}
+      />
+      <p className="text-[11px] leading-4 text-cs-ink-soft">Only the hiring team sees compensation details.</p>
       <div className="space-y-1.5">
         <Label htmlFor="apply-resume" className="text-xs text-cs-ink">
           Résumé{signedIn ? ' (optional — we use your primary résumé otherwise)' : ''}

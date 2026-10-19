@@ -255,6 +255,24 @@ export function startSchedulerLoop(): void {
     } catch (e) {
       console.error('[scheduler] ats interview sweep error:', e)
     }
+    // ATS HR round: compensation-form reminders (half-way) + overdue flags (atomic claims per form).
+    try {
+      const { sweepHrForms } = await import('./ats/hr/service')
+      await sweepHrForms()
+    } catch (e) {
+      console.error('[scheduler] ats hr sweep error:', e)
+    }
+    // ATS background verification: reminders, deadlines, simulated vendor, adverse-action
+    // wait-over notices, retention purge. One replica per 5-minute window.
+    const bgvLock = `codespectra:lock:ats-bgv:${new Date().toISOString().slice(0, 15)}${Math.floor(new Date().getUTCMinutes() % 10 / 5)}`
+    if (await acquireRedisLock(bgvLock, 280).catch(() => false)) {
+      try {
+        const { runBgvSweep } = await import('./ats/bgv/service')
+        await runBgvSweep()
+      } catch (e) {
+        console.error('[scheduler] ats bgv sweep error:', e)
+      }
+    }
     // ATS bot screening: quiet-hour starts, reminders, timeouts, retries. One replica per minute.
     const screenStarted = Date.now()
     const screenLock = `codespectra:lock:ats-screening:${new Date().toISOString().slice(0, 16)}`

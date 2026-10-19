@@ -25,6 +25,9 @@ import { buildTimeline } from './lib/timeline'
 import { ActionDialog, approveMove, clientDecision, setApplicationStatus, type ActionRequest } from './actions'
 import { APP_STATUS_LABELS, CHANNEL_LABELS, MATCH_WEIGHT_LABELS, PROVIDER_LABELS, SOURCE_LABELS, daysSince, durationLabel, initials, timeAgo } from './lib/labels'
 import { MatchScore, Segmented } from './ui'
+import { CompensationCard, HrRoundPanel } from './hr-round'
+import { BgvPanel } from '@/components/hiring/bgv'
+import { canSeeCompensation } from '@/lib/ats/compensation'
 
 type Tab = 'overview' | 'stages' | 'timeline' | 'resume'
 
@@ -64,6 +67,9 @@ export function ApplicationDetailView({ detail, onChanged }: { detail: Applicati
   const isBot = stage?.type === 'bot_screen'
   const isScreen = stage?.type === 'screening' || stage?.type === 'applied'
   const isClientReview = stage?.type === 'client_review'
+  const role = detail.me?.role
+  // Staff with salary access; the API strips compensation for everyone else anyway.
+  const seesComp = role ? canSeeCompensation(role) : 'compensation' in app
 
   return (
     <div className="space-y-5">
@@ -162,8 +168,11 @@ export function ApplicationDetailView({ detail, onChanged }: { detail: Applicati
         ]}
       />
 
+      {tab === 'overview' && seesComp && (
+        <CompensationCard app={app} country={c.country} canEdit={role === 'admin' || role === 'recruiter'} onSaved={onChanged} />
+      )}
       {tab === 'overview' && <MatchPanel detail={detail} />}
-      {tab === 'stages' && <StagesPanel detail={full} />}
+      {tab === 'stages' && <StagesPanel detail={full} seesComp={seesComp} role={role} onChanged={onChanged} />}
       {tab === 'timeline' && <CommentBox appId={app.id} clientJob={!!job.client_id} onPosted={comments.reload} />}
       {tab === 'timeline' && (
         timeline.length === 0 ? <p className="text-sm text-muted-foreground">Nothing has happened yet.</p> : (
@@ -330,19 +339,21 @@ function ResumePanel({ detail }: { detail: ApplicationDetail }) {
   )
 }
 
-function StagesPanel({ detail }: { detail: ApplicationDetail }) {
+type StageExtras = { seesComp: boolean; role?: string; onChanged: () => void }
+
+function StagesPanel({ detail, ...extras }: { detail: ApplicationDetail } & StageExtras) {
   const { application: app, job } = detail
   const reached = new Set([app.stage_id, ...app.history.map((h) => h.to), ...app.results.map((r) => r.stage_id)])
   const stages = job.pipeline.filter((s) => reached.has(s.id) && s.type !== 'applied' && s.type !== 'hired' && s.type !== 'rejected')
   if (!stages.length) return <p className="text-sm text-muted-foreground">No stages finished yet.</p>
   return (
     <div className="space-y-4">
-      {stages.map((s) => <StageBlock key={s.id} stage={s} detail={detail} />)}
+      {stages.map((s) => <StageBlock key={s.id} stage={s} detail={detail} {...extras} />)}
     </div>
   )
 }
 
-function StageBlock({ stage, detail }: { stage: PipelineStage; detail: ApplicationDetail }) {
+function StageBlock({ stage, detail, seesComp, role, onChanged }: { stage: PipelineStage; detail: ApplicationDetail } & StageExtras) {
   const result = detail.application.results.filter((r) => r.stage_id === stage.id).sort((a, b) => b.at.localeCompare(a.at))[0]
   const calls = (detail.calls ?? []).filter((c) => c.stage_id === stage.id)
   const interviews = (detail.interviews ?? []).filter((i) => i.stage_id === stage.id)
@@ -366,7 +377,16 @@ function StageBlock({ stage, detail }: { stage: PipelineStage; detail: Applicati
       )}
       {calls.map((call) => <CallBlock key={call.id} call={call} stage={stage} />)}
       {interviews.map((iv) => <InterviewBlock key={iv.id} iv={iv} stage={stage} />)}
-      {!result && !calls.length && !interviews.length && <p className="text-sm text-muted-foreground">Nothing recorded yet.</p>}
+      {stage.type === 'hr_round' && seesComp && (
+        <HrRoundPanel
+          app={detail.application}
+          canDecide={role === 'admin' || role === 'recruiter' || role === 'hiring_manager'}
+          canResend={role === 'admin' || role === 'recruiter'}
+          onChanged={onChanged}
+        />
+      )}
+      {stage.type === 'bgv' && seesComp && <BgvPanel applicationId={detail.application.id} />}
+      {!result && !calls.length && !interviews.length && stage.type !== 'hr_round' && stage.type !== 'bgv' && <p className="text-sm text-muted-foreground">Nothing recorded yet.</p>}
     </section>
   )
 }

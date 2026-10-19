@@ -254,6 +254,12 @@ export async function recordStageResult(appId: string, result: StageResult, opts
     ...(result.ref ? { ref: result.ref } : {}),
     at: result.at || nowIso(),
   }
+  // HR round: an HR conversation's panel verdict is advice — the HR decision
+  // (lib/ats/hr/service.ts recordHrDecision) decides the stage.
+  if (stage.type === 'hr_round' && clean.ref?.kind === 'interview' && clean.outcome !== 'pending') {
+    clean.summary = `HR conversation panel leaned ${clean.outcome}${clean.summary ? `: ${clean.summary}` : ''}`.slice(0, 2000)
+    clean.outcome = 'pending'
+  }
   const current = app.stage_id === stage.id && app.status !== 'withdrawn'
   // A result for the current entry is never dated before the entry itself.
   if (current && clean.at < app.stage_entered_at) clean.at = app.stage_entered_at

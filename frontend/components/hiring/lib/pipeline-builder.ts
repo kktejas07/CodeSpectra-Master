@@ -3,7 +3,10 @@
  * templates and validation. Pure — unit tested in tests/hiring-ui.test.ts.
  */
 import type { PipelineStage, ScreeningCriteria, StageConfig, StageType } from '@/lib/ats/contract'
+import { DEFAULT_BGV, DEFAULT_HR_ROUND, bgvChecksFor, pipelineWarnings } from '@/lib/ats/pipeline'
 import { STAGE_TYPE_LABELS } from './labels'
+
+export { pipelineWarnings }
 
 /** Stage types a recruiter can add (applied / hired / rejected are fixed ends). */
 export const ADDABLE_STAGE_TYPES: StageType[] = [
@@ -13,6 +16,8 @@ export const ADDABLE_STAGE_TYPES: StageType[] = [
   'virtual_interview',
   'f2f_interview',
   'client_review',
+  'hr_round',
+  'bgv',
   'offer',
   'custom',
 ]
@@ -59,6 +64,8 @@ export function defaultConfigFor(type: StageType): StageConfig | undefined {
     case 'client_review': return { kind: 'client_review' }
     case 'offer': return { kind: 'offer', template: null }
     case 'custom': return { kind: 'custom' }
+    case 'hr_round': return { ...DEFAULT_HR_ROUND }
+    case 'bgv': return { ...DEFAULT_BGV, checks: [...DEFAULT_BGV.checks], critical_checks: [...(DEFAULT_BGV.critical_checks || [])] }
     default: return undefined
   }
 }
@@ -83,10 +90,12 @@ export function makeStage(type: StageType, existing: readonly PipelineStage[], n
     id: stageIdFor(type, existing),
     type,
     name: name || STAGE_TYPE_LABELS[type],
-    advance: type === 'applied' || type === 'screening' ? 'auto' : 'approval',
-    on_fail: type === 'screening' ? 'review' : 'reject',
+    // HR round: the HR decision is already a person's call, so a pass moves on by itself.
+    advance: type === 'applied' || type === 'screening' || type === 'hr_round' ? 'auto' : 'approval',
+    on_fail: type === 'screening' || type === 'bgv' ? 'review' : 'reject',
     client_visible: type === 'client_review' || type === 'offer' || type === 'hired',
-    sla_days: terminal ? null : type === 'applied' ? null : 7,
+    // BGV can take weeks (vendor turnaround): no auto-reject timer by default.
+    sla_days: terminal || type === 'applied' || type === 'bgv' ? null : type === 'hr_round' ? 14 : 7,
     notify: { email: !terminal || type === 'hired', whatsapp: false, client: type === 'client_review' },
     config: defaultConfigFor(type),
   }
@@ -98,21 +107,34 @@ export function buildPipeline(types: StageType[], names: Partial<Record<number, 
   return out
 }
 
-export type TemplateId = 'tech' | 'campus' | 'staffing'
+export type TemplateId = 'tech' | 'campus' | 'staffing' | 'india' | 'us'
+
+/** BGV stage fixed to a region with that region's default checks. */
+function regionBgv(p: PipelineStage[], region: 'IN' | 'US'): PipelineStage[] {
+  const checks = region === 'IN'
+    ? (['identity', 'pan', 'aadhaar', 'address', 'education', 'employment', 'uan_epfo', 'court_record'] as const)
+    : (['identity', 'ssn_trace', 'county_criminal', 'national_criminal', 'education', 'employment'] as const)
+  return p.map((s) =>
+    s.config?.kind === 'bgv'
+      ? { ...s, config: { ...s.config, region, checks: checks.filter((c) => bgvChecksFor(region).includes(c)), critical_checks: region === 'IN' ? ['identity', 'employment'] : ['identity', 'county_criminal'], references_count: region === 'IN' ? 2 : 0 } }
+      : s,
+  )
+}
 
 export const PIPELINE_TEMPLATES: { id: TemplateId; name: string; description: string; build: () => PipelineStage[] }[] = [
   {
     id: 'tech',
     name: 'Tech hiring',
     description: 'Screening, a coding test, a bot screen, then video and on-site interviews.',
-    build: () => buildPipeline(['applied', 'screening', 'assessment', 'bot_screen', 'virtual_interview', 'f2f_interview', 'offer', 'hired', 'rejected']),
+    build: () => buildPipeline(['applied', 'screening', 'assessment', 'bot_screen', 'virtual_interview', 'f2f_interview', 'hr_round', 'bgv', 'offer', 'hired', 'rejected']),
   },
   {
     id: 'campus',
     name: 'Campus',
     description: 'High volume: auto-screen and test, one video interview, then the offer.',
     build: () => {
-      const p = buildPipeline(['applied', 'screening', 'assessment', 'virtual_interview', 'offer', 'hired', 'rejected'])
+      // Freshers: the HR round collects expected CTC; BGV usually runs after joining, so it's left out.
+      const p = buildPipeline(['applied', 'screening', 'assessment', 'virtual_interview', 'hr_round', 'offer', 'hired', 'rejected'])
       return p.map((s) => (s.type === 'screening' || s.type === 'assessment' ? { ...s, advance: 'auto' as const, on_fail: 'reject' as const } : s))
     },
   },
@@ -120,7 +142,22 @@ export const PIPELINE_TEMPLATES: { id: TemplateId; name: string; description: st
     id: 'staffing',
     name: 'Staffing (client review)',
     description: 'Screen and bot-call, interview, then your client reviews before the offer.',
-    build: () => buildPipeline(['applied', 'screening', 'bot_screen', 'virtual_interview', 'client_review', 'offer', 'hired', 'rejected']),
+    build: () => buildPipeline(['applied', 'screening', 'bot_screen', 'virtual_interview', 'client_review', 'hr_round', 'bgv', 'offer', 'hired', 'rejected']),
+  },
+  {
+    id: 'india',
+    name: 'India hiring (HR → BGV → offer)',
+    description: 'Interviews, an HR round to confirm CTC and notice, India background checks (PAN, UAN, employment), then the offer.',
+    build: () => regionBgv(buildPipeline(['applied', 'screening', 'assessment', 'virtual_interview', 'f2f_interview', 'hr_round', 'bgv', 'offer', 'hired', 'rejected']), 'IN'),
+  },
+  {
+    id: 'us',
+    name: 'US hiring (HR → conditional offer → BGV)',
+    description: 'Interviews and an HR round, then a conditional offer; FCRA background checks run after the offer, before hire.',
+    build: () => {
+      const p = buildPipeline(['applied', 'screening', 'assessment', 'virtual_interview', 'hr_round', 'offer', 'bgv', 'hired', 'rejected'], { 5: 'Conditional offer' })
+      return regionBgv(p, 'US')
+    },
   },
 ]
 
@@ -197,6 +234,7 @@ export function validatePipeline(stages: readonly PipelineStage[]): string[] {
   if (!stages.some((s) => s.type === 'applied')) errs.push('The pipeline needs an "Applied" stage.')
   if (!stages.some((s) => s.type === 'hired')) errs.push('The pipeline needs a "Hired" stage.')
   if (!stages.some((s) => s.type === 'rejected')) errs.push('The pipeline needs a "Rejected" stage.')
+  if (stages.filter((s) => s.type === 'bgv').length > 1) errs.push('The pipeline can only have one background verification stage.')
   for (const s of stages) {
     if (!s.name.trim()) errs.push('Every stage needs a name.')
     const c = s.config
@@ -208,6 +246,12 @@ export function validatePipeline(stages: readonly PipelineStage[]): string[] {
       if (c.questions.some((q) => q.type === 'choice' && (q.options?.filter((o) => o.trim()).length ?? 0) < 2))
         errs.push(`"${s.name}": choice questions need at least two options.`)
     }
+    if (c?.kind === 'bgv') {
+      if (c.checks.length === 0) errs.push(`"${s.name}": choose at least one check.`)
+      const allowed = bgvChecksFor(c.region)
+      if (c.checks.some((k) => !allowed.includes(k))) errs.push(`"${s.name}": some checks aren't available for this region.`)
+    }
+    if (c?.kind === 'hr_round' && c.interview && c.interview.duration_min < 10) errs.push(`"${s.name}": the HR conversation should be at least 10 minutes.`)
     if (c?.kind === 'interview') {
       if (c.duration_min < 10) errs.push(`"${s.name}": interviews should be at least 10 minutes.`)
       if (c.scorecard.criteria.length === 0) errs.push(`"${s.name}": add at least one scorecard criterion.`)

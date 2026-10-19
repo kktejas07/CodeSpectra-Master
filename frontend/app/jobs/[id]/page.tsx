@@ -236,6 +236,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                       atsJobId={job.ats_job_id}
                       signedIn={!!authUser}
                       defaultName={authUser?.displayName || ''}
+                      hourlyAllowed={/contract/i.test(job.job_type || '')}
                       onApplied={(already) => {
                         if (already) setAlreadyApplied(true)
                         else { setApplySuccess(true); setJob(j => j ? { ...j, applicants: j.applicants + 1 } : j) }

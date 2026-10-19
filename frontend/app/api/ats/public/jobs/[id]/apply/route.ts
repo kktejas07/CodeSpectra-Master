@@ -5,6 +5,7 @@ import { atsJobs } from '@/lib/ats/db'
 import { ApplyError, applyToJob } from '@/lib/ats/apply'
 import { FileRejected, readResumeFile } from '@/lib/ats/files'
 import { normEmail } from '@/lib/ats/intake'
+import { applyFieldsToBody, parseCompensation } from '@/lib/ats/compensation'
 import { idOk, json } from '@/lib/ats/http'
 import { limitRequest } from '@/lib/rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
@@ -28,7 +29,10 @@ const yes = (f: FormData, k: string) => ['true', 'on', '1', 'yes'].includes(text
 /**
  * POST /api/ats/public/jobs/[id]/apply (multipart)
  *   name, email, phone, country (ISO-2), location, cover_letter,
- *   notice_days, current_salary, expected_salary (annual, optional),
+ *   experience_level (fresher | experienced — required), currency (ISO 4217, default from
+ *   country), period (year | month | hour[USD only]), current_ctc + currently_employed
+ *   (experienced, required), ctc_fixed / ctc_variable (optional), expected_ctc (required for
+ *   freshers), notice_days, negotiable. Legacy current_salary / expected_salary map to the CTCs.
  *   consent_whatsapp, consent_calls, resume (file), captcha (Turnstile token),
  *   website (honeypot — must be empty).
  * Signed in: identity comes from the session; résumé falls back to the primary one.
@@ -60,6 +64,10 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
       }
     }
 
+    const country = text(form, 'country', 2).toUpperCase() || null
+    const comp = parseCompensation(applyFieldsToBody((k) => text(form, k, 40)), { source: 'apply', country, allowHourly: job.employment_type === 'contract' })
+    if (!comp.ok) return json({ error: comp.errors[0], errors: comp.errors }, 400)
+
     let resume: { file_name: string; text: string } | null = null
     const file = form.get('resume')
     if (file && typeof file === 'object' && 'arrayBuffer' in file && (file as File).size > 0) {
@@ -71,7 +79,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
       name: text(form, 'name', 120),
       email: text(form, 'email', 254),
       phone: text(form, 'phone', 40),
-      country: text(form, 'country', 2).toUpperCase() || null,
+      country,
       location: text(form, 'location', 120) || null,
       cover_letter: text(form, 'cover_letter', 5000) || null,
       consent: { whatsapp: yes(form, 'consent_whatsapp'), calls: yes(form, 'consent_calls') },
@@ -81,6 +89,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
         current_salary: num(form, 'current_salary', 1e10),
         expected_salary: num(form, 'expected_salary', 1e10),
       },
+      compensation: comp.value,
     })
     // Guests get the same answer either way, so the form can't be used to probe who applied.
     if (!user) return json({ ok: true }, 201)

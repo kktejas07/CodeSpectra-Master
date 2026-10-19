@@ -58,6 +58,8 @@ export interface ApplicationDetail {
   job: AtsJob
   interviews?: AtsInterview[]
   calls?: ScreeningCall[]
+  /** the viewer's hiring role (UI hints only) */
+  me?: { role: AtsMember['role'] }
 }
 
 /** GET /api/ats/approvals → { approvals: ApprovalItem[] } */

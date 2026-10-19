@@ -139,6 +139,8 @@ export type StageType =
   | 'hired'
   | 'rejected'
   | 'custom'
+  | 'hr_round' // compensation confirmation + HR decision (see ADDITIONS below)
+  | 'bgv' // background verification (see ADDITIONS below)
 
 export type AdvanceMode = 'auto' | 'approval'
 
@@ -187,6 +189,8 @@ export type StageConfig =
   | { kind: 'client_review' }
   | { kind: 'offer'; template?: string | null }
   | { kind: 'custom' }
+  | HrRoundConfig
+  | BgvConfig
 
 export interface ScorecardTemplate {
   criteria: { id: string; label: string; description?: string }[] // rated 1–5
@@ -269,6 +273,9 @@ export interface AtsApplication {
   pending_move?: { to: string; reason: string; suggested_at: string } | null
   source: CandidateSource
   rejection_reason?: string | null
+  /** latest figures (see Compensation in ADDITIONS); staff only */
+  compensation?: Compensation | null
+  compensation_history?: Compensation[]
   created_at: string
   updated_at: string
 }
@@ -411,3 +418,92 @@ export interface ScreeningCall {
 //   OAuth callbacks GET /api/ats/integrations/meetings/{google,microsoft}/callback.
 // Pages: /interview/schedule/[token], /interview/join/[token] (public),
 //   /dashboard/hiring/interviews[/[id][/live]], /dashboard/hiring/settings/integrations.
+
+// ─── ADDITIONS (HR round + background verification) ─────────────────────────
+//
+// Owner decisions (2026-10-19):
+//  - Compensation is collected AT APPLY TIME: experienced candidates give their
+//    current/last CTC (and expected); freshers give expected CTC only.
+//  - A new 'hr_round' stage: the candidate confirms compensation through a secure
+//    link (experienced → current/last drawn + breakup + expected + notice;
+//    fresher → expected), HR records the round outcome; pass/fail → engine.
+//  - A new 'bgv' stage after HR: region-based background verification, India and
+//    USA first. Candidate submits data + documents through a secure portal;
+//    verifiers mark each check; overall result → engine. Vendor adapters optional.
+
+/** Stage types added after the first release. STAGE_TYPES in lib/ats/pipeline.ts includes them. */
+export type StageTypeAddition = 'hr_round' | 'bgv'
+
+export type ExperienceLevel = 'fresher' | 'experienced'
+
+export interface Compensation {
+  experience_level: ExperienceLevel
+  currency: string // ISO 4217, e.g. INR, USD
+  period: 'year' | 'month' | 'hour'
+  /** experienced only: current CTC, or last drawn if not currently employed */
+  current_ctc?: number | null
+  currently_employed?: boolean | null
+  breakup?: { fixed?: number | null; variable?: number | null; other?: number | null } | null
+  expected_ctc?: number | null // required for freshers; optional for experienced
+  notice_days?: number | null
+  negotiable?: boolean | null
+  /** where the figures came from */
+  source: 'apply' | 'hr_form' | 'recruiter'
+  confirmed_at?: string | null
+}
+// Stored on AtsApplication as `compensation?: Compensation | null` (latest) and
+// `compensation_history?: Compensation[]`. Visible to admin/recruiter/hiring_manager
+// only (never interviewer/client), same as salary today.
+
+export interface HrRoundConfig {
+  kind: 'hr_round'
+  /** send the candidate the compensation confirmation form on stage entry */
+  collect_compensation: boolean
+  /** optional HR conversation scheduled through the interviews part */
+  interview?: { mode: 'virtual' | 'f2f'; provider?: MeetingProvider; duration_min: number; panel_ids: string[] } | null
+  /** form must be submitted within N days (reminders at half-way) */
+  form_deadline_days?: number
+}
+
+export type BgvRegion = 'IN' | 'US'
+
+export type BgvCheckType =
+  // shared
+  | 'identity' | 'address' | 'education' | 'employment' | 'reference' | 'criminal'
+  // India
+  | 'pan' | 'aadhaar' | 'uan_epfo' | 'court_record'
+  // USA
+  | 'ssn_trace' | 'county_criminal' | 'federal_criminal' | 'national_criminal' | 'sex_offender' | 'mvr' | 'drug_test'
+
+export interface BgvConfig {
+  kind: 'bgv'
+  /** 'auto' = from candidate.country / job location; else fixed */
+  region: BgvRegion | 'auto'
+  checks: BgvCheckType[]
+  /** employment history depth */
+  employment_years?: number // default 7 (US) / all (IN, last 2 employers mandatory)
+  address_years?: number // default 7 (US) / current + permanent (IN)
+  references_count?: number
+  /** vendor adapter id or 'manual' */
+  vendor: 'manual' | 'checkr' | 'simulated' | string
+  form_deadline_days?: number
+  /** discrepancy handling: any 'discrepancy' on these checks fails the stage */
+  critical_checks?: BgvCheckType[]
+}
+// Implemented in lib/ats/bgv/** (BGV part): case model `ats_bgv_cases`, candidate
+// portal (signed token), document storage (virus-scanned, encrypted sensitive
+// fields: PAN, Aadhaar (masked, last 4 only + document), SSN), verifier workflow,
+// consent/disclosure (DPDP Act India; FCRA disclosure + authorization and
+// pre-adverse / adverse action notices US), retention purge, audit on every view.
+// UI component exported from components/hiring/bgv/index.ts: <BgvPanel applicationId />.
+//
+// Implemented (HR round part): pure rules lib/ats/compensation.ts (parseCompensation,
+// currency/period defaults, formatting) and lib/ats/hr/rules.ts; service + handler
+// lib/ats/hr/{service,handler,db}.ts, collection `ats_hr_forms` (one per stage entry).
+// Pipeline rules for hr_round / bgv (BGV_CHECKS_BY_REGION, DEFAULT_BGV_CHECKS,
+// bgvChecksFor, pipelineWarnings) live in lib/ats/pipeline.ts.
+// An HR conversation is an AtsInterview on the hr_round stage (entry key suffix
+// ':hr_interview'); the engine records its panel verdict as 'pending' advice — the HR
+// decision decides. API: GET/POST /api/ats/hr-form (public token),
+// POST /api/ats/applications/[id]/hr-decision, GET/POST …/hr-round (status / resend),
+// PATCH …/compensation. Page: /hr-form/[token] (public).

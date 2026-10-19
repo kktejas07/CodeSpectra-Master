@@ -162,8 +162,8 @@ export async function notifyStageEntry(ctx: {
       if (notify.email) {
         await send(candidate.email, wrapEmail(`We received your application for ${job.title}`, textToHtml(renderText('Hi {{candidate_name}},\n\nThanks for applying to {{job_title}} at {{company}}. We will review your application and let you know about next steps.', vars))))
       }
-    } else if (notify.email && !['assessment', 'bot_screen', 'virtual_interview', 'f2f_interview'].includes(stage.type)) {
-      // assessment / bot screen / interview stages contact the candidate themselves (invite, call, interview invite).
+    } else if (notify.email && !['assessment', 'bot_screen', 'virtual_interview', 'f2f_interview', 'hr_round', 'bgv'].includes(stage.type)) {
+      // assessment / bot screen / interview / HR round / BGV stages contact the candidate themselves (invite, call, form or portal link).
       await send(candidate.email, wrapEmail(`Update on your ${job.title} application`, textToHtml(renderText('Hi {{candidate_name}},\n\nGood news — your application for {{job_title}} at {{company}} has moved to the next step: {{stage_name}}. We will be in touch with details shortly.', vars))))
     }
 

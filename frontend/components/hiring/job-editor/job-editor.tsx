@@ -16,7 +16,7 @@ import { Panel, Section } from '@/components/app/page-kit'
 import { useToast } from '@/lib/toast-context'
 import type { AtsClient, AtsJob, AtsMember, JobStatus, MeetingProvider, PipelineStage, ScreeningCriteria } from '@/lib/ats/contract'
 import { atsSend, errorMessage, useAts } from '../lib/api'
-import { PIPELINE_TEMPLATES, defaultCriteria, pipelineReducer, validatePipeline } from '../lib/pipeline-builder'
+import { PIPELINE_TEMPLATES, defaultCriteria, pipelineReducer, pipelineWarnings, validatePipeline } from '../lib/pipeline-builder'
 import { EMPLOYMENT_LABELS, JOB_STATUS_LABELS, JOB_TRANSITIONS, WORK_MODE_LABELS } from '../lib/labels'
 import { Field, InlineError, NativeSelect, Segmented } from '../ui'
 import { CriteriaEditor } from './criteria-editor'
@@ -104,6 +104,7 @@ export function JobEditor({ initial, jobId }: { initial?: AtsJob; jobId?: string
     draft.salary?.min != null && draft.salary?.max != null && draft.salary.min > draft.salary.max && 'Minimum salary is above the maximum.',
   ].filter(Boolean) as string[]
   const pipelineErrors = validatePipeline(pipeline)
+  const pipelineAdvice = pipelineWarnings(pipeline)
   const keptIds = new Set(pipeline.map((s) => s.id))
   const removed = (initial?.pipeline ?? []).filter((s) => !keptIds.has(s.id))
   /** Default target for a removed stage: the nearest earlier stage that still exists. */
@@ -270,6 +271,11 @@ export function JobEditor({ initial, jobId }: { initial?: AtsJob; jobId?: string
             {pipelineErrors.length > 0 && (
               <ul className="mt-4 list-inside list-disc space-y-1 text-sm text-amber-700 dark:text-amber-400">
                 {pipelineErrors.map((e) => <li key={e}>{e}</li>)}
+              </ul>
+            )}
+            {pipelineAdvice.length > 0 && (
+              <ul className="mt-3 list-inside list-disc space-y-1 text-sm text-muted-foreground" aria-label="Suggestions">
+                {pipelineAdvice.map((e) => <li key={e}>{e}</li>)}
               </ul>
             )}
           </Section>

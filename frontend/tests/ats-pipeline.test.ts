@@ -12,7 +12,7 @@ const exams = new Set(['exam-1'])
 describe('default pipeline', () => {
   it('has the contract order and validates once an exam is chosen', () => {
     const p = defaultPipeline({ hasClient: true })
-    expect(p.map((s) => s.type)).toEqual(['applied', 'screening', 'assessment', 'bot_screen', 'virtual_interview', 'f2f_interview', 'client_review', 'offer', 'hired', 'rejected'])
+    expect(p.map((s) => s.type)).toEqual(['applied', 'screening', 'assessment', 'bot_screen', 'virtual_interview', 'f2f_interview', 'client_review', 'hr_round', 'bgv', 'offer', 'hired', 'rejected'])
     expect(defaultPipeline().some((s) => s.type === 'client_review')).toBe(false)
     expect(validatePipeline(p, { tenantExamIds: exams, requireRunnable: false })).toEqual([])
     expect(validatePipeline(p, { tenantExamIds: exams, requireRunnable: true })).toEqual(['Assessment: choose an assessment before opening the job'])

@@ -118,6 +118,7 @@ exports[`route → access map coverage > matches the snapshot (add new pages to 
   "/dashboard/hiring/jobs/[id]": "/dashboard/hiring/jobs/[id] → user",
   "/dashboard/hiring/jobs/[id]/edit": "/dashboard/hiring/jobs/[id] → user",
   "/dashboard/hiring/jobs/new": "/dashboard/hiring/jobs/[id] → user",
+  "/dashboard/hiring/settings/bgv": "/dashboard/hiring/settings → user",
   "/dashboard/hiring/settings/integrations": "/dashboard/hiring/settings → user",
   "/dashboard/hiring/settings/screening": "/dashboard/hiring/settings → user",
   "/dashboard/hiring/team": "/dashboard/hiring/team → user",

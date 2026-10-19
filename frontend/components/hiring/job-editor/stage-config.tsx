@@ -2,7 +2,8 @@
 
 /**
  * Per-type configuration forms for a pipeline stage (assessment, bot screen,
- * interview, offer). Controlled: every change goes up as a config patch.
+ * interview, HR round, background verification, offer). Controlled: every
+ * change goes up as a config patch.
  */
 import Link from 'next/link'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
@@ -10,8 +11,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
-import type { AtsMember, BotChannel, MeetingProvider, PipelineStage, StageConfig } from '@/lib/ats/contract'
-import { CHANNEL_LABELS, PROVIDER_LABELS } from '../lib/labels'
+import { Checkbox } from '@/components/ui/checkbox'
+import type { AtsMember, BgvCheckType, BgvRegion, BotChannel, MeetingProvider, PipelineStage, StageConfig } from '@/lib/ats/contract'
+import { BGV_VENDORS, DEFAULT_BGV_CHECKS, bgvChecksFor } from '@/lib/ats/pipeline'
+import { BGV_CHECK_LABELS, BGV_VENDOR_LABELS, CHANNEL_LABELS, PROVIDER_LABELS } from '../lib/labels'
 import { Field, NativeSelect } from '../ui'
 
 type Cfg<K extends StageConfig['kind']> = Extract<StageConfig, { kind: K }>
@@ -339,6 +342,156 @@ export function StageConfigForm({
             <Plus aria-hidden /> Add criterion
           </Button>
         </div>
+      </div>
+    )
+  }
+
+  if (c.kind === 'hr_round') {
+    const iv = c.interview ?? null
+    const providers: MeetingProvider[] = ['livekit', 'zoom', 'google_meet', 'teams', 'manual']
+    const panelable = deps.members.filter((m) => m.status !== 'disabled' && m.user_id && m.role !== 'client')
+    const setIv = (patch: Partial<NonNullable<typeof iv>>) => onConfig({ interview: { mode: 'virtual', provider: 'livekit', duration_min: 30, panel_ids: [], ...iv, ...patch } })
+    return (
+      <div className="space-y-5">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
+          <span>
+            <span className="block text-sm font-medium text-foreground">Ask the candidate to confirm compensation</span>
+            <span className="block text-xs text-muted-foreground">Experienced: current or last drawn CTC, breakup, expected CTC and notice. Freshers: expected CTC and when they can join. Sent as a secure link — no account needed.</span>
+          </span>
+          <Switch checked={c.collect_compensation} onCheckedChange={(v) => onConfig({ collect_compensation: v })} aria-label="Ask the candidate to confirm compensation" />
+        </label>
+        {c.collect_compensation && (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <Field label="Form deadline (days)" htmlFor={`${pid}-hrdl`} hint="A reminder goes out half-way.">
+              <Input id={`${pid}-hrdl`} type="number" min={1} max={30} inputMode="numeric" value={c.form_deadline_days ?? 3} onChange={(e) => onConfig({ form_deadline_days: num(e.target.value, 3) })} />
+            </Field>
+          </div>
+        )}
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2.5">
+          <span>
+            <span className="block text-sm font-medium text-foreground">Schedule an HR conversation</span>
+            <span className="block text-xs text-muted-foreground">Books a call through Interviews. The panel&apos;s view is advice — HR records the decision.</span>
+          </span>
+          <Switch checked={!!iv} onCheckedChange={(v) => onConfig({ interview: v ? { mode: 'virtual', provider: 'livekit', duration_min: 30, panel_ids: [] } : null })} aria-label="Schedule an HR conversation" />
+        </label>
+        {iv && (
+          <div className="space-y-4 rounded-2xl border border-border bg-background p-3">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field label="Format" htmlFor={`${pid}-hrmode`}>
+                <NativeSelect id={`${pid}-hrmode`} value={iv.mode} onChange={(v) => setIv({ mode: v as 'virtual' | 'f2f', provider: v === 'virtual' ? iv.provider ?? 'livekit' : undefined })} options={[{ value: 'virtual', label: 'Video' }, { value: 'f2f', label: 'Face to face' }]} />
+              </Field>
+              {iv.mode === 'virtual' && (
+                <Field label="Video provider" htmlFor={`${pid}-hrprov`}>
+                  <NativeSelect
+                    id={`${pid}-hrprov`}
+                    value={iv.provider ?? 'livekit'}
+                    onChange={(v) => setIv({ provider: v as MeetingProvider })}
+                    options={providers.map((p) => ({ value: p, label: PROVIDER_LABELS[p] + (p !== 'livekit' && p !== 'manual' && !deps.connected[p] ? ' (not connected)' : '') }))}
+                  />
+                </Field>
+              )}
+              <Field label="Duration (minutes)" htmlFor={`${pid}-hrdur`}>
+                <Input id={`${pid}-hrdur`} type="number" min={10} max={240} step={5} value={iv.duration_min} onChange={(e) => setIv({ duration_min: num(e.target.value, 30) ?? 30 })} />
+              </Field>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-foreground">HR panel</p>
+              {panelable.length === 0 ? (
+                <p className="mt-1 text-xs text-muted-foreground">No team members yet. <Link href="/dashboard/hiring/team" className="font-medium text-primary hover:underline">Invite your team</Link>.</p>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {panelable.map((m) => {
+                    const on = iv.panel_ids.includes(m.user_id!)
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => setIv({ panel_ids: on ? iv.panel_ids.filter((x) => x !== m.user_id) : [...iv.panel_ids, m.user_id!] })}
+                        className={`rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${on ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground'}`}
+                      >
+                        {m.name || m.email}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (c.kind === 'bgv') {
+    const available = bgvChecksFor(c.region)
+    const toggle = (k: BgvCheckType) => {
+      const on = c.checks.includes(k)
+      const checks = on ? c.checks.filter((x) => x !== k) : [...c.checks, k]
+      onConfig({ checks, critical_checks: (c.critical_checks || []).filter((x) => checks.includes(x)) })
+    }
+    const toggleCritical = (k: BgvCheckType) => {
+      const crit = c.critical_checks || []
+      onConfig({ critical_checks: crit.includes(k) ? crit.filter((x) => x !== k) : [...crit, k] })
+    }
+    const setRegion = (r: string) => {
+      const region = r as BgvRegion | 'auto'
+      const allowed = bgvChecksFor(region)
+      const kept = c.checks.filter((k) => allowed.includes(k))
+      const checks = kept.length ? kept : DEFAULT_BGV_CHECKS[region]
+      onConfig({ region, checks, critical_checks: (c.critical_checks || []).filter((k) => checks.includes(k)) })
+    }
+    return (
+      <div className="space-y-5">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Region" htmlFor={`${pid}-bgvreg`} hint={c.region === 'auto' ? 'From the candidate’s country, else the job location.' : undefined}>
+            <NativeSelect id={`${pid}-bgvreg`} value={c.region} onChange={setRegion} options={[{ value: 'auto', label: 'Automatic' }, { value: 'IN', label: 'India' }, { value: 'US', label: 'United States' }]} />
+          </Field>
+          <Field label="Verification by" htmlFor={`${pid}-bgvven`}>
+            <NativeSelect id={`${pid}-bgvven`} value={c.vendor} onChange={(v) => onConfig({ vendor: v })} options={BGV_VENDORS.map((v) => ({ value: v, label: BGV_VENDOR_LABELS[v] || v }))} />
+          </Field>
+          <Field label="Candidate deadline (days)" htmlFor={`${pid}-bgvdl`} hint="To submit details and documents.">
+            <Input id={`${pid}-bgvdl`} type="number" min={1} max={60} inputMode="numeric" value={c.form_deadline_days ?? 7} onChange={(e) => onConfig({ form_deadline_days: num(e.target.value, 7) })} />
+          </Field>
+          <Field label="Employment history (years)" htmlFor={`${pid}-bgvemp`}>
+            <Input id={`${pid}-bgvemp`} type="number" min={1} max={15} inputMode="numeric" value={c.employment_years ?? ''} placeholder={c.region === 'IN' ? 'All' : '7'} onChange={(e) => onConfig({ employment_years: num(e.target.value) ?? undefined })} />
+          </Field>
+          <Field label="Address history (years)" htmlFor={`${pid}-bgvaddr`}>
+            <Input id={`${pid}-bgvaddr`} type="number" min={1} max={15} inputMode="numeric" value={c.address_years ?? ''} placeholder={c.region === 'IN' ? 'Current + permanent' : '7'} onChange={(e) => onConfig({ address_years: num(e.target.value) ?? undefined })} />
+          </Field>
+          <Field label="References" htmlFor={`${pid}-bgvref`}>
+            <Input id={`${pid}-bgvref`} type="number" min={0} max={5} inputMode="numeric" value={c.references_count ?? 0} onChange={(e) => onConfig({ references_count: num(e.target.value, 0) })} />
+          </Field>
+        </div>
+        <fieldset>
+          <legend className="text-sm font-medium text-foreground">Checks</legend>
+          <p className="mb-2 text-xs text-muted-foreground">Mark a check critical to fail the stage on any discrepancy in it.</p>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {available.map((k) => {
+              const on = c.checks.includes(k)
+              const crit = (c.critical_checks || []).includes(k)
+              return (
+                <li key={k} className="flex items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 py-2">
+                  <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
+                    <Checkbox id={`${pid}-chk-${k}`} checked={on} onCheckedChange={() => toggle(k)} />
+                    <label htmlFor={`${pid}-chk-${k}`} className="truncate">{BGV_CHECK_LABELS[k]}</label>
+                  </span>
+                  {on && (
+                    <button
+                      type="button"
+                      aria-pressed={crit}
+                      onClick={() => toggleCritical(k)}
+                      className={`shrink-0 rounded-full border px-2 py-0.5 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${crit ? 'border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-400' : 'border-border text-muted-foreground hover:text-foreground'}`}
+                      aria-label={`${BGV_CHECK_LABELS[k]}: ${crit ? 'critical' : 'not critical'}`}
+                    >
+                      {crit ? 'Critical' : 'Mark critical'}
+                    </button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </fieldset>
       </div>
     )
   }

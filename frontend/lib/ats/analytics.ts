@@ -48,7 +48,7 @@ export function computeAnalytics(apps: AtsApplication[], jobs: AtsJob[], opts: {
   const byJob = new Map(jobs.map((j) => [j.id, j]))
   const single = opts.jobId ? byJob.get(opts.jobId) ?? null : null
   // Funnel rows: the job's stages in order, or stage types in default order for all jobs.
-  const TYPE_ORDER: StageType[] = ['applied', 'screening', 'assessment', 'bot_screen', 'virtual_interview', 'f2f_interview', 'client_review', 'custom', 'offer', 'hired']
+  const TYPE_ORDER: StageType[] = ['applied', 'screening', 'assessment', 'bot_screen', 'virtual_interview', 'f2f_interview', 'client_review', 'hr_round', 'bgv', 'custom', 'offer', 'hired']
   const rows: { key: string; name: string; type: StageType }[] = single
     ? single.pipeline.filter((s) => s.type !== 'rejected').map((s) => ({ key: s.id, name: s.name, type: s.type }))
     : TYPE_ORDER.filter((t) => jobs.some((j) => j.pipeline.some((s) => s.type === t))).map((t) => ({ key: t, name: t.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()), type: t }))

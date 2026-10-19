@@ -4,7 +4,8 @@
  * email + phone + résumé and are treated as unverified (see upsertCandidate).
  */
 import { getMongoDb } from '@/lib/mongodb'
-import type { AtsApplication, AtsJob } from './contract'
+import type { AtsApplication, AtsJob, Compensation } from './contract'
+import { compensationToOverrides } from './compensation'
 import { intakeResume, upsertCandidate, createApplication, normEmail, applyOverrides, type ParsedOverrides } from './intake'
 import { toE164 } from './phone'
 
@@ -20,6 +21,8 @@ export interface ApplyInput {
   resume?: { file_name: string; text: string } | null
   /** Stated on the form: notice period (days), current / expected annual salary. */
   overrides?: ParsedOverrides
+  /** Validated on the form (parseCompensation, source 'apply'); stored on the application. */
+  compensation?: Compensation | null
 }
 
 export class ApplyError extends Error {
@@ -62,13 +65,16 @@ export async function applyToJob(job: AtsJob, input: ApplyInput): Promise<{ appl
     verified: signedIn,
     tags: [],
   }
+  const compensation = input.compensation ?? null
+  // Stated compensation beats the legacy fields (both feed the screening salary / notice checks).
+  const overrides: ParsedOverrides = { ...input.overrides, ...(compensation ? compensationToOverrides(compensation) : {}), location: input.location ?? undefined }
   let out: { application: AtsApplication; created: boolean }
   if (resume) {
-    const r = await intakeResume(job, resume, { ...base, ai: true, overrides: { ...input.overrides, location: input.location ?? undefined } })
+    const r = await intakeResume(job, resume, { ...base, ai: true, overrides, compensation })
     out = { application: r.application, created: r.created }
   } else {
-    const { candidate } = await upsertCandidate(job.tenant_id, { ...base, parsed: applyOverrides(null, { ...input.overrides, location: input.location ?? undefined }) })
-    out = await createApplication(job, candidate, 'apply_page', { location: input.location })
+    const { candidate } = await upsertCandidate(job.tenant_id, { ...base, parsed: applyOverrides(null, overrides) })
+    out = await createApplication(job, candidate, 'apply_page', { location: input.location, compensation })
   }
   if (out.created && input.cover_letter) {
     const { atsApplications } = await import('./db')

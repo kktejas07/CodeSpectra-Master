@@ -5,7 +5,8 @@
  */
 import { getMongoDb } from '@/lib/mongodb'
 import { safeHttpUrl } from '@/lib/safe-html'
-import type { AtsApplication, AtsCandidate, AtsJob, CandidateSource, ParsedResume } from './contract'
+import type { AtsApplication, AtsCandidate, AtsJob, CandidateSource, Compensation, ParsedResume } from './contract'
+import { compensationToOverrides, parseCompensation, withCompensation } from './compensation'
 import { atsApplications, atsCandidates, isDuplicateKey, newId, nowIso } from './db'
 import { startApplication } from './engine'
 import { parseResumeText } from './parse'
@@ -137,7 +138,7 @@ export async function createApplication(
   job: AtsJob,
   candidate: AtsCandidate,
   source: CandidateSource,
-  opts: { location?: string | null } = {},
+  opts: { location?: string | null; compensation?: Compensation | null } = {},
 ): Promise<{ application: AtsApplication; created: boolean }> {
   const col = await atsApplications()
   const existing = (await col.findOne({ tenant_id: job.tenant_id, job_id: job.id, candidate_id: candidate.id }, { projection: { _id: 0 } })) as AtsApplication | null
@@ -160,6 +161,7 @@ export async function createApplication(
     pending_move: null,
     source,
     rejection_reason: null,
+    ...(opts.compensation ? withCompensation({}, opts.compensation) : {}),
     created_at: ts,
     updated_at: ts,
   }
@@ -194,14 +196,14 @@ export function applyOverrides(parsed: ParsedResume | null, o?: ParsedOverrides)
 export async function intakeResume(
   job: AtsJob,
   r: { file_name: string; text: string; storage_url?: string | null },
-  extra: Omit<CandidateInput, 'resume' | 'parsed'> & { ai?: boolean; overrides?: ParsedOverrides },
+  extra: Omit<CandidateInput, 'resume' | 'parsed'> & { ai?: boolean; overrides?: ParsedOverrides; compensation?: Compensation | null },
 ): Promise<{ candidate: AtsCandidate; application: AtsApplication; created: boolean; candidateCreated: boolean; flags: string[] }> {
   const res = await parseResumeText(r.text, { ai: extra.ai !== false, country: extra.country, tenantId: job.tenant_id })
   const flags = res.flags
   const parsed = applyOverrides(res.parsed, extra.overrides)
-  const { ai: _ai, overrides: _o, ...rest } = extra
+  const { ai: _ai, overrides: _o, compensation: comp, ...rest } = extra
   const { candidate, created: candidateCreated } = await upsertCandidate(job.tenant_id, { ...rest, resume: r, parsed })
-  const { application, created } = await createApplication(job, candidate, extra.source, { location: extra.location })
+  const { application, created } = await createApplication(job, candidate, extra.source, { location: extra.location, compensation: comp })
   return { candidate, application, created, candidateCreated, flags }
 }
 
@@ -241,6 +243,8 @@ export interface CsvCandidateRow {
   phone: string | null
   country: string | null
   resume_url: string | null
+  /** optional columns: experience (fresher|experienced), current_ctc, expected_ctc, currency, period, notice_days */
+  compensation?: Compensation | null
   error?: string
 }
 
@@ -260,6 +264,14 @@ export function parseCandidateCsv(text: string): CsvCandidateRow[] {
   const iPhone = idx(['phone', 'mobile', 'phonenumber', 'phone_number', 'whatsapp'], 2)
   const iCountry = idx(['country', 'country_code', 'countrycode'], 3)
   const iUrl = idx(['resume_url', 'resumeurl', 'resume', 'cv', 'cv_url'], 4)
+  // Compensation columns are header-only (never positional).
+  const opt = (names: string[]) => (hasHeader ? head.findIndex((h) => names.includes(h)) : -1)
+  const iExp = opt(['experience', 'experience_level', 'experiencelevel', 'level'])
+  const iCur = opt(['current_ctc', 'currentctc', 'current_salary', 'ctc'])
+  const iExpd = opt(['expected_ctc', 'expectedctc', 'expected_salary'])
+  const iCcy = opt(['currency'])
+  const iPer = opt(['period', 'pay_period'])
+  const iNotice = opt(['notice_days', 'noticedays', 'notice', 'notice_period'])
   const out: CsvCandidateRow[] = []
   rows.slice(hasHeader ? 1 : 0, (hasHeader ? 1 : 0) + MAX_CSV_ROWS).forEach((r, k) => {
     const cell = (i: number) => (i >= 0 ? (r[i] ?? '').trim() : '')
@@ -275,7 +287,18 @@ export function parseCandidateCsv(text: string): CsvCandidateRow[] {
       country,
       resume_url: safeHttpUrl(cell(iUrl)),
     }
-    if (rawEmail && !email) row.error = 'Invalid email'
+    let compError: string | null = null
+    if ([iExp, iCur, iExpd, iNotice].map(cell).some(Boolean)) {
+      const lvl = cell(iExp).toLowerCase() || (cell(iCur) ? 'experienced' : cell(iExpd) ? 'fresher' : '')
+      const c = parseCompensation(
+        { experience_level: lvl, current_ctc: cell(iCur), expected_ctc: cell(iExpd), currency: cell(iCcy), period: cell(iPer), notice_days: cell(iNotice) },
+        { source: 'recruiter', country },
+      )
+      if (c.ok) row.compensation = c.value
+      else compError = `Compensation: ${c.errors[0]}`
+    }
+    if (compError) row.error = compError
+    else if (rawEmail && !email) row.error = 'Invalid email'
     else if (!email && !phone) row.error = 'Needs an email or phone number'
     else if (cell(iPhone) && !phone) row.error = 'Invalid phone number'
     out.push(row)
@@ -393,17 +416,18 @@ export async function addFromPool(job: AtsJob, ids: string[]): Promise<{ id: str
 /** Manual add (recruiter form) or one CSV row. */
 export async function addManualCandidate(
   job: AtsJob,
-  input: { name?: string; email?: string | null; phone?: string | null; country?: string | null; resume_text?: string | null; resume_url?: string | null; source: 'manual' | 'csv' | 'referral'; tags?: string[] },
+  input: { name?: string; email?: string | null; phone?: string | null; country?: string | null; resume_text?: string | null; resume_url?: string | null; source: 'manual' | 'csv' | 'referral'; tags?: string[]; compensation?: Compensation | null },
 ): Promise<{ candidate: AtsCandidate; application: AtsApplication; created: boolean }> {
   const text = typeof input.resume_text === 'string' ? input.resume_text.slice(0, 60_000) : ''
-  const parsed = text.trim().length >= 30 ? (await parseResumeText(text, { ai: true, country: input.country })).parsed : null
+  const read = text.trim().length >= 30 ? (await parseResumeText(text, { ai: true, country: input.country })).parsed : null
+  const parsed = input.compensation ? applyOverrides(read, compensationToOverrides(input.compensation)) : read
   const url = safeHttpUrl(input.resume_url ?? '')
   const resume = text.trim() || url ? { file_name: url ? url.split('/').pop()?.slice(0, 120) || 'Résumé link' : 'Pasted résumé', text, storage_url: url } : null
   const { candidate } = await upsertCandidate(job.tenant_id, {
     name: input.name, email: input.email, phone: input.phone, country: input.country, source: input.source,
     resume, parsed, tags: input.tags,
   })
-  const r = await createApplication(job, candidate, input.source)
+  const r = await createApplication(job, candidate, input.source, { compensation: input.compensation ?? null })
   return { candidate, application: r.application, created: r.created }
 }
 

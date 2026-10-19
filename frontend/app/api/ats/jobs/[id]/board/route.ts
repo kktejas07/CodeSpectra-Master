@@ -40,7 +40,8 @@ export async function GET(req: NextRequest, { params }: IdRouteContext) {
               source: a.source,
               match: actor.role === 'client' ? (a.match ? { score: a.match.score } : null) : a.match ?? null,
               pending_move: actor.role === 'client' ? null : a.pending_move ?? null,
-              last_result: last,
+              // Clients: HR round / BGV results without their summary (compensation, verification detail).
+              last_result: actor.role === 'client' && last && (stage.type === 'hr_round' || stage.type === 'bgv') ? { ...last, summary: undefined } : last,
               rejection_reason: actor.role === 'client' ? null : a.rejection_reason ?? null,
               created_at: a.created_at,
               candidate: view && {
