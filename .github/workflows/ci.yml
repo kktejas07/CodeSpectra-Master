@@ -134,14 +134,15 @@ jobs:
       - name: Smoke test built app
         env:
           NODE_ENV: production
-          SESSION_SECRET: ci-smoke-session-secret-0123456789abcdef
-          SECRETS_ENCRYPTION_KEY: ci-smoke-secrets-key-0123456789abcdef
           MONGODB_URI: mongodb://127.0.0.1:27017
           MONGODB_DB_NAME: codespectra_ci
           NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
           SKIP_AUTO_INDEXES: '1'
           CRON_SECRET: ci-cron-secret
+        # Throwaway keys generated per run (keeps the secret scanner clean).
         run: |
+          export SESSION_SECRET="$(openssl rand -hex 32)"
+          export SECRETS_ENCRYPTION_KEY="$(openssl rand -hex 32)"
           npx next start -p 3000 -H 127.0.0.1 > /tmp/next.log 2>&1 &
           BASE_URL=http://127.0.0.1:3000 node scripts/ci-smoke.mjs || (echo '--- server log ---'; tail -n 200 /tmp/next.log; exit 1)
         timeout-minutes: 5
