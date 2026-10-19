@@ -338,6 +338,17 @@ async function main() {
 
   const gating = WIDTHS.reduce((n, w) => n + s.overflowPages[w], 0) + s.brokenLinks + s.titleIssues + s.positiveTabindexPages + s.serverErrors.length + s.navErrors.length
   if (STRICT && (gating > 0 || serverDown || s.unverifiedLinks > 0)) {
+    // Surface gating findings as pull request annotations (readable without the raw log/artifact).
+    if (process.env.GITHUB_ACTIONS) {
+      const ann = (msg) => console.log(`::error title=QA crawl::${String(msg).replace(/[\r\n%]/g, ' ').slice(0, 400)}`)
+      if (serverDown) ann(`server unreachable at ${BASE}`)
+      if (s.unverifiedLinks) ann(`${s.unverifiedLinks} links could not be verified (server unreachable)`)
+      for (const w of WIDTHS) for (const o of overflowByWidth[w].slice(0, 5)) ann(`overflow at ${w}px: ${o.page} scrollWidth=${o.scrollWidth} ${o.offenders.map((x) => x.el).slice(0, 2).join(' | ')}`)
+      for (const b of report.brokenLinks.slice(0, 10)) ann(`broken link ${b.status ?? ''}${b.error ? ' ' + b.error : ''} ${b.href} from ${b.from.slice(0, 3).join(', ')}`)
+      for (const e of [...s.serverErrors, ...s.navErrors].slice(0, 10)) ann(`page error ${e.page} ${e.status ?? e.error}`)
+      for (const t of titleIssues.slice(0, 10)) ann(`title ${t.issue}: ${t.title ?? t.page}${t.pages ? ' on ' + t.pages.join(', ') : ''}`)
+      if (s.positiveTabindexPages) ann(`${s.positiveTabindexPages} pages use a positive tabindex`)
+    }
     console.error(`\nQA crawl failed: ${gating} gating finding(s).`)
     process.exit(1)
   }
