@@ -11,3 +11,7 @@ paths = [
   '''frontend/tests/secret-scanner.test.ts''',
   '''frontend/tests/llm-legacy-key.test.ts''',
 ]
+
+[[allowlists]]
+description = "Commit de4ddf656aea2bf23b7d97b2770d4e49f4bb04ae hardcoded throwaway CI smoke-test keys (ci-smoke-*), replaced with per-run random keys in the next commit"
+commits = ["de4ddf656aea2bf23b7d97b2770d4e49f4bb04ae"]
