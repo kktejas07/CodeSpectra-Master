@@ -23,7 +23,10 @@ async function waitForServer(timeoutMs = 120_000) {
       await fetch(`${BASE}/auth/login`, { redirect: 'manual' })
       return
     } catch { /* not up yet */ }
-    if (Date.now() > until) throw new Error(`server did not start at ${BASE}`)
+    if (Date.now() > until) {
+      if (inCI) console.log(`::error title=Smoke check failed::server did not start at ${BASE}`)
+      throw new Error(`server did not start at ${BASE}`)
+    }
     await new Promise((r) => setTimeout(r, 1000))
   }
 }
@@ -38,7 +41,13 @@ function policyOf(res) {
 }
 
 const failures = []
-const check = (ok, msg) => { if (!ok) failures.push(msg); console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`) }
+const inCI = !!process.env.GITHUB_ACTIONS
+const check = (ok, msg) => {
+  if (!ok) failures.push(msg)
+  console.log(`${ok ? 'ok  ' : 'FAIL'} ${msg}`)
+  // Surface failures as annotations on the pull request (readable without the raw log).
+  if (!ok && inCI) console.log(`::error title=Smoke check failed::${msg.replace(/[\r\n%]/g, ' ')}`)
+}
 
 await waitForServer()
 
