@@ -146,6 +146,16 @@ export type ServerSecretsRecord = {
   voice_agent_webhook_secret?: string
   twilio_auth_token?: string
   exotel_webhook_token?: string
+  // --- ATS meetings: platform OAuth apps (lib/ats/interviews/integrations.ts) --
+  ats_google_client_id?: string
+  ats_google_client_secret?: string
+  ats_microsoft_client_id?: string
+  ats_microsoft_client_secret?: string
+  ats_microsoft_tenant?: string         // directory ID/domain; default 'common'
+  // --- ATS built-in video (lib/ats/interviews/livekit.ts) --------------------
+  livekit_url?: string                  // wss://… (browser-facing)
+  livekit_api_key?: string
+  livekit_api_secret?: string
   // --- Internal backend auth (frontend-side copy of INTERNAL_BACKEND_SECRET) --
   // Sent as `x-internal-secret` on server->server calls to the FastAPI backend.
   // Must match the backend's INTERNAL_BACKEND_SECRET env var (set in Dokploy).

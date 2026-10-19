@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAts, tenantFromRequest } from '@/lib/ats/access'
 import { canScheduleInterview, onPanel } from '@/lib/ats/interviews/access'
 import { getInterview, loadContext } from '@/lib/ats/interviews/service'
-import { mintRoomToken } from '@/lib/ats/interviews/livekit'
+import { mintRoomToken, LIVEKIT_NOT_CONFIGURED } from '@/lib/ats/interviews/livekit'
 import { interviewErrorResponse, NO_STORE } from '@/lib/ats/interviews/http'
 
 export const runtime = 'nodejs'
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const name = actor.name || iv.panel.find((p) => p.user_id === actor.userId)?.name || actor.email || 'Interviewer'
     // Identity is the signed-in account — never taken from the request body.
     const t = await mintRoomToken(iv.id, `panel:${actor.userId}`, name)
-    if (!t) return NextResponse.json({ error: 'Video is not configured. Set LIVEKIT_URL, LIVEKIT_API_KEY and LIVEKIT_API_SECRET.' }, { status: 503 })
+    if (!t) return NextResponse.json({ error: LIVEKIT_NOT_CONFIGURED }, { status: 503 })
     return NextResponse.json({ ...t, title: `${iv.candidate_name || 'Candidate'} — ${iv.job_title || 'Interview'}` }, { headers: NO_STORE })
   } catch (e) {
     return interviewErrorResponse(e, 'live token')

@@ -56,6 +56,7 @@ import { LlmSettingsTabs } from '@/components/dashboard/settings/llm-settings-ta
 import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
 import { KycSettingsSection } from '@/components/dashboard/settings/kyc-section'
+import { HiringIntegrationsSection } from '@/components/dashboard/settings/hiring-integrations-section'
 import { useToast } from '@/lib/toast-context'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
@@ -1370,6 +1371,10 @@ function SystemSettingsInner() {
 
             {section === 'whatsapp' ? (
               <WhatsAppSettingsSection />
+            ) : null}
+
+            {section === 'hiring' ? (
+              <HiringIntegrationsSection />
             ) : null}
 
            {section === 'mail' ? (

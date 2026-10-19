@@ -248,44 +248,8 @@ export function startSchedulerLoop(): void {
     } catch (e) {
       console.error('[scheduler] knowledge tick error:', e)
     }
-    // ATS interviews: 24h / 1h reminders + scorecard deadlines (idempotent per interview).
-    try {
-      const { runInterviewSweep } = await import('./ats/interviews/service')
-      await runInterviewSweep()
-    } catch (e) {
-      console.error('[scheduler] ats interview sweep error:', e)
-    }
-    // ATS HR round: compensation-form reminders (half-way) + overdue flags (atomic claims per form).
-    try {
-      const { sweepHrForms } = await import('./ats/hr/service')
-      await sweepHrForms()
-    } catch (e) {
-      console.error('[scheduler] ats hr sweep error:', e)
-    }
-    // ATS background verification: reminders, deadlines, simulated vendor, adverse-action
-    // wait-over notices, retention purge. One replica per 5-minute window.
-    const bgvLock = `codespectra:lock:ats-bgv:${new Date().toISOString().slice(0, 15)}${Math.floor(new Date().getUTCMinutes() % 10 / 5)}`
-    if (await acquireRedisLock(bgvLock, 280).catch(() => false)) {
-      try {
-        const { runBgvSweep } = await import('./ats/bgv/service')
-        await runBgvSweep()
-      } catch (e) {
-        console.error('[scheduler] ats bgv sweep error:', e)
-      }
-    }
-    // ATS bot screening: quiet-hour starts, reminders, timeouts, retries. One replica per minute.
-    const screenStarted = Date.now()
-    const screenLock = `codespectra:lock:ats-screening:${new Date().toISOString().slice(0, 16)}`
-    if (await acquireRedisLock(screenLock, 55).catch(() => false)) {
-      try {
-        const { tickScreening } = await import('./ats/screening/machine')
-        await tickScreening(new Date(), 200)
-        await recordCronRun('ats-screening', true, Date.now() - screenStarted)
-      } catch (e) {
-        await recordCronRun('ats-screening', false, Date.now() - screenStarted, e instanceof Error ? e.message : String(e))
-        console.error('[scheduler] ats screening tick error:', e)
-      }
-    }
+    // Hiring (lib/ats) sweeps — shared with /api/cron/tick for serverless hosts.
+    await runAtsMinuteSweeps()
   }
 
   setTimeout(() => {
@@ -335,19 +299,75 @@ async function checkTrials(): Promise<void> {
   } catch {
     await recordCronRun('grace-expiry', false, Date.now() - graceStarted)
   }
-  // Hiring pipeline (lib/ats): stage SLAs + assessment deadlines. One replica per day.
-  const atsStarted = Date.now()
-  const atsLock = `codespectra:lock:ats-sla:${new Date().toISOString().slice(0, 10)}`
-  if (await acquireRedisLock(atsLock, 6 * 3600).catch(() => false)) {
+}
+
+// ── Hiring (lib/ats) sweeps ─────────────────────────────────────────────────
+
+export interface AtsSweepReport {
+  ran: string[]
+  skipped: string[]
+  failed: string[]
+}
+
+let _lastAtsDailyKey = ''
+
+/**
+ * Every per-minute hiring job, in one place. Called by the in-process loop
+ * (startSchedulerLoop) AND by /api/cron/tick, so serverless hosts get the same
+ * work. Each job takes a Redis lock keyed by its window (minute / 5 minutes /
+ * day), so a loop and an external cron hitting the same window never both run
+ * it. Without Redis the locks always succeed; every job is idempotent (atomic
+ * claims / status guards), and the daily pass also has an in-process guard.
+ * Never throws.
+ */
+export async function runAtsMinuteSweeps(now: Date = new Date()): Promise<AtsSweepReport> {
+  const report: AtsSweepReport = { ran: [], skipped: [], failed: [] }
+  const iso = now.toISOString()
+  const lock = (key: string, ttl: number) => acquireRedisLock(key, ttl).catch(() => false)
+  const run = async (name: string, fn: () => Promise<unknown>, heartbeat = false) => {
+    const started = Date.now()
     try {
-      const { sweepSla } = await import('./ats/engine')
-      const { sweepAssessmentDeadlines } = await import('./ats/handlers/assessment')
-      const late = await sweepAssessmentDeadlines()
-      const sla = await sweepSla()
-      if (late || sla.rejected) logger.info(`[ats] ${late} assessment deadline(s) missed, ${sla.rejected} SLA rejection(s)`)
-      await recordCronRun('ats-sla', true, Date.now() - atsStarted)
+      await fn()
+      report.ran.push(name)
+      if (heartbeat) await recordCronRun(name, true, Date.now() - started)
     } catch (e) {
-      await recordCronRun('ats-sla', false, Date.now() - atsStarted, e instanceof Error ? e.message : String(e))
+      report.failed.push(name)
+      if (heartbeat) await recordCronRun(name, false, Date.now() - started, e instanceof Error ? e.message : String(e))
+      console.error(`[scheduler] ${name} error:`, e)
     }
   }
+
+  // Interviews (24h / 1h reminders + scorecard deadlines) and HR compensation forms
+  // (half-way reminders + overdue flags). One replica per minute.
+  if (await lock(`codespectra:lock:ats-minute:${iso.slice(0, 16)}`, 55)) {
+    await run('ats-interviews', async () => (await import('./ats/interviews/service')).runInterviewSweep(now))
+    await run('ats-hr-forms', async () => (await import('./ats/hr/service')).sweepHrForms(now))
+  } else report.skipped.push('ats-interviews', 'ats-hr-forms')
+
+  // Background verification: reminders, deadlines, simulated vendor, adverse-action
+  // notices, retention purge. One replica per 5-minute window.
+  const bgvLock = `codespectra:lock:ats-bgv:${iso.slice(0, 15)}${Math.floor(now.getUTCMinutes() % 10 / 5)}`
+  if (await lock(bgvLock, 280)) {
+    await run('ats-bgv', async () => (await import('./ats/bgv/service')).runBgvSweep(now))
+  } else report.skipped.push('ats-bgv')
+
+  // Bot screening: quiet-hour starts, reminders, timeouts, retries. One replica per minute.
+  if (await lock(`codespectra:lock:ats-screening:${iso.slice(0, 16)}`, 55)) {
+    await run('ats-screening', async () => (await import('./ats/screening/machine')).tickScreening(now, 200), true)
+  } else report.skipped.push('ats-screening')
+
+  // Stage SLAs + assessment deadlines. Once per UTC day, one replica.
+  const day = iso.slice(0, 10)
+  if (_lastAtsDailyKey !== day && (await lock(`codespectra:lock:ats-sla:${day}`, 6 * 3600))) {
+    _lastAtsDailyKey = day
+    await run('ats-sla', async () => {
+      const { sweepSla } = await import('./ats/engine')
+      const { sweepAssessmentDeadlines } = await import('./ats/handlers/assessment')
+      const late = await sweepAssessmentDeadlines(now)
+      const sla = await sweepSla(now)
+      if (late || sla.rejected) logger.info(`[ats] ${late} assessment deadline(s) missed, ${sla.rejected} SLA rejection(s)`)
+    }, true)
+  } else report.skipped.push('ats-sla')
+
+  return report
 }

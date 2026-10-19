@@ -18,6 +18,7 @@ import {
   Database,
   MessageCircle,
   Video,
+  Briefcase,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -40,6 +41,7 @@ const ITEMS: {
   { id: 'product', label: 'Product & access', icon: Users },
   { id: 'certificates', label: 'Certificates', icon: ScrollText },
   { id: 'integrations', label: 'Integrations', icon: KeyRound },
+  { id: 'hiring', label: 'Hiring integrations', icon: Briefcase },
   { id: 'payments', label: 'Payments & billing', icon: CreditCard },
   { id: 'email-templates', label: 'Email templates', icon: FileText },
   { id: 'llm', label: 'AI & LLM Keys', icon: Sparkles },

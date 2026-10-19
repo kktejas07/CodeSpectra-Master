@@ -10,6 +10,7 @@ import { livekitConfig } from '@/lib/ats/interviews/livekit'
 import { isValidTimeZone } from '@/lib/ats/interviews/tz'
 import { interviewErrorResponse, NO_STORE } from '@/lib/ats/interviews/http'
 import { limitRequest } from '@/lib/rate-limit'
+import { getAPIUser } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,14 +21,15 @@ export async function GET(req: NextRequest) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { actor } = gate
   try {
-    const [rows, apps, settings] = await Promise.all([listIntegrations(actor.tenantId), platformAppConfigured(), tenantInterviewSettings(actor.tenantId)])
+    const [rows, apps, settings, lk, user] = await Promise.all([listIntegrations(actor.tenantId), platformAppConfigured(), tenantInterviewSettings(actor.tenantId), livekitConfig(), getAPIUser()])
     return NextResponse.json({
       providers: CONNECTABLE.map((p) => rows.find((r) => r.provider === p) || { provider: p, status: 'disconnected', account_label: null, connected_at: null, last_error: null }),
-      livekit_configured: !!livekitConfig(),
+      livekit_configured: !!lk,
       platform_apps: apps,
       redirect_uris: { google: redirectUri('google'), microsoft: redirectUri('microsoft') },
       settings,
       can_manage: actor.role === 'admin',
+      is_platform_admin: user?.role === 'superadmin',
     }, { headers: NO_STORE })
   } catch (e) {
     return interviewErrorResponse(e, 'integrations get')

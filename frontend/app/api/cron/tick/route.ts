@@ -16,11 +16,22 @@
  * Even without an external cron, an in-process tick loop runs every
  * minute when the Next.js server is alive (see `scheduler.ts:startSchedulerLoop`),
  * so single-instance deployments work out of the box.
+ *
+ * Hosting:
+ *   - Long-running servers (Docker / VPS / Dokploy): nothing to set up — the
+ *     in-process loop runs workflows and every hiring sweep each minute.
+ *   - Serverless (Vercel, Netlify, …): there is no long-lived process, so add ONE
+ *     cron that hits /api/cron/tick every minute with `Authorization: Bearer
+ *     <CRON_SECRET>`. It runs the same hiring sweeps as the loop
+ *     (`runAtsMinuteSweeps`: interviews, HR forms, background checks, bot
+ *     screening, daily SLA + assessment deadlines). Each sweep holds a Redis
+ *     lock for its window, so the loop and the cron never both run it.
+ *   /api/ats/screening/tick still works for hosts that already point at it.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
-import { runDueWorkflows, startSchedulerLoop } from '@/lib/scheduler'
+import { runAtsMinuteSweeps, runDueWorkflows, startSchedulerLoop } from '@/lib/scheduler'
 import { getMongoDb } from '@/lib/mongodb'
 import { flushDeferredDeliveries } from '@/lib/notifications-delivery'
 
@@ -62,7 +73,9 @@ async function handle(req: NextRequest) {
   } catch (e) {
     console.error('[cron/tick] deferred notification flush failed:', e)
   }
-  return NextResponse.json({ ok: true, ...report, autoClosedExams: autoClosed, deferredNotificationsSent: deferredSent })
+  // Hiring sweeps (same function the in-process loop calls; never throws).
+  const ats = await runAtsMinuteSweeps(new Date())
+  return NextResponse.json({ ok: true, ...report, autoClosedExams: autoClosed, deferredNotificationsSent: deferredSent, ats })
 }
 
 const cronTick = withCronHeartbeat('tick', handle)

@@ -5,7 +5,7 @@
  * status (booleans only), platform keys (superadmin), webhook URLs and
  * "Test with my number" (simulated when a channel isn't configured).
  * APIs: /api/ats/screening/settings, /api/ats/screening/test, /api/ats/screening/[id],
- *       /api/admin/server-secrets (superadmin keys).
+ * Platform keys are set in Admin → Settings → Hiring integrations (superadmin).
  */
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -20,6 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import type { BotChannel } from '@/lib/ats/contract'
+import { PlatformAdminHint } from '@/components/hiring/platform-admin-hint'
 
 interface RegionRow { key: string; whatsapp_phone_number_id: string; whatsapp_display_number: string; call_number: string; vapi_phone_number_id: string; provider: 'vapi' | 'exotel' | 'twilio' }
 interface Status {
@@ -83,104 +84,6 @@ function CopyField({ label, value }: { label: string; value: string }) {
         </Button>
       </div>
     </div>
-  )
-}
-
-// ─── Platform keys (superadmin) ─────────────────────────────────────────────
-
-const SECRET_KEYS = [
-  ['meta_whatsapp_access_token', 'Meta system-user access token'],
-  ['meta_whatsapp_app_secret', 'Meta app secret (webhook signatures)'],
-  ['meta_whatsapp_verify_token', 'Webhook verify token (you choose it)'],
-  ['vapi_api_key', 'Vapi private API key'],
-  ['vapi_webhook_secret', 'Vapi webhook secret (you choose it)'],
-  ['voice_agent_webhook_secret', 'Custom voice agent secret'],
-  ['twilio_auth_token', 'Twilio auth token (status callbacks)'],
-  ['exotel_webhook_token', 'Exotel callback token (you choose it)'],
-  ['deepgram_api_key', 'Deepgram API key (voice notes)'],
-] as const
-const PLAIN_KEYS = [
-  ['meta_whatsapp_phone_number_id', 'Default WhatsApp phone number ID'],
-  ['meta_whatsapp_waba_id', 'WhatsApp Business account ID'],
-  ['meta_whatsapp_template_chat', 'Chat template name'],
-  ['meta_whatsapp_template_call', 'Call template name'],
-  ['meta_whatsapp_template_language', 'Template language (e.g. en)'],
-  ['meta_whatsapp_call_mode', 'WhatsApp call mode (sip or graph)'],
-  ['vapi_phone_number_ids', 'Vapi numbers per region (IN=…, US=…, *=…)'],
-  ['vapi_whatsapp_trunk_number_id', 'Vapi SIP trunk number ID for WhatsApp calls'],
-  ['voice_agent_sip_uri', 'Voice agent SIP URI (sip:host:5061)'],
-  ['voice_agent_webhook_url', 'Custom voice agent dial URL (optional)'],
-] as const
-
-function PlatformKeys({ onSaved }: { onSaved: () => void }) {
-  const addToast = useToast()
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [has, setHas] = useState<Record<string, boolean>>({})
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    void (async () => {
-      try {
-        const res = await fetch('/api/admin/server-secrets', { credentials: 'include', cache: 'no-store' })
-        const json = await res.json()
-        if (!res.ok) return
-        const s = json.secrets || {}
-        const v: Record<string, string> = {}
-        const h: Record<string, boolean> = {}
-        for (const [k] of PLAIN_KEYS) v[k] = s[k] || ''
-        for (const [k] of SECRET_KEYS) h[k] = !!s[`has_${k}`]
-        setValues(v)
-        setHas(h)
-      } catch { /* status panel still shows booleans */ }
-    })()
-  }, [])
-
-  async function save() {
-    setSaving(true)
-    try {
-      const patch: Record<string, string> = {}
-      for (const [k] of PLAIN_KEYS) patch[k] = values[k] ?? ''
-      for (const [k] of SECRET_KEYS) if (values[k]) patch[k] = values[k]
-      const res = await csrfFetch('/api/admin/server-secrets', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Save failed')
-      addToast({ type: 'success', title: 'Platform keys saved' })
-      setValues((v) => { const n = { ...v }; for (const [k] of SECRET_KEYS) delete n[k]; return n })
-      for (const [k] of SECRET_KEYS) if (patch[k]) setHas((h) => ({ ...h, [k]: true }))
-      onSaved()
-    } catch (e) {
-      addToast({ type: 'error', title: 'Could not save keys', message: (e as Error).message })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <Panel>
-      <div className="mb-4">
-        <h3 className="font-semibold text-foreground">Platform keys</h3>
-        <p className="text-sm text-muted-foreground">Shared by every organization. Only platform admins see this. Saved keys are never shown again — type a new value to replace one.</p>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {SECRET_KEYS.map(([k, label]) => (
-          <div key={k} className="space-y-1">
-            <Label htmlFor={k}>{label}</Label>
-            <Input id={k} type="password" autoComplete="off" placeholder={has[k] ? 'Saved — leave blank to keep' : 'Not set'} value={values[k] || ''} onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))} />
-          </div>
-        ))}
-        {PLAIN_KEYS.map(([k, label]) => (
-          <div key={k} className="space-y-1">
-            <Label htmlFor={k}>{label}</Label>
-            <Input id={k} value={values[k] || ''} onChange={(e) => setValues((v) => ({ ...v, [k]: e.target.value }))} />
-          </div>
-        ))}
-      </div>
-      <div className="mt-5 flex justify-end">
-        <Button onClick={save} disabled={saving} className="min-h-11">
-          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save platform keys
-        </Button>
-      </div>
-    </Panel>
   )
 }
 
@@ -471,7 +374,15 @@ function ScreeningSettingsInner() {
         </div>
       </Section>
 
-      {data.can_edit_platform_keys && <PlatformKeys onSaved={() => void load()} />}
+      {!(st.whatsapp.ready && st.whatsapp_call.ready && (st.vapi.ready || st.voice_agent_webhook)) && (
+        <Panel className="p-4">
+          <PlatformAdminHint
+            isPlatformAdmin={data.can_edit_platform_keys}
+            what="WhatsApp, voice bot and phone keys"
+            className="text-sm text-muted-foreground"
+          />
+        </Panel>
+      )}
 
       <Section
         title="Numbers per region"

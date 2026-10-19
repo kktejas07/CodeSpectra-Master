@@ -19,6 +19,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
 import type { MeetingProvider } from '@/lib/ats/contract'
+import { PlatformAdminHint } from '@/components/hiring/platform-admin-hint'
 
 type Connectable = 'zoom' | 'google_meet' | 'teams'
 interface Row { provider: Connectable; status: 'connected' | 'error' | 'disconnected'; account_label: string | null; connected_at: string | null; last_error: string | null }
@@ -29,6 +30,7 @@ interface Data {
   redirect_uris: { google: string; microsoft: string }
   settings: { timezone: string; work_start_hour: number; work_end_hour: number; default_provider: MeetingProvider | null }
   can_manage: boolean
+  is_platform_admin?: boolean
 }
 
 function StatusBadge({ row }: { row: Row }) {
@@ -144,7 +146,12 @@ function IntegrationsInner() {
         {r.last_error && <p className="text-sm text-amber-700 dark:text-amber-400">{r.last_error}</p>}
         {manage && (
           <>
-            {!platformReady && !o.open && <p className="text-sm text-muted-foreground">The platform app isn&apos;t set up yet — use your own app below.</p>}
+            {!platformReady && !o.open && (
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">The platform app isn&apos;t set up yet — use your own app below.</p>
+                <PlatformAdminHint isPlatformAdmin={!!data.is_platform_admin} what={`platform ${which === 'google' ? 'Google' : 'Microsoft'} OAuth app`} className="text-xs text-muted-foreground" />
+              </div>
+            )}
             <button type="button" className="text-sm text-primary hover:underline" aria-expanded={o.open} onClick={() => setOwn((s) => ({ ...s, [p]: { ...o, open: !o.open } }))}>
               {o.open ? 'Use the platform app' : 'Use our own OAuth app'}
             </button>
@@ -185,7 +192,7 @@ function IntegrationsInner() {
               {data.livekit_configured ? <Badge variant="success"><CheckCircle2 aria-hidden /> Ready</Badge> : <Badge variant="warning">Not set up</Badge>}
             </div>
             <p className="text-sm text-muted-foreground">Candidates join from their invite link without an account; the panel joins from the interview page.</p>
-            {!data.livekit_configured && <p className="text-sm text-amber-700 dark:text-amber-400">The platform admin needs to set the video server (LiveKit) keys.</p>}
+            {!data.livekit_configured && <PlatformAdminHint isPlatformAdmin={!!data.is_platform_admin} what="video server (LiveKit) keys" />}
           </Panel>
 
           <Panel className="space-y-3">

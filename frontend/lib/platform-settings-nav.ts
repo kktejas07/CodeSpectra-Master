@@ -7,6 +7,7 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'product',
   'certificates',
   'integrations',
+  'hiring',
   'payments',
   'email-templates',
   'llm',
