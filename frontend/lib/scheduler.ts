@@ -15,7 +15,6 @@
  * workflows whose cron expression is due *at the minute* of `when`, and
  * executes each via the existing engine. Returns a per-workflow log.
  */
-import { executeWorkflow } from './workflow-engine'
 import { recordCronRun } from './cron-heartbeat'
 import { logger } from './logger'
 import {
@@ -161,47 +160,26 @@ export async function runDueWorkflows(
       })
       if (dup) continue
 
-      const started = nowIso()
-      let result
+      // Saved, resumable run (lib/automation/runs.ts): waits, retries and
+      // dead-lettering work for scheduled workflows too. The idempotency key
+      // makes a second tick in the same minute a no-op.
+      let runId = newId()
+      let status: SchedulerTickReport['triggered'][number]['status'] = 'failed'
+      let duration = 0
       try {
-        result = await executeWorkflow(wf)
+        const { startWorkflowRun } = await import('./automation/runs')
+        const { run } = await startWorkflowRun(wf, { trigger: 'schedule', actorId: 'scheduler', idempotencyKey: `cron:${wf.id}:${minuteKey}`, cronMinuteKey: minuteKey })
+        runId = run.id
+        status = run.status === 'success' || run.status === 'partial' || run.status === 'failed' ? run.status : 'success'
+        duration = run.duration_ms || 0
       } catch (e) {
-        result = {
-          status: 'failed' as const,
-          steps: [
-            {
-              node_id: 'scheduler',
-              label: 'scheduler',
-              ok: false,
-              error: e instanceof Error ? e.message : String(e),
-              duration_ms: 0,
-            },
-          ],
-          duration_ms: 0,
-        }
+        await runsCol.insertOne({
+          id: runId, workflow_id: wf.id, user_id: 'scheduler', status: 'failed', started_at: nowIso(), finished_at: nowIso(),
+          steps: [{ node_id: 'scheduler', label: 'scheduler', ok: false, error: e instanceof Error ? e.message : String(e), duration_ms: 0 }],
+          duration_ms: 0, cron_minute_key: minuteKey,
+        } as never)
       }
-      const finished = nowIso()
-      const runId = newId()
-      await runsCol.insertOne({
-        id: runId,
-        workflow_id: wf.id,
-        user_id: 'scheduler',
-        status: result.status,
-        started_at: started,
-        finished_at: finished,
-        steps: result.steps,
-        duration_ms: result.duration_ms,
-        // Extra field used for idempotency — not in the WorkflowRunDoc type
-        // but Mongo is happy storing extras.
-        cron_minute_key: minuteKey,
-      } as never)
-      triggered.push({
-        workflowId: wf.id,
-        name: wf.name,
-        runId,
-        status: result.status,
-        duration_ms: result.duration_ms,
-      })
+      triggered.push({ workflowId: wf.id, name: wf.name, runId, status, duration_ms: duration })
     }
 
     return {
@@ -269,17 +247,15 @@ export function stopSchedulerLoop(): void {
 }
 
 // ── Trial expiry check (runs daily) ─────────────────────────────────────────
-let _trialTimer: ReturnType<typeof setInterval> | null = null
-
+// Trial + grace expiry now run in the shared runner's daily block
+// (lib/platform-cron.ts via runAtsMinuteSweeps), so serverless hosts get them
+// from /api/cron/tick too (A-020). Kept as a no-op for existing callers.
 export function startTrialExpiryLoop(): void {
-  if (_trialTimer || process.env.NEXT_PUBLIC_DISABLE_SCHEDULER === '1') return
-  setTimeout(() => {
-    checkTrials()
-    _trialTimer = setInterval(checkTrials, 24 * 60 * 60_000)
-  }, 60_000)
+  return
 }
 
-async function checkTrials(): Promise<void> {
+/** @deprecated kept for manual runs; the shared runner calls the same functions. */
+export async function checkTrials(): Promise<void> {
   const started = Date.now()
   try {
     const { expireTrials } = await import('./coupon-service')
@@ -307,6 +283,8 @@ export interface AtsSweepReport {
   ran: string[]
   skipped: string[]
   failed: string[]
+  /** Platform jobs (lib/platform-cron.ts): quiet-hours flush, exam auto-close, daily billing, scheduled cron routes. */
+  platform?: import('./platform-cron').PlatformCronReport
 }
 
 let _lastAtsDailyKey = ''
@@ -356,6 +334,12 @@ export async function runAtsMinuteSweeps(now: Date = new Date()): Promise<AtsSwe
     await run('ats-screening', async () => (await import('./ats/screening/machine')).tickScreening(now, 200), true)
   } else report.skipped.push('ats-screening')
 
+  // Marketplace (buyer part): release unpaid checkouts after 30 min (re-checking the gateway first)
+  // and send booking reminders. One replica per minute; every step is idempotent.
+  if (await lock(`codespectra:lock:mkt-buyer:${iso.slice(0, 16)}`, 55)) {
+    await run('mkt-buyer', async () => (await import('./marketplace/settle')).runBuyerSweep(now), true)
+  } else report.skipped.push('mkt-buyer')
+
   // Stage SLAs + assessment deadlines. Once per UTC day, one replica.
   const day = iso.slice(0, 10)
   if (_lastAtsDailyKey !== day && (await lock(`codespectra:lock:ats-sla:${day}`, 6 * 3600))) {
@@ -368,6 +352,36 @@ export async function runAtsMinuteSweeps(now: Date = new Date()): Promise<AtsSwe
       if (late || sla.rejected) logger.info(`[ats] ${late} assessment deadline(s) missed, ${sla.rejected} SLA rejection(s)`)
     }, true)
   } else report.skipped.push('ats-sla')
+
+  // Learn hub (lib/learn/generate.ts): publish due scheduled posts; from the set
+  // hour, write one draft per tick until today's quota (atomic slot claim). One replica per minute.
+  if (await lock(`codespectra:lock:learn:${iso.slice(0, 16)}`, 55)) {
+    await run('learn', async () => (await import('./learn/generate')).runLearnTick(now))
+  } else report.skipped.push('learn')
+
+  // Events feed (lib/events-feed/tick.ts): source pulls (every N h), WhatsApp alerts +
+  // deadline reminders (every 15 min), weekly digest. Each job claims its run marker
+  // atomically in events_feed_settings. One replica per minute.
+  if (await lock(`codespectra:lock:events-feed:${iso.slice(0, 16)}`, 55)) {
+    await run('events-feed', async () => (await import('./events-feed/tick')).tickEventsFeed(now))
+  } else report.skipped.push('events-feed')
+
+  // Automations (lib/automation): event outbox dispatch, waiting workflow runs,
+  // persisted jobs/timers and the built-in system automations (Admin → Automations).
+  // Each automation claims its own window (Redis lock + DB claim) and records
+  // an `auto:<id>` heartbeat. One replica per minute.
+  if (await lock(`codespectra:lock:automations:${iso.slice(0, 16)}`, 55)) {
+    await run('automations', async () => (await import('./automation/system/registry')).runAutomationTick(now), true)
+  } else report.skipped.push('automations')
+
+  // Platform jobs (quiet-hours flush, exam auto-close, trial/grace expiry,
+  // digests + other scheduled cron routes) — lib/platform-cron.ts. Own locks.
+  try {
+    report.platform = await (await import('./platform-cron')).runPlatformCron(now)
+  } catch (e) {
+    report.failed.push('platform')
+    console.error('[scheduler] platform cron error:', e)
+  }
 
   return report
 }

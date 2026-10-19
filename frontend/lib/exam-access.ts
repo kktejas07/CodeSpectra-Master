@@ -454,7 +454,7 @@ export function examIdFromTargetUrl(targetUrl: unknown): string | null {
  * coding practice, a bare /assessment) are skipped; a step whose target_url
  * looks like an exam route but has no parseable id returns null (reject).
  */
-function assignedExamIds(raw: unknown): string[] | null {
+export function assignedExamIds(raw: unknown): string[] | null {
   if (!Array.isArray(raw)) return []
   const out: string[] = []
   for (const step of raw.slice(0, 50)) {
@@ -480,7 +480,7 @@ export async function checkInviteTargets(
   db: Db,
   user: Pick<APIUser, 'role' | 'tenantId'>,
   input: { target_url?: unknown; assigned_assessments?: unknown },
-): Promise<{ ok: true; examId: string | null } | { ok: false; error: string; status: number }> {
+): Promise<{ ok: true; examId: string | null; examIds?: string[] } | { ok: false; error: string; status: number }> {
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') return { ok: false, error: 'Forbidden', status: 403 }
   const target = String(input.target_url ?? '').trim()
   if (target && !target.startsWith('/')) return { ok: false, error: 'Invite link must be a path on this site.', status: 400 }
@@ -496,7 +496,7 @@ export async function checkInviteTargets(
   const found = (await db.collection('exams').find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, tenant_id: 1 } }).toArray()) as Doc[]
   if (found.length !== ids.length) return { ok: false, error: 'Assessment not found', status: 404 }
   if (!found.every((e) => isTenantStaff(user, e))) return { ok: false, error: 'Forbidden - resource belongs to another tenant', status: 403 }
-  return { ok: true, examId: ids[0] }
+  return { ok: true, examId: ids[0], examIds: ids }
 }
 
 // ─── Server-side attempt timer ───────────────────────────────────────────────
@@ -692,6 +692,7 @@ export const EXAM_EDITABLE_FIELDS = [
   'cert_template', 'degree_type', 'branch', 'screening_type', 'techStack',
   'questions', 'questionList', 'published', 'access_type', 'status', 'allow_retake', 'max_attempts',
   'issue_certificates', 'proctoring_mode', 'kind', 'cad_points', 'no_camera_policy', 'sections',
+  'auto_release_scores',
 ] as const
 
 /** Coerce `sections` from an editor body (call after pickFields). Question ids are re-checked when read (resolveSections). */
@@ -925,6 +926,8 @@ export function examPassPercent(exam: Doc): number {
 /** Coerce pass-mark / certificate settings from an editor body (call after pickFields). */
 export function normalizeCertificateFields(data: Doc): void {
   if ('issue_certificates' in data) data.issue_certificates = data.issue_certificates !== false
+  // Off unless explicitly switched on: release scores as soon as auto-grading finishes (lib/automation/system/assessments.ts).
+  if ('auto_release_scores' in data) data.auto_release_scores = data.auto_release_scores === true
   if ('passing_score' in data) {
     const n = Math.round(Number(data.passing_score))
     if (Number.isFinite(n)) data.passing_score = Math.max(0, Math.min(100, n))

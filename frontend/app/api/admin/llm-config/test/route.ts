@@ -3,7 +3,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { isMaskedSecret } from '@/lib/server-secrets-cache'
 import { LLM_PROVIDERS, type LLMConfig } from '@/lib/llm-config'
-import { isSafeUrl } from '@/lib/url-safety'
+import { isSafeUrl, safeFetch } from '@/lib/url-safety'
 
 export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: ssrfCheck.error }, { status: 400 });
     }
 
-    const res = await fetch(ssrfCheck.url.toString(), {
+    const res = await safeFetch(ssrfCheck.url.toString(), {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),

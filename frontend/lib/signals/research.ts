@@ -2,23 +2,26 @@
  * Fetch public pages and strip to plain text for fact extraction.
  * Free (no search API). Only pages the seed item already points at / links to.
  */
+import { readTextCapped, safeFetch } from '@/lib/url-safety'
+
 const MAX_CHARS = 7_000
+const MAX_HTML_BYTES = 1_000_000
 const FETCH_TIMEOUT_MS = 12_000
 
 export async function fetchPageText(url: string): Promise<{ url: string; text: string; title?: string } | null> {
   try {
-    const res = await fetch(url, {
+    // Feed links are untrusted: SSRF-checked on every hop.
+    const res = await safeFetch(url, {
       headers: {
         'User-Agent': 'CodeSpectraSignals/1.0 (+https://codespectra.ai; editorial research bot)',
         Accept: 'text/html,application/xhtml+xml',
       },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      redirect: 'follow',
     })
     if (!res.ok) return null
     const ctype = (res.headers.get('content-type') || '').toLowerCase()
     if (ctype.includes('pdf') || ctype.includes('image')) return null
-    const html = await res.text()
+    const html = await readTextCapped(res, MAX_HTML_BYTES, { truncate: true })
     const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
       ?.replace(/<[^>]+>/g, '')
       .replace(/\s+/g, ' ')
@@ -93,13 +96,12 @@ export function extractOutboundLinks(html: string, baseUrl: string, limit = 4): 
 export async function gatherSourceTexts(seedUrl: string): Promise<{ url: string; text: string; title?: string }[]> {
   const pages: { url: string; text: string; title?: string }[] = []
   try {
-    const res = await fetch(seedUrl, {
+    const res = await safeFetch(seedUrl, {
       headers: { 'User-Agent': 'CodeSpectraSignals/1.0 (+https://codespectra.ai)' },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      redirect: 'follow',
     })
     if (res.ok) {
-      const html = await res.text()
+      const html = await readTextCapped(res, MAX_HTML_BYTES, { truncate: true })
       const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]
         ?.replace(/<[^>]+>/g, '')
         .replace(/\s+/g, ' ')

@@ -91,6 +91,7 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
 export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'postal_server',
   'postal_from_email',
+  'postal_webhook_public_key',
   'trusted_origins_extra',
   'piston_url',
   'piston_run_timeout_ms',
@@ -134,6 +135,7 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'meta_whatsapp_template_call',
   'meta_whatsapp_template_language',
   'meta_whatsapp_call_mode',
+  'meta_whatsapp_template_status',
   'vapi_phone_number_ids',
   'vapi_whatsapp_trunk_number_id',
   'voice_agent_sip_uri',
@@ -158,6 +160,7 @@ export const HIRING_FIELDS: (keyof ServerSecretsRecord)[] = [
   'meta_whatsapp_template_call',
   'meta_whatsapp_template_language',
   'meta_whatsapp_call_mode',
+  'meta_whatsapp_template_status',
   'vapi_api_key',
   'vapi_webhook_secret',
   'vapi_phone_number_ids',

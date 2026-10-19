@@ -389,6 +389,12 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
     } as never)
   }
 
+  // Automation bus (dunning stop, workflows). Once per order.
+  void import('@/lib/automation/events').then(({ emit }) => emit('payment.succeeded', {
+    order_id: order.id, user_id: order.user_id, plan_id: order.plan_id, plan_name: order.plan_name ?? null, amount_minor: order.amount_paise, currency: order.currency,
+    provider: order.phonepe_transaction_id ? 'phonepe' : order.stripe_invoice_id || String(order.razorpay_order_id || '').startsWith('stripe_') ? 'stripe' : 'razorpay',
+  }, { idempotencyKey: `payment.succeeded:${order.id}` })).catch((e) => console.error('[automation] emit failed:', e))
+
   if (order.coupon_id) {
     await finalizeCouponRedemption(order.coupon_id, order.user_id, order.id, order.plan_id).catch((e) =>
       console.error('[billing-plans] coupon redemption record failed:', e),

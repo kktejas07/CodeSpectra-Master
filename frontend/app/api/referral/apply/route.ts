@@ -11,10 +11,9 @@ const DEFAULT_REFERRAL_XP = 500
 
 async function getReferralXp(): Promise<number> {
   try {
-    const db = await getMongoDb()
-    const doc = await db.collection('platform_settings').findOne({ key: 'gamification' })
-    const saved = doc?.value as any
-    const n = Number(saved?.referral_xp ?? saved?.referral?.xp_bonus ?? DEFAULT_REFERRAL_XP)
+    // Admin saves referral_xp_bonus; older docs used referral_xp / referral.xp_bonus (A-026).
+    const { getGamificationConfig } = await import('@/lib/gamification-config')
+    const n = (await getGamificationConfig()).referral.xp_bonus
     return Number.isFinite(n) && n > 0 ? n : DEFAULT_REFERRAL_XP
   } catch {
     return DEFAULT_REFERRAL_XP

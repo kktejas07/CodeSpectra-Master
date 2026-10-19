@@ -130,10 +130,11 @@ export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Sess
 export async function syncCheckoutSessionFailed(session: Stripe.Checkout.Session): Promise<void> {
   const order = await findOrderForSession(session)
   if (!order) return
-  await (await billingOrders()).updateOne(
+  const r = await (await billingOrders()).updateOne(
     { id: order.id, status: { $in: ['created', 'attempted'] } },
     { $set: { status: 'failed', updated_at: nowIso() } },
   )
+  if (r.modifiedCount) void import('@/lib/automation/events').then(({ emit }) => emit('payment.failed', { order_id: order.id, user_id: order.user_id, plan_id: order.plan_id, amount_minor: order.amount_paise, currency: order.currency, provider: 'stripe', kind: 'checkout' }, { idempotencyKey: `payment.failed:${order.id}` })).catch((e) => console.error('[automation] emit failed:', e))
 }
 
 // ─── Recurring subscriptions ────────────────────────────────────────────────
@@ -316,6 +317,10 @@ export async function syncInvoicePaymentFailed(invoice: Stripe.Invoice, now: Dat
     { $set: { past_due: true, past_due_since: sub.past_due_since || ts, grace_ends_at: graceEnd, ends_at: graceEnd, updated_at: ts } },
   )
   if (res.modifiedCount === 0 || sub.past_due) return // notify once per past-due episode
+  void import('@/lib/automation/events').then(({ emit }) => emit('payment.failed', {
+    order_id: null, user_id: sub.user_id, subscription_id: sub.id, plan_id: sub.plan_id, amount_minor: Number(invoice.amount_due || 0), currency: String(invoice.currency || ''),
+    provider: 'stripe', kind: 'renewal', grace_ends_at: graceEnd,
+  }, { idempotencyKey: `payment.failed:stripe:${invoice.id}` })).catch((e) => console.error('[automation] emit failed:', e))
 
   notify({
     user_id: sub.user_id,

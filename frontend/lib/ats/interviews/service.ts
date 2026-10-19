@@ -404,6 +404,10 @@ export async function scheduleInterview(by: AtsActor | 'system' | 'candidate', i
   if (!updated) throw new InterviewError(409, 'The interview changed. Reload and try again.')
 
   await writePanelCalendar(updated)
+  void import('@/lib/automation/events').then(({ emit }) => emit('interview.scheduled', {
+    interview_id: updated.id, kind: 'hiring', title: updated.stage_name || 'Interview', candidate_name: updated.candidate_name ?? null, candidate_email: candidate?.email ?? null,
+    scheduled_at: updated.scheduled_at, duration_min: updated.duration_min, join_url: null, application_id: updated.application_id, job_id: updated.job_id,
+  }, { tenantId, idempotencyKey: `interview.scheduled:${updated.id}:${nonce}` })).catch((e) => console.error('[automation] emit failed:', e))
   const kind: NoticeKind = wasScheduled ? 'rescheduled' : 'scheduled'
   // The nonce is new on every booking, so this key is unique per booking.
   if (await claimSend(updated.id, `invite:${nonce}`)) {
@@ -634,6 +638,9 @@ export async function maybeFinalize(ivId: string, tenantId: string, now = Date.n
     await col.updateOne({ id: iv.id, tenant_id: tenantId }, { $set: { result_recorded: false, last_error: 'Could not record the panel result; retrying.' } })
     return false
   }
+  void import('@/lib/automation/events').then(({ emit }) => emit('interview.completed', {
+    interview_id: iv.id, kind: 'hiring', application_id: iv.application_id, outcome: decision.outcome, summary: summary.slice(0, 500),
+  }, { tenantId, idempotencyKey: `interview.completed:${iv.id}:${iv.entry_key ?? ''}` })).catch((e) => console.error('[automation] emit failed:', e))
   return true
 }
 

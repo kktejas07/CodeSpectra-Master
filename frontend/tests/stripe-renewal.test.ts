@@ -24,6 +24,7 @@ vi.mock('@/lib/stripe-client', () => ({
 vi.mock('@/lib/notifications', () => ({ notify: h.notify }))
 vi.mock('@/lib/server-currency', () => ({ getPlatformCurrency: async () => 'USD' }))
 vi.mock('@/lib/logger', () => ({ logger: { webhook: () => {} } }))
+vi.mock('@/lib/automation/events', () => ({ emit: async () => undefined }))
 
 import { syncInvoicePaid, syncInvoicePaymentFailed, syncSubscriptionFromStripe } from '@/lib/stripe-webhook-sync'
 import { cancelAtPeriodEnd, endLapsedGracePeriods, resumeSubscription } from '@/lib/billing-plans'

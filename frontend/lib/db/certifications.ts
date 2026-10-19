@@ -343,6 +343,9 @@ export async function deliverExamCertificate(
   if (!cert?.created) return
   const examTitle = String(exam.title || 'Assessment')
   const path = `/cert/verify/${cert.token}`
+  void import('@/lib/automation/events').then(({ emit }) => emit('certificate.issued', {
+    user_id: userId, title: examTitle, verify_url: path, issued_at: nowIso(),
+  }, { tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null, idempotencyKey: `certificate.issued:${cert.token}` })).catch((e) => console.error('[automation] emit failed:', e))
   try {
     if (!cert.inviteOnly) {
       const { notify } = await import('@/lib/notifications')

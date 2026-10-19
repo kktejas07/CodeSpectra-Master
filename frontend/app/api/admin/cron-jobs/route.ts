@@ -17,7 +17,7 @@ import {
   type WorkflowDoc,
 } from '@/lib/db/leaderboard'
 import { runDueWorkflows } from '@/lib/scheduler'
-import { executeWorkflow } from '@/lib/workflow-engine'
+import { runWorkflow } from '@/lib/workflow-engine'
 import { redisStatus } from '@/lib/upstash-rate-limit'
 import { getCronRuns } from '@/lib/cron-heartbeat'
 
@@ -287,28 +287,9 @@ export async function POST(req: NextRequest) {
       const wf = await wfCol.findOne({ id: workflowId })
       if (!wf) return NextResponse.json({ error: 'Workflow not found' }, { status: 404 })
       const wfd = wf as unknown as WorkflowDoc
-      const started = new Date().toISOString()
-      const result = await executeWorkflow(wfd)
-      const finished = new Date().toISOString()
-      const runDoc = {
-        id: crypto.randomUUID(),
-        workflow_id: wfd.id,
-        user_id: 'admin-manual',
-        status: result.status === 'success' ? 'success' : result.status === 'partial' ? 'partial' : 'failed',
-        started_at: started,
-        finished_at: finished,
-        steps: result.steps.map((s) => ({
-          node_id: s.node_id,
-          label: s.label,
-          ok: s.ok,
-          output: s.output,
-          error: s.error,
-          duration_ms: s.duration_ms,
-        })),
-        duration_ms: result.duration_ms,
-      }
-      await workflowRuns().then((c) => c.insertOne(runDoc as never))
-      return NextResponse.json({ ok: true, action, status: result.status, run: runDoc })
+      // Saved run (lib/automation/runs.ts): waits/retries resume from the scheduler.
+      const runDoc = await runWorkflow(wfd, { trigger: 'manual', actorId: auth.user.id, payload: wfd.sample_payload || {} })
+      return NextResponse.json({ ok: true, action, status: runDoc.status, run: runDoc })
     }
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })

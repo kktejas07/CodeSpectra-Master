@@ -104,6 +104,11 @@ export async function POST(req: NextRequest) {
     tenant_id: creator.tenantId,
   })
 
+  void import('@/lib/automation/events').then(({ emit }) => emit('interview.scheduled', {
+    interview_id: session.id, kind: 'standalone', title: session.title, candidate_name: null, candidate_email: null,
+    scheduled_at: session.scheduled_at, duration_min: session.duration_minutes, join_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/interviews/${session.id}/live`,
+  }, { tenantId: creator.tenantId, idempotencyKey: `interview.scheduled:${session.id}` })).catch((e) => console.error('[automation] emit failed:', e))
+
   // Pin to calendar for interviewer + candidate
   try {
     const db = await getMongoDb()

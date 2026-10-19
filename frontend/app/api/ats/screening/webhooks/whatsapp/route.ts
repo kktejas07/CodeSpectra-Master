@@ -12,6 +12,7 @@ import { verifyMetaSignature, verifySharedToken } from '@/lib/ats/screening/sign
 import { parseMetaWebhook } from '@/lib/ats/screening/webhook-parse'
 import { handleCallStatus, handleInbound, tickScreening } from '@/lib/ats/screening/machine'
 import { claimEvent, releaseEvent } from '@/lib/ats/screening/store'
+import { handleWhatsAppInbound } from '@/lib/subscriptions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -50,7 +51,16 @@ export async function POST(req: NextRequest) {
     }
   }
   try {
-    for (const m of messages) await run(`wa:msg:${m.id}`, () => handleInbound(m))
+    for (const m of messages) {
+      let screening: unknown
+      await run(`wa:msg:${m.id}`, async () => { screening = await handleInbound(m) })
+      // Opt-in subscriptions (lib/subscriptions): STOP / START keywords and the 24 h session
+      // window, claimed as their OWN event: a failure (e.g. the STOP write) answers 500 so Meta
+      // redelivers and the opt-out is retried — without re-running the screening reply. On a
+      // redelivery the screening result is unknown, so no keyword reply is sent (the opt-out
+      // itself is still applied).
+      await run(`wa:subs:${m.id}`, () => handleWhatsAppInbound({ from: m.from, text: m.text || m.replyTitle || null, at: m.at }, { replied: screening === undefined || screening === 'handled' }))
+    }
     for (const c of calls) await run(`wa:${c.eventId}`, () => handleCallStatus(c))
   } catch (e) {
     console.error('[ats/screening/whatsapp] claim failed', e)

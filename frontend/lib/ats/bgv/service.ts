@@ -25,7 +25,7 @@ import { canSendFinalAdverse, caseSummary, purgeDue, purgedCase, rollUpStatus, s
 import { getBgvSettings, getVendorSecrets } from './settings'
 import { deleteDocuments, MAX_DOCS_PER_CASE, storeDocument } from './storage'
 import { fieldActive, missingItems, sanitizeCheckData } from './validate'
-import { getVendor, VendorError, type VendorContext, type VendorPii } from './vendors'
+import { DEMO_VENDOR_ID, getVendor, simulatedVendorAllowed, VendorError, type VendorContext, type VendorPii } from './vendors'
 import { notifyTeam, sendFinalAdverse, sendInfoRequest, sendInvite, sendPreAdverse } from './notify'
 import { DECIDED, type BgvCaseDoc, type BgvCheck, type BgvCheckStatus, type BgvDocument, type BgvSettingsDoc } from './types'
 
@@ -123,6 +123,11 @@ async function mutate(c: Pick<BgvCaseDoc, 'id' | 'tenant_id'>, fn: (cur: BgvCase
 /** Consequences of a status change: engine result, team notices. */
 async function afterChange(prev: BgvCaseDoc, next: BgvCaseDoc): Promise<void> {
   if (prev.status === next.status) return
+  if (next.status === 'clear' || next.status === 'failed') {
+    void import('@/lib/automation/events').then(({ emit }) => emit('bgv.completed', {
+      case_id: next.id, application_id: next.application_id, candidate_name: next.candidate_name ?? null, job_title: next.job_title ?? null, status: next.status,
+    }, { tenantId: next.tenant_id, idempotencyKey: `bgv.completed:${next.id}:${next.status}` })).catch((e) => console.error('[automation] emit failed:', e))
+  }
   const label = (t: BgvCheckType) => CHECK_LABEL(next.region, t)
   if (next.status === 'clear') {
     await recordOutcome(next, 'pass', `Background verification clear — ${caseSummary(next, label)}${next.decision?.outcome === 'pass' ? ' (approved by the hiring team)' : ''}`)
@@ -168,7 +173,8 @@ export async function createCaseForStage(
   const critical = normalizeChecks(region, cfg.critical_checks ?? regionSettings.critical_checks).filter((t) => types.includes(t))
   const now = nowIso()
   const deadlineDays = Math.max(1, Math.min(60, cfg.form_deadline_days ?? settings.form_deadline_days))
-  const vendor = getVendor(cfg.vendor)
+  // Demo vendor never auto-assigned in production unless the superadmin allows it (A-034).
+  const vendor = cfg.vendor === DEMO_VENDOR_ID && !(await simulatedVendorAllowed()) ? getVendor('manual') : getVendor(cfg.vendor)
   const doc: BgvCaseDoc = {
     id: newId(),
     tenant_id: ctx.app.tenant_id,
@@ -679,6 +685,7 @@ export async function assignVendor(_actor: AtsActor, c: BgvCaseDoc, vendorId: un
   if (v.id !== vendorId) throw new AtsError(400, 'Unknown vendor')
   if (!v.regions.includes(c.region)) throw new AtsError(400, `${v.label} doesn't cover this region`)
   if (!v.ready) throw new AtsError(400, `${v.label} needs the vendor's API access first. Use manual verification for now.`)
+  if (v.id === DEMO_VENDOR_ID && !(await simulatedVendorAllowed())) throw new AtsError(400, 'The demo vendor is not available. Use manual verification or a real vendor.')
   if (c.vendor_ordered_at && c.vendor === v.id) throw new AtsError(409, 'Already sent to this vendor')
   const next = await mutate(c, (cur) => {
     if (['cancelled', 'failed', 'clear'].includes(cur.status) || cur.purged_at) throw new AtsError(409, 'This background check is closed')

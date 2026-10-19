@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { VideoOff } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { acquireRecordingStream } from '@/lib/proctoring/recording-stream'
 
 interface SessionRecorderProps {
   sessionId: string
@@ -22,6 +23,9 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
   const chunkIdxRef = useRef(0)
   const flushTimerRef = useRef<NodeJS.Timeout | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const [hasAudio, setHasAudio] = useState(true)
+  const hasAudioRef = useRef(true)
+  const audioErrorRef = useRef<string | undefined>(undefined)
 
   const uploadChunk = useCallback(async (blob: Blob, index: number, mimeType: string) => {
     try {
@@ -44,6 +48,8 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
           chunk_index: index,
           data: base64,
           mime_type: mimeType,
+          has_audio: hasAudioRef.current,
+          audio_error: audioErrorRef.current,
         }),
       })
     } catch {
@@ -65,9 +71,13 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
     if (recording) return
 
     try {
-      // Get webcam + audio
-      const webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      // Get webcam + audio; falls back to video-only if the mic is refused.
+      const acquired = await acquireRecordingStream((c) => navigator.mediaDevices.getUserMedia(c))
+      const webcamStream = acquired.stream
       streamRef.current = webcamStream
+      hasAudioRef.current = acquired.hasAudio
+      audioErrorRef.current = acquired.audioError
+      setHasAudio(acquired.hasAudio)
 
       // Attempt screen capture — fall back gracefully if denied
       let combinedStream = webcamStream
@@ -202,7 +212,7 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
             <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
           </span>
-          <span className="text-red-600 dark:text-red-400">Recording</span>
+          <span className="text-red-600 dark:text-red-400">Recording{hasAudio ? '' : ' (no audio)'}</span>
         </>
       ) : (
         <>

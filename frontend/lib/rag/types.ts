@@ -7,7 +7,7 @@ export type { KnowledgeChunk, KnowledgeSourceType, KnowledgeVisibility }
 
 export const KNOWLEDGE_SOURCE_TYPES: readonly KnowledgeSourceType[] = [
   'problem', 'question', 'course', 'doc', 'test', 'test_result_summary',
-  'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary',
+  'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'marketplace_product', 'external_event',
 ]
 
 /** Types that carry candidate data or answer keys: staff (admins) only, never public. */
@@ -30,6 +30,8 @@ export const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
   upload: 'Upload',
   resume: 'Résumé',
   attempt_summary: 'Candidate attempt',
+  marketplace_product: 'Marketplace product',
+  external_event: 'Events feed',
 }
 
 export function isKnowledgeSourceType(v: unknown): v is KnowledgeSourceType {
@@ -48,6 +50,8 @@ export interface ExtractedSource {
   text: string
   /** Not searchable, never returned to callers by search. */
   metadata?: Record<string, unknown>
+  /** Per-source chunking (part of the content hash, so a change re-chunks). */
+  chunk?: { splitOnSection?: boolean }
 }
 
 export type SourceStatus = 'queued' | 'indexing' | 'ready' | 'failed'

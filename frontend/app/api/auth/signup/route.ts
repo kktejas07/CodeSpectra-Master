@@ -60,7 +60,8 @@ export async function POST(request: Request) {
         )
       }
     } else {
-      await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: previewEmail, actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'info', detail: 'IP throttle bypassed via valid assessment invite', user_id: previewEmail })
+      void import('@/lib/automation/events').then(({ emit }) => emit('user.created', { user_id: uid, email: normalizedEmail, name: name || null, method: 'email', email_verified: false, created_at: now.toISOString() }, { idempotencyKey: `user.created:${uid}` })).catch((e) => console.error('[automation] emit failed:', e))
+    await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: previewEmail, actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'info', detail: 'IP throttle bypassed via valid assessment invite', user_id: previewEmail })
     }
 
     if (await isIpBlocked(rawIp)) {
@@ -84,6 +85,14 @@ export async function POST(request: Request) {
       })
       return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
     }
+
+    // Admin switches: registrations closed / maintenance (A-025). A candidate
+    // with a valid assessment invite may still create their account.
+    const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+    const { registrationBlock } = await import('@/lib/auth-policy')
+    const policy = await getGeneralSettingsCached()
+    const closed = registrationBlock(policy, { invited: invitedBypass })
+    if (closed) return NextResponse.json({ error: closed.error, code: closed.code }, { status: closed.status })
 
     const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>
     // Whitelisted, size-capped profile fields only.
@@ -178,7 +187,9 @@ export async function POST(request: Request) {
     ).catch(() => {})
 
     const role = normalizeUserRole('user')
-    await setSessionCookie({ uid, email: normalizedEmail, role })
+    // With "Require email verification" on, no session until the link is clicked.
+    const verificationRequired = policy.require_email_verification === true
+    if (!verificationRequired) await setSessionCookie({ uid, email: normalizedEmail, role })
 
     await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
 
@@ -213,7 +224,10 @@ export async function POST(request: Request) {
     const verifyLink = `${origin}/api/auth/verify-email?token=${verifyToken}`
     await sendEmail(normalizedEmail, emailTemplates.emailVerification(verifyLink)).catch((e) => console.error('[Signup] Verification email failed:', e))
 
-    return NextResponse.json({ user: { id: uid, email: normalizedEmail, role, name: name || null } })
+    return NextResponse.json({
+      user: { id: uid, email: normalizedEmail, role, name: name || null },
+      ...(verificationRequired ? { verificationRequired: true } : {}),
+    })
   } catch (error) {
     console.error('[Signup] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

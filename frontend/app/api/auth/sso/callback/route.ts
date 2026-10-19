@@ -9,6 +9,16 @@ import { safeRedirect } from '@/lib/safe-redirect'
 import { normalizeUserRole } from '@/lib/rbac'
 import { updateUserLastLogin } from '@/lib/db/admin'
 import { accountBlockReason } from '@/lib/auth-account'
+import { readTextCapped, safeFetch } from '@/lib/url-safety'
+
+/** IdP endpoints are admin-configured URLs: SSRF-checked on every hop, bodies capped. */
+async function idpJson(url: string, init: RequestInit = {}): Promise<{ ok: boolean; status: number; json: any }> {
+  const res = await safeFetch(String(url || ''), { ...init, signal: AbortSignal.timeout(10_000) })
+  const text = await readTextCapped(res, 256 * 1024)
+  let json: any = null
+  try { json = JSON.parse(text) } catch { json = null }
+  return { ok: res.ok && !!json && typeof json === 'object', status: res.status, json }
+}
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -67,8 +77,9 @@ export async function GET(req: NextRequest) {
     // Discover OIDC endpoints from metadata_url
     let discovery
     try {
-      const discRes = await fetch(provider.metadata_url)
-      discovery = await discRes.json()
+      const d = await idpJson(provider.metadata_url)
+      if (!d.ok) throw new Error(`discovery answered ${d.status}`)
+      discovery = d.json
     } catch (e) {
       console.error('[sso/callback] Failed to fetch discovery:', e)
       return fail('discovery_failed')
@@ -86,7 +97,7 @@ export async function GET(req: NextRequest) {
     const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/sso/callback`
     let tokenResponse
     try {
-      const res = await fetch(tokenEndpoint, {
+      const res = await idpJson(tokenEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -98,9 +109,9 @@ export async function GET(req: NextRequest) {
           code_verifier: saved.code_verifier,
         }),
       })
-      tokenResponse = await res.json()
+      tokenResponse = res.json
       if (!res.ok) {
-        console.error('[sso/callback] Token exchange failed:', tokenResponse)
+        console.error('[sso/callback] Token exchange failed: HTTP', res.status)
         return fail('token_exchange_failed')
       }
     } catch (e) {
@@ -113,12 +124,12 @@ export async function GET(req: NextRequest) {
     // Fetch user info
     let userInfo
     try {
-      const res = await fetch(userinfoEndpoint, {
+      const res = await idpJson(userinfoEndpoint, {
         headers: { Authorization: `Bearer ${accessToken}` },
       })
-      userInfo = await res.json()
+      userInfo = res.json
       if (!res.ok) {
-        console.error('[sso/callback] Userinfo failed:', userInfo)
+        console.error('[sso/callback] Userinfo failed: HTTP', res.status)
         return fail('userinfo_failed')
       }
     } catch (e) {
@@ -204,6 +215,11 @@ export async function GET(req: NextRequest) {
     }
     if (!user) return fail('unexpected')
     if (accountBlockReason(user)) return fail('account_disabled')
+    {
+      const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+      const { maintenanceBlocksPage } = await import('@/lib/auth-policy')
+      if (maintenanceBlocksPage(await getGeneralSettingsCached(), normalizeUserRole(user.role as string | undefined))) return fail('maintenance')
+    }
 
     const uid = String(user.id || user._id)
     const role = normalizeUserRole(user.role as string | undefined)

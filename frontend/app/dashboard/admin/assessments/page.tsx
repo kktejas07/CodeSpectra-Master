@@ -45,6 +45,7 @@ interface Exam {
   max_attempts?: number
   passing_score?: number | null
   issue_certificates?: boolean | null
+  auto_release_scores?: boolean | null
   questions: number
   published: boolean
   attempts: number
@@ -107,6 +108,7 @@ export default function AdminExamsPage() {
   const [maxAttempts, setMaxAttempts] = useState(1)
   const [passingScore, setPassingScore] = useState(60)
   const [issueCertificates, setIssueCertificates] = useState(true)
+  const [autoReleaseScores, setAutoReleaseScores] = useState(false)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
   const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
@@ -230,6 +232,7 @@ export default function AdminExamsPage() {
     setMaxAttempts(1)
     setPassingScore(60)
     setIssueCertificates(true)
+    setAutoReleaseScores(false)
     setQuestions(0)
     setPublished(false)
     setAccessType('invite_only')
@@ -258,6 +261,7 @@ export default function AdminExamsPage() {
     // Exams saved before the pass mark was editable release at 40% (see the release routes).
     setPassingScore(Number.isFinite(Number(exam.passing_score)) && exam.passing_score !== null ? Number(exam.passing_score) : 40)
     setIssueCertificates(exam.issue_certificates !== false)
+    setAutoReleaseScores(exam.auto_release_scores === true)
     setQuestions(exam.questions)
     setPublished(exam.published)
     setDegreeType(exam.degree_type || '')
@@ -295,6 +299,7 @@ export default function AdminExamsPage() {
       max_attempts: allowRetake ? maxAttempts : 1,
       passing_score: passingScore,
       issue_certificates: issueCertificates,
+      auto_release_scores: autoReleaseScores,
       questions, 
       published,
       access_type: accessType,
@@ -845,6 +850,19 @@ export default function AdminExamsPage() {
                 <span>
                   Issue certificates
                   <span className="block text-xs text-muted-foreground font-normal">Candidates who pass get a certificate anyone can verify, once scores are released. One per candidate, even with retakes.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="autoReleaseScores">
+                <input
+                  id="autoReleaseScores"
+                  type="checkbox"
+                  checked={autoReleaseScores}
+                  onChange={(e) => setAutoReleaseScores(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Release scores automatically when grading finishes
+                  <span className="block text-xs text-muted-foreground font-normal">Each candidate sees their score (and certificate, if they pass) as soon as auto-grading is done. Attempts that need a manual review wait for you.</span>
                 </span>
               </label>
             </div>

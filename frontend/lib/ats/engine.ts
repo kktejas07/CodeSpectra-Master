@@ -219,6 +219,10 @@ export async function moveApplication(
   )
   if (!r.matchedCount) throw new AtsError(409, 'This application was just moved by someone else — refresh and try again')
   const next = { ...app, ...set, history: [...(app.history || []), entry] } as AtsApplication
+  void import('@/lib/automation/events').then(({ emit }) => emit('candidate.stage_changed', {
+    application_id: app.id, job_id: job.id, job_title: job.title, candidate_id: app.candidate_id, from_stage: app.stage_id, to_stage: toStageId,
+    to_stage_name: to.name, to_stage_type: to.type, status, by: entry.by, reason: opts.reason || '',
+  }, { tenantId: app.tenant_id, idempotencyKey: `candidate.stage_changed:${app.id}:${at}` })).catch((e) => console.error('[automation] emit failed:', e))
   await enterStage(next, job, from, stageKey(app))
   // Re-read: handlers may have advanced it further (auto stages).
   return ((await apps.findOne({ id: app.id, tenant_id: app.tenant_id }, { projection: { _id: 0 } })) as AtsApplication | null) ?? next

@@ -99,6 +99,14 @@ export type GeneralPlatformSettings = {
   video_player_autoplay_next: boolean
   /** When false, the picture-in-picture button is hidden from the player */
   video_player_pip: boolean
+  /** Superadmins + tenant admins must turn on 2FA (after the grace period). */
+  enforce_admin_2fa: boolean
+  /** Days an admin without 2FA can keep signing in before it is enforced. */
+  admin_2fa_grace_days: number
+  /** Days after an exam closes before ID photos, selfies and face templates are purged. */
+  identity_media_retention_days: number
+  /** Dev/demo only: offer the 'Simulated vendor' for background checks in production. */
+  bgv_simulated_vendor: boolean
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -139,6 +147,15 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   video_player_chapters: true,
   video_player_autoplay_next: false,
   video_player_pip: true,
+  enforce_admin_2fa: true,
+  admin_2fa_grace_days: 14,
+  identity_media_retention_days: 180,
+  bgv_simulated_vendor: false,
+}
+
+function clampInt(v: unknown, lo: number, hi: number, fallback: number): number {
+  const n = Math.floor(Number(v))
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, n)) : fallback
 }
 
 export function coercePlatformBool(v: unknown, fallback: boolean): boolean {
@@ -197,5 +214,10 @@ export function mergeGeneralPlatformSettings(
     merged.video_player_pip,
     GENERAL_PLATFORM_DEFAULTS.video_player_pip,
   )
+  for (const k of ['allow_registration', 'maintenance_mode', 'require_email_verification', 'enforce_admin_2fa', 'bgv_simulated_vendor'] as const) {
+    merged[k] = coercePlatformBool(merged[k], GENERAL_PLATFORM_DEFAULTS[k])
+  }
+  merged.admin_2fa_grace_days = clampInt(merged.admin_2fa_grace_days, 0, 90, GENERAL_PLATFORM_DEFAULTS.admin_2fa_grace_days)
+  merged.identity_media_retention_days = clampInt(merged.identity_media_retention_days, 1, 3650, GENERAL_PLATFORM_DEFAULTS.identity_media_retention_days)
   return merged as GeneralPlatformSettings
 }

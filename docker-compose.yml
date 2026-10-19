@@ -7,8 +7,10 @@ services:
     cap_add:
       - SYS_ADMIN
       - SYS_PTRACE
-    ports:
-      - "2000:2000"
+    # SECURITY: Piston runs arbitrary code with no auth. It is reachable ONLY on
+    # the compose network (http://piston:2000) — never publish its port.
+    expose:
+      - "2000"
     volumes:
       - piston-data:/piston
     restart: unless-stopped
@@ -31,14 +33,18 @@ services:
         NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
         NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
-        DIDIT_API_KEY: ${DIDIT_API_KEY}
-        DIDIT_WEBHOOK_SECRET: ${DIDIT_WEBHOOK_SECRET}
-        DIDIT_WORKFLOW_ID: ${DIDIT_WORKFLOW_ID}
     container_name: codespectra-frontend
     ports:
       - "3000:80"
+    # Runtime-only secrets (never build args — they would be baked into the image).
     environment:
       - PISTON_URL=http://piston:2000/api/v2
+      - DIDIT_API_KEY=${DIDIT_API_KEY:-}
+      - DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET:-}
+      - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:-}
+      - ATS_ENCRYPTION_KEY=${ATS_ENCRYPTION_KEY:-}
+      - IDENTITY_MEDIA_KEY=${IDENTITY_MEDIA_KEY:-}
+      - CRON_SECRET=${CRON_SECRET:-}
     depends_on:
       piston:
         condition: service_healthy
@@ -101,16 +107,20 @@ services:
     restart: unless-stopped
 
   livekit:
-    # ponytail: pinned to v1.13.6 (verified current on Docker Hub 2026-09-06);
-    # --dev is a documented dev choice (ephemeral keys, no TLS). Prod needs
-    # static keys via livekit.conf + TURN. No healthcheck: the image has no
-    # shell and LiveKit exposes no plain-HTTP health endpoint.
+    # ponytail: pinned to v1.13.6 (verified current on Docker Hub 2026-09-06).
+    # LOCAL DEVELOPMENT ONLY: --dev uses the well-known devkey/secret, so this
+    # service sits behind the "dev" profile (`docker compose --profile dev up`)
+    # and binds to 127.0.0.1 only. Production: LiveKit Cloud or a LiveKit server
+    # with your own keys + TLS + TURN; put its wss:// URL and keys in
+    # Admin → Settings → Hiring integrations (livekit_url / _api_key / _api_secret).
+    # No healthcheck: the image has no shell and no plain-HTTP health endpoint.
     image: livekit/livekit-server:v1.13.6
     container_name: codespectra-livekit
-    command: --dev
+    profiles: ["dev"]
+    command: --dev --bind 0.0.0.0
     ports:
-      - "7880:7880"
-      - "50000-50010:50000-50010/udp"
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:50000-50010:50000-50010/udp"
     restart: unless-stopped
 
 volumes:

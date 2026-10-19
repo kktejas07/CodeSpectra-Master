@@ -3,7 +3,8 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { dicebearUrl } from '@/lib/avatar'
 import { xpToLevel } from '@/lib/leaderboard-utils'
-import { assignRanks, buildXpMatch, parseLeaderboardQuery, rankFromAbove } from '@/lib/leaderboard-calc'
+import { assignRanks, parseLeaderboardQuery, rankFromAbove } from '@/lib/leaderboard-calc'
+import { countAbove, getLeaderboardSnapshot } from '@/lib/leaderboard-cache'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 
 /**
@@ -21,26 +22,10 @@ export async function GET(req: NextRequest) {
   try {
     const { category, period, limit } = parseLeaderboardQuery(new URL(req.url).searchParams)
     const db = await getMongoDb()
-    const xp = db.collection('xp_events')
-    const baseMatch = buildXpMatch(category, period, new Date())
-
+    // Cached totals (60 s, one aggregation per category/period) — lib/leaderboard-cache.ts (A-047).
+    const snap = await getLeaderboardSnapshot(category, period)
     // Over-fetch a little so users whose account was deleted can be dropped.
-    const totals = await xp
-      .aggregate<{ _id: string; xp: number; solved: number; last: string | null }>([
-        { $match: baseMatch },
-        {
-          $group: {
-            _id: '$user_id',
-            xp: { $sum: '$amount' },
-            solved: { $sum: { $cond: [{ $eq: ['$reason', 'submission_accepted'] }, 1, 0] } },
-            last: { $max: '$created_at' },
-          },
-        },
-        { $match: { xp: { $gt: 0 } } },
-        { $sort: { xp: -1, _id: 1 } },
-        { $limit: limit + 20 },
-      ])
-      .toArray()
+    const totals = snap.top.slice(0, limit + 20).map((t) => ({ _id: t.userId, xp: t.xp, solved: t.solved, last: t.last }))
 
     const ids = totals.map((t) => String(t._id))
     const users = ids.length
@@ -73,25 +58,8 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    const me = await xp
-      .aggregate<{ total: number }>([
-        { $match: { ...baseMatch, user_id: gate.user.id } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
-      ])
-      .toArray()
-    const myXp = Number(me[0]?.total) || 0
-    let above = 0
-    if (myXp > 0) {
-      const cnt = await xp
-        .aggregate<{ n: number }>([
-          { $match: baseMatch },
-          { $group: { _id: '$user_id', xp: { $sum: '$amount' } } },
-          { $match: { xp: { $gt: myXp } } },
-          { $count: 'n' },
-        ])
-        .toArray()
-      above = cnt[0]?.n ?? 0
-    }
+    const myXp = snap.byUser.get(gate.user.id) ?? 0
+    const above = myXp > 0 ? countAbove(snap.xpDesc, myXp) : 0
 
     return NextResponse.json({
       category,

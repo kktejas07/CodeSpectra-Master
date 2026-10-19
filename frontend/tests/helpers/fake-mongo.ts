@@ -1,9 +1,17 @@
 /**
- * Minimal in-memory MongoDB stand-in for billing tests: the filter / update
- * operators the billing code uses ($in, $gt, $lte, $exists, $ne, $or, $set,
- * $unset, $setOnInsert, $addToSet, $pull, $inc, upsert, sort).
+ * Minimal in-memory MongoDB stand-in for unit tests. Supports the filter /
+ * update operators the app uses, with MongoDB semantics where it matters for
+ * concurrency tests: dotted paths through arrays ('lines.id'), $elemMatch,
+ * null matching a missing field, $expr ($add/$ifNull/$lt/…), positional `$`,
+ * `$[]` and `$[name]` (arrayFilters) updates, $pull by condition, upserts,
+ * unique indexes. Every call is applied synchronously after one await, so
+ * interleaved Promise.all calls behave like separate atomic MongoDB writes.
  */
 type Doc = Record<string, any>
+
+const isObj = (v: unknown): v is Doc => !!v && typeof v === 'object' && !Array.isArray(v) && !(v instanceof Date)
+const hasOps = (v: unknown) => isObj(v) && Object.keys(v).some((k) => k.startsWith('$'))
+const clone = <T,>(v: T): T => (v == null ? v : JSON.parse(JSON.stringify(v)))
 
 function get(doc: Doc, path: string): any {
   return path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), doc)
@@ -21,46 +29,155 @@ function unset(doc: Doc, path: string) {
   delete cur[keys[keys.length - 1]]
 }
 
-function matchValue(v: any, cond: any): boolean {
-  if (cond && typeof cond === 'object' && !Array.isArray(cond) && Object.keys(cond).some((k) => k.startsWith('$'))) {
-    return Object.entries(cond).every(([op, arg]) => {
-      switch (op) {
-        case '$in': return (arg as any[]).some((a) => (Array.isArray(v) ? v.includes(a) : v === a))
-        case '$nin': return !(arg as any[]).some((a) => (Array.isArray(v) ? v.includes(a) : v === a))
-        case '$ne': return Array.isArray(v) ? !v.includes(arg) : v !== arg
-        case '$gt': return v !== undefined && v > (arg as any)
-        case '$gte': return v !== undefined && v >= (arg as any)
-        case '$lt': return v !== undefined && v < (arg as any)
-        case '$lte': return v !== undefined && v <= (arg as any)
-        case '$exists': return (v !== undefined) === arg
-        default: throw new Error(`fake-mongo: unsupported operator ${op}`)
-      }
-    })
+/** Candidate values at a dotted path, walking into arrays like MongoDB does. */
+function candidates(v: any, keys: string[]): any[] {
+  if (!keys.length) return [v]
+  if (v == null) return [undefined]
+  const [k, ...rest] = keys
+  if (Array.isArray(v)) {
+    if (/^\d+$/.test(k)) return candidates(v[Number(k)], rest)
+    const out = v.flatMap((el) => (isObj(el) || Array.isArray(el) ? candidates(el, keys) : []))
+    return out.length ? out : [undefined]
   }
-  if (Array.isArray(v) && !Array.isArray(cond)) return v.includes(cond)
-  return v === cond
+  if (typeof v !== 'object') return [undefined]
+  return candidates(v[k], rest)
+}
+
+const eq = (a: any, b: any): boolean => {
+  if (b === null) return a === null || a === undefined
+  if (typeof a === 'object' && a !== null) return JSON.stringify(a) === JSON.stringify(b)
+  return a === b
+}
+/** A value and, when it is an array, its elements. */
+const expand = (v: any): any[] => (Array.isArray(v) ? [v, ...v] : [v])
+
+function matchCond(values: any[], cond: any): boolean {
+  if (!hasOps(cond)) return values.some((v) => expand(v).some((x) => eq(x, cond)))
+  return Object.entries(cond).every(([op, arg]) => {
+    switch (op) {
+      case '$eq': return values.some((v) => expand(v).some((x) => eq(x, arg)))
+      case '$ne': return !values.some((v) => expand(v).some((x) => eq(x, arg)))
+      case '$in': return values.some((v) => expand(v).some((x) => (arg as any[]).some((a) => eq(x, a))))
+      case '$nin': return !values.some((v) => expand(v).some((x) => (arg as any[]).some((a) => eq(x, a))))
+      case '$gt': return values.some((v) => expand(v).some((x) => x != null && x > (arg as any)))
+      case '$gte': return values.some((v) => expand(v).some((x) => x != null && x >= (arg as any)))
+      case '$lt': return values.some((v) => expand(v).some((x) => x != null && x < (arg as any)))
+      case '$lte': return values.some((v) => expand(v).some((x) => x != null && x <= (arg as any)))
+      case '$exists': return arg ? values.some((v) => v !== undefined) : values.every((v) => v === undefined)
+      case '$size': return values.some((v) => Array.isArray(v) && v.length === arg)
+      case '$not': return !matchCond(values, arg)
+      case '$regex': {
+        const re = new RegExp(arg as string, (cond as Doc).$options || '')
+        return values.some((v) => expand(v).some((x) => typeof x === 'string' && re.test(x)))
+      }
+      case '$options': return true
+      case '$elemMatch': return values.some((v) => Array.isArray(v) && v.some((el) => elemMatches(el, arg)))
+      default: throw new Error(`fake-mongo: unsupported operator ${op}`)
+    }
+  })
+}
+
+function elemMatches(el: any, cond: any): boolean {
+  if (hasOps(cond) && Object.keys(cond).every((k) => k.startsWith('$') && !['$and', '$or', '$nor'].includes(k))) return matchCond([el], cond)
+  return isObj(el) && matches(el, cond)
+}
+
+// $expr — the handful of aggregation operators the app uses in filters.
+function evalExpr(doc: Doc, e: any): any {
+  if (typeof e === 'string' && e.startsWith('$')) return get(doc, e.slice(1))
+  if (!isObj(e)) return e
+  const [[op, raw]] = Object.entries(e)
+  const args = (Array.isArray(raw) ? raw : [raw]).map((a) => evalExpr(doc, a))
+  switch (op) {
+    case '$add': return args.reduce((a, b) => (a ?? 0) + (b ?? 0), 0)
+    case '$subtract': return (args[0] ?? 0) - (args[1] ?? 0)
+    case '$ifNull': return args[0] ?? args[1]
+    case '$lt': return args[0] < args[1]
+    case '$lte': return args[0] <= args[1]
+    case '$gt': return args[0] > args[1]
+    case '$gte': return args[0] >= args[1]
+    case '$eq': return args[0] === args[1]
+    case '$and': return args.every(Boolean)
+    case '$or': return args.some(Boolean)
+    default: throw new Error(`fake-mongo: unsupported $expr operator ${op}`)
+  }
 }
 
 export function matches(doc: Doc, filter: Doc): boolean {
   return Object.entries(filter || {}).every(([k, cond]) => {
     if (k === '$or') return (cond as Doc[]).some((f) => matches(doc, f))
     if (k === '$and') return (cond as Doc[]).every((f) => matches(doc, f))
-    return matchValue(get(doc, k), cond)
+    if (k === '$nor') return !(cond as Doc[]).some((f) => matches(doc, f))
+    if (k === '$expr') return !!evalExpr(doc, cond)
+    return matchCond(candidates(doc, k.split('.')), cond)
   })
 }
 
-function applyUpdate(doc: Doc, update: Doc, inserting: boolean) {
+// ─── Updates ────────────────────────────────────────────────────────────────
+
+/** Conditions in `filter` that apply to elements of the array at `prefix`. */
+function elementConds(filter: Doc, prefix: string): Array<(el: any) => boolean> {
+  const out: Array<(el: any) => boolean> = []
+  for (const [k, v] of Object.entries(filter || {})) {
+    if (k === '$and') for (const f of v as Doc[]) out.push(...elementConds(f, prefix))
+    else if (k === prefix && isObj(v) && '$elemMatch' in v) out.push((el) => elemMatches(el, v.$elemMatch))
+    else if (k.startsWith(`${prefix}.`)) {
+      const sub = k.slice(prefix.length + 1)
+      out.push((el) => matchCond(candidates(el, sub.split('.')), v))
+    }
+  }
+  return out
+}
+
+/** Concrete paths for a path with `$`, `$[]` or `$[name]` segments. */
+function resolvePaths(doc: Doc, path: string, filter: Doc, arrayFilters: Doc[]): string[] {
+  const keys = path.split('.')
+  const i = keys.findIndex((k) => k === '$' || /^\$\[\w*\]$/.test(k))
+  if (i < 0) return [path]
+  const prefix = keys.slice(0, i).join('.')
+  const arr = get(doc, prefix)
+  if (!Array.isArray(arr)) return []
+  let idx: number[]
+  const seg = keys[i]
+  if (seg === '$') {
+    const conds = elementConds(filter, prefix)
+    const first = arr.findIndex((el) => conds.every((c) => c(el)))
+    if (first < 0) throw new Error(`fake-mongo: positional $ on ${prefix} matched no element`)
+    idx = [first]
+  } else if (seg === '$[]') {
+    idx = arr.map((_, n) => n)
+  } else {
+    const name = seg.slice(2, -1)
+    const af = arrayFilters.find((f) => Object.keys(f).some((k) => k === name || k.startsWith(`${name}.`)))
+    if (!af) throw new Error(`fake-mongo: no arrayFilter for ${name}`)
+    const stripped: Doc = {}
+    for (const [k, v] of Object.entries(af)) stripped[k === name ? '' : k.slice(name.length + 1)] = v
+    idx = arr.map((_, n) => n).filter((n) => Object.entries(stripped).every(([k, v]) => (k ? matchCond(candidates(arr[n], k.split('.')), v) : matchCond([arr[n]], v))))
+  }
+  const rest = keys.slice(i + 1).join('.')
+  return idx.flatMap((n) => resolvePaths(doc, [prefix, String(n), rest].filter(Boolean).join('.'), filter, arrayFilters))
+}
+
+function applyUpdate(doc: Doc, update: Doc, inserting: boolean, filter: Doc = {}, arrayFilters: Doc[] = []) {
+  // Positional / filtered paths resolve against the document as it was BEFORE this update (as in MongoDB).
+  const before = clone(doc)
   for (const [op, fields] of Object.entries(update)) {
-    for (const [path, val] of Object.entries(fields as Doc)) {
-      switch (op) {
-        case '$set': set(doc, path, val); break
-        case '$unset': unset(doc, path); break
-        case '$setOnInsert': if (inserting) set(doc, path, val); break
-        case '$inc': set(doc, path, (get(doc, path) || 0) + (val as number)); break
-        case '$addToSet': { const a = get(doc, path) || []; if (!a.includes(val)) a.push(val); set(doc, path, a); break }
-        case '$push': { const a = get(doc, path) || []; a.push(val); set(doc, path, a); break }
-        case '$pull': { const a = get(doc, path); if (Array.isArray(a)) set(doc, path, a.filter((x: any) => x !== val)); break }
-        default: throw new Error(`fake-mongo: unsupported update ${op}`)
+    for (const [rawPath, val] of Object.entries(fields as Doc)) {
+      for (const path of resolvePaths(before, rawPath, filter, arrayFilters)) {
+        switch (op) {
+          case '$set': set(doc, path, clone(val)); break
+          case '$unset': unset(doc, path); break
+          case '$setOnInsert': if (inserting) set(doc, path, clone(val)); break
+          case '$inc': set(doc, path, (get(doc, path) || 0) + (val as number)); break
+          case '$addToSet': { const a = get(doc, path) || []; if (!a.some((x: any) => eq(x, val))) a.push(clone(val)); set(doc, path, a); break }
+          case '$push': { const a = get(doc, path) || []; a.push(clone(val)); set(doc, path, a); break }
+          case '$pull': {
+            const a = get(doc, path)
+            if (Array.isArray(a)) set(doc, path, a.filter((x: any) => !(isObj(val) ? elemMatches(x, val) : eq(x, val))))
+            break
+          }
+          default: throw new Error(`fake-mongo: unsupported update ${op}`)
+        }
       }
     }
   }
@@ -72,7 +189,7 @@ function sortDocs(docs: Doc[], sort?: Doc): Doc[] {
   return [...docs].sort((a, b) => ((get(a, key) ?? '') < (get(b, key) ?? '') ? -1 : 1) * (dir as number))
 }
 
-const clone = <T,>(v: T): T => (v == null ? v : JSON.parse(JSON.stringify(v)))
+type UpdateOpts = { upsert?: boolean; arrayFilters?: Doc[]; sort?: Doc }
 
 export class FakeCollection {
   docs: Doc[] = []
@@ -102,7 +219,9 @@ export class FakeCollection {
     const cursor = {
       sort: (s: Doc) => { rows = sortDocs(rows, s); return cursor },
       limit: (n: number) => { if (n) rows = rows.slice(0, n); return cursor },
+      project: () => cursor,
       toArray: async () => clone(rows),
+      next: async () => clone(rows[0] ?? null),
     }
     return cursor
   }
@@ -115,35 +234,46 @@ export class FakeCollection {
     this.docs.push(d)
     return { insertedId: d.id }
   }
-  async updateOne(filter: Doc, update: Doc, opts: { upsert?: boolean } = {}) {
+  async insertMany(docs: Doc[]) {
+    for (const d of docs) await this.insertOne(d)
+    return { insertedCount: docs.length }
+  }
+  async updateOne(filter: Doc, update: Doc, opts: UpdateOpts = {}) {
     const doc = this.docs.find((d) => matches(d, filter))
     if (doc) {
       const next = clone(doc)
-      applyUpdate(next, update, false)
+      applyUpdate(next, update, false, filter, opts.arrayFilters)
       this.checkUnique(next, doc)
+      const changed = JSON.stringify(next) !== JSON.stringify(doc)
       Object.keys(doc).forEach((k) => delete doc[k])
       Object.assign(doc, next)
-      return { matchedCount: 1, modifiedCount: 1, upsertedCount: 0 }
+      return { matchedCount: 1, modifiedCount: changed ? 1 : 0, upsertedCount: 0 }
     }
     if (opts.upsert) {
       const fresh: Doc = {}
       for (const [k, v] of Object.entries(filter)) if (!k.startsWith('$') && (typeof v !== 'object' || v === null)) set(fresh, k, v)
-      applyUpdate(fresh, update, true)
+      applyUpdate(fresh, update, true, filter, opts.arrayFilters)
       this.checkUnique(fresh)
       this.docs.push(fresh)
       return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 }
     }
     return { matchedCount: 0, modifiedCount: 0, upsertedCount: 0 }
   }
-  async updateMany(filter: Doc, update: Doc) {
+  async updateMany(filter: Doc, update: Doc, opts: UpdateOpts = {}) {
     const rows = this.docs.filter((d) => matches(d, filter))
-    rows.forEach((d) => applyUpdate(d, update, false))
+    rows.forEach((d) => applyUpdate(d, update, false, filter, opts.arrayFilters))
     return { matchedCount: rows.length, modifiedCount: rows.length }
   }
-  async findOneAndUpdate(filter: Doc, update: Doc, opts: { sort?: Doc } = {}) {
+  async replaceOne(filter: Doc, doc: Doc, opts: { upsert?: boolean } = {}) {
+    const i = this.docs.findIndex((d) => matches(d, filter))
+    if (i >= 0) { this.docs[i] = clone(doc); return { matchedCount: 1, modifiedCount: 1 } }
+    if (opts.upsert) { this.docs.push(clone(doc)); return { matchedCount: 0, modifiedCount: 0, upsertedCount: 1 } }
+    return { matchedCount: 0, modifiedCount: 0 }
+  }
+  async findOneAndUpdate(filter: Doc, update: Doc, opts: UpdateOpts = {}) {
     const doc = sortDocs(this.docs.filter((d) => matches(d, filter)), opts.sort)[0]
     if (!doc) return null
-    applyUpdate(doc, update, false)
+    applyUpdate(doc, update, false, filter, opts.arrayFilters)
     return clone(doc)
   }
   async deleteMany(filter: Doc) {

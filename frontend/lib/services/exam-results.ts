@@ -64,16 +64,24 @@ export async function getExamResults(user: ServiceUser, id: string): Promise<Ser
   if ('error' in owned) return fail(owned.status ?? 403, String(owned.error))
   const exam = owned.doc
 
+  // Indexed lookups (A-012): invites carry exam_id / exam_ids (legacy rows are
+  // backfilled by lib/db-indexes.ts on boot); the regex fallback only touches
+  // rows that still have no exam_id.
+  const legacyRe = { $regex: id.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&') }
   const invites = await db.collection('candidate_invites').find({
     $or: [
-      { target_url: { $regex: id.replace(/-/g, '\\-') } },
-      { 'assigned_assessments.target_url': { $regex: id.replace(/-/g, '\\-') } },
+      { exam_id: id },
+      { exam_ids: id },
+      // Not yet backfilled (exam_id null/missing uses the exam_id index).
+      { exam_id: null, $or: [{ target_url: legacyRe }, { 'assigned_assessments.target_url': legacyRe }] },
     ],
   }).toArray()
 
+  // Identity photos are never loaded for the list (A-011) — reviewers open
+  // them one candidate at a time through short-lived signed URLs.
   const submissions = await db.collection('exam_submissions').find({
     exam_id: id,
-  }).toArray()
+  }, { projection: { id_photo: 0, face_photo: 0 } }).toArray()
 
   // Latest attempt per user (legacy rows may hold several per user).
   const submissionsByUser: Record<string, typeof submissions[0]> = {}

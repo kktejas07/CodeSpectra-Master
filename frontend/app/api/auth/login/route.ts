@@ -165,12 +165,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.' }, { status: 403 })
     }
 
+    // Maintenance mode / required email verification (A-025, A-052).
+    {
+      const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+      const { signInBlock } = await import('@/lib/auth-policy')
+      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified }, { method: 'password' })
+      if (blocked) {
+        await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', detail: blocked.code, user_id: uid })
+        return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
+      }
+    }
+
     if (user.totp_enabled) {
       if (!totpToken) {
         return NextResponse.json({ twoFactorRequired: true })
       }
-      const { checkTotp } = await import('@/lib/totp')
-      const isValid = checkTotp(totpToken, user.totp_secret)
+      // consumeTotp burns the code's time step so it can't be replayed (A-053).
+      const { consumeTotp } = await import('@/lib/totp')
+      const isValid = await consumeTotp(user, totpToken)
       if (!isValid) {
         await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: uid })
         await recordAuthFailure('login', ident, rawIp)

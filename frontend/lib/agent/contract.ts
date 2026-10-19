@@ -44,6 +44,8 @@ export type KnowledgeSourceType =
   | 'upload' // company uploads: JDs, rubrics, policies, PDFs — tenant scoped
   | 'resume' // candidate résumés — tenant scoped, staff only
   | 'attempt_summary' // candidate attempt + proctoring summary — tenant scoped, staff only
+  | 'marketplace_product' // published marketplace products from approved sellers (public)
+  | 'external_event' // events feed: published external hackathons / contests (public)
 
 export type KnowledgeVisibility = 'public' | 'platform_admin' | 'tenant'
 

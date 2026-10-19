@@ -16,6 +16,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     chunk_index?: number
     data?: string
     mime_type?: string
+    has_audio?: boolean
+    audio_error?: string
   }
   try {
     body = await req.json()
@@ -46,6 +48,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       data: body.data,
       mime_type: body.mime_type || 'video/webm',
       size: sizeBytes,
+      // Reviewers: false means the candidate's mic was unavailable/refused and
+      // only video was recorded (audit A-004).
+      has_audio: body.has_audio !== false,
+      ...(body.has_audio === false && typeof body.audio_error === 'string'
+        ? { audio_error: body.audio_error.slice(0, 60) } : {}),
       created_at: nowIso(),
     }
     await db.collection('session_recordings').insertOne(doc)

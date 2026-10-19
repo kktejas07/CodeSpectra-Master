@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { clearPending2faCookie, readPending2faCookie, setSessionCookie } from '@/lib/session'
-import { checkTotp } from '@/lib/totp'
+import { consumeTotp } from '@/lib/totp'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     }
 
     const actorIp = ipKey.replace(/^(ip:|u:)/, '')
-    if (!checkTotp(totpToken, user.totp_secret)) {
+    if (!(await consumeTotp(user, totpToken))) {
       await writeAuditLog({ action: `auth.${pending.method}_login`, outcome: 'denied', actor: pending.email, actorIp, resource: 'user/' + pending.uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: pending.uid }).catch(() => {})
       return NextResponse.json({ error: 'That code is incorrect or has expired.' }, { status: 401 })
     }

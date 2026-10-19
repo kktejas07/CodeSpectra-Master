@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { generateSecret, generateURI } from 'otplib'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { sealTotpSecret } from '@/lib/totp'
 
 /**
  * Starts (or restarts) 2FA enrolment. The new secret is parked in
@@ -35,7 +36,7 @@ export async function POST() {
 
     await db.collection('user').updateOne(
       { id: gate.user.id },
-      { $set: { totp_pending_secret: secret, totp_setup_at: new Date().toISOString() } }
+      { $set: { totp_pending_secret: sealTotpSecret(secret), totp_setup_at: new Date().toISOString() } }
     )
 
     return NextResponse.json({ secret, otpauth })

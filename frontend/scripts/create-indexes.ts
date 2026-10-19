@@ -252,6 +252,12 @@ async function main() {
   let total = 0
   let errors = 0
 
+  // Hot-collection indexes (also created automatically on server start — lib/db-indexes.ts).
+  const { ensureHotIndexes, backfillInviteExamIds } = await import('@/lib/db-indexes')
+  const hot = await ensureHotIndexes(db, (m) => console.log(m))
+  console.log(`[hot] ${hot.created} ensured, ${hot.skipped} skipped; backfilled ${await backfillInviteExamIds(db, 100_000)} invite(s)`)
+  total += hot.created
+
   for (const [collection, specs] of Object.entries(INDEX_SPECS)) {
     try {
       const col = db.collection(collection)

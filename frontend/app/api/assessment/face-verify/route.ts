@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { getAPIUser } from '@/lib/route-auth'
 import { getUserById } from '@/lib/db/admin'
+import { openFaceTemplate, sealFaceTemplate } from '@/lib/identity-media'
 import { writeAuditLog } from '@/lib/db/misc'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       try {
         await db.collection('user').updateOne(
           { _id: dbUser._id } as any,
-          { $set: { facial_biometric_template: descriptor, biometric_enrolled_at: new Date() } }
+          { $set: { facial_biometric_template: await sealFaceTemplate(descriptor), biometric_enrolled_at: new Date() } }
         )
       } catch (enrollErr) {
         console.error('[AssessmentFaceVerify] auto-enroll failed:', enrollErr)
@@ -68,7 +69,11 @@ export async function POST(request: Request) {
     }
 
     // Compare face embeddings
-    const similarityScore = cosineSimilarity(descriptor, dbUser.facial_biometric_template as number[]);
+    const template = await openFaceTemplate(dbUser.facial_biometric_template)
+    if (!template) {
+      return NextResponse.json({ error: 'Your saved face scan could not be read. Re-enroll your face from your profile, then try again.' }, { status: 409 })
+    }
+    const similarityScore = cosineSimilarity(descriptor, template);
     
     // Threshold > 0.85 indicates a very strong match for 128d embeddings (face-api.js)
     if (similarityScore < 0.85) {

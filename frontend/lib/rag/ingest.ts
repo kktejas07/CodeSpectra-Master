@@ -75,7 +75,7 @@ export async function indexSource(type: KnowledgeSourceType, sourceId: string, o
   const id = sourceKey(type, sourceId)
   const tenant = extracted.tenant_id
   const visibility = effectiveVisibility(type, tenant, extracted.visibility)
-  const hash = contentHash([extracted.title, extracted.url, tenant, visibility, extracted.text])
+  const hash = contentHash([extracted.title, extracted.url, tenant, visibility, extracted.text, ...(extracted.chunk ? [extracted.chunk] : [])])
   const existing = await sourcesCol.findOne({ id })
   const now = nowIso()
 
@@ -94,7 +94,7 @@ export async function indexSource(type: KnowledgeSourceType, sourceId: string, o
     return { chunks: existing?.chunk_count ?? 0 }
   }
 
-  const chunks = chunkText(extracted.title, extracted.text)
+  const chunks = chunkText(extracted.title, extracted.text, extracted.chunk)
   const scan = scanPrompt(extracted.text)
   if (scan.flagged) console.warn(`[rag] ${id}: possible prompt injection in source text (${scan.reasons.slice(0, 3).join(', ')}) — indexed as data`)
 

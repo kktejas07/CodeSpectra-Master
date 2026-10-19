@@ -35,6 +35,8 @@ export function PublicPageWrapper({
     { href: '/hackathons', label: 'Hackathons' },
     { href: '/events', label: 'Events' },
     { href: '/pricing', label: 'Pricing' },
+    { href: '/marketplace', label: 'Marketplace' },
+    { href: '/learn', label: 'Learn' },
     { href: '/blog', label: 'Blog' },
     { href: '/docs', label: 'Docs' },
   ]
@@ -161,6 +163,7 @@ export function PublicPageWrapper({
               <ul className="space-y-3">
                 <li><Link href="/features" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Features</Link></li>
                 <li><Link href="/pricing" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Pricing</Link></li>
+                <li><Link href="/marketplace" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Marketplace</Link></li>
               </ul>
             </div>
             <div>
@@ -168,6 +171,7 @@ export function PublicPageWrapper({
               <ul className="space-y-3">
                 <li><Link href="/docs" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Documentation</Link></li>
                 <li><Link href="/newsletter" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Newsletter</Link></li>
+                <li><Link href="/learn" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Learn</Link></li>
                 <li><Link href="/blog" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Blog</Link></li>
                 <li><Link href="/api-reference" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">API reference</Link></li>
                 <li><Link href="/support" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Support</Link></li>

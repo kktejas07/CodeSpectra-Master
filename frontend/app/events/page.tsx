@@ -1,134 +1,31 @@
-import { formatDate } from '@/lib/format-datetime'
 import { Metadata } from 'next'
 import { PublicPageWrapper } from '@/app/public-layout'
-import Link from 'next/link'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Trophy, Users, Clock, CalendarDays, ArrowRight, Code, Timer } from 'lucide-react'
 import { PageHero } from '@/components/landing/page-hero'
 import { DeviceShowcase } from '@/components/visuals'
-import { EmptyState } from '@/components/ui/empty-state'
-import { listPublicEvents } from '@/lib/hackathons/public-events'
+import { EventsExplorer } from '@/components/events-feed/events-explorer'
+import { listPublishedFeed } from '@/lib/events-feed/query'
+import { getAppOrigin } from '@/lib/app-origin'
 
 export const metadata: Metadata = {
-  title: 'Events — CodeSpectra',
-  description: 'Browse hackathons, codeathons, and coding competitions on CodeSpectra.',
+  title: 'Events — hackathons, codeathons and buildathons worldwide | CodeSpectra',
+  description: 'Upcoming hackathons, codeathons, buildathons, CTFs and coding contests from around the world, plus CodeSpectra’s own events. Filter by format, country, theme and deadline, and get notified by email or WhatsApp.',
+  alternates: { canonical: '/events' },
 }
 
-// Read the DB directly — a relative fetch to our own API throws on the server.
 // Rendered per request so the build never needs a DB connection.
 export const dynamic = 'force-dynamic'
 
-async function getEvents() {
-  try {
-    return await listPublicEvents()
-  } catch {
-    return []
-  }
-}
-
-function EventCard({ event }: { event: any }) {
-  const now = Date.now()
-  const starts = new Date(event.starts_at).getTime()
-  const ends = new Date(event.ends_at).getTime()
-  const isLive = now >= starts && now <= ends
-  const isClosed = now > ends || event.status === 'closed'
-  const isUpcoming = now < starts
-
-  const statusColor = isLive ? 'bg-green-500/15 text-green-700 border-green-500/30 dark:text-green-400'
-    : isClosed ? 'bg-muted text-muted-foreground'
-    : 'bg-cs-accent/10 text-cs-accent-text border-cs-accent/30'
-  const statusLabel = isLive ? 'Live Now' : isClosed ? 'Ended' : 'Upcoming'
-
-  const detailUrl = event.type === 'hackathon'
-    ? `/hackathons/${event.slug}`
-    : `/dashboard/codeathons/${event.id}`
-
-  return (
-    <Card className="group overflow-hidden rounded-3xl border-cs-grid bg-cs-sheet py-0 transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0">
-      {event.banner_url && (
-        <div className="h-32 w-full overflow-hidden bg-muted">
-          <img src={event.banner_url} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-        </div>
-      )}
-      <div className="space-y-3 p-6">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Badge variant="outline" className={`text-[10px] ${statusColor}`}>{statusLabel}</Badge>
-              <Badge variant="secondary" className="text-[10px]">
-                {event.type === 'hackathon' ? <Trophy className="w-2.5 h-2.5 mr-1" /> : <Code className="w-2.5 h-2.5 mr-1" />}
-                {event.type === 'hackathon' ? 'Hackathon' : 'Codeathon'}
-              </Badge>
-            </div>
-            <h3 className="truncate text-base font-bold text-cs-ink">{event.title}</h3>
-            {event.description && (
-              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{event.description}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <CalendarDays className="w-3 h-3" />
-            {formatDate(event.starts_at)}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            {event.duration}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Users className="w-3 h-3" />
-            {event.participants} participants
-          </span>
-        </div>
-
-        {isLive && (
-          <div className="flex items-center gap-1 text-xs font-medium text-green-700 dark:text-green-400">
-            <Timer className="w-3 h-3" /> Live — join now!
-          </div>
-        )}
-
-        <Button size="sm" variant={isLive ? 'default' : 'outline'} className="w-full gap-1.5 text-xs" asChild>
-          <Link href={detailUrl}>
-            {isLive ? 'Join Event' : isClosed ? 'View Results' : 'Learn More'}
-            <ArrowRight className="w-3 h-3" />
-          </Link>
-        </Button>
-      </div>
-    </Card>
-  )
-}
-
 export default async function PublicEventsPage() {
-  const events = await getEvents()
-
+  const events = await listPublishedFeed().catch(() => [])
   return (
     <PublicPageWrapper>
       <PageHero
         title="Events"
-        lead="Hackathons, codeathons and coding competitions on CodeSpectra. Join one live, or browse results from past events."
+        lead="Hackathons, codeathons, buildathons, CTFs and coding contests happening around the world — and our own events, featured first. Register on the organiser’s site, add events to your calendar, or get notified when new ones match what you like."
         art={<DeviceShowcase variant="candidate" compact />}
       />
-
-      <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6 lg:px-8">
-        {events.length === 0 ? (
-          <EmptyState
-            className="mx-auto max-w-xl"
-            illustration="calendar"
-            title="No events open right now"
-            description="Create a free account to see new events on your dashboard as soon as they’re announced."
-            actionLabel="Create a free account"
-            actionHref="/auth/signup"
-          />
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.map((event: any) => (
-              <EventCard key={`${event.type}-${event.id}`} event={event} />
-            ))}
-          </div>
-        )}
+      <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8">
+        <EventsExplorer events={events} origin={getAppOrigin()} />
       </div>
     </PublicPageWrapper>
   )

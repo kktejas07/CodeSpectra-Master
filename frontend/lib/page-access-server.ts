@@ -54,6 +54,10 @@ export type PageGateResult =
   | { action: 'next'; user: APIUser | null }
   | { action: 'login' }
   | { action: 'deny'; reason: 'forbidden' | 'locked' | 'plan' | 'unavailable'; feature?: string }
+  /** Maintenance mode is on and the caller is not a platform admin (A-025). */
+  | { action: 'maintenance' }
+  /** Admin without 2FA past the grace period (A-041) → /auth/two-factor-setup. */
+  | { action: 'setup_2fa' }
 
 /**
  * Decide a page request. `next` for pages outside the map, public pages and
@@ -76,6 +80,21 @@ export async function gatePageRequest(input: {
     return { action: 'deny', reason: 'unavailable' }
   }
   if (!user) return { action: 'login' }
+
+  // Platform policies that apply before route permissions.
+  try {
+    const [{ getGeneralSettingsCached }, { maintenanceBlocksPage }, { getAdmin2faState }] = await Promise.all([
+      import('@/lib/platform-general-settings-server'),
+      import('@/lib/auth-policy'),
+      import('@/lib/admin-2fa'),
+    ])
+    if (maintenanceBlocksPage(await getGeneralSettingsCached(), user.role)) return { action: 'maintenance' }
+    if ((await getAdmin2faState(user.id, user.role)).status === 'required') return { action: 'setup_2fa' }
+  } catch (e) {
+    console.error('[page-access] policy check failed — denying:', e)
+    return { action: 'deny', reason: 'unavailable' }
+  }
+
   if (user.role === 'superadmin') return { action: 'next', user }
 
   let decision: RouteDecision

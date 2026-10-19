@@ -21,15 +21,14 @@ export async function GET() {
     const cancelledSubs = await subsCol.countDocuments({ status: 'cancelled' })
     const totalSubs = await subsCol.estimatedDocumentCount()
 
-    // Revenue
-    const paidOrders = await ordersCol.find({ status: 'paid' }).toArray()
-    const totalRevenue = paidOrders.reduce((sum, o) => sum + (o.amount_paise || 0), 0)
-    const usdRevenue = paidOrders
-      .filter((o) => o.currency === 'USD')
-      .reduce((sum, o) => sum + (o.amount_paise || 0), 0)
-    const inrRevenue = paidOrders
-      .filter((o) => o.currency === 'INR')
-      .reduce((sum, o) => sum + (o.amount_paise || 0), 0)
+    // Revenue — summed in Mongo, never loading every paid order (A-060).
+    const revenueRows = await ordersCol.aggregate<{ _id: string | null; total: number }>([
+      { $match: { status: 'paid' } },
+      { $group: { _id: '$currency', total: { $sum: { $ifNull: ['$amount_paise', 0] } } } },
+    ]).toArray()
+    const totalRevenue = revenueRows.reduce((sum, r) => sum + (Number(r.total) || 0), 0)
+    const usdRevenue = Number(revenueRows.find((r) => r._id === 'USD')?.total) || 0
+    const inrRevenue = Number(revenueRows.find((r) => r._id === 'INR')?.total) || 0
 
     // Orders by plan
     const ordersByPlan = await ordersCol.aggregate([
@@ -39,19 +38,15 @@ export async function GET() {
 
     // Revenue over time (last 30 days, grouped by day)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 86400000).toISOString()
-    const recentOrders = await ordersCol.find({
-      status: 'paid',
-      created_at: { $gte: thirtyDaysAgo },
-    }).toArray()
-
+    const byDay = await ordersCol.aggregate<{ _id: string; total: number }>([
+      { $match: { status: 'paid', created_at: { $gte: thirtyDaysAgo } } },
+      { $group: { _id: { $substrBytes: [{ $ifNull: ['$created_at', ''] }, 0, 10] }, total: { $sum: { $ifNull: ['$amount_paise', 0] } } } },
+    ]).toArray()
     const revenueByDay: Record<string, number> = {}
-    for (const o of recentOrders) {
-      const day = (o.created_at || '').slice(0, 10)
-      if (day) revenueByDay[day] = (revenueByDay[day] || 0) + (o.amount_paise || 0)
-    }
+    for (const r of byDay) if (r._id) revenueByDay[r._id] = Number(r.total) || 0
 
     // Recent subscriptions
-    const recentSubs = await subsCol.find()
+    const recentSubs = await subsCol.find({}, { projection: { _id: 0, id: 1, plan_id: 1, status: 1, created_at: 1, user_id: 1 } })
       .sort({ created_at: -1 })
       .limit(20)
       .toArray()

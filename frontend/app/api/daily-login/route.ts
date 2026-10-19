@@ -3,27 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/admin'
 import { awardXp } from '@/lib/db/leaderboard'
-
-const DEFAULT_GAMIFICATION = {
-  xp_rewards: { easy: 10, medium: 25, hard: 50, first_blood: 25, exam_pass: 50, cert_pass: 100, codeathon: 20, hackathon: 100, daily_login: 5, streak_7day: 25, streak_30day: 100 },
-  levels: { 2: 100, 5: 500, 10: 2000, 20: 8000, 50: 50000 },
-  streak: { multiplier: 1.5, freeze_enabled: true },
-  referral: { xp_bonus: 500, commission_percent: 10 },
-  badges: { hackathon: true, exam: true, cert: true, streak: true }
-}
-
-async function getGamificationConfig() {
-  const db = await getMongoDb()
-  const doc = await db.collection('platform_settings').findOne({ key: 'gamification' })
-  const stored = doc?.value || {}
-  return {
-    xp_rewards: { ...DEFAULT_GAMIFICATION.xp_rewards, ...(stored.xp_rewards || {}) },
-    levels: { ...DEFAULT_GAMIFICATION.levels, ...(stored.levels || {}) },
-    streak: { ...DEFAULT_GAMIFICATION.streak, ...(stored.streak || {}) },
-    referral: { ...DEFAULT_GAMIFICATION.referral, ...(stored.referral || {}) },
-    badges: { ...DEFAULT_GAMIFICATION.badges, ...(stored.badges || {}) }
-  }
-}
+import { getGamificationConfig, loginXp, nextLoginStreak } from '@/lib/gamification-config'
 
 function utcDay(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -47,7 +27,6 @@ export async function POST() {
     const config = await getGamificationConfig()
     const now = new Date()
     const today = utcDay(now)
-    const yesterday = utcDay(new Date(now.getTime() - 86_400_000))
 
     const streakCol = db.collection('user_streaks')
     const existing = await streakCol.findOne({ user_id: userId })
@@ -63,12 +42,22 @@ export async function POST() {
       })
     }
 
-    const streak = lastDay === yesterday ? (Number(existing?.streak) || 0) + 1 : 1
+    // Streak freezes (one token per missed day) + multiplier — lib/gamification-config.ts (A-027).
+    const step = nextLoginStreak({
+      lastDay,
+      today,
+      streak: Number(existing?.streak) || 0,
+      freezeTokens: Number(existing?.freeze_tokens) || 0,
+      config: config.streak,
+    })
+    const streak = step.streak
     const longestStreak = Math.max(streak, Number(existing?.longest_streak) || 0)
 
     // Claim today: only succeeds if no other request already moved last_login_day to today.
     const fields = {
       streak,
+      freeze_tokens: step.freezeTokens,
+      ...(step.freezesUsed ? { last_freeze_used_at: nowIso() } : {}),
       longest_streak: longestStreak,
       last_login_day: today,
       last_login_at: nowIso(),
@@ -91,10 +80,7 @@ export async function POST() {
       return NextResponse.json({ awarded: false, xp: 0, streak, message: 'Daily login XP already awarded today' })
     }
 
-    const dailyXp = Number(config.xp_rewards.daily_login) || 0
-    let streakXp = 0
-    if (streak === 7) streakXp = Number(config.xp_rewards.streak_7day) || 0
-    else if (streak === 30) streakXp = Number(config.xp_rewards.streak_30day) || 0
+    const { dailyXp, streakBonus: streakXp } = loginXp(config, streak)
 
     // awardXp dedupes on (user, submission_id, reason), so the day key makes this idempotent.
     const dailyId = await awardXp({
@@ -122,6 +108,8 @@ export async function POST() {
       streak,
       streakXp: awardedStreak,
       dailyXp: awardedDaily,
+      freezeTokens: step.freezeTokens,
+      freezesUsed: step.freezesUsed,
     })
   } catch (error) {
     console.error('[CodeSpectra] Error processing daily login:', error)

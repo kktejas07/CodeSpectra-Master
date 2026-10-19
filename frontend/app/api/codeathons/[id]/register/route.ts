@@ -53,6 +53,9 @@ export async function POST(request: Request, { params }: IdRouteContext) {
       registered_at: nowIso(),
     }
     await regCol.insertOne(doc)
+    void import('@/lib/automation/events').then(({ emit }) => emit('hackathon.registered', {
+      event_id: id, event_kind: 'codeathon', event_name: codeathon.title ?? null, user_id: gate.user.id, team_name: doc.team_name, starts_at: codeathon.startDate ?? null,
+    }, { tenantId: codeathon.tenant_id ?? null, idempotencyKey: `hackathon.registered:codeathon:${id}:${gate.user.id}` })).catch((e) => console.error('[automation] emit failed:', e))
 
     // Attendance XP (idempotent per registration).
     let xpAmount = 0

@@ -86,6 +86,19 @@ export const NOTIFICATION_TYPES = {
   'system.feedback_received': { category: 'system', icon: 'flag', default_title: 'Feedback Received', default_link: '/dashboard/admin/feedback' },
   'content.course_generated': { category: 'learning', icon: 'book-open', default_title: 'Course Generated', default_link: '/dashboard/admin/courses' },
   'content.post_published': { category: 'system', icon: 'file-text', default_title: 'Blog Post Published', default_link: '/dashboard/admin/blog' },
+
+  // Marketplace — seller / admin (lib/marketplace/seller-notify.ts)
+  'mkt.new_order': { category: 'marketplace', icon: 'shopping-bag', default_title: 'New order', default_link: '/dashboard/seller?tab=orders' },
+  'mkt.low_stock': { category: 'marketplace', icon: 'package', default_title: 'Low stock', default_link: '/dashboard/seller?tab=products' },
+  'mkt.payout_paid': { category: 'marketplace', icon: 'banknote', default_title: 'Payout sent', default_link: '/dashboard/seller?tab=payouts' },
+  'mkt.payout_failed': { category: 'marketplace', icon: 'alert-circle', default_title: 'Payout failed', default_link: '/dashboard/seller?tab=payouts' },
+  'mkt.product_approved': { category: 'marketplace', icon: 'check-circle', default_title: 'Product approved', default_link: '/dashboard/seller?tab=products' },
+  'mkt.product_rejected': { category: 'marketplace', icon: 'x-circle', default_title: 'Product needs changes', default_link: '/dashboard/seller?tab=products' },
+  'mkt.seller_status': { category: 'marketplace', icon: 'store', default_title: 'Seller account update', default_link: '/dashboard/seller' },
+  'mkt.refund_processed': { category: 'marketplace', icon: 'rotate-ccw', default_title: 'Refund processed', default_link: '/dashboard/seller?tab=returns' },
+  'mkt.seller_application': { category: 'marketplace', icon: 'store', default_title: 'New seller application', default_link: '/dashboard/admin/marketplace?tab=sellers' },
+  'mkt.refund_requested': { category: 'marketplace', icon: 'rotate-ccw', default_title: 'Refund request', default_link: '/dashboard/admin/marketplace?tab=refunds' },
+  'mkt.payout_requested': { category: 'marketplace', icon: 'banknote', default_title: 'Payout requested', default_link: '/dashboard/admin/marketplace?tab=payouts' },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES

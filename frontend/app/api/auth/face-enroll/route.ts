@@ -6,7 +6,8 @@ import { getUserById } from '@/lib/db/admin'
 import { writeAuditLog } from '@/lib/db/misc'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
-import { checkTotp } from '@/lib/totp'
+import { consumeTotp } from '@/lib/totp'
+import { sealFaceTemplate } from '@/lib/identity-media'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,7 +58,7 @@ export async function POST(request: Request) {
       if (password && typeof profile.passwordHash === 'string') {
         reauthed = await bcrypt.compare(password, profile.passwordHash)
       } else if (code && profile.totp_enabled && typeof profile.totp_secret === 'string') {
-        reauthed = checkTotp(code, profile.totp_secret)
+        reauthed = await consumeTotp(profile, code)
       } else if (!profile.passwordHash && !profile.totp_enabled) {
         const last = profile.lastLoginAt ? new Date(profile.lastLoginAt as string).getTime() : 0
         reauthed = Date.now() - last < RECENT_SIGN_IN_MS
@@ -81,7 +82,8 @@ export async function POST(request: Request) {
       { _id: profile._id } as never,
       {
         $set: {
-          facial_biometric_template: body.descriptor,
+          // Sealed at rest (AES-GCM, lib/identity-media.ts — A-042).
+          facial_biometric_template: await sealFaceTemplate(body.descriptor as number[]),
           biometric_enrolled_at: new Date(),
         },
       },

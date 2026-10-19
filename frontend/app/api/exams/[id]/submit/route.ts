@@ -9,6 +9,7 @@ import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
 import { attemptTimeState, checkExamEntry, checkIdentityForAttempt, extensionRequired, getExamDraft, identitySummary, recordExamAttempt, sectionsAtSubmit, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 
+import { toMediaRef } from '@/lib/identity-media'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -202,6 +203,12 @@ export async function POST(
       details.push({ qId: q.id, correct, points, answer: userAnswer, pending_review: pendingReview })
     }
 
+    // Identity photos: stored encrypted outside the submission (lib/identity-media.ts, A-011/A-042);
+    // the submission keeps a "media:<id>" reference only.
+    const mediaCtx = { examId, userId, tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null }
+    const idPhotoRef = await toMediaRef(typeof identityRecord?.id_photo === 'string' ? identityRecord.id_photo : photo(body.idPhoto), { ...mediaCtx, kind: 'id' })
+    const facePhotoRef = await toMediaRef(typeof identityRecord?.face_photo === 'string' ? identityRecord.face_photo : photo(body.facePhoto), { ...mediaCtx, kind: 'face' })
+
     // Save submission
     const submission = {
       id: newId(),
@@ -218,8 +225,8 @@ export async function POST(
       // Past deadline + grace: answers are the server draft saved before the deadline.
       late_submit: late,
       // Photos come from the stored identity check (server-validated), not the submit body.
-      id_photo: typeof identityRecord?.id_photo === 'string' ? identityRecord.id_photo : photo(body.idPhoto),
-      face_photo: typeof identityRecord?.face_photo === 'string' ? identityRecord.face_photo : photo(body.facePhoto),
+      id_photo: idPhotoRef,
+      face_photo: facePhotoRef,
       identity_check: identitySummary(identityRecord),
       details,
       device_info: { 
@@ -252,6 +259,15 @@ export async function POST(
       return NextResponse.json({ error: 'This attempt was already submitted.' }, { status: 409 })
     }
     knowledgeOnSubmission(examId, userId, (exam as { tenant_id?: unknown }).tenant_id)
+    // Automation bus: receipts, auto-grading (coding tests + AI), workflows (lib/automation).
+    {
+      const tenantId = typeof exam.tenant_id === 'string' ? exam.tenant_id : null
+      const ev = { submission_id: submission.id, exam_id: examId, exam_title: exam.title ?? null, user_id: userId, email, score: totalScore, max_score: maxScore, has_pending_review: hasPendingReview, auto_submitted: submission.auto_submitted, late_submit: late }
+      void import('@/lib/automation/events').then(({ emit }) => {
+        void emit('exam.submitted', ev, { tenantId, idempotencyKey: `exam.submitted:${submission.id}` })
+        if (!hasPendingReview) void emit('exam.graded', { ...ev, percent: maxScore > 0 ? Math.round((totalScore / maxScore) * 100) : 0, graded_by: 'objective' }, { tenantId, idempotencyKey: `exam.graded:${submission.id}:${access.attemptNo}` })
+      }).catch((e) => console.error('[automation] emit failed:', e))
+    }
     // Hiring pipeline: an auto-graded attempt is final now → record the assessment stage result;
     // one waiting for manual grading is marked submitted (on time) and recorded once graded.
     import('@/lib/ats/handlers/assessment')

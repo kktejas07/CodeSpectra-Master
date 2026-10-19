@@ -4,7 +4,18 @@
  * constant time. With no CRON_SECRET set, only non-production may run crons
  * unauthenticated (`allowDevWithoutSecret`, default true); production denies.
  */
-import { createHash, timingSafeEqual } from 'node:crypto'
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
+
+/**
+ * Per-process random token used when the shared scheduler runner
+ * (lib/platform-cron.ts) invokes a cron route handler in-process. It never
+ * leaves this process, so it works without CRON_SECRET on Docker hosts.
+ */
+export function internalCronToken(): string {
+  const g = globalThis as { __csInternalCronToken?: string }
+  g.__csInternalCronToken ??= randomBytes(32).toString('hex')
+  return g.__csInternalCronToken
+}
 
 /** Constant-time comparison of a presented bearer token with the secret. */
 export function cronSecretMatches(expected: string, presented: string): boolean {
@@ -32,6 +43,8 @@ export function decideCronAuth(input: {
 }
 
 export function isCronAuthorized(req: Request, opts: { allowDevWithoutSecret?: boolean } = {}): boolean {
+  const presented = bearerToken(req.headers.get('authorization'))
+  if (presented && cronSecretMatches(internalCronToken(), presented)) return true
   return decideCronAuth({
     secret: process.env.CRON_SECRET,
     authorization: req.headers.get('authorization'),

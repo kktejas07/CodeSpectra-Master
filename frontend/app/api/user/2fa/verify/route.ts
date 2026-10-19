@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { checkTotp } from '@/lib/totp'
+import { sealTotpSecret, totpMatchStep } from '@/lib/totp'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
@@ -33,19 +33,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '2FA not set up. Call setup first.' }, { status: 400 })
     }
 
-    const isValid = checkTotp(token, secret)
-    if (!isValid) {
+    const step = totpMatchStep(token, secret)
+    if (step === null) {
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
     }
 
     await db.collection('user').updateOne(
       { id: gate.user.id },
       {
-        $set: { totp_secret: secret, totp_enabled: true, totp_verified_at: new Date().toISOString() },
+        // Sealed at rest; the enrolment code is burnt so it can't also sign in.
+        $set: { totp_secret: sealTotpSecret(String(secret)), totp_enabled: true, totp_verified_at: new Date().toISOString(), totp_last_step: step },
         $unset: { totp_pending_secret: '' },
       }
     )
 
+    const { invalidateAdmin2faCache } = await import('@/lib/admin-2fa')
+    invalidateAdmin2faCache(gate.user.id)
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[CodeSpectra] 2FA verify error:', error)

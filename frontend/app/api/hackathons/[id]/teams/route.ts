@@ -152,6 +152,9 @@ export async function POST(
     updated_at: nowIso(),
   }
   await teamsCol.insertOne(doc)
+  void import('@/lib/automation/events').then(({ emit }) => emit('hackathon.registered', {
+    event_id: hk.id, event_kind: 'hackathon', event_name: hk.name, user_id: user.id, team_name: doc.name, starts_at: hk.starts_at ?? null,
+  }, { tenantId: hk.tenant_id ?? null, idempotencyKey: `hackathon.registered:${hk.id}:${user.id}` })).catch((e) => console.error('[automation] emit failed:', e))
 
   const shareUrl = `${absoluteOrigin(req)}/hackathons/${hk.slug}/join/${token}`
   const { _id: _omit, ...clean } = doc as HackathonTeamDoc & { _id?: unknown }

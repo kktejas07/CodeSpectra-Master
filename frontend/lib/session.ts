@@ -65,6 +65,9 @@ async function resolveSecret(): Promise<Uint8Array> {
       // ponytail: login still works this process; next roll re-reads env or generates
     }
   }
+  // Keep the boot-time env value: lib/secrets-crypto.ts derives its fallback
+  // at-rest key from it and must never use the DB copy assigned below.
+  if (process.env.SESSION_SECRET_BOOT === undefined) process.env.SESSION_SECRET_BOOT = process.env.SESSION_SECRET || ''
   process.env.SESSION_SECRET = raw
   _secret = new TextEncoder().encode(raw)
   return _secret

@@ -29,3 +29,21 @@ export function knowledgeOnEventChange(type: 'hackathon' | 'codeathon', id: unkn
   if (typeof id !== 'string' || !id) return
   void enqueueKnowledge({ type, id, tenantId: tid(tenantId) })
 }
+
+/** Marketplace product created / edited / moderated / removed (loader keeps published + approved seller only). */
+export function knowledgeOnMarketplaceProduct(productIds: unknown): void {
+  const ids = (Array.isArray(productIds) ? productIds : [productIds]).filter((x): x is string => typeof x === 'string' && !!x)
+  if (ids.length) void enqueueKnowledge(ids.map((id) => ({ type: 'marketplace_product' as const, id, tenantId: null })))
+}
+
+/** Events-feed event inserted / refreshed / edited / hidden / archived (loader keeps published only). */
+export function knowledgeOnExternalEvent(eventIds: unknown): void {
+  const ids = (Array.isArray(eventIds) ? eventIds : [eventIds]).filter((x): x is string => typeof x === 'string' && !!x)
+  if (ids.length) void enqueueKnowledge(ids.map((id) => ({ type: 'external_event' as const, id, tenantId: null })))
+}
+
+/** Learn hub post published / edited / unpublished (the loader drops non-published posts). */
+export function knowledgeOnLearnPost(postId: unknown): void {
+  if (typeof postId !== 'string' || !postId) return
+  void enqueueKnowledge({ type: 'doc', id: `learn:${postId}`, tenantId: null })
+}

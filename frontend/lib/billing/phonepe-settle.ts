@@ -93,10 +93,11 @@ export async function settlePhonePeOrder(merchantTransactionId: string): Promise
   }
 
   if (sameTxn && state === 'FAILED') {
-    await orders.updateOne(
+    const r = await orders.updateOne(
       { id: order.id, status: { $in: ['created', 'attempted'] } },
       { $set: { status: 'failed', updated_at: nowIso() } },
     )
+    if (r.modifiedCount) void import('@/lib/automation/events').then(({ emit }) => emit('payment.failed', { order_id: order.id, user_id: order.user_id, plan_id: order.plan_id, amount_minor: order.amount_paise, currency: order.currency, provider: 'phonepe', kind: 'checkout' }, { idempotencyKey: `payment.failed:${order.id}` })).catch((e) => console.error('[automation] emit failed:', e))
     return 'failed'
   }
   return 'pending'

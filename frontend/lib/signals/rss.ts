@@ -47,12 +47,13 @@ export function parseRssItems(xml: string, limit = 8): RssItem[] {
 }
 
 export async function fetchFeedItems(url: string, limit = 5): Promise<RssItem[]> {
-  const res = await fetch(url, {
+  const { readTextCapped, safeFetch } = await import('@/lib/url-safety')
+  // Admin-managed feed URLs: SSRF-checked on every hop, body capped at 5 MB.
+  const res = await safeFetch(url, {
     headers: { 'User-Agent': 'CodeSpectraSignals/1.0 (+https://codespectra.ai)' },
     signal: AbortSignal.timeout(20_000),
-    next: { revalidate: 0 },
-  } as RequestInit)
+  })
   if (!res.ok) throw new Error(`Feed ${url} → ${res.status}`)
-  const xml = await res.text()
+  const xml = await readTextCapped(res, 5 * 1024 * 1024)
   return parseRssItems(xml, limit)
 }

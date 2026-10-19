@@ -31,6 +31,8 @@ const GAMIFICATION_DEFAULTS: Record<string, unknown> = {
   level_50_xp: 50000,
   streak_multiplier: 1.5,
   streak_freeze_enabled: true,
+  streak_max_freeze_tokens: 2,
+  streak_freeze_every_days: 7,
   referral_xp_bonus: 500,
   referral_commission_percent: 10,
   badge_hackathon_enabled: true,
@@ -112,6 +114,8 @@ export async function PATCH(request: Request) {
         { $set: { value: next, updated_at: new Date().toISOString() } },
         { upsert: true },
       )
+      const { invalidateGamificationConfig } = await import('@/lib/gamification-config')
+      invalidateGamificationConfig()
       return NextResponse.json({ settings: next })
     } catch (e) {
       console.error('[CodeSpectra] admin/platform-settings:', e)
@@ -150,6 +154,10 @@ export async function PATCH(request: Request) {
     'video_player_captions_default',
     'video_player_logo_url',
     'video_player_logo_link_url',
+    'enforce_admin_2fa',
+    'admin_2fa_grace_days',
+    'identity_media_retention_days',
+    'bgv_simulated_vendor',
   ] as const
 
   try {
@@ -171,7 +179,9 @@ export async function PATCH(request: Request) {
         k === 'enable_chatbot' ||
         k === 'video_player_autoplay' ||
         k === 'video_player_muted' ||
-        k === 'video_player_captions_default'
+        k === 'video_player_captions_default' ||
+        k === 'enforce_admin_2fa' ||
+        k === 'bgv_simulated_vendor'
       ) {
         next[k] = Boolean(v)
         continue
@@ -188,6 +198,10 @@ export async function PATCH(request: Request) {
         if (['classic', 'modern', 'minimal', 'professional', 'corporate', 'academic'].includes(v as string)) next[k] = v
         continue
       }
+      if (k === 'admin_2fa_grace_days' || k === 'identity_media_retention_days') {
+        next[k] = v // clamped by mergeGeneralPlatformSettings
+        continue
+      }
       if (typeof v === 'string') next[k] = v
     }
 
@@ -198,6 +212,8 @@ export async function PATCH(request: Request) {
       { upsert: true },
     )
     invalidateCurrencyCache()
+    const { invalidateGeneralSettingsCache } = await import('@/lib/platform-general-settings-server')
+    invalidateGeneralSettingsCache()
     return NextResponse.json({ settings: mergedNext })
   } catch (e) {
     console.error('[CodeSpectra] admin/platform-settings:', e)

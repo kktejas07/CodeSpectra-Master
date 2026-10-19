@@ -146,6 +146,10 @@ function SignupInner() {
       router.push(`/auth/enroll-face?redirect=${encodeURIComponent(redirectTo)}`);
       router.refresh();
     } catch (err: unknown) {
+      if ((err as { code?: string } | null)?.code === "verification_required") {
+        router.push(`/auth/login?${new URLSearchParams({ verify_sent: "1", email: email.trim().toLowerCase() }).toString()}`);
+        return;
+      }
       setTurnstileToken(null);
       setTurnstileResetKey((k) => k + 1);
       const msg = err instanceof Error ? err.message : "Your account couldn’t be created. Try again.";

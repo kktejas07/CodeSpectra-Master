@@ -5,7 +5,7 @@ import { bgvViewFor, canRevealBgv, canVerifyBgv } from '@/lib/ats/bgv/access'
 import { fairChanceHint, REGIONS } from '@/lib/ats/bgv/catalog'
 import { bodyOf, errorResponse, gate, json } from '@/lib/ats/bgv/http'
 import { latestCaseForApplication, startCaseManually } from '@/lib/ats/bgv/service'
-import { vendorsFor } from '@/lib/ats/bgv/vendors'
+import { simulatedVendorAllowed, vendorsFor } from '@/lib/ats/bgv/vendors'
 import type { BgvRegion } from '@/lib/ats/contract'
 import { limitRequest } from '@/lib/rate-limit'
 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       case: view,
       in_bgv_stage: (stage?.type as string) === 'bgv',
       can: { verify: canVerifyBgv(actor.role), reveal: canRevealBgv(actor.role) },
-      vendors: c ? vendorsFor(c.region) : [],
+      vendors: c ? vendorsFor(c.region, { allowSimulated: await simulatedVendorAllowed() }) : [],
       fair_chance_hint: c ? fairChanceHint(c.region, types, bgvIdx) : null,
     })
   } catch (e) {

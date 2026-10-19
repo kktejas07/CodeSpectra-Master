@@ -8,6 +8,9 @@
 
 ---
 
+> **Production checklist** (every secret, cron, worker and webhook): see
+> [05-Production-Checklist.md](./05-Production-Checklist.md).
+
 ## Architecture Overview
 
 ```
@@ -44,7 +47,7 @@ piston:
   image: ghcr.io/engineer-man/piston:latest
   container_name: codespectra-piston
   privileged: true
-  ports: ["2000:2000"]
+  expose: ["2000"]   # internal only — never publish (runs arbitrary code, no auth)
   volumes: ["piston-data:/piston"]
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:2000/api/v2/runtimes"]
@@ -136,6 +139,9 @@ backend:
 | Variable | Description | Source |
 |----------|-------------|--------|
 | `PISTON_URL` | Piston API URL (internal Docker network) | `docker-compose.yml` |
+| `SECRETS_ENCRYPTION_KEY` | Encrypts API keys stored in Admin → Settings (32+ chars, env only) | `openssl rand -hex 32` |
+| `ATS_ENCRYPTION_KEY` | Encrypts hiring integrations credentials + BGV documents | `openssl rand -hex 32` |
+| `CRON_SECRET` | Bearer token for `/api/cron/*` (serverless: call `/api/cron/tick` every minute; Docker: nothing to schedule) | `openssl rand -hex 32` |
 
 ### Optional / Service-Specific
 

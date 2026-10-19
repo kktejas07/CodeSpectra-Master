@@ -4,6 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { attemptSummary, submissionSectionScores } from '@/lib/exam-access'
 import { OUTCOMES_COLLECTION } from '@/lib/hiring-outcomes'
 import { CAD_TASK_QID } from '@/lib/cad-submission'
+import { mediaViewUrl } from '@/lib/identity-media'
 
 export async function GET(
   _request: Request,
@@ -78,8 +79,9 @@ export async function GET(
         has_pending_review: submission.has_pending_review ?? false,
         submitted_at: submission.submitted_at || submission.created_at || '',
         released_at: submission.released_at || null,
-        id_photo: submission.id_photo || null,
-        face_photo: submission.face_photo || null,
+        // Loaded on demand for this one candidate: 5-minute signed URLs (lib/identity-media.ts).
+        id_photo: await mediaViewUrl(submission.id_photo, gate.user.id),
+        face_photo: await mediaViewUrl(submission.face_photo, gate.user.id),
         // Identity check summary: method, no-camera review flag, advisory face match.
         identity_check: submission.identity_check || null,
         // Timing data
@@ -191,6 +193,10 @@ export async function PATCH(
       import('@/lib/ats/handlers/assessment')
         .then(({ notifyAssessmentFinal }) => notifyAssessmentFinal({ id: submission.id, exam_id: String(submission.exam_id), user_id: String(submission.user_id), email: submission.email, score: newScore, max_score: submission.max_score, has_pending_review: false }))
         .catch((e) => console.error('[CodeSpectra] ats assessment hook:', e))
+      void import('@/lib/automation/events').then(({ emit }) => emit('exam.graded', {
+        submission_id: submission.id, exam_id: String(submission.exam_id), user_id: String(submission.user_id), email: submission.email, score: newScore, max_score: submission.max_score,
+        percent: Number(submission.max_score) > 0 ? Math.round((newScore / Number(submission.max_score)) * 100) : 0, graded_by: 'manual',
+      }, { tenantId: typeof owned.doc.tenant_id === 'string' ? owned.doc.tenant_id : null, idempotencyKey: `exam.graded:${String(submission.id)}:${String(submission.attempt_no ?? 1)}` })).catch((e) => console.error('[automation] emit failed:', e))
     }
     return NextResponse.json({ score: newScore, has_pending_review: stillPending })
   } catch (e: unknown) {

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server'
 import { checkCsrf, CSRF_COOKIE, CSRF_HEADER } from '@/lib/csrf'
 import { edgeRateLimit, edgeClientKey } from '@/lib/edge-rate-limit'
 import { isCsrfExempt } from '@/lib/csrf-exempt'
+import { PERMISSIONS_POLICY } from '@/lib/security-headers'
 
 const CSP = [
   "default-src 'self'",
@@ -47,6 +48,12 @@ async function pageGate(request: NextRequest): Promise<NextResponse | null> {
       authorization: request.headers.get('authorization'),
     })
     if (result.action === 'next') return null
+    if (result.action === 'maintenance') return NextResponse.rewrite(new URL('/maintenance', request.url))
+    if (result.action === 'setup_2fa') {
+      const url = new URL('/auth/two-factor-setup', request.url)
+      url.searchParams.set('redirectTo', pathname + search)
+      return NextResponse.redirect(url)
+    }
     if (result.action === 'login') {
       const url = new URL('/auth/login', request.url)
       url.searchParams.set('redirectTo', pathname + search)
@@ -132,8 +139,9 @@ export async function proxy(request: NextRequest) {
   response.headers.set('Cross-Origin-Resource-Policy', 'same-site')
   response.headers.set(
     'Permissions-Policy',
-    // ponytail: geolocation=(self) so profile "Use live location" works on user gesture; empty () caused console Permissions-Policy violations
-    'camera=(self), microphone=(), geolocation=(self), interest-cohort=()',
+    // lib/security-headers.ts — camera + microphone allowed for self (voice
+    // interviews, LiveKit, proctoring); geolocation=(self) for "Use live location".
+    PERMISSIONS_POLICY,
   )
 
   // CORS — only allow known origins, never reflect arbitrary origins with credentials

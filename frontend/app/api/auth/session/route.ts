@@ -74,6 +74,7 @@ async function verifyFirebaseIdToken(idToken: string): Promise<VerifiedIdToken |
 type AccountResult =
   | { kind: 'ok'; doc: Record<string, unknown> & { _id: unknown }; created: boolean; linked: boolean }
   | { kind: 'conflict' }
+  | { kind: 'closed' }
 
 /**
  * Find the account for a Google/GitHub identity. One account per email:
@@ -81,7 +82,7 @@ type AccountResult =
  * storing the Firebase uid on it, instead of creating a duplicate doc.
  * An unverified provider email never links to (or takes over) an account.
  */
-async function resolveOAuthAccount(t: VerifiedIdToken): Promise<AccountResult> {
+async function resolveOAuthAccount(t: VerifiedIdToken, allowCreate = true): Promise<AccountResult> {
   const col = await getUsersCollection()
   const byId = await col.findOne({ $or: [{ id: t.uid }, { _id: t.uid }, { firebase_uid: t.uid }] } as never)
   if (byId) return { kind: 'ok', doc: byId as never, created: false, linked: false }
@@ -96,6 +97,7 @@ async function resolveOAuthAccount(t: VerifiedIdToken): Promise<AccountResult> {
     }
   }
 
+  if (!allowCreate) return { kind: 'closed' }
   const now = new Date()
   const display = t.name || t.email.split('@')[0] || 'User'
   const doc = {
@@ -120,6 +122,7 @@ async function resolveOAuthAccount(t: VerifiedIdToken): Promise<AccountResult> {
     if (again) return { kind: 'ok', doc: again as never, created: false, linked: false }
     throw new Error('could not create account')
   }
+  void import('@/lib/automation/events').then(({ emit }) => emit('user.created', { user_id: t.uid, email: t.email, name: display, method: 'oauth', email_verified: !!t.emailVerified, created_at: now.toISOString() }, { idempotencyKey: `user.created:${t.uid}` })).catch((e) => console.error('[automation] emit failed:', e))
   return { kind: 'ok', doc: doc as never, created: true, linked: false }
 }
 
@@ -182,7 +185,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const resolved = await resolveOAuthAccount(token)
+    const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+    const { registrationBlock, signInBlock } = await import('@/lib/auth-policy')
+    const policy = await getGeneralSettingsCached()
+    const resolved = await resolveOAuthAccount(token, !registrationBlock(policy))
+    if (resolved.kind === 'closed') {
+      const closed = registrationBlock(policy)!
+      return NextResponse.json({ error: closed.error, code: closed.code }, { status: closed.status })
+    }
     if (resolved.kind === 'conflict') {
       return NextResponse.json(
         { error: 'An account with this email already exists. Sign in with your email and password instead.', code: 'email_in_use' },
@@ -213,7 +223,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ignored: true })
     }
 
-    // Fresh sign-in.
+    // Fresh sign-in: maintenance (A-025). The email-verification switch covers
+    // email/password accounts only — Google/GitHub own the identity here
+    // (GitHub tokens often report email_verified:false for real addresses).
+    {
+      const blocked = signInBlock(policy, { role: doc.role }, { method: 'oauth' })
+      if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
+    }
     if (await isIpBlocked(rawIp) || await isIpOutsideWhitelist(rawIp)) {
       await recordSecurityEvent({ type: 'auth.blocked_ip', severity: 'critical', ip: rawIp, user_id: uid, email, detail: 'Blocked IP attempted OAuth sign-in' })
       return NextResponse.json({ error: 'Access denied' }, { status: 403 })

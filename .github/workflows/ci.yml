@@ -98,12 +98,18 @@ jobs:
         timeout-minutes: 10
 
   build:
-    name: Production build (yarn build)
+    name: Production build (yarn build) + smoke
     runs-on: ubuntu-latest
     permissions:
       contents: read
       # setup-node's yarn cache restores via the cache API
       actions: read
+    # Throwaway MongoDB for the post-build smoke (no secrets, no real data).
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
     defaults:
       run:
         working-directory: frontend
@@ -122,6 +128,23 @@ jobs:
       - run: yarn build
         env:
           SESSION_SECRET: ci-secret
+      # Smoke the built app (A-063): boot `next start` against the throwaway
+      # MongoDB and check key pages, auth redirects, cron auth and the
+      # Permissions-Policy (mic/camera for self). Fast — no browser download.
+      - name: Smoke test built app
+        env:
+          NODE_ENV: production
+          SESSION_SECRET: ci-smoke-session-secret-0123456789abcdef
+          SECRETS_ENCRYPTION_KEY: ci-smoke-secrets-key-0123456789abcdef
+          MONGODB_URI: mongodb://127.0.0.1:27017
+          MONGODB_DB_NAME: codespectra_ci
+          NEXT_PUBLIC_DISABLE_SCHEDULER: '1'
+          SKIP_AUTO_INDEXES: '1'
+          CRON_SECRET: ci-cron-secret
+        run: |
+          npx next start -p 3000 -H 127.0.0.1 > /tmp/next.log 2>&1 &
+          BASE_URL=http://127.0.0.1:3000 node scripts/ci-smoke.mjs || (echo '--- server log ---'; tail -n 200 /tmp/next.log; exit 1)
+        timeout-minutes: 5
 
   dep-audit:
     name: Dependency audit (yarn + pip)

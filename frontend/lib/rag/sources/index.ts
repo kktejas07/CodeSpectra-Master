@@ -10,6 +10,7 @@ import { listAttemptIds, listResultSummaryIds, listTestIds, loadAttempt, loadRes
 import { listEventIds, loadCodeathon, loadHackathon } from './events'
 import { listUploadIds, loadUpload } from './uploads'
 import { listResumeIds, loadResume } from './resumes'
+import { listExternalEventIds, listMarketplaceProductIds, loadExternalEvent, loadMarketplaceProduct } from './content'
 
 export const SWEEP_LIMIT = 5000
 
@@ -26,6 +27,8 @@ export async function loadSource(db: Db, type: KnowledgeSourceType, id: string):
     case 'codeathon': return loadCodeathon(db, id)
     case 'upload': return loadUpload(db, id)
     case 'resume': return loadResume(db, id)
+    case 'marketplace_product': return loadMarketplaceProduct(db, id)
+    case 'external_event': return loadExternalEvent(db, id)
     default: return null
   }
 }
@@ -47,6 +50,8 @@ export async function listSourceIds(db: Db, type: KnowledgeSourceType, tenantId?
     case 'codeathon': return listEventIds(db, 'codeathons', limit, tenantId)
     case 'upload': return listUploadIds(db, limit, tenantId)
     case 'resume': return listResumeIds(db, limit, tenantId)
+    case 'marketplace_product': return tenantId ? [] : listMarketplaceProductIds(db, limit)
+    case 'external_event': return tenantId ? [] : listExternalEventIds(db, limit)
     default: return []
   }
 }

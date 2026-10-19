@@ -30,6 +30,47 @@ export interface RagUploadDoc {
   updated_at: string
 }
 
+/**
+ * rag_chunks text index weights. The chunk text already starts with the title
+ * (chunk header), so a separate title boost over-ranks title-only matches —
+ * the offline eval (lib/rag/eval) measured title 1 best (keyword MRR 0.764 →
+ * 0.817 vs the old title 5).
+ */
+export const CHUNK_TEXT_INDEX = { name: 'rag_chunks_text', weights: { title: 1, text: 1 } } as const
+
+type IndexInfo = { name?: string; key?: Record<string, unknown>; weights?: Record<string, number> }
+
+/** Pure: does the collection's existing text index differ from the wanted one? */
+export function textIndexOutdated(existing: IndexInfo | undefined, want: { name: string; weights: Record<string, number> }): boolean {
+  if (!existing) return false
+  if (existing.name !== want.name) return true
+  const have = existing.weights ?? {}
+  const keys = new Set([...Object.keys(have), ...Object.keys(want.weights)])
+  return [...keys].some((k) => have[k] !== want.weights[k])
+}
+
+/**
+ * Create the text index, or replace it when its definition changed (MongoDB
+ * allows one text index per collection and createIndex with new weights fails
+ * with IndexOptionsConflict). Safe with several processes booting at once: a
+ * drop that lost the race (IndexNotFound) is ignored, and createIndex of an
+ * identical index is a no-op. Until it exists again, keyword search returns
+ * nothing for a moment (search.ts treats a $text error as no keyword hits).
+ */
+export async function ensureTextIndex(
+  col: Pick<Collection, 'indexes' | 'dropIndex' | 'createIndex'>,
+  keys: Record<string, 'text'>,
+  want: { name: string; weights: Record<string, number> },
+): Promise<void> {
+  const list = (await col.indexes().catch(() => [])) as IndexInfo[]
+  const current = list.find((i) => i.key && Object.values(i.key).includes('text'))
+  if (current && textIndexOutdated(current, want)) {
+    await col.dropIndex(current.name as string).catch((e: { code?: number }) => { if (e?.code !== 27) throw e })
+    console.info(`[rag] text index ${current.name} replaced (weights ${JSON.stringify(current.weights ?? {})} → ${JSON.stringify(want.weights)})`)
+  }
+  await col.createIndex(keys, { name: want.name, weights: want.weights, default_language: 'english' })
+}
+
 let chunkIdx: Promise<unknown> | null = null
 let sourceIdx: Promise<unknown> | null = null
 let uploadIdx: Promise<unknown> | null = null
@@ -46,7 +87,7 @@ export async function ragChunks(): Promise<Collection<RagChunkDoc>> {
       col.createIndex({ source_type: 1, source_id: 1, chunk_index: 1 }, { name: 'rag_chunks_source' }),
       col.createIndex({ tenant_key: 1, source_type: 1, embedding_model: 1, updated_at: -1 }, { name: 'rag_chunks_acl' }),
       col.createIndex({ tenant_id: 1 }, { name: 'rag_chunks_tenant' }),
-      col.createIndex({ title: 'text', text: 'text' }, { name: 'rag_chunks_text', weights: { title: 5, text: 1 }, default_language: 'english' }),
+      ensureTextIndex(col as unknown as Collection, { title: 'text', text: 'text' }, { name: CHUNK_TEXT_INDEX.name, weights: { ...CHUNK_TEXT_INDEX.weights } }),
     ]).catch((e) => {
       chunkIdx = null
       console.error('[rag] rag_chunks index build failed', e)

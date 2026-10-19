@@ -4,7 +4,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { getUserById } from '@/lib/db/admin'
 import { clearSessionCookie, revokeAllUserSessions } from '@/lib/session'
-import { checkTotp } from '@/lib/totp'
+import { consumeTotp } from '@/lib/totp'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
       reauthed = !!password && (await bcrypt.compare(password, user.passwordHash))
       if (!reauthed) return NextResponse.json({ error: 'That password is incorrect.' }, { status: 403 })
     } else if (user.totp_enabled && typeof user.totp_secret === 'string') {
-      reauthed = !!code && checkTotp(code, user.totp_secret)
+      reauthed = !!code && (await consumeTotp(user, code))
       if (!reauthed) return NextResponse.json({ error: 'Enter a current code from your authenticator app.', needs: 'code' }, { status: 403 })
     } else {
       const last = user.lastLoginAt ? new Date(user.lastLoginAt as string).getTime() : 0

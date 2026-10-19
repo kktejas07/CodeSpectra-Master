@@ -24,6 +24,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { SOURCE_TYPE_LABELS, TENANT_TYPES, type KnowledgeSourceType } from '@/lib/rag/types'
 import { cn } from '@/lib/utils'
 import { TenantPicker } from '@/components/agent/tenant-picker'
+import { EvaluationPanel } from './evaluation-panel'
 
 type Status = 'queued' | 'indexing' | 'ready' | 'failed'
 
@@ -440,6 +441,8 @@ export default function KnowledgePage() {
           </div>
         </Section>
       )}
+
+      {isSuper && !tenantParam && <EvaluationPanel />}
 
       <Section title="Sources">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

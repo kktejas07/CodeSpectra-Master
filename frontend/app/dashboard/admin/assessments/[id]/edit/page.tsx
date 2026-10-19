@@ -144,6 +144,7 @@ interface Exam {
   max_attempts?: number
   passing_score?: number | null
   issue_certificates?: boolean | null
+  auto_release_scores?: boolean | null
   questions: number
   questionList: Question[]
   published: boolean
@@ -343,6 +344,7 @@ export default function ExamReviewPage() {
   const [metaMaxAttempts, setMetaMaxAttempts] = useState(1)
   const [metaPassingScore, setMetaPassingScore] = useState(40)
   const [metaIssueCertificates, setMetaIssueCertificates] = useState(true)
+  const [metaAutoRelease, setMetaAutoRelease] = useState(false)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
@@ -379,6 +381,7 @@ export default function ExamReviewPage() {
         // Exams saved before the pass mark was editable release at 40% (see the release routes).
         setMetaPassingScore(Number.isFinite(Number(found.passing_score)) && found.passing_score !== null ? Number(found.passing_score) : 40)
         setMetaIssueCertificates(found.issue_certificates !== false)
+        setMetaAutoRelease(found.auto_release_scores === true)
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
         setMetaScreeningType(found.screening_type || 'mixed')
@@ -459,6 +462,7 @@ export default function ExamReviewPage() {
           cert_template: metaCertTemplate,
           passing_score: metaPassingScore,
           issue_certificates: metaIssueCertificates,
+          auto_release_scores: metaAutoRelease,
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
@@ -468,7 +472,7 @@ export default function ExamReviewPage() {
         })
       })
       if (!metaRes.ok) throw new Error('update failed')
-      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, no_camera_policy: metaNoCamera, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType, proctoring_mode: metaProctoringMode, kind: metaKind, cad_points: metaCadPoints })
+      setExam({ ...exam, allow_retake: metaAllowRetake, max_attempts: metaAllowRetake ? metaMaxAttempts : 1, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, no_camera_policy: metaNoCamera, cert_template: metaCertTemplate, passing_score: metaPassingScore, issue_certificates: metaIssueCertificates, auto_release_scores: metaAutoRelease, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType, proctoring_mode: metaProctoringMode, kind: metaKind, cad_points: metaCadPoints })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -902,6 +906,15 @@ export default function ExamReviewPage() {
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
                   <span className="text-muted-foreground whitespace-nowrap">Issue certificates</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Each candidate sees their score as soon as auto-grading finishes; attempts that need a manual review wait for you">
+                  <input
+                    type="checkbox"
+                    checked={metaAutoRelease}
+                    onChange={(e) => setMetaAutoRelease(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Release scores automatically when grading finishes</span>
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Certificate template:</Label>

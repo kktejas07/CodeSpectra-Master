@@ -15,10 +15,15 @@ export async function GET() {
       { projection: { totp_enabled: 1, totp_setup_at: 1, totp_verified_at: 1, created_at: 1, createdAt: 1 } }
     )
 
+    // Required-2FA policy for admins (lib/admin-2fa.ts): 'ok' | 'grace' | 'required'.
+    const { getAdmin2faState } = await import('@/lib/admin-2fa')
+    const policy = await getAdmin2faState(gate.user.id, gate.user.role).catch(() => ({ status: 'ok' as const }))
+
     return NextResponse.json({
       enabled: user?.totp_enabled ?? false,
       setupAt: user?.totp_setup_at ?? null,
       verifiedAt: user?.totp_verified_at ?? null,
+      policy,
     })
   } catch (error) {
     console.error('[CodeSpectra] 2FA status error:', error)

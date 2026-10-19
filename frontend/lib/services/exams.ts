@@ -278,6 +278,7 @@ export async function createExam(
       ? Math.max(0, Math.min(100, Math.round(Number(body.passing_score))))
       : NEW_EXAM_PASS_PERCENT,
     issue_certificates: body.issue_certificates !== false,
+    auto_release_scores: body.auto_release_scores === true,
     // Extension required only when the organiser picks strict (see lib/exam-access examProctoringMode).
     proctoring_mode: body.proctoring_mode === 'strict' ? 'strict' : 'standard',
     kind: body.kind === 'cad' ? 'cad' : 'standard',

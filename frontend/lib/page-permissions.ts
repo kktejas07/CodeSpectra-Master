@@ -64,8 +64,8 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/question-generator',
   '/dashboard/admin/courses',
   '/dashboard/admin/courses/[id]',
-  '/dashboard/admin/workflows',
   '/dashboard/admin/cron-jobs',
+  '/dashboard/admin/automations',
 
   // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
@@ -76,11 +76,14 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/speed-insights',
   '/dashboard/admin/announcements',
   '/dashboard/admin/newsletter',
+  '/dashboard/admin/events-feed',
   '/dashboard/admin/content-studio',
   '/dashboard/admin/blog',
+  '/dashboard/admin/learn',
   '/dashboard/admin/signals',
   '/dashboard/admin/resources',
   '/dashboard/admin/billing',
+  '/dashboard/admin/marketplace',
   '/dashboard/admin/help',
   '/dashboard/admin/sso',
 ]
@@ -142,6 +145,8 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/agent',
   // Knowledge sources for the copilot: /api/admin/knowledge scopes tenant admins to their organisation.
   '/dashboard/admin/knowledge',
+  // Workflow builder: /api/workflows scopes tenant admins to their organisation's workflows.
+  '/dashboard/admin/workflows',
 ]
 
 /**
@@ -241,6 +246,14 @@ export const ALL_USER_ROUTES: string[] = [
   // Referrals
   '/dashboard/referrals',
 
+  // Marketplace buyer orders (APIs scope every read to the buyer)
+  '/dashboard/orders',
+  '/dashboard/orders/[id]',
+
+  // Marketplace seller area (any signed-in user can apply; APIs require an approved seller)
+  '/dashboard/seller',
+  '/dashboard/seller/apply',
+
   // Agent (LAST)
   '/dashboard/agent',
 
@@ -302,6 +315,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/cdn': 'CDN & Edge',
   '/dashboard/admin/workflows': 'Workflows',
   '/dashboard/admin/cron-jobs': 'Cron Jobs',
+  '/dashboard/admin/automations': 'Automations',
   '/dashboard/admin/question-generator': 'Question Generator',
   '/dashboard/admin/courses': 'Course Management',
   '/dashboard/admin/courses/[id]': 'Edit Course',
@@ -310,8 +324,10 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/hackathons': 'Hackathons',
   '/dashboard/admin/announcements': 'Announcements',
   '/dashboard/admin/newsletter': 'Newsletter',
+  '/dashboard/admin/events-feed': 'Events feed',
   '/dashboard/admin/content-studio': 'Content Studio',
   '/dashboard/admin/blog': 'Blog',
+  '/dashboard/admin/learn': 'Learn hub',
   '/dashboard/admin/signals': 'Signals',
   '/dashboard/admin/resources': 'Resources / Ebooks',
   '/dashboard/admin/rag': 'RAG',
@@ -356,6 +372,11 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/settings': 'Settings',
   '/dashboard/settings/ai': 'AI Settings',
   '/dashboard/billing': 'Billing',
+  '/dashboard/orders': 'My orders',
+  '/dashboard/orders/[id]': 'Order',
+  '/dashboard/seller': 'Seller dashboard',
+  '/dashboard/seller/apply': 'Sell on CodeSpectra',
+  '/dashboard/admin/marketplace': 'Marketplace',
   '/dashboard/notifications': 'Notifications',
   '/dashboard/calendar': 'Calendar',
   '/dashboard/notifications/preferences': 'Notification Preferences',

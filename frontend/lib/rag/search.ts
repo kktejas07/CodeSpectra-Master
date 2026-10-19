@@ -8,7 +8,7 @@
  *       - MongoDB Atlas $vectorSearch when the index below exists and is
  *         queryable (detected once, re-checked every 10 minutes), else
  *       - in-process cosine over a prefiltered, capped candidate set.
- *  3. Keyword: $text (title weighted 5×).
+ *  3. Keyword: $text (weights in store.ts CHUNK_TEXT_INDEX).
  *  4. Reciprocal rank fusion, one hit per source, highlighted snippet.
  *
  * ── Atlas Vector Search setup (optional) ───────────────────────────────────

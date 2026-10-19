@@ -10,6 +10,8 @@ import { HeroShowcase } from '@/components/landing/hero-showcase'
 import { BentoGrid } from '@/components/landing/bento-grid'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { DeviceShowcase } from '@/components/visuals'
+import { UpcomingEventsStrip } from '@/components/events-feed/upcoming-strip'
+import { LearnSection } from '@/components/landing/learn-section'
 
 /* Shared button styles for marketing pages. Kept here rather than in
    components/ui/button so the dashboard's mint button stays untouched. */
@@ -104,6 +106,12 @@ export default function Home() {
           <BentoGrid />
         </div>
       </section>
+
+      {/* Learn hub — latest / featured posts (hidden until something is published) */}
+      <LearnSection />
+
+      {/* Upcoming events (lib/events-feed) — hidden when there are none */}
+      <UpcomingEventsStrip />
 
       {/* Candidates — secondary audience */}
       <section className="border-b border-cs-grid bg-cs-sheet">
