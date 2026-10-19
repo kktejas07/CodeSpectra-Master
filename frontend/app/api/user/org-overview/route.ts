@@ -29,21 +29,23 @@ export async function GET() {
 
     const [tenant, exams, members] = await Promise.all([
       db.collection('tenants').findOne({ id: tenantId }),
-      db.collection('exams').find({ tenant_id: tenantId }).toArray(),
+      // CORE-030: only the fields shown (question lists are counted, never loaded).
+      db.collection('exams').aggregate([
+        { $match: { tenant_id: tenantId } },
+        { $project: {
+          _id: 0, id: 1, title: 1, subject: 1, level: 1, duration: 1, published: 1, attempts: 1, avgScore: 1, createdAt: 1,
+          questions: { $cond: [{ $isArray: '$questions' }, { $size: '$questions' }, { $cond: [{ $isArray: '$questionList' }, { $size: '$questionList' }, { $ifNull: ['$questions', 0] }] }] },
+        } },
+      ]).toArray(),
       db.collection('user').countDocuments({ tenantId }),
     ])
 
     const examIds = exams.map((e: any) => e.id)
 
-    // Candidates = invites whose target_url/assigned_assessments reference one of the org's exams.
+    // Candidates = invites for one of the org's exams (indexed exam_id / exam_ids, A-012).
     const candidatePipeline = examIds.length > 0
       ? [
-          { $match: { $or: examIds.map((id: string) => ({
-              $or: [
-                { target_url: { $regex: id.replace(/-/g, '\\-') } },
-                { 'assigned_assessments.target_url': { $regex: id.replace(/-/g, '\\-') } },
-              ],
-            })) } },
+          { $match: { $or: [{ exam_id: { $in: examIds } }, { exam_ids: { $in: examIds } }] } },
           { $group: { _id: null, total: { $sum: 1 }, submitted: { $sum: { $cond: [{ $or: [{ status: 'submitted' }, { status: 'completed' }] }, 1, 0] } } } },
         ]
       : []

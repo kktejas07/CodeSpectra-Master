@@ -4,7 +4,6 @@
  * (resume a draft → re-send) can invoke it. Next.js forbids extra exports in
  * route modules, so this lives here instead.
  */
-import { createHmac } from 'node:crypto'
 import { emailCampaigns, newId, nowIso, type EmailCampaignDoc } from '@/lib/db/email-campaigns'
 import { newsletterSubscribers } from '@/lib/db/newsletter'
 import { getMongoDb } from '@/lib/mongodb'
@@ -25,14 +24,14 @@ export async function executeCampaign(campaign: EmailCampaignDoc) {
     // Email channel - batch sends with concurrency control
     if (campaign.channels.email) {
       const { renderNewsletterHtml } = await import('@/lib/newsletter-html')
-      const hmacSecret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'codespectra-default-secret'
+      const { newsletterUnsubToken } = await import('@/lib/newsletter-token')
       const EMAIL_BATCH_SIZE = 10
       const EMAIL_CONCURRENCY = 5
       // Pre-render HTML for each subscriber (personalized unsubscribe links)
       const emailTasks: { email: string; html: string }[] = []
       for (const sub of subs) {
         const email = String(sub.email)
-        const hmacToken = createHmac('sha256', hmacSecret).update(email.toLowerCase()).digest('hex').slice(0, 16)
+        const hmacToken = await newsletterUnsubToken(email)
         const html = renderNewsletterHtml({
           subject: campaign.subject,
           hero_image: campaign.hero_image,
@@ -129,33 +128,22 @@ export async function executeCampaign(campaign: EmailCampaignDoc) {
       }
     }
 
-    // WhatsApp channel - send to all users with phone numbers
+    // WhatsApp channel — only people who agreed to WhatsApp (preference switched on or an active
+    // WhatsApp subscription), never everyone with a phone number (AUTO-060). lib/whatsapp-send checks
+    // consent and STOP opt-outs again per person and uses the approved newsletter template.
     if (campaign.channels.whatsapp) {
       try {
-        const { isWhatsAppConfigured, sendWhatsAppBatch } = await import('@/lib/whatsapp')
-        if (await isWhatsAppConfigured()) {
-          const users = await db.collection('user').find({
-            $or: [
-              { phone: { $exists: true, $ne: '' } },
-              { phone_number: { $exists: true, $ne: '' } },
-              { whatsapp: { $exists: true, $ne: '' } },
-            ]
-          }).project({ id: 1, phone: 1, phone_number: 1, whatsapp: 1, _id: 0 }).toArray()
-
-          const messages = users
-            .map(u => {
-              const phone = String(u.phone || u.phone_number || u.whatsapp || '')
-              return phone ? { phone, text: `*${campaign.subject}*\n\n${campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 300) || 'New update from CodeSpectra'}` } : null
-            })
-            .filter((m): m is { phone: string; text: string } => m !== null)
-
-          if (messages.length > 0) {
-            const results = await sendWhatsAppBatch(messages)
-            for (const r of results) {
-              if (r.success) whatsappOk++
-              else whatsappFail++
-            }
-          }
+        const [prefRows, subRows] = await Promise.all([
+          db.collection('notification_preferences').find({ type: 'whatsapp', enabled: true }, { projection: { user_id: 1 } }).limit(50_000).toArray(),
+          db.collection('subscriptions').find({ whatsapp_status: 'active', user_id: { $type: 'string' } }, { projection: { user_id: 1 } }).limit(50_000).toArray(),
+        ])
+        const userIds = [...new Set([...prefRows, ...subRows].map((r) => String(r.user_id || '')).filter(Boolean))]
+        const { sendWhatsAppToUser } = await import('@/lib/whatsapp-send')
+        const text = (campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 300) || 'New update from CodeSpectra').slice(0, 900)
+        for (const uid of userIds) {
+          const r = await sendWhatsAppToUser(uid, { kind: 'newsletter', title: String(campaign.subject || 'CodeSpectra update'), text })
+          if (r.sent) whatsappOk++
+          else if (r.skipped === 'error') whatsappFail++
         }
       } catch {
         // WhatsApp is best-effort

@@ -214,6 +214,8 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                     width={584}
                     height={440}
                     loading={i === 0 ? 'eager' : 'lazy'}
+                    fetchPriority={i === 0 ? 'high' : 'low'}
+                    decoding="async"
                     className="h-full w-full"
                   />
                 </div>

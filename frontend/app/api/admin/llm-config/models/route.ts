@@ -3,6 +3,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { isMaskedSecret } from '@/lib/server-secrets-cache'
 import { type LLMConfig } from '@/lib/llm-config'
+import { safeFetch } from '@/lib/url-safety'
 
 export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
@@ -55,12 +56,12 @@ export async function POST(request: Request) {
   try {
     let res: Response
     if (body.provider === 'gemini') {
-      res = await fetch(`${ep}/models`, {
+      res = await safeFetch(`${ep}/models`, {
         headers: body.api_key && !isMaskedSecret(body.api_key) ? { 'x-goog-api-key': body.api_key } : {},
         signal: AbortSignal.timeout(10000),
       })
     } else if (body.provider === 'anthropic') {
-      res = await fetch(`${ep}/v1/models`, {
+      res = await safeFetch(`${ep}/v1/models`, {
         headers: {
           'x-api-key': body.api_key || '',
           'anthropic-version': '2023-06-01',
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
         signal: AbortSignal.timeout(10000),
       })
     } else {
-      res = await fetch(`${ep}/models`, {
+      res = await safeFetch(`${ep}/models`, {
         headers: body.api_key && !isMaskedSecret(body.api_key) ? { Authorization: `Bearer ${body.api_key}` } : {},
         signal: AbortSignal.timeout(10000),
       })

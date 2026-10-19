@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Check, CircleSlash, ExternalLink, Loader2, Pencil, Clock3, X } from 'lucide-react'
-import type { ProposedAction } from '@/lib/agent/contract'
+import type { JsonSchema, ProposedAction } from '@/lib/agent/contract'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useConfirm } from '@/lib/confirm-context'
 import { cn } from '@/lib/utils'
 import { safeHref } from './agent-markdown'
+import { SchemaForm, fromFormValues, toFormValues, type FieldValue } from './schema-form'
 
 const RISK_LABEL: Record<ProposedAction['risk'], string> = {
   create: 'Creates a draft',
@@ -83,11 +84,13 @@ export function ProposalCard({
   onConfirm,
   onCancel,
   onEdit,
+  loadEditForm,
 }: {
   action: ProposedAction
   onConfirm: (id: string) => Promise<string | null>
   onCancel: (id: string) => Promise<string | null>
   onEdit: (id: string, args: Record<string, unknown>) => Promise<string | null>
+  loadEditForm?: (id: string) => Promise<{ schema: Record<string, unknown> | null; args: Record<string, unknown> } | string>
 }) {
   const confirmDialog = useConfirm()
   const [busy, setBusy] = useState<null | 'confirm' | 'cancel' | 'edit'>(null)
@@ -95,6 +98,8 @@ export function ProposalCard({
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [draftErr, setDraftErr] = useState<string | null>(null)
+  const [schema, setSchema] = useState<JsonSchema | null>(null)
+  const [form, setForm] = useState<Record<string, FieldValue>>({})
 
   const expired = action.status === 'pending' && Date.parse(action.expires_at) <= Date.now()
   const status = expired ? 'expired' : action.status
@@ -122,19 +127,40 @@ export function ProposalCard({
     }
   }
 
-  const openEdit = () => {
-    setDraft(JSON.stringify(action.args, null, 2))
+  // Internal keys (sealed AI draft, nonce) are never editable; the server keeps them.
+  const visibleArgs = () => Object.fromEntries(Object.entries(action.args ?? {}).filter(([k]) => !k.startsWith('_')))
+
+  const openEdit = async () => {
     setDraftErr(null)
+    setSchema(null)
+    setDraft(JSON.stringify(visibleArgs(), null, 2))
     setEditing(true)
+    if (!loadEditForm) return
+    const r = await loadEditForm(action.id).catch(() => 'Could not load the form.')
+    if (typeof r === 'string') return // keep the JSON fallback
+    const sc = r.schema as JsonSchema | null
+    if (sc?.properties && Object.keys(sc.properties).length) {
+      setSchema(sc)
+      setForm(toFormValues(sc, r.args))
+    }
   }
 
   const saveEdit = async () => {
     let parsed: unknown
-    try {
-      parsed = JSON.parse(draft)
-    } catch {
-      setDraftErr('This is not valid JSON.')
-      return
+    if (schema) {
+      try {
+        parsed = fromFormValues(schema, form)
+      } catch (e) {
+        setDraftErr((e as Error).message)
+        return
+      }
+    } else {
+      try {
+        parsed = JSON.parse(draft)
+      } catch {
+        setDraftErr('This is not valid JSON.')
+        return
+      }
     }
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
       setDraftErr('Details must be a JSON object.')
@@ -204,7 +230,7 @@ export function ProposalCard({
             {busy === 'confirm' ? <Loader2 className="animate-spin" aria-hidden /> : <Check aria-hidden />}
             Confirm
           </Button>
-          <Button variant="outline" onClick={openEdit} disabled={!!busy} className="min-h-11 sm:min-h-9">
+          <Button variant="outline" onClick={() => void openEdit()} disabled={!!busy} className="min-h-11 sm:min-h-9">
             <Pencil aria-hidden /> Edit
           </Button>
           <Button variant="ghost" onClick={() => run('cancel')} disabled={!!busy} className="min-h-11 sm:min-h-9">
@@ -221,14 +247,22 @@ export function ProposalCard({
             <DialogTitle>Edit proposal details</DialogTitle>
             <DialogDescription>Change the details below. The copilot checks them again and shows a fresh preview before anything happens.</DialogDescription>
           </DialogHeader>
-          <label htmlFor={`args-${action.id}`} className="sr-only">Proposal details (JSON)</label>
-          <Textarea
-            id={`args-${action.id}`}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            className="max-h-[55vh] min-h-64 font-mono text-xs"
-            spellCheck={false}
-          />
+          {schema ? (
+            <div className="max-h-[60vh] overflow-y-auto pr-1">
+              <SchemaForm idPrefix={`edit-${action.id}`} schema={schema} values={form} onChange={(k, v) => setForm((f) => ({ ...f, [k]: v }))} />
+            </div>
+          ) : (
+            <>
+              <label htmlFor={`args-${action.id}`} className="sr-only">Proposal details (JSON)</label>
+              <Textarea
+                id={`args-${action.id}`}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                className="max-h-[55vh] min-h-64 font-mono text-xs"
+                spellCheck={false}
+              />
+            </>
+          )}
           {draftErr && <p className="text-sm text-destructive" role="alert">{draftErr}</p>}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(false)} disabled={busy === 'edit'}>Discard changes</Button>

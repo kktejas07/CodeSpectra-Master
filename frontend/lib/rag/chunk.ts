@@ -20,6 +20,12 @@ export const MAX_CHUNKS_PER_SOURCE = 400
 export interface ChunkOptions {
   maxTokens?: number
   overlapTokens?: number
+  /**
+   * Start a new chunk whenever the top-level section changes (no packing
+   * across sections), so each chunk's section label is exact. Used for docs,
+   * whose top level is `##` once the title `#` is removed.
+   */
+  splitOnSection?: boolean
 }
 
 export interface TextChunk {
@@ -138,7 +144,7 @@ export function chunkText(title: string, markdown: string, opts: ChunkOptions = 
   for (const b of blocks) {
     if (chunks.length >= MAX_CHUNKS_PER_SOURCE) break
     const topChanged = cur.length > 0 && (b.section[0] ?? '') !== (curSection[0] ?? '')
-    if (cur.length && (curLen + b.text.length + 2 + carry.length > maxChars || (topChanged && curLen > maxChars / 2))) {
+    if (cur.length && (curLen + b.text.length + 2 + carry.length > maxChars || (topChanged && (opts.splitOnSection || curLen > maxChars / 2)))) {
       emit()
       // Overlap only carries within the same top-level section.
       if ((b.section[0] ?? '') !== (curSection[0] ?? '')) carry = ''

@@ -81,6 +81,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'WhatsApp call mode must be sip or graph' }, { status: 400 })
   }
 
+  {
+    const { validateIntegrationPatch } = await import('@/lib/analytics/integrations')
+    const bad = validateIntegrationPatch(patch as Record<string, unknown>)
+    if (bad) return NextResponse.json({ error: bad }, { status: 400 })
+  }
+
   try {
     const updated = await writeServerSecrets(patch)
     return NextResponse.json({

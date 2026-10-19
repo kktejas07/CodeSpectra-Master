@@ -3,7 +3,8 @@ import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonInvites, nowIso } from '@/lib/db/qr-events'
 import { hackathonEmailTemplates } from '@/lib/email-templates'
 import { sendEmail } from '@/lib/send-email'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,7 +14,7 @@ export const dynamic = 'force-dynamic'
  * invite and a sign-in button instead of an error. Accepting needs sign-in.
  */
 export async function GET(req: NextRequest) {
-  const rl = rateLimitSlidingWindow(`hk-invite-get:${clientLimiterKeyFromRequest(req, null)}`, 30, 60_000)
+  const rl = await rateLimitRedis(`hk-invite-get:${clientLimiterKeyFromRequest(req, null)}`, 30, 60_000)
   if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
 
   const { searchParams } = new URL(req.url)

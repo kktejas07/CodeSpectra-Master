@@ -18,6 +18,11 @@ import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/compo
 import { btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { docHref, docDescription, getDocTree, resolveDoc, type DocSection } from '@/lib/docs'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
+import { publicRoute } from '@/lib/seo/public-routes'
+import { getSiteUrl } from '@/lib/seo/site'
+import { JsonLd } from '@/components/seo/json-ld'
 
 interface Props {
   params: Promise<{ slug?: string[] }>
@@ -38,28 +43,19 @@ export async function generateStaticParams(): Promise<{ slug?: string[] }[]> {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const fallback: Metadata = {
-    title: 'Documentation | CodeSpectra',
-    description: 'Guides for getting started, using CodeSpectra day to day, and integrating with the API.',
-  }
+  const route = publicRoute('/docs')!
+  const fallback = buildMetadata({ title: route.title, description: route.description, path: '/docs', kind: 'docs' })
   if (!slug || slug.length === 0) return fallback
   const page = resolveDoc(slug)
-  if (!page) return fallback
-  const description = docDescription(page.content)
-  return {
-    title: `${page.meta.title} | CodeSpectra Docs`,
-    description,
-    openGraph: {
-      title: `${page.meta.title} | CodeSpectra Docs`,
-      description,
-      type: 'article',
-    },
-    twitter: {
-      card: 'summary',
-      title: `${page.meta.title} | CodeSpectra Docs`,
-      description,
-    },
-  }
+  if (!page) return { ...fallback, robots: { index: false, follow: true } }
+  return buildMetadata({
+    title: `${page.meta.title}: ${page.meta.sectionLabel}`,
+    description: docDescription(page.content),
+    path: docHref(page.meta),
+    kind: 'docs',
+    type: 'article',
+    ogSubtitle: `CodeSpectra docs · ${page.meta.sectionLabel}`,
+  })
 }
 
 export default async function DocsPage({ params }: Props) {
@@ -68,9 +64,20 @@ export default async function DocsPage({ params }: Props) {
   const page = slug && slug.length > 0 ? resolveDoc(slug) : null
 
   if (slug && slug.length > 0 && !page) notFound()
+  const site = getSiteUrl()
+  const crumbs = [{ name: 'Home', path: '/' }, { name: 'Docs', path: '/docs' }]
+  if (page) crumbs.push({ name: page.meta.sectionLabel, path: '/docs' }, { name: page.meta.title, path: docHref(page.meta) })
 
   return (
     <PublicPageWrapper>
+      <JsonLd
+        data={[
+          breadcrumbJsonLd(crumbs.filter((c, i, a) => a.findIndex((x) => x.path === c.path && x.name === c.name) === i), site),
+          page
+            ? articleJsonLd({ site, type: 'TechArticle', path: docHref(page.meta), headline: page.meta.title, description: docDescription(page.content), section: page.meta.sectionLabel })
+            : null,
+        ]}
+      />
       <div className="flex w-full min-w-0 border-t border-cs-grid">
         <DocSidebar sections={sections} />
         <div className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 xl:px-10">

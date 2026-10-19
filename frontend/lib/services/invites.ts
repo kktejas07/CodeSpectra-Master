@@ -122,6 +122,8 @@ export async function createCandidateInvite(
     full_name,
     target_url: targetUrl,
     ...(targets.examId ? { exam_id: targets.examId } : {}),
+    // Every exam this invite covers — indexed lookup for results (A-012).
+    ...(targets.examIds?.length ? { exam_ids: targets.examIds } : {}),
     assigned_assessments: assignedAssessments,
     allowed_languages: allowedLanguages,
     invited_by: actor.id,

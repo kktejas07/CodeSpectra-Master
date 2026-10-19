@@ -5,6 +5,7 @@ import { gradeCode } from '@/lib/hackathons/grade'
 import { isHackathonStaff } from '@/lib/hackathons/access'
 import type { SubmissionStatus } from '@/lib/hackathons/submission-state'
 import { parseUserAgent } from '@/lib/db/sessions'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -129,7 +130,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     status_history: [{ status, changed_by: user.id, changed_at: at }],
     submitted_at: at,
     created_at: at,
-    device_info: { ua: req.headers.get('user-agent') || '', ...parseUserAgent(req.headers.get('user-agent') || ''), ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '' },
+    device_info: { ua: req.headers.get('user-agent') || '', ...parseUserAgent(req.headers.get('user-agent') || ''), ip: clientIpOrEmpty(req) },
   }
 
   await (await hackathonSubmissions()).insertOne(subDoc)

@@ -22,6 +22,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { getMongoDb } from '@/lib/mongodb'
+import { signPurposeToken } from '@/lib/session'
+import { GITHUB_STATE_COOKIE, GITHUB_STATE_TTL_MS, newPkcePair } from '@/lib/github-oauth-state'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -67,11 +69,14 @@ export async function GET(req: NextRequest) {
 
   // Persist state so the callback can validate it and resolve user_id.
   const state = randomBytes(24).toString('hex')
+  const pkce = newPkcePair()
   const db = await getMongoDb()
+  await db.collection('github_oauth_states').createIndex({ created_at: 1 }, { expireAfterSeconds: 3600, name: 'github_oauth_states_ttl' }).catch(() => {})
   await db.collection('github_oauth_states').insertOne({
     state,
     user_id: user.id,
     redirect,
+    code_verifier: pkce.verifier,
     created_at: new Date(),
   })
 
@@ -81,6 +86,17 @@ export async function GET(req: NextRequest) {
   ghAuth.searchParams.set('scope', REQUESTED_SCOPES)
   ghAuth.searchParams.set('state', state)
   ghAuth.searchParams.set('allow_signup', 'false')
+  ghAuth.searchParams.set('code_challenge', pkce.challenge)
+  ghAuth.searchParams.set('code_challenge_method', 'S256')
 
-  return NextResponse.redirect(ghAuth.toString(), { status: 302 })
+  // SEC-007: bind the flow to this browser + user (checked in the callback).
+  const res = NextResponse.redirect(ghAuth.toString(), { status: 302 })
+  res.cookies.set(GITHUB_STATE_COOKIE, await signPurposeToken('github_connect', { state, uid: user.id }, '10m'), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/api/github/oauth',
+    maxAge: Math.floor(GITHUB_STATE_TTL_MS / 1000),
+  })
+  return res
 }

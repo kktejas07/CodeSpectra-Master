@@ -28,6 +28,14 @@ export default function InterviewsPage() {
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState(false)
+  // Past AI mock interviews (CORE-016): reports are saved on the server.
+  const [practice, setPractice] = useState<Array<{ id: string; role: string; difficulty: string; status: string; started_at: string | null; overall_score: number | null; category: string | null }>>([])
+  useEffect(() => {
+    fetch('/api/interviews/ai-mock', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => setPractice(Array.isArray(j?.sessions) ? j.sessions : []))
+      .catch(() => {})
+  }, [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -110,6 +118,27 @@ export default function InterviewsPage() {
           <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
         </Panel>
       </Link>
+
+      {practice.length > 0 && (
+        <section aria-labelledby="practice-history" className="space-y-3">
+          <h2 id="practice-history" className="text-lg font-semibold text-foreground">Your practice interviews</h2>
+          <div className="grid gap-3 md:grid-cols-2">
+            {practice.slice(0, 10).map((p) => (
+              <Link key={p.id} href={`/dashboard/interviews/ai-mock?session=${encodeURIComponent(p.id)}`} className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                <Panel interactive className="flex items-center justify-between gap-3 rounded-2xl p-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-foreground">{p.role || 'Practice interview'}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">{p.difficulty}{p.started_at ? ` · ${formatDateTime(p.started_at)}` : ''}</p>
+                  </div>
+                  {p.status === 'completed' && p.overall_score !== null
+                    ? <span className="shrink-0 text-lg font-semibold tabular-nums text-foreground">{Math.round(p.overall_score)}<span className="text-xs text-muted-foreground">/100</span></span>
+                    : <Badge variant="outline">{p.status === 'completed' ? 'Report' : 'Not finished'}</Badge>}
+                </Panel>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {loading ? (
         <div className="grid gap-4 md:grid-cols-2">

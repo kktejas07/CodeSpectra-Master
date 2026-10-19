@@ -84,6 +84,7 @@ interface Codeathon {
   results_released?: boolean
   released_at?: string
   tenant_id?: string | null
+  visibility?: string
 }
 
 interface CodeathonFormData {
@@ -101,6 +102,10 @@ interface CodeathonFormData {
   team_size_min: number
   team_size_max: number
   problem_visibility: string
+  /** 'draft' until published (CORE-014). */
+  status: string
+  /** 'public' (everyone) or 'organization' (only your organisation's members). */
+  visibility: string
 }
 
 interface Submission {
@@ -157,7 +162,9 @@ const INITIAL_FORM: CodeathonFormData = {
   event_type: 'individual',
   team_size_min: 2,
   team_size_max: 4,
-  problem_visibility: 'during_contest'
+  problem_visibility: 'during_contest',
+  status: 'draft',
+  visibility: 'public',
 }
 
 /**
@@ -315,6 +322,31 @@ function CodeathonFormFields({
                 <SelectItem value="classic">Classic (gold / serif)</SelectItem>
                 <SelectItem value="modern">Modern (dark gradient)</SelectItem>
                 <SelectItem value="minimal">Minimal (Monochrome)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-foreground">Publishing</Label>
+            <Select value={formData.status} onValueChange={(v) => setFormData((prev) => ({ ...prev, status: v }))}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="draft">Draft — only admins see it</SelectItem>
+                <SelectItem value="upcoming">Published — upcoming</SelectItem>
+                <SelectItem value="active">Published — active</SelectItem>
+                <SelectItem value="ended">Ended</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-foreground">Who can see it</Label>
+            <Select value={formData.visibility} onValueChange={(v) => setFormData((prev) => ({ ...prev, visibility: v }))}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="public">Everyone on CodeSpectra</SelectItem>
+                <SelectItem value="organization">Only my organisation</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -510,6 +542,8 @@ export default function AdminCodeathonsPage() {
       team_size_min: c.team_size_min || 2,
       team_size_max: c.team_size_max || 4,
       problem_visibility: c.problem_visibility || 'during_contest',
+      status: c.status || 'upcoming',
+      visibility: c.visibility === 'organization' ? 'organization' : 'public',
     })
     setEditingProblems(c.problems || [])
     setEditing(c)
@@ -531,7 +565,7 @@ export default function AdminCodeathonsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ ...form, problems: createProblems, status: 'upcoming' }),
+        body: JSON.stringify({ ...form, problems: createProblems }),
       })
       if (!res.ok) throw new Error('Failed to create codeathon')
       void fetchData()
@@ -1082,15 +1116,18 @@ export default function AdminCodeathonsPage() {
         <div className="flex flex-wrap items-center gap-1">
         <Badge
           className={
-            r.status === 'active'
+            r.status === 'draft'
+              ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30'
+              : r.status === 'active'
               ? 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/30'
               : r.status === 'upcoming'
               ? 'bg-primary/10 text-primary border-primary/30'
               : 'bg-muted text-muted-foreground border-border'
           }
         >
-          {r.status}
+          {r.status === 'draft' ? 'Draft' : r.status}
         </Badge>
+        {r.visibility === 'organization' && <Badge variant="outline">Organisation only</Badge>}
         {r.results_released && <Badge variant="success">Results released</Badge>}
         </div>
       ),
@@ -1240,7 +1277,7 @@ export default function AdminCodeathonsPage() {
         <Button
           className="gap-2 font-semibold shrink-0"
           onClick={() => {
-            setForm(INITIAL_FORM)
+            setForm({ ...INITIAL_FORM, visibility: gate.user?.role === 'tenant_admin' ? 'organization' : 'public' })
             setCreateProblems([])
             setCreateOpen(true)
           }}
@@ -1284,6 +1321,7 @@ export default function AdminCodeathonsPage() {
               label: 'Status',
               key: 'status',
               options: [
+                { label: 'Draft', value: 'draft' },
                 { label: 'Upcoming', value: 'upcoming' },
                 { label: 'Active', value: 'active' },
                 { label: 'Ended', value: 'ended' },

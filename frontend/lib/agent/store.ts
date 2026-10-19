@@ -7,7 +7,7 @@
  *   agent_actions        ProposedAction + updated_at / executing_at / finished_at
  */
 import { getMongoDb } from '@/lib/mongodb'
-import type { AgentCaller, ProposedAction } from '@/lib/agent/contract'
+import type { AgentCaller, ProposalBundle, ProposedAction } from '@/lib/agent/contract'
 import type { AgentMessageDoc } from '@/lib/agent/history'
 import type { TurnMessage } from '@/lib/agent/run'
 
@@ -21,6 +21,9 @@ export interface AgentConversationDoc {
   last_model?: string
   /** Superadmin only: the tenant the copilot was scoped to (null = whole platform). */
   scope_tenant_id?: string | null
+  /** Rolling summary of messages older than the model's history window (lib/agent/memory.ts). */
+  memory_summary?: string | null
+  memory_upto_seq?: number | null
 }
 
 export type AgentActionDoc = ProposedAction & {
@@ -32,6 +35,7 @@ export type AgentActionDoc = ProposedAction & {
 const CONVERSATIONS = 'agent_conversations'
 const MESSAGES = 'agent_messages'
 const ACTIONS = 'agent_actions'
+const BUNDLES = 'agent_bundles'
 
 type Db = Awaited<ReturnType<typeof getMongoDb>>
 
@@ -46,6 +50,9 @@ function ensureAgentIndexes(db: Db): Promise<unknown> {
       db.collection(ACTIONS).createIndex({ conversationId: 1 }, { name: 'agent_actions_conv' }),
       db.collection(ACTIONS).createIndex({ created_by: 1, tenant_id: 1, status: 1 }, { name: 'agent_actions_owner_status' }),
       db.collection(ACTIONS).createIndex({ expires_at: 1 }, { name: 'agent_actions_expires' }),
+      db.collection(ACTIONS).createIndex({ bundle_id: 1 }, { name: 'agent_actions_bundle', sparse: true }),
+      db.collection(BUNDLES).createIndex({ id: 1 }, { unique: true, name: 'agent_bundles_id' }),
+      db.collection(BUNDLES).createIndex({ conversationId: 1 }, { name: 'agent_bundles_conv' }),
     ]).catch((e) => {
       indexesReady = null
       console.error('[agent] index build failed', e)
@@ -125,7 +132,7 @@ export async function renameConversation(caller: AgentCaller, id: string, title:
   return r.matchedCount > 0
 }
 
-export async function touchConversation(caller: AgentCaller, id: string, patch: Partial<Pick<AgentConversationDoc, 'last_model' | 'scope_tenant_id'>> = {}) {
+export async function touchConversation(caller: AgentCaller, id: string, patch: Partial<Pick<AgentConversationDoc, 'last_model' | 'scope_tenant_id' | 'memory_summary' | 'memory_upto_seq'>> = {}) {
   await (await col<AgentConversationDoc>(CONVERSATIONS)).updateOne(
     { id, ...scopeFilter(caller) },
     { $set: { ...patch, updated_at: nowIso() } },
@@ -169,6 +176,8 @@ export function turnMessageToDoc(caller: AgentCaller, conversationId: string, m:
       ...base,
       role: 'assistant',
       content: msg.content,
+      ...(m.ui?.plan?.length ? { plan: m.ui.plan.map((p) => ({ id: p.id, title: p.title, ...(p.tool ? { tool: p.tool } : {}), status: p.status })) } : {}),
+      ...(m.ui?.clarify ? { clarify: m.ui.clarify } : {}),
       ...(msg.toolCalls?.length
         ? { tool_calls: msg.toolCalls.map((c) => ({ id: c.id, tool: c.name, args: c.args, ...(c.meta ? { meta: c.meta } : {}) })) }
         : {}),
@@ -186,6 +195,10 @@ export function turnMessageToDoc(caller: AgentCaller, conversationId: string, m:
       summary: m.ui?.summary,
       ...(m.ui?.citations?.length ? { citations: m.ui.citations } : {}),
       ...(m.ui?.actionId ? { action_id: m.ui.actionId } : {}),
+      ...(m.ui?.actionIds?.length ? { action_ids: m.ui.actionIds } : {}),
+      ...(m.ui?.bundleId ? { bundle_id: m.ui.bundleId } : {}),
+      ...(m.ui?.specialist ? { specialist: m.ui.specialist } : {}),
+      ...(m.ui?.clarify ? { clarify: m.ui.clarify } : {}),
     }
   }
   return { ...base, role: 'user', content: msg.content }
@@ -247,4 +260,47 @@ export async function transitionAction(
     { returnDocument: 'after', projection: { _id: 0 } },
   )
   return (res as unknown as AgentActionDoc | null) ?? null
+}
+
+// ─── Bundles ────────────────────────────────────────────────────────────────
+
+export type AgentBundleDoc = ProposalBundle & { updated_at?: string }
+
+/** Superadmin bundles are matched by owner (like actions); tenant admins by owner + tenant. */
+function bundleScope(caller: AgentCaller): Record<string, unknown> {
+  return actionScope(caller)
+}
+
+export async function saveBundle(bundle: ProposalBundle): Promise<void> {
+  await (await col<AgentBundleDoc>(BUNDLES)).insertOne({ ...bundle, updated_at: bundle.created_at })
+}
+
+export async function getBundle(caller: AgentCaller, id: string): Promise<AgentBundleDoc | null> {
+  if (!id || typeof id !== 'string') return null
+  return (await (await col<AgentBundleDoc>(BUNDLES)).findOne({ id, ...bundleScope(caller) }, NO_ID)) as AgentBundleDoc | null
+}
+
+export async function listBundles(caller: AgentCaller, conversationId: string): Promise<AgentBundleDoc[]> {
+  return (await (await col<AgentBundleDoc>(BUNDLES)).find({ conversationId, ...bundleScope(caller) }, NO_ID).sort({ created_at: 1 }).limit(50).toArray()) as AgentBundleDoc[]
+}
+
+/** Atomic bundle transition (from → set); null when the state changed underneath. */
+export async function transitionBundle(
+  caller: AgentCaller,
+  id: string,
+  from: ProposalBundle['status'] | ProposalBundle['status'][],
+  set: Partial<AgentBundleDoc>,
+): Promise<AgentBundleDoc | null> {
+  const status = Array.isArray(from) ? { $in: from } : from
+  const res = await (await col<AgentBundleDoc>(BUNDLES)).findOneAndUpdate(
+    { id, status, ...bundleScope(caller) } as never,
+    { $set: { ...set, updated_at: nowIso() } },
+    { returnDocument: 'after', projection: { _id: 0 } },
+  )
+  return (res as unknown as AgentBundleDoc | null) ?? null
+}
+
+/** Executing actions older than `before` (crash recovery, AGT-003). */
+export async function staleExecutingAction(caller: AgentCaller, id: string, beforeIso: string): Promise<AgentActionDoc | null> {
+  return (await (await col<AgentActionDoc>(ACTIONS)).findOne({ id, status: 'executing', executing_at: { $lt: beforeIso }, ...actionScope(caller) }, NO_ID)) as AgentActionDoc | null
 }

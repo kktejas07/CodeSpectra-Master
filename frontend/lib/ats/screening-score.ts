@@ -227,8 +227,8 @@ export async function aiFitScore(job: Pick<AtsJob, 'title' | 'description' | 're
   try {
     const text = String(resumeText || '').slice(0, 12_000)
     if (text.trim().length < 40) return null
-    const { scanPrompt } = await import('@/lib/ai/prompt-guard')
-    if (scanPrompt(text).flagged) return null
+    const { scanUntrusted } = await import('@/lib/ai/untrusted-input')
+    if (scanUntrusted(text).flagged) return null
     const [{ backendComplete }, { platformModelOverrides, extractJson }] = await Promise.all([
       import('@/lib/ai/backend'),
       import('@/lib/interviews/ai-mock-engine'),

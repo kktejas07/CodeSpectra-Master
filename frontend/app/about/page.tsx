@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { Building2, Compass, MapPin, Scale, ShieldCheck, Users } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
@@ -7,6 +5,18 @@ import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/compo
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
 import { Scene } from '@/components/illustrations/scenes'
+import { JsonLd } from '@/components/seo/json-ld'
+import { Breadcrumbs } from '@/components/seo/breadcrumbs'
+import { AnswerSummary, SPEAKABLE_SELECTORS } from '@/components/seo/answer-summary'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { orgId, webPageJsonLd } from '@/lib/seo/jsonld'
+import { PRODUCT_FACTS } from '@/lib/seo/llms'
+import { publicRoute } from '@/lib/seo/public-routes'
+import { getSeoSettings } from '@/lib/seo/settings'
+import { resolveSiteUrl } from '@/lib/seo/site'
+
+const route = publicRoute('/about')!
+export const metadata = buildMetadata({ title: route.title, description: route.description, path: '/about' })
 
 /*
  * Company facts on this page come from the founder (AXISS Group, Hyderabad +
@@ -32,9 +42,26 @@ const PRINCIPLES = [
   },
 ]
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const seo = await getSeoSettings()
+  const site = resolveSiteUrl(seo.site_url)
+  // Entity facts for knowledge graphs: who makes CodeSpectra and who founded it (stated on this page).
+  const aboutLd = {
+    ...webPageJsonLd({ site, path: '/about', name: route.title, description: route.description, speakable: SPEAKABLE_SELECTORS, type: 'AboutPage' }),
+    about: { '@id': orgId(site) },
+    mainEntity: {
+      '@type': 'Organization',
+      '@id': orgId(site),
+      name: 'CodeSpectra',
+      founder: { '@type': 'Person', name: 'Krishna Chintakayala' },
+      parentOrganization: { '@type': 'Organization', name: 'AXISS Group' },
+      areaServed: ['IN', 'US'],
+      knowsAbout: ['Skills assessment', 'Technical hiring', 'Online proctoring', 'Hackathons', 'Coding interviews'],
+    },
+  }
   return (
     <PublicPageWrapper>
+      <JsonLd data={aboutLd} />
       <PageHero
         title="We help teams hire on proven skills"
         lead={
@@ -46,6 +73,38 @@ export default function AboutPage() {
         }
         art={<DeviceShowcase variant="results" compact />}
       />
+
+      <section className="border-b border-cs-grid" aria-labelledby="facts-heading">
+        <div className="mx-auto max-w-[1200px] space-y-8 px-4 py-12 sm:px-6 lg:px-8">
+          <Breadcrumbs site={site} items={[{ name: 'About', path: '/about' }]} />
+          <AnswerSummary label="What is CodeSpectra?" answer={PRODUCT_FACTS.one_liner} />
+          <h2 id="facts-heading" className="sr-only">CodeSpectra at a glance</h2>
+          <dl className="grid gap-6 rounded-3xl border border-cs-grid bg-cs-sheet p-6 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm font-semibold text-cs-ink">What it is</dt>
+              <dd className="mt-1 text-[15px] leading-relaxed text-cs-ink-soft">{PRODUCT_FACTS.category}.</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-semibold text-cs-ink">Who it is for</dt>
+              <dd className="mt-1 text-[15px] leading-relaxed text-cs-ink-soft">
+                <ul className="list-disc space-y-1 pl-5">{PRODUCT_FACTS.audiences.map((a) => <li key={a}>{a}</li>)}</ul>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm font-semibold text-cs-ink">Who makes it</dt>
+              <dd className="mt-1 text-[15px] leading-relaxed text-cs-ink-soft">AXISS Group, founded by Krishna Chintakayala. Offices in Hyderabad, India and Princeton, New Jersey.</dd>
+            </div>
+            <div>
+              <dt className="text-sm font-semibold text-cs-ink">How content is written</dt>
+              <dd className="mt-1 text-[15px] leading-relaxed text-cs-ink-soft">
+                Learn posts are written by our learning bot from cited sources, pass automated quality checks, and are
+                reviewed, corrected or withdrawn by our team. See the{' '}
+                <Link href="/editorial-policy" className="font-semibold text-cs-accent-text underline underline-offset-4">editorial policy</Link>.
+              </dd>
+            </div>
+          </dl>
+        </div>
+      </section>
 
       <section className="border-b border-cs-grid">
         <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-24">

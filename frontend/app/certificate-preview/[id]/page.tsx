@@ -1,7 +1,8 @@
 'use client'
+import { useOrigin } from '@/hooks/use-browser-value'
 import { formatDate } from '@/lib/format-datetime'
 
-import { use, useEffect, useMemo, useState } from 'react'
+import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import QRCode from 'qrcode'
 import { Button } from '@/components/ui/button'
@@ -40,10 +41,8 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
   const addToast = useToast()
 
   // Public verify page for this certificate (same token the API verifies).
-  const verifyUrl = useMemo(
-    () => (typeof window !== 'undefined' ? `${window.location.origin}/cert/verify/${encodeURIComponent(id)}` : ''),
-    [id],
-  )
+  const origin = useOrigin()
+  const verifyUrl = origin ? `${origin}/cert/verify/${encodeURIComponent(id)}` : ''
 
   useEffect(() => {
     if (!verifyUrl) return

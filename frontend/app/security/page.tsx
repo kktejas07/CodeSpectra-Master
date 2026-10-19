@@ -3,6 +3,11 @@ import { Bug, KeyRound, ScanFace, ShieldCheck, Users } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { HeroIllustration, PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const seoRoute = publicRoute('/security')!
+export const metadata = buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/security' })
 
 /*
  * Keep this page factual. It describes how the product works today; it is

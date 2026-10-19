@@ -9,6 +9,7 @@ import { gate, loadApplication } from '@/lib/ats/http'
 import { canRevealBgv, canVerifyBgv } from './access'
 import { getCase } from './service'
 import type { BgvCaseDoc } from './types'
+import { resolveClientIp } from '@/lib/client-ip'
 
 export { errorResponse, json, bodyOf, NO_STORE } from '@/lib/ats/http'
 export { gate }
@@ -29,5 +30,5 @@ export async function loadCase(actor: AtsActor, caseId: string, mode: CaseMode =
 
 export function clientIp(req: Request): string {
   const h = req.headers
-  return (h.get('cf-connecting-ip') || h.get('x-real-ip') || (h.get('x-forwarded-for') || '').split(',')[0] || '').trim().slice(0, 64)
+  return resolveClientIp(h).replace(/^unknown$/, '').slice(0, 64)
 }

@@ -2,13 +2,17 @@ services:
   piston:
     # ponytail: intentionally :latest — ghcr.io/engineer-man/piston publishes no
     # verifiable versioned tags (only `latest` on the package page as of 2026-09-06).
-    image: ghcr.io/engineer-man/piston:latest
+    # SEC-023: pin by digest in production, e.g.
+    # PISTON_IMAGE=ghcr.io/engineer-man/piston@sha256:<digest> (docker buildx imagetools inspect …)
+    image: ${PISTON_IMAGE:-ghcr.io/engineer-man/piston:latest}
     container_name: codespectra-piston
     cap_add:
       - SYS_ADMIN
       - SYS_PTRACE
-    ports:
-      - "2000:2000"
+    # SECURITY: Piston runs arbitrary code with no auth. It is reachable ONLY on
+    # the compose network (http://piston:2000) — never publish its port.
+    expose:
+      - "2000"
     volumes:
       - piston-data:/piston
     restart: unless-stopped
@@ -31,14 +35,32 @@ services:
         NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
         NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
-        DIDIT_API_KEY: ${DIDIT_API_KEY}
-        DIDIT_WEBHOOK_SECRET: ${DIDIT_WEBHOOK_SECRET}
-        DIDIT_WORKFLOW_ID: ${DIDIT_WORKFLOW_ID}
     container_name: codespectra-frontend
+    # SEC-022: loopback only. Put Caddy/Nginx (or Cloudflare Tunnel) in front —
+    # see docs/devops/06-Reverse-Proxy.md — and set TRUSTED_PROXY_CIDRS to the
+    # proxy's address so client IPs are read from X-Forwarded-For.
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
+    # Runtime-only secrets (never build args — they would be baked into the image).
     environment:
       - PISTON_URL=http://piston:2000/api/v2
+      - DIDIT_API_KEY=${DIDIT_API_KEY:-}
+      - DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET:-}
+      - SECRETS_ENCRYPTION_KEY=${SECRETS_ENCRYPTION_KEY:-}
+      - ATS_ENCRYPTION_KEY=${ATS_ENCRYPTION_KEY:-}
+      - IDENTITY_MEDIA_KEY=${IDENTITY_MEDIA_KEY:-}
+      # SEC-018: production refuses to boot without SECRETS_ENCRYPTION_KEY
+      # (instrumentation.ts). Emergency override only: ALLOW_DERIVED_ENCRYPTION_KEYS=1.
+      - ALLOW_DERIVED_ENCRYPTION_KEYS=${ALLOW_DERIVED_ENCRYPTION_KEYS:-}
+      - CRON_SECRET=${CRON_SECRET:-}
+      - INTERNAL_BACKEND_URL=http://backend:8000
+      - INTERNAL_BACKEND_SECRET=${INTERNAL_BACKEND_SECRET:-}
+      # SEC-021 / W4-01: forwarding headers are trusted only from these peers.
+      # Default = Docker's bridge range (172.16.0.0/12), which is where a
+      # host-level Caddy/Nginx (via the published 127.0.0.1 port) connects from.
+      # Override with your proxy/overlay subnet — docs/devops/06-Reverse-Proxy.md.
+      - TRUSTED_PROXY_CIDRS=${TRUSTED_PROXY_CIDRS:-172.16.0.0/12,127.0.0.1}
+      - TRUST_CF_CONNECTING_IP=${TRUST_CF_CONNECTING_IP:-false}
     depends_on:
       piston:
         condition: service_healthy
@@ -82,10 +104,14 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: codespectra-backend
-    ports:
-      - "8001:8000"
+    # SEC-001/SEC-022: no published port. Only the frontend/course-worker reach
+    # it on the compose network (http://backend:8000), with x-internal-secret.
+    expose:
+      - "8000"
     environment:
       - NEXTJS_INTERNAL_URL=http://frontend:80
+    # INTERNAL_BACKEND_SECRET comes from backend/.env (or the Mongo copy) and
+    # must equal the frontend's — the backend refuses /internal/* without it.
     env_file:
       - ./backend/.env
     depends_on:
@@ -101,16 +127,20 @@ services:
     restart: unless-stopped
 
   livekit:
-    # ponytail: pinned to v1.13.6 (verified current on Docker Hub 2026-09-06);
-    # --dev is a documented dev choice (ephemeral keys, no TLS). Prod needs
-    # static keys via livekit.conf + TURN. No healthcheck: the image has no
-    # shell and LiveKit exposes no plain-HTTP health endpoint.
+    # ponytail: pinned to v1.13.6 (verified current on Docker Hub 2026-09-06).
+    # LOCAL DEVELOPMENT ONLY: --dev uses the well-known devkey/secret, so this
+    # service sits behind the "dev" profile (`docker compose --profile dev up`)
+    # and binds to 127.0.0.1 only. Production: LiveKit Cloud or a LiveKit server
+    # with your own keys + TLS + TURN; put its wss:// URL and keys in
+    # Admin → Settings → Hiring integrations (livekit_url / _api_key / _api_secret).
+    # No healthcheck: the image has no shell and no plain-HTTP health endpoint.
     image: livekit/livekit-server:v1.13.6
     container_name: codespectra-livekit
-    command: --dev
+    profiles: ["dev"]
+    command: --dev --bind 0.0.0.0
     ports:
-      - "7880:7880"
-      - "50000-50010:50000-50010/udp"
+      - "127.0.0.1:7880:7880"
+      - "127.0.0.1:50000-50010:50000-50010/udp"
     restart: unless-stopped
 
 volumes:

@@ -5,6 +5,7 @@ import { problems, nowIso, newId, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { SEED_PROBLEMS_BULK } from '@/scripts/seed-problems-bulk'
 import { sanitizeRegex } from '@/lib/sanitize'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 async function ensureSeeded() {
   try {
@@ -170,6 +171,7 @@ export async function POST(request: NextRequest) {
       updated_at: now,
     }
     await col.insertOne(doc)
+    knowledgeOnLibraryChange('problem', doc.id) // RAG-003: searchable within a minute
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {
     console.error('[problems]', error)

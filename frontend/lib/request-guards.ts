@@ -1,0 +1,105 @@
+/**
+ * Small, pure request checks used by proxy.ts (unit tested in
+ * tests/security-wave4.test.ts). Edge-safe: no node: imports.
+ */
+
+// ─── SEC-016: what counts as a static file ──────────────────────────────────
+// Only real asset extensions skip the page gate. A dynamic segment with a dot
+// (/dashboard/exams/a.b) is a page and must be gated.
+const STATIC_EXT =
+  /\.(?:js|mjs|cjs|map|css|json|txt|xml|webmanifest|ico|png|jpe?g|gif|webp|avif|svg|bmp|woff2?|ttf|otf|eot|mp3|mp4|webm|ogg|wav|m4a|pdf|wasm|bin|zip|csv|md|onnx|tflite|glb|gltf)$/i
+
+export function isStaticFilePath(pathname: string): boolean {
+  return STATIC_EXT.test(pathname)
+}
+
+export function isPageRequestPath(pathname: string): boolean {
+  return !pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && !isStaticFilePath(pathname)
+}
+
+// ─── SEC-012: login CSRF on session-establishing endpoints ──────────────────
+// The CSRF-exempt sign-in endpoints (lib/csrf-exempt.ts); the others carry
+// the double-submit token already.
+export const SESSION_ESTABLISHING_PATHS: readonly string[] = [
+  '/api/auth/login',
+  '/api/auth/face-verify',
+  '/api/auth/mobile-token',
+]
+
+type HeaderBag = { get(name: string): string | null }
+
+/**
+ * A cross-site HTML form can POST text/plain or urlencoded bodies without a
+ * preflight; it cannot send application/json. Also refuse explicit cross-site
+ * fetches (Sec-Fetch-Site). Native clients send JSON and no Sec-Fetch-Site.
+ */
+export function loginCsrfBlocked(method: string, pathname: string, headers: HeaderBag): boolean {
+  if (method.toUpperCase() !== 'POST') return false
+  if (!SESSION_ESTABLISHING_PATHS.some((p) => pathname === p)) return false
+  const ct = (headers.get('content-type') || '').toLowerCase()
+  if (!ct.startsWith('application/json')) return true
+  const site = (headers.get('sec-fetch-site') || '').toLowerCase()
+  return site === 'cross-site'
+}
+
+// ─── SEC-025: Bearer skips CSRF only when no cookie authenticates ───────────
+export function bearerSkipsCsrf(headers: HeaderBag, hasSessionCookie: boolean): boolean {
+  const bearer = (headers.get('authorization') || '').startsWith('Bearer ')
+  return bearer && !hasSessionCookie
+}
+
+// ─── SEC-010: impersonated sessions cannot touch account / money routes ─────
+export const IMPERSONATION_BLOCKED_PREFIXES: readonly string[] = [
+  '/api/user/email-change',
+  '/api/user/change-password',
+  '/api/user/delete-account',
+  '/api/user/2fa',
+  '/api/user/phone-verify',
+  '/api/auth/face-enroll',
+  '/api/auth/face-login',
+  '/api/auth/trusted-devices',
+  '/api/billing/checkout',
+  '/api/billing/create-order',
+  '/api/billing/cancel',
+  '/api/billing/payment-methods',
+  '/api/billing/portal',
+  '/api/billing/subscription',
+  '/api/marketplace/checkout',
+  '/api/marketplace/seller/payouts',
+  '/api/admin/impersonate',
+]
+
+function b64urlJson(part: string): Record<string, unknown> | null {
+  try {
+    const b64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const pad = b64.length % 4 ? '='.repeat(4 - (b64.length % 4)) : ''
+    const bin = atob(b64 + pad)
+    const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0))
+    const v = JSON.parse(new TextDecoder().decode(bytes))
+    return v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The `imp` (impersonating admin id) claim of a session JWT, *without*
+ * verifying it. Only used to BLOCK: a forged token gains nothing, and a real
+ * one can't drop the claim without breaking its signature.
+ */
+export function impersonatorOfToken(token: string | null | undefined): string | null {
+  if (!token) return null
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  const payload = b64urlJson(parts[1])
+  return payload && typeof payload.imp === 'string' && payload.imp ? payload.imp : null
+}
+
+export function impersonationBlocked(method: string, pathname: string, sessionToken: string | null | undefined): boolean {
+  const m = method.toUpperCase()
+  if (m === 'GET' || m === 'HEAD' || m === 'OPTIONS') return false
+  // Stopping an impersonation must always work.
+  if (pathname === '/api/admin/impersonate/stop' || pathname.startsWith('/api/admin/impersonate/stop/')) return false
+  if (!IMPERSONATION_BLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
+  return impersonatorOfToken(sessionToken) !== null
+}

@@ -1,4 +1,5 @@
 'use client'
+import { useOrigin } from '@/hooks/use-browser-value'
 import { AiAnalyticsDashboard } from "./AiAnalyticsDashboard"
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
@@ -55,8 +56,10 @@ import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloud
 import { LlmSettingsTabs } from '@/components/dashboard/settings/llm-settings-tabs'
 import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
+import { SeoSettingsSection } from '@/components/dashboard/settings/seo-section'
 import { KycSettingsSection } from '@/components/dashboard/settings/kyc-section'
 import { HiringIntegrationsSection } from '@/components/dashboard/settings/hiring-integrations-section'
+import { AnalyticsSettingsSection } from '@/components/dashboard/settings/analytics-section'
 import { useToast } from '@/lib/toast-context'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
@@ -142,7 +145,7 @@ const BRANDING_KEYS: GeneralKey[] = [
   'terms_of_service_url',
 ]
 const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login', 'enable_chatbot']
-const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
+const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard', 'enforce_admin_2fa', 'admin_2fa_grace_days', 'identity_media_retention_days', 'bgv_simulated_vendor']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
 const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_captions_default', 'video_player_logo_url', 'video_player_logo_link_url', 'video_player_default_speed', 'video_player_transcript', 'video_player_chapters', 'video_player_autoplay_next', 'video_player_pip']
@@ -310,6 +313,11 @@ const emptySecretsDraft = (): SecretsDraft => ({
   internal_backend_secret: '',
 })
 
+/** W4-10: the browser origin, read after mount ('<APP_URL>' until then). */
+function AppOrigin() {
+  return <>{useOrigin('<APP_URL>')}</>
+}
+
 function EmailTemplatesSection() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
@@ -393,6 +401,8 @@ function SystemSettingsInner() {
     postal_server: '',
     postal_api_key: '',
     postal_from_email: '',
+    postal_webhook_public_key: '',
+    postal_webhook_secret: '',
   })
 
   const GAMIFICATION_DEFAULTS: Record<string, unknown> = {
@@ -732,7 +742,7 @@ function SystemSettingsInner() {
     setMailSecretsDraft((d) => {
       const next = { ...d }
       const mailFields = [
-        'postal_server', 'postal_from_email',
+        'postal_server', 'postal_from_email', 'postal_webhook_public_key',
       ] as const
       for (const k of mailFields) {
         const v = secretsMeta[k]
@@ -861,6 +871,10 @@ function SystemSettingsInner() {
       if (mailSecretsDraft.postal_api_key.trim()) secBody.postal_api_key = mailSecretsDraft.postal_api_key.trim()
       if (mailSecretsDraft.postal_from_email.trim())
         secBody.postal_from_email = mailSecretsDraft.postal_from_email.trim()
+      if (mailSecretsDraft.postal_webhook_public_key.trim())
+        secBody.postal_webhook_public_key = mailSecretsDraft.postal_webhook_public_key.trim()
+      if (mailSecretsDraft.postal_webhook_secret.trim())
+        secBody.postal_webhook_secret = mailSecretsDraft.postal_webhook_secret.trim()
       if (Object.keys(secBody).length > 0) {
         const sres = await csrfFetch('/api/admin/server-secrets', {
           method: 'PATCH',
@@ -1377,6 +1391,14 @@ function SystemSettingsInner() {
               <HiringIntegrationsSection />
             ) : null}
 
+            {section === 'analytics' ? (
+              <AnalyticsSettingsSection />
+            ) : null}
+
+            {section === 'seo' ? (
+              <SeoSettingsSection />
+            ) : null}
+
            {section === 'mail' ? (
         <Card className="rounded-3xl border-border/70 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
@@ -1501,6 +1523,37 @@ function SystemSettingsInner() {
                     className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="mail_postal_webhook_key">Webhook signing key (public)</Label>
+                  <Input
+                    id="mail_postal_webhook_key"
+                    type="text"
+                    autoComplete="off"
+                    placeholder="Paste the public key from Postal → Webhooks (the p=… value)"
+                    value={mailSecretsDraft.postal_webhook_public_key}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, postal_webhook_public_key: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Used to check delivery and bounce webhooks sent to /api/webhooks/postal. Instead of the key you can set a shared secret below and add ?secret=… to the webhook URL in Postal.
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <Label htmlFor="mail_postal_webhook_secret">Webhook shared secret (optional)</Label>
+                  <Input
+                    id="mail_postal_webhook_secret"
+                    type="password"
+                    autoComplete="off"
+                    placeholder={secretsMeta.has_postal_webhook_secret ? 'Secret saved — enter a new value to replace' : 'Optional'}
+                    value={mailSecretsDraft.postal_webhook_secret}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, postal_webhook_secret: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                </div>
               </div>
             </div>
             <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
@@ -1558,7 +1611,7 @@ function SystemSettingsInner() {
                 <Label htmlFor="maintenance_mode" className="text-foreground">
                   Maintenance mode
                 </Label>
-                <p className="text-sm text-muted-foreground">Show maintenance notice to all users</p>
+                <p className="text-sm text-muted-foreground">Only superadmins can sign in; everyone else sees a maintenance page</p>
               </div>
               <Switch
                 id="maintenance_mode"
@@ -1623,7 +1676,7 @@ function SystemSettingsInner() {
                 <Label htmlFor="require_email_verification" className="text-foreground">
                   Require email verification
                 </Label>
-                <p className="text-sm text-muted-foreground">Before full access (when auth hooks enforce it)</p>
+                <p className="text-sm text-muted-foreground">Email sign-ups must click the emailed link before they can sign in</p>
               </div>
               <Switch
                 id="require_email_verification"
@@ -1642,6 +1695,66 @@ function SystemSettingsInner() {
                 id="show_public_leaderboard"
                 checked={form.show_public_leaderboard}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, show_public_leaderboard: v }))}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 p-6">
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor="enforce_admin_2fa" className="text-foreground">
+                  Require 2FA for admins
+                </Label>
+                <p className="text-sm text-muted-foreground">Superadmins and organisation admins must use an authenticator app</p>
+              </div>
+              <Switch
+                id="enforce_admin_2fa"
+                checked={form.enforce_admin_2fa}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, enforce_admin_2fa: v }))}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 p-6">
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor="admin_2fa_grace_days" className="text-foreground">
+                  2FA grace period (days)
+                </Label>
+                <p className="text-sm text-muted-foreground">How long an admin can keep working before 2FA is enforced</p>
+              </div>
+              <Input
+                id="admin_2fa_grace_days"
+                type="number"
+                min={0}
+                max={90}
+                className="w-24 rounded-lg tabular-nums"
+                value={String(form.admin_2fa_grace_days ?? 14)}
+                onChange={(e) => setForm((f) => ({ ...f, admin_2fa_grace_days: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 p-6">
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor="identity_media_retention_days" className="text-foreground">
+                  Keep ID photos, selfies and session recordings (days)
+                </Label>
+                <p className="text-sm text-muted-foreground">Exam identity photos, face scans and proctoring video are deleted this many days after the test closes</p>
+              </div>
+              <Input
+                id="identity_media_retention_days"
+                type="number"
+                min={1}
+                max={3650}
+                className="w-24 rounded-lg tabular-nums"
+                value={String(form.identity_media_retention_days ?? 180)}
+                onChange={(e) => setForm((f) => ({ ...f, identity_media_retention_days: Number(e.target.value) }))}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 p-6">
+              <div className="min-w-0 space-y-0.5">
+                <Label htmlFor="bgv_simulated_vendor" className="text-foreground">
+                  Demo background-check vendor
+                </Label>
+                <p className="text-sm text-muted-foreground">Offer the simulated vendor (fake results, for demos only) to organisations in production</p>
+              </div>
+              <Switch
+                id="bgv_simulated_vendor"
+                checked={form.bgv_simulated_vendor}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, bgv_simulated_vendor: v }))}
               />
             </div>
 
@@ -2084,7 +2197,7 @@ function SystemSettingsInner() {
                     </a>{' '}
                     and set the Authorization callback URL to{' '}
                     <code className="break-all">
-                      {(typeof window !== 'undefined' ? window.location.origin : '<APP_URL>')}
+                      <AppOrigin />
                       /api/github/oauth/callback
                     </code>
                     .
@@ -2815,6 +2928,7 @@ function SystemSettingsInner() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <Label className="text-xs">Streak XP multiplier</Label>
+                      <p className="text-xs text-muted-foreground">Daily login XP is multiplied by this once a streak reaches 7 days</p>
                       <Input
                         type="number"
                         step="0.1"
@@ -2826,7 +2940,7 @@ function SystemSettingsInner() {
                     <div className="flex items-center justify-between gap-4 pt-5">
                       <div className="space-y-0.5">
                         <Label className="text-xs">Streak freeze enabled</Label>
-                        <p className="text-xs text-muted-foreground">Allow users to freeze their streak</p>
+                        <p className="text-xs text-muted-foreground">Users earn a freeze every 7 streak days (up to 2); each one covers a missed day</p>
                       </div>
                       <Switch
                         checked={Boolean(gamification.streak_freeze_enabled ?? true)}

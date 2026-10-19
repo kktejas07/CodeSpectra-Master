@@ -8,6 +8,7 @@ import {
 } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { codeathonWindow } from '@/lib/codeathon-run'
+import { codeathonVisibleTo } from '@/lib/hackathons/tenant-scope'
 
 export async function POST(request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth()
@@ -22,7 +23,7 @@ export async function POST(request: Request, { params }: IdRouteContext) {
     // The codeathon must exist, be published, and not be over or full.
     const codeCol = await codeathons()
     const codeathon = await codeCol.findOne({ id }) as (Record<string, any> | null)
-    if (!codeathon || codeathon.status === 'draft') return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+    if (!codeathon || !codeathonVisibleTo(gate.user, codeathon)) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     if (codeathonWindow(codeathon).ended) return NextResponse.json({ error: 'This codeathon has ended' }, { status: 409 })
 
     const regCol = await codeathonRegistrations()
@@ -53,6 +54,9 @@ export async function POST(request: Request, { params }: IdRouteContext) {
       registered_at: nowIso(),
     }
     await regCol.insertOne(doc)
+    void import('@/lib/automation/events').then(({ emit }) => emit('hackathon.registered', {
+      event_id: id, event_kind: 'codeathon', event_name: codeathon.title ?? null, user_id: gate.user.id, team_name: doc.team_name, starts_at: codeathon.startDate ?? null,
+    }, { tenantId: codeathon.tenant_id ?? null, idempotencyKey: `hackathon.registered:codeathon:${id}:${gate.user.id}` })).catch((e) => console.error('[automation] emit failed:', e))
 
     // Attendance XP (idempotent per registration).
     let xpAmount = 0

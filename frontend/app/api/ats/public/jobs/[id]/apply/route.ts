@@ -11,6 +11,7 @@ import { limitRequest } from '@/lib/rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { verifyTurnstileToken } from '@/lib/captcha/turnstile'
 import type { AtsJob } from '@/lib/ats/contract'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
     if (!job) return json({ error: 'This job is no longer open' }, 404)
 
     if (!user) {
-      const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || undefined
+      const ip = clientIpOrEmpty(req) || undefined
       const cap = await verifyTurnstileToken(text(form, 'captcha', 4000) || null, ip)
       if (!cap.ok) return json({ error: 'Please complete the verification and try again', captcha_required: true }, 400)
       const email = normEmail(text(form, 'email', 254))

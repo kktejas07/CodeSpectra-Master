@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireAdmin, requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { normalizeBankQuestion, questionBank, type BankQuestionDoc } from '@/lib/question-bank'
+import { normalizeBankQuestion, questionBank, withBankKeys, type BankQuestionDoc } from '@/lib/question-bank'
 import { sanitizeRegex } from '@/lib/sanitize'
 import type { Filter } from 'mongodb'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 export const runtime = 'nodejs'
 
@@ -66,7 +67,8 @@ export async function POST(request: NextRequest) {
     doc.source = 'manual'
     doc.review_status = 'approved' // written by a superadmin
     const col = await questionBank()
-    await col.insertOne(doc)
+    await col.insertOne(withBankKeys(doc))
+    knowledgeOnLibraryChange('question', doc.id)
     return NextResponse.json(doc, { status: 201 })
   } catch (e) {
     console.error('[question-bank] POST error:', e)
@@ -89,9 +91,11 @@ export async function PATCH(request: NextRequest) {
     const { source: _source, createdAt: _created, ...fields } = normalized
     const res = await db.collection('question_bank').updateOne(
       { id },
-      { $set: { ...fields, id, updatedAt: new Date().toISOString(), reviewed_by: gate.user.id, reviewed_at: new Date().toISOString() } },
+      // Edited content gets fresh dedupe keys (CORE-031).
+      { $set: { ...withBankKeys({ ...fields }), id, updatedAt: new Date().toISOString(), reviewed_by: gate.user.id, reviewed_at: new Date().toISOString() } },
     )
     if (res.matchedCount === 0) return NextResponse.json({ error: 'Question not found' }, { status: 404 })
+    knowledgeOnLibraryChange('question', id)
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[question-bank] PATCH error:', e)
@@ -108,6 +112,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
     const db = await getMongoDb()
     await db.collection('question_bank').deleteOne({ id })
+    knowledgeOnLibraryChange('question', id)
     return NextResponse.json({ ok: true })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }

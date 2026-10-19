@@ -61,11 +61,12 @@ async function send(to: string | null | undefined, msg: { subject: string; html:
   }
 }
 
+/** Consent, STOP opt-outs and the official channel are enforced by lib/whatsapp-send (AUTO-060). */
 async function whatsapp(candidate: Pick<AtsCandidate, 'phone' | 'consent'> | null, text: string): Promise<void> {
   if (!candidate?.phone || candidate.consent?.whatsapp !== true) return
   try {
-    const { sendWhatsAppText } = await import('@/lib/whatsapp')
-    await sendWhatsAppText(candidate.phone, text.slice(0, 1000))
+    const { sendWhatsAppToCandidate } = await import('@/lib/whatsapp-send')
+    await sendWhatsAppToCandidate(candidate, { kind: 'hiring', title: 'Interview update', text: text.slice(0, 1000), urgent: true })
   } catch (e) {
     console.error('[ats/interviews] whatsapp failed:', (e as Error)?.message)
   }

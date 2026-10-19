@@ -2,26 +2,32 @@ import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { parseIdOcrPayload, type IdOcrResult } from '@/lib/assessment/id-ocr-parse'
 import { getApiKey } from '@/lib/ai/get-api-key'
+import { compareNames, namesAgree } from '@/lib/assessment/name-match'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-// Helper function to try fuzzy matching with regex
-function isFuzzyNameMatch(text: string, userName: string): boolean {
-  if (!text || !userName) return false
-  const nameParts = userName.toLowerCase().split(/\s+/).filter((p: string) => p.length > 2)
-  let matchCount = 0
-  for (const part of nameParts) {
-    if (text.toLowerCase().includes(part)) matchCount++
-  }
-  return matchCount > 0
-}
 
 const OCR_PROMPT =
   'Look at this photo. Reply ONLY with JSON: { "is_id_card": boolean, "name": "full name printed on the ID" }. ' +
   'Set is_id_card true ONLY if a physical government ID (passport, driver license, Aadhaar, national ID) is clearly visible with printed text. ' +
   'A selfie or face with no ID card is NOT an ID: return { "is_id_card": false, "name": "" }. ' +
   'Never invent or guess a name from a face. If an ID is present but the name is unreadable, return { "is_id_card": true, "name": "" }.'
+
+/**
+ * 'match' → accepted. 'partial' (e.g. initials only, one name part missing) →
+ * accepted but flagged: the client passes nameMatch:'partial' to
+ * /api/exams/[id]/identity, which sets needs_manual_review (A-005).
+ */
+function verifiedResponse(verdict: 'match' | 'partial') {
+  return NextResponse.json({
+    success: true,
+    nameMatch: verdict,
+    needsReview: verdict === 'partial',
+    message: verdict === 'match'
+      ? 'ID verified successfully (AI)'
+      : 'ID accepted. The name only partly matches your account, so a reviewer will check it.',
+  })
+}
 
 const PROVIDER_TIMEOUT_MS = 15000
 const NO_ID_ERROR = 'No ID card detected. Hold up your government ID (Aadhaar, passport, or driver license) so the text is readable.'
@@ -105,9 +111,8 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: NO_ID_ERROR }, { status: 422 })
         }
         if (extracted.name) {
-          if (isFuzzyNameMatch(extracted.name, userName)) {
-            return NextResponse.json({ success: true, message: 'ID verified successfully (AI)' })
-          }
+          const verdict = compareNames(extracted.name, userName)
+          if (verdict !== 'mismatch') return verifiedResponse(verdict)
           // ponytail: vision models hallucinate plausible names (e.g. invented
           // names on blurry cards) — NEVER treat one provider's reading as fact.
           // Collect it and let a second provider confirm before crying mismatch.
@@ -144,9 +149,8 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: NO_ID_ERROR }, { status: 422 })
           }
           if (extracted.name) {
-            if (isFuzzyNameMatch(extracted.name, userName)) {
-              return NextResponse.json({ success: true, message: 'ID verified successfully (AI)' })
-            }
+            const verdict = compareNames(extracted.name, userName)
+            if (verdict !== 'mismatch') return verifiedResponse(verdict)
             mismatchNames.push(extracted.name)
           }
         } else {
@@ -169,7 +173,7 @@ export async function POST(req: Request) {
     // never present one model's guess as ground truth.
     if (mismatchNames.length >= 2) {
       const [m0, m1] = mismatchNames
-      const agree = isFuzzyNameMatch(m0, m1) || isFuzzyNameMatch(m1, m0)
+      const agree = namesAgree(m0, m1)
       if (agree) {
         return NextResponse.json({
           error: `The name on this ID does not match your account name (${userName}). Two independent reads both saw "${m0}". Please use your own valid government ID.`,

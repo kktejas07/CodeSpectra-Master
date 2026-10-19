@@ -19,14 +19,15 @@ import { getAPIUser } from '@/lib/api-auth'
 import { hackathons, hackathonTeams, hackathonSubmissions, newToken } from '@/lib/db/qr-events'
 import { rankTeams, withFinalPoints } from '@/lib/hackathons/final-scores'
 import { sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser().catch(() => null)
-  const rl = rateLimitSlidingWindow(
+  const rl = await rateLimitRedis(
     `hk-public-results:${clientLimiterKeyFromRequest(req, user?.id ?? null)}`,
     60,
     60_000,

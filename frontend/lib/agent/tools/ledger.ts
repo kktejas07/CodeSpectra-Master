@@ -105,3 +105,12 @@ export async function runOnce(
   ).catch((e) => console.error('[agent ledger] store result failed:', e))
   return result
 }
+
+/** The stored ledger row for a confirmed action (crash recovery, AGT-003). */
+export async function ledgerEntryForAction(actionId: string): Promise<{ status: string; result?: ExecuteResult; started_ms?: number } | null> {
+  const db = await getMongoDb()
+  const row = await db.collection(LEDGER_COLLECTION).findOne({ key: `action:${actionId}` }, { projection: { _id: 0, status: 1, result: 1, started_ms: 1 } })
+  return row ? { status: String(row.status), ...(row.result ? { result: row.result as ExecuteResult } : {}), ...(typeof row.started_ms === 'number' ? { started_ms: row.started_ms } : {}) } : null
+}
+
+export const LEDGER_STALE_MS = STALE_RUNNING_MS

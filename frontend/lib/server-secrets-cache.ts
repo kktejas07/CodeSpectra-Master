@@ -7,9 +7,16 @@
  * Fallback chain at runtime:
  *   1. value from MongoDB cache (admin-saved)
  *   2. value from process.env
+ *
+ * SECRET_FIELDS are AES-GCM encrypted at rest (lib/secrets-crypto.ts, key from
+ * SECRETS_ENCRYPTION_KEY env). Reads decrypt transparently; plain-text values
+ * left from before encryption are re-written encrypted on first read (lazy
+ * migration) and on every write. Callers always see plain values.
  */
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
+import { decryptSecretsRecord, decryptWithOneKey, encryptSecretValue, encryptSecretsRecord, isEncryptedSecret, secretsEncryptionKey } from '@/lib/secrets-crypto'
+import { SECRET_FIELDS } from '@/lib/server-secrets-fields'
 
 export const SERVER_SECRETS_PLATFORM_KEY = 'secrets'
 
@@ -19,6 +26,7 @@ export type ServerSecretsRecord = {
   postal_api_key?: string
   postal_from_email?: string
   postal_webhook_secret?: string
+  postal_webhook_public_key?: string // RSA public key Postal signs webhooks with (not secret)
   // --- Razorpay -----------------------------------------------------------
   razorpay_key_id?: string
   razorpay_key_secret?: string
@@ -137,6 +145,7 @@ export type ServerSecretsRecord = {
   meta_whatsapp_template_call?: string  // approved template: consent for a screening call
   meta_whatsapp_template_language?: string
   meta_whatsapp_call_mode?: string      // 'sip' (default) | 'graph'
+  meta_whatsapp_template_status?: string // approved template: ATS stage update (4 body vars)
   vapi_api_key?: string
   vapi_webhook_secret?: string
   vapi_phone_number_ids?: string        // "IN=<id>, US=<id>, *=<id>"
@@ -166,6 +175,16 @@ export type ServerSecretsRecord = {
   custom_api_key?: string
   custom_endpoint?: string
   custom_model?: string
+  // --- Analytics & tracking (Settings → Analytics; public browser ids, validated in lib/analytics/integrations.ts)
+  ga4_measurement_id?: string
+  gtm_container_id?: string
+  posthog_project_key?: string
+  posthog_host?: string
+  clarity_project_id?: string
+  meta_pixel_id?: string
+  linkedin_partner_id?: string
+  analytics_retention_days?: string
+  analytics_custom_events?: string
 }
 
 interface PlatformSettingDoc {
@@ -202,7 +221,10 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
     try {
       const col = await settingsCol()
       const doc = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
-      cached = (doc?.value as ServerSecretsRecord) || {}
+      const stored = (doc?.value as Record<string, unknown>) || {}
+      const { plain, needsMigration } = decryptSecretsRecord(stored, SECRET_FIELDS as string[])
+      cached = plain as ServerSecretsRecord
+      if (needsMigration) void migratePlaintextSecrets(col, stored, plain as Record<string, unknown>)
     } catch (e) {
       console.error('[CodeSpectra] server secrets load:', e)
       cached = {}
@@ -216,6 +238,40 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
   const result = await p
   inflight = null
   return result
+}
+
+let migrating = false
+/** Lazy migration: encrypt plain-text secret values left from older builds. */
+async function migratePlaintextSecrets(col: Collection<PlatformSettingDoc>, stored: Record<string, unknown>, plain: Record<string, unknown> = {}): Promise<void> {
+  if (migrating) return
+  migrating = true
+  try {
+    const sealed = encryptSecretsRecord(stored, SECRET_FIELDS as string[])
+    const $set: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(sealed)) {
+      if (v !== stored[k]) $set[`value.${k}`] = v
+    }
+    // SEC-018: values still sealed with the legacy session-derived key are
+    // re-sealed with SECRETS_ENCRYPTION_KEY.
+    const key = secretsEncryptionKey()
+    if (key) {
+      for (const [k, v] of Object.entries(stored)) {
+        if (isEncryptedSecret(v) && decryptWithOneKey(v, key) === null && typeof plain[k] === 'string' && plain[k]) {
+          $set[`value.${k}`] = encryptSecretValue(plain[k] as string, key)
+        }
+      }
+    }
+    if (Object.keys($set).length === 0) return
+    // Per-field compare-and-set: never overwrite a value another write changed meanwhile.
+    const filter: Record<string, unknown> = { key: SERVER_SECRETS_PLATFORM_KEY }
+    for (const k of Object.keys($set)) filter[k] = stored[k.slice(6)]
+    await col.updateOne(filter as never, { $set })
+    console.log(`[secrets] encrypted ${Object.keys($set).length} stored secret(s) at rest`)
+  } catch (e) {
+    console.error('[secrets] at-rest migration failed:', e instanceof Error ? e.message : e)
+  } finally {
+    migrating = false
+  }
 }
 
 export function getServerSecretsFromCache(): ServerSecretsRecord {
@@ -240,22 +296,26 @@ export async function writeServerSecrets(
 ): Promise<ServerSecretsRecord> {
   const col = await settingsCol()
   const existing = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
-  const prev = (existing?.value as ServerSecretsRecord) || {}
-  const next: ServerSecretsRecord = { ...prev }
+  // Merge on the STORED form so values we can't decrypt (key rotated) are
+  // kept rather than silently wiped by an unrelated save.
+  const prev = (existing?.value as Record<string, unknown>) || {}
+  const next: Record<string, unknown> = { ...prev }
   for (const [k, v] of Object.entries(patch) as [keyof ServerSecretsRecord, unknown][]) {
     if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) {
       delete next[k]
     } else if (typeof v === 'string') {
-      next[k] = v.trim() as never
+      next[k] = v.trim()
     }
   }
+  const key = secretsEncryptionKey()
+  const sealed = encryptSecretsRecord(next, SECRET_FIELDS as string[], key)
   await col.updateOne(
     { key: SERVER_SECRETS_PLATFORM_KEY },
-    { $set: { value: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() } },
+    { $set: { value: sealed, updated_at: new Date().toISOString() } },
     { upsert: true },
   )
   invalidateServerSecretsCache()
-  return next
+  return decryptSecretsRecord(sealed, SECRET_FIELDS as string[], key).plain as ServerSecretsRecord
 }
 
 /** Mask API keys for admin UI (never return full secrets). */

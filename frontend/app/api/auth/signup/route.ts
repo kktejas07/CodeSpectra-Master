@@ -85,6 +85,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
     }
 
+    // Admin switches: registrations closed / maintenance (A-025). A candidate
+    // with a valid assessment invite may still create their account.
+    const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+    const { registrationBlock } = await import('@/lib/auth-policy')
+    const policy = await getGeneralSettingsCached()
+    const closed = registrationBlock(policy, { invited: invitedBypass })
+    if (closed) return NextResponse.json({ error: closed.error, code: closed.code }, { status: closed.status })
+
     const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>
     // Whitelisted, size-capped profile fields only.
     const str = (v: unknown, max = 200) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
@@ -164,12 +172,21 @@ export async function POST(request: Request) {
       passwordHash,
       role: 'user',
       emailVerified: false,
+      // SEC-006: marks accounts created under the verify-first rule (legacy
+      // accounts without it are grandfathered by lib/auth-policy signInBlock).
+      email_verification_required: policy.require_email_verification === true,
       session_version: 1,
       verification_token_hash: verifyTokenHash,
       verification_token_expires: verifyTokenExpires,
       createdAt: now,
       updatedAt: now,
     } as any)
+
+    // SEC-013: every email signup fires user.created (welcome/onboarding flows),
+    // only after the account really exists. Idempotent per user id.
+    void import('@/lib/automation/events')
+      .then(({ emit }) => emit('user.created', { user_id: uid, email: normalizedEmail, name: name || null, method: 'email', email_verified: false, created_at: now.toISOString() }, { idempotencyKey: `user.created:${uid}` }))
+      .catch((e) => console.error('[automation] emit failed:', (e as Error)?.message))
 
     // Invites sent before this account existed carry no user_id — attach them.
     await db.collection('candidate_invites').updateMany(
@@ -178,7 +195,9 @@ export async function POST(request: Request) {
     ).catch(() => {})
 
     const role = normalizeUserRole('user')
-    await setSessionCookie({ uid, email: normalizedEmail, role })
+    // With "Require email verification" on, no session until the link is clicked.
+    const verificationRequired = policy.require_email_verification === true
+    if (!verificationRequired) await setSessionCookie({ uid, email: normalizedEmail, role })
 
     await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
 
@@ -202,6 +221,15 @@ export async function POST(request: Request) {
       }
     }
 
+    // CORE-005: a referral code sent with the sign-up is recorded now (pending until the account
+    // is verified and completes a first graded activity) — with email verification on, the
+    // browser has no session to apply it afterwards.
+    if (typeof raw.referral_code === 'string' && raw.referral_code) {
+      const { recordReferralRedemption } = await import('@/lib/referral-service')
+      await recordReferralRedemption(db, { id: uid, email: normalizedEmail }, raw.referral_code)
+        .catch((e) => console.error('[Signup] referral not recorded:', (e as Error)?.message))
+    }
+
     // Send welcome email
     const displayName = name || normalizedEmail.split('@')[0]
     const template = emailTemplates.welcomeEmail(displayName)
@@ -213,7 +241,10 @@ export async function POST(request: Request) {
     const verifyLink = `${origin}/api/auth/verify-email?token=${verifyToken}`
     await sendEmail(normalizedEmail, emailTemplates.emailVerification(verifyLink)).catch((e) => console.error('[Signup] Verification email failed:', e))
 
-    return NextResponse.json({ user: { id: uid, email: normalizedEmail, role, name: name || null } })
+    return NextResponse.json({
+      user: { id: uid, email: normalizedEmail, role, name: name || null },
+      ...(verificationRequired ? { verificationRequired: true } : {}),
+    })
   } catch (error) {
     console.error('[Signup] Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

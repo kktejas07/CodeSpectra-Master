@@ -61,6 +61,7 @@ const GROUPS: GroupDef[] = [
       { key: 'meta_whatsapp_graph_version', label: 'Graph API version', placeholder: 'v23.0' },
       { key: 'meta_whatsapp_template_chat', label: 'Chat template name', placeholder: 'candidate_screening_chat' },
       { key: 'meta_whatsapp_template_call', label: 'Call template name', placeholder: 'candidate_screening_call' },
+      { key: 'meta_whatsapp_template_status', label: 'Stage update template name', placeholder: 'application_status_update', hint: 'Approved template with 4 body variables: candidate name, job title, company, stage.' },
       { key: 'meta_whatsapp_template_language', label: 'Template language', placeholder: 'en' },
       {
         key: 'meta_whatsapp_call_mode', label: 'Call mode',

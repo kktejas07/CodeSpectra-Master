@@ -37,11 +37,11 @@ describe('price parsing (display = charge)', () => {
 describe('calculateDiscount', () => {
   it('clamps bad coupon values (never raises the price, never below 0)', async () => {
     const { calculateDiscount } = await import('@/lib/coupon-service')
-    expect(calculateDiscount(10000, { discount_type: 'percentage', discount_value: 25 })).toBe(7500)
-    expect(calculateDiscount(10000, { discount_type: 'percentage', discount_value: 150 })).toBe(0)
-    expect(calculateDiscount(10000, { discount_type: 'percentage', discount_value: -50 })).toBe(10000)
-    expect(calculateDiscount(10000, { discount_type: 'flat', discount_value: 30 })).toBe(7000)
-    expect(calculateDiscount(10000, { discount_type: 'flat', discount_value: 500 })).toBe(0)
+    expect(calculateDiscount(10000, { discount_type: 'percentage', discount_value: 25 }, 'INR')).toBe(7500)
+    expect(calculateDiscount(10000, { discount_type: 'percentage', discount_value: 150 }, 'INR')).toBe(0)
+    expect(calculateDiscount(10000, { discount_type: 'percentage', discount_value: -50 }, 'INR')).toBe(10000)
+    expect(calculateDiscount(10000, { discount_type: 'flat', discount_value: 30 }, 'INR')).toBe(7000)
+    expect(calculateDiscount(10000, { discount_type: 'flat', discount_value: 500 }, 'INR')).toBe(0)
   })
 })
 

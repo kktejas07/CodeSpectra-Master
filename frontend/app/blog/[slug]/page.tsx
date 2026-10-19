@@ -1,3 +1,8 @@
+import type { Metadata } from 'next'
+import { buildMetadata, ogImagePath } from '@/lib/seo/metadata'
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
+import { getSiteOrigin } from '@/lib/seo/settings'
+import { JsonLd } from '@/components/seo/json-ld'
 import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -59,6 +64,26 @@ function shouldShowSourceNote(note?: string | null, urls?: string[] | null): boo
   return true
 }
 
+const plainText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
+  const post = await (await blogPosts()).findOne({ slug, status: 'published' }, { projection: { _id: 0, body: 0 } }).catch(() => null)
+  if (!post) return { title: 'Post not found', robots: { index: false, follow: true } }
+  return buildMetadata({
+    title: post.title,
+    description: post.excerpt,
+    path: `/blog/${post.slug}`,
+    kind: 'article',
+    type: 'article',
+    image: post.cover_image || undefined,
+    publishedTime: post.published_at,
+    modifiedTime: post.updated_at,
+    section: categoryLabel(post.category),
+    tags: post.tags,
+  })
+}
+
 export default async function BlogArticlePage({
   params,
 }: {
@@ -85,13 +110,35 @@ export default async function BlogArticlePage({
   })
   const showSources = shouldShowSourceNote(post.source_note, post.source_urls)
 
+  const site = await getSiteOrigin()
+  const path = `/blog/${post.slug}`
+  const jsonLd = [
+    articleJsonLd({
+      site,
+      type: 'BlogPosting',
+      path,
+      headline: post.title,
+      description: post.excerpt,
+      datePublished: post.published_at || post.created_at,
+      dateModified: post.updated_at,
+      image: post.cover_image || ogImagePath({ title: post.title.slice(0, 100), kind: 'article' }),
+      section: categoryLabel(post.category),
+      keywords: post.tags,
+      authorName: post.author_name || undefined,
+      citations: post.source_urls?.length ? post.source_urls : undefined,
+      wordCount: plainText(post.body || '').split(' ').filter(Boolean).length,
+    }),
+    breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Newsroom', path: '/blog' }, { name: categoryLabel(post.category), path: `/blog?category=${post.category}` }, { name: post.title, path }], site),
+  ]
+
   return (
     <PublicPageWrapper>
+      <JsonLd data={jsonLd} />
       {/* Full-bleed cover */}
       <div className="relative w-full border-b border-cs-grid">
         <div className="relative aspect-21/9 min-h-55 w-full max-h-105 overflow-hidden bg-cs-paper sm:min-h-70">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cover} alt="" className="h-full w-full object-cover" />
+          <img src={cover} alt="" width={1600} height={686} fetchPriority="high" decoding="async" className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-linear-to-t from-cs-paper via-cs-paper/20 to-transparent" />
         </div>
       </div>

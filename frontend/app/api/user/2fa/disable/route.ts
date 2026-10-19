@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
-import { checkTotp } from '@/lib/totp'
+import { consumeTotp } from '@/lib/totp'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     if (password && user.passwordHash) {
       valid = await bcrypt.compare(password, user.passwordHash)
     } else if (code && user.totp_enabled && user.totp_secret) {
-      valid = checkTotp(code, user.totp_secret)
+      valid = await consumeTotp(user, code)
     } else if (password && !user.passwordHash) {
       return NextResponse.json(
         { error: 'This account has no password. Use a code from your authenticator app instead.' },
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
     await db.collection('user').updateOne(
       { id: gate.user.id },
-      { $unset: { totp_secret: '', totp_pending_secret: '', totp_setup_at: '', totp_verified_at: '' }, $set: { totp_enabled: false } }
+      { $unset: { totp_secret: '', totp_pending_secret: '', totp_setup_at: '', totp_verified_at: '', totp_last_step: '' }, $set: { totp_enabled: false } }
     )
 
     return NextResponse.json({ success: true })

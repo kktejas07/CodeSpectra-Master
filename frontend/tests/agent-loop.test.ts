@@ -12,10 +12,10 @@ import {
   type ProposedAction,
 } from '@/lib/agent/contract'
 import type { ChatChunk, ChatProvider, ChatRequest, ToolCall } from '@/lib/agent/providers/types'
-import { runAgentTurn, type RunTurnDeps } from '@/lib/agent/run'
+import { runAgentTurn, type AgentLoopEvent, type RunTurnDeps } from '@/lib/agent/run'
 import { buildHistory, makeTitle, type AgentMessageDoc } from '@/lib/agent/history'
 import { callerFromUser, canUseTool } from '@/lib/agent/permissions'
-import { creditsForTurn } from '@/lib/agent/credits'
+import { creditsForUsage } from '@/lib/agent/credits'
 import { buildSystemPrompt, wrapToolOutput } from '@/lib/agent/prompt'
 
 const TENANT_ADMIN: AgentCaller = { userId: 'u1', role: 'tenant_admin', tenantId: 't1', name: 'Asha' }
@@ -88,7 +88,7 @@ function makeTools() {
 }
 
 function harness(provider: ChatProvider, tools: AgentTool[]) {
-  const events: AgentEvent[] = []
+  const events: AgentLoopEvent[] = []
   const saved: ProposedAction[] = []
   const persisted: unknown[] = []
   let n = 0
@@ -322,8 +322,9 @@ describe('callers, permissions and credits', () => {
     expect(canUseTool(tool, { userId: 's', role: 'superadmin', tenantId: null })).toBe(false)
   })
 
-  it('charges 1 credit per turn plus 1 per 4 tool calls', () => {
-    expect([0, 1, 3, 4, 7, 8, 12].map(creditsForTurn)).toEqual([1, 1, 1, 2, 2, 3, 4])
-    expect(creditsForTurn(-2)).toBe(1)
+  it('charges by tokens actually used (no flat per-message rate)', () => {
+    expect(creditsForUsage([])).toBe(0)
+    expect(creditsForUsage([{ provider: 'p', model: 'llama-3.3-70b', inputTokens: 100, outputTokens: 20 }])).toBe(1)
+    expect(creditsForUsage([{ provider: 'p', model: 'llama-3.3-70b', inputTokens: 150_000, outputTokens: 0 }])).toBeGreaterThanOrEqual(8)
   })
 })

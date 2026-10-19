@@ -96,6 +96,12 @@ export async function upsertCandidate(tenantId: string, input: CandidateInput): 
     const tags = [...new Set([...(existing.tags || []), ...(input.tags || [])])].slice(0, 30)
     if (tags.length !== (existing.tags || []).length) set.tags = tags
     await col.updateOne({ id: existing.id, tenant_id: tenantId }, { $set: set })
+    // RAG-001: the candidate's applications carry their parsed résumé — refresh them.
+    void import('@/lib/rag/hooks').then(async (h) => {
+      const { atsApplications } = await import('./db')
+      const apps = await (await atsApplications()).find({ tenant_id: tenantId, candidate_id: existing.id }, { projection: { _id: 0, id: 1 } }).limit(200).toArray()
+      h.knowledgeOnAtsApplication(apps.map((a) => a.id), tenantId)
+    }).catch(() => {})
     return { candidate: { ...existing, ...set } as AtsCandidate, created: false }
   }
 
@@ -167,6 +173,7 @@ export async function createApplication(
   }
   try {
     await col.insertOne(app)
+    void import('@/lib/rag/hooks').then((h) => h.knowledgeOnAtsApplication(app.id, app.tenant_id)).catch(() => {}) // RAG-001
   } catch (e) {
     if (!isDuplicateKey(e)) throw e
     const again = (await col.findOne({ job_id: job.id, candidate_id: candidate.id }, { projection: { _id: 0 } })) as AtsApplication | null
@@ -179,6 +186,10 @@ export async function createApplication(
     console.error('[ats/intake] stage entry failed:', app.id, e)
   }
   const fresh = (await col.findOne({ id: app.id, tenant_id: job.tenant_id }, { projection: { _id: 0 } })) as AtsApplication | null
+  void import('@/lib/automation/events').then(({ emit }) => emit('candidate.applied', {
+    application_id: app.id, job_id: job.id, job_title: job.title, candidate_id: candidate.id, candidate_name: candidate.name ?? null, candidate_email: candidate.email ?? null,
+    source, stage_id: first.id, match_score: app.match?.score ?? null,
+  }, { tenantId: job.tenant_id, idempotencyKey: `candidate.applied:${app.id}` })).catch((e) => console.error('[automation] emit failed:', e))
   return { application: fresh ?? app, created: true }
 }
 

@@ -36,7 +36,7 @@ export async function GET(request: Request, { params }: IdRouteContext) {
     if ('error' in owned) return NextResponse.json({ error: owned.error }, { status: owned.status })
     const exam = owned.doc as Doc
 
-    const subsRaw = (await db.collection('exam_submissions').find({ exam_id: id, user_id: { $in: users } }).toArray()) as Doc[]
+    const subsRaw = (await db.collection('exam_submissions').find({ exam_id: id, user_id: { $in: users } }, { projection: { id_photo: 0, face_photo: 0 } }).toArray()) as Doc[]
     // Latest attempt per candidate (legacy rows may hold several).
     const subs = new Map<string, Doc>()
     for (const s of subsRaw) {

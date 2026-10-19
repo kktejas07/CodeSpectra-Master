@@ -54,6 +54,10 @@ function loginErrorMessage(code: string | null): string | null {
       return "That account’s email isn’t on a domain your organisation’s single sign-on covers. Use your work account, or sign in with email.";
     case "sso_account_disabled":
       return "This account has been deactivated. Contact your administrator.";
+    case "sso_maintenance":
+      return "We’re doing some maintenance right now. Please try again a little later.";
+    case "sso_registration_closed":
+      return "New sign-ups are closed right now. Ask your organisation’s admin to invite you, then sign in again.";
     case "access_denied":
       return "Sign-in was cancelled. Choose a sign-in method to try again.";
     default:
@@ -78,6 +82,8 @@ function LoginInner() {
   const notice =
     searchParams.get("verified") === "true"
       ? "Your email is verified. Sign in to continue."
+      : searchParams.get("verify_sent") === "1"
+        ? "Account created. We emailed you a verification link — click it, then sign in."
       : searchParams.get("expired") === "1"
         ? "Your session ended. Sign in again to continue."
         : null;

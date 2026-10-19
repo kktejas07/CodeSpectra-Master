@@ -1,7 +1,8 @@
 /**
  * Admin agent tool registry. Read tools run immediately; write tools only
  * propose — execute() runs from the confirm endpoint (lib/agent/actions.ts).
- * No payment or user-deletion tools, by design.
+ * No user-deletion tools; money decisions (marketplace refunds / payouts) are
+ * superadmin-only proposals with the 'money' risk.
  */
 import type { AgentCaller, AgentTool } from '@/lib/agent/contract'
 import type { AnyTool } from './types'
@@ -19,6 +20,23 @@ import {
   createCodeathonTool, releaseCodeathonResultsTool,
 } from './write/events'
 import { createProblemTool } from './write/problems'
+import {
+  listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
+} from './read/ats'
+import {
+  createJobTool, updateJobTool, setJobStatusTool, moveApplicationStageTool, rejectApplicationTool, shortlistApplicantsTool,
+  scheduleInterviewTool, startBotScreeningTool, recordHrDecisionTool,
+} from './write/ats'
+import {
+  listMarketplaceProductsTool, listMarketplaceOrdersTool, listMarketplaceSellersTool, listMarketplacePayoutsTool, getMarketplaceSalesTool,
+  listLearnTopicsTool, listLearnPostsTool, searchFeedEventsTool, getFeedStatsTool,
+  listWorkflowsTool, listWorkflowRunsTool, listWorkflowTemplatesTool, getCopilotUsageTool, getPlatformKpisTool,
+} from './read/modules'
+import {
+  moderateProductTool, decideRefundTool, decidePayoutTool, generateLearnDraftTool, setLearnPostStatusTool, setFeedEventVisibilityTool,
+  createWorkflowFromTemplateTool, setWorkflowEnabledTool, rerunWorkflowRunTool, scheduleAgentTaskTool,
+  updateCodeathonTool, publishCodeathonTool, updateProblemTool, publishProblemTool, addQuestionsToBankTool,
+} from './write/modules'
 
 export const ALL_TOOLS: AnyTool[] = [
   // read
@@ -27,6 +45,12 @@ export const ALL_TOOLS: AnyTool[] = [
   listHackathonsTool, getHackathonTool, listCodeathonsTool, getCodeathonTool,
   searchQuestionBankTool, searchProblemsTool,
   getAnalyticsTool, getPlanUsageTool,
+  // hiring pipeline (ATS)
+  listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
+  // marketplace, Learn, events feed, automations, usage
+  listMarketplaceProductsTool, listMarketplaceOrdersTool, listMarketplaceSellersTool, listMarketplacePayoutsTool, getMarketplaceSalesTool,
+  listLearnTopicsTool, listLearnPostsTool, searchFeedEventsTool, getFeedStatsTool,
+  listWorkflowsTool, listWorkflowRunsTool, listWorkflowTemplatesTool, getCopilotUsageTool, getPlatformKpisTool,
   // write
   createTestTool, updateTestTool, publishTestTool,
   inviteCandidatesTool, sendRemindersTool,
@@ -35,6 +59,11 @@ export const ALL_TOOLS: AnyTool[] = [
   createCodeathonTool, releaseCodeathonResultsTool,
   createProblemTool,
   revokeCertificateTool,
+  createJobTool, updateJobTool, setJobStatusTool, moveApplicationStageTool, rejectApplicationTool, shortlistApplicantsTool,
+  scheduleInterviewTool, startBotScreeningTool, recordHrDecisionTool,
+  moderateProductTool, decideRefundTool, decidePayoutTool, generateLearnDraftTool, setLearnPostStatusTool, setFeedEventVisibilityTool,
+  createWorkflowFromTemplateTool, setWorkflowEnabledTool, rerunWorkflowRunTool, scheduleAgentTaskTool,
+  updateCodeathonTool, publishCodeathonTool, updateProblemTool, publishProblemTool, addQuestionsToBankTool,
 ]
 
 const BY_NAME = new Map<string, AnyTool>(ALL_TOOLS.map((t) => [t.name, t]))

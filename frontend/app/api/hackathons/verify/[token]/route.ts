@@ -6,7 +6,8 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -15,7 +16,7 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ token: string }> },
 ) {
-  const rl = rateLimitSlidingWindow(`hk-verify:${clientLimiterKeyFromRequest(req, null)}`, 30, 60_000)
+  const rl = await rateLimitRedis(`hk-verify:${clientLimiterKeyFromRequest(req, null)}`, 30, 60_000)
   if (!rl.ok) {
     return NextResponse.json({ valid: false, error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
   }

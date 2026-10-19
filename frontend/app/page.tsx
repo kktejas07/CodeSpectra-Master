@@ -1,15 +1,47 @@
-'use client'
-
-export const dynamic = 'force-dynamic'
-
 import Link from 'next/link'
-import { useHasUserSession } from '@/hooks/use-has-user-session'
-import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
+import { PublicPageWrapper } from '@/app/public-layout'
 import { ResultsSheet } from '@/components/landing/results-sheet'
-import { HeroShowcase } from '@/components/landing/hero-showcase'
+import { LandingHero } from '@/components/landing/landing-hero'
 import { BentoGrid } from '@/components/landing/bento-grid'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { DeviceShowcase } from '@/components/visuals'
+import { UpcomingEventsStrip } from '@/components/events-feed/upcoming-strip'
+import { LearnSection } from '@/components/landing/learn-section'
+import { AnswerSummary, SPEAKABLE_SELECTORS } from '@/components/seo/answer-summary'
+import { FaqSection } from '@/components/seo/faq-list'
+import { JsonLd } from '@/components/seo/json-ld'
+import { LANDING_FAQS } from '@/lib/seo/faq-content'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { softwareApplicationJsonLd, webPageJsonLd } from '@/lib/seo/jsonld'
+import { publicRoute } from '@/lib/seo/public-routes'
+import { getSiteOrigin } from '@/lib/seo/settings'
+import { SITE_NAME } from '@/lib/seo/site'
+import type { LearnPostCard } from '@/lib/learn/types'
+import type { PublicFeedEvent } from '@/lib/events-feed/types'
+
+const route = publicRoute('/')!
+export const metadata = { ...buildMetadata({ title: `${SITE_NAME}: ${route.title}`, description: route.description, path: '/', kind: 'default' }) }
+
+/** Featured first, then latest (max 3) — same rule the client strip used. */
+async function landingPosts(): Promise<LearnPostCard[]> {
+  try {
+    const { listPublished } = await import('@/lib/learn/queries')
+    const [featured, latest] = await Promise.all([listPublished({ featured: true, limit: 3 }), listPublished({ limit: 3 })])
+    const seen = new Set<string>()
+    return [...featured.items, ...latest.items].filter((p) => !seen.has(p.slug) && seen.add(p.slug)).slice(0, 3)
+  } catch {
+    return []
+  }
+}
+
+async function landingEvents(): Promise<PublicFeedEvent[]> {
+  try {
+    const { listPublishedFeed } = await import('@/lib/events-feed/query')
+    return (await listPublishedFeed()).slice(0, 6)
+  } catch {
+    return []
+  }
+}
 
 /* Shared button styles for marketing pages. Kept here rather than in
    components/ui/button so the dashboard's mint button stays untouched. */
@@ -44,16 +76,33 @@ const STEPS = [
 
 
 
-export default function Home() {
-  const hasSession = useHasUserSession()
+export default async function Home() {
+  const [site, posts, events] = await Promise.all([getSiteOrigin(), landingPosts(), landingEvents()])
 
   return (
     <PublicPageWrapper>
-      <HeroShowcase
-        primaryHref="/contact"
-        secondaryHref={hasSession ? DASHBOARD_HREF : '/auth/signup'}
-        secondaryLabel={hasSession ? 'Go to dashboard' : 'Create a free account'}
+      <JsonLd
+        data={[
+          softwareApplicationJsonLd({ site }),
+          webPageJsonLd({ site, path: '/', name: `${SITE_NAME}: ${route.title}`, description: route.description, speakable: SPEAKABLE_SELECTORS }),
+        ]}
       />
+      <LandingHero />
+
+      {/* Answer-first definition for search snippets, answer engines and voice */}
+      <section className="border-b border-cs-grid">
+        <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
+          <AnswerSummary
+            label="What is CodeSpectra?"
+            answer="CodeSpectra is a skills-assessment platform for hiring teams and colleges. It runs proctored, auto-scored tests for software, QA, CAD and aptitude roles and ranks every candidate on one shortlist, so reviewers only look at the strongest."
+            points={[
+              'Coding, multiple-choice, written and CAD questions in one timed test',
+              'Proctoring flags (tab switches, face match, copy-paste) sit next to each score',
+              'Free practice, mock tests and verifiable certificates for candidates',
+            ]}
+          />
+        </div>
+      </section>
 
       {/* Sample report — the interactive results sheet */}
       <section className="cs-graph relative border-b border-cs-grid">
@@ -104,6 +153,14 @@ export default function Home() {
           <BentoGrid />
         </div>
       </section>
+
+      {/* Learn hub — latest / featured posts (hidden until something is published) */}
+      <LearnSection initialPosts={posts} />
+
+      {/* Upcoming events (lib/events-feed) — hidden when there are none */}
+      <UpcomingEventsStrip initialEvents={events} />
+
+      <FaqSection title="Questions hiring teams ask" items={LANDING_FAQS} id="home-faq" />
 
       {/* Candidates — secondary audience */}
       <section className="border-b border-cs-grid bg-cs-sheet">

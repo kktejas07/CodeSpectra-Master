@@ -43,7 +43,8 @@ export const simulatedVendor: BgvVendor = {
         .map((k) => ({
           type: k.type,
           status: k.type === flagged ? ('discrepancy' as const) : ('verified' as const),
-          notes: k.type === flagged ? 'Simulated discrepancy (demo)' : 'Simulated: verified',
+          // Every result says DEMO so it can't be mistaken for a real check.
+          notes: k.type === flagged ? 'DEMO result (simulated vendor, not a real check): discrepancy' : 'DEMO result (simulated vendor, not a real check): verified',
         })),
     }
   },

@@ -65,6 +65,9 @@ async function resolveSecret(): Promise<Uint8Array> {
       // ponytail: login still works this process; next roll re-reads env or generates
     }
   }
+  // Keep the boot-time env value: lib/secrets-crypto.ts derives its fallback
+  // at-rest key from it and must never use the DB copy assigned below.
+  if (process.env.SESSION_SECRET_BOOT === undefined) process.env.SESSION_SECRET_BOOT = process.env.SESSION_SECRET || ''
   process.env.SESSION_SECRET = raw
   _secret = new TextEncoder().encode(raw)
   return _secret
@@ -96,6 +99,8 @@ export interface SessionPayload {
   ver?: number
   /** Per-session id, so one sign-out can revoke just this session. */
   sid?: string
+  /** SEC-010: id of the superadmin impersonating this user (short-lived token). */
+  imp?: string
 }
 
 // ─── Auth profile loader (short cache) ──────────────────────────────────────
@@ -252,15 +257,16 @@ export async function readSessionCookie(): Promise<SessionPayload | null> {
   return raw ? verifySessionToken(raw) : null
 }
 
-export async function setSessionCookie(payload: SessionPayload): Promise<void> {
-  const token = await signSessionToken(payload)
+export async function setSessionCookie(payload: SessionPayload, opts: { maxAgeSec?: number } = {}): Promise<void> {
+  const maxAge = opts.maxAgeSec ?? 60 * 60 * 24 * 7
+  const token = await signSessionToken(payload, `${maxAge}s`)
   const cookieStore = await cookies()
   cookieStore.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge,
   })
 }
 

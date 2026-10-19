@@ -979,7 +979,7 @@ function CodeScannerPageInner() {
       {mode === 'chat' && !isModeLocked('chat') && (
         <div>
           <CodebaseChatSidebar 
-            scanId={analysis?.scanId}
+            scanId={analysis?.id && !analysis.id.startsWith('scan-') ? analysis.id : undefined}
             files={analysis ? [
               {
                 path: 'analyzed_snippet',

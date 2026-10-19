@@ -134,6 +134,9 @@ function SignupInner() {
       } catch {
         inviteToken = searchParams.get("inviteToken") || undefined;
       }
+      // The referral code rides with the sign-up so it survives email verification (CORE-005).
+      const storedRef = (() => { try { return localStorage.getItem("referral_code") } catch { return null } })();
+      if (storedRef) extendedData.referral_code = storedRef;
       await signUpWithEmail(
         email.trim().toLowerCase(),
         password,
@@ -146,6 +149,11 @@ function SignupInner() {
       router.push(`/auth/enroll-face?redirect=${encodeURIComponent(redirectTo)}`);
       router.refresh();
     } catch (err: unknown) {
+      if ((err as { code?: string } | null)?.code === "verification_required") {
+        try { localStorage.removeItem("referral_code") } catch { /* recorded server-side */ }
+        router.push(`/auth/login?${new URLSearchParams({ verify_sent: "1", email: email.trim().toLowerCase() }).toString()}`);
+        return;
+      }
       setTurnstileToken(null);
       setTurnstileResetKey((k) => k + 1);
       const msg = err instanceof Error ? err.message : "Your account couldn’t be created. Try again.";

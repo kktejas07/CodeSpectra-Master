@@ -113,12 +113,57 @@ async function send(to: string | null, msg: { subject: string; html: string }): 
   }
 }
 
-async function whatsapp(candidate: AtsCandidate, text: string): Promise<void> {
+export type CandidateWhatsAppRoute = 'meta' | 'unofficial' | 'none'
+
+/**
+ * Which channel carries candidate WhatsApp updates (audit A-031). Pure.
+ * The official Meta Cloud API whenever it is configured (same setup as bot
+ * screening). The unofficial OpenWA gateway (lib/whatsapp.ts) only when the
+ * platform explicitly opts in (Admin → Automations → WhatsApp, or
+ * WHATSAPP_UNOFFICIAL=1 / ATS_WHATSAPP_UNOFFICIAL=1) — numbers can be banned
+ * for bulk sends through it.
+ */
+export function candidateWhatsAppRoute(o: { metaReady: boolean; phoneNumberId: string | null; unofficialEnabled: boolean }): CandidateWhatsAppRoute {
+  if (o.metaReady && o.phoneNumberId) return 'meta'
+  return o.unofficialEnabled ? 'unofficial' : 'none'
+}
+
+async function whatsapp(job: AtsJob, candidate: AtsCandidate, vars: TemplateVars, text: string): Promise<void> {
   // Consent is a hard gate: no message without an explicit opt-in on record.
   if (!candidate.phone || candidate.consent?.whatsapp !== true) return
   try {
-    const { sendWhatsAppText } = await import('@/lib/whatsapp')
-    await sendWhatsAppText(candidate.phone, text.slice(0, 1000))
+    // A STOP reply to our number wins over the consent on record (AUTO-061).
+    const { isWhatsAppOptedOut, unofficialWhatsAppEnabled } = await import('@/lib/whatsapp-send')
+    if (await isWhatsAppOptedOut(candidate.phone, (candidate.consent as { whatsapp_at?: string } | undefined)?.whatsapp_at ?? null)) return
+    const cfgMod = await import('./screening/config')
+    const { pickRegionNumbers } = await import('./screening/regions')
+    const cfg = await cfgMod.getPlatformConfig()
+    const tenant = await cfgMod.getTenantSettings(job.tenant_id).catch(() => null)
+    const numbers = pickRegionNumbers(candidate, tenant?.regions, cfgMod.platformNumbers(cfg))
+    const route = candidateWhatsAppRoute({
+      metaReady: cfgMod.whatsappReady(cfg),
+      phoneNumberId: numbers.whatsapp_phone_number_id,
+      unofficialEnabled: await unofficialWhatsAppEnabled(),
+    })
+    if (route === 'none') return
+    if (route === 'unofficial') {
+      const { sendWhatsAppText } = await import('@/lib/whatsapp')
+      await sendWhatsAppText(candidate.phone, text.slice(0, 1000))
+      return
+    }
+    const { metaTransport } = await import('./screening/providers/whatsapp')
+    const { readServerSecrets } = await import('@/lib/server-secrets-cache')
+    const secrets = await readServerSecrets()
+    const templateName = (secrets.meta_whatsapp_template_status || process.env.META_WHATSAPP_TEMPLATE_STATUS || 'application_status_update').trim()
+    const t = metaTransport(cfg, numbers.whatsapp_phone_number_id!)
+    // Business-initiated messages need an approved template; plain text only
+    // reaches candidates who messaged us in the last 24 h.
+    const params = [vars.candidate_name, vars.job_title, vars.company, vars.stage_name].map((v) => String(v ?? ''))
+    const r = await t.sendTemplate(candidate.phone, { name: templateName, language: cfg.whatsapp.template_language, bodyParams: params }, text)
+    if (!r.ok) {
+      const fallback = await t.sendText(candidate.phone, text.slice(0, 1000))
+      if (!fallback.ok) console.error('[ats/notify] whatsapp (meta) failed:', (r.error || '').slice(0, 160))
+    }
   } catch (e) {
     console.error('[ats/notify] whatsapp failed:', (e as Error)?.message)
   }
@@ -168,7 +213,7 @@ export async function notifyStageEntry(ctx: {
     }
 
     if (notify.whatsapp) {
-      await whatsapp(candidate, renderText('Hi {{candidate_name}}, your application for {{job_title}} at {{company}} moved to: {{stage_name}}.', vars))
+      await whatsapp(job, candidate, vars, renderText('Hi {{candidate_name}}, your application for {{job_title}} at {{company}} moved to: {{stage_name}}.', vars))
     }
 
     if (notify.client && stage.client_visible && job.client_id) {

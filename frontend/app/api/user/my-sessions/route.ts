@@ -11,11 +11,12 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const db = await getMongoDb()
+    // Standalone interviews live in `interviews` (lib/db/interviews.ts) — AUTO-030.
     const sessions = await db
-      .collection('interview_sessions')
+      .collection('interviews')
       .find({
-        $or: [{ candidate_id: user.id }, { userId: user.id }, { created_by: user.id }],
-      })
+        $or: [{ candidate_id: user.id }, { interviewer_id: user.id }],
+      }, { projection: { resume_info: 0, questions: 0, feedback: 0, notes: 0 } })
       .sort({ scheduled_at: -1 })
       .limit(50)
       .toArray()

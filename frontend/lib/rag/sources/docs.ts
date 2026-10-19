@@ -13,7 +13,7 @@ import path from 'path'
 import type { ExtractedSource } from '../types'
 
 export const DOC_PAGE_SOURCES: Record<string, { file: string; title: string; url: string; kind: 'faq' | 'legal' | 'help' }> = {
-  'page:faq': { file: 'app/faq/page.tsx', title: 'Frequently asked questions', url: '/faq', kind: 'faq' },
+  'page:faq': { file: 'lib/seo/faq-content.ts', title: 'Frequently asked questions', url: '/faq', kind: 'faq' },
   'page:privacy': { file: 'app/privacy/page.tsx', title: 'Privacy policy', url: '/privacy', kind: 'legal' },
   'page:terms': { file: 'app/terms/page.tsx', title: 'Terms of service', url: '/terms', kind: 'legal' },
   'page:cookies': { file: 'app/cookies/page.tsx', title: 'Cookie policy', url: '/cookies', kind: 'legal' },
@@ -55,10 +55,22 @@ export function jsxPageToMarkdown(src: string): string {
   let s = m ? src.slice(m.index + m[0].length) : src
   s = s
     .replace(/\{\s*(['"`])((?:(?!\1).)*)\1\s*\}/g, '$2') // {' '} / {"text"}
+    // Hero lead copy lives in a string prop: <PageHero lead="…" />. (The title is the source title already;
+    // emitting it as a heading would put the whole page under one section and change how it chunks.)
+    .replace(/<PageHero\b([^>]*?)\/?>/g, (_m, attrs: string) => `\n\n${/\blead="([^"]*)"/.exec(attrs)?.[1] ?? ''}\n\n`)
+    // JSX element props (art={<Illustration />}) are markup, not copy.
+    .replace(/\b[A-Za-z]+=\{\s*<[^{}]*?\/>\s*\}/g, ' ')
+    // Headings (and *Title components) whose text sits on its own line or next to an icon.
+    .replace(/<(h[1-6]|[A-Z][A-Za-z]*Title)\b[^>]*>([\s\S]*?)<\/\1>/g, (_m, tag: string, inner: string) => {
+      const text = inner.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+      const level = /^h\d$/.test(tag) ? Number(tag[1]) : 3
+      return text ? `\n\n${'#'.repeat(level)} ${text}\n\n` : ''
+    })
     .replace(/<h1[^>]*>/gi, '\n\n# ').replace(/<h2[^>]*>/gi, '\n\n## ').replace(/<h3[^>]*>/gi, '\n\n### ')
     .replace(/<h4[^>]*>/gi, '\n\n#### ')
     .replace(/<\/h[1-6]>/gi, '\n\n')
-    .replace(/<li[^>]*>/gi, '\n- ')
+    // `\b` so <Link> isn't read as a list item.
+    .replace(/<li\b[^>]*>/gi, '\n- ')
     .replace(/<\/(p|ul|ol|section|div|li)>/gi, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<[^>]*>/g, ' ')
@@ -100,6 +112,39 @@ export function pageSource(id: string): ExtractedSource | null {
   }
 }
 
+/**
+ * Docs-site markdown → index text. Drops the shared preamble every help doc
+ * starts with (the `> **Customer Documentation** / Last Updated / Audience`
+ * blockquote — identical across docs, so it only adds noise to every first
+ * chunk) and the leading `# Title` (the chunk header already carries the
+ * title; leaving it makes every section "Title › …" and hides `##` as the
+ * real top level). A `#` heading that differs from the title is kept as a
+ * plain first line so its words stay searchable.
+ */
+export const DOC_PREAMBLE_RE = /^>\s*\*\*(?:[^*]*Documentation|Last Updated|Audience|Auto-Generated|Auto-generated)\b/i
+
+export function stripDocPreamble(md: string, title: string): string {
+  const lines = md.replace(/\r\n?/g, '\n').split('\n')
+  const firstSection = lines.findIndex((l) => /^##\s/.test(l))
+  const head = firstSection < 0 ? lines.length : firstSection
+  // Preamble lines (and bare `---` rules) before the first `##` section.
+  const kept = lines.filter((l, i) => i >= head || !(DOC_PREAMBLE_RE.test(l) || /^\s*-{3,}\s*$/.test(l)))
+  // Only a single document-level `#` is the title wrapper.
+  let fence = false
+  const h1s = kept.map((l, i) => {
+    if (/^\s*(```|~~~)/.test(l)) fence = !fence
+    return [i, fence ? null : /^#\s+(.+?)\s*#*\s*$/.exec(l)] as const
+  }).filter(([, m]) => m)
+  const firstH2 = kept.findIndex((l) => /^##\s/.test(l))
+  if (h1s.length === 1 && (firstH2 < 0 || h1s[0][0] < firstH2)) {
+    const [at, m] = h1s[0]
+    const norm = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+    const text = m![1].replace(/[`*_]/g, '').trim()
+    kept.splice(at, 1, ...(norm(text) === norm(title) ? [] : [text]))
+  }
+  return kept.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
 export async function markdownDocSource(id: string): Promise<ExtractedSource | null> {
   // id: "docs:<section>/<slug>"
   const m = /^docs:(public|user)\/([A-Za-z0-9._-]+)$/.exec(id)
@@ -117,13 +162,16 @@ export async function markdownDocSource(id: string): Promise<ExtractedSource | n
     visibility: 'public',
     title: page.meta.title,
     url: docHref(page.meta),
-    text: page.content,
+    text: stripDocPreamble(page.content, page.meta.title),
     metadata: { kind: 'docs', section: meta.section },
+    chunk: { splitOnSection: true },
   }
 }
 
 export async function loadDoc(id: string): Promise<ExtractedSource | null> {
   if (id.startsWith('page:')) return pageSource(id)
+  // Learn hub posts (lib/learn/rag.ts): published only, public.
+  if (id.startsWith('learn:')) return (await import('@/lib/learn/rag')).loadLearnDoc(id)
   return markdownDocSource(id)
 }
 
@@ -135,5 +183,11 @@ export async function listDocIds(): Promise<string[]> {
   } catch (e) {
     console.error('[rag/docs] docs tree unavailable:', e)
   }
-  return [...ids, ...Object.keys(DOC_PAGE_SOURCES)]
+  let learn: string[] = []
+  try {
+    learn = await (await import('@/lib/learn/rag')).listLearnDocIds()
+  } catch (e) {
+    console.error('[rag/docs] learn posts unavailable:', e)
+  }
+  return [...ids, ...Object.keys(DOC_PAGE_SOURCES), ...learn]
 }

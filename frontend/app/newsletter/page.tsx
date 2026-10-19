@@ -5,6 +5,11 @@ import { emailCampaigns } from '@/lib/db/email-campaigns'
 import { ArrowRight } from 'lucide-react'
 import { HeroIllustration, PageHero } from '@/components/landing/page-hero'
 import { EmptyState } from '@/components/ui/empty-state'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const seoRoute = publicRoute('/newsletter')!
+export const metadata = buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/newsletter' })
 
 export const dynamic = 'force-dynamic'
 

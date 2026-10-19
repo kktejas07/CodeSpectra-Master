@@ -1,5 +1,6 @@
 'use client'
 
+import { useBrowserValue } from '@/hooks/use-browser-value'
 import { useEffect, useState } from 'react'
 import { X, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ export function ExamAadhaarGate({
   examTitle?: string
 }) {
   const [mode, setMode] = useState<ExamMode | null>(null)
+  const search = useBrowserValue(() => window.location.search, '')
   const [seed, setSeed] = useState('314159265358979')
   const [testMode, setTestMode] = useState(true)
 
@@ -62,7 +64,7 @@ export function ExamAadhaarGate({
   }
 
   if (mode === 'ocr_face' && examId) {
-    const qs = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+    const qs = search ? new URLSearchParams(search) : null
     return (
       <IdentityVerification
         examId={examId}

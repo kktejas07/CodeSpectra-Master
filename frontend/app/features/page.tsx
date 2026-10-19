@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import {
   BadgeCheck,
@@ -24,6 +22,25 @@ import { ThemeIllustration } from '@/components/landing/theme-illustration'
 import { Illustration } from '@/components/illustrations/spot'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
 import { PageHero, btnPrimary, btnSecondary } from '@/components/landing/page-hero'
+import { AnswerSummary, SPEAKABLE_SELECTORS } from '@/components/seo/answer-summary'
+import { FaqSection } from '@/components/seo/faq-list'
+import { JsonLd } from '@/components/seo/json-ld'
+import { ALL_SITE_FAQS } from '@/lib/seo/faq-content'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { breadcrumbJsonLd, webPageJsonLd } from '@/lib/seo/jsonld'
+import { publicRoute } from '@/lib/seo/public-routes'
+import { getSiteUrl } from '@/lib/seo/site'
+
+const route = publicRoute('/features')!
+export const metadata = buildMetadata({ title: route.title, description: route.description, path: '/features' })
+
+const FEATURE_FAQS = [
+  'What kinds of questions can an assessment include?',
+  'What does proctoring check?',
+  'Do you check for plagiarism?',
+  'How do hackathons work?',
+  'Can our organization use single sign-on?',
+].map((q) => ALL_SITE_FAQS.find((f) => f.q === q)!).filter(Boolean)
 
 function Group({ id, title, lead, children }: { id: string; title: string; lead: string; children: React.ReactNode }) {
   return (
@@ -48,8 +65,15 @@ const JUMP = [
 ] as const
 
 export default function FeaturesPage() {
+  const site = getSiteUrl()
   return (
     <PublicPageWrapper>
+      <JsonLd
+        data={[
+          webPageJsonLd({ site, path: '/features', name: route.title, description: route.description, speakable: SPEAKABLE_SELECTORS }),
+          breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Features', path: '/features' }], site),
+        ]}
+      />
       <PageHero
         title="Everything a screening needs, in one place"
         lead={
@@ -77,6 +101,18 @@ export default function FeaturesPage() {
           ))}
         </div>
       </nav>
+
+      <div className="mx-auto max-w-[1200px] px-4 pt-12 sm:px-6 lg:px-8">
+        <AnswerSummary
+          label="Key takeaways"
+          answer="CodeSpectra covers the whole screening: build a test for any role, run it under proctoring, and get a difficulty-weighted ranked shortlist with integrity flags beside each score."
+          points={[
+            'Build: coding with hidden tests, MCQ, written and CAD questions in one assessment',
+            'Run: fullscreen lock, tab-switch and face-match proctoring, plagiarism checks',
+            'Decide: one ranked list, CSV export, released scores; plus hackathons and free practice for candidates',
+          ]}
+        />
+      </div>
 
       <Group id="build" title="Build" lead="Start from the role and experience band. Every question is weighted by difficulty and editable before it goes out.">
         <BentoShell>
@@ -220,6 +256,7 @@ export default function FeaturesPage() {
         <DeviceShowcase variant="certificate" compact className="hidden lg:sticky lg:top-32 lg:block" />
         </div>
       </Group>
+      <FaqSection title="Feature questions" items={FEATURE_FAQS} id="features-faq" />
     </PublicPageWrapper>
   )
 }

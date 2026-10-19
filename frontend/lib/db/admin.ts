@@ -196,6 +196,45 @@ export async function listAllUsers(filter: { tenantId?: string } = {}): Promise<
   return col.find(query).sort({ createdAt: -1 }).toArray()
 }
 
+/** Fields the admin user list needs (never password hashes, 2FA secrets, face templates…). */
+export const ADMIN_USER_LIST_PROJECTION = {
+  _id: 1, id: 1, email: 1, name: 1, fullName: 1, role: 1, plan: 1, tenantId: 1, organizationId: 1,
+  createdAt: 1, updatedAt: 1, emailVerified: 1, isActive: 1, lastLoginAt: 1, lastLoginMethod: 1,
+} as const
+
+/** Pure: Mongo filter for the admin user list (tenant scope + case-insensitive search). */
+export function adminUserListFilter(opts: { tenantId?: string; search?: string | null; ids?: string[] | null }): Record<string, unknown> | null {
+  const and: Record<string, unknown>[] = []
+  if ('tenantId' in opts) {
+    if (!opts.tenantId) return null
+    and.push({ $or: [{ tenantId: opts.tenantId }, { organizationId: opts.tenantId }] })
+  }
+  const q = (opts.search || '').trim().slice(0, 100)
+  if (q) {
+    const rx = { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' }
+    and.push({ $or: [{ email: rx }, { name: rx }, { fullName: rx }] })
+  }
+  if (opts.ids?.length) and.push({ id: { $in: opts.ids.slice(0, 200) } })
+  return and.length ? { $and: and } : {}
+}
+
+/**
+ * One page of the admin user list (CORE-019): filtered and sorted in MongoDB,
+ * projected, bounded. Returns the total for paging.
+ */
+export async function listUsersPage(opts: { tenantId?: string; search?: string | null; ids?: string[] | null; page?: number; limit?: number }): Promise<{ rows: BetterAuthUserDoc[]; total: number }> {
+  const filter = adminUserListFilter(opts)
+  if (!filter) return { rows: [], total: 0 }
+  const limit = Math.min(1000, Math.max(1, Math.floor(opts.limit || 1000)))
+  const page = Math.max(1, Math.floor(opts.page || 1))
+  const col = await users()
+  const [rows, total] = await Promise.all([
+    col.find(filter as Filter<BetterAuthUserDoc>, { projection: ADMIN_USER_LIST_PROJECTION }).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).toArray(),
+    col.countDocuments(filter as Filter<BetterAuthUserDoc>),
+  ])
+  return { rows: rows as BetterAuthUserDoc[], total }
+}
+
 export async function getUserById(id: string): Promise<BetterAuthUserDoc | null> {
   const col = await users()
   const orQueries: any[] = [{ _id: id }, { id }]
@@ -219,7 +258,31 @@ export async function updateUserById(
   return getUserById(id)
 }
 
+/**
+ * Call ONLY from routes that just checked a real credential (password, OAuth
+ * ID token, SSO assertion, 2FA). Also stamps `reauth_at`, which sensitive
+ * actions (lib/reauth.ts) accept as "signed in recently" — SEC-011.
+ * `reauthAt` lets OAuth pass the provider's auth_time instead of "now".
+ */
 export async function updateUserLastLogin(
+  id: string,
+  method: NonNullable<BetterAuthUserDoc['lastLoginMethod']>,
+  opts: { reauthAt?: Date } = {},
+): Promise<void> {
+  const col = await users()
+  const orQueries: any[] = [{ _id: id }, { id }]
+  if (ObjectId.isValid(id)) orQueries.push({ _id: new ObjectId(id) })
+  const now = new Date()
+  await col.updateOne(
+    { $or: orQueries } as Filter<BetterAuthUserDoc>,
+    { $set: { lastLoginMethod: method, lastLoginAt: now, reauth_at: opts.reauthAt ?? now, updatedAt: now } as never },
+  )
+  // First-party analytics: sign-in event (fire-and-forget, never blocks sign-in).
+  void import('@/lib/analytics/server').then(({ trackLogin }) => trackLogin(id, String(method))).catch(() => {})
+}
+
+/** Record only which method the user signed in with (no "recent sign-in" credit). */
+export async function recordLoginMethod(
   id: string,
   method: NonNullable<BetterAuthUserDoc['lastLoginMethod']>,
 ): Promise<void> {
@@ -228,7 +291,7 @@ export async function updateUserLastLogin(
   if (ObjectId.isValid(id)) orQueries.push({ _id: new ObjectId(id) })
   await col.updateOne(
     { $or: orQueries } as Filter<BetterAuthUserDoc>,
-    { $set: { lastLoginMethod: method, lastLoginAt: new Date(), updatedAt: new Date() } },
+    { $set: { lastLoginMethod: method, updatedAt: new Date() } },
   )
 }
 

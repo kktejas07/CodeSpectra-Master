@@ -1,121 +1,43 @@
 /**
- * POST /api/analytics/events — Ingest batched analytics events.
- * GET  /api/admin/analytics/events — Query events (superadmin).
- *
- * Client sends:
- * { session_id, anonymous_id, user_id?, events: [{ event, path, timestamp, properties, device_type, browser, os, ... }] }
+ * POST /api/analytics/events — legacy ingest (old browser bundles). Converted
+ *   to the /api/analytics/collect format in anonymous mode and run through the
+ *   same validation, bot filter and privacy rules.
+ * GET  /api/analytics/events — query raw events (superadmin).
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, requireSuperAdmin } from '@/lib/route-auth'
-import { analyticsEvents, analyticsSessions, newId, nowIso } from '@/lib/db/analytics'
+import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
+import { limitRequest } from '@/lib/rate-limit'
+import { analyticsEvents } from '@/lib/db/analytics'
 import { sanitizeRegex } from '@/lib/sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// ─── POST: ingest events ────────────────────────────────────────────────────
-
 export async function POST(req: NextRequest) {
-  let userId: string | null = null
+  const limited = await limitRequest(req, 'analytics-collect', null, 120, 60_000)
+  if (limited) return limited
   try {
-    const gate = await requireAuth()
-    if (!('error' in gate)) userId = gate.user.id
-  } catch { /* anonymous analytics OK */ }
-
-  let body: Record<string, unknown>
-  try {
-    body = await req.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
-
-  const sessionId = (body.session_id as string) || ''
-  const anonymousId = (body.anonymous_id as string) || ''
-  const events = Array.isArray(body.events) ? body.events : []
-
-  if (events.length === 0) {
-    return NextResponse.json({ ok: true, inserted: 0 })
-  }
-
-  const now = nowIso()
-  const ua = req.headers.get('user-agent') || ''
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || ''
-
-  try {
-    // Store events
-    const col = await analyticsEvents()
-    const docs = events.slice(0, 50).map((e: Record<string, unknown>) => ({
-      id: newId(),
-      event: String(e.event || 'unknown').slice(0, 128),
-      user_id: userId || undefined,
-      anonymous_id: anonymousId || undefined,
-      session_id: sessionId || undefined,
-      timestamp: String(e.timestamp || now),
-      url: String(e.url || ''),
-      path: String(e.path || ''),
-      referrer: String(e.referrer || ''),
-      country: undefined, // populated by geo-ip later
-      device_type: String(e.device_type || 'desktop'),
-      browser: String(e.browser || 'Unknown'),
-      os: String(e.os || 'Unknown'),
-      screen_width: Number(e.screen_width) || undefined,
-      screen_height: Number(e.screen_height) || undefined,
-      utm_source: String(e.utm_source || ''),
-      utm_medium: String(e.utm_medium || ''),
-      utm_campaign: String(e.utm_campaign || ''),
-      properties: e.properties && typeof e.properties === 'object' ? e.properties : undefined,
-    }))
-
-    await col.insertMany(docs as any)
-
-    // Update session
-    if (sessionId) {
-      try {
-        const sessCol = await analyticsSessions()
-        const existing = await sessCol.findOne({ id: sessionId })
-        const device = events[0] as Record<string, unknown> || {}
-        const pagePath = String((events.find((e: Record<string, unknown>) => e.event === 'page_view') as Record<string, unknown>)?.path || '')
-
-        if (existing) {
-          const pages = existing.pages || []
-          if (pagePath && !pages.includes(pagePath)) pages.push(pagePath)
-          await sessCol.updateOne(
-            { id: sessionId },
-            {
-              $set: { last_activity_at: now, exit_page: pagePath || existing.exit_page },
-              $inc: { events_count: events.length, pageviews: events.some((e: Record<string, unknown>) => e.event === 'page_view') ? 1 : 0 },
-              $addToSet: { pages: { $each: pages.slice(-50) } },
-            },
-          )
-        } else {
-          await sessCol.insertOne({
-            id: sessionId,
-            user_id: userId || undefined,
-            anonymous_id: anonymousId || undefined,
-            started_at: now,
-            last_activity_at: now,
-            entry_page: pagePath,
-            exit_page: pagePath,
-            pageviews: events.filter((e: Record<string, unknown>) => e.event === 'page_view').length,
-            events_count: events.length,
-            device_type: String(device.device_type || 'desktop'),
-            browser: String(device.browser || 'Unknown'),
-            os: String(device.os || 'Unknown'),
-            referrer: String(device.referrer || ''),
-            utm_source: String(device.utm_source || ''),
-            utm_medium: String(device.utm_medium || ''),
-            utm_campaign: String(device.utm_campaign || ''),
-            pages: pagePath ? [pagePath] : [],
-          })
-        }
-      } catch (e) {
-        console.error('[analytics] session update error:', e)
-      }
-    }
-
-    return NextResponse.json({ ok: true, inserted: docs.length })
+    const body = (await req.json().catch(() => null)) as { events?: Array<Record<string, unknown>> } | null
+    const legacy = Array.isArray(body?.events) ? body!.events.slice(0, 30) : []
+    const events = legacy
+      .map((e) => {
+        const path = typeof e.path === 'string' && e.path ? e.path : '/'
+        const name = String(e.event || '')
+        return name === 'page_view'
+          ? { t: 'pv', path, ...(typeof e.referrer === 'string' && e.referrer ? { ref: e.referrer } : {}) }
+          : /^[a-z][a-z0-9_.:-]{0,63}$/.test(name) ? { t: 'ev', name, path } : null
+      })
+      .filter(Boolean)
+    if (!events.length) return NextResponse.json({ ok: true, inserted: 0 })
+    const headers = new Headers(req.headers)
+    headers.delete('content-length')
+    const forward = new Request(req.url, { method: 'POST', headers, body: JSON.stringify({ v: 1, mode: 'anon', events }) })
+    const user = await getAPIUser().catch(() => null)
+    const { ingestRequest } = await import('@/lib/analytics/ingest')
+    const out = await ingestRequest(forward, { userId: user?.id ?? null, tenantId: user?.tenantId ?? null })
+    return NextResponse.json({ ok: out.status === 200, inserted: Number(out.body.accepted) || 0 }, { status: out.status === 200 ? 200 : out.status })
   } catch (e) {
-    console.error('[analytics] events insert error:', e)
+    console.error('[analytics] legacy events insert error:', (e as Error)?.message)
     return NextResponse.json({ ok: true, inserted: 0 })
   }
 }
@@ -127,7 +49,7 @@ export async function GET(req: NextRequest) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { searchParams } = new URL(req.url)
-  const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 1000)
+  const limit = Math.min(parseInt(searchParams.get('limit') || '100') || 100, 1000)
   const event = searchParams.get('event')
   const path = searchParams.get('path')
   const userId = searchParams.get('user_id')
@@ -140,7 +62,7 @@ export async function GET(req: NextRequest) {
   if (since) filter.timestamp = { $gte: since }
 
   const col = await analyticsEvents()
-  const events = await col.find(filter).sort({ timestamp: -1 }).limit(limit).toArray()
+  const events = await col.find(filter, { projection: { _id: 0, visitor_hash: 0, dedupe_key: 0 } }).sort({ timestamp: -1 }).limit(limit).toArray()
   const total = await col.countDocuments(filter)
 
   return NextResponse.json({ events, total, limit })

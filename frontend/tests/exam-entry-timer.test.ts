@@ -186,7 +186,7 @@ describe('invite targets', () => {
     const db = fakeDb({ exams: [{ id: 'mine', tenant_id: 't1' }, { id: 'theirs', tenant_id: 't2' }] })
     const admin = { role: 'tenant_admin' as const, tenantId: 't1' }
     const ok = await checkInviteTargets(db, admin, { target_url: '/assessment/mine' })
-    expect(ok).toEqual({ ok: true, examId: 'mine' })
+    expect(ok).toEqual({ ok: true, examId: 'mine', examIds: ['mine'] })
     const other = await checkInviteTargets(db, admin, { target_url: '/assessment/theirs' })
     expect(other.ok).toBe(false)
     const viaStep = await checkInviteTargets(db, admin, { target_url: '/assessment/mine', assigned_assessments: [{ target_url: '/assessment/theirs' }] })

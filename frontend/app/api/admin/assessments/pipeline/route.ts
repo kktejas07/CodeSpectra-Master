@@ -80,7 +80,8 @@ export async function GET(request: Request) {
     const subCol = await db.collection('exam_submissions')
 
     const invites = await inviteCol.find({ exam_id: examId }).sort({ created_at: -1 }).toArray()
-    const submissions = await subCol.find({ exam_id: examId }).toArray()
+    // Identity photos are loaded on demand (lib/identity-media.ts), never in lists.
+    const submissions = await subCol.find({ exam_id: examId }, { projection: { id_photo: 0, face_photo: 0 } }).toArray()
 
     const subByUserId = new Map<string, (typeof submissions)[0]>()
     for (const s of submissions) {

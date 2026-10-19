@@ -121,6 +121,16 @@ export interface BillingCouponDoc {
   valid_until?: string
   active: boolean
   trial_duration_days?: number
+  /** Flat coupons: the currency `discount_value` is in (CORE-018). Missing on legacy coupons = INR. */
+  currency?: 'INR' | 'USD'
+  /** Set when a legacy flat coupon was given INR by the migration; cleared once an admin saves it. */
+  currency_migrated_at?: string | null
+  /** Where it can be used (default all). Seller coupons are always marketplace-only. */
+  applies_to?: 'all' | 'plans' | 'marketplace'
+  /** Platform coupons on third-party marketplace items (CORE-021). Default platform_items_only. */
+  marketplace_funding?: 'platform_items_only' | 'platform_funded'
+  /** Seller coupon: created by this marketplace seller, only for their items, seller-funded. */
+  seller_id?: string | null
   created_at: string
   created_by?: string
   redemptions?: Array<{ user_id: string; user_name?: string; user_email?: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string; status?: 'reserved' | 'redeemed' }>
@@ -176,12 +186,17 @@ async function redeemerInfo(userId: string): Promise<{ user_name?: string; user_
 /**
  * Atomically reserve one use of a coupon for this user at checkout (D20):
  * counts against max_uses immediately and allows one reservation per user.
- * A user's own unpaid reservation (abandoned checkout) can be reused.
- * Returns false when the coupon is used up or the user already redeemed it.
+ *
+ * With `orderId` (marketplace) the reservation is bound to that order: only a
+ * retry for the SAME order reuses it, so two open checkouts can't both carry
+ * the discount. It is released (releaseCouponReservation) when that order is
+ * abandoned / fails. Without `orderId` (plan billing) a user's own unpaid
+ * reservation is reused as before.
+ * Returns false when the coupon is used up or the user already holds / redeemed it.
  */
-export async function reserveCouponUse(couponId: string, userId: string): Promise<boolean> {
+export async function reserveCouponUse(couponId: string, userId: string, orderId?: string): Promise<boolean> {
   const col = await billingCoupons()
-  const reservation = { user_id: userId, status: 'reserved', redeemed_at: nowIso(), ...(await redeemerInfo(userId)) }
+  const reservation = { user_id: userId, status: 'reserved', redeemed_at: nowIso(), ...(orderId ? { order_id: orderId } : {}), ...(await redeemerInfo(userId)) }
   const res = await col.updateOne(
     {
       id: couponId,
@@ -192,12 +207,21 @@ export async function reserveCouponUse(couponId: string, userId: string): Promis
     { $inc: { current_uses: 1 }, $push: { redemptions: reservation as any } },
   )
   if (res.modifiedCount > 0) return true
-  // Already holds an unpaid reservation (e.g. closed the payment window): reuse it.
-  const doc = await col.findOne(
-    { id: couponId, active: true, redemptions: { $elemMatch: { user_id: userId, status: 'reserved' } } },
-    { projection: { _id: 1 } },
-  )
+  const own = orderId
+    ? { user_id: userId, status: 'reserved', order_id: orderId }
+    : { user_id: userId, status: 'reserved' }
+  const doc = await col.findOne({ id: couponId, active: true, redemptions: { $elemMatch: own } } as any, { projection: { _id: 1 } })
   return !!doc
+}
+
+/** Give back an order-bound reservation (abandoned / failed / replaced checkout). Idempotent. */
+export async function releaseCouponReservation(couponId: string, userId: string, orderId: string): Promise<boolean> {
+  const col = await billingCoupons()
+  const r = await col.updateOne(
+    { id: couponId, redemptions: { $elemMatch: { user_id: userId, status: 'reserved', order_id: orderId } } } as any,
+    { $pull: { redemptions: { user_id: userId, status: 'reserved', order_id: orderId } } as any, $inc: { current_uses: -1 } },
+  )
+  return r.modifiedCount > 0
 }
 
 /**
@@ -205,13 +229,19 @@ export async function reserveCouponUse(couponId: string, userId: string): Promis
  * returns false if there was no open reservation (already redeemed), so a
  * zero-amount order can't be activated twice from two parallel requests.
  * Orders created before reservations existed fall back to push + inc.
+ *
+ * `strictOrder` (marketplace): only a reservation bound to THIS order counts;
+ * without one, a fresh use is taken atomically only if the user holds no
+ * other reservation / redemption and the coupon has uses left. false = the
+ * paid order is not entitled to the discount (the caller must act on it).
  */
 export async function finalizeCouponRedemption(
-  couponId: string, userId: string, orderId: string, planId?: string,
+  couponId: string, userId: string, orderId: string, planId?: string, opts: { strictOrder?: boolean } = {},
 ): Promise<boolean> {
   const col = await billingCoupons()
+  const mine = opts.strictOrder ? { user_id: userId, status: 'reserved', order_id: orderId } : { user_id: userId, status: 'reserved' }
   const res = await col.updateOne(
-    { id: couponId, redemptions: { $elemMatch: { user_id: userId, status: 'reserved' } } },
+    { id: couponId, redemptions: { $elemMatch: mine } } as any,
     {
       $set: {
         'redemptions.$.status': 'redeemed',
@@ -223,10 +253,22 @@ export async function finalizeCouponRedemption(
   )
   if (res.modifiedCount > 0) return true
   const already = await col.findOne(
-    { id: couponId, redemptions: { $elemMatch: { user_id: userId, order_id: orderId } } },
+    { id: couponId, redemptions: { $elemMatch: { user_id: userId, order_id: orderId, status: 'redeemed' } } } as any,
     { projection: { _id: 1 } },
   )
-  if (already) return false
+  if (already) return !!opts.strictOrder // marketplace: idempotent re-run of the same order
+  if (opts.strictOrder) {
+    // Late payment after the reservation was released: take a fresh use if one is still free.
+    const fresh = await col.updateOne(
+      {
+        id: couponId,
+        'redemptions.user_id': { $ne: userId },
+        $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }],
+      } as any,
+      { $inc: { current_uses: 1 }, $push: { redemptions: { user_id: userId, status: 'redeemed', order_id: orderId, plan_id: planId ?? null, redeemed_at: nowIso(), ...(await redeemerInfo(userId)) } as any } },
+    )
+    return fresh.modifiedCount > 0
+  }
   const legacyUsed = await hasUserUsedCoupon(couponId, userId)
   if (legacyUsed) return false
   await col.updateOne(

@@ -25,6 +25,7 @@ export const LIMIT_KEYS = [
   'max_challenges',
   'max_seats',
   'max_assessments_per_month',
+  'max_candidate_invites_per_month',
   'ai_credits_per_month',
 ] as const
 export type LimitKey = (typeof LIMIT_KEYS)[number]

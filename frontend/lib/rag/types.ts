@@ -7,15 +7,16 @@ export type { KnowledgeChunk, KnowledgeSourceType, KnowledgeVisibility }
 
 export const KNOWLEDGE_SOURCE_TYPES: readonly KnowledgeSourceType[] = [
   'problem', 'question', 'course', 'doc', 'test', 'test_result_summary',
-  'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary',
+  'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'marketplace_product', 'external_event',
+  'ats_job', 'ats_application',
 ]
 
 /** Types that carry candidate data or answer keys: staff (admins) only, never public. */
-export const STAFF_ONLY_TYPES: ReadonlySet<KnowledgeSourceType> = new Set(['resume', 'attempt_summary', 'question'])
+export const STAFF_ONLY_TYPES: ReadonlySet<KnowledgeSourceType> = new Set(['resume', 'attempt_summary', 'question', 'ats_application'])
 
 /** Types a tenant admin may reindex for their own organisation. */
 export const TENANT_TYPES: readonly KnowledgeSourceType[] = [
-  'test', 'test_result_summary', 'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary',
+  'test', 'test_result_summary', 'hackathon', 'codeathon', 'upload', 'resume', 'attempt_summary', 'ats_job', 'ats_application',
 ]
 
 export const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
@@ -30,6 +31,10 @@ export const SOURCE_TYPE_LABELS: Record<KnowledgeSourceType, string> = {
   upload: 'Upload',
   resume: 'Résumé',
   attempt_summary: 'Candidate attempt',
+  marketplace_product: 'Marketplace product',
+  external_event: 'Events feed',
+  ats_job: 'Job',
+  ats_application: 'Applicant',
 }
 
 export function isKnowledgeSourceType(v: unknown): v is KnowledgeSourceType {
@@ -48,6 +53,8 @@ export interface ExtractedSource {
   text: string
   /** Not searchable, never returned to callers by search. */
   metadata?: Record<string, unknown>
+  /** Per-source chunking (part of the content hash, so a change re-chunks). */
+  chunk?: { splitOnSection?: boolean }
 }
 
 export type SourceStatus = 'queued' | 'indexing' | 'ready' | 'failed'

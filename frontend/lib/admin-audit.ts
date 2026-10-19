@@ -5,6 +5,7 @@
 import 'server-only'
 import { headers } from 'next/headers'
 import { writeAuditLog } from '@/lib/db/misc'
+import { resolveClientIp } from '@/lib/client-ip'
 
 export async function auditAdmin(
   actor: { id: string },
@@ -17,7 +18,7 @@ export async function auditAdmin(
   let actorIp = ''
   try {
     const h = await headers()
-    actorIp = (h.get('x-forwarded-for') || '').split(',')[0]?.trim() || h.get('x-real-ip') || ''
+    actorIp = resolveClientIp(h).replace(/^unknown$/, '')
   } catch { /* outside a request */ }
   await writeAuditLog({
     action,

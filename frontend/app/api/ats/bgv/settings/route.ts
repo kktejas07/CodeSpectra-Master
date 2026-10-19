@@ -3,7 +3,7 @@ import { auditAts } from '@/lib/ats/access'
 import { CATALOG, REGIONS } from '@/lib/ats/bgv/catalog'
 import { bodyOf, errorResponse, gate, json } from '@/lib/ats/bgv/http'
 import { getBgvSettings, publicSettings, saveBgvSettings } from '@/lib/ats/bgv/settings'
-import { vendorsFor } from '@/lib/ats/bgv/vendors'
+import { simulatedVendorAllowed, vendorsFor } from '@/lib/ats/bgv/vendors'
 import { getAppOrigin } from '@/lib/app-origin'
 
 export const runtime = 'nodejs'
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       settings: await publicSettings(s),
       can_manage: g.actor.role === 'admin',
       checks: Object.fromEntries(REGIONS.map((r) => [r, CATALOG[r].map((c) => ({ type: c.type, label: c.label, candidate_input: c.candidate_input }))])),
-      vendors: Object.fromEntries(REGIONS.map((r) => [r, vendorsFor(r)])),
+      vendors: await (async () => { const allowSimulated = await simulatedVendorAllowed(); return Object.fromEntries(REGIONS.map((r) => [r, vendorsFor(r, { allowSimulated })])) })(),
       checkr_webhook_url: `${getAppOrigin()}/api/ats/bgv/webhooks/checkr?tenant=${encodeURIComponent(g.actor.tenantId)}`,
     })
   } catch (e) {

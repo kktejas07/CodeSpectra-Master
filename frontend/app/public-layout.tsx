@@ -8,7 +8,14 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
-import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
+import dynamic from 'next/dynamic'
+
+// Decorative canvas animation below the fold: load it after hydration so it
+// never competes with the page's own content for the main thread (CWV).
+const FooterAnimatedBackdrop = dynamic(
+  () => import('@/components/landing/footer-animated-backdrop').then((m) => m.FooterAnimatedBackdrop),
+  { ssr: false },
+)
 import { FooterWordmark } from '@/components/landing/footer-wordmark'
 
 export const DASHBOARD_HREF = '/dashboard'
@@ -33,8 +40,11 @@ export function PublicPageWrapper({
   const navLinks = [
     { href: '/features', label: 'Features' },
     { href: '/hackathons', label: 'Hackathons' },
+    { href: '/jobs', label: 'Jobs' },
     { href: '/events', label: 'Events' },
     { href: '/pricing', label: 'Pricing' },
+    { href: '/marketplace', label: 'Marketplace' },
+    { href: '/learn', label: 'Learn' },
     { href: '/blog', label: 'Blog' },
     { href: '/docs', label: 'Docs' },
   ]
@@ -58,12 +68,12 @@ export function PublicPageWrapper({
             <BrandLogo />
           </Link>
 
-          <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
+          <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Primary">
             {navLinks.map((l) => (
               <Link
                 key={l.href}
                 href={l.href}
-                className="rounded-md px-3 py-2 text-[15px] font-medium text-cs-ink-soft transition-colors hover:text-cs-ink"
+                className="rounded-md px-2.5 py-2 text-[15px] font-medium text-cs-ink-soft transition-colors hover:text-cs-ink xl:px-3"
               >
                 {l.label}
               </Link>
@@ -97,7 +107,7 @@ export function PublicPageWrapper({
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cs-ink md:hidden"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cs-ink lg:hidden"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
@@ -108,7 +118,7 @@ export function PublicPageWrapper({
         </div>
 
         {mobileMenuOpen && (
-          <div id="mobile-menu" className="border-t border-cs-grid bg-cs-paper px-4 pb-6 md:hidden">
+          <div id="mobile-menu" className="border-t border-cs-grid bg-cs-paper px-4 pb-6 lg:hidden">
             <nav className="flex flex-col py-2" aria-label="Mobile">
               {navLinks.map((l) => (
                 <Link
@@ -161,6 +171,11 @@ export function PublicPageWrapper({
               <ul className="space-y-3">
                 <li><Link href="/features" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Features</Link></li>
                 <li><Link href="/pricing" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Pricing</Link></li>
+                <li><Link href="/marketplace" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Marketplace</Link></li>
+                <li><Link href="/jobs" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Job board</Link></li>
+                <li><Link href="/hackathons" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Hackathons</Link></li>
+                <li><Link href="/events" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Events</Link></li>
+                <li><Link href="/companies" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Interview prep</Link></li>
               </ul>
             </div>
             <div>
@@ -168,9 +183,11 @@ export function PublicPageWrapper({
               <ul className="space-y-3">
                 <li><Link href="/docs" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Documentation</Link></li>
                 <li><Link href="/newsletter" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Newsletter</Link></li>
+                <li><Link href="/learn" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Learn</Link></li>
                 <li><Link href="/blog" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Blog</Link></li>
                 <li><Link href="/api-reference" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">API reference</Link></li>
                 <li><Link href="/support" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Support</Link></li>
+                <li><Link href="/faq" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">FAQ</Link></li>
               </ul>
             </div>
             <div>
@@ -178,6 +195,10 @@ export function PublicPageWrapper({
               <ul className="space-y-3">
                 <li><Link href="/about" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">About</Link></li>
                 <li><Link href="/contact" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Contact</Link></li>
+                <li><Link href="/careers" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Careers</Link></li>
+                <li><Link href="/security" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Security</Link></li>
+                <li><Link href="/open-source" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Open source</Link></li>
+                <li><Link href="/editorial-policy" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Editorial policy</Link></li>
               </ul>
             </div>
             <div>
@@ -186,6 +207,7 @@ export function PublicPageWrapper({
                 <li><Link href="/privacy" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Privacy</Link></li>
                 <li><Link href="/terms" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Terms</Link></li>
                 <li><Link href="/cookies" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Cookies</Link></li>
+                <li><button type="button" data-cookie-settings className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Cookie settings</button></li>
               </ul>
             </div>
             <div className="col-span-2 md:col-span-1">

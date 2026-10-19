@@ -1,5 +1,6 @@
 'use client'
 
+import { useBrowserValue } from '@/hooks/use-browser-value'
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AlertTriangle, Camera, Fullscreen, ShieldOff, X, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -178,10 +179,7 @@ export function ProctorMonitor({
     return () => window.removeEventListener('keydown', handler, true)
   }, [enabled, blockKeyboardShortcuts, send, onViolation, counts.keyBlock])
 
-  const isMobile = typeof window !== 'undefined' && (
-    /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-    window.matchMedia('(pointer: coarse)').matches
-  )
+  const isMobile = useBrowserValue(() => /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.matchMedia('(pointer: coarse)').matches, false)
 
   // Fullscreen enforcement — desktop only (mobile browsers require user gesture)
   useEffect(() => {

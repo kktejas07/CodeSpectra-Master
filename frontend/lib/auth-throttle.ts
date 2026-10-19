@@ -67,3 +67,21 @@ export async function clearAuthFailures(kind: string, account: string, ip: strin
     // best effort
   }
 }
+
+/**
+ * How many DIFFERENT accounts failed to sign in from this IP within the window
+ * (SEC-021 / auto-block). One person mistyping their own password many times
+ * is handled by the per-account back-off; only spraying many accounts from one
+ * address should block the address. Fails "safe" (0 → no auto-block).
+ */
+export async function distinctFailedAccountsForIp(kind: string, ip: string, windowMs = 10 * 60_000): Promise<number> {
+  try {
+    const escaped = ip.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    return await (await col()).countDocuments({
+      key: { $regex: `^${kind}:.*\\|${escaped}$` },
+      updated_at: { $gte: new Date(Date.now() - windowMs) },
+    })
+  } catch {
+    return 0
+  }
+}

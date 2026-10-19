@@ -8,6 +8,8 @@
 import { googleCalendarUrl, type CalendarEvent } from './ics'
 
 export type FeedSource = 'hackathon' | 'codeathon'
+/** Other dated things a user has (CORE-007) — derived, read-only. */
+export type ExtraSource = 'interview' | 'assessment' | 'booking' | 'event'
 
 export type FeedEntry = {
   id: string
@@ -16,7 +18,7 @@ export type FeedEntry = {
   start: string
   end: string | null
   url: string
-  source: FeedSource
+  source: FeedSource | ExtraSource
   /** Derived from a registration — cannot be deleted from the calendar. */
   readOnly: true
 }
@@ -94,8 +96,75 @@ export function codeathonEntries(c: Doc): FeedEntry[] {
   return out
 }
 
+/** Live interviews (standalone `interviews` and hiring `ats_interviews` the user is on). */
+export function interviewEntries(rows: Doc[], kind: 'standalone' | 'ats'): FeedEntry[] {
+  const out: FeedEntry[] = []
+  for (const r of rows) {
+    if (r.status === 'cancelled' || r.status === 'completed') continue
+    const start = iso(r.scheduled_at)
+    if (!start) continue
+    const mins = Math.max(15, Number(kind === 'ats' ? r.duration_min : r.duration_minutes) || 60)
+    const url = kind === 'ats'
+      ? (typeof r.join_url === 'string' && /^https:\/\//.test(r.join_url) ? r.join_url : '/dashboard/hiring')
+      : `/dashboard/interviews/${encodeURIComponent(String(r.id))}/live`
+    out.push({
+      id: `interview:${kind}:${r.id}`,
+      title: `Interview${r.title ? `: ${String(r.title).slice(0, 120)}` : ''}`,
+      description: kind === 'ats' ? 'Hiring interview' : String(r.role || ''),
+      start, end: addMinutes(start, mins), url, source: 'interview', readOnly: true,
+    })
+  }
+  return out
+}
+
+/** Pending assessment invites → "complete by" deadline. `titles`: exam id → title. */
+export function inviteDeadlineEntries(rows: Doc[], titles: Record<string, string>, now: Date = new Date()): FeedEntry[] {
+  const out: FeedEntry[] = []
+  for (const r of rows) {
+    if (r.status !== 'pending' && r.status !== 'active') continue
+    const at = iso(r.expires_at)
+    if (!at || Date.parse(at) < now.getTime()) continue
+    const examId = String(r.exam_id || '')
+    out.push({
+      id: `assessment:${r.id}`,
+      title: `Test deadline: ${titles[examId] || 'Assessment'}`,
+      description: 'Your invitation to this test expires.',
+      start: at, end: null,
+      url: typeof r.token === 'string' && r.token ? `/assessment/invite/${encodeURIComponent(r.token)}` : '/dashboard/assessments',
+      source: 'assessment', readOnly: true,
+    })
+  }
+  return out
+}
+
+/** Booked marketplace sessions (buyer side). `titles`: product id → title. */
+export function bookingEntries(rows: Doc[], titles: Record<string, string>): FeedEntry[] {
+  return rows
+    .filter((b) => b.status === 'booked' && iso(b.start))
+    .map((b) => ({
+      id: `booking:${b.id}`,
+      title: `Session: ${titles[String(b.product_id)] || 'Marketplace booking'}`,
+      description: 'Booked on the CodeSpectra marketplace.',
+      start: iso(b.start)!, end: iso(b.end),
+      url: `/dashboard/orders/${encodeURIComponent(String(b.order_id))}`,
+      source: 'booking' as const, readOnly: true as const,
+    }))
+}
+
+/** Events the user saved from the events feed (start, else registration deadline). */
+export function savedEventEntries(rows: Doc[]): FeedEntry[] {
+  const out: FeedEntry[] = []
+  for (const e of rows) {
+    const start = iso(e.starts_at)
+    const deadline = iso(e.registration_deadline)
+    if (deadline) out.push({ id: `event:${e.id}:deadline`, title: `Register by: ${String(e.title || 'Event').slice(0, 140)}`, description: String(e.organiser || ''), start: deadline, end: null, url: `/events/${encodeURIComponent(String(e.id))}`, source: 'event', readOnly: true })
+    if (start) out.push({ id: `event:${e.id}:start`, title: String(e.title || 'Event').slice(0, 160), description: String(e.organiser || ''), start, end: iso(e.ends_at), url: `/events/${encodeURIComponent(String(e.id))}`, source: 'event', readOnly: true })
+  }
+  return out
+}
+
 /** Builds the full feed; de-duplicates docs and sorts by start. */
-export function buildFeed(input: { hackathons: Doc[]; codeathons: Doc[] }): FeedEntry[] {
+export function buildFeed(input: { hackathons: Doc[]; codeathons: Doc[]; extra?: FeedEntry[] }): FeedEntry[] {
   const seen = new Set<string>()
   const out: FeedEntry[] = []
   const push = (list: FeedEntry[]) => {
@@ -107,6 +176,7 @@ export function buildFeed(input: { hackathons: Doc[]; codeathons: Doc[] }): Feed
   }
   for (const h of input.hackathons) push(hackathonEntries(h))
   for (const c of input.codeathons) push(codeathonEntries(c))
+  if (input.extra) push(input.extra)
   return out.sort((a, b) => a.start.localeCompare(b.start))
 }
 

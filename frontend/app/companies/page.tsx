@@ -4,17 +4,11 @@ import { CompaniesDirectory } from './companies-directory'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
 import { DeviceShowcase } from '@/components/visuals'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
 
-export const metadata: Metadata = {
-  title: 'Company Interview Prep | CodeSpectra',
-  description:
-    'Prepare for interviews at Google, Amazon, Meta, Microsoft, Apple, Netflix, Uber, Airbnb, Stripe, and more. Company-specific problem sets, interview process breakdowns, and expert tips.',
-  openGraph: {
-    title: 'Company Interview Prep | CodeSpectra',
-    description:
-      'Company-specific interview prep for top tech companies. Practice problems, process breakdowns, and tips.',
-  },
-}
+const route = publicRoute('/companies')!
+export const metadata: Metadata = buildMetadata({ title: route.title, description: route.description, path: '/companies', kind: 'company' })
 
 export default function CompaniesPage() {
   const industries = getIndustries()

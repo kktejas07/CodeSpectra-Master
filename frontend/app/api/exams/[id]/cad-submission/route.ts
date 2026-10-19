@@ -25,6 +25,8 @@ import {
   type CadSubmissionInfo,
 } from '@/lib/cad-submission'
 
+import { toMediaRef } from '@/lib/identity-media'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const db = await getMongoDb()
 
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    const clientIp = clientIpOrEmpty(req)
     if (clientIp) {
       const blocked = await db.collection('ip_blocklist').find({ active: { $ne: false } }).toArray()
       if (blocked.some((entry) => isIpInCidr(clientIp, String(entry.ip)))) {
@@ -153,6 +155,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const cad: CadSubmissionInfo = { files, rationale, task_code: taskCode }
     const now = nowIso()
     const ua = req.headers.get('user-agent') || ''
+    const mediaCtx = { examId, userId, tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null }
+    const idPhotoRef = await toMediaRef(typeof identityRecord?.id_photo === 'string' ? identityRecord.id_photo : idPhoto, { ...mediaCtx, kind: 'id' })
+    const facePhotoRef = await toMediaRef(typeof identityRecord?.face_photo === 'string' ? identityRecord.face_photo : facePhoto, { ...mediaCtx, kind: 'face' })
     const submission = {
       id: newId(),
       exam_id: examId,
@@ -168,8 +173,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       late_submit: late,
       extension_detected: extensionDetected,
       // Photos come from the stored identity check (server-validated), not the submit body.
-      id_photo: typeof identityRecord?.id_photo === 'string' ? identityRecord.id_photo : idPhoto,
-      face_photo: typeof identityRecord?.face_photo === 'string' ? identityRecord.face_photo : facePhoto,
+      // Encrypted, stored outside the submission (lib/identity-media.ts).
+      id_photo: idPhotoRef,
+      face_photo: facePhotoRef,
       identity_check: identitySummary(identityRecord),
       start_time_source: 'server',
       details: [{ qId: CAD_TASK_QID, correct: false, points, answer: rationale, pending_review: true }],

@@ -17,12 +17,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
     }
 
-    const { code } = (await req.json().catch(() => ({}))) as { code?: unknown }
+    const { code, target, currency } = (await req.json().catch(() => ({}))) as { code?: unknown; target?: unknown; currency?: unknown }
     if (typeof code !== 'string' || !code.trim() || code.length > 64) {
       return NextResponse.json({ error: 'No coupon code provided' }, { status: 400 })
     }
-
-    const result = await validateCoupon(code.trim())
+    // Scope + currency are checked here for the preview and again at checkout (CORE-018).
+    const result = await validateCoupon(code.trim(), {
+      target: target === 'marketplace' ? 'marketplace' : 'plans',
+      currency: typeof currency === 'string' && /^[A-Za-z]{3}$/.test(currency) ? currency.toUpperCase() : undefined,
+    })
     if (!result.valid) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
@@ -38,6 +41,7 @@ export async function POST(req: NextRequest) {
       code: c.code,
       discount_type: c.discount_type,
       discount_value: c.discount_value,
+      currency: c.discount_type === 'flat' ? (c.currency || 'INR') : null,
       trial_duration_days: c.trial_duration_days ?? null,
       valid_until: c.valid_until ?? null,
     } })

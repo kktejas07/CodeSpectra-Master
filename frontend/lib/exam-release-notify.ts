@@ -18,6 +18,10 @@ export async function notifyResultsReleased(db: Db, exam: Doc, sub: Doc): Promis
   const max = Number(sub.max_score) || 0
   const pct = max > 0 ? Math.round((score / max) * 100) : null
   const userId = String(sub.user_id || '')
+  void import('@/lib/automation/events').then(({ emit }) => emit('score.released', {
+    submission_id: sub.id ?? null, exam_id: examId, exam_title: examTitle, user_id: userId || null, email: sub.email ?? null,
+    score, max_score: max, percent: pct, results_url: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/assessments/${examId}`,
+  }, { tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null, idempotencyKey: `score.released:${String(sub.id || `${examId}:${userId}`)}:${String(sub.attempt_no ?? 1)}` })).catch((e) => console.error('[automation] emit failed:', e))
 
   if (userId && !userId.startsWith('candidate_')) {
     try {

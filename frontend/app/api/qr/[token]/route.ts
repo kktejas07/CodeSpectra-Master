@@ -17,10 +17,11 @@ import {
   idCardTokens,
   hackathonTeams,
   hackathons,
-  xpToLevel,
   type IdCardRoleVariant,
 } from '@/lib/db/qr-events'
 import { getUserXp } from '@/lib/db/leaderboard'
+import { xpToLevel } from '@/lib/leaderboard-utils'
+import { getGamificationConfig } from '@/lib/gamification-config'
 
 export const runtime = 'nodejs'
 
@@ -65,7 +66,7 @@ export async function GET(
     if (!u) return NextResponse.json({ error: 'user not found', kind: 'user' }, { status: 404 })
 
     const xp = await getUserXp(idRow.user_id)
-    const level = xpToLevel(xp)
+    const level = xpToLevel(xp, (await getGamificationConfig()).levels)
     // Show the holder's CURRENT role at most: a badge minted while they were
     // an admin (or forged via ?variant=) never outranks their account today.
     const variant: IdCardRoleVariant = idRow.role_variant === nativeBadgeVariant(u.role ?? null) ? idRow.role_variant : 'user'

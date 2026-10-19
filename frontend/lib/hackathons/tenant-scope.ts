@@ -66,3 +66,34 @@ export function unusableProblemSlugs(
     return !p || !canUseProblem(user, p)
   })
 }
+
+// ─── Codeathon visibility (CORE-014) ────────────────────────────────────────
+
+export const CODEATHON_STATUSES = ['draft', 'upcoming', 'active', 'ended'] as const
+export const CODEATHON_VISIBILITIES = ['public', 'organization'] as const
+
+/** Can a non-staff user see this codeathon? Drafts never; organisation-only ones only for members. */
+export function codeathonVisibleTo(user: Who, doc: { status?: unknown; visibility?: unknown; tenant_id?: unknown } | null | undefined): boolean {
+  if (!doc || doc.status === 'draft') return false
+  if (doc.visibility !== 'organization') return true
+  return !!user?.tenantId && typeof doc.tenant_id === 'string' && doc.tenant_id === user.tenantId
+}
+
+/**
+ * Codeathon list filter: admins as eventListTenantFilter; everyone else sees
+ * published codeathons that are public or belong to their own organisation.
+ */
+export function codeathonListFilter(user: Who, requested?: string | null): Record<string, unknown> {
+  if (user && (user.role === 'superadmin' || user.role === 'tenant_admin')) return eventListTenantFilter(user, requested)
+  const mine = user?.tenantId ? [{ visibility: 'organization', tenant_id: user.tenantId }] : []
+  return { status: { $ne: 'draft' }, $or: [{ visibility: { $ne: 'organization' } }, ...mine] }
+}
+
+/** Defaults for a new codeathon: draft; company events are organisation-only unless chosen otherwise. */
+export function codeathonCreateDefaults(user: Who, body: { status?: unknown; visibility?: unknown }): { status: string; visibility: string } {
+  const status = (CODEATHON_STATUSES as readonly unknown[]).includes(body.status) ? String(body.status) : 'draft'
+  const visibility = (CODEATHON_VISIBILITIES as readonly unknown[]).includes(body.visibility)
+    ? String(body.visibility)
+    : user?.role === 'tenant_admin' ? 'organization' : 'public'
+  return { status, visibility }
+}

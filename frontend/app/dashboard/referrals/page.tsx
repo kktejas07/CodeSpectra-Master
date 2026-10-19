@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Users, Link2, Copy, Check, Star, Coins } from 'lucide-react'
+import { Loader2, Users, Link2, Copy, Check, Star } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -49,7 +49,7 @@ export default function ReferralsPage() {
         {
           target: '[data-tour="referrals-header"]',
           title: 'Invite friends, earn rewards',
-          description: 'This page lets users invite friends to earn XP and commission rewards.',
+          description: 'This page lets users invite friends and earn XP when they join.',
           position: 'bottom',
         },
         {
@@ -106,7 +106,7 @@ export default function ReferralsPage() {
           className="mb-0"
           icon={<Users aria-hidden />}
           title="Referrals"
-          description="Invite friends and earn XP and commission rewards."
+          description="Invite friends and earn XP when they verify their email and complete their first graded challenge."
         />
       </div>
 
@@ -138,11 +138,10 @@ export default function ReferralsPage() {
             </div>
           </Panel>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard icon={<Users aria-hidden />} label="Total referrals" value={stats.total_referrals} />
             <StatCard icon={<Check aria-hidden />} label="Completed" value={stats.completed_referrals} />
             <StatCard icon={<Star aria-hidden />} label="XP earned" value={stats.total_xp_earned} />
-            <StatCard icon={<Coins aria-hidden />} label="Commission" value={`₹${(stats.total_commission_earned / 100).toFixed(2)}`} />
           </div>
 
           {stats.referrals.length > 0 && (

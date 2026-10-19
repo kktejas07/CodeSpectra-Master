@@ -21,7 +21,11 @@ async function getOpenAiKey(): Promise<string> {
   // Check secrets document
   const sec = await db.collection('platform_settings').findOne({ key: 'secrets' })
   const secKey = sec?.value as Record<string, string> | undefined
-  if (secKey?.openai_api_key) return secKey.openai_api_key
+  if (secKey?.openai_api_key) {
+    const { decryptSecretsRecord } = await import('../lib/secrets-crypto')
+    const plain = decryptSecretsRecord(secKey, ['openai_api_key']).plain
+    if (plain.openai_api_key) return plain.openai_api_key
+  }
   throw new Error('OPENAI_API_KEY not configured. Set it in Settings → Integrations.')
 }
 

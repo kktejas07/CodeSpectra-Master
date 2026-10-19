@@ -13,6 +13,7 @@ import { matchAllFrames, parseLivenessClaim } from '@/lib/auth-face-liveness'
 import { faceSignInAllowed, faceSignInNextStep } from '@/lib/auth-trusted-device'
 import { issueFaceEmailCode, trustedDeviceFor } from '@/lib/trusted-devices'
 
+import { openFaceTemplate } from '@/lib/identity-media'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -68,7 +69,12 @@ export async function POST(request: Request) {
     }
 
     const uid = String(user.id || user._id)
-    const match = matchAllFrames(claim.descriptors, user.facial_biometric_template as number[])
+    const template = await openFaceTemplate(user.facial_biometric_template)
+    if (!template) {
+      await recordAuthFailure('face', normalizedEmail, rawIp)
+      return NextResponse.json({ error: GENERIC_FAIL }, { status: 401 })
+    }
+    const match = matchAllFrames(claim.descriptors, template)
     if (!match.ok) {
       await recordAuthFailure('face', normalizedEmail, rawIp)
       await writeAuditLog({ action: 'auth.biometric_login', outcome: 'denied', actor: normalizedEmail, actorIp: rawIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', user_id: uid, detail: `face did not match (score ${match.score.toFixed(3)}, challenge ${claim.challenge})` }).catch(() => {})
@@ -78,6 +84,12 @@ export async function POST(request: Request) {
 
     const role = normalizeUserRole(user.role)
     const email = String(user.email || normalizedEmail)
+    {
+      const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+      const { signInBlock } = await import('@/lib/auth-policy')
+      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified, email_verification_required: user.email_verification_required }, { method: 'face' })
+      if (blocked) return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
+    }
     const trusted = !!(await trustedDeviceFor(uid))
     const totpEnabled = !!(user.totp_enabled && user.totp_secret)
     const step = faceSignInNextStep({ trustedDevice: trusted, totpEnabled })

@@ -8,11 +8,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { randomUUID } from 'node:crypto'
 import DOMPurify from 'isomorphic-dompurify'
 
-const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
-const BACKEND_URL = process.env.INTERNAL_BACKEND_URL
-  || ((process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production')
-    ? PROD_BACKEND
-    : 'http://localhost:8001')
+import { internalBackendUrl } from '@/lib/ai/internal-backend-url'
 
 async function getInternalSecret(): Promise<string> {
   const fromEnv = process.env.INTERNAL_BACKEND_SECRET?.trim() || ''
@@ -66,7 +62,7 @@ export async function POST(req: NextRequest) {
     // Virus scan via ClamAV (backend /internal/security/scan) before persisting.
     try {
       const secret = await getInternalSecret()
-      const scanRes = await fetch(`${BACKEND_URL}/internal/security/scan`, {
+      const scanRes = await fetch(`${internalBackendUrl()}/internal/security/scan`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

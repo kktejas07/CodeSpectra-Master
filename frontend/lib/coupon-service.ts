@@ -1,7 +1,16 @@
 import { billingCoupons, billingSubscriptions, type BillingCouponDoc } from '@/lib/db/billing'
 import { shouldExpireTrial } from '@/lib/billing-lifecycle'
+import { couponAmountOff, couponCurrency, couponUsableFor, type CouponTarget } from '@/lib/billing/coupon-rules'
 
-export async function validateCoupon(code: string): Promise<{ valid: boolean; coupon?: BillingCouponDoc; error?: string }> {
+/**
+ * Look up an active coupon by code. With `ctx`, also checks it can be used
+ * for that kind of order in that currency (CORE-018: a flat coupon only
+ * applies in its own currency; seller coupons are marketplace-only).
+ */
+export async function validateCoupon(
+  code: string,
+  ctx?: { target: CouponTarget; currency?: string },
+): Promise<{ valid: boolean; coupon?: BillingCouponDoc; error?: string }> {
   const coupons = await billingCoupons()
   const coupon = await coupons.findOne({ code: code.toUpperCase(), active: true })
 
@@ -17,21 +26,26 @@ export async function validateCoupon(code: string): Promise<{ valid: boolean; co
     return { valid: false, error: 'Coupon has expired.' }
   }
 
+  if (ctx) {
+    // Without a currency (order not priced yet) only the scope is checked here.
+    const usable = couponUsableFor(coupon, ctx.target, ctx.currency ?? couponCurrency(coupon) ?? 'INR')
+    if (!usable.ok) return { valid: false, error: usable.error }
+  }
+
   return { valid: true, coupon }
 }
 
-/** Price after the coupon, in minor units. Values are clamped (never raises the price). */
-export function calculateDiscount(amount_paise: number, coupon: Pick<BillingCouponDoc, 'discount_type' | 'discount_value'>): number {
-  const value = Number(coupon.discount_value)
-  if (!Number.isFinite(value) || value <= 0) return amount_paise
-  if (coupon.discount_type === 'trial' || coupon.discount_type === 'percentage') {
-    const pct = Math.min(100, value)
-    const discount = Math.floor(amount_paise * (pct / 100))
-    return Math.max(0, amount_paise - discount)
-  } else if (coupon.discount_type === 'flat') {
-    return Math.max(0, amount_paise - Math.round(value * 100))
-  }
-  return amount_paise
+/**
+ * Price after the coupon, in minor units, for an order in `currency`.
+ * Clamped (never raises the price). A flat coupon in another currency takes
+ * nothing off — callers refuse it first with couponUsableFor.
+ */
+export function calculateDiscount(
+  amount_paise: number,
+  coupon: Pick<BillingCouponDoc, 'discount_type' | 'discount_value' | 'currency'>,
+  currency: string,
+): number {
+  return Math.max(0, amount_paise - couponAmountOff(amount_paise, coupon, currency))
 }
 
 /**

@@ -126,6 +126,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           const row = await paymentsCol.findOne({ razorpay_payment_id: payment_id }, { projection: { id: 1 } })
           await activatePaidOrder({ ...order, status: 'paid' }, row?.id ?? paymentRowId)
         }
+        if (status === 'failed' && claimed) {
+          void import('@/lib/automation/events').then(({ emit }) => emit('payment.failed', { order_id: order.id, user_id: order.user_id, plan_id: order.plan_id, amount_minor: amount, currency: order.currency, provider: 'razorpay', kind: 'checkout' }, { idempotencyKey: `payment.failed:${order.id}` })).catch((e) => console.error('[automation] emit failed:', e))
+        }
       }
     } else if (event === 'refund.created' || event === 'refund.processed') {
       // A full refund issued in the Razorpay dashboard: same effect as the

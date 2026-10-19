@@ -135,7 +135,9 @@ describe('specific routes', () => {
     const grant = { permissions: [{ resource: '/dashboard/admin/users', actions: ['read'] }] }
     expect(as('tenant_admin')('/dashboard/admin/users', grant)).toMatchObject({ ok: false, reason: 'forbidden' })
     expect(as('tenant_admin')('/dashboard/admin/unknown-new-page')).toMatchObject({ ok: false, reason: 'forbidden' })
-    expect(as('tenant_admin')('/dashboard/admin/assessments/bulk')).toMatchObject({ ok: false, reason: 'forbidden' })
+    // Company admins invite candidates to their own tests in bulk (CORE-009; the API scopes them).
+    expect(as('tenant_admin')('/dashboard/admin/assessments/bulk').ok).toBe(true)
+    expect(as('tenant_admin')('/dashboard/admin/assessments/pipeline')).toMatchObject({ ok: false, reason: 'forbidden' })
     expect(as('tenant_admin')('/dashboard/admin/assessments/abc/results').ok).toBe(true)
   })
 

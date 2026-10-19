@@ -144,7 +144,7 @@ export default function HackathonDetailPage({
   useEffect(() => {
     if (judgeIds.length === 0) return
     let cancelled = false
-    fetch('/api/admin/users?limit=200', { credentials: 'include' })
+    fetch(`/api/admin/users?ids=${encodeURIComponent(judgeIds.slice(0, 200).join(','))}`, { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (cancelled) return

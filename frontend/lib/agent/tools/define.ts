@@ -60,6 +60,12 @@ export function readTool<A>(def: Base<A> & { run(args: A, ctx: ToolContext): Pro
  */
 export function writeTool<A extends object>(def: Base<A> & {
   risk: Exclude<ToolRisk, 'none'>
+  /**
+   * The arguments that drive AI generation in propose(). On edit (ctx.priorArgs),
+   * when these are unchanged the previous sealed draft is handed back in
+   * args._draft so propose() can reuse it instead of generating again (AGT-002).
+   */
+  draftInputs?: (args: A) => unknown
   /** Must not write. May read and may call AI (no persistence). May set args._draft via sealDraft. */
   propose(args: A & Reserved, ctx: ToolContext): Promise<{ title: string; preview: Record<string, unknown> }>
   /** Runs after confirmation; must call the same service the UI/API uses. */
@@ -92,6 +98,14 @@ export function writeTool<A extends object>(def: Base<A> & {
       const a = args as Record<string, unknown>
       delete a[DRAFT_KEY]
       a[NONCE_KEY] = randomUUID()
+      // Edit with unchanged generation inputs: offer the previous sealed draft back
+      // (the tool still verifies the seal with openDraft, so nothing unsealed gets in).
+      const prior = ctx.priorArgs
+      if (def.draftInputs && prior && prior[DRAFT_KEY] !== undefined) {
+        try {
+          if (stableJson(def.draftInputs(args as A)) === stableJson(def.draftInputs(prior as A))) a[DRAFT_KEY] = prior[DRAFT_KEY]
+        } catch { /* regenerate */ }
+      }
       return def.propose(args, ctx)
     },
     async execute(args, ctx) {
@@ -101,4 +115,12 @@ export function writeTool<A extends object>(def: Base<A> & {
     },
   }
   return tool
+}
+
+function stableJson(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableJson).join(',')}]`
+  if (v && typeof v === 'object') {
+    return `{${Object.keys(v as Record<string, unknown>).filter((k) => (v as Record<string, unknown>)[k] !== undefined).sort().map((k) => `${JSON.stringify(k)}:${stableJson((v as Record<string, unknown>)[k])}`).join(',')}}`
+  }
+  return JSON.stringify(v) ?? 'null'
 }

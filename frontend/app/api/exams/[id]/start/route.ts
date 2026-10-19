@@ -84,6 +84,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         { $set: { status: 'active', started_at: state.startedAt, updated_at: new Date().toISOString() } },
       ).catch(() => {})
     }
+    // First-party analytics: test started (once per attempt; resumes are no-ops).
+    void import('@/lib/analytics/server').then(({ trackServer }) => trackServer('test_started', {
+      userId, tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null,
+      props: { exam_id: examId, attempt: access.attemptNo, via: access.invite ? 'invite' : 'link' },
+      key: `test_started:${examId}:${userId}:${access.attemptNo}`,
+    })).catch(() => {})
 
     const view = candidateExamView(exam)
     let questionList = (Array.isArray(view.questionList) ? view.questionList : (Array.isArray(view.questions) ? view.questions : [])) as Array<Record<string, unknown>>

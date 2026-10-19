@@ -1,3 +1,5 @@
+import type { Metadata } from 'next'
+import { buildMetadata } from '@/lib/seo/metadata'
 import { formatDate } from '@/lib/format-datetime'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -12,6 +14,20 @@ export const dynamic = 'force-dynamic'
  * Poster/hero is full-bleed; article body stays readable width.
  * Dashboard notification inbox can deep-link here; in-app chrome stays on /dashboard/*.
  */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  const c = await (await emailCampaigns()).findOne({ $or: [{ id }, { campaign_id: id }] }, { projection: { _id: 0, subject: 1, intro: 1, status: 1, hero_image: 1, id: 1 } }).catch(() => null)
+  if (!c || c.status === 'draft') return { title: 'Issue not found', robots: { index: false } }
+  return buildMetadata({
+    title: String(c.subject || 'Newsletter issue'),
+    description: String(c.intro || 'An issue of the CodeSpectra newsletter: new Learn posts, events and product updates.').replace(/<[^>]+>/g, ' '),
+    path: `/newsletter/${encodeURIComponent(id)}`,
+    kind: 'article',
+    type: 'article',
+    image: (c.hero_image as string) || undefined,
+  })
+}
+
 export default async function NewsletterPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const col = await emailCampaigns()

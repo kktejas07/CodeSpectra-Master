@@ -61,6 +61,10 @@ export type CouponInput = {
   valid_until?: string | null
   trial_duration_days?: number | null
   active?: boolean
+  /** Flat coupons only (CORE-018). */
+  currency?: 'INR' | 'USD'
+  applies_to?: 'all' | 'plans' | 'marketplace'
+  marketplace_funding?: 'platform_items_only' | 'platform_funded'
 }
 
 /**
@@ -113,6 +117,22 @@ export function validateCouponInput(raw: unknown, partial: boolean): { ok: true;
   if (b.active !== undefined) {
     if (typeof b.active !== 'boolean') return { ok: false, error: 'active must be true or false' }
     out.active = b.active
+  }
+  // CORE-018: a fixed amount means nothing without its currency.
+  if (b.currency !== undefined && b.currency !== null && b.currency !== '') {
+    if (b.currency !== 'INR' && b.currency !== 'USD') return { ok: false, error: 'Currency must be INR or USD' }
+    out.currency = b.currency
+  }
+  if (!partial && out.discount_type === 'flat' && !out.currency) {
+    return { ok: false, error: 'Choose the currency for a fixed-amount coupon' }
+  }
+  if (b.applies_to !== undefined) {
+    if (b.applies_to !== 'all' && b.applies_to !== 'plans' && b.applies_to !== 'marketplace') return { ok: false, error: 'Applies to must be all, plans or marketplace' }
+    out.applies_to = b.applies_to
+  }
+  if (b.marketplace_funding !== undefined) {
+    if (b.marketplace_funding !== 'platform_items_only' && b.marketplace_funding !== 'platform_funded') return { ok: false, error: 'Marketplace funding must be platform_items_only or platform_funded' }
+    out.marketplace_funding = b.marketplace_funding
   }
   return { ok: true, value: out }
 }

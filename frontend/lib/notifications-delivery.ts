@@ -30,9 +30,28 @@ export interface QuietHours {
 }
 
 export interface DeliveryPayload {
-  email?: { to: string; subject: string; html: string }
+  email?: {
+    to: string
+    subject: string
+    html: string
+    /**
+     * Mail category (lib/automation/mailer MailCategory). Unsubscribes for it
+     * (or for "all automated email") are honoured and the footer + one-click
+     * List-Unsubscribe headers are added (AUTO-052). Default 'transactional'.
+     */
+    category?: string
+    headers?: Record<string, string>
+    fromName?: string
+    /** Already rendered by the automation mailer (footer, headers and unsubscribe checks done). */
+    managed?: boolean
+  }
   push?: PushPayload
-  whatsapp?: { phone: string; text: string }
+  /**
+   * WhatsApp for one user (AUTO-060): sent only through lib/whatsapp-send
+   * (consent, opt-outs, approved Meta template; the unofficial gateway only
+   * when a superadmin enabled it). `phone` on older deferred rows is ignored.
+   */
+  whatsapp?: { text: string; title?: string; link?: string; phone?: string }
 }
 
 export function isValidTimeZone(tz: unknown): tz is string {
@@ -102,16 +121,42 @@ export async function deliverNow(userId: string, payload: DeliveryPayload): Prom
   }
   if (payload.email) {
     try {
-      const { sendEmail } = await import('@/lib/send-email')
-      await sendEmail(payload.email.to, { subject: payload.email.subject, html: payload.email.html })
+      const e = payload.email
+      let html = e.html
+      let headers = e.headers
+      if (!e.managed) {
+        // AUTO-052: notification and digest emails honour "unsubscribe" too, and carry the link.
+        const { isUnsubscribed, listUnsubscribeHeaders, unsubscribeUrl } = await import('@/lib/automation/mailer')
+        const category = (e.category || 'transactional') as import('@/lib/automation/mailer').MailCategory
+        if (await isUnsubscribed(e.to, category)) html = ''
+        else {
+          headers = headers ?? listUnsubscribeHeaders(e.to, category)
+          html = appendUnsubscribeFooter(html, unsubscribeUrl(e.to, category === 'billing' || category === 'security' ? 'engagement' : category))
+        }
+      }
+      if (html) {
+        const { sendEmail } = await import('@/lib/send-email')
+        await sendEmail(e.to, { subject: e.subject, html }, undefined, { headers, fromName: e.fromName })
+      }
     } catch (e) { console.error('[notifications] email failed:', e) }
   }
-  if (payload.whatsapp) {
-    try {
-      const { isWhatsAppConfigured, sendWhatsAppText } = await import('@/lib/whatsapp')
-      if (await isWhatsAppConfigured()) await sendWhatsAppText(payload.whatsapp.phone, payload.whatsapp.text)
-    } catch (e) { console.error('[notifications] whatsapp failed:', e) }
-  }
+  await deliverWhatsApp(userId, payload)
+}
+
+async function deliverWhatsApp(userId: string, payload: DeliveryPayload): Promise<void> {
+  if (!payload.whatsapp) return
+  try {
+    const { sendWhatsAppToUser } = await import('@/lib/whatsapp-send')
+    await sendWhatsAppToUser(userId, { kind: 'notification', title: payload.whatsapp.title || '', text: payload.whatsapp.text, link: payload.whatsapp.link || '', urgent: true })
+  } catch (e) { console.error('[notifications] whatsapp failed:', e) }
+}
+
+/** Pure: add a small unsubscribe / preferences footer before </body> (or at the end). */
+export function appendUnsubscribeFooter(html: string, unsubscribeLink: string | null): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  const manage = `${base}/dashboard/notifications/preferences`
+  const footer = `<p style="color:#9ca3af;font-size:12px;margin:24px 0 0;font-family:sans-serif"><a href="${escapeHtml(manage)}" style="color:#6b7280">Email preferences</a>${unsubscribeLink ? ` · <a href="${escapeHtml(unsubscribeLink)}" style="color:#6b7280">Unsubscribe</a>` : ''}</p>`
+  return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${footer}</body>`) : html + footer
 }
 
 /**

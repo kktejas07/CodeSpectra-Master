@@ -44,6 +44,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 400 })
   }
 
+  // Marketplace checkouts (metadata.mkt_order_id / client_reference_id "mkt_…") never touch plan billing.
+  if (event.type.startsWith('checkout.session.')) {
+    const { marketplaceOrderIdFromSession } = await import('@/lib/marketplace/gateways')
+    const session = event.data.object as Stripe.Checkout.Session
+    const mktOrderId = marketplaceOrderIdFromSession(session)
+    if (mktOrderId) {
+      try {
+        const { handleStripeSessionEvent } = await import('@/lib/marketplace/settle')
+        await handleStripeSessionEvent(event.type, session, mktOrderId)
+        return NextResponse.json({ received: true })
+      } catch (e) {
+        console.error('[stripe-webhook] marketplace processing error:', e instanceof Error ? e.message : e)
+        return NextResponse.json({ error: 'processing_failed' }, { status: 500 })
+      }
+    }
+  }
+
   try {
     switch (event.type) {
       case 'checkout.session.completed':

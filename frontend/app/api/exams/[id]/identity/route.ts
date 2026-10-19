@@ -32,6 +32,7 @@ import {
   NO_CAMERA_REVIEW_LABEL,
   type IdentityCheckRecord,
 } from '@/lib/exam-access'
+import { toMediaRef } from '@/lib/identity-media'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -144,6 +145,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       updated_at: now,
     }
 
+    const mediaCtx = { examId, userId, tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null }
     let record: typeof base & IdentityCheckRecord & Record<string, unknown>
     if (isMultipart && form) {
       // ─── No camera: uploaded ID photo ───────────────────────────────────
@@ -168,7 +170,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       record = {
         ...base,
         method: 'no_camera_upload',
-        id_photo: `data:image/${kind};base64,${bytes.toString('base64')}`,
+        // Encrypted at rest, stored outside the record (lib/identity-media.ts) — the record keeps "media:<id>".
+        id_photo: await toMediaRef(`data:image/${kind};base64,${bytes.toString('base64')}`, { ...mediaCtx, kind: 'id' }),
         face_photo: null,
         face_match: null,
         no_camera_reason: reason,
@@ -179,8 +182,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     } else {
       // ─── Camera flow ────────────────────────────────────────────────────
       if (body.method !== 'camera') return NextResponse.json({ error: 'Unknown identity check.' }, { status: 400 })
-      const idPhoto = policy.requireId ? dataUrlImage(body.idPhoto, MAX_ID_DATA_URL) : null
-      const facePhoto = policy.requireFace ? dataUrlImage(body.facePhoto, MAX_FACE_DATA_URL) : null
+      const idPhoto = policy.requireId ? await toMediaRef(dataUrlImage(body.idPhoto, MAX_ID_DATA_URL), { ...mediaCtx, kind: 'id' }) : null
+      const facePhoto = policy.requireFace ? await toMediaRef(dataUrlImage(body.facePhoto, MAX_FACE_DATA_URL), { ...mediaCtx, kind: 'face' }) : null
       record = {
         ...base,
         method: 'camera',
@@ -189,7 +192,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         face_match: idPhoto && facePhoto ? sanitizeFaceMatch(body.faceMatch) : null,
         no_camera_reason: null,
         upload_scan_status: null,
-        needs_manual_review: false,
+        // The ID name only partly matched the account (id-ocr route, A-005) → reviewer checks it.
+        needs_manual_review: body.nameMatch === 'partial',
+        ...(body.nameMatch === 'partial' ? { name_match: 'partial' } : {}),
       }
     }
 

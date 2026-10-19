@@ -112,10 +112,11 @@ export interface KnowledgeStats {
   searches_7d: number
 }
 
-export async function knowledgeStats(caller: AgentCaller): Promise<KnowledgeStats> {
+export async function knowledgeStats(caller: AgentCaller, tenantParam?: string | null): Promise<KnowledgeStats> {
   const [sources, chunks] = await Promise.all([ragSources(), ragChunks()])
-  const scope = sourceScopeFilter(caller)
-  const chunkScope = caller.role === 'tenant_admin' ? { tenant_id: caller.tenantId } : {}
+  // CORE-025: a superadmin's organisation filter narrows the counters like the source list.
+  const scope = sourceScopeFilter(caller, tenantParam)
+  const chunkScope: { tenant_id?: string | null } = 'tenant_id' in scope ? { tenant_id: scope.tenant_id as string | null } : {}
   const [byType, byStatus, chunkCount, embedded, models, atlasOk] = await Promise.all([
     sources.aggregate<{ _id: KnowledgeSourceType; sources: number; chunks: number; ready: number; failed: number; queued: number }>([
       { $match: scope },
@@ -137,7 +138,7 @@ export async function knowledgeStats(caller: AgentCaller): Promise<KnowledgeStat
     const { getMongoDb } = await import('@/lib/mongodb')
     const db = await getMongoDb()
     const since = new Date(Date.now() - 7 * 86_400_000).toISOString()
-    searches = await db.collection('rag_search_log').countDocuments({ ...(caller.role === 'tenant_admin' ? { tenant_id: caller.tenantId } : {}), at: { $gte: since } })
+    searches = await db.collection('rag_search_log').countDocuments({ ...chunkScope, at: { $gte: since } })
   } catch { /* optional */ }
   const order = new Map(KNOWLEDGE_SOURCE_TYPES.map((t, i) => [t, i]))
   return {

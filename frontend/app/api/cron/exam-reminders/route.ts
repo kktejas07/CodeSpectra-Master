@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isCronAuthorized } from '@/lib/cron-auth'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
-import { sendWhatsAppText } from '@/lib/whatsapp'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -68,13 +67,20 @@ async function postImpl(req: NextRequest) {
       } catch (e) {
         console.error('[exam-reminders] email failed:', e)
       }
-      if (invite.phone) {
+      // WhatsApp only for an account holder who agreed to WhatsApp (never to the raw invite
+      // phone), through the official channel — lib/whatsapp-send (AUTO-060).
+      const inviteUserId = typeof invite.user_id === 'string' && invite.user_id
+        ? invite.user_id
+        : String((await db.collection('user').findOne({ email: String(invite.email).toLowerCase() }, { projection: { id: 1 } }))?.id || '')
+      if (inviteUserId) {
         try {
-          await sendWhatsAppText(
-            invite.phone,
-            `Hi ${invite.full_name || 'there'}! Reminder: your CodeSpectra assessment invitation closes soon. Check your email for the link.`
-          )
-          ok = true
+          const { sendWhatsAppToUser } = await import('@/lib/whatsapp-send')
+          const r = await sendWhatsAppToUser(inviteUserId, {
+            kind: 'notification',
+            title: 'Assessment reminder',
+            text: `Your invitation for ${(exam?.title as string) || 'a CodeSpectra assessment'} closes soon. Check your email for the link.`,
+          })
+          if (r.sent) ok = true
         } catch { /* best-effort */ }
       }
       if (ok) reminded++

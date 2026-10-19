@@ -8,6 +8,8 @@ import { sendEmail } from '@/lib/send-email'
 import { resolveActorFor } from '@/lib/ats/access'
 import { profileTenantId } from '@/lib/auth-account'
 import { escapeHtml } from '@/lib/safe-html'
+import { canScheduleCandidate, normalizeCandidateEmail, CANDIDATE_UNAVAILABLE } from '@/lib/interview-access'
+import { limitRequest } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -61,34 +63,53 @@ export async function POST(req: NextRequest) {
   if (!rateCheck.ok) {
     return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
   }
+  // W4-16: candidate lookups by e-mail are capped per user (slows probing).
+  const lookupLimited = await limitRequest(req, 'interview-candidate-lookup', gate.user.id, 30, 10 * 60_000)
+  if (lookupLimited) return lookupLimited
 
   const body = await req.json().catch(() => ({})) as {
     title?: string; type?: string; role?: string
-    candidate_id?: string; scheduled_at?: string; duration_minutes?: number
+    candidate_id?: string; candidate_email?: string; scheduled_at?: string; duration_minutes?: number
     resume_info?: string
   }
 
-  if (!body.title || !body.type || !body.role || !body.candidate_id || !body.scheduled_at) {
-    return NextResponse.json({ error: 'Missing required fields: title, type, role, candidate_id, scheduled_at' }, { status: 400 })
+  // CORE-015: the candidate is resolved here from an e-mail (company admins and hiring-team
+  // members can't list platform users, so the page can no longer look the id up itself).
+  const candidateEmail = body.candidate_email !== undefined ? normalizeCandidateEmail(body.candidate_email) : null
+  if (body.candidate_email !== undefined && !candidateEmail) {
+    return NextResponse.json({ error: 'Enter a valid candidate email.' }, { status: 400 })
+  }
+  if (!body.title || !body.type || !body.role || (!body.candidate_id && !candidateEmail) || !body.scheduled_at) {
+    return NextResponse.json({ error: 'Missing required fields: title, type, role, candidate_email, scheduled_at' }, { status: 400 })
   }
 
   const validTypes = ['technical', 'behavioral', 'system-design', 'coding']
   if (!validTypes.includes(body.type)) {
     return NextResponse.json({ error: `type must be one of: ${validTypes.join(', ')}` }, { status: 400 })
   }
-  if (typeof body.title !== 'string' || typeof body.role !== 'string' || typeof body.candidate_id !== 'string' || typeof body.scheduled_at !== 'string'
-    || body.title.length > 200 || body.role.length > 200 || body.candidate_id.length > 128 || Number.isNaN(Date.parse(body.scheduled_at))) {
+  if (typeof body.title !== 'string' || typeof body.role !== 'string' || typeof body.scheduled_at !== 'string'
+    || (body.candidate_id !== undefined && (typeof body.candidate_id !== 'string' || body.candidate_id.length > 128))
+    || body.title.length > 200 || body.role.length > 200 || Number.isNaN(Date.parse(body.scheduled_at))) {
     return NextResponse.json({ error: 'Invalid interview details' }, { status: 400 })
   }
+  // The candidate must be a real account (and, for tenant staff, not another tenant's member).
+  const users = (await getMongoDb()).collection('user')
+  const projection = { id: 1, email: 1, tenantId: 1, organizationId: 1 }
+  const candidateDoc = candidateEmail
+    ? (await users.findOne({ email: candidateEmail }, { projection }))
+      ?? (await users.findOne({ email: { $regex: `^${candidateEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' } }, { projection }))
+    : await users.findOne({ id: body.candidate_id }, { projection })
+  // W4-16: one generic answer for "no account", "another organisation's member"
+  // and a bad id — it must not tell the caller whether an email is registered.
+  const notFound = CANDIDATE_UNAVAILABLE
+  if (!candidateDoc?.id) return NextResponse.json({ error: notFound }, { status: 404 })
+  const candidateTenant = profileTenantId(candidateDoc as Parameters<typeof profileTenantId>[0])
+  if (!canScheduleCandidate({ role: gate.user.role, tenantId: creator.tenantId }, candidateTenant)) {
+    return NextResponse.json({ error: notFound }, { status: 404 })
+  }
+  body.candidate_id = String(candidateDoc.id)
   if (body.candidate_id === gate.user.id) {
     return NextResponse.json({ error: "You can't interview yourself. To practise, use AI mock interviews." }, { status: 400 })
-  }
-  // The candidate must be a real account (and, for tenant staff, not another tenant's member).
-  const candidateDoc = await (await getMongoDb()).collection('user').findOne({ id: body.candidate_id }, { projection: { id: 1, tenantId: 1, organizationId: 1 } })
-  if (!candidateDoc) return NextResponse.json({ error: 'Candidate not found' }, { status: 404 })
-  const candidateTenant = profileTenantId(candidateDoc as Parameters<typeof profileTenantId>[0])
-  if (gate.user.role !== 'superadmin' && candidateTenant && candidateTenant !== creator.tenantId) {
-    return NextResponse.json({ error: 'Candidate not found' }, { status: 404 })
   }
   if (typeof body.resume_info === 'string') body.resume_info = body.resume_info.slice(0, 20000)
 
@@ -97,12 +118,15 @@ export async function POST(req: NextRequest) {
     type: body.type as any,
     role: body.role,
     interviewer_id: gate.user.id,
-    candidate_id: body.candidate_id,
+    candidate_id: body.candidate_id!,
     scheduled_at: new Date(body.scheduled_at).toISOString(),
     duration_minutes: Math.min(180, Math.max(15, body.duration_minutes || 60)),
     resume_info: body.resume_info,
     tenant_id: creator.tenantId,
   })
+
+  // Workflow event with the candidate's name + email (lib/automation/interview-events, AUTO-021).
+  void import('@/lib/automation/interview-events').then(({ emitInterviewScheduled }) => emitInterviewScheduled(session)).catch((e) => console.error('[automation] emit failed:', e))
 
   // Pin to calendar for interviewer + candidate
   try {

@@ -222,6 +222,8 @@ export function IdentityVerification({
   const [isIdVerifying, setIsIdVerifying] = useState(false)
   const [idError, setIdError] = useState<string | null>(null)
   const [useAsProfile, setUseAsProfile] = useState(false)
+  // 'partial' = the ID name only partly matches the account → sent to identity review (A-005).
+  const [nameMatch, setNameMatch] = useState<'match' | 'partial' | null>(null)
 
   const handleNextFromId = async () => {
     if (idPhoto) {
@@ -238,6 +240,7 @@ export function IdentityVerification({
           throw new Error(data.error || 'Failed to verify ID')
         }
 
+        setNameMatch(data.nameMatch === 'partial' ? 'partial' : 'match')
         addToast({ type: 'success', title: 'ID accepted', message: data.message || 'Your ID was read successfully.' })
         stopCamera()
         if (needFace) {
@@ -275,6 +278,7 @@ export function IdentityVerification({
           idPhoto: needId ? idPhoto : null,
           facePhoto: needFace ? facePhoto : null,
           faceMatch,
+          nameMatch,
           inviteToken,
           linkToken,
         }),
@@ -282,7 +286,7 @@ export function IdentityVerification({
       const data = await res.json().catch(() => ({})) as { error?: string }
       if (!res.ok) throw new Error(data.error || 'We couldn’t save your identity check. Try again.')
       if (useAsProfile && facePhoto) setProfileAvatar(facePhoto)
-      onComplete({ idPhoto: needId ? idPhoto : null, facePhoto: needFace ? facePhoto : null, needsReview: false })
+      onComplete({ idPhoto: needId ? idPhoto : null, facePhoto: needFace ? facePhoto : null, needsReview: nameMatch === 'partial' })
     } catch (err) {
       setVerificationError(err instanceof Error ? err.message : 'We couldn’t save your identity check. Try again.')
     } finally {

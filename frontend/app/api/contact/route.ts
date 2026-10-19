@@ -10,7 +10,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { getMongoDb } from '@/lib/mongodb'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -23,8 +25,8 @@ const escapeHtml = (v: string) =>
   v.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string)
 
 export async function POST(req: NextRequest) {
-  // ponytail: in-process limiter is per instance; fine for a low-volume form. Ceiling: switch to rateLimitRedis if spam grows.
-  const limit = rateLimitSlidingWindow(`contact:${clientLimiterKeyFromRequest(req, null)}`, 5, 10 * 60 * 1000)
+  // A-043: shared limiter (Redis, else Mongo) so every instance counts together.
+  const limit = await rateLimitRedis(`contact:${clientLimiterKeyFromRequest(req, null)}`, 5, 10 * 60 * 1000)
   if (!limit.ok) {
     return NextResponse.json(
       { error: `Too many messages from this connection. Try again in ${Math.ceil(limit.retryAfterSec / 60)} minutes.` },
@@ -48,7 +50,7 @@ export async function POST(req: NextRequest) {
   if (message.length < 10) errors.message = 'Tell us a little more — at least 10 characters.'
   if (Object.keys(errors).length) return NextResponse.json({ error: 'Check the highlighted fields.', fields: errors }, { status: 400 })
 
-  const ip = req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || ''
+  const ip = clientIpOrEmpty(req)
   try {
     const { verifyTurnstileToken, isCaptchaConfigured } = await import('@/lib/captcha/turnstile')
     if (await isCaptchaConfigured()) {

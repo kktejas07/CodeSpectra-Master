@@ -43,6 +43,16 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   await col.updateOne({ id }, { $set })
   const updated = await col.findOne({ id })
+  // AUTO-002: moved / cancelled / completed interviews tell workflows (and stop stale reminders).
+  if (updated) {
+    void import('@/lib/automation/interview-events').then(async (m) => {
+      for (const ev of m.interviewChangeEvents(session, updated)) {
+        if (ev === 'rescheduled') await m.emitInterviewScheduled(updated, { rescheduled: true })
+        if (ev === 'cancelled') await m.emitInterviewCancelled(updated)
+        if (ev === 'completed') await m.emitInterviewCompleted(updated)
+      }
+    }).catch((e) => console.error('[automation] interview events failed:', e))
+  }
   return NextResponse.json(updated)
 }
 
@@ -61,5 +71,8 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
   await (await interviewSessions()).deleteOne({ id })
+  if (session.status === 'scheduled' || session.status === 'in_progress') {
+    void import('@/lib/automation/interview-events').then(({ emitInterviewCancelled }) => emitInterviewCancelled(session)).catch((e) => console.error('[automation] interview events failed:', e))
+  }
   return NextResponse.json({ ok: true })
 }

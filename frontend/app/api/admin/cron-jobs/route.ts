@@ -17,7 +17,7 @@ import {
   type WorkflowDoc,
 } from '@/lib/db/leaderboard'
 import { runDueWorkflows } from '@/lib/scheduler'
-import { executeWorkflow } from '@/lib/workflow-engine'
+import { runWorkflow } from '@/lib/workflow-engine'
 import { redisStatus } from '@/lib/upstash-rate-limit'
 import { getCronRuns } from '@/lib/cron-heartbeat'
 
@@ -133,8 +133,15 @@ export async function GET() {
 
     // Real last-run evidence (see lib/cron-heartbeat) — "secret is set" is not
     // proof a job runs; this is.
-    const runIds = [...HTTP_CRON_JOBS.map((j) => j.id), 'scheduler-loop', 'trial-expiry']
+    const { SCHEDULED_JOBS, jobHealth } = await import('@/lib/automation/job-registry')
+    const runIds = [...new Set([...HTTP_CRON_JOBS.map((j) => j.id), ...SCHEDULED_JOBS.map((j) => j.id)])]
     const runMap = await getCronRuns(runIds)
+    // Real state from heartbeats, not "the env flag isn't set" (AUTO-042).
+    const loopState = (id: string, minutes: number) => {
+      if (schedulerDisabled) return 'disabled'
+      const h = jobHealth([{ id, label: id, group: 'Scheduler', everyMinutes: minutes }], runMap, new Date())[0]
+      return h.state === 'ok' ? 'running' : h.state === 'never' ? 'not_seen' : h.state === 'failing' ? 'failing' : 'stale'
+    }
     const runMeta = (id: string) => {
       const r = runMap[id]
       return {
@@ -171,7 +178,7 @@ export async function GET() {
           name: 'In-process scheduler',
           what: 'Checks due workflows every 60s while the Next.js server is up.',
           recommend: 'Always on (or hit /api/cron/tick every minute from an external cron)',
-          status: schedulerDisabled ? 'disabled' : 'running',
+          status: loopState('scheduler-loop', 1),
           ...runMeta('scheduler-loop'),
         },
         {
@@ -179,7 +186,7 @@ export async function GET() {
           name: 'Trial expiry',
           what: 'Expires trial subscriptions once per day.',
           recommend: 'Every 24 hours',
-          status: schedulerDisabled ? 'disabled' : 'running',
+          status: loopState('trial-expiry', 1440),
           ...runMeta('trial-expiry'),
         },
       ],
@@ -196,7 +203,8 @@ export async function GET() {
         description: w.description ?? '',
         cron: w.cron_expression ?? '',
         is_active: w.is_active,
-        nodes: w.nodes?.length ?? 0,
+        // v2 workflows keep their steps in `steps`; older ones in `nodes`.
+        nodes: (w.steps?.length || 0) || (w.nodes?.length ?? 0),
         created_at: w.created_at,
       })),
       recentRuns: recentRuns.map((r) => ({
@@ -208,6 +216,8 @@ export async function GET() {
         duration_ms: r.duration_ms,
       })),
       queue: { pending: queuePending, total: queueTotal },
+      // Every scheduled background job from the shared registry (same list the stale-job alert watches).
+      jobs: jobHealth(SCHEDULED_JOBS, runMap, new Date()),
       summary: {
         httpJobs: HTTP_CRON_JOBS.length,
         activeWorkflows,
@@ -256,7 +266,8 @@ export async function POST(req: NextRequest) {
       const res = await fetch(`${origin}${path}`, {
         method: 'POST',
         cache: 'no-store',
-        headers: secret ? { Authorization: `Bearer ${secret}` } : undefined,
+        // "Run now" bypasses the once-per-window claim (lib/automation/job-lease withCronWindow).
+        headers: { 'x-cron-force': '1', ...(secret ? { Authorization: `Bearer ${secret}` } : {}) },
       })
       const text = await res.text()
       let data: unknown = text
@@ -287,28 +298,9 @@ export async function POST(req: NextRequest) {
       const wf = await wfCol.findOne({ id: workflowId })
       if (!wf) return NextResponse.json({ error: 'Workflow not found' }, { status: 404 })
       const wfd = wf as unknown as WorkflowDoc
-      const started = new Date().toISOString()
-      const result = await executeWorkflow(wfd)
-      const finished = new Date().toISOString()
-      const runDoc = {
-        id: crypto.randomUUID(),
-        workflow_id: wfd.id,
-        user_id: 'admin-manual',
-        status: result.status === 'success' ? 'success' : result.status === 'partial' ? 'partial' : 'failed',
-        started_at: started,
-        finished_at: finished,
-        steps: result.steps.map((s) => ({
-          node_id: s.node_id,
-          label: s.label,
-          ok: s.ok,
-          output: s.output,
-          error: s.error,
-          duration_ms: s.duration_ms,
-        })),
-        duration_ms: result.duration_ms,
-      }
-      await workflowRuns().then((c) => c.insertOne(runDoc as never))
-      return NextResponse.json({ ok: true, action, status: result.status, run: runDoc })
+      // Saved run (lib/automation/runs.ts): waits/retries resume from the scheduler.
+      const runDoc = await runWorkflow(wfd, { trigger: 'manual', actorId: auth.user.id, payload: wfd.sample_payload || {} })
+      return NextResponse.json({ ok: true, action, status: runDoc.status, run: runDoc })
     }
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })

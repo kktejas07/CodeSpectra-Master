@@ -2,7 +2,7 @@
  * Minimal HTML parser for Open Graph tags.
  * Scrapes the target URL for og:image, og:description, and fallback description.
  */
-import { safeFetch } from '@/lib/url-safety'
+import { readTextCapped, safeFetch } from '@/lib/url-safety'
 
 export interface OgData {
   image?: string
@@ -26,7 +26,7 @@ export async function scrapeOgData(url: string): Promise<OgData> {
       return {}
     }
 
-    const html = await res.text()
+    const html = await readTextCapped(res, 1_000_000, { truncate: true })
 
     // Simple regex to find meta tags
     const getMetaContent = (propertyOrName: string) => {

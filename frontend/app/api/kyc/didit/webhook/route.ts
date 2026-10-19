@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import crypto from 'node:crypto'
 import { logger } from '@/lib/logger'
+import { bodyTimestampFresh, kycTransitionAllowed, mapDiditStatus } from '@/lib/kyc-webhook-rules'
 
 export const runtime = 'nodejs'
 
@@ -30,9 +31,6 @@ function sortKeys(v: unknown): unknown {
   }
   return v
 }
-
-// Idempotency tracking (in-memory for simplicity; use Redis/DB in production)
-const processedEvents = new Set<string>()
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const raw = await request.text()
@@ -72,12 +70,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'webhook secret not configured' }, { status: 500 })
   }
 
-  // 4. Idempotency — dedupe on event_id
-  const eventId = parsed.event_id as string
-  if (eventId && processedEvents.has(eventId)) {
-    return NextResponse.json({ ok: true })
+  // 4. SEC-020: freshness from the signed body (the header isn't signed).
+  if (bodyTimestampFresh(parsed) === false) {
+    return NextResponse.json({ error: 'stale' }, { status: 401 })
   }
-  if (eventId) processedEvents.add(eventId)
 
   // 5. Apply the decision
   const status = parsed.status as string
@@ -86,15 +82,36 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const db = await getMongoDb()
 
-    // Determine verification status
-    let dbStatus: string = 'pending'
-    if (status === 'Approved') dbStatus = 'approved'
-    else if (status === 'Declined') dbStatus = 'rejected'
-    else if (status === 'In Review') dbStatus = 'manual_review'
+    // 6. Durable, cross-instance idempotency: one row per event (event_id, or
+    //    the hash of the signed body when Didit sends none).
+    const events = db.collection('kyc_webhook_events')
+    await events.createIndex({ key: 1 }, { unique: true, name: 'kyc_webhook_events_key' }).catch(() => {})
+    await events.createIndex({ received_at: 1 }, { expireAfterSeconds: 90 * 86_400, name: 'kyc_webhook_events_ttl' }).catch(() => {})
+    const key = typeof parsed.event_id === 'string' && parsed.event_id
+      ? `evt:${parsed.event_id}`
+      : `sha:${crypto.createHash('sha256').update(canonical).digest('hex')}`
+    try {
+      await events.insertOne({ key, session_id: parsed.session_id ?? null, received_at: new Date() })
+    } catch (e) {
+      if ((e as { code?: number })?.code === 11000) return NextResponse.json({ ok: true, duplicate: true })
+      throw e
+    }
 
-    // Update KYC session
-    await db.collection('kyc_sessions').updateOne(
+    const dbStatus = mapDiditStatus(status)
+
+    // 7. Never move a session backwards out of a final / manual decision.
+    const current = await db.collection('kyc_sessions').findOne(
       { id: parsed.session_id as string },
+      { projection: { _id: 0, status: 1, reviewed_by: 1 } },
+    )
+    if (!kycTransitionAllowed(current, dbStatus)) {
+      logger.webhook(`[Didit webhook] Session ${parsed.session_id} already final — ignored ${status}`)
+      return NextResponse.json({ ok: true, ignored: true })
+    }
+
+    // Update KYC session (guarded again in the filter against a race)
+    await db.collection('kyc_sessions').updateOne(
+      { id: parsed.session_id as string, status: { $nin: ['approved', 'rejected'] }, reviewed_by: null } as never,
       {
         $set: {
           status: dbStatus,

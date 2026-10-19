@@ -41,7 +41,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     const submissions = await db.collection('exam_submissions').find({
       exam_id: id,
-    }).toArray()
+    }, { projection: { id_photo: 0, face_photo: 0 } }).toArray()
 
     const submissionsByUser: Record<string, typeof submissions[0]> = {}
     for (const sub of submissions) {

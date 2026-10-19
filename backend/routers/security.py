@@ -14,16 +14,21 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
-from core.auth import require_auth
+from core.auth import require_auth, require_internal_secret
 from services.security_scanner import scan_file_for_viruses
 
-router = APIRouter(prefix="/internal/security", tags=["security-upload-scan"])
+router = APIRouter(
+    prefix="/internal/security",
+    tags=["security-upload-scan"],
+    dependencies=[Depends(require_internal_secret)],
+)
 
 
 class ScanReq(BaseModel):
     """Base64-encoded file bytes to scan. Bounded at 6MB so a single request
     can never overload clamd (the upload route already caps images at 5MB)."""
-    file_base64: str = Field(min_length=1)
+    # 6 MB of raw bytes is ~8 MB of base64 (4/3 expansion).
+    file_base64: str = Field(min_length=1, max_length=8 * 1024 * 1024)
     filename: str = Field(default="")
 
 

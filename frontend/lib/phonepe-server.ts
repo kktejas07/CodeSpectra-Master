@@ -186,3 +186,41 @@ export async function decodePhonePeCallback(rawBody: string, xVerify: string): P
     return null
   }
 }
+
+/**
+ * Refund (PG v1) — used by the marketplace buyer part. NEEDS A SANDBOX TEST.
+ *   POST {host}/pg/v1/refund  body {request: base64(json)}
+ *   X-VERIFY = sha256(base64 + "/pg/v1/refund" + saltKey) + "###" + saltIndex
+ * `originalTransactionId` is the merchantTransactionId of the payment; `merchantTransactionId`
+ * is a NEW id for this refund (also the idempotency key on PhonePe's side).
+ */
+export async function refundPhonePePayment(params: {
+  merchantTransactionId: string
+  originalTransactionId: string
+  amount: number
+  userId: string
+  callbackUrl: string
+}): Promise<{ ok: boolean; code: string; state?: string }> {
+  const c = await loadCreds()
+  if (!c.merchantId || !c.saltKey) throw new Error('PhonePe is not configured')
+  if (!Number.isInteger(params.amount) || params.amount < 1) throw new Error('Refund amount must be a positive integer (paise)')
+  const path = '/pg/v1/refund'
+  const payload = {
+    merchantId: c.merchantId,
+    merchantUserId: phonePeSafeId(params.userId, 36),
+    originalTransactionId: phonePeSafeId(params.originalTransactionId, 35),
+    merchantTransactionId: phonePeSafeId(params.merchantTransactionId, 35),
+    amount: params.amount,
+    callbackUrl: params.callbackUrl,
+  }
+  const body64 = Buffer.from(JSON.stringify(payload)).toString('base64')
+  const res = await fetch(`${host()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', accept: 'application/json', 'X-VERIFY': phonePeChecksum(body64, path, c.saltKey, c.saltIndex) },
+    body: JSON.stringify({ request: body64 }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  const json = (await res.json().catch(() => null)) as PhonePeStatus | null
+  if (!res.ok || !json?.success) console.error('[phonepe] refund failed', { status: res.status, code: json?.code })
+  return { ok: !!(res.ok && json?.success), code: json?.code || `HTTP_${res.status}`, state: json?.data?.state }
+}

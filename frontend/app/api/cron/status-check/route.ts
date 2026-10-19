@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { withCronHeartbeat } from '@/lib/cron-heartbeat'
+import { withCronWindow } from '@/lib/automation/job-lease'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { isCronAuthorized } from '@/lib/cron-auth'
@@ -14,7 +15,8 @@ type ComponentStatus = {
   message?: string
 }
 
-export const GET = withCronHeartbeat('status-check', getImpl)
+// One run per 5-minute window across replicas and external crons (AUTO-041).
+export const GET = withCronWindow('status-check', 5, withCronHeartbeat('status-check', getImpl))
 // The admin "Run now" button POSTs to every cron path.
 export const POST = GET
 

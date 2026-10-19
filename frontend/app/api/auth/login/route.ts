@@ -19,6 +19,9 @@ import { isIpBlocked, blockIp, trackDeviceFingerprint, detectImpossibleTravel, r
 
 export const runtime = 'nodejs'
 
+/** Distinct accounts that must fail from one IP before it is auto-blocked. */
+const AUTO_BLOCK_MIN_ACCOUNTS = 10
+
 export async function POST(request: Request) {
   try {
     const ipKey = clientLimiterKeyFromRequest(request, null)
@@ -143,15 +146,23 @@ export async function POST(request: Request) {
 
       // Brute-force escalation for spraying many accounts from one IP. The
       // threshold is high on purpose: campuses and offices share one NAT IP.
+      // SEC-021: the IP is the real client (trusted-proxy aware), the
+      // failures must span many different accounts (spraying, not one user's
+      // typos), and private / proxy / unknown addresses are never blocked.
       const failWindow = await rateLimitRedis(`login:fail:${rawIp}`, 50, 600_000)
       if (!failWindow.ok) {
-        await blockIp({ ip: rawIp, reason: 'Brute-force: 50+ failed logins in 10 minutes', actor: 'system', expiresAt: new Date(Date.now() + 60 * 60_000).toISOString() })
-        await recordSecurityEvent({
-          type: 'auth.rate_limited',
-          severity: 'critical',
-          ip: rawIp,
-          detail: 'IP auto-blocked after repeated failed logins',
-        })
+        const { isAutoBlockableIp } = await import('@/lib/client-ip')
+        const { distinctFailedAccountsForIp } = await import('@/lib/auth-throttle')
+        const accounts = isAutoBlockableIp(rawIp) ? await distinctFailedAccountsForIp('login', rawIp) : 0
+        if (accounts >= AUTO_BLOCK_MIN_ACCOUNTS) {
+          await blockIp({ ip: rawIp, reason: `Brute-force: 50+ failed logins across ${accounts} accounts in 10 minutes`, actor: 'system', expiresAt: new Date(Date.now() + 60 * 60_000).toISOString() })
+          await recordSecurityEvent({
+            type: 'auth.rate_limited',
+            severity: 'critical',
+            ip: rawIp,
+            detail: 'IP auto-blocked after failed logins across many accounts',
+          })
+        }
       }
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
@@ -165,12 +176,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.' }, { status: 403 })
     }
 
+    // Maintenance mode / required email verification (A-025, A-052).
+    {
+      const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
+      const { signInBlock } = await import('@/lib/auth-policy')
+      const blocked = signInBlock(await getGeneralSettingsCached(), { role, emailVerified: user.emailVerified, email_verification_required: user.email_verification_required }, { method: 'password' })
+      if (blocked) {
+        await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', detail: blocked.code, user_id: uid })
+        return NextResponse.json({ error: blocked.error, code: blocked.code }, { status: blocked.status })
+      }
+    }
+
     if (user.totp_enabled) {
       if (!totpToken) {
         return NextResponse.json({ twoFactorRequired: true })
       }
-      const { checkTotp } = await import('@/lib/totp')
-      const isValid = checkTotp(totpToken, user.totp_secret)
+      // consumeTotp burns the code's time step so it can't be replayed (A-053).
+      const { consumeTotp } = await import('@/lib/totp')
+      const isValid = await consumeTotp(user, totpToken)
       if (!isValid) {
         await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: uid })
         await recordAuthFailure('login', ident, rawIp)

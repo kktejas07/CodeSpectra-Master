@@ -91,6 +91,7 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
 export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'postal_server',
   'postal_from_email',
+  'postal_webhook_public_key',
   'trusted_origins_extra',
   'piston_url',
   'piston_run_timeout_ms',
@@ -134,6 +135,7 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'meta_whatsapp_template_call',
   'meta_whatsapp_template_language',
   'meta_whatsapp_call_mode',
+  'meta_whatsapp_template_status',
   'vapi_phone_number_ids',
   'vapi_whatsapp_trunk_number_id',
   'voice_agent_sip_uri',
@@ -144,6 +146,17 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'ats_microsoft_tenant',
   'livekit_url',
   'livekit_api_key',
+  // Analytics & tracking (public browser ids — Settings → Analytics)
+  'ga4_measurement_id',
+  'gtm_container_id',
+  'posthog_project_key',
+  'posthog_host',
+  'clarity_project_id',
+  'meta_pixel_id',
+  'linkedin_partner_id',
+  'analytics_retention_days',
+  // W4-06: extra client custom-event names accepted by /api/analytics/collect (comma-separated)
+  'analytics_custom_events',
 ]
 
 /** Keys shown on Admin → Settings → Hiring integrations (env fallback = KEY.toUpperCase()). */
@@ -158,6 +171,7 @@ export const HIRING_FIELDS: (keyof ServerSecretsRecord)[] = [
   'meta_whatsapp_template_call',
   'meta_whatsapp_template_language',
   'meta_whatsapp_call_mode',
+  'meta_whatsapp_template_status',
   'vapi_api_key',
   'vapi_webhook_secret',
   'vapi_phone_number_ids',

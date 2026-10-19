@@ -341,6 +341,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Signup failed')
+    // "Require email verification" is on: the account exists but has no
+    // session until the emailed link is clicked.
+    if (json.verificationRequired) {
+      throw Object.assign(new Error('Account created. Check your email and click the verification link, then sign in.'), { code: 'verification_required' })
+    }
     setUser(toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name }))
     await reportFingerprint(json.user.id)
   }

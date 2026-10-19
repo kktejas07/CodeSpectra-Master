@@ -24,6 +24,7 @@ vi.mock('@/lib/stripe-client', () => ({
 vi.mock('@/lib/notifications', () => ({ notify: h.notify }))
 vi.mock('@/lib/server-currency', () => ({ getPlatformCurrency: async () => 'USD' }))
 vi.mock('@/lib/logger', () => ({ logger: { webhook: () => {} } }))
+vi.mock('@/lib/automation/events', () => ({ emit: async () => undefined }))
 
 import { syncInvoicePaid, syncInvoicePaymentFailed, syncSubscriptionFromStripe } from '@/lib/stripe-webhook-sync'
 import { cancelAtPeriodEnd, endLapsedGracePeriods, resumeSubscription } from '@/lib/billing-plans'
@@ -160,7 +161,8 @@ describe('Stripe renewal: failure → grace → downgrade', () => {
     await syncInvoicePaymentFailed(invoice('in_2', { status: 'open' }), new Date(T1 + 3 * DAY))
     sub = await subs().findOne({ user_id: 'u1' })
     expect(sub.grace_ends_at).toBe(iso(failedAt.getTime() + 7 * DAY))
-    expect(h.notify.mock.calls.filter((c: any[]) => c[0].type === 'billing.payment_failed')).toHaveLength(1)
+    // The dunning automation (on by default) owns the "Payment failed" notice — the webhook adds none (AUTO-034).
+    expect(h.notify.mock.calls.filter((c: any[]) => c[0].type === 'billing.payment_failed')).toHaveLength(0)
 
     // After the grace window the user is on Free…
     const after = new Date(failedAt.getTime() + 8 * DAY)

@@ -1,6 +1,11 @@
 import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { HeroIllustration, PageHero, btnSecondary } from '@/components/landing/page-hero'
+import { buildMetadata } from '@/lib/seo/metadata'
+import { publicRoute } from '@/lib/seo/public-routes'
+
+const seoRoute = publicRoute('/api-reference')!
+export const metadata = buildMetadata({ title: seoRoute.title, description: seoRoute.description, path: '/api-reference' })
 
 const code = 'rounded-md bg-cs-accent/8 px-1.5 py-0.5 font-mono text-[13px] text-cs-ink'
 const link = 'font-medium text-cs-accent-text underline-offset-4 hover:underline'

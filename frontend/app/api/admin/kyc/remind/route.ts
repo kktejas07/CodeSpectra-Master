@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { writeAuditLog } from '@/lib/db/misc'
+import { clientIpOrEmpty } from '@/lib/client-ip'
 
 export const runtime = 'nodejs'
 
@@ -60,8 +61,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Failed to send email' }, { status: 502 })
   }
 
-  const fwd = req.headers.get('x-forwarded-for') || ''
-  const actorIp = fwd.split(',')[0]?.trim() || ''
+  const actorIp = clientIpOrEmpty(req)
   await writeAuditLog({
     action: type === 'reminder' ? 'admin.kyc.reminder' : 'admin.kyc.reverify',
     outcome: 'success',

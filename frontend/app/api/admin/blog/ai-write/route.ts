@@ -111,6 +111,7 @@ FULL PAGE TEXTS:
 ${corpus || '(no page text — use title only, mark low confidence facts sparingly)'}`
 
   const res = await backendComplete({
+    cache: false, // AGT-022: a generator must never replay a cached batch
     systemMessage,
     userMessage,
     modelRole: 'reasoning',
@@ -209,6 +210,7 @@ ${args.researchContext ? `\nADDITIONAL WEB RESEARCH:\n${args.researchContext}\n`
 Write the blog post.`
 
   const res = await backendComplete({
+    cache: false, // AGT-022: a generator must never replay a cached batch
     systemMessage,
     userMessage,
     modelRole: 'reasoning',
@@ -240,6 +242,7 @@ Cut clichés. Prefer concrete verbs. Keep HTML structure.
 Return JSON: {"title":"...","excerpt":"...","body":"..."}`
 
   const res = await backendComplete({
+    cache: false, // AGT-022: a generator must never replay a cached batch
     systemMessage,
     userMessage: `Title: ${args.title}\nExcerpt: ${args.excerpt}\n\nBody HTML:\n${args.body}`,
     modelRole: 'fast',

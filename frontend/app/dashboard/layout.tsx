@@ -116,6 +116,9 @@ import {
   Bookmark,
   UserRound,
   MessageSquareWarning,
+  BookOpenText,
+  Store,
+  ShoppingBag,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -125,8 +128,6 @@ import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
-import { WebVitalsReporter } from '@/components/dashboard/web-vitals-reporter'
-import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
@@ -367,6 +368,18 @@ export default function DashboardLayout({
   }, [userRole])
   const atsRolesKey = atsRoles.join(',')
 
+  // Marketplace "Seller" section — approved sellers only (GET /api/marketplace/seller/me).
+  const [isSeller, setIsSeller] = useState(false)
+  useEffect(() => {
+    if (!userRole) return
+    let cancelled = false
+    fetch('/api/marketplace/seller/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { seller?: { status?: string } | null } | null) => { if (!cancelled) setIsSeller(data?.seller?.status === 'approved') })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [userRole])
+
   type NavLeaf = { href: string; label: string; icon: LucideIcon; route: string }
   type NavEntry =
     | { type: 'link'; item: NavLeaf }
@@ -440,6 +453,7 @@ export default function DashboardLayout({
       '/dashboard/notifications': Bell,
       '/dashboard/calendar': CalendarDays,
       '/dashboard/billing': Receipt,
+      '/dashboard/orders': ShoppingBag,
       '/dashboard/pricing': CreditCard,
       '/dashboard/settings': Settings,
       '/dashboard/settings/ai': Sparkles,
@@ -463,8 +477,10 @@ export default function DashboardLayout({
       '/dashboard/admin/coupons': Ticket,
       '/dashboard/admin/announcements': Megaphone,
       '/dashboard/admin/newsletter': Mail,
+      '/dashboard/admin/events-feed': CalendarDays,
       '/dashboard/admin/content-studio': Zap,
       '/dashboard/admin/blog': Newspaper,
+      '/dashboard/admin/learn': BookOpenText,
       '/dashboard/admin/signals': Radio,
       '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,
@@ -486,6 +502,7 @@ export default function DashboardLayout({
       '/dashboard/admin/assessments/pipeline': LayoutDashboardIcon,
       [p.workflows]: Workflow,
       '/dashboard/admin/cron-jobs': Timer,
+      '/dashboard/admin/automations': Zap,
       [p.questionGenerator]: Bot,
       '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
@@ -498,6 +515,7 @@ export default function DashboardLayout({
       '/dashboard/admin/help': HelpCircle,
       '/dashboard/admin/sso': KeyRound,
       '/dashboard/admin/kyc': BadgeCheck,
+      '/dashboard/admin/marketplace': Store,
       '/dashboard/recruiter-analytics': BarChart3,
       '/companies': Building2,
     }
@@ -620,8 +638,19 @@ export default function DashboardLayout({
       if (careerAt >= 0) entries.splice(careerAt + 1, 0, group)
       else entries.push(group)
     }
+    // Marketplace storefront (public /marketplace) sits right above "My orders".
+    const mktLeaf: NavLeaf = { href: '/marketplace', route: '/marketplace', label: 'Marketplace', icon: Store }
+    const ordersGroup = entries.find((e) => e.type === 'group' && e.items.some((i) => i.route === '/dashboard/orders'))
+    if (ordersGroup && ordersGroup.type === 'group') ordersGroup.items.splice(ordersGroup.items.findIndex((i) => i.route === '/dashboard/orders'), 0, mktLeaf)
+    else entries.push({ type: 'link', item: mktLeaf })
+    if (isSeller) {
+      const group: NavEntry = { type: 'group', label: 'Seller', items: [{ href: '/dashboard/seller', route: '/dashboard/seller', label: 'Seller dashboard', icon: Store }] }
+      const at = entries.findIndex((e) => e.type === 'group' && (e.label === 'Hiring' || e.label === 'Career'))
+      if (at >= 0) entries.splice(at + 1, 0, group)
+      else entries.push(group)
+    }
     return entries
-  }, [userProfile?.role, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages, atsRolesKey])
+  }, [userProfile?.role, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages, atsRolesKey, isSeller])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
@@ -823,8 +852,6 @@ export default function DashboardLayout({
   return (
     <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
       <ActivityHeartbeat />
-      <WebVitalsReporter />
-      <AnalyticsTracker />
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 

@@ -1,4 +1,5 @@
 'use client'
+import { useHref } from '@/hooks/use-browser-value'
 import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { use, useCallback, useEffect, useRef, useState } from 'react'
@@ -322,6 +323,7 @@ function MyTeamResults({
 
 export default function HackathonResultsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
+  const pageHref = useHref()
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
   const certRef = useRef<HTMLDivElement>(null)
@@ -394,7 +396,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
   }
 
   const linkedinShareUrl = myTeam && myRank
-    ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&text=${encodeURIComponent(`I ranked #${myRank} in ${hackathon?.name || 'a hackathon'} on CodeSpectra!`)}`
+    ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(pageHref)}&text=${encodeURIComponent(`I ranked #${myRank} in ${hackathon?.name || 'a hackathon'} on CodeSpectra!`)}`
     : ''
 
   const downloadCert = async () => {

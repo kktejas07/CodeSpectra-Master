@@ -19,6 +19,8 @@ import {
   MessageCircle,
   Video,
   Briefcase,
+  BarChart3,
+  Search,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,6 +51,8 @@ const ITEMS: {
   { id: 'kyc', label: 'KYC Providers', icon: Shield },
   { id: 'redis', label: 'Redis / Rate Limiting', icon: Database },
   { id: 'whatsapp', label: 'WhatsApp (OpenWA)', icon: MessageCircle },
+  { id: 'seo', label: 'SEO & AI search', icon: Search },
+  { id: 'analytics', label: 'Analytics & tracking', icon: BarChart3 },
 ]
 
 export function PlatformSettingsSidebarNav({

@@ -37,7 +37,7 @@ export async function handleCheckoutRequest(req: NextRequest): Promise<NextRespo
     let couponId: string | undefined
     if (couponCode) {
       const { validateCoupon } = await import('@/lib/coupon-service')
-      const validation = await validateCoupon(couponCode)
+      const validation = await validateCoupon(couponCode, { target: 'plans' })
       if (!validation.valid || !validation.coupon) {
         return NextResponse.json({ error: validation.error || 'Invalid coupon' }, { status: 400 })
       }

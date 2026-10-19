@@ -8,17 +8,20 @@
 export const CSRF_EXEMPT: readonly string[] = [
   '/api/analytics/web-vitals',
   '/api/analytics/events',
+  // First-party analytics beacons (sendBeacon can't set headers; nothing here acts for the user).
+  '/api/analytics/collect',
   '/api/github/webhook',
   '/api/billing/webhook',
   '/api/billing/stripe-webhook',
   '/api/billing/phonepe-webhook',
   '/api/billing/phonepe-callback',
+  // Marketplace payment callbacks (PhonePe X-VERIFY checksum / Stripe signature; browser return re-checks status).
+  '/api/marketplace/webhooks',
   // Cron endpoints authenticate with CRON_SECRET (server-to-server), not
   // browser cookies — CSRF tokens are meaningless here, and requiring them
   // breaks the admin "run now" self-fetch and external cron callers.
   '/api/cron',
   '/api/webhooks/postal',
-  '/api/admin/llm-test',
   '/api/proctor/events',
   '/api/daily-login',
   '/api/kyc/didit/webhook',
@@ -36,6 +39,10 @@ export const CSRF_EXEMPT: readonly string[] = [
   '/api/auth/mobile-token',
   // Public runtime config (GET, no cookies) — read before any session exists.
   '/api/config/public',
+  // Workflow inbound webhooks (per-workflow HMAC X-CodeSpectra-Signature) and
+  // signed one-click unsubscribe links in automated emails (HMAC token in the URL).
+  '/api/workflows/hooks',
+  '/api/automation/unsubscribe',
 ]
 
 export function isCsrfExempt(pathname: string, exempt: readonly string[] = CSRF_EXEMPT): boolean {

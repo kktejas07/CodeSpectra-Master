@@ -125,6 +125,7 @@ export async function createJob(actor: AtsActor, body: Record<string, unknown>):
     updated_at: ts,
   }
   await (await atsJobs()).insertOne(job)
+  void import('@/lib/rag/hooks').then((h) => h.knowledgeOnAtsJob(job.id, job.tenant_id)).catch(() => {}) // RAG-001
   if (legacyId) {
     const db = await getMongoDb()
     await db.collection('job_postings').updateOne({ id: legacyId, tenant_id: actor.tenantId }, { $set: { ats_job_id: job.id } })
@@ -177,6 +178,7 @@ export async function updateJob(actor: AtsActor, job: AtsJob, body: Record<strin
   const jobs = await atsJobs()
   const r = await jobs.updateOne({ id: job.id, tenant_id: job.tenant_id, updated_at: job.updated_at }, { $set: set })
   if (!r.matchedCount) throw new AtsError(409, 'This job was just changed by someone else — refresh and try again')
+  void import('@/lib/rag/hooks').then((h) => h.knowledgeOnAtsJob(job.id, job.tenant_id)).catch(() => {}) // RAG-001
   const updated = { ...job, ...set } as AtsJob
 
   // Candidates in removed stages go to the chosen target (with history + entry effects).
@@ -197,5 +199,6 @@ export async function deleteJob(job: AtsJob): Promise<void> {
   const n = await (await atsApplications()).countDocuments({ tenant_id: job.tenant_id, job_id: job.id })
   if (n > 0) throw new AtsError(409, `This job has ${n} application${n === 1 ? '' : 's'}. Close it instead so the history is kept.`)
   await (await atsJobs()).deleteOne({ id: job.id, tenant_id: job.tenant_id })
+  void import('@/lib/rag/hooks').then((h) => h.knowledgeOnAtsJob(job.id, job.tenant_id)).catch(() => {}) // RAG-001
   await hideLegacyPosting(job)
 }

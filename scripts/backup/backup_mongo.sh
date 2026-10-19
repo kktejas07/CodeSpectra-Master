@@ -18,6 +18,37 @@ log_err() {
     echo "$(date +"%Y-%m-%d %H:%M:%S") [ERROR] $1" >> "$LOG_FILE" >&2
 }
 
+# ── Credentials (SEC-017) ────────────────────────────────────────────────────
+# Never hard-code the DB password here. The password that used to be committed
+# here MUST be rotated and purged from git history (git filter-repo / BFG) —
+# see docs/devops/06-Reverse-Proxy.md "Database backup credentials". Provide MONGO_BACKUP_URI (preferred) or
+# MONGO_BACKUP_USER + MONGO_BACKUP_PASSWORD via the environment, or put them in
+# /etc/codespectra/mongo-backup.env (root-owned, chmod 600). The URI is handed
+# to mongodump through a 0600 --config file, so it never shows up in `ps`.
+MONGO_BACKUP_ENV_FILE="${MONGO_BACKUP_ENV_FILE:-/etc/codespectra/mongo-backup.env}"
+if [ -z "$MONGO_BACKUP_URI" ] && [ -f "$MONGO_BACKUP_ENV_FILE" ]; then
+    # shellcheck disable=SC1090
+    set -a; . "$MONGO_BACKUP_ENV_FILE"; set +a
+fi
+if [ -z "$MONGO_BACKUP_URI" ] && [ -n "$MONGO_BACKUP_PASSWORD" ]; then
+    MONGO_BACKUP_URI="mongodb://${MONGO_BACKUP_USER:-mongo}:${MONGO_BACKUP_PASSWORD}@localhost:27017/?authSource=admin"
+fi
+if [ -z "$MONGO_BACKUP_URI" ]; then
+    log_err "MONGO_BACKUP_URI (or MONGO_BACKUP_PASSWORD) is not set — see $MONGO_BACKUP_ENV_FILE. Aborting."
+    exit 1
+fi
+
+# run_mongodump <container>: writes the URI to a private config file inside the
+# container, runs mongodump with --config, and always removes the file.
+run_mongodump() {
+    local c="$1"
+    printf 'uri: "%s"\n' "$MONGO_BACKUP_URI" | docker exec -i "$c" sh -c 'umask 077; cat > /tmp/.mongodump.yml' || return 1
+    docker exec "$c" mongodump --config=/tmp/.mongodump.yml --gzip --out=/tmp/mongodump
+    local rc=$?
+    docker exec "$c" rm -f /tmp/.mongodump.yml
+    return $rc
+}
+
 log_msg "Starting MongoDB backup process..."
 
 # Find MongoDB container using docker ps format by name pattern
@@ -37,7 +68,7 @@ TEMP_ARCHIVE="/tmp/mongo_backup_$TIMESTAMP.tar.gz"
 # Run mongodump inside container
 log_msg "Executing mongodump inside container..."
 docker exec "$CONTAINER_NAME" rm -rf /tmp/mongodump
-if ! docker exec "$CONTAINER_NAME" mongodump --uri="mongodb://mongo:kfgXeV32FU2WPp1tERVs@localhost:27017/?authSource=admin" --gzip --out=/tmp/mongodump >> "$LOG_FILE" 2>&1; then
+if ! run_mongodump "$CONTAINER_NAME" >> "$LOG_FILE" 2>&1; then
     log_err "mongodump execution failed."
     exit 1
 fi

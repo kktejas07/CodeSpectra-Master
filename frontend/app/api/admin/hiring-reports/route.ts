@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -26,7 +26,12 @@ const toPercent = (score: unknown, max: unknown): number => {
 
 const emptyFunnel = { invited: 0, completed: 0, passed: 0, candidates: 0 }
 
-export async function GET() {
+/** Bounds (CORE-029): no request reads unbounded collections. */
+const MAX_DOCS = 20_000
+const SUB_PROJ = { _id: 0, user_id: 1, email: 1, exam_id: 1, score: 1, max_score: 1, passed: 1 }
+const INV_PROJ = { _id: 0, user_id: 1, email: 1, full_name: 1, status: 1, created_at: 1 }
+
+export async function GET(req: NextRequest) {
   const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
@@ -42,23 +47,18 @@ export async function GET() {
 
     if (scoped && examIds.length === 0) return NextResponse.json({ data: [], funnel: emptyFunnel })
 
+    // Indexed lookups by exam_id / exam_ids (A-012 backfilled them), projected and bounded —
+    // was: every submission and a regex-per-exam scan of every invite.
     const submissions = await db.collection('exam_submissions')
-      .find(scoped ? { exam_id: { $in: examIds } } : {})
+      .find(scoped ? { exam_id: { $in: examIds } } : {}, { projection: SUB_PROJ })
+      .sort({ created_at: -1 })
+      .limit(MAX_DOCS)
       .toArray()
-
-    // Invites scoped to these exams via target_url (same matching as the
-    // per-exam results route); unscoped callers see all invites.
-    let invites: any[]
-    if (scoped) {
-      const or: Record<string, unknown>[] = []
-      for (const id of examIds) {
-        const rx = String(id).replace(/-/g, '\\-')
-        or.push({ target_url: { $regex: rx } }, { 'assigned_assessments.target_url': { $regex: rx } })
-      }
-      invites = await db.collection('candidate_invites').find({ $or: or }).toArray()
-    } else {
-      invites = await db.collection('candidate_invites').find({}).toArray()
-    }
+    const invites: any[] = await db.collection('candidate_invites')
+      .find(scoped ? { $or: [{ exam_id: { $in: examIds } }, { exam_ids: { $in: examIds } }] } : {}, { projection: INV_PROJ })
+      .sort({ created_at: -1 })
+      .limit(MAX_DOCS)
+      .toArray()
 
     interface CandRow {
       userId: string
@@ -98,16 +98,16 @@ export async function GET() {
     // Candidate names from `user`; job applications for role + pipeline status.
     const candidateUserIds = [...rows.values()].map(r => r.userId).filter(Boolean)
     const userMap = new Map<string, { name: string; email: string }>()
-    await Promise.all(candidateUserIds.map(async (uid: string) => {
-      const u = await db.collection('user').findOne(
-        { $or: [{ _id: uid as any }, { id: uid }] },
-        { projection: { name: 1, fullName: 1, email: 1 } },
-      )
-      if (u) userMap.set(uid, { name: (u.fullName || u.name || '') as string, email: (u.email || '') as string })
-    }))
+    for (let i = 0; i < candidateUserIds.length; i += 1000) {
+      const ids = candidateUserIds.slice(i, i + 1000)
+      const found = await db.collection('user')
+        .find({ $or: [{ id: { $in: ids } }, { _id: { $in: ids as any[] } }] }, { projection: { _id: 1, id: 1, name: 1, fullName: 1, email: 1 } })
+        .toArray()
+      for (const u of found) userMap.set(String(u.id || u._id), { name: (u.fullName || u.name || '') as string, email: (u.email || '') as string })
+    }
 
     const apps = candidateUserIds.length > 0
-      ? await db.collection('job_applications').find({ user_id: { $in: candidateUserIds } }).toArray()
+      ? await db.collection('job_applications').find({ user_id: { $in: candidateUserIds } }, { projection: { _id: 0, user_id: 1, job_id: 1, status: 1, applied_at: 1 } }).limit(MAX_DOCS).toArray()
       : []
     const appByUser = new Map<string, any>()
     for (const app of apps) {
@@ -160,6 +160,17 @@ export async function GET() {
       candidates: rows.size,
     }
 
-    return NextResponse.json({ data, funnel })
+    // Paged output (?page=&limit=, default first 1,000 rows by composite score).
+    const sp = req.nextUrl.searchParams
+    const limit = Math.min(1000, Math.max(1, Number(sp.get('limit')) || 1000))
+    const page = Math.max(1, Number(sp.get('page')) || 1)
+    return NextResponse.json({
+      data: data.slice((page - 1) * limit, page * limit),
+      funnel,
+      total: data.length,
+      page,
+      has_more: page * limit < data.length,
+      truncated: submissions.length >= MAX_DOCS || invites.length >= MAX_DOCS,
+    })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }

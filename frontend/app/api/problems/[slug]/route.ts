@@ -5,6 +5,7 @@ import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
 import { isHackathonStaff, isHackathonJudge } from '@/lib/hackathons/access'
 import { checkProblemAccess, packLockedError } from '@/lib/entitlements'
+import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
 
 /**
  * Who may edit a problem: superadmin; its creator; or a tenant_admin of the
@@ -181,6 +182,7 @@ export async function PATCH(
 
     patch.updated_at = nowIso()
     await col.updateOne({ _id: doc._id }, { $set: patch })
+    knowledgeOnLibraryChange('problem', doc.id)
     return NextResponse.json({ ...doc, ...patch })
   } catch (error) {
     console.error('[problems/[slug]]', error)
@@ -210,6 +212,7 @@ export async function DELETE(
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
     if (!doc) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
     await col.deleteOne({ _id: doc._id })
+    knowledgeOnLibraryChange('problem', doc.id)
     return NextResponse.json({ success: true, deletedId: doc.slug ?? doc.id })
   } catch (error) {
     console.error('[problems/[slug]]', error)

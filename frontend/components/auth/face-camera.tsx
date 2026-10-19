@@ -1,7 +1,19 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import * as faceapi from '@vladmandic/face-api'
+// face-api touches browser globals (TextEncoder, WebGL) when it loads, so it is
+// imported lazily in the browser only; a static import crashed server rendering
+// of every page that shows the face camera (sign-in, face enrolment, ID checks).
+type FaceApi = typeof import('@vladmandic/face-api')
+let faceapi: FaceApi
+let faceApiPromise: Promise<FaceApi> | null = null
+function loadFaceApi(): Promise<FaceApi> {
+  if (!faceApiPromise) {
+    faceApiPromise = import('@vladmandic/face-api').then((m) => (faceapi = m))
+    faceApiPromise.catch(() => { faceApiPromise = null })
+  }
+  return faceApiPromise
+}
 import { Loader2, Camera, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -87,6 +99,7 @@ let backendName = 'unknown'
  * Falls back to the CPU backend when WebGL is unavailable.
  */
 async function warmUpBackend(): Promise<void> {
+  await loadFaceApi()
   const tf = faceapi.tf as any
   const probe = () => {
     const t = tf.tensor1d([0, 1, 2, 3])
@@ -114,6 +127,7 @@ async function warmUpBackend(): Promise<void> {
 function loadFaceModels() {
   if (!modelsPromise) {
     modelsPromise = (async () => {
+      await loadFaceApi()
       await (faceapi.tf as { ready?: () => Promise<void> }).ready?.()
       let lastErr: unknown = null
       let loaded = false
@@ -290,7 +304,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness',
       }
       try {
         const det = (await withTimeout(
-          faceapi.detectSingleFace(video, detectOptions()).withFaceLandmarks(true),
+          (await loadFaceApi()).detectSingleFace(video, detectOptions()).withFaceLandmarks(true),
           DETECT_TIMEOUT_MS,
           'Face detection timed out',
         )) as { landmarks: LandmarkSet } | undefined
@@ -316,7 +330,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness',
       }
       try {
         const det = (await withTimeout(
-          faceapi.detectSingleFace(video, detectOptions()).withFaceLandmarks(true).withFaceDescriptor(),
+          (await loadFaceApi()).detectSingleFace(video, detectOptions()).withFaceLandmarks(true).withFaceDescriptor(),
           DETECT_TIMEOUT_MS,
           'Descriptor timed out',
         )) as { landmarks: LandmarkSet; descriptor: Float32Array } | undefined
@@ -361,7 +375,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness',
         // freezing the loop with no message and never reaching the 25s budget.
         // The 8s timeout turns a hang into an ordinary miss (loop continues).
         const detection = (await withTimeout(
-          faceapi
+          (await loadFaceApi())
             .detectSingleFace(videoRef.current, detectOptions())
             .withFaceLandmarks(true),
           DETECT_TIMEOUT_MS,
@@ -408,7 +422,7 @@ export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness',
 
         setMessage('Capturing biometric template...')
         const fullDetection = (await withTimeout(
-          faceapi
+          (await loadFaceApi())
             .detectSingleFace(videoRef.current, detectOptions())
             .withFaceLandmarks(true)
             .withFaceDescriptor(),

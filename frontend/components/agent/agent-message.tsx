@@ -2,21 +2,23 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, Check, ChevronDown, ExternalLink, FileText, Loader2, Sparkles, X } from 'lucide-react'
+import { AlertCircle, Bot, Check, ChevronDown, ExternalLink, FileText, Loader2, RotateCw, Sparkles, X } from 'lucide-react'
 import type { KnowledgeHit, ProposedAction } from '@/lib/agent/contract'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { AgentMarkdown, safeHref } from './agent-markdown'
 import { ProposalCard } from './proposal-card'
-import { citationsOf, stepLabel } from './transcript'
-import type { ActionMap, UiItem, UiPart } from './types'
+import { BundleCard, ClarifyCard, PlanChecklist } from './loop-parts'
+import { actionIdsOf, citationsOf, stepLabel } from './transcript'
+import type { ActionMap, BundleMap, UiItem, UiStep } from './types'
 
-type Step = Extract<UiPart, { type: 'step' }>
+type Step = UiStep
 
 const SOURCE_LABEL: Record<string, string> = {
   problem: 'Problem', question: 'Question', course: 'Course', doc: 'Help', test: 'Test',
   test_result_summary: 'Results', hackathon: 'Hackathon', codeathon: 'Codeathon', upload: 'Upload',
-  resume: 'Résumé', attempt_summary: 'Attempt',
+  resume: 'Résumé', attempt_summary: 'Attempt', marketplace_product: 'Marketplace', external_event: 'Event',
+  ats_job: 'Job', ats_application: 'Applicant',
 }
 
 export function UserBubble({ text }: { text: string }) {
@@ -35,12 +37,38 @@ function StepIcon({ status }: { status: Step['status'] }) {
   return <X className="h-3.5 w-3.5 text-destructive" aria-hidden />
 }
 
+function StepRow({ s }: { s: Step }) {
+  return (
+    <li className="text-sm">
+      <span className="flex items-start gap-2">
+        <span className="mt-0.5">{s.agent ? <Bot className="h-3.5 w-3.5 text-primary" aria-hidden /> : <StepIcon status={s.status} />}</span>
+        <span className="min-w-0">
+          <span className="text-foreground">{stepLabel(s.tool, s.args, s.status === 'running')}</span>
+          {s.summary && s.status !== 'running' && <span className="text-muted-foreground"> — {s.summary}</span>}
+          {!!s.retries && (
+            <span className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <RotateCw className="h-3 w-3" aria-hidden /> retried {s.retries}×
+            </span>
+          )}
+        </span>
+      </span>
+      {s.agent && (s.children?.length ?? 0) > 0 && (
+        // Sub-agent timeline: the specialist's own steps, same permissions as yours.
+        <ol className="ml-[7px] mt-1.5 space-y-1.5 border-l border-border/70 pl-4" aria-label={`${s.agent.label} steps`}>
+          {s.children!.map((c) => <StepRow key={c.id} s={c} />)}
+        </ol>
+      )}
+    </li>
+  )
+}
+
 function ToolSteps({ steps }: { steps: Step[] }) {
-  const running = steps.some((s) => s.status === 'running')
+  const running = steps.some((s) => s.status === 'running' || s.children?.some((c) => c.status === 'running'))
   const [open, setOpen] = useState(false)
   const last = steps[steps.length - 1]
+  const lastChild = last.children?.[last.children.length - 1]
   const heading = running
-    ? stepLabel(last.tool, last.args, true)
+    ? lastChild && lastChild.status === 'running' ? `${last.agent?.label ?? 'Specialist'}: ${stepLabel(lastChild.tool, lastChild.args, true)}` : stepLabel(last.tool, last.args, true)
     : steps.length === 1
       ? stepLabel(last.tool, last.args, false)
       : `${steps.length} steps`
@@ -58,15 +86,7 @@ function ToolSteps({ steps }: { steps: Step[] }) {
       </button>
       {open && (
         <ol className="space-y-1.5 border-t border-border/70 px-3 py-2">
-          {steps.map((s) => (
-            <li key={s.id} className="flex items-start gap-2 text-sm">
-              <span className="mt-0.5"><StepIcon status={s.status} /></span>
-              <span className="min-w-0">
-                <span className="text-foreground">{stepLabel(s.tool, s.args, s.status === 'running')}</span>
-                {s.summary && s.status !== 'running' && <span className="text-muted-foreground"> — {s.summary}</span>}
-              </span>
-            </li>
-          ))}
+          {steps.map((s) => <StepRow key={s.id} s={s} />)}
         </ol>
       )}
     </div>
@@ -118,21 +138,35 @@ function CitationChips({ hits }: { hits: KnowledgeHit[] }) {
 export function AssistantMessage({
   item,
   actions,
+  bundles,
   onConfirm,
   onCancel,
   onEdit,
+  onConfirmBundle,
+  onCancelBundle,
+  onAnswer,
+  loadEditForm,
+  canAnswer,
 }: {
   item: Extract<UiItem, { kind: 'assistant' }>
   actions: ActionMap
+  bundles?: BundleMap
   onConfirm: (id: string) => Promise<string | null>
   onCancel: (id: string) => Promise<string | null>
   onEdit: (id: string, args: Record<string, unknown>) => Promise<string | null>
+  onConfirmBundle?: (id: string) => Promise<string | null>
+  onCancelBundle?: (id: string) => Promise<string | null>
+  onAnswer?: (text: string) => void
+  loadEditForm?: (id: string) => Promise<{ schema: Record<string, unknown> | null; args: Record<string, unknown> } | string>
+  canAnswer?: boolean
 }) {
-  // Group consecutive steps; proposals render right after their step group.
-  const blocks: ({ kind: 'text'; text: string } | { kind: 'steps'; steps: Step[] })[] = []
+  // Group consecutive steps; proposals / bundles render right after their step group.
+  const blocks: ({ kind: 'text'; text: string } | { kind: 'steps'; steps: Step[] } | { kind: 'clarify'; question: string; options?: string[] })[] = []
   for (const p of item.parts) {
     if (p.type === 'text') {
       if (p.text.trim()) blocks.push({ kind: 'text', text: p.text })
+    } else if (p.type === 'clarify') {
+      blocks.push({ kind: 'clarify', question: p.question, options: p.options })
     } else {
       const last = blocks[blocks.length - 1]
       if (last?.kind === 'steps') last.steps.push(p)
@@ -140,7 +174,7 @@ export function AssistantMessage({
     }
   }
   const citations = citationsOf(item.parts)
-  const empty = !blocks.length && !item.error
+  const empty = !blocks.length && !item.error && !item.plan?.length
 
   return (
     <div className="flex gap-3">
@@ -148,6 +182,7 @@ export function AssistantMessage({
         <Sparkles className="h-4 w-4" />
       </span>
       <div className="min-w-0 flex-1 space-y-3">
+        {item.plan && item.plan.length > 0 && <PlanChecklist steps={item.plan} />}
         {empty && item.streaming && (
           <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Thinking…
@@ -156,17 +191,28 @@ export function AssistantMessage({
         {blocks.map((b, i) =>
           b.kind === 'text' ? (
             <AgentMarkdown key={i} text={b.text} />
+          ) : b.kind === 'clarify' ? (
+            <ClarifyCard key={i} question={b.question} options={b.options} onAnswer={onAnswer} disabled={!canAnswer} />
           ) : (
             <div key={i} className="space-y-3">
               <ToolSteps steps={b.steps} />
-              {b.steps
-                .map((s) => (s.actionId ? actions[s.actionId] : undefined))
-                .filter((a): a is ProposedAction => !!a)
+              {actionIdsOf(b.steps)
+                .map((id) => actions[id])
+                .filter((a): a is ProposedAction => !!a && !a.bundle_id)
                 .map((a) => (
-                  <ProposalCard key={a.id} action={a} onConfirm={onConfirm} onCancel={onCancel} onEdit={onEdit} />
+                  <ProposalCard key={a.id} action={a} onConfirm={onConfirm} onCancel={onCancel} onEdit={onEdit} loadEditForm={loadEditForm} />
+                ))}
+              {b.steps
+                .map((s) => (s.bundleId && bundles ? bundles[s.bundleId] : undefined))
+                .filter((x): x is NonNullable<typeof x> => !!x)
+                .map((bd) => (
+                  <BundleCard key={bd.id} bundle={bd} actions={actions} onConfirm={onConfirmBundle ?? (async () => 'Bundles are not available here.')} onCancel={onCancelBundle ?? (async () => null)} />
                 ))}
             </div>
           ),
+        )}
+        {item.streaming && item.revised && (
+          <p className="text-xs text-muted-foreground" role="status">Checking the answer against what the tools returned…</p>
         )}
         {citations.length > 0 && <CitationChips hits={citations} />}
         {item.error && (

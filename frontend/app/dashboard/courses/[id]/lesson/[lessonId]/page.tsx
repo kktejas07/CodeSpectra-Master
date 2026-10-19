@@ -490,7 +490,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           ) : null}
 
           {/* Toggle Sidebar on Mobile/Desktop */}
-          <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle lesson list" aria-expanded={sidebarOpen}>
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>

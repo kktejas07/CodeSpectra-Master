@@ -125,5 +125,6 @@ export function faceSignInAllowed(user: Record<string, unknown> | null | undefin
   if (!user) return false
   if (user.face_login_disabled === true) return false
   const t = user.facial_biometric_template
-  return Array.isArray(t) && t.length === 128
+  // Plain array (legacy) or sealed "v1." string (lib/identity-media.ts).
+  return (Array.isArray(t) && t.length === 128) || (typeof t === 'string' && t.startsWith('v1.') && t.length > 40)
 }

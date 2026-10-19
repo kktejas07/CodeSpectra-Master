@@ -25,6 +25,8 @@ import {
   type ProbeResult,
 } from '@/lib/ai/provider-health'
 
+import { internalBackendUrl } from '@/lib/ai/internal-backend-url'
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -33,15 +35,9 @@ const PROBE_TIMEOUT_MS = 20_000
 const PROBE_CONCURRENCY = 3
 
 function backendBase(): string {
-  // ponytail: same resolution as provider-fallback.ts — in prod the backend
-  // is a sibling Swarm service, NOT localhost.
-  const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
-  return (
-    process.env.INTERNAL_BACKEND_URL ||
-    (process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production'
-      ? PROD_BACKEND
-      : 'http://localhost:8001')
-  )
+  // CORE-034: one resolver (lib/ai/internal-backend-url) — no baked-in deployment hostname;
+  // throws in production when INTERNAL_BACKEND_URL is missing.
+  return internalBackendUrl()
 }
 
 async function internalSecret(): Promise<string> {

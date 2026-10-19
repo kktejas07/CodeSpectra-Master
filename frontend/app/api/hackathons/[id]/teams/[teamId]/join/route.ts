@@ -57,6 +57,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (pushed.modifiedCount === 0) {
     return NextResponse.json({ error: `Team is full (${maxPerTeam} max)` }, { status: 409 })
   }
+  void import('@/lib/automation/events').then(({ emit }) => emit('hackathon.registered', {
+    event_id: hk.id, event_kind: 'hackathon', event_name: hk.name, user_id: user.id, team_name: team.name, starts_at: hk.starts_at ?? null,
+  }, { tenantId: hk.tenant_id ?? null, idempotencyKey: `hackathon.registered:${hk.id}:${user.id}` })).catch((e) => console.error('[automation] emit failed:', e))
 
   return NextResponse.json({ ok: true, team: { id: team.id, name: team.name, slug: team.slug } })
 }

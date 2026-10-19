@@ -30,7 +30,12 @@ export default function HundredDaysPage() {
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
-  const [completed, setCompleted] = useState<Set<number>>(getCompletedLocal)
+  // W4-10: localStorage is read after mount (same first render on server and client).
+  const [completed, setCompleted] = useState<Set<number>>(() => new Set())
+  useEffect(() => {
+    const local = getCompletedLocal()
+    if (local.size) setCompleted((cur) => (cur.size ? cur : local))
+  }, [])
   const [filter, setFilter] = useState<'all' | 'available' | 'completed' | 'locked'>('all')
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]))
   const [loadingProgress, setLoadingProgress] = useState(true)

@@ -58,7 +58,7 @@ export async function POST(
     // Released results are final for the candidate (score, pass, certificate) — never regraded here.
     const submissionQuery: Record<string, unknown> = { exam_id: examId, score_released: { $ne: true }, released_at: { $exists: false } }
     if (userIds) submissionQuery.user_id = { $in: userIds }
-    const submissions = await db.collection('exam_submissions').find(submissionQuery).toArray()
+    const submissions = await db.collection('exam_submissions').find(submissionQuery, { projection: { id_photo: 0, face_photo: 0 } }).toArray()
     if (submissions.length === 0) {
       return NextResponse.json({ error: 'No submissions found to grade' }, { status: 404 })
     }
@@ -93,6 +93,10 @@ export async function POST(
         import('@/lib/ats/handlers/assessment')
           .then(({ notifyAssessmentFinal }) => notifyAssessmentFinal({ id: sub?.id, exam_id: examId, user_id: userId, email: sub?.email, score: newScore, max_score: sub?.max_score, has_pending_review: false }))
           .catch((e) => console.error('[CodeSpectra] ats assessment hook:', e))
+        void import('@/lib/automation/events').then(({ emit }) => emit('exam.graded', {
+          submission_id: sub?.id, exam_id: examId, exam_title: exam.title ?? null, user_id: userId, email: sub?.email, score: newScore, max_score: sub?.max_score,
+          percent: Number(sub?.max_score) > 0 ? Math.round((newScore / Number(sub?.max_score)) * 100) : 0, graded_by: 'ai',
+        }, { tenantId: typeof exam.tenant_id === 'string' ? exam.tenant_id : null, idempotencyKey: `exam.graded:${String(sub?.id)}:${String(sub?.attempt_no ?? 1)}` })).catch((e) => console.error('[automation] emit failed:', e))
       }
     }
 

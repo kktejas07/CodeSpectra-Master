@@ -17,7 +17,9 @@ const nextConfig = {
         headers: [
           {
             key: 'Permissions-Policy',
-            value: 'camera=(self)',
+            // Keep in sync with lib/security-headers.ts (PERMISSIONS_POLICY) —
+            // this route must not drop the microphone grant the proxy sets.
+            value: 'camera=(self), microphone=(self), display-capture=(self), geolocation=(self), usb=(), serial=(), bluetooth=(), hid=(), midi=(), interest-cohort=()',
           },
         ],
       },
