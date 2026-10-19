@@ -147,7 +147,14 @@ jobs:
       # problem). Upgrade path runs via Dependabot (see dependabot.yml).
       - name: Yarn audit (critical)
         working-directory: frontend
-        run: yarn audit --level critical --groups dependencies
+        # yarn v1's exit code is a severity bitmask (1 info, 2 low, 4 moderate,
+        # 8 high, 16 critical) that ignores --level, so gate on the critical bit.
+        run: |
+          set +e
+          yarn audit --level critical --groups dependencies
+          code=$?
+          if [ $((code & 16)) -ne 0 ]; then echo "Critical vulnerabilities found"; exit 1; fi
+          exit 0
       # Informational for now: starlette 0.37.2 + ecdsa have known vulns
       # (pip-audit exits nonzero). Upgrading starlette is a major bump with
       # FastAPI-compat risk — do it via a Dependabot PR with tests, then
