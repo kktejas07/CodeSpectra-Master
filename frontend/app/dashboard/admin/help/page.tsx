@@ -27,12 +27,10 @@ const SECTIONS = [
   {
     title: 'Content and features',
     items: [
-      { label: 'Subscription plans', desc: 'Free, Pro and Enterprise plans. Turn features on per plan and set usage limits. Default plans are created the first time you open the page.', href: '/dashboard/admin/plans' },
+      { label: 'Plans and pricing', desc: 'Free, Pro and Enterprise plans and the public pricing page. Turn features on per plan and set usage limits. Default plans are created the first time you open the page.', href: '/dashboard/admin/plans' },
       { label: 'Platform settings', desc: 'Configure branding, email providers, operations, product access, and integrations.', href: '/dashboard/admin/settings' },
       { label: 'AI inventory', desc: 'Every place the platform uses AI — prompts, agents and automations — plus a dependency check for known vulnerabilities.', href: '/dashboard/admin/ai-inventory' },
-      { label: 'Workflows', desc: 'Build automations visually from trigger, HTTP, AI, database, log and delay steps, and run them on a schedule.', href: '/dashboard/admin/workflows' },
-      { label: 'Pricing', desc: 'Configure catalog tiers and feature flags for the pricing page.', href: '/dashboard/admin/pricing' },
-    ]
+      { label: 'Workflows', desc: 'Build automations visually from trigger, HTTP, AI, database, log and delay steps, and run them on a schedule.', href: '/dashboard/admin/workflows' },    ]
   },
   {
     title: 'Events and community',

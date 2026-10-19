@@ -467,7 +467,7 @@ export default function UsersManagement() {
               Enter a new password for this user (min 8 characters).
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Input
+          <Input aria-label="New password"
             type="password"
             placeholder="New password"
             value={resetPwValue}

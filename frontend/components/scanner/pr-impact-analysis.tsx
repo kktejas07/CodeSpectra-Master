@@ -246,7 +246,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {affectedComponents.filter((r): r is { file: PRFile; component: D3Component } => r.component !== null).map(({ file, component }) => (
-                    <div
+                    <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
                       key={file.filename}
                       className={`flex items-start gap-2 py-2 border-b border-border/30 last:border-0 cursor-pointer hover:bg-primary/5 rounded px-2 -mx-2 ${
                         selectedAffectedId === component.id ? 'bg-primary/5' : ''

@@ -343,7 +343,7 @@ export default function RecruiterAnalyticsPage() {
         </h2>
         {data.candidates.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground w-12">#</th>
@@ -408,7 +408,7 @@ export default function RecruiterAnalyticsPage() {
         </h2>
         {data.recentInterviews.length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[760px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground">Title</th>

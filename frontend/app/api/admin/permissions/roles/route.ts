@@ -4,6 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { getDefaultRolePermissions, discoverAllResources } from '@/lib/permissions-db'
 import { invalidatePermissionCache } from '@/lib/route-auth'
 import type { UserRole } from '@/lib/rbac'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -70,6 +71,7 @@ export async function POST(request: Request) {
         await col.updateOne({ role }, { $set: { permissions: defaults, name, description: `Default ${role} role`, updatedAt: now } })
       }
       invalidatePermissionCache()
+      await auditAdmin(gate.user, 'admin.roles.reseed', 'role', 'roles/system', undefined, 'critical')
       return NextResponse.json({ message: 'System roles reseeded with defaults', roles: systemRoles })
     }
 
@@ -108,6 +110,7 @@ export async function POST(request: Request) {
 
     await col.updateOne({ role: body.role }, { $set: doc }, { upsert: true })
     invalidatePermissionCache()
+    await auditAdmin(gate.user, 'admin.roles.update', 'role', `role/${String(body.role)}`, `${mergedPermissions.length} permission override(s)`, 'critical')
     return NextResponse.json({ role: doc })
   } catch (e: unknown) {
     console.error('[CodeSpectra] admin/permissions/roles:', e)

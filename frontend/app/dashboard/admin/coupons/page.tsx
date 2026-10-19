@@ -260,7 +260,7 @@ export default function CouponsAdminPage() {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="type" className="text-right">Type</Label>
               <Select value={type} onValueChange={(v: any) => setType(v)}>
-                <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Type" className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percentage">Percentage (%)</SelectItem>
                   <SelectItem value="flat">Fixed amount</SelectItem>

@@ -7,6 +7,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { randomUUID } from 'node:crypto'
 import DOMPurify from 'isomorphic-dompurify'
+import { imageExtensionMatches, sniffImageMime } from '@/lib/upload-sniff'
 
 import { internalBackendUrl } from '@/lib/ai/internal-backend-url'
 
@@ -49,7 +50,13 @@ export async function POST(req: NextRequest) {
     }
 
     let bytes = await file.arrayBuffer()
-    let finalType = file.type
+    // Trust the bytes, not the browser's Content-Type: the content must be the
+    // declared image type and the extension must match it.
+    const sniffed = sniffImageMime(new Uint8Array(bytes), { allowSvg: true })
+    if (!sniffed || sniffed !== file.type || !imageExtensionMatches(file.name || '', sniffed)) {
+      return NextResponse.json({ error: 'The file content does not match its type. Upload a real JPEG, PNG, GIF, WebP or SVG image.' }, { status: 400 })
+    }
+    let finalType: string = sniffed
 
     if (finalType === 'image/svg+xml') {
       const rawText = Buffer.from(bytes).toString('utf-8')

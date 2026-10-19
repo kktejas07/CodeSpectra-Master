@@ -210,23 +210,23 @@ export function SeoSettingsSection() {
         {s.comparisons.map((c, i) => (
           <div key={i} className="space-y-3 rounded-2xl border border-border/70 p-4">
             <div className="grid gap-3 md:grid-cols-3">
-              <div className="space-y-1.5"><Label>Competitor</Label><Input value={c.competitor} onChange={(e) => setComp(i, { competitor: e.target.value, slug: c.slug || slugifyComparison(e.target.value) })} /></div>
-              <div className="space-y-1.5"><Label>Slug</Label><Input value={c.slug} onChange={(e) => setComp(i, { slug: slugifyComparison(e.target.value) })} /></div>
+              <div className="space-y-1.5"><Label>Competitor</Label><Input aria-label="Competitor" value={c.competitor} onChange={(e) => setComp(i, { competitor: e.target.value, slug: c.slug || slugifyComparison(e.target.value) })} /></div>
+              <div className="space-y-1.5"><Label>Slug</Label><Input aria-label="Slug" value={c.slug} onChange={(e) => setComp(i, { slug: slugifyComparison(e.target.value) })} /></div>
               <div className="flex items-end justify-between gap-3">
                 <label className="flex items-center gap-2 text-sm"><Switch checked={c.published} onCheckedChange={(v) => setComp(i, { published: v, updated_at: new Date().toISOString() })} /> Published</label>
                 <Button type="button" variant="ghost" size="sm" onClick={() => setS((p) => ({ ...p, comparisons: p.comparisons.filter((_, j) => j !== i) }))}>Remove</Button>
               </div>
             </div>
-            <div className="space-y-1.5"><Label>Short answer (2–3 sentences)</Label><Textarea rows={2} value={c.summary} onChange={(e) => setComp(i, { summary: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Short answer (2–3 sentences)</Label><Textarea aria-label="Short answer (2–3 sentences)" rows={2} value={c.summary} onChange={(e) => setComp(i, { summary: e.target.value })} /></div>
             <div className="space-y-1.5">
               <Label>Rows: Feature | CodeSpectra | Competitor (one per line)</Label>
-              <Textarea key={`rows-${i}-${s.comparisons.length}`} rows={4} defaultValue={c.rows.map((r) => `${r.feature} | ${r.codespectra} | ${r.competitor}`).join('\n')} onBlur={(e) => setComp(i, { rows: pipeRows(e.target.value).map(([feature = '', codespectra = '', competitor = '']) => ({ feature, codespectra, competitor })), updated_at: new Date().toISOString() })} />
+              <Textarea aria-label="Rows: Feature | CodeSpectra | Competitor (one per line)" key={`rows-${i}-${s.comparisons.length}`} rows={4} defaultValue={c.rows.map((r) => `${r.feature} | ${r.codespectra} | ${r.competitor}`).join('\n')} onBlur={(e) => setComp(i, { rows: pipeRows(e.target.value).map(([feature = '', codespectra = '', competitor = '']) => ({ feature, codespectra, competitor })), updated_at: new Date().toISOString() })} />
             </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <div className="space-y-1.5"><Label>Choose CodeSpectra if…</Label><Textarea rows={2} value={c.best_for_codespectra} onChange={(e) => setComp(i, { best_for_codespectra: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label>Choose {c.competitor || 'them'} if…</Label><Textarea rows={2} value={c.best_for_competitor} onChange={(e) => setComp(i, { best_for_competitor: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Choose CodeSpectra if…</Label><Textarea aria-label="Choose CodeSpectra if…" rows={2} value={c.best_for_codespectra} onChange={(e) => setComp(i, { best_for_codespectra: e.target.value })} /></div>
+              <div className="space-y-1.5"><Label>Choose {c.competitor || 'them'} if…</Label><Textarea aria-label="Choose if…" rows={2} value={c.best_for_competitor} onChange={(e) => setComp(i, { best_for_competitor: e.target.value })} /></div>
             </div>
-            <div className="space-y-1.5"><Label>Sources (one URL per line)</Label><Textarea key={`src-${i}-${s.comparisons.length}`} rows={2} defaultValue={c.sources.join('\n')} onBlur={(e) => setComp(i, { sources: lines(e.target.value) })} /></div>
+            <div className="space-y-1.5"><Label>Sources (one URL per line)</Label><Textarea aria-label="Sources (one URL per line)" key={`src-${i}-${s.comparisons.length}`} rows={2} defaultValue={c.sources.join('\n')} onBlur={(e) => setComp(i, { sources: lines(e.target.value) })} /></div>
           </div>
         ))}
         <Button type="button" variant="outline" onClick={() => setS((p) => ({ ...p, comparisons: [...p.comparisons, { slug: '', competitor: '', summary: '', rows: [], best_for_codespectra: '', best_for_competitor: '', sources: [], published: false, updated_at: new Date().toISOString() }] }))}>

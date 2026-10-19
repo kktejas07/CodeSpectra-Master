@@ -15,6 +15,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { KIND_LABELS, MODE_LABELS } from '@/lib/events-feed/public'
 import { EVENT_KINDS, EVENT_MODES, type EventKind, type EventMode } from '@/lib/events-feed/types'
 import { cn } from '@/lib/utils'
+import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 
 const CONSENT = 'I agree to receive CodeSpectra updates on WhatsApp for the topics I picked. I can reply STOP at any time to stop.'
 
@@ -30,6 +31,8 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
   const [country, setCountry] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const [captchaReset, setCaptchaReset] = useState(0)
   const [done, setDone] = useState<{ email?: string; whatsapp?: string; link?: string | null } | null>(null)
 
   const toggle = <T,>(list: T[], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
@@ -54,6 +57,7 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
           whatsapp_consent: useWa ? consent : undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           source: `${topic}-page`,
+          turnstileToken: captchaToken || undefined,
         }),
       })
       const data = await res.json().catch(() => ({}))
@@ -61,6 +65,9 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
       setDone({ email: data.email, whatsapp: data.whatsapp, link: data.whatsapp_start_link })
     } catch (err) {
       setError((err as Error).message)
+      // Turnstile tokens are single-use: get a fresh one for the retry.
+      setCaptchaToken(null)
+      setCaptchaReset((k) => k + 1)
     } finally {
       setBusy(false)
     }
@@ -145,6 +152,7 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
           </fieldset>
         )}
 
+        <TurnstileWidget onVerify={setCaptchaToken} resetKey={captchaReset} />
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
         <Button type="submit" disabled={busy} className="h-11 w-full rounded-xl">
           {busy ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Bell className="h-4 w-4" />} {topic === 'events' ? 'Notify me' : 'Subscribe'}

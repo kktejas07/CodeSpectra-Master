@@ -28,7 +28,7 @@ export function VariablePicker({ vars, onPick, label = 'Insert a variable' }: { 
           <Braces className="h-4 w-4" aria-hidden />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-80 p-2">
+      <PopoverContent align="end" className="w-80 max-w-[calc(100vw-2rem)] p-2">
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search variables" aria-label="Search variables" className="mb-2 h-8" />
         <div className="max-h-72 overflow-y-auto">
           {!list.length && <p className="px-2 py-3 text-xs text-muted-foreground">No variables yet. Pick a trigger or add a step above this one.</p>}

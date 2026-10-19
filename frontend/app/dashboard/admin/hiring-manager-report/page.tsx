@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { FileText, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import type { APIUser } from '@/lib/route-auth'
@@ -24,6 +25,7 @@ interface Candidate {
 
 export default function HiringManagerReportPage() {
   const gate = usePageGuard('tenant_admin')
+  const addToast = useToast()
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [loading, setLoading] = useState(true)
   /** Hiring outcomes recorded on the results pages, by status. */
@@ -34,10 +36,11 @@ export default function HiringManagerReportPage() {
     try {
       const res = await fetch('/api/admin/hiring-reports', { credentials: 'include' })
       const json = await res.json()
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
       setCandidates(json.data || [])
       const oRes = await fetch('/api/admin/hiring-outcomes?summary=1', { credentials: 'include' })
       if (oRes.ok) setOutcomes(await oRes.json())
-    } catch { /* ignore */ }
+    } catch { addToast({ type: 'error', title: "Couldn't load the hiring report", message: 'Refresh the page or try again in a moment.' }) }
     finally { setLoading(false) }
   }
 

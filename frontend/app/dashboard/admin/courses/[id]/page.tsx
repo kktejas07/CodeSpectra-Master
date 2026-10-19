@@ -362,14 +362,14 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <Label>Course title</Label>
-              <Input
+              <Input aria-label="Course title"
                 value={course.title}
                 onChange={e => setCourse({ ...course, title: e.target.value })}
               />
             </div>
             <div className="space-y-2">
               <Label>Instructor</Label>
-              <Input
+              <Input aria-label="Instructor"
                 value={course.instructor}
                 onChange={e => setCourse({ ...course, instructor: e.target.value })}
               />
@@ -377,7 +377,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2 md:col-span-2">
               <Label>Description</Label>
-              <Textarea
+              <Textarea aria-label="Description"
                 rows={4}
                 value={course.description}
                 onChange={e => setCourse({ ...course, description: e.target.value })}
@@ -390,7 +390,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 value={course.category}
                 onValueChange={(v) => setCourse({ ...course, category: v })}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Category"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
@@ -403,7 +403,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 value={course.level}
                 onValueChange={(v) => setCourse({ ...course, level: v })}
               >
-                <SelectTrigger className="capitalize"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Level" className="capitalize"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {LEVELS.map(l => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}
                 </SelectContent>
@@ -416,7 +416,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 value={course.type || 'video'}
                 onValueChange={(v) => setCourse({ ...course, type: v })}
               >
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Type"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="video">Video course</SelectItem>
                   <SelectItem value="text">Text course</SelectItem>
@@ -427,7 +427,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Duration (e.g. 40h)</Label>
-              <Input
+              <Input aria-label="Duration (e.g. 40h)"
                 value={course.duration || ''}
                 onChange={e => setCourse({ ...course, duration: e.target.value })}
               />
@@ -435,7 +435,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Rating (out of 5)</Label>
-              <Input
+              <Input aria-label="Rating (out of 5)"
                 type="number"
                 step="0.1"
                 max="5"
@@ -447,7 +447,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Total sessions</Label>
-              <Input
+              <Input aria-label="Total sessions"
                 type="number"
                 value={course.sessions || 0}
                 onChange={e => setCourse({ ...course, sessions: parseInt(e.target.value) || 0 })}
@@ -456,7 +456,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Enrolled count</Label>
-              <Input
+              <Input aria-label="Enrolled count"
                 type="number"
                 value={course.enrolled || 0}
                 onChange={e => setCourse({ ...course, enrolled: parseInt(e.target.value) || 0 })}
@@ -465,7 +465,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
 
             <div className="space-y-2">
               <Label>Thumbnail image URL</Label>
-              <Input
+              <Input aria-label="Thumbnail image URL"
                 value={course.image || ''}
                 onChange={e => setCourse({ ...course, image: e.target.value })}
               />
@@ -473,7 +473,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
 
             <div className="space-y-2">
               <Label>Tags (comma separated)</Label>
-              <Input
+              <Input aria-label="Tags (comma separated)"
                 value={course.tags?.join(', ') || ''}
                 onChange={e => setCourse({ ...course, tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
                 placeholder="React, Next.js, Web"
@@ -482,7 +482,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2 md:col-span-2">
               <Label>What you&apos;ll learn (one per line)</Label>
-              <Textarea
+              <Textarea aria-label="What you'll learn (one per line)"
                 rows={4}
                 value={course.whatYoullLearn?.join('\n') || ''}
                 onChange={e => setCourse({ ...course, whatYoullLearn: e.target.value.split('\n').filter(Boolean) })}
@@ -493,7 +493,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             {/* Source Information */}
             <div className="space-y-2">
               <Label>Source or origin</Label>
-              <Input
+              <Input aria-label="Source or origin"
                 value={course.source || ''}
                 onChange={e => setCourse({ ...course, source: e.target.value })}
                 placeholder="e.g. FreeCodeCamp"
@@ -502,7 +502,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
             
             <div className="space-y-2">
               <Label>Source URL</Label>
-              <Input
+              <Input aria-label="Source URL"
                 value={course.source_url || ''}
                 onChange={e => setCourse({ ...course, source_url: e.target.value })}
                 placeholder="https://..."
@@ -511,7 +511,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
 
             <div className="space-y-2 md:col-span-2">
               <Label>License</Label>
-              <Input
+              <Input aria-label="License"
                 value={course.license || ''}
                 onChange={e => setCourse({ ...course, license: e.target.value })}
                 placeholder="e.g. MIT, CC BY 4.0"
@@ -578,7 +578,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Lesson title</Label>
-                            <Input 
+                            <Input aria-label="Lesson title" 
                               value={lesson.title}
                               onChange={e => updateLesson(sIndex, lIndex, 'title', e.target.value)}
                               className="h-8"
@@ -586,7 +586,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                           </div>
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Duration (seconds)</Label>
-                            <Input 
+                            <Input aria-label="Duration (seconds)" 
                               type="number"
                               value={lesson.duration || ''}
                               onChange={e => updateLesson(sIndex, lIndex, 'duration', Number(e.target.value))}
@@ -600,7 +600,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                               value={lesson.videoType || 'youtube'} 
                               onValueChange={(v) => updateLesson(sIndex, lIndex, 'videoType', v)}
                             >
-                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectTrigger aria-label="Video source" className="h-8"><SelectValue /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="youtube">Free YouTube embed</SelectItem>
                                 <SelectItem value="ai">Generate AI video</SelectItem>
@@ -611,7 +611,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                           {(!lesson.videoType || lesson.videoType === 'youtube') ? (
                             <div className="md:col-span-2 space-y-1">
                               <Label className="text-xs text-muted-foreground">Video URL (YouTube embed)</Label>
-                              <Input 
+                              <Input aria-label="Video URL (YouTube embed)" 
                                 value={lesson.url || ''}
                                 onChange={e => updateLesson(sIndex, lIndex, 'url', e.target.value)}
                                 placeholder="https://www.youtube.com/embed/..."
@@ -622,7 +622,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                             <>
                               <div className="md:col-span-2 space-y-1">
                                 <Label className="text-xs text-muted-foreground">AI topic or script request</Label>
-                                <Textarea 
+                                <Textarea aria-label="AI topic or script request" 
                                   value={lesson.content || ''}
                                   onChange={e => updateLesson(sIndex, lIndex, 'content', e.target.value)}
                                   placeholder="Write the topic or prompt for AI generation..."

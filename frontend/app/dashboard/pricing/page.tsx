@@ -245,7 +245,7 @@ function PricingContent() {
       <div className="space-y-6">
         <div className="space-y-3">
           <div className="h-10 w-64 animate-pulse rounded bg-muted/60" />
-          <div className="h-5 w-80 animate-pulse rounded bg-muted/40" />
+          <div className="h-5 w-80 max-w-full animate-pulse rounded bg-muted/40" />
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}

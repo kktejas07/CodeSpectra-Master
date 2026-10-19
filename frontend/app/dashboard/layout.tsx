@@ -472,6 +472,7 @@ export default function DashboardLayout({
       [p.cdn]: Globe2,
       [p.permissions]: Shield,
       [p.plans]: FileText,
+      [p.teams]: Users2,
       '/dashboard/admin/organizations': Building2,
       '/dashboard/admin/feedback': MessageSquareWarning,
       '/dashboard/admin/coupons': Ticket,
@@ -559,15 +560,19 @@ export default function DashboardLayout({
     const PV = '/dashboard/admin/predictive-validity'
     const resumesAt = adminOrdered.indexOf('/dashboard/admin/resumes')
     if (isSuperAdmin(role) && resumesAt >= 0) adminOrdered.splice(resumesAt + 1, 0, PV)
-    // The AI copilot is shared too; superadmin sees it in "AI Tools" (after RAG, which starts the section).
+    // The AI copilot is shared too; superadmin sees it in "AI tools" (after RAG, which starts the section).
     const COPILOT = '/dashboard/admin/agent'
     const ragAt = adminOrdered.indexOf('/dashboard/admin/rag')
     if (isSuperAdmin(role) && ragAt >= 0) adminOrdered.splice(ragAt + 1, 0, COPILOT)
     // Knowledge sources sit next to the copilot for superadmin (tenant admins get it in their own list).
     const KNOWLEDGE = '/dashboard/admin/knowledge'
     if (isSuperAdmin(role) && ragAt >= 0) adminOrdered.splice(ragAt + 2, 0, KNOWLEDGE)
+    // Workflows sit with the built-in automations for superadmin ("Automation" section).
+    const WORKFLOWS = '/dashboard/admin/workflows'
+    const automationsAt = adminOrdered.indexOf('/dashboard/admin/automations')
+    if (isSuperAdmin(role) && automationsAt >= 0) adminOrdered.splice(automationsAt + 1, 0, WORKFLOWS)
     const tenantOrdered = isSuperAdmin(role)
-      ? TENANT_ADMIN_ROUTES.filter((r) => !EVENT_ADMIN_ROUTES.includes(r) && r !== PV && r !== COPILOT && r !== KNOWLEDGE)
+      ? TENANT_ADMIN_ROUTES.filter((r) => !EVENT_ADMIN_ROUTES.includes(r) && r !== PV && r !== COPILOT && r !== KNOWLEDGE && r !== WORKFLOWS)
       : TENANT_ADMIN_ROUTES
     const allRouteGroups = [ALL_USER_ROUTES, tenantOrdered, JUDGE_ROUTES, adminOrdered] as const
     const seen = new Set<string>()

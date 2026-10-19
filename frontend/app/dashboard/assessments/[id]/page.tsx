@@ -19,6 +19,7 @@ import {
   CheckCircle, XCircle, ChevronRight,
 } from 'lucide-react'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Illustration } from '@/components/illustrations/spot'
 import {
   AlertDialog,
@@ -92,6 +93,8 @@ export default function ExamPage() {
 
   const [exam, setExam] = useState<ExamDoc | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [currentQ, setCurrentQ] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
@@ -123,8 +126,10 @@ export default function ExamPage() {
   }, [submitted, results, examId])
 
   useEffect(() => {
+    setLoading(true)
+    setLoadFailed(false)
     fetch(`/api/exams/${examId}`)
-      .then(r => r.json())
+      .then(r => { if (!r.ok && r.status >= 500) throw new Error(String(r.status)); return r.json() })
       .then(data => {
         if (data && !data.error) {
           const qList = Array.isArray(data.questionList) ? data.questionList : (Array.isArray(data.questions) ? data.questions : [])
@@ -149,9 +154,9 @@ export default function ExamPage() {
           }
         }
       })
-      .catch(() => {})
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoading(false))
-  }, [examId, router])
+  }, [examId, router, reloadKey])
 
   useEffect(() => {
     if (exam && Object.keys(answers).length > 0 && !submitted) {
@@ -223,7 +228,20 @@ export default function ExamPage() {
       </div>
     </div>
   )
-  if (!exam) return <div className="p-8 text-center text-muted-foreground">Assessment not found.</div>
+  if (!exam && loadFailed) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <EmptyState illustration="error" title="Couldn't load this assessment" description="Check your connection and try again." actionLabel="Try again" onAction={() => setReloadKey((k) => k + 1)} />
+      </div>
+    )
+  }
+  if (!exam) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <EmptyState illustration="assessment" title="Assessment not found" description="This test may have been removed or the link is wrong. Your finished assessments are listed on the assessments page." actionLabel="Go to assessments" actionHref="/dashboard/assessments" />
+      </div>
+    )
+  }
 
   const isLowTime = timeRemaining <= 60 && timeRemaining > 0
   const question = exam.questions[currentQ]

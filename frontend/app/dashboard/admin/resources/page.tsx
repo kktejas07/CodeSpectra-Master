@@ -7,6 +7,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -259,9 +260,10 @@ export default function AdminResourcesPage() {
       </Panel>
 
       {/* Outline Review Modal */}
-      {outlineReview?.show && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={!!outlineReview?.show} onOpenChange={(open) => { if (!open && !busy) setOutlineReview(null) }}>
+        {outlineReview?.show && (
+          <DialogContent showCloseButton={false} className="block max-h-[90vh] overflow-y-auto border-0 bg-transparent p-0 shadow-none sm:max-w-2xl">
+            <DialogTitle className="sr-only">Review the ebook outline</DialogTitle>
             <EbookOutlineReview
               topic={outlineReview.topic}
               outline={outlineReview.outline}
@@ -269,9 +271,9 @@ export default function AdminResourcesPage() {
               onCancel={() => setOutlineReview(null)}
               loading={busy}
             />
-          </div>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {loadError && items.length === 0 && (
         <EmptyState illustration="error" title="Couldn't load ebooks" description="Check your connection and try again." actionLabel="Try again" onAction={load} />

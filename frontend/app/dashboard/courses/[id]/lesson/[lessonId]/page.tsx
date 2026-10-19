@@ -466,8 +466,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       {/* ── Top Navigation Bar ── */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border/40 bg-card shrink-0 shadow-sm z-20 relative">
         <div className="flex items-center gap-4">
-          <Link href={`/dashboard/courses/${courseId}`} className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-5 w-5" />
+          <Link href={`/dashboard/courses/${courseId}`} aria-label="Back to course" className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-5 w-5" aria-hidden />
           </Link>
           <div className="hidden sm:block">
             <h1 className="font-semibold text-sm line-clamp-1">{course.title}</h1>

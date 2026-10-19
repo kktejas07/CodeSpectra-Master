@@ -182,7 +182,7 @@ export function WhatsAppSettingsSection() {
           />
           <p className="text-xs text-muted-foreground">The WhatsApp session ID from your OpenWA instance</p>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="grid gap-2">
             <Label>Default country code</Label>
             <Input aria-label="Default country code"

@@ -13,6 +13,7 @@ import {
   tenantFromRequest,
 } from '@/lib/ats/access'
 import { limitRequest } from '@/lib/rate-limit'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 /**
  * GET /api/ats/team?tenant= — members of the tenant's hiring team (admin, recruiter,
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
   if (limited) return limited
 
   let body: unknown
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = sanitizeMongoInput(await req.json()) } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
   const parsed = parseInviteInput(body)
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
   const input = parsed.value

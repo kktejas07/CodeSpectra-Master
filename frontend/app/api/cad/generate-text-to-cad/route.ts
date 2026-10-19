@@ -41,6 +41,6 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('[cad-generate]', msg)
-    return NextResponse.json({ error: `CAD generation failed: ${msg}` }, { status: 502 })
+    return NextResponse.json({ error: 'CAD generation failed. Try again in a moment.' }, { status: 502 })
   }
 }

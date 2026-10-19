@@ -13,6 +13,7 @@ import { LogIn, ShieldX } from 'lucide-react'
 export function ImpersonationBanner() {
   const [active, setActive] = useState(false)
   const [exiting, setExiting] = useState(false)
+  const [exitError, setExitError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -25,6 +26,7 @@ export function ImpersonationBanner() {
 
   const exitImpersonation = async () => {
     setExiting(true)
+    setExitError(null)
     try {
       const res = await csrfFetch('/api/admin/impersonate/stop', {
         method: 'POST',
@@ -36,8 +38,12 @@ export function ImpersonationBanner() {
         // triple-fired duplicate TTFB/navigation records and could re-trigger the
         // banner's impersonation check mid-loop).
         window.location.href = '/dashboard/admin/organizations'
+        return
       }
+      setExitError("Couldn't exit. Try again or sign out.")
+      setExiting(false)
     } catch {
+      setExitError("Couldn't exit. Check your connection and try again.")
       setExiting(false)
     }
   }
@@ -45,7 +51,7 @@ export function ImpersonationBanner() {
   if (!active) return null
 
   return (
-    <div className="sticky top-0 z-50 flex items-center justify-center gap-3 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
+    <div role="status" className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 border-b border-amber-500/40 bg-amber-500/10 px-4 py-2 text-xs text-amber-700 dark:text-amber-300">
       <LogIn className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">
         You are viewing the app as this user (impersonation). Actions count as their account.
@@ -57,8 +63,9 @@ export function ImpersonationBanner() {
         onClick={() => void exitImpersonation()}
         disabled={exiting}
       >
-        <ShieldX className="h-3 w-3" /> Exit impersonation
+        <ShieldX className="h-3 w-3" aria-hidden /> {exiting ? 'Exiting…' : 'Exit impersonation'}
       </Button>
+      {exitError && <span role="alert" className="shrink-0 font-medium text-destructive">{exitError}</span>}
     </div>
   )
 }

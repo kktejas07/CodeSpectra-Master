@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/lib/toast-context'
@@ -85,6 +86,7 @@ export function IdentityVerification({
   const noCameraStep = identityRequirement(policy, false)
   const addToast = useToast()
   const [step, setStep] = useState<Step>('consent')
+  const panelRef = useFocusTrap<HTMLDivElement>(true, onCancel)
 
   // Consent state
   const [agreedTerms, setAgreedTerms] = useState(false)
@@ -367,7 +369,7 @@ export function IdentityVerification({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-      <Card className="max-w-xl w-full max-h-[92vh] overflow-y-auto rounded-3xl p-6 border-border/70 space-y-6 bg-card text-card-foreground shadow-2xl dark:shadow-none relative">
+      <Card ref={panelRef} role="dialog" aria-modal="true" aria-label="Identity verification" className="max-w-xl w-full max-h-[92vh] overflow-y-auto rounded-3xl p-6 border-border/70 space-y-6 bg-card text-card-foreground shadow-2xl dark:shadow-none relative">
         <button
           onClick={onCancel}
           className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

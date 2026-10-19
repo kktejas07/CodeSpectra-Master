@@ -291,7 +291,7 @@ export const createWorkflowFromTemplateTool = writeTool<{ template_id: string; n
     }
     await c.insertOne(doc)
     await adminAudit(ctx.caller.userId, 'workflow.create', 'workflow', doc.id, `${doc.name} (template ${t.id})`)
-    return { ok: true, message: `Installed “${doc.name}” (switched off).`, link: `/dashboard/admin/workflows/${doc.id}`, data: { workflow_id: doc.id } }
+    return { ok: true, message: `Installed “${doc.name}” (switched off).`, link: `/dashboard/admin/workflows?workflow=${doc.id}`, data: { workflow_id: doc.id } }
   },
 })
 
@@ -325,7 +325,7 @@ export const setWorkflowEnabledTool = writeTool<{ workflow_id: string; enabled: 
     if (a.enabled && errors.length) return { ok: false, message: errors[0] }
     await (await col('workflows')).updateOne({ id: wf.id }, { $set: { ...set, updated_at: new Date().toISOString(), updated_by: ctx.caller.userId } })
     await adminAudit(ctx.caller.userId, a.enabled ? 'workflow.enable' : 'workflow.disable', 'workflow', wf.id, wf.name)
-    return { ok: true, message: `“${wf.name}” is now ${a.enabled ? 'on' : 'off'}.`, link: `/dashboard/admin/workflows/${wf.id}` }
+    return { ok: true, message: `“${wf.name}” is now ${a.enabled ? 'on' : 'off'}.`, link: `/dashboard/admin/workflows?workflow=${wf.id}` }
   },
 })
 
@@ -357,7 +357,7 @@ export const rerunWorkflowRunTool = writeTool<{ workflow_id: string; run_id: str
     const out = await rerunFromFailed(a.run_id, ctx.caller.userId)
     if (!out) return { ok: false, message: 'Only failed runs can be re-run.' }
     await adminAudit(ctx.caller.userId, 'workflow.rerun', 'workflow', wf.id, `run ${a.run_id}`)
-    return { ok: true, message: `Re-run started (status: ${out.status}).`, link: `/dashboard/admin/workflows/${wf.id}` }
+    return { ok: true, message: `Re-run started (status: ${out.status}).`, link: `/dashboard/admin/workflows?workflow=${wf.id}` }
   },
 })
 
@@ -444,7 +444,7 @@ export const scheduleAgentTaskTool = writeTool<ScheduleTaskArgs>({
     }
     await c.insertOne(doc)
     await adminAudit(ctx.caller.userId, 'workflow.create', 'workflow', doc.id, `${doc.name} (scheduled copilot task, ${wf.cron_expression})`)
-    return { ok: true, message: `Scheduled “${a.title}” (${wf.cron_expression} UTC).`, link: `/dashboard/admin/workflows/${doc.id}`, data: { workflow_id: doc.id } }
+    return { ok: true, message: `Scheduled “${a.title}” (${wf.cron_expression} UTC).`, link: `/dashboard/admin/workflows?workflow=${doc.id}`, data: { workflow_id: doc.id } }
   },
 })
 

@@ -103,3 +103,54 @@ export function impersonationBlocked(method: string, pathname: string, sessionTo
   if (!IMPERSONATION_BLOCKED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
   return impersonatorOfToken(sessionToken) !== null
 }
+
+// ─── Wave 5: force HTTPS behind a TLS-terminating proxy ─────────────────────
+// Caddy/Nginx/Cloudflare/Traefik (Dokploy) terminate TLS and pass the original
+// scheme in X-Forwarded-Proto. A plain-http request is redirected (308 keeps
+// the method and body). Direct container hits (health checks, no header) and
+// localhost are left alone. Opt out with FORCE_HTTPS=0.
+const LOCAL_HOST = /^(?:localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(?::\d+)?$/i
+
+export function httpsRedirectUrl(
+  url: string,
+  headers: HeaderBag,
+  env: Record<string, string | undefined> = process.env,
+): string | null {
+  if (env.NODE_ENV !== 'production' || env.FORCE_HTTPS === '0') return null
+  const proto = (headers.get('x-forwarded-proto') || '').split(',')[0].trim().toLowerCase()
+  if (proto !== 'http') return null
+  const host = (headers.get('x-forwarded-host') || headers.get('host') || '').split(',')[0].trim()
+  if (!host || LOCAL_HOST.test(host) || !/^[a-z0-9.-]+(?::\d+)?$/i.test(host)) return null
+  let target: URL
+  try {
+    target = new URL(url)
+  } catch {
+    return null
+  }
+  if (target.pathname === '/api/health') return null
+  return `https://${host.replace(/:80$/, '')}${target.pathname}${target.search}`
+}
+
+// ─── Wave 5: CORS allowlist ─────────────────────────────────────────────────
+// Exact-origin allowlist; never '*' with credentials. Production origin, the
+// configured app URL, plus CORS_ALLOWED_ORIGINS (comma-separated https
+// origins); localhost only in development.
+export function corsAllowedOrigins(env: Record<string, string | undefined> = process.env): string[] {
+  const out = new Set<string>(['https://codespectra.ai'])
+  const add = (raw: string | undefined) => {
+    if (!raw) return
+    try {
+      const u = new URL(raw.trim())
+      if (u.protocol === 'https:' || (env.NODE_ENV === 'development' && u.protocol === 'http:')) out.add(u.origin)
+    } catch {
+      /* ignore malformed entries */
+    }
+  }
+  add(env.NEXT_PUBLIC_APP_URL)
+  for (const o of (env.CORS_ALLOWED_ORIGINS || '').split(',')) add(o)
+  if (env.NODE_ENV === 'development') {
+    out.add('http://localhost:3000')
+    out.add('http://localhost:3001')
+  }
+  return [...out]
+}

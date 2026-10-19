@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -109,6 +110,10 @@ export default function EditProfileWizard() {
   const [emailOtp, setEmailOtp] = useState('')
   const [emailReauth, setEmailReauth] = useState('')
   const [emailBusy, setEmailBusy] = useState(false)
+  const [profileLoadFailed, setProfileLoadFailed] = useState(false)
+  const tipsRef = useFocusTrap<HTMLDivElement>(showTips, () => setShowTips(false))
+  const emailRef = useFocusTrap<HTMLDivElement>(showEmailUpdate, () => { if (!emailBusy) setShowEmailUpdate(false) })
+  const phoneRef = useFocusTrap<HTMLDivElement>(phoneOtpSent, () => { if (!phoneVerifyBusy) setPhoneOtpSent(false) })
   const [careerSearch, setCareerSearch] = useState('')
   const [aadhaarDeferredNote, setAadhaarDeferredNote] = useState(true)
 
@@ -118,6 +123,7 @@ export default function EditProfileWizard() {
     ;(async () => {
       try {
         const res = await fetch('/api/user/extended-profile', { credentials: 'include' })
+        if (!res.ok && res.status >= 500) throw new Error(String(res.status))
         const json = await res.json()
         const data = json?.data
         if (!cancelled && data) {
@@ -133,7 +139,10 @@ export default function EditProfileWizard() {
           if (data.personalDetails) setPersonalDetails(prev => ({ ...prev, ...data.personalDetails }))
           return
         }
-      } catch { /* fall through */ }
+      } catch {
+        // Saving now could overwrite the stored profile with this (partial) form.
+        if (!cancelled) setProfileLoadFailed(true)
+      }
       try {
         const raw = localStorage.getItem('codeSpectra_extendedProfile')
         if (!raw || cancelled) return
@@ -405,13 +414,20 @@ export default function EditProfileWizard() {
         actions={
           <>
             <Button variant="outline" onClick={prevStep} disabled={step === 1}>Back</Button>
-            <Button onClick={handleSave} disabled={loading}>
+            <Button onClick={handleSave} disabled={loading || profileLoadFailed} title={profileLoadFailed ? 'Reload the page before saving' : undefined}>
                {loading ? <Sparkles className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
                Save
             </Button>
           </>
         }
       />
+
+      {profileLoadFailed ? (
+        <div role="alert" className="mb-6 flex flex-col gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-foreground">We couldn&apos;t load your saved profile. Saving is paused so your details aren&apos;t overwritten.</p>
+          <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Reload</Button>
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] gap-8">
         
@@ -1419,12 +1435,12 @@ export default function EditProfileWizard() {
         }
         const tipData = STEP_TIPS[step] || STEP_TIPS[1]
         return (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setShowTips(false)}>
-            <div className="bg-card w-full max-w-md p-6 rounded-2xl shadow-2xl border border-border animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm" onClick={() => setShowTips(false)}>
+            <div ref={tipsRef} role="dialog" aria-modal="true" aria-labelledby="profile-tips-title" className="bg-card w-full max-w-md max-h-[90vh] overflow-y-auto p-6 rounded-2xl shadow-2xl border border-border animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-5">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{tipData.icon}</span>
-                  <h3 className="text-lg font-semibold">{tipData.title}</h3>
+                  <span className="text-2xl" aria-hidden>{tipData.icon}</span>
+                  <h3 id="profile-tips-title" className="text-lg font-semibold">{tipData.title}</h3>
                 </div>
                 <Button aria-label="Close tips" variant="ghost" size="icon" onClick={() => setShowTips(false)}>
                   <X className="w-4 h-4" />
@@ -1452,9 +1468,9 @@ export default function EditProfileWizard() {
       {/* Email update + verify */}
       {showEmailUpdate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !emailBusy && setShowEmailUpdate(false)}>
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+          <div ref={emailRef} role="dialog" aria-modal="true" aria-labelledby="profile-email-title" className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Update email</h3>
+              <h3 id="profile-email-title" className="text-base font-semibold">Update email</h3>
               <button aria-label="Close" type="button" onClick={() => setShowEmailUpdate(false)}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">We will send a verification code to the new address. Your login email updates only after you verify.</p>
@@ -1514,9 +1530,9 @@ export default function EditProfileWizard() {
       {/* Phone OTP (emailed — free; SMS provider later) */}
       {phoneOtpSent && !isPhoneVerified && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !phoneVerifyBusy && setPhoneOtpSent(false)}>
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+          <div ref={phoneRef} role="dialog" aria-modal="true" aria-labelledby="profile-phone-title" className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold">Save mobile number</h3>
+              <h3 id="profile-phone-title" className="text-base font-semibold">Save mobile number</h3>
               <button aria-label="Close" type="button" onClick={() => setPhoneOtpSent(false)}><X className="h-4 w-4" /></button>
             </div>
             <p className="text-xs text-muted-foreground">

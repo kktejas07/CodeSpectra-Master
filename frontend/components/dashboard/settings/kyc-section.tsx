@@ -127,13 +127,15 @@ export function KycSettingsSection() {
       </div>
 
       <Tabs defaultValue="routing">
-        <TabsList>
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+        <TabsList className="w-max">
           <TabsTrigger value="routing">Purpose routing</TabsTrigger>
           <TabsTrigger value="didit">Didit (Global)</TabsTrigger>
           <TabsTrigger value="digilocker">DigiLocker (India)</TabsTrigger>
           <TabsTrigger value="apisetu">API Setu (India)</TabsTrigger>
           <TabsTrigger value="anon">Anon Aadhaar</TabsTrigger>
         </TabsList>
+        </div>
 
         <TabsContent value="routing">
           <Card className="p-6 space-y-5">

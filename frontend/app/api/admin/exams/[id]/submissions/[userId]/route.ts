@@ -5,6 +5,7 @@ import { attemptSummary, submissionSectionScores } from '@/lib/exam-access'
 import { OUTCOMES_COLLECTION } from '@/lib/hiring-outcomes'
 import { CAD_TASK_QID } from '@/lib/cad-submission'
 import { mediaViewUrl } from '@/lib/identity-media'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function GET(
   _request: Request,
@@ -198,6 +199,7 @@ export async function PATCH(
         percent: Number(submission.max_score) > 0 ? Math.round((newScore / Number(submission.max_score)) * 100) : 0, graded_by: 'manual',
       }, { tenantId: typeof owned.doc.tenant_id === 'string' ? owned.doc.tenant_id : null, idempotencyKey: `exam.graded:${String(submission.id)}:${String(submission.attempt_no ?? 1)}` })).catch((e) => console.error('[automation] emit failed:', e))
     }
+    await auditAdmin(gate.user, 'admin.submission.grade', 'exam_submission', `exam/${examId}/user/${userId}`, `score: ${newScore}`)
     return NextResponse.json({ score: newScore, has_pending_review: stillPending })
   } catch (e: unknown) {
     const msg = 'Failed to save grades'

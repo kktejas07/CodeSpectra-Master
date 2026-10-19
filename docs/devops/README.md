@@ -16,7 +16,8 @@
 | [05-Production-Checklist.md](./05-Production-Checklist.md) | Production checklist — required secrets (SECRETS_ENCRYPTION_KEY, ATS_ENCRYPTION_KEY, CRON_SECRET…), the shared scheduler and when to add an external cron, workers, every provider webhook URL, network/security checks. |
 | [04-Monitoring.md](./04-Monitoring.md) | Monitoring — current state (client-side Web Vitals only), recommended monitoring stack (logs, metrics, traces, alerts), dashboard design, and incident response plan. |
 | [07-Email-Deliverability.md](./07-Email-Deliverability.md) | Email deliverability — SPF, DKIM, DMARC and return-path DNS for the Postal sending domain, one-click unsubscribe headers, reply-to and unsubscribe-link secrets. |
+| [08-Secret-Rotation.md](./08-Secret-Rotation.md) | Secret rotation — what leaked in git history, rotation runbooks per provider (Firebase, MongoDB, internal secret, Google keys, AI, Stripe/Razorpay/PhonePe, Meta/Vapi/Twilio/Checkr…), dev/prod separation, spending limits, history purge with git filter-repo, GitHub secret scanning / push protection / Dependabot / CodeQL. |
 
 ## Document Count
 
-**6 documents** in this section.
+**8 documents** in this section.

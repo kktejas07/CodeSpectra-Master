@@ -220,7 +220,7 @@ export default function PipelinePage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
           <span className="shrink-0 text-sm font-medium text-muted-foreground">Assessment</span>
           <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-            <SelectTrigger>
+            <SelectTrigger aria-label="Assessment">
               <SelectValue placeholder={loadingExams ? 'Loading...' : 'Select an assessment'} />
             </SelectTrigger>
             <SelectContent>

@@ -3,6 +3,7 @@ import { formatDateTime } from '@/lib/format-datetime'
 
 import { useEffect, useState, useCallback } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { PageHeader, StatCard as KitStatCard } from '@/components/app/page-kit'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,7 @@ const PIE_COLORS = ['#16a34a', '#ef4444', '#f59e0b', '#f97316', '#2f5be7', '#647
 
 export default function EmailMonitoring() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
   const [logs, setLogs] = useState<EmailLog[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -103,8 +105,8 @@ export default function EmailMonitoring() {
         setLogs(json.logs)
         setTotal(json.total)
         setStats(json.stats)
-      }
-    } catch { /* ignore */ }
+      } else addToast({ type: 'error', title: "Couldn't load email logs", message: 'Refresh the page or try again in a moment.' })
+    } catch { addToast({ type: 'error', title: "Couldn't load email logs", message: 'Refresh the page or try again in a moment.' }) }
     setLoading(false)
   }, [statusFilter, categoryFilter, search, startDate, endDate, skip])
 
@@ -204,12 +206,14 @@ export default function EmailMonitoring() {
       </div>
 
       <Tabs defaultValue="logs" className="w-full">
-        <TabsList className="mb-4">
+        <div className="-mx-1 mb-4 overflow-x-auto px-1 pb-1">
+        <TabsList className="w-max">
           <TabsTrigger value="logs" className="gap-1.5"><Mail className="h-4 w-4" />Delivery log</TabsTrigger>
           <TabsTrigger value="analytics" className="gap-1.5"><BarChart3 className="h-4 w-4" />Analytics</TabsTrigger>
           <TabsTrigger value="domains" className="gap-1.5"><Globe className="h-4 w-4" />Domains & geo</TabsTrigger>
           <TabsTrigger value="failures" className="gap-1.5"><AlertTriangle className="h-4 w-4" />Bounce reasons</TabsTrigger>
         </TabsList>
+        </div>
 
         {/* ── Delivery Log ─────────────────────────────────── */}
         <TabsContent value="logs" className="space-y-4">
@@ -217,9 +221,9 @@ export default function EmailMonitoring() {
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative flex-1 min-w-50">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search email or subject..." value={search} onChange={e => { setSearch(e.target.value); setSkip(0) }} className="pl-9" />
+                <Input aria-label="Search email or subject" placeholder="Search email or subject..." value={search} onChange={e => { setSearch(e.target.value); setSkip(0) }} className="pl-9" />
               </div>
-              <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value as any); setSkip(0) }} className="h-9 rounded-md border border-border bg-background px-3 text-sm">
+              <select aria-label="Filter by status" value={statusFilter} onChange={e => { setStatusFilter(e.target.value as any); setSkip(0) }} className="h-9 rounded-md border border-border bg-background px-3 text-sm">
                 <option value="">All statuses</option>
                 <option value="delivered">Delivered</option>
                 <option value="sending">Sending</option>
@@ -228,15 +232,15 @@ export default function EmailMonitoring() {
                 <option value="spam">Spam</option>
                 <option value="deferred">Deferred</option>
               </select>
-              <select value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value as any); setSkip(0) }} className="h-9 rounded-md border border-border bg-background px-3 text-sm">
+              <select aria-label="Filter by category" value={categoryFilter} onChange={e => { setCategoryFilter(e.target.value as any); setSkip(0) }} className="h-9 rounded-md border border-border bg-background px-3 text-sm">
                 <option value="">All categories</option>
                 <option value="transactional">Transactional</option>
                 <option value="newsletter">Newsletter</option>
                 <option value="invite">Invite</option>
                 <option value="notification">Notification</option>
               </select>
-              <Input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setSkip(0) }} className="w-auto" />
-              <Input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setSkip(0) }} className="w-auto" />
+              <Input aria-label="From date" type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setSkip(0) }} className="w-auto" />
+              <Input aria-label="To date" type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setSkip(0) }} className="w-auto" />
               <Button variant="ghost" size="sm" onClick={clearFilters}>Clear</Button>
             </div>
           </Card>
@@ -251,7 +255,7 @@ export default function EmailMonitoring() {
             </div>
             {logs.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[760px]">
                   <thead>
                     <tr className="border-b border-border/40 text-muted-foreground text-xs">
                       <th className="text-left py-3 px-4 font-medium">Timestamp</th>
@@ -439,12 +443,12 @@ function EmailRow({ log }: { log: EmailLog }) {
       {expanded && (
         <tr className="bg-muted/10">
           <td colSpan={7} className="py-3 px-8">
-            <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 text-xs text-muted-foreground">
               <div><span className="font-medium text-foreground">Subject</span><p className="truncate mt-0.5">{log.subject}</p></div>
               <div><span className="font-medium text-foreground">Sender IP</span><p className="font-mono mt-0.5">{log.sender_ip || '—'}</p></div>
               <div><span className="font-medium text-foreground">Device</span><p className="mt-0.5">{log.device_info ? `${log.device_info.browser.name} ${log.device_info.browser.version} on ${log.device_info.os.name}` : '—'}</p></div>
               {log.delivery_error && (
-                <div className="col-span-3"><span className="font-medium text-red-600 dark:text-red-400">Error</span><p className="font-mono mt-0.5 text-red-600 dark:text-red-400 break-all">{log.delivery_error}</p></div>
+                <div className="sm:col-span-3"><span className="font-medium text-red-600 dark:text-red-400">Error</span><p className="font-mono mt-0.5 text-red-600 dark:text-red-400 break-all">{log.delivery_error}</p></div>
               )}
               <div><span className="font-medium text-foreground">Updated</span><p className="mt-0.5">{log.delivery_updated_at ? formatDateTime(log.delivery_updated_at) : '—'}</p></div>
               <div><span className="font-medium text-foreground">Geo</span><p className="mt-0.5">{log.geo ? `${log.geo.city || ''}, ${log.geo.country || ''}`.trim() || '—' : '—'}</p></div>

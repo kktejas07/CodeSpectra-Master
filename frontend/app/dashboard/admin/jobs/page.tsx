@@ -3,7 +3,7 @@ import { formatDate } from '@/lib/format-datetime'
 import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -321,13 +321,12 @@ export default function AdminJobsPage() {
         />
       )}
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-8">
-          <Card role="dialog" aria-modal="true" aria-labelledby="job-modal-title" className="m-auto w-full max-w-2xl rounded-3xl">
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+          <DialogContent showCloseButton={false} className="max-h-[calc(100dvh-2rem)] gap-0 overflow-y-auto rounded-3xl p-0 sm:max-w-2xl">
             <div className="flex items-center justify-between p-5 border-b border-border">
-              <h2 id="job-modal-title" className="text-lg font-semibold text-foreground">
+              <DialogTitle className="text-lg font-semibold text-foreground">
                 {editingId ? 'Edit job posting' : 'Post a new job'}
-              </h2>
+              </DialogTitle>
               <Button variant="ghost" size="sm" onClick={() => setShowModal(false)} aria-label="Close">
                 <X className="w-4 h-4" />
               </Button>
@@ -425,9 +424,8 @@ export default function AdminJobsPage() {
                 </Button>
               </div>
             </form>
-          </Card>
-        </div>
-      )}
+          </DialogContent>
+      </Dialog>
     </div>
   )
 }

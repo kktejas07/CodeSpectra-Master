@@ -43,18 +43,26 @@ export default async function BlogIndexPage({
   const category = (sp.category || '').trim()
   const q = (sp.q || '').trim().toLowerCase()
 
-  await ensureBlogSeed()
-  const col = await blogPosts()
   const filter: Record<string, unknown> = { status: 'published' }
   if (category && BLOG_CATEGORIES.some((c) => c.id === category)) {
     filter.category = category
   }
 
-  let posts = await col
-    .find(filter)
-    .sort({ published_at: -1, created_at: -1 })
-    .limit(48)
-    .toArray()
+  // A database hiccup shows a friendly retry state instead of a 500.
+  let loadFailed = false
+  let posts: BlogPostDoc[] = []
+  try {
+    await ensureBlogSeed()
+    const col = await blogPosts()
+    posts = await col
+      .find(filter)
+      .sort({ published_at: -1, created_at: -1 })
+      .limit(48)
+      .toArray()
+  } catch (e) {
+    loadFailed = true
+    console.error('[blog] list failed:', (e as Error)?.message)
+  }
 
   if (q) {
     posts = posts.filter(
@@ -103,7 +111,15 @@ export default async function BlogIndexPage({
           </label>
         </form>
 
-        {posts.length === 0 ? (
+        {loadFailed ? (
+          <EmptyState
+            illustration="error"
+            title="Articles didn’t load"
+            description="We couldn’t reach the newsroom just now. Refresh in a moment."
+            actionLabel="Try again"
+            actionHref="/blog"
+          />
+        ) : posts.length === 0 ? (
           <EmptyState
             variant={q ? 'search' : 'default'}
             title={q ? 'No articles match your search' : 'No articles here yet'}

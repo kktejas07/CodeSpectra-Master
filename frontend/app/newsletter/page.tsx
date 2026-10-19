@@ -15,8 +15,9 @@ export const dynamic = 'force-dynamic'
 
 /** Public newsletter archive — same chrome as marketing site (header + footer). */
 export default async function NewsletterIndexPage() {
-  const col = await emailCampaigns()
-  const list = await col
+  // A database hiccup shows a friendly retry state instead of the error page.
+  let loadFailed = false
+  const list = await emailCampaigns().then((col) => col
     .find({ status: { $in: ['completed', 'sending'] } })
     .sort({ completed_at: -1, created_at: -1 })
     .limit(40)
@@ -29,7 +30,12 @@ export default async function NewsletterIndexPage() {
       completed_at: 1,
       created_at: 1,
     })
-    .toArray()
+    .toArray())
+    .catch((e) => {
+      loadFailed = true
+      console.error('[newsletter] list failed:', (e as Error)?.message)
+      return []
+    })
 
   return (
     <PublicPageWrapper>
@@ -40,7 +46,15 @@ export default async function NewsletterIndexPage() {
       />
       <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8 lg:py-16">
 
-        {list.length === 0 ? (
+        {loadFailed ? (
+          <EmptyState
+            illustration="error"
+            title="Newsletters didn’t load"
+            description="We couldn’t reach the archive just now. Refresh in a moment."
+            actionLabel="Try again"
+            actionHref="/newsletter"
+          />
+        ) : list.length === 0 ? (
           <EmptyState
             variant="notifications"
             illustration="inbox"

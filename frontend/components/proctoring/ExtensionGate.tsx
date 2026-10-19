@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { ShieldCheck, ExternalLink, RefreshCw, Loader2 } from 'lucide-react'
 
 const MARKER_NAME = 'cspectra-audit'
@@ -25,6 +26,7 @@ interface ExtensionGateProps {
 export function ExtensionGate({ children, bypass = false, onVerified }: ExtensionGateProps) {
   const [installed, setInstalled] = useState(bypass)
   const [checking, setChecking] = useState(!bypass)
+  const panelRef = useFocusTrap<HTMLDivElement>(!installed)
 
   useEffect(() => {
     if (bypass) { setInstalled(true); setChecking(false); onVerified?.(); return }
@@ -70,7 +72,7 @@ export function ExtensionGate({ children, bypass = false, onVerified }: Extensio
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-w-lg w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Extension required" className="max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <ShieldCheck className="h-6 w-6" />

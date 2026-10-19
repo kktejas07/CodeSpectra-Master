@@ -1,6 +1,6 @@
 /**
  * POST /api/subscriptions/subscribe — public.
- * Body: { email?, phone?, phone_country?, channels[], topics[], filters?, whatsapp_consent?, timezone?, source? }
+ * Body: { email?, phone?, phone_country?, channels[], topics[], filters?, whatsapp_consent?, timezone?, source?, turnstileToken? }
  * A signed-in user's own account email skips double opt-in; everything else is
  * confirmed by email link / WhatsApp YES before anything is sent.
  */
@@ -9,6 +9,7 @@ import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { getAPIUser } from '@/lib/route-auth'
 import { subscribe, getSubscriptionSettings } from '@/lib/subscriptions'
+import { captchaGate } from '@/lib/captcha/require'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,6 +20,11 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
   if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   const user = await getAPIUser().catch(() => null)
+  // Signed-in people are already past login's bot check; anonymous sign-ups solve Turnstile.
+  if (!user) {
+    const captcha = await captchaGate(req, body.turnstileToken)
+    if (captcha) return captcha
+  }
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   try {
     const r = await subscribe(

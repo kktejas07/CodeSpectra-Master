@@ -32,15 +32,16 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   const confirm = useConfirm()
   const [order, setOrder] = useState<BuyerOrderView | null>(null)
   const [missing, setMissing] = useState(false)
+  const [loadFailed, setLoadFailed] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [refundFor, setRefundFor] = useState<BuyerLineView | null>(null)
   const [reason, setReason] = useState('')
 
   const load = useCallback(async () => {
-    const res = await fetch(`/api/marketplace/orders/${encodeURIComponent(id)}`, { cache: 'no-store' })
-    if (res.status === 404) { setMissing(true); return null }
-    const j = await res.json().catch(() => null)
-    if (j?.order) setOrder(j.order)
+    const res = await fetch(`/api/marketplace/orders/${encodeURIComponent(id)}`, { cache: 'no-store' }).catch(() => null)
+    if (res?.status === 404) { setMissing(true); return null }
+    const j = res?.ok ? await res.json().catch(() => null) : null
+    if (j?.order) { setOrder(j.order); setLoadFailed(false) } else setLoadFailed(true)
     return j?.order as BuyerOrderView | null
   }, [id])
 
@@ -99,6 +100,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
   if (!gate.ready) return null
   if (missing) return <EmptyState illustration="search" title="Order not found" description="It may belong to another account." actionLabel="My orders" actionHref="/dashboard/orders" />
+  if (!order && loadFailed) return <EmptyState illustration="error" title="We could not load this order" description="Check your connection and try again." actionLabel="Try again" onAction={() => { setLoadFailed(false); void load() }} />
   if (!order) return <div className="mx-auto h-64 max-w-5xl animate-pulse rounded-3xl bg-muted motion-reduce:animate-none" aria-label="Loading order" />
 
   const c = order.currency

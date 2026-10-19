@@ -14,6 +14,7 @@ import { newId, nowIso } from '@/lib/db/ids'
 import { checkExamEntry, ensureExamIndexes } from '@/lib/exam-access'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import { backendPost } from '@/lib/ai/backend'
+import { isStepFile } from '@/lib/upload-sniff'
 import { CAD_MAX_FILE_BYTES, cadFileExtOk, type CadFileKind, type CadFileMeta } from '@/lib/cad-submission'
 
 export const runtime = 'nodejs'
@@ -92,6 +93,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
     const bytes = Buffer.from(await file.arrayBuffer())
     if (bytes.length > CAD_MAX_FILE_BYTES) return NextResponse.json({ error: 'Files must be under 9 MB.' }, { status: 413 })
+    // STEP is a text format with a fixed header; native CAD formats vary by
+    // vendor, so they rely on the extension allowlist + virus scan.
+    if (kind === 'step' && !isStepFile(bytes)) {
+      return NextResponse.json({ error: 'This is not a valid STEP file. Export it again as .step / .stp (ISO 10303-21).' }, { status: 400 })
+    }
     const scan = await scanFile(bytes, name)
     if (scan === 'infected') {
       return NextResponse.json({ error: 'The security scanner rejected this file. Export it again and retry.' }, { status: 400 })

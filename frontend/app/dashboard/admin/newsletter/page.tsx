@@ -400,7 +400,7 @@ export default function NewsletterPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Subject *</Label>
-                  <Input value={subject} onChange={e => setSubject(e.target.value)} className="mt-1.5" placeholder="What's new on CodeSpectra" maxLength={120} />
+                  <Input aria-label="Subject" value={subject} onChange={e => setSubject(e.target.value)} className="mt-1.5" placeholder="What's new on CodeSpectra" maxLength={120} />
                 </div>
 
                 {/* Hero Image Upload */}
@@ -428,7 +428,7 @@ export default function NewsletterPage() {
 
                 <div>
                   <Label>Intro text <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input value={intro} onChange={e => setIntro(e.target.value)} className="mt-1.5" placeholder="A brief introduction..." />
+                  <Input aria-label="Intro text (optional)" value={intro} onChange={e => setIntro(e.target.value)} className="mt-1.5" placeholder="A brief introduction..." />
                 </div>
 
                 {/* Rich Text Body */}
@@ -440,8 +440,8 @@ export default function NewsletterPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Button text</Label><Input value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder="Read more" /></div>
-                  <div><Label>Button link</Label><Input value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} className="mt-1.5" placeholder="https://example.com" /></div>
+                  <div><Label>Button text</Label><Input aria-label="Button text" value={ctaText} onChange={e => setCtaText(e.target.value)} className="mt-1.5" placeholder="Read more" /></div>
+                  <div><Label>Button link</Label><Input aria-label="Button link" value={ctaUrl} onChange={e => setCtaUrl(e.target.value)} className="mt-1.5" placeholder="https://example.com" /></div>
                 </div>
               </div>
             </Panel>
@@ -450,10 +450,10 @@ export default function NewsletterPage() {
             <Panel>
               <h2 className="font-semibold mb-4 flex items-center gap-2"><Mail className="h-4 w-4 text-primary" /> Delivery channels</h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Email</span><Badge variant="outline" className="text-[10px]">{recipientCount} recipients</Badge></div><Switch checked={sendEmail} onCheckedChange={setSendEmail} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Push notification</span></div><Switch checked={sendPush} onCheckedChange={setSendPush} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">In-app notification</span></div><Switch checked={sendInApp} onCheckedChange={setSendInApp} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span><Badge variant="outline" className="text-[10px]">OpenWA</Badge></div><Switch checked={sendWhatsapp} onCheckedChange={setSendWhatsapp} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Email</span><Badge variant="outline" className="text-[10px]">{recipientCount} recipients</Badge></div><Switch aria-label="Email" checked={sendEmail} onCheckedChange={setSendEmail} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Push notification</span></div><Switch aria-label="Push notification" checked={sendPush} onCheckedChange={setSendPush} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">In-app notification</span></div><Switch aria-label="In-app notification" checked={sendInApp} onCheckedChange={setSendInApp} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span><Badge variant="outline" className="text-[10px]">OpenWA</Badge></div><Switch aria-label="WhatsApp" checked={sendWhatsapp} onCheckedChange={setSendWhatsapp} /></div>
               </div>
             </Panel>
 
@@ -461,7 +461,7 @@ export default function NewsletterPage() {
             <Panel>
               <h2 className="font-semibold mb-4 flex items-center gap-2"><Calendar className="h-4 w-4 text-primary" /> Schedule</h2>
               <Label>Schedule for later <span className="text-muted-foreground text-xs">(leave empty to send now)</span></Label>
-              <Input type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="mt-1.5" />
+              <Input aria-label="Schedule for later (leave empty to send now)" type="datetime-local" value={scheduleAt} onChange={e => setScheduleAt(e.target.value)} className="mt-1.5" />
             </Panel>
 
             {/* Actions */}
@@ -498,11 +498,11 @@ export default function NewsletterPage() {
             <Panel>
               <h2 className="font-semibold mb-4 flex items-center gap-2"><Send className="h-4 w-4 text-primary" /> Test send</h2>
               <div className="space-y-3">
-                <div><Label className="text-xs text-muted-foreground">Email</Label><Input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="mt-1" /></div>
+                <div><Label className="text-xs text-muted-foreground">Email</Label><Input aria-label="Email" type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="test@example.com" className="mt-1" /></div>
                 <Button variant="outline" onClick={handleTestSend} disabled={testSending || !testEmail.trim()} className="w-full gap-2">
                   {testSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Send test email
                 </Button>
-                <div className="border-t pt-3"><Label className="text-xs text-muted-foreground">WhatsApp</Label><Input type="tel" value={testWhatsappPhone} onChange={e => setTestWhatsappPhone(e.target.value)} placeholder="+919876543210" className="mt-1" /></div>
+                <div className="border-t pt-3"><Label className="text-xs text-muted-foreground">WhatsApp</Label><Input aria-label="WhatsApp" type="tel" value={testWhatsappPhone} onChange={e => setTestWhatsappPhone(e.target.value)} placeholder="+919876543210" className="mt-1" /></div>
                 <Button variant="outline" onClick={handleTestWhatsapp} disabled={testWhatsappSending || !testWhatsappPhone.trim()} className="w-full gap-2">
                   {testWhatsappSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} Send test WhatsApp
                 </Button>

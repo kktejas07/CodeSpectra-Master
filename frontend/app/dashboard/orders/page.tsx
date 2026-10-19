@@ -17,8 +17,10 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<BuyerOrderSummary[] | null>(null)
   const [more, setMore] = useState(false)
   const [error, setError] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   const load = async (before?: string) => {
+    if (before) setLoadingMore(true)
     try {
       const res = await fetch(`/api/marketplace/orders${before ? `?before=${encodeURIComponent(before)}` : ''}`, { cache: 'no-store' })
       const j = await res.json()
@@ -27,6 +29,8 @@ export default function OrdersPage() {
       setMore(j.orders.length >= 30)
     } catch {
       setError(true)
+    } finally {
+      setLoadingMore(false)
     }
   }
   useEffect(() => { if (gate.ready) void load() }, [gate.ready])
@@ -37,7 +41,7 @@ export default function OrdersPage() {
       <PageHeader title="My orders" description="Purchases from the marketplace — downloads, bookings, deliveries, invoices and refunds." icon={<ShoppingBag />}
         actions={<Button asChild variant="outline" className="rounded-full"><Link href="/marketplace"><Store className="mr-1.5 h-4 w-4" />Marketplace</Link></Button>} />
       {error ? (
-        <EmptyState illustration="error" title="We could not load your orders" description="Please refresh the page in a moment." />
+        <EmptyState illustration="error" title="We could not load your orders" description="Check your connection and try again." actionLabel="Try again" onAction={() => { setError(false); setOrders(null); void load() }} />
       ) : orders === null ? (
         <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />)}</div>
       ) : orders.length === 0 ? (
@@ -62,7 +66,7 @@ export default function OrdersPage() {
               </Panel>
             </Link>
           ))}
-          {more && <div className="pt-2 text-center"><Button variant="outline" className="rounded-full" onClick={() => load(orders[orders.length - 1]?.created_at)}>Show older orders</Button></div>}
+          {more && <div className="pt-2 text-center"><Button variant="outline" className="rounded-full" disabled={loadingMore} onClick={() => load(orders[orders.length - 1]?.created_at)}>{loadingMore ? 'Loading…' : 'Show older orders'}</Button></div>}
         </div>
       )}
     </div>

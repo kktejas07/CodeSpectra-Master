@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Plus, Shield, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useConfirm } from '@/lib/confirm-context'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
@@ -29,6 +31,8 @@ const EMPTY_FORM = {
 
 export default function AdminSSOPage() {
   const gate = usePageGuard('superadmin')
+  const confirmDialog = useConfirm()
+  const addToast = useToast()
   const [providers, setProviders] = useState<SSOProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -44,9 +48,9 @@ export default function AdminSSOPage() {
       if (res.ok) {
         const j = await res.json()
         setProviders(j.providers || [])
-      }
-    } catch {} finally { setLoading(false) }
-  }, [])
+      } else addToast({ type: 'error', title: "Couldn't load SSO providers", message: 'Refresh the page or try again in a moment.' })
+    } catch { addToast({ type: 'error', title: "Couldn't load SSO providers", message: 'Refresh the page or try again in a moment.' }) } finally { setLoading(false) }
+  }, [addToast])
 
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
 
@@ -94,6 +98,7 @@ export default function AdminSSOPage() {
       if (res.ok) {
         setShowForm(false)
         setForm(EMPTY_FORM)
+        addToast({ type: 'success', title: 'Provider added', message: `${form.name || 'The provider'} is set up.` })
         await load()
       } else {
         const j = await res.json().catch(() => ({}))
@@ -117,18 +122,20 @@ export default function AdminSSOPage() {
       })
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'Could not update the provider.')
       setProviders((xs) => xs.map((x) => (x.id === p.id ? { ...x, enabled } : x)))
+      addToast({ type: 'success', title: enabled ? 'Provider turned on' : 'Provider turned off', message: p.name })
     } catch (e) {
       setRowError(e instanceof Error ? e.message : 'Could not update the provider.')
     } finally { setRowBusy(null) }
   }
 
   const remove = async (p: SSOProvider) => {
-    if (!window.confirm(`Delete the ${p.name} provider? People who sign in with it will need another way in.`)) return
+    if (!(await confirmDialog({ title: 'Delete this provider?', description: `Delete the ${p.name} provider? People who sign in with it will need another way in.`, confirmText: 'Delete', destructive: true }))) return
     setRowBusy(p.id); setRowError(null)
     try {
       const res = await csrfFetch(`/api/admin/sso?id=${encodeURIComponent(p.id)}`, { method: 'DELETE' })
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || 'Could not delete the provider.')
       setProviders((xs) => xs.filter((x) => x.id !== p.id))
+      addToast({ type: 'success', title: 'Provider deleted', message: p.name })
     } catch (e) {
       setRowError(e instanceof Error ? e.message : 'Could not delete the provider.')
     } finally { setRowBusy(null) }

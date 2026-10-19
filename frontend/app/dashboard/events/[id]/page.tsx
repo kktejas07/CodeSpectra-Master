@@ -828,8 +828,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   if (!event) {
     return <Panel className="mx-auto max-w-md p-10 text-center">
       <p className="font-semibold text-foreground">Event not found</p>
-      <p className="mt-1 text-sm text-muted-foreground">It may have been removed, or you may not have access to it.</p>
-      <Link href="/dashboard/events" className="mt-4 inline-block text-sm font-medium text-primary hover:underline">← Back to events</Link>
+      <p className="mt-1 text-sm text-muted-foreground">It may have been removed, you may not have access to it, or the connection dropped.</p>
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+        <Button variant="outline" size="sm" onClick={() => { setLoading(true); void load() }}>Try again</Button>
+        <Link href="/dashboard/events" className="text-sm font-medium text-primary hover:underline">Back to events</Link>
+      </div>
     </Panel>
   }
 
@@ -1060,7 +1063,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     const colors = ['text-amber-500', 'text-slate-400', 'text-orange-600']
                     const icons = [<Star key="1" className="w-5 h-5" />, <Medal key="2" className="w-5 h-5" />, <Award key="3" className="w-5 h-5" />]
                     return (
-                      <Card key={entry.team_id} className={`items-center gap-1 rounded-3xl p-5 text-center ${rank === 0 ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
+                      <Card key={entry.team_id} className={`min-w-0 items-center gap-1 rounded-3xl p-3 text-center sm:p-5 ${rank === 0 ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
                         <div className={colors[rank]}>{icons[rank]}</div>
                         <p className="mt-1 w-full truncate text-sm font-semibold text-foreground">{entry.team_name}</p>
                         <p className="text-xs tabular-nums text-muted-foreground">{entry.total_score ?? 0} points</p>
@@ -1711,7 +1714,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         {selectedSub.history.map((rev: any, idx: number) => {
                           const isCurrent = rev.id === selectedSub.id
                           return (
-                            <div 
+                            <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }} 
                               key={rev.id} 
                               className={`space-y-3 rounded-2xl border p-4 text-sm transition-colors duration-200 ${
                                 isCurrent 

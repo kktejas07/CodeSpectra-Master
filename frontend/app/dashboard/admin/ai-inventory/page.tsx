@@ -14,6 +14,7 @@ import { useConfirm } from '@/lib/confirm-context'
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -212,7 +213,7 @@ export default function AiInventoryPage() {
   }
 
   async function handleDeleteItem(item: InventoryItem) {
-    if (!await confirmDialog({ title: 'Confirmation', description: `Remove override / custom component "${item.name}"?` })) return
+    if (!await confirmDialog({ title: 'Remove this component?', description: `Remove the override or custom component "${item.name}"?` })) return
     setTogglingId(item.id)
     try {
       const res = await csrfFetch(`/api/ai-inventory/${encodeURIComponent(item.id)}`, {
@@ -222,7 +223,12 @@ export default function AiInventoryPage() {
         if (activeCategory) void loadCategory(activeCategory, true)
         void loadSummary()
         setActionMessage(`Removed override for "${item.name}"`)
+      } else {
+        const j = await res.json().catch(() => ({}))
+        setError(j.error || `Couldn't remove "${item.name}". Try again.`)
       }
+    } catch {
+      setError(`Couldn't remove "${item.name}". Check your connection and try again.`)
     } finally {
       setTogglingId(null)
     }
@@ -287,7 +293,7 @@ export default function AiInventoryPage() {
   }, [activeCategory, items, searchQuery, statusFilter])
 
   function getConfigurationUrl(it: InventoryItem): string | null {
-    if (it.category === 'llm_models') return '/dashboard/admin/settings/ai'
+    if (it.category === 'llm_models') return '/dashboard/admin/settings?section=llm'
     if (it.category === 'rag_docs') return '/dashboard/admin/rag'
     if (it.category === 'automations') return '/dashboard/admin/workflows'
     if (it.category === 'connectors') return '/dashboard/admin/integrations'
@@ -622,11 +628,10 @@ export default function AiInventoryPage() {
       )}
 
       {/* Add Custom Component Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-lg rounded-3xl p-6 space-y-4 bg-card border border-border shadow-2xl" role="dialog" aria-modal="true" aria-label="Register a custom AI component">
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+          <DialogContent showCloseButton={false} className="block space-y-4 rounded-3xl p-6 sm:max-w-lg">
             <div className="flex items-center justify-between border-b border-border pb-3">
-              <h3 className="text-lg font-bold">Register a custom AI component</h3>
+              <DialogTitle className="text-lg font-bold">Register a custom AI component</DialogTitle>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
@@ -641,7 +646,7 @@ export default function AiInventoryPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="font-medium text-foreground">Category *</label>
-                  <select
+                  <select aria-label="Category"
                     value={newTool.category}
                     onChange={(e) => setNewTool({ ...newTool, category: e.target.value })}
                     className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-xs"
@@ -659,7 +664,7 @@ export default function AiInventoryPage() {
 
                 <div className="space-y-1">
                   <label className="font-medium text-foreground">Component name *</label>
-                  <Input
+                  <Input aria-label="Component name"
                     required
                     placeholder="e.g. Custom Scanner Endpoint"
                     value={newTool.name}
@@ -671,7 +676,7 @@ export default function AiInventoryPage() {
 
               <div className="space-y-1">
                 <label className="font-medium text-foreground">Purpose or description *</label>
-                <Input
+                <Input aria-label="Purpose or description"
                   required
                   placeholder="What does this component or tool do?"
                   value={newTool.purpose}
@@ -683,7 +688,7 @@ export default function AiInventoryPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
                   <label className="font-medium text-foreground">Module path or URL</label>
-                  <Input
+                  <Input aria-label="Module path or URL"
                     placeholder="e.g. /api/ai/custom-tool"
                     value={newTool.module}
                     onChange={(e) => setNewTool({ ...newTool, module: e.target.value })}
@@ -693,7 +698,7 @@ export default function AiInventoryPage() {
 
                 <div className="space-y-1">
                   <label className="font-medium text-foreground">Source link (optional)</label>
-                  <Input
+                  <Input aria-label="Source link (optional)"
                     placeholder="https://github.com/..."
                     value={newTool.source}
                     onChange={(e) => setNewTool({ ...newTool, source: e.target.value })}
@@ -712,9 +717,8 @@ export default function AiInventoryPage() {
                 </Button>
               </div>
             </form>
-          </Card>
-        </div>
-      )}
+          </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx'
+import { buildXlsx, downloadXlsx } from '@/lib/xlsx-lite'
 
 export interface ExportUser {
   id: string
@@ -28,24 +28,18 @@ export function exportUsersToXLS(users: ExportUser[], filename?: string) {
     'Last Active': u.lastActive || 'N/A',
   }))
 
-  const worksheet = XLSX.utils.json_to_sheet(exportData)
-
   // Auto-fit column widths
   const keys = Object.keys(exportData[0] || {})
   const colWidths = keys.map((key) => {
     let maxLen = key.length
     for (const row of exportData) {
-      const val = String((row as Record<string, any>)[key] ?? '')
+      const val = String((row as Record<string, unknown>)[key] ?? '')
       if (val.length > maxLen) maxLen = val.length
     }
-    return { wch: Math.min(Math.max(maxLen + 4, 12), 50) }
+    return Math.min(Math.max(maxLen + 4, 12), 50)
   })
-  worksheet['!cols'] = colWidths
-
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Users')
 
   const exportFilename = filename || `user_management_${new Date().toISOString().split('T')[0]}.xlsx`
-  XLSX.writeFile(workbook, exportFilename)
+  downloadXlsx(buildXlsx(exportData, { sheetName: 'Users', columnWidths: colWidths }), exportFilename)
   return true
 }

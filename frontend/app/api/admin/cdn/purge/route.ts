@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    await auditAdmin(user, 'admin.cdn.purge', 'system', 'cdn', paths.length ? paths.slice(0, 20).join(', ') : 'all', 'warning')
     return NextResponse.json({
       success: true,
       paths: paths.length > 0 ? paths : ['/* (all)'],

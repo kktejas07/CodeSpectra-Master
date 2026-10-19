@@ -643,7 +643,7 @@ export default function TenantsPage() {
                 <div className="grid gap-2">
                   <Label>Plan</Label>
                   <Select value={editPlan} onValueChange={setEditPlan}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Plan"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="enterprise">Enterprise</SelectItem>
                       <SelectItem value="team">Team</SelectItem>
@@ -714,7 +714,7 @@ export default function TenantsPage() {
                               value={normalizeUserRole(m.role)}
                               onValueChange={(v) => void handleUpdateMemberRole(m, v)}
                             >
-                              <SelectTrigger className="h-6 w-auto min-w-25 text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
+                              <SelectTrigger aria-label="Member role" className="h-6 w-auto min-w-25 text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>

@@ -5,6 +5,7 @@ import { flushRateLimitKeys } from '@/lib/upstash-rate-limit'
 import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
   }
 
   const { type } = body
+  await auditAdmin(gate.user, `admin.system.${String(type || 'unknown').slice(0, 40)}`, 'system', 'cache', undefined, 'warning')
 
   switch (type) {
     case 'next': {

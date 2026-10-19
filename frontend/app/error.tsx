@@ -36,6 +36,9 @@ export default function ErrorPage({
         <Button asChild variant="outline" className="rounded-full px-6">
           <Link href="/">Go home</Link>
         </Button>
+        <Button asChild variant="ghost" className="rounded-full px-6">
+          <Link href="/status">Check system status</Link>
+        </Button>
       </div>
     </div>
   )

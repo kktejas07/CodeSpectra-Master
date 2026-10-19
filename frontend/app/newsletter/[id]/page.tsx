@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params
-  const c = await (await emailCampaigns()).findOne({ $or: [{ id }, { campaign_id: id }] }, { projection: { _id: 0, subject: 1, intro: 1, status: 1, hero_image: 1, id: 1 } }).catch(() => null)
+  const c = await emailCampaigns().then((c) => c.findOne({ $or: [{ id }, { campaign_id: id }] }, { projection: { _id: 0, subject: 1, intro: 1, status: 1, hero_image: 1, id: 1 } })).catch(() => null)
   if (!c || c.status === 'draft') return { title: 'Issue not found', robots: { index: false } }
   return buildMetadata({
     title: String(c.subject || 'Newsletter issue'),

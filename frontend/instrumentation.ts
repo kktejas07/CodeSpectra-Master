@@ -23,6 +23,11 @@
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'edge') return
+  // Mask secrets/tokens in every server log line (lib/log-redact).
+  if (process.env.LOG_REDACTION !== '0') {
+    const { installConsoleRedaction } = await import('./lib/log-redact')
+    installConsoleRedaction()
+  }
   if (process.env.NODE_ENV !== 'production') return
   if (process.env.NEXT_PHASE === 'phase-production-build') return
   const missing: string[] = []

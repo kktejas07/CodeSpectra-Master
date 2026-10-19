@@ -117,11 +117,16 @@ function loadDoc(meta: DocMeta): DocPage {
   const title = (data.title as string) || meta.title
 
   const headings: { level: number; text: string; id: string }[] = []
+  // Repeated headings get -1, -2 … like rehype-slug, so TOC links and React keys stay unique.
+  const seenIds = new Map<string, number>()
   for (const line of content.split('\n')) {
     const match = line.match(/^(#{1,4})\s+(.+)$/)
     if (match) {
       const text = match[2].replace(/[`*_]/g, '')
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      const base = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      const n = seenIds.get(base) ?? 0
+      seenIds.set(base, n + 1)
+      const id = n ? `${base}-${n}` : base
       headings.push({ level: match[1].length, text, id })
     }
   }

@@ -106,6 +106,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                     onClick={() => onSelectScan?.(scan)}
                     className="p-2 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
                     title="View full report"
+                    aria-label="View full report"
                   >
                     <Eye className="w-4 h-4" />
                   </button>
@@ -114,6 +115,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                     onClick={() => onEdit?.(scan)}
                     className="p-2 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
                     title="Edit previous scan"
+                    aria-label="Edit previous scan"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -122,6 +124,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                     onClick={() => onDelete?.(scan.id)}
                     className="p-2 hover:bg-red-500/10 rounded text-muted-foreground hover:text-red-600 transition"
                     title="Delete"
+                    aria-label="Delete scan"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

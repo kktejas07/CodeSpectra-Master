@@ -254,21 +254,16 @@ function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
-          {locked ? (
-            <Button size="sm" variant="outline" disabled>
-              View details <ArrowRight className="ml-1 h-3 w-3" />
-            </Button>
-          ) : (
-            <Button size="sm" variant="outline" asChild>
-              <Link href={`/hackathons/${hk.slug}`}>
-                View details <ArrowRight className="ml-1 h-3 w-3" />
-              </Link>
-            </Button>
-          )}
+          {/* Details stay readable after the event closes (the title links there too). */}
+          <Button size="sm" variant="outline" asChild>
+            <Link href={`/hackathons/${hk.slug}`}>
+              View details <ArrowRight className="ml-1 h-3 w-3" aria-hidden />
+            </Link>
+          </Button>
           {myTeam && (
             locked ? (
-              <Button size="sm" className="gap-1" disabled>
-                <Trophy className="h-3 w-3" /> Enter workspace
+              <Button size="sm" className="gap-1" disabled title="This hackathon has ended">
+                <Trophy className="h-3 w-3" aria-hidden /> Workspace closed
               </Button>
             ) : (
               <Button size="sm" className="gap-1" asChild>

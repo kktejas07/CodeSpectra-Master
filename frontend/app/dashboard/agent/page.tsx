@@ -164,7 +164,7 @@ export default function AgentPage() {
         body: JSON.stringify({ goal, code, language, max_steps: maxSteps }),
       })
       const j = (await res.json()) as AgentRunResult & { error?: string }
-      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(j.error || (res.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${res.status}). Please try again.`))
       setCode(j.final_code || code)
       const agentTurn: AgentTurn = {
         id: `a-${Date.now()}`,

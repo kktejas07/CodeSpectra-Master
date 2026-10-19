@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Trophy, Medal, Award, BarChart3, Globe, GraduationCap, Puzzle, Swords, Tent, Search } from 'lucide-react'
@@ -181,7 +182,10 @@ export default function LeaderboardPage() {
         </div>
 
         {error && (
-          <Card className="rounded-2xl border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{error}</Card>
+          <Card role="alert" className="flex flex-col gap-3 rounded-2xl border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
+            <span>{error}</span>
+            <Button size="sm" variant="outline" onClick={() => void load()}>Try again</Button>
+          </Card>
         )}
 
         {loading && entries.length === 0 ? (

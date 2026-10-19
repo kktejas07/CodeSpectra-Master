@@ -165,7 +165,7 @@ export default function PredictiveValidityPage() {
 
           <Section title="Score bands" description="Hire rate counts hired out of hired + rejected in each band.">
             <Panel className="overflow-x-auto p-0">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm min-w-[640px]">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
                     <th className="px-4 py-3 font-medium">Score</th>

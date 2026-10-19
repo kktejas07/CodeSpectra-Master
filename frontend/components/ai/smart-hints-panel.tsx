@@ -48,7 +48,7 @@ export function SmartHintsPanel({ problemSlug, language, currentCode }: HintsPan
         }),
       })
       const j = (await res.json()) as { hint?: string; error?: string }
-      if (!res.ok) throw new Error(j.error || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(j.error || (res.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${res.status}). Please try again.`))
       setHints((all) => [
         ...all.filter((h) => h.level !== level),
         { level, hint: j.hint || '' },

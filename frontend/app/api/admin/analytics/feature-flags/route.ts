@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { featureFlags, newId, nowIso } from '@/lib/db/misc'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
   }
 
   await col.insertOne(doc as any)
+  await auditAdmin(gate.user, 'admin.feature_flag.create', 'feature_flag', `flag/${name}`)
   return NextResponse.json({ ok: true, flag: doc })
 }
 
@@ -90,6 +92,7 @@ export async function PATCH(req: NextRequest) {
   if (Array.isArray(body.allowed_users)) update.allowed_users = body.allowed_users.map(String)
 
   await col.updateOne({ id: name }, { $set: update })
+  await auditAdmin(gate.user, 'admin.feature_flag.update', 'feature_flag', `flag/${name}`, Object.keys(update).join(', '))
   return NextResponse.json({ ok: true })
 }
 
@@ -105,5 +108,6 @@ export async function DELETE(req: NextRequest) {
 
   const col = await featureFlags()
   await col.deleteOne({ id: name })
+  await auditAdmin(gate.user, 'admin.feature_flag.delete', 'feature_flag', `flag/${name}`, undefined, 'warning')
   return NextResponse.json({ ok: true })
 }

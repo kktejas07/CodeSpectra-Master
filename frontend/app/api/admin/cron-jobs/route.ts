@@ -20,6 +20,7 @@ import { runDueWorkflows } from '@/lib/scheduler'
 import { runWorkflow } from '@/lib/workflow-engine'
 import { redisStatus } from '@/lib/upstash-rate-limit'
 import { getCronRuns } from '@/lib/cron-heartbeat'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -248,6 +249,7 @@ export async function POST(req: NextRequest) {
 
   const action = body.action as string | undefined
   const workflowId = typeof body.workflowId === 'string' && body.workflowId.length ? body.workflowId : ''
+  await auditAdmin(auth.user, `admin.cron.${String(action || 'unknown').slice(0, 40)}`, 'cron', workflowId ? `workflow/${workflowId}` : 'scheduler', undefined, 'warning')
   const path = typeof body.path === 'string' ? body.path : ''
 
   try {

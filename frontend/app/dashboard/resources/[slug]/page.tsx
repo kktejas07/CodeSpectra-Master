@@ -287,9 +287,8 @@ export default function EbookReaderPage() {
 
       {showQuiz && quizQuestions.length > 0 && (
         <div>
-          <EbookQuiz questions={quizQuestions} onComplete={(score, total) => {
-            console.log(`Quiz completed: ${score}/${total}`)
-          }} />
+          {/* The quiz shows its own score screen on completion. */}
+          <EbookQuiz questions={quizQuestions} />
         </div>
       )}
 

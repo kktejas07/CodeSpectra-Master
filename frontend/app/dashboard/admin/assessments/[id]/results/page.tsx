@@ -2213,7 +2213,7 @@ export default function ExamResultsPage() {
                                   <div className="pt-3 border-t border-dashed space-y-3">
                                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                       <label className="text-xs font-medium text-muted-foreground shrink-0">Award points:</label>
-                                      <input
+                                      <input aria-label="Award points"
                                         type="text"
                                         inputMode="numeric"
                                         pattern="[0-9]*"
@@ -2268,7 +2268,7 @@ export default function ExamResultsPage() {
                                       <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                                         <MessageSquare className="w-3.5 h-3.5" /> Remarks / Feedback for Candidate
                                       </label>
-                                      <textarea
+                                      <textarea aria-label="Remarks / Feedback for Candidate"
                                         value={remarks[q.id] ?? detail?.remarks ?? (detail?.awarded !== undefined ? aiFeedback[q.id] ?? '' : '')}
                                         onChange={(e) => setRemarks(prev => ({ ...prev, [q.id]: e.target.value }))}
                                         className="w-full min-h-16 px-3 py-2 text-xs border rounded-md bg-background"
@@ -2365,7 +2365,7 @@ export default function ExamResultsPage() {
                           return (
                             <div className="space-y-3">
                               {allEvents.length > 0 && (
-                                <div className="grid grid-cols-4 gap-2">
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                                   <button
                                     type="button"
                                     aria-pressed={proctorFilter === 'all'}

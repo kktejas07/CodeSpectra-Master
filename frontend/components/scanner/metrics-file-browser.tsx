@@ -115,7 +115,7 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
                 </tr>
               ) : (
                 sorted.map((file, idx) => (
-                  <tr
+                  <tr role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
                     key={idx}
                     onClick={() => onSelectFile?.(file)}
                     className="border-t border-border hover:bg-muted/50 cursor-pointer transition-colors"

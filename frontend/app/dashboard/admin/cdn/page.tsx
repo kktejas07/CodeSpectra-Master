@@ -307,7 +307,7 @@ export default function CdnAdminPage() {
               <div>
                 <label className="text-xs font-semibold text-muted-foreground block mb-1">Purge by path or pattern</label>
                 <div className="flex gap-2">
-                  <input
+                  <input aria-label="Purge by path or pattern"
                     type="text"
                     placeholder="e.g. /static/css/* or /api/problems"
                     value={purgePath}

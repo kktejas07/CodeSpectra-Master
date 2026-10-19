@@ -316,12 +316,16 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
 
   async function handleDeclineInvite(inviteId: string) {
     try {
-      await csrfFetch(`/api/codeathons/${id}/invitations/${inviteId}/decline`, {
+      const res = await csrfFetch(`/api/codeathons/${id}/invitations/${inviteId}/decline`, {
         method: 'POST',
         credentials: 'include',
       })
+      if (!res.ok) throw new Error(String(res.status))
       setInvitations(prev => prev.filter(i => i.id !== inviteId))
-    } catch { /* ignore */ }
+      addToast({ type: 'success', title: 'Invitation declined' })
+    } catch {
+      addToast({ type: 'error', title: 'Couldn’t decline the invitation', message: 'Please try again.' })
+    }
   }
 
   const [copied, setCopied] = useState(false)
@@ -348,8 +352,11 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   if (!codeathon) return (
     <Panel className="mx-auto max-w-md p-10 text-center">
       <p className="font-semibold text-foreground">Codeathon not found</p>
-      <p className="mt-1 text-sm text-muted-foreground">It may have been removed. Go back to the list to pick another one.</p>
-      <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push('/dashboard/codeathons')}>All codeathons</Button>
+      <p className="mt-1 text-sm text-muted-foreground">It may have been removed, or the connection dropped. Try again or pick another one from the list.</p>
+      <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <Button variant="outline" size="sm" onClick={() => { setLoading(true); void fetchData() }}>Try again</Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>All codeathons</Button>
+      </div>
     </Panel>
   )
 

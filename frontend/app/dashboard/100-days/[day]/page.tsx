@@ -257,7 +257,7 @@ export default function DayPage() {
             </div>
             <div>
               <h3 className="font-semibold text-foreground text-sm mb-1">Constraints</h3>
-              <pre className="text-xs text-muted-foreground font-mono">{problem.constraints}</pre>
+              <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap wrap-break-word">{problem.constraints}</pre>
             </div>
             <div className="space-y-2">
               <h3 className="font-semibold text-foreground text-sm">Examples</h3>

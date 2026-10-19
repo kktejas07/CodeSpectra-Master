@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import dynamic from 'next/dynamic'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -211,6 +212,7 @@ export function ChallengeEditor({
   const [lastSubmissionId, setLastSubmissionId] = useState<string | null>(null)
   const [showHelp, setShowHelp] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const successRef = useFocusTrap<HTMLDivElement>(showSuccessModal, () => setShowSuccessModal(false))
   const [githubRepo, setGithubRepo] = useState('')
   const [submittingGithub, setSubmittingGithub] = useState(false)
   const [githubSubmitted, setGithubSubmitted] = useState(false)
@@ -778,13 +780,13 @@ export function ChallengeEditor({
       {/* ─── Success Modal ─── */}
       {showSuccessModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-sm p-6 border-border/60 shadow-2xl">
+          <Card ref={successRef} role="dialog" aria-modal="true" aria-labelledby="challenge-success-title" className="w-full max-w-sm max-h-[90vh] overflow-y-auto p-6 border-border/60 shadow-2xl">
             <div className="text-center space-y-4">
               <div className="mx-auto w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
-                <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                <CheckCircle aria-hidden className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-foreground">Solution accepted!</h2>
+                <h2 id="challenge-success-title" className="text-lg font-bold text-foreground">Solution accepted!</h2>
                 <p className="text-xs text-muted-foreground mt-1">
                   Your code passed all test cases.{' '}
                   {testResults?.score != null && `Score: ${testResults.score}/100`}

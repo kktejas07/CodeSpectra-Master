@@ -11,6 +11,8 @@ import { LivePricingTables } from './LivePricingTables'
 import {
   docHref,
   getAdjacentDocs,
+  resolveDocLink,
+  type ServeSection,
   type DocPage,
   type DocSection,
 } from '@/lib/docs-shared'
@@ -23,13 +25,21 @@ interface DocContentProps {
 
 /** Markdown renderer shared by doc body parts. Split out so live embeds
  *  (e.g. `{{live-pricing}}`) can be interleaved between rendered chunks. */
-function DocMarkdown({ content }: { content: string }) {
+function DocMarkdown({ content, section }: { content: string; section: ServeSection }) {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
       rehypePlugins={[rehypeHighlight, rehypeSlug]}
       components={{
         a: ({ href, children, ...props }) => {
+          const docLink = href ? resolveDocLink(href, section) : null
+          if (docLink) {
+            return (
+              <Link href={docLink} {...props}>
+                {children}
+              </Link>
+            )
+          }
           if (href?.startsWith('/') || href?.startsWith('#')) {
             return (
               <Link href={href} {...props}>
@@ -101,14 +111,14 @@ function DocMarkdown({ content }: { content: string }) {
 }
 
 /** Renders markdown with `{{live-pricing}}` tokens replaced by live price tables. */
-function DocBody({ content }: { content: string }) {
+function DocBody({ content, section }: { content: string; section: ServeSection }) {
   const parts = content.split('{{live-pricing}}')
-  if (parts.length === 1) return <DocMarkdown content={content} />
+  if (parts.length === 1) return <DocMarkdown content={content} section={section} />
   return (
     <>
       {parts.map((part, i) => (
         <span key={i} className="contents">
-          {part ? <DocMarkdown content={part} /> : null}
+          {part ? <DocMarkdown content={part} section={section} /> : null}
           {i < parts.length - 1 ? <LivePricingTables /> : null}
         </span>
       ))}
@@ -218,7 +228,7 @@ export function DocContent({ page, sections }: DocContentProps) {
             'prose-hr:border-cs-grid',
           )}
         >
-          <DocBody content={page.content} />
+          <DocBody content={page.content} section={page.meta.section} />
         </div>
 
         <div className="mt-14 grid max-w-[72ch] gap-3 border-t border-cs-grid pt-8 sm:grid-cols-2">

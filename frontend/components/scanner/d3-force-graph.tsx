@@ -298,17 +298,17 @@ const link = g.append('g').attr('class', 'links')
           <span>Drag nodes • Scroll to zoom • Click to select • Double-click dependency to inspect</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title="Zoom out">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomOut} title="Zoom out" aria-label="Zoom out">
             <ZoomOut className="w-4 h-4" />
           </Button>
           <span className="text-xs font-mono text-muted-foreground w-12 text-center">{zoom}%</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title="Zoom in">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={zoomIn} title="Zoom in" aria-label="Zoom in">
             <ZoomIn className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetView} title="Reset view">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetView} title="Reset view" aria-label="Reset view">
             <Maximize2 className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => simRef.current?.alpha(0.5).restart()} title="Re-shuffle">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => simRef.current?.alpha(0.5).restart()} title="Re-shuffle" aria-label="Re-shuffle layout">
             <RotateCcw className="w-4 h-4" />
           </Button>
           <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={() => setLegendExpanded(v => !v)}>

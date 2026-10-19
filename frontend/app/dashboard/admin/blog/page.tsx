@@ -18,6 +18,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Loader2, Newspaper, Plus, Trash2, Eye, Sparkles, ImageIcon, Globe } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useConfirm } from '@/lib/confirm-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
@@ -43,6 +44,7 @@ type Post = {
 export default function AdminBlogPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const confirmDialog = useConfirm()
   const [items, setItems] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -190,7 +192,7 @@ export default function AdminBlogPage() {
   }
 
   const remove = async (slug: string) => {
-    if (!confirm('Delete this post?')) return
+    if (!(await confirmDialog({ title: 'Delete this post?', description: 'The post is removed from the blog. This cannot be undone.', confirmText: 'Delete', destructive: true }))) return
     const res = await csrfFetch(`/api/blog/${encodeURIComponent(slug)}`, { method: 'DELETE' })
     if (!res.ok) {
       addToast({ type: 'error', title: 'Delete failed' })
@@ -246,7 +248,7 @@ export default function AdminBlogPage() {
             <div className="space-y-1.5">
               <Label>Category</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as BlogCategoryId)}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Category">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>

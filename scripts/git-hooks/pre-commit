@@ -1,0 +1,13 @@
+#!/usr/bin/env sh
+# Blocks a commit that adds a secret. Enable once per clone:
+#   git config core.hooksPath scripts/git-hooks
+# Needs gitleaks 8.24+ on PATH (brew install gitleaks / https://github.com/gitleaks/gitleaks/releases).
+# Bypass only for a confirmed false positive: add it to .gitleaks.toml [allowlist] instead of --no-verify.
+set -e
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks not found — install it (see docs/devops/08-Secret-Rotation.md §6) or the commit is not scanned." >&2
+  exit 1
+fi
+root=$(git rev-parse --show-toplevel)
+# `protect --staged` is the 8.24 spelling; 8.25+ also accepts `git --pre-commit --staged`.
+exec gitleaks protect --staged --redact --no-banner --config "$root/.gitleaks.toml"

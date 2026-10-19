@@ -29,7 +29,32 @@ load_dotenv(ROOT_DIR / ".env")
 
 NEXT_ORIGIN = os.environ.get("NEXTJS_INTERNAL_URL", "http://localhost:3000")
 
-app = FastAPI(title="CodeSpectra API")
+from core.log_redact import install_log_redaction
+
+# Mask tokens / keys / credentialed URLs in every log record (core/log_redact.py).
+install_log_redaction()
+
+
+def _api_docs_enabled() -> bool:
+    """Swagger UI, ReDoc and /openapi.json are off in production.
+
+    On only when ENVIRONMENT=development (or test), or ENABLE_API_DOCS=1 is
+    set explicitly for a protected staging host. ENVIRONMENT defaults to
+    production (core/config.py), so a missing value fails closed.
+    """
+    if os.environ.get("ENABLE_API_DOCS", "").strip() == "1":
+        return True
+    return os.environ.get("ENVIRONMENT", "production").strip().lower() in {"development", "dev", "test", "local"}
+
+
+_DOCS = _api_docs_enabled()
+app = FastAPI(
+    title="CodeSpectra API",
+    debug=False,
+    docs_url="/docs" if _DOCS else None,
+    redoc_url="/redoc" if _DOCS else None,
+    openapi_url="/openapi.json" if _DOCS else None,
+)
 
 
 _scheduler_task = None

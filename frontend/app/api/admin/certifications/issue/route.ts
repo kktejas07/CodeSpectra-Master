@@ -4,6 +4,8 @@ import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { newAttemptToken } from '@/lib/db/certifications'
+import { auditAdmin } from '@/lib/admin-audit'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,7 +25,7 @@ export async function POST(request: Request) {
     eventTitle?: string
   }
   try {
-    body = await request.json()
+    body = sanitizeMongoInput(await request.json())
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
@@ -83,6 +85,7 @@ export async function POST(request: Request) {
     )
   } catch { /* email best-effort */ }
 
+  await auditAdmin(gate.user, 'admin.certificate.issue', 'certificate', `user/${String(body.userId)}`, String(body.title).slice(0, 200))
   return NextResponse.json({
     ok: true,
     certificate: {

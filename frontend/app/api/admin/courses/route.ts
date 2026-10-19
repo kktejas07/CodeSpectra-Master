@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { notifySuperAdmins } from '@/lib/notifications'
 import { knowledgeOnLibraryChange } from '@/lib/rag/hooks'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function GET(request: NextRequest) {
   const user = await getAPIUser()
@@ -60,6 +61,7 @@ export async function POST(request: NextRequest) {
       link: `/dashboard/admin/courses/${newCourse.id}`
     })
 
+    await auditAdmin(user, 'admin.course.create', 'course', `course/${newCourse.id}`)
     return NextResponse.json({ data: newCourse })
   } catch (e) {
     console.error('[admin/courses]', e)

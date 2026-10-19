@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string; featureId: string }> }) {
   const { id, featureId } = await params
@@ -28,6 +29,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       await db.collection('tier_features').insertOne(doc as any)
     }
     const updated = await db.collection('tier_features').findOne({ tier_id: id, feature_id: featureId })
+    await auditAdmin(gate.user, 'admin.pricing_tier.feature_toggle', 'pricing', `tier/${id}/feature/${featureId}`, `enabled: ${String(body.is_enabled)}`, 'warning')
     return NextResponse.json({ data: updated })
   } catch (error) {
     console.error('[CodeSpectra] Error toggling tier feature:', error)
@@ -44,6 +46,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try {
     const db = await getMongoDb()
     await db.collection('tier_features').deleteOne({ tier_id: id, feature_id: featureId })
+    await auditAdmin(gate.user, 'admin.pricing_tier.feature_remove', 'pricing', `tier/${id}/feature/${featureId}`, undefined, 'warning')
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[CodeSpectra] Error deleting tier feature:', error)

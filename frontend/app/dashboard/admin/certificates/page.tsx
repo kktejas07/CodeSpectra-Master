@@ -335,7 +335,7 @@ export default function CertificatesPage() {
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="w-full text-xs min-w-[760px]">
             <thead className="bg-muted/50">
               <tr className="border-b border-border/60 text-left text-muted-foreground">
                 <th className="py-2.5 px-4 font-medium">Recipient</th>
@@ -440,7 +440,7 @@ export default function CertificatesPage() {
       </Panel>
 
       <Dialog open={issueDialogOpen} onOpenChange={setIssueDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Issue certificate</DialogTitle>
             <DialogDescription>
@@ -470,7 +470,7 @@ export default function CertificatesPage() {
                 </div>
               ) : (
                 <div className="relative">
-                  <Input
+                  <Input aria-label="Search by name or email"
                     placeholder="Search by name or email..."
                     value={formUserSearch}
                     onChange={(e) => setFormUserSearch(e.target.value)}
@@ -505,7 +505,7 @@ export default function CertificatesPage() {
             <div className="space-y-2">
               <Label className="text-xs">Template</Label>
               <Select value={formTemplate} onValueChange={(v) => setFormTemplate(v as TemplateKey)}>
-                <SelectTrigger className="h-8 text-xs">
+                <SelectTrigger aria-label="Template" className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -519,7 +519,7 @@ export default function CertificatesPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Title</Label>
-              <Input
+              <Input aria-label="Title"
                 placeholder="e.g. Full-Stack Web Development"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
@@ -529,7 +529,7 @@ export default function CertificatesPage() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">Level</Label>
-                <Input
+                <Input aria-label="Level"
                   value={formLevel}
                   onChange={(e) => setFormLevel(e.target.value)}
                   className="h-8 text-xs"
@@ -537,7 +537,7 @@ export default function CertificatesPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">Score</Label>
-                <Input
+                <Input aria-label="Score"
                   type="number"
                   value={formScore}
                   onChange={(e) => setFormScore(e.target.value)}
@@ -547,7 +547,7 @@ export default function CertificatesPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Source</Label>
-              <Input
+              <Input aria-label="Source"
                 value={formSource}
                 onChange={(e) => setFormSource(e.target.value)}
                 className="h-8 text-xs"
@@ -555,7 +555,7 @@ export default function CertificatesPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Score label (optional)</Label>
-              <Input
+              <Input aria-label="Score label (optional)"
                 placeholder="e.g. +420 XP earned"
                 value={formScoreLabel}
                 onChange={(e) => setFormScoreLabel(e.target.value)}
@@ -564,7 +564,7 @@ export default function CertificatesPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-xs">Event title (optional)</Label>
-              <Input
+              <Input aria-label="Event title (optional)"
                 placeholder="e.g. Spring 2026 Codeathon"
                 value={formEventTitle}
                 onChange={(e) => setFormEventTitle(e.target.value)}
@@ -589,7 +589,7 @@ export default function CertificatesPage() {
       </Dialog>
 
       <Dialog open={!!revokeTarget} onOpenChange={(open) => { if (!open && !revoking) setRevokeTarget(null) }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Revoke certificate</DialogTitle>
             <DialogDescription>
@@ -632,7 +632,7 @@ export default function CertificatesPage() {
       </Dialog>
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-5xl">
+        <DialogContent className="sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>Certificate preview</DialogTitle>
             <DialogDescription>Preview of the selected certificate template.</DialogDescription>

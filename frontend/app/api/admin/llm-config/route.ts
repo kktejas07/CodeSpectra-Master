@@ -3,6 +3,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { maskSecret, isMaskedSecret } from '@/lib/server-secrets-cache'
 import { LLM_CONFIG_DEFAULTS, LLM_PROVIDERS, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
+import { auditAdmin } from '@/lib/admin-audit'
 
 const PLATFORM_KEY = 'llm'
 
@@ -87,5 +88,6 @@ export async function PATCH(request: Request) {
     { upsert: true },
   )
 
+  await auditAdmin(gate.user, 'admin.llm_config.update', 'settings', 'llm-config', `provider: ${next.provider}; model: ${next.model}`, 'critical')
   return NextResponse.json({ ok: true })
 }

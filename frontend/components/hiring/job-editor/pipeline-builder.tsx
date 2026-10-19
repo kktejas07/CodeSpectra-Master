@@ -195,7 +195,7 @@ export function PipelineBuilder({
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="outline" className="rounded-full"><Plus aria-hidden /> Add stage</Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-72">
+        <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-2rem)]">
           {ADDABLE_STAGE_TYPES.map((t) => (
             <DropdownMenuItem key={t} onSelect={() => dispatch({ type: 'add', stageType: t })} className="flex-col items-start gap-0.5">
               <span className="font-medium">{STAGE_TYPE_LABELS[t]}</span>

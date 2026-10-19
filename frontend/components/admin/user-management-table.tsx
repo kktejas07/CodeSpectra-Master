@@ -132,7 +132,7 @@ export function UserManagementTable({
       <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
+          <Input aria-label="Search users by name or email"
             placeholder="Search users by name or email..."
             className="pl-9"
             value={searchQuery}
@@ -140,7 +140,7 @@ export function UserManagementTable({
           />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger aria-label="Filter by role" className="w-[160px]">
             <SelectValue placeholder="All roles" />
           </SelectTrigger>
           <SelectContent>
@@ -151,7 +151,7 @@ export function UserManagementTable({
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-35">
+          <SelectTrigger aria-label="Filter by status" className="w-35">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -212,10 +212,10 @@ export function UserManagementTable({
 
       <Card className="overflow-hidden rounded-2xl border-border/70">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[880px]">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
-                <th className="w-10 py-3 px-4">
+                <th className="sticky left-0 z-10 w-10 bg-muted py-3 px-4">
                   <button
                     onClick={toggleSelectAll}
                     className="text-muted-foreground hover:text-foreground transition-colors"
@@ -224,7 +224,7 @@ export function UserManagementTable({
                     {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                   </button>
                 </th>
-                <th className="text-left py-3 px-4 font-semibold">User</th>
+                <th className="sticky left-10 z-10 bg-muted text-left py-3 px-4 font-semibold">User</th>
                 <th className="text-left py-3 px-4 font-semibold">Email</th>
                 <th className="text-left py-3 px-4 font-semibold">Role</th>
                 <th className="text-left py-3 px-4 font-semibold">Status</th>
@@ -247,17 +247,17 @@ export function UserManagementTable({
                 </tr>
               ) : (
                 paginatedUsers.map((user) => (
-                  <tr key={user.id} className="border-b border-border hover:bg-muted/50 transition-colors">
-                    <td className="py-3 px-4">
+                  <tr key={user.id} className="group border-b border-border hover:bg-muted/50 transition-colors">
+                    <td className="sticky left-0 z-10 w-10 bg-card py-3 px-4 group-hover:bg-muted">
                       <button
                         onClick={() => toggleUser(user.id)}
                         className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={selected.has(user.id) ? 'Deselect' : 'Select'}
+                        aria-label={`${selected.has(user.id) ? 'Deselect' : 'Select'} ${user.name || user.email}`}
                       >
                         {selected.has(user.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
                       </button>
                     </td>
-                    <td className="py-3 px-4 font-medium">{user.name}</td>
+                    <td className="sticky left-10 z-10 max-w-[12rem] truncate bg-card py-3 px-4 font-medium group-hover:bg-muted">{user.name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                     <td className="py-3 px-4">
                       <Badge variant={getRoleColor(user.role)}>
@@ -326,7 +326,7 @@ export function UserManagementTable({
               </Button>
             </div>
             <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger className="h-8 w-25 text-xs">
+              <SelectTrigger aria-label="Rows per page" className="h-8 w-25 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

@@ -14,7 +14,10 @@ export async function generateMetadata({ params }: { params: Promise<{ token: st
   let title = 'CodeSpectra certificate'
   let verified = false
   if (TOKEN_RE.test(token)) {
-    const a = await (await certificationAttempts()).findOne({ verify_token: token, passed: true, revoked_at: null }, { projection: { _id: 0, cert_snapshot: 1 } }).catch(() => null)
+    // A DB outage must not drop the page's <title>/meta (wave 5 crawl): fall back to the generic card.
+    const a = await certificationAttempts()
+      .then((c) => c.findOne({ verify_token: token, passed: true, revoked_at: null }, { projection: { _id: 0, cert_snapshot: 1 } }))
+      .catch(() => null)
     if (a?.cert_snapshot?.title) { title = String(a.cert_snapshot.title).slice(0, 100); verified = true }
   }
   // W4-12: the "Verified certificate" card only for a certificate that verifies.

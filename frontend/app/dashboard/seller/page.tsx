@@ -55,7 +55,7 @@ function SellerDashboard() {
   }
 
   if (!gate.ready) return null
-  if (err) return <p className="text-sm text-destructive">{err}</p>
+  if (err) return <EmptyState illustration="error" title="We could not load your seller dashboard" description={err} actionLabel="Try again" onAction={() => { setErr(null); load() }} />
   if (!me) return <div className="h-48 animate-pulse rounded-3xl bg-muted/40 motion-reduce:animate-none" />
 
   const s = me.seller

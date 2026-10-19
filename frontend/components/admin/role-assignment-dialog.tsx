@@ -85,7 +85,7 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
@@ -105,7 +105,7 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
                 <div className="space-y-2">
                   <Label>Subscription plan</Label>
                   <Select value={plan} onValueChange={setPlan}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Subscription plan"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {PLANS.map(p => <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>)}
                     </SelectContent>
@@ -152,7 +152,7 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
                 <div className="space-y-2 pt-1">
                   <Label>Organization</Label>
                   <Select value={tenantId || '__none__'} onValueChange={(v) => setTenantId(v === '__none__' ? null : v)}>
-                    <SelectTrigger className="w-full"><SelectValue placeholder="Select organization" /></SelectTrigger>
+                    <SelectTrigger aria-label="Organization" className="w-full"><SelectValue placeholder="Select organization" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="__none__">No organization</SelectItem>
                       {tenants.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}

@@ -40,14 +40,20 @@ export default function IntegrationsPage() {
   const [githubDialogOpen, setGithubDialogOpen] = useState(false)
   const [secrets, setSecrets] = useState<SecretsMap | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoadError(null)
     fetch('/api/admin/server-secrets', { credentials: 'include' })
-      .then(r => r.json())
-      .then(json => setSecrets(json.secrets || {}))
-      .catch(() => {})
-  }, [gate.ready])
+      .then(async r => {
+        const json = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(json.error || `HTTP ${r.status}`)
+        setSecrets(json.secrets || {})
+      })
+      .catch((e: unknown) => setLoadError(e instanceof Error ? e.message : 'Request failed'))
+  }, [gate.ready, reloadKey])
 
   if (!gate.ready) return null
 
@@ -134,7 +140,14 @@ export default function IntegrationsPage() {
         </Panel>
       )}
 
-      <div className="space-y-4">
+      {loadError && (
+        <Panel role="alert" className="flex flex-wrap items-center justify-between gap-3 border-destructive/40 p-4">
+          <p className="text-sm text-destructive">Couldn&apos;t check which services are connected: {loadError}</p>
+          <Button variant="outline" size="sm" onClick={() => setReloadKey(k => k + 1)}>Try again</Button>
+        </Panel>
+      )}
+
+      <div className="space-y-4" aria-busy={secrets === null && !loadError}>
         {integrations.map(integration => (
           <Panel key={integration.id}>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -146,7 +159,7 @@ export default function IntegrationsPage() {
                   <div className="mb-1 flex items-center gap-2">
                     <h3 className="text-lg font-semibold text-foreground">{integration.name}</h3>
                     <Badge variant={integration.connected ? 'default' : 'secondary'} className="text-xs">
-                      {integration.connected ? 'Connected' : 'Not connected'}
+                      {secrets === null ? (loadError ? 'Unknown' : 'Checking…') : integration.connected ? 'Connected' : 'Not connected'}
                     </Badge>
                   </div>
                   <p className="text-sm text-muted-foreground">{integration.description}</p>
@@ -161,7 +174,7 @@ export default function IntegrationsPage() {
                       {disconnecting ? 'Removing…' : 'Disconnect'}
                     </Button>
                   ) : (
-                    <Button className="gap-2" onClick={() => setGithubDialogOpen(true)}>
+                    <Button className="gap-2" onClick={() => setGithubDialogOpen(true)} disabled={secrets === null}>
                       <Plug className="h-4 w-4" />
                       Connect
                     </Button>

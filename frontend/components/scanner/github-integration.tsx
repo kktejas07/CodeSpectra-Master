@@ -27,8 +27,8 @@ export function GitHubIntegration() {
     if (!ok) {
       addToast({
         type: 'error',
-        title: 'GitHub OAuth not configured',
-        message: 'Set NEXT_PUBLIC_GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET, and add this callback URL in your GitHub OAuth app: …/auth/github/callback',
+        title: 'GitHub sign-in isn’t available',
+        message: 'GitHub sign-in isn’t set up on this platform yet. Please contact support.',
         duration: 8000,
       })
       setIsConnecting(false)
@@ -128,14 +128,14 @@ export function GitHubIntegration() {
 
           {repos.length === 0 ? (
             <Card className="p-4 text-center">
-              <p className="text-sm text-muted-foreground">No repositories returned. Connect GitHub or check server logs.</p>
+              <p className="text-sm text-muted-foreground">No repositories found. Connect GitHub first, then try again.</p>
             </Card>
           ) : (
             <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
               {repos.map((repo) => (
                 <Card
                   key={repo.id}
-                  className="cursor-pointer border-border/60 bg-card/30 p-3 transition-all hover:border-primary/50 hover:bg-card/50"
+                  className="border-border/60 bg-card/30 p-3 transition-all hover:border-primary/50 hover:bg-card/50"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
@@ -151,8 +151,10 @@ export function GitHubIntegration() {
                         {(repo.stars ?? 0) > 0 ? <span>★ {repo.stars}</span> : null}
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" type="button" className="shrink-0" title="Details">
-                      <ChevronRight className="h-4 w-4" />
+                    <Button asChild size="sm" variant="ghost" className="shrink-0">
+                      <a href={repo.html_url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${repo.name} on GitHub`}>
+                        <ChevronRight className="h-4 w-4" aria-hidden />
+                      </a>
                     </Button>
                   </div>
                 </Card>

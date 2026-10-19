@@ -14,6 +14,6 @@ export async function GET() {
     return NextResponse.json({ count })
   } catch (error) {
     console.error('[notifications/unread]', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong with notifications. Try again.' }, { status: 500 })
   }
 }

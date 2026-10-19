@@ -1,0 +1,19 @@
+# Local secret scanning before every commit (docs/devops/08-Secret-Rotation.md §6).
+#
+# Option A — pre-commit framework:
+#   pipx install pre-commit   (or: pip install pre-commit)
+#   pre-commit install        # once per clone
+#   pre-commit run --all-files   # optional full check
+#
+# Option B — no Python: `git config core.hooksPath scripts/git-hooks`
+#   (runs scripts/git-hooks/pre-commit, which calls the gitleaks binary).
+#
+# Both use the repo's .gitleaks.toml — the same rules as the CI `secrets` job.
+# Same gitleaks line as CI (gitleaks-action pins 8.24.x).
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.3
+    hooks:
+      - id: gitleaks
+        name: gitleaks (staged changes)
+        args: ["--config", ".gitleaks.toml", "--redact"]

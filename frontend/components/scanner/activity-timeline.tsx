@@ -159,8 +159,8 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
                     {activity.details && (
                       <div className="mt-3 p-2 bg-background rounded text-xs text-foreground/70 space-y-1">
                         {Object.entries(activity.details).map(([key, value]) => (
-                          <div key={key}>
-                            <span className="font-medium">{key}:</span> {JSON.stringify(value)}
+                          <div key={key} className="wrap-break-word">
+                            <span className="font-medium">{key}:</span> {typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : JSON.stringify(value)}
                           </div>
                         ))}
                       </div>

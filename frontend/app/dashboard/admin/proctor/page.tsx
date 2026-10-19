@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw, Copy, ClipboardPaste, Bell, Monitor, Usb, Mic, Video, Globe, Keyboard, Mouse, Maximize, Move, Users, UserX, Moon, Activity } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -99,6 +100,7 @@ const EVENT_SEVERITY: Record<string, string> = {
 
 export default function AdminProctorPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
   const [events, setEvents] = useState<ProctorEvent[]>([])
   const [violations, setViolations] = useState<Record<string, number>>({})
   const [flagged, setFlagged] = useState<string[]>([])
@@ -156,9 +158,9 @@ export default function AdminProctorPage() {
         setEvents(j.events || [])
         setViolations(j.violations || {})
         setFlagged(j.flagged_sessions || [])
-      }
-    } catch {} finally { setLoading(false) }
-  }, [])
+      } else addToast({ type: 'error', title: "Couldn't load proctoring events", message: 'Refresh the page or try again in a moment.' })
+    } catch { addToast({ type: 'error', title: "Couldn't load proctoring events", message: 'Refresh the page or try again in a moment.' }) } finally { setLoading(false) }
+  }, [addToast])
 
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
 

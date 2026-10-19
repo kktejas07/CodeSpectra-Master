@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { inviteIsForExam } from '@/lib/exam-access'
+import { auditAdmin } from '@/lib/admin-audit'
 
 /**
  * DELETE — withdraw a candidate's invite for this exam.
@@ -57,10 +58,12 @@ export async function DELETE(
         { id: { $in: related } },
         { $set: { status: 'revoked', updated_at: new Date().toISOString() } },
       )
+      await auditAdmin(gate.user, 'admin.invite.revoke', 'exam_invite', `exam/${id}/invite/${inviteId}`, undefined, 'warning')
       return NextResponse.json({ success: true, revoked: true, deleted: false })
     }
 
     await db.collection('candidate_invites').deleteMany({ id: { $in: related } })
+    await auditAdmin(gate.user, 'admin.invite.delete', 'exam_invite', `exam/${id}/invite/${inviteId}`, undefined, 'warning')
     return NextResponse.json({ success: true, revoked: false, deleted: true })
   } catch (e: unknown) {
     console.error('[CodeSpectra] admin/exams/[id]/invites/[inviteId] DELETE:', e)

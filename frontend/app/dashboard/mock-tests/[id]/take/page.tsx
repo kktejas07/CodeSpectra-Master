@@ -333,7 +333,7 @@ export default function TakeMockTestPage() {
         <div className="w-full max-w-md space-y-4">
           <div className="space-y-2">
             <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
-            <div className="h-4 w-80 bg-muted/40 rounded animate-pulse" />
+            <div className="h-4 w-80 max-w-full bg-muted/40 rounded animate-pulse" />
           </div>
           <SkeletonCard />
         </div>

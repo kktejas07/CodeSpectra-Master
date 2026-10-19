@@ -39,7 +39,6 @@ import {
   Video,
   Upload,
 } from 'lucide-react'
-import * as XLSX from 'xlsx'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -470,10 +469,8 @@ function SystemSettingsInner() {
 
     try {
       const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data, { type: 'array' })
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 })
+      const { readSpreadsheetRows } = await import('@/lib/xlsx-lite')
+      const rows = readSpreadsheetRows(data)
 
       // Map provider names/URLs to secret keys
       const providerMap: Record<string, string> = {
@@ -709,12 +706,12 @@ function SystemSettingsInner() {
           piston_max_concurrent: typeof meta.piston_max_concurrent === 'string' ? meta.piston_max_concurrent : d.piston_max_concurrent || '',
         }))
       } else if (!secRes.ok) {
-        console.error('[reloadSecrets] HTTP', secRes.status)
+        addToast({ type: 'error', title: "Couldn't reload saved keys", message: secJson.error || `HTTP ${secRes.status}. Refresh the page to try again.` })
       }
-    } catch (e) {
-      console.error('[reloadSecrets] fetch error:', e)
+    } catch {
+      addToast({ type: 'error', title: "Couldn't reload saved keys", message: 'Check your connection and refresh the page.' })
     }
-  }, [])
+  }, [addToast])
 
   useEffect(() => {
     if (loading) return
@@ -1789,7 +1786,7 @@ function SystemSettingsInner() {
                 <Label className="text-foreground">Default template</Label>
                 <p className="text-sm text-muted-foreground">This template is used when issuing certificates after event completion.</p>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {TEMPLATES.map((t) => {
                   const selected = form.certificate_template === t.key
                   return (
@@ -2207,7 +2204,7 @@ function SystemSettingsInner() {
                       <label className="text-xs font-medium text-muted-foreground">
                         Client ID
                       </label>
-                      <Input
+                      <Input aria-label="Client ID"
                         value={secretsDraft.github_client_id}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, github_client_id: e.target.value }))
@@ -2912,7 +2909,7 @@ function SystemSettingsInner() {
                     ].map(({ key, label, default: def }) => (
                       <div key={key}>
                         <Label className="text-xs">{label} XP</Label>
-                        <Input
+                        <Input aria-label="XP"
                           type="number"
                           value={String(gamification[key] ?? def)}
                           onChange={(e) => setGamification((g) => ({ ...g, [key]: Number(e.target.value) || 0 }))}
@@ -2929,7 +2926,7 @@ function SystemSettingsInner() {
                     <div>
                       <Label className="text-xs">Streak XP multiplier</Label>
                       <p className="text-xs text-muted-foreground">Daily login XP is multiplied by this once a streak reaches 7 days</p>
-                      <Input
+                      <Input aria-label="Streak XP multiplier"
                         type="number"
                         step="0.1"
                         value={String(gamification.streak_multiplier ?? 1.5)}
@@ -2955,7 +2952,7 @@ function SystemSettingsInner() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <Label className="text-xs">Referral XP bonus</Label>
-                      <Input
+                      <Input aria-label="Referral XP bonus"
                         type="number"
                         value={String(gamification.referral_xp_bonus ?? 500)}
                         onChange={(e) => setGamification((g) => ({ ...g, referral_xp_bonus: Number(e.target.value) || 0 }))}
@@ -2964,7 +2961,7 @@ function SystemSettingsInner() {
                     </div>
                     <div>
                       <Label className="text-xs">Referral commission %</Label>
-                      <Input
+                      <Input aria-label="Referral commission %"
                         type="number"
                         step="0.1"
                         value={String(gamification.referral_commission_percent ?? 10)}

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useConfirm } from '@/lib/confirm-context'
 import { Loader2, Crown, CheckCircle2, XCircle, Save, RefreshCw, HelpCircle, Plus, Trash2 } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -34,6 +35,7 @@ const CURRENCY_SYMBOLS: Record<string, string> = {
 export default function PlansPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const confirmDialog = useConfirm()
   const [plans, setPlans] = useState<PlanDef[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -46,7 +48,8 @@ export default function PlansPage() {
       const res = await fetch('/api/admin/plans', { credentials: 'include' })
       const data = await res.json()
       if (res.ok) setPlans(data.plans || [])
-    } catch { /* ignore */ }
+      else addToast({ type: 'error', title: "Couldn't load plans", message: 'Refresh the page or try again in a moment.' })
+    } catch { addToast({ type: 'error', title: "Couldn't load plans", message: 'Refresh the page or try again in a moment.' }) }
     finally { setLoading(false) }
   }
 
@@ -130,7 +133,7 @@ export default function PlansPage() {
 
   const deletePlan = async () => {
     if (!currentPlan || currentPlan.plan === 'free') return
-    if (!window.confirm(`Delete the ${currentPlan.name} plan? This can't be undone.`)) return
+    if (!(await confirmDialog({ title: 'Delete this plan?', description: `Delete the ${currentPlan.name} plan? This can't be undone.`, confirmText: 'Delete', destructive: true }))) return
     setDeleting(true)
     try {
       const res = await csrfFetch(`/api/admin/plans?plan=${encodeURIComponent(currentPlan.plan)}`, { method: 'DELETE', credentials: 'include' })

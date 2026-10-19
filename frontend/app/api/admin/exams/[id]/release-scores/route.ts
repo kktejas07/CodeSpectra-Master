@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/api-auth'
 import { releaseExamScores } from '@/lib/services/exam-release'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -19,6 +20,7 @@ export async function POST(
     // Tenant check, pass mark, certificates and notifications: lib/services/exam-release (shared with the admin agent).
     const r = await releaseExamScores(gate.user, examId, body.cutoff)
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
+    await auditAdmin(gate.user, 'admin.exam.release_scores', 'exam', `exam/${examId}`, typeof body.cutoff === 'number' ? `cutoff: ${body.cutoff}` : undefined, 'warning')
     return NextResponse.json(r.data)
   } catch (e: unknown) {
     console.error('[release-scores] error:', e)

@@ -20,7 +20,7 @@ export async function POST(_req: Request, { params }: IdRouteContext) {
     return await markRead(user.id, id)
   } catch (error) {
     console.error('[CodeSpectra] Mark notification read error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong with notifications. Try again.' }, { status: 500 })
   }
 }
 
@@ -32,7 +32,7 @@ export async function PATCH(_req: Request, { params }: IdRouteContext) {
     return await markRead(user.id, id)
   } catch (error) {
     console.error('[CodeSpectra] Mark notification read error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong with notifications. Try again.' }, { status: 500 })
   }
 }
 
@@ -48,6 +48,6 @@ export async function DELETE(_req: Request, { params }: IdRouteContext) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[CodeSpectra] Delete notification error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong with notifications. Try again.' }, { status: 500 })
   }
 }

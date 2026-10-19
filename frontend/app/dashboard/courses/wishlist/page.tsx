@@ -10,6 +10,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -30,13 +31,16 @@ export default function CourseWishlistPage() {
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<CourseCard[]>([])
   const [ids, setIds] = useState<string[]>([])
+  const [loadError, setLoadError] = useState(false)
+  const addToast = useToast()
 
   const load = async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       const [wishRes, coursesRes] = await Promise.all([
-        fetch('/api/user/course-wishlist', { credentials: 'include' }).then(r => r.json()),
-        fetch('/api/courses', { credentials: 'include' }).then(r => r.json()),
+        fetch('/api/user/course-wishlist', { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() }),
+        fetch('/api/courses', { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() }),
       ])
       const wishIds: string[] = Array.isArray(wishRes?.data) ? wishRes.data.map(String) : []
       setIds(wishIds)
@@ -45,6 +49,7 @@ export default function CourseWishlistPage() {
       setCourses(all.filter(c => want.has(String(c.id))))
     } catch {
       setCourses([])
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
@@ -84,12 +89,15 @@ export default function CourseWishlistPage() {
     setCourses(prev => prev.filter(c => c.id !== courseId))
     setIds(prev => prev.filter(id => id !== courseId))
     try {
-      await csrfFetch('/api/user/course-wishlist', {
+      const res = await csrfFetch('/api/user/course-wishlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ courseId }),
       })
+      if (!res.ok) throw new Error(String(res.status))
+      addToast({ type: 'success', title: 'Removed from your wishlist' })
     } catch {
+      addToast({ type: 'error', title: 'Couldn’t remove the course', message: 'Please try again.' })
       void load()
     }
   }
@@ -121,7 +129,17 @@ export default function CourseWishlistPage() {
       </div>
 
       <div data-tour="wishlist-list">
-      {courses.length === 0 ? (
+      {loadError ? (
+        <Panel className="p-4">
+          <EmptyState
+            illustration="error"
+            title="Couldn't load your wishlist"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => void load()}
+          />
+        </Panel>
+      ) : courses.length === 0 ? (
         <Panel className="p-4">
           <EmptyState
             variant="courses"
@@ -150,7 +168,7 @@ export default function CourseWishlistPage() {
                   onClick={() => remove(c.id)}
                   className="h-10 w-10 rounded-full border border-red-500/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 transition-colors hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-primary"
                 >
-                  <Heart className="h-4 w-4 fill-red-500" />
+                  <Heart className="h-4 w-4 fill-red-500" aria-hidden />
                 </button>
               </div>
               <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/60">

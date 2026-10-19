@@ -424,7 +424,7 @@ export default function CourseGeneratorTab() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Industry</label>
-              <select
+              <select aria-label="Industry"
                 value={industry}
                 onChange={e => {
                   setIndustry(e.target.value as (typeof INDUSTRIES)[number]['id'])
@@ -439,7 +439,7 @@ export default function CourseGeneratorTab() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Subject</label>
-              <select value={technology} onChange={e => { setTechnology(e.target.value); setCustomTech('') }} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select aria-label="Subject" value={technology} onChange={e => { setTechnology(e.target.value); setCustomTech('') }} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Select subject</option>
                 {industrySubjects.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
               </select>
@@ -448,7 +448,7 @@ export default function CourseGeneratorTab() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Level</label>
-              <select value={level} onChange={e => setLevel(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select aria-label="Level" value={level} onChange={e => setLevel(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value="">Select level</option>
                 {LEVELS.map(lvl => <option key={lvl} value={lvl}>{lvl}</option>)}
               </select>
@@ -456,7 +456,7 @@ export default function CourseGeneratorTab() {
 
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Lesson length</label>
-              <select value={targetMinutes} onChange={e => setTargetMinutes(Number(e.target.value) || 10)} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+              <select aria-label="Lesson length" value={targetMinutes} onChange={e => setTargetMinutes(Number(e.target.value) || 10)} className="w-full rounded-lg border border-border bg-background px-3 h-9 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <option value={10}>~10 min / lesson (15 slides)</option>
                 <option value={15}>~15 min / lesson (22 slides)</option>
                 <option value={30}>~30 min / lesson (40 slides)</option>
