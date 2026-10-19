@@ -304,6 +304,18 @@ export const emailTemplates: { [key: string]: (...args: any[]) => { subject: str
     ${baseStyles.footer}`,
   }),
 
+  /** ATS hiring-team invite (lib/ats/access.ts). All params must be HTML-escaped by the caller. */
+  atsTeamInvite: (params: { orgName: string; invitedByName: string; roleLabel: string; clientName?: string | null; acceptUrl: string; expiresDays: number }) => ({
+    subject: `Join the ${params.orgName} hiring team on CodeSpectra`,
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">You're invited to a hiring team</h1>
+      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px"><strong>${params.invitedByName}</strong> invited you to help <strong>${params.orgName}</strong> hire on CodeSpectra as <strong>${params.roleLabel}</strong>${params.clientName ? ` for <strong>${params.clientName}</strong>` : ''}.</p>
+      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Accept with this email address. If you don't have a CodeSpectra account yet, you can create one on the next screen.</p>
+      ${baseStyles.button(params.acceptUrl, 'Accept invitation')}
+      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">This link expires in ${params.expiresDays} days. If you weren't expecting it, you can ignore this email.</p>
+    ${baseStyles.footer}`,
+  }),
+
   twoFactorBackup: (backupCodes: string) => ({
     subject: '2FA backup codes — CodeSpectra',
     html: `${baseStyles.wrapper}

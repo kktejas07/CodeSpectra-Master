@@ -27,7 +27,14 @@ const nextConfig = {
     '*.preview.emergentagent.com',
     '*.preview.emergentcf.cloud',
   ],
-  serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs', '@remotion/renderer', '@remotion/bundler'],
+  serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs', '@remotion/renderer', '@remotion/bundler', 'pdfjs-dist'],
+  // Keeps peak build memory down on small build machines (the app has grown past 200 routes).
+  experimental: {
+    webpackMemoryOptimizations: true,
+    // Type-check in a separate `tsc` process so it doesn't share a heap with webpack
+    // (the in-process checker ran out of memory on 8 GB build machines).
+    useTypeScriptCli: true,
+  },
   typescript: {
     ignoreBuildErrors: false, // SECURITY: TypeScript errors must be fixed, not silently ignored
   },

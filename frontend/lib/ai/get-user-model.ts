@@ -59,12 +59,12 @@ async function resolveModelInner(userId: string, feature: ModelPrefKey): ReturnT
       // All features use the same single model now, default to 'reasoning' role
       result.modelRole = 'reasoning'
       
-      if (platformCfg.api_key && typeof platformCfg.api_key === 'string') {
-        const { isMaskedSecret } = await import('@/lib/server-secrets-cache')
-        if (!isMaskedSecret(platformCfg.api_key)) {
-          result.apiKeyOverride = platformCfg.api_key
-        }
-      }
+      // The legacy single api_key belongs to platformCfg.provider only — a
+      // per-task override on another provider must not receive it (same rule
+      // as getRoundRobinKey); that provider's own keys/secrets/env apply.
+      const { legacyKeyFor } = await import('@/lib/ai/get-round-robin-key')
+      const legacy = legacyKeyFor(platformCfg, result.providerOverride as never)
+      if (legacy) result.apiKeyOverride = legacy
       return result
     }
   } catch { /* fall through to user settings */ }

@@ -26,6 +26,7 @@ function matchValue(v: any, cond: any): boolean {
     return Object.entries(cond).every(([op, arg]) => {
       switch (op) {
         case '$in': return (arg as any[]).some((a) => (Array.isArray(v) ? v.includes(a) : v === a))
+        case '$nin': return !(arg as any[]).some((a) => (Array.isArray(v) ? v.includes(a) : v === a))
         case '$ne': return Array.isArray(v) ? !v.includes(arg) : v !== arg
         case '$gt': return v !== undefined && v > (arg as any)
         case '$gte': return v !== undefined && v >= (arg as any)
@@ -75,20 +76,22 @@ const clone = <T,>(v: T): T => (v == null ? v : JSON.parse(JSON.stringify(v)))
 
 export class FakeCollection {
   docs: Doc[] = []
-  unique: string[] = []
+  /** Unique indexes: single-key (legacy behaviour) or compound; `partial` skips docs missing/null on any key. */
+  unique: { keys: string[]; partial: boolean }[] = []
 
   private checkUnique(candidate: Doc, self?: Doc) {
-    for (const key of this.unique) {
-      const v = get(candidate, key)
-      if (v === undefined || v === '') continue
-      if (this.docs.some((d) => d !== self && get(d, key) === v)) {
+    for (const { keys, partial } of this.unique) {
+      const vals = keys.map((k) => get(candidate, k))
+      if (keys.length === 1 && (vals[0] === undefined || vals[0] === '')) continue
+      if (partial && vals.some((v) => v === undefined || v === null || v === '')) continue
+      if (this.docs.some((d) => d !== self && keys.every((k, i) => get(d, k) === vals[i]))) {
         throw Object.assign(new Error('E11000 duplicate key'), { code: 11000 })
       }
     }
   }
 
-  async createIndex(spec: Doc, opts?: { unique?: boolean }) {
-    if (opts?.unique) this.unique.push(Object.keys(spec)[0])
+  async createIndex(spec: Doc, opts?: { unique?: boolean; partialFilterExpression?: Doc }) {
+    if (opts?.unique) this.unique.push({ keys: Object.keys(spec), partial: !!opts.partialFilterExpression })
     return 'ok'
   }
   async findOne(filter: Doc = {}, opts: { sort?: Doc } = {}) {

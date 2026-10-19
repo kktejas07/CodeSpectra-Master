@@ -147,6 +147,17 @@ describe('specific routes', () => {
     expect(as(null)('/dashboard/team/invites/tok').ok).toBe(true)
   })
 
+  it('hiring (ATS) pages open for any signed-in role; membership is checked server-side', () => {
+    for (const p of ['/dashboard/hiring', '/dashboard/hiring/team', '/dashboard/hiring/jobs/j1', '/dashboard/hiring/interviews', '/dashboard/hiring/client', '/dashboard/hiring/client/jobs/j1']) {
+      expect(as('user')(p).ok).toBe(true)
+      expect(resolveRouteAccess(p)?.tenantScoped).toBe(false)
+    }
+    expect(resolveRouteAccess('/dashboard/hiring/client/jobs/j1')?.route).toBe('/dashboard/hiring/client/jobs/[id]')
+    expect(as(null)('/dashboard/hiring')).toMatchObject({ ok: false, reason: 'unauthenticated' })
+    // the invite landing lives outside /dashboard and is public
+    expect(resolveRouteAccess('/hiring-invite/tok')).toBeNull()
+  })
+
   it('DB grants open an extra non-platform page; revokes cascade to sub-pages but not from the root', () => {
     const grant = { permissions: [{ resource: '/dashboard/recruiter-analytics', actions: ['read'] }] }
     expect(as('user', T)('/dashboard/recruiter-analytics', grant).ok).toBe(true)

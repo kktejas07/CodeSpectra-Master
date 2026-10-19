@@ -17,6 +17,7 @@ import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useCurrency } from '@/lib/use-currency'
 import { Illustration } from '@/components/illustrations/spot'
+import { AtsApplyForm } from './ats-apply-form'
 
 interface JobPosting {
   id: string
@@ -33,6 +34,8 @@ interface JobPosting {
   applicants: number
   created_at: string
   is_active: boolean
+  /** Set when the posting is run through the hiring pipeline (lib/ats). */
+  ats_job_id?: string | null
 }
 
 function formatSalary(salary: JobPosting['salary'], symbol: string) {
@@ -228,7 +231,17 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
                   <p className="mb-3 text-base font-bold text-cs-ink">
                     Apply for this position
                   </p>
-                  {authUser ? (
+                  {job.ats_job_id ? (
+                    <AtsApplyForm
+                      atsJobId={job.ats_job_id}
+                      signedIn={!!authUser}
+                      defaultName={authUser?.displayName || ''}
+                      onApplied={(already) => {
+                        if (already) setAlreadyApplied(true)
+                        else { setApplySuccess(true); setJob(j => j ? { ...j, applicants: j.applicants + 1 } : j) }
+                      }}
+                    />
+                  ) : authUser ? (
                     <div className="space-y-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="cover-letter" className="text-xs text-cs-ink">Cover letter (optional)</Label>

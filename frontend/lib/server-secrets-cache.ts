@@ -126,6 +126,26 @@ export type ServerSecretsRecord = {
   openwa_default_country_code?: string // e.g. 91 for India
   openwa_max_concurrency?: string // Max concurrent sends (default: 3)
   openwa_send_delay_ms?: string   // Delay between sends in ms (default: 400)
+  // --- ATS bot screening (lib/ats/screening/config.ts) ---------------------
+  meta_whatsapp_access_token?: string   // System-user token with whatsapp_business_messaging (+ calling)
+  meta_whatsapp_app_secret?: string     // Verifies X-Hub-Signature-256 on the webhook
+  meta_whatsapp_verify_token?: string   // Webhook GET hub.verify_token
+  meta_whatsapp_phone_number_id?: string // Platform default sender
+  meta_whatsapp_waba_id?: string
+  meta_whatsapp_graph_version?: string  // default v23.0
+  meta_whatsapp_template_chat?: string  // approved template: consent + start chat screening
+  meta_whatsapp_template_call?: string  // approved template: consent for a screening call
+  meta_whatsapp_template_language?: string
+  meta_whatsapp_call_mode?: string      // 'sip' (default) | 'graph'
+  vapi_api_key?: string
+  vapi_webhook_secret?: string
+  vapi_phone_number_ids?: string        // "IN=<id>, US=<id>, *=<id>"
+  vapi_whatsapp_trunk_number_id?: string // Vapi BYO SIP trunk number → wa.meta.vc
+  voice_agent_sip_uri?: string          // SIP server set on WhatsApp numbers (sip:agent.example.com:5061)
+  voice_agent_webhook_url?: string      // generic SIP agent dialer (e.g. LiveKit agent service)
+  voice_agent_webhook_secret?: string
+  twilio_auth_token?: string
+  exotel_webhook_token?: string
   // --- Internal backend auth (frontend-side copy of INTERNAL_BACKEND_SECRET) --
   // Sent as `x-internal-secret` on server->server calls to the FastAPI backend.
   // Must match the backend's INTERNAL_BACKEND_SECRET env var (set in Dokploy).

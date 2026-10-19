@@ -248,6 +248,26 @@ export function startSchedulerLoop(): void {
     } catch (e) {
       console.error('[scheduler] knowledge tick error:', e)
     }
+    // ATS interviews: 24h / 1h reminders + scorecard deadlines (idempotent per interview).
+    try {
+      const { runInterviewSweep } = await import('./ats/interviews/service')
+      await runInterviewSweep()
+    } catch (e) {
+      console.error('[scheduler] ats interview sweep error:', e)
+    }
+    // ATS bot screening: quiet-hour starts, reminders, timeouts, retries. One replica per minute.
+    const screenStarted = Date.now()
+    const screenLock = `codespectra:lock:ats-screening:${new Date().toISOString().slice(0, 16)}`
+    if (await acquireRedisLock(screenLock, 55).catch(() => false)) {
+      try {
+        const { tickScreening } = await import('./ats/screening/machine')
+        await tickScreening(new Date(), 200)
+        await recordCronRun('ats-screening', true, Date.now() - screenStarted)
+      } catch (e) {
+        await recordCronRun('ats-screening', false, Date.now() - screenStarted, e instanceof Error ? e.message : String(e))
+        console.error('[scheduler] ats screening tick error:', e)
+      }
+    }
   }
 
   setTimeout(() => {
@@ -296,5 +316,20 @@ async function checkTrials(): Promise<void> {
     await recordCronRun('grace-expiry', true, Date.now() - graceStarted)
   } catch {
     await recordCronRun('grace-expiry', false, Date.now() - graceStarted)
+  }
+  // Hiring pipeline (lib/ats): stage SLAs + assessment deadlines. One replica per day.
+  const atsStarted = Date.now()
+  const atsLock = `codespectra:lock:ats-sla:${new Date().toISOString().slice(0, 10)}`
+  if (await acquireRedisLock(atsLock, 6 * 3600).catch(() => false)) {
+    try {
+      const { sweepSla } = await import('./ats/engine')
+      const { sweepAssessmentDeadlines } = await import('./ats/handlers/assessment')
+      const late = await sweepAssessmentDeadlines()
+      const sla = await sweepSla()
+      if (late || sla.rejected) logger.info(`[ats] ${late} assessment deadline(s) missed, ${sla.rejected} SLA rejection(s)`)
+      await recordCronRun('ats-sla', true, Date.now() - atsStarted)
+    } catch (e) {
+      await recordCronRun('ats-sla', false, Date.now() - atsStarted, e instanceof Error ? e.message : String(e))
+    }
   }
 }

@@ -202,6 +202,23 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/assessments/ai-fluency/setup',
   '/dashboard/certifications',
 
+  // Hiring pipeline (ATS). Open to any signed-in role here because interviewers
+  // and clients are ordinary users; membership + ATS role are enforced server-side
+  // (app/dashboard/hiring/layout.tsx and requireAts in every /api/ats route).
+  '/dashboard/hiring',
+  '/dashboard/hiring/jobs',
+  '/dashboard/hiring/jobs/[id]',
+  '/dashboard/hiring/candidates',
+  '/dashboard/hiring/candidates/[id]',
+  '/dashboard/hiring/approvals',
+  '/dashboard/hiring/interviews',
+  '/dashboard/hiring/analytics',
+  '/dashboard/hiring/team',
+  '/dashboard/hiring/clients',
+  '/dashboard/hiring/settings',
+  '/dashboard/hiring/client',
+  '/dashboard/hiring/client/jobs/[id]',
+
   // Tools
   '/dashboard/scanner',
   '/dashboard/cad',
@@ -364,6 +381,19 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/sme-review': 'SME Review',
   '/dashboard/admin/agent': 'AI copilot',
   '/dashboard/admin/knowledge': 'Knowledge',
+  '/dashboard/hiring': 'Hiring',
+  '/dashboard/hiring/jobs': 'Hiring jobs',
+  '/dashboard/hiring/jobs/[id]': 'Job pipeline',
+  '/dashboard/hiring/candidates': 'Candidates',
+  '/dashboard/hiring/candidates/[id]': 'Candidate',
+  '/dashboard/hiring/approvals': 'Approvals',
+  '/dashboard/hiring/interviews': 'My interviews',
+  '/dashboard/hiring/analytics': 'Hiring analytics',
+  '/dashboard/hiring/team': 'Hiring team',
+  '/dashboard/hiring/clients': 'Clients',
+  '/dashboard/hiring/settings': 'Hiring settings',
+  '/dashboard/hiring/client': 'Client portal',
+  '/dashboard/hiring/client/jobs/[id]': 'Client review',
   '/companies': 'Companies',
 }
 

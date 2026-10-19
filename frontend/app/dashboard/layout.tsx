@@ -351,6 +351,22 @@ export default function DashboardLayout({
     }
   }, [userProfile?.id])
 
+  // Hiring (ATS) memberships — the "Hiring" sidebar section shows only for
+  // hiring-team members and tenant admins (GET /api/ats/me, lib/ats/access).
+  const [atsRoles, setAtsRoles] = useState<string[]>([])
+  useEffect(() => {
+    if (!userRole) return
+    let cancelled = false
+    fetch('/api/ats/me', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { memberships?: { role: string }[] } | null) => {
+        if (!cancelled) setAtsRoles([...new Set((data?.memberships || []).map(m => m.role))].sort())
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [userRole])
+  const atsRolesKey = atsRoles.join(',')
+
   type NavLeaf = { href: string; label: string; icon: LucideIcon; route: string }
   type NavEntry =
     | { type: 'link'; item: NavLeaf }
@@ -573,8 +589,39 @@ export default function DashboardLayout({
       }),
     )
 
-    return addSectionHeaders(leaves)
-  }, [userProfile?.role, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages])
+    const entries = addSectionHeaders(leaves)
+
+    // Hiring section: per-role links (membership is enforced server-side by
+    // app/dashboard/hiring/layout.tsx and requireAts in every /api/ats route).
+    const ats = new Set(atsRolesKey ? atsRolesKey.split(',') : [])
+    const staff = ats.has('admin') || ats.has('recruiter') || ats.has('hiring_manager')
+    const H = '/dashboard/hiring'
+    const hiringLeaves: NavLeaf[] = []
+    const addH = (route: string, label: string, icon: LucideIcon) => hiringLeaves.push({ href: route, route, label, icon })
+    if (staff) {
+      addH(H, 'Overview', LayoutDashboardIcon)
+      addH(`${H}/jobs`, 'Jobs', Briefcase)
+      addH(`${H}/candidates`, 'Candidates', FileSpreadsheet)
+      addH(`${H}/approvals`, 'Approvals', ClipboardCheck)
+      addH(`${H}/interviews`, 'Interviews', UserCheck)
+      if (ats.has('admin') || ats.has('recruiter')) {
+        addH(`${H}/analytics`, 'Analytics', BarChart3)
+        addH(`${H}/clients`, 'Clients', Building2)
+      }
+      addH(`${H}/team`, 'Team', Users2)
+      if (ats.has('admin')) addH(`${H}/settings`, 'Settings', Settings)
+    } else if (ats.has('interviewer')) {
+      addH(`${H}/interviews`, 'My interviews', UserCheck)
+    }
+    if (ats.has('client')) addH(`${H}/client`, 'Client portal', Building2)
+    if (hiringLeaves.length) {
+      const group: NavEntry = { type: 'group', label: 'Hiring', items: hiringLeaves }
+      const careerAt = entries.findIndex((e) => e.type === 'group' && e.label === 'Career')
+      if (careerAt >= 0) entries.splice(careerAt + 1, 0, group)
+      else entries.push(group)
+    }
+    return entries
+  }, [userProfile?.role, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages, atsRolesKey])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {

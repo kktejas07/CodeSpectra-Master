@@ -35,9 +35,32 @@ export async function POST(request: Request, { params }: IdRouteContext) {
     const coverLetter = typeof body.coverLetter === 'string' ? body.coverLetter.slice(0, 5000) : null
 
     const jobsCol = await jobs()
-    const job = await jobsCol.findOne({ id }, { projection: { id: 1, is_active: 1 } })
+    const job = await jobsCol.findOne({ id }, { projection: { id: 1, is_active: 1, ats_job_id: 1 } })
     if (!job || !job.is_active) {
       return NextResponse.json({ error: 'This job is no longer open' }, { status: 404 })
+    }
+
+    // Mirrored hiring-pipeline job: the application goes into the ATS (with the
+    // applicant's primary résumé). The legacy row below is still written so the
+    // job board's "already applied" state and old listings keep working.
+    const atsJobId = (job as { ats_job_id?: unknown }).ats_job_id
+    if (typeof atsJobId === 'string' && atsJobId) {
+      try {
+        const { atsJobs } = await import('@/lib/ats/db')
+        const { applyToJob } = await import('@/lib/ats/apply')
+        const atsJob = await (await atsJobs()).findOne({ id: atsJobId }, { projection: { _id: 0 } })
+        if (atsJob) {
+          await applyToJob(atsJob as never, {
+            user: { id: gate.user.id, email: gate.user.email, name: gate.user.fullName || gate.user.name },
+            cover_letter: coverLetter,
+          })
+        }
+      } catch (e: any) {
+        if (typeof e?.status === 'number' && e.status < 500) {
+          return NextResponse.json({ error: e.message }, { status: e.status })
+        }
+        throw e
+      }
     }
 
     await ensureIndex()
@@ -70,7 +93,8 @@ export async function POST(request: Request, { params }: IdRouteContext) {
       })
     }
 
-    await jobsCol.updateOne({ id }, { $inc: { applicants: 1 } })
+    // ATS-mirrored postings are counted by the ATS intake (applyToJob).
+    if (!(typeof atsJobId === 'string' && atsJobId)) await jobsCol.updateOne({ id }, { $inc: { applicants: 1 } })
 
     return NextResponse.json({
       success: true,

@@ -22,6 +22,8 @@ export const CSRF_EXEMPT: readonly string[] = [
   '/api/proctor/events',
   '/api/daily-login',
   '/api/kyc/didit/webhook',
+  // ATS bot screening webhooks (Meta HMAC, Vapi secret, Twilio signature, Exotel token)
+  '/api/ats/screening/webhooks',
   '/api/security/track',
   // Face sign-in starts a sign-in (no session yet), like /api/auth/login.
   '/api/auth/face-verify',

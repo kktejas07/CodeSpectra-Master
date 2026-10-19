@@ -377,3 +377,37 @@ export interface ScreeningCall {
 //                 GET/POST /api/ats/integrations/meetings (connect Zoom / Google / Microsoft per tenant)
 //  screening:     POST /api/ats/screening/start {application_id}, GET /api/ats/screening/[id],
 //                 webhooks: /api/ats/screening/webhooks/{whatsapp,vapi,exotel,twilio}
+
+// ─── ADDITIONS (access part) ────────────────────────────────────────────────
+// Comment-only; no exported types changed. Pure rules + matrix: lib/ats/access-rules.ts
+// (re-exported by lib/ats/access.ts). Extra exports there: can(actor, action, ctx),
+// canSeeJob, canEditJob, candidateViewFor (redaction), clientApplicationFilter,
+// clientVisibleStageIds, isAssignedInterviewer(actor, appId), tenantFromRequest(req),
+// getAccessSettings(tenantId) → { recruiters_see_all_jobs (default true), client_sees_contacts (default false) }.
+// canSeeApplication(actor, app, job, ctx?) takes an optional 4th arg
+//   { settings?, interviewerAssigned? } — interviewers see an application only when the
+//   caller passes interviewerAssigned: true (see isAssignedInterviewer).
+// Collections: ats_members, ats_comments, ats_access_settings.
+// API (access):  GET /api/ats/me (memberships + current), POST /api/ats/me { tenant } (switch, cookie ats_tenant)
+//                GET/PATCH /api/ats/team/settings, GET /api/ats/team/accept?token=
+//                GET/POST /api/ats/applications/[id]/comments { body, visibility: internal|client }
+//                GET /api/ats/client/jobs, GET /api/ats/client/jobs/[id]  (client portal)
+// Every /api/ats route accepts ?tenant=<id> for multi-tenant members.
+// Invite landing page: /hiring-invite/[token] (public, outside /dashboard).
+
+// ─── ADDITIONS (interviews part) ────────────────────────────────────────────
+// Comment-only; no exported types changed.
+// Interview stage config (kind 'interview') may carry `fallback_to_livekit?: boolean`
+//   (virtual only): when the chosen provider isn't connected, book on built-in video
+//   instead of asking the recruiter. Read via interviewConfig() in lib/ats/interviews/service.ts
+//   (core's sanitizePipeline must keep it to be persisted).
+// AtsInterview.join_url = the team's meeting link (LiveKit: the panel room page);
+//   candidates get their own signed link (/interview/join/[token]) — send interviews to
+//   the browser through publicInterview() (lib/ats/interviews/db.ts), which strips
+//   token_nonce / sent / entry_key bookkeeping.
+// Collections: ats_interviews, ats_meeting_integrations (encrypted creds), ats_interview_settings.
+// API (interviews): GET/PATCH /api/ats/interviews/[id], POST /api/ats/interviews/[id]/live/token,
+//   GET/POST /api/ats/interviews/join (public token), GET /api/ats/interviews/self-schedule?token=,
+//   OAuth callbacks GET /api/ats/integrations/meetings/{google,microsoft}/callback.
+// Pages: /interview/schedule/[token], /interview/join/[token] (public),
+//   /dashboard/hiring/interviews[/[id][/live]], /dashboard/hiring/settings/integrations.

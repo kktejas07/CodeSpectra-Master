@@ -186,6 +186,12 @@ export async function PATCH(
       { $set: { details: updatedDetails, score: newScore, has_pending_review: stillPending } }
     )
 
+    // Hiring pipeline: the last manual grade makes the attempt final.
+    if (!stillPending) {
+      import('@/lib/ats/handlers/assessment')
+        .then(({ notifyAssessmentFinal }) => notifyAssessmentFinal({ id: submission.id, exam_id: String(submission.exam_id), user_id: String(submission.user_id), email: submission.email, score: newScore, max_score: submission.max_score, has_pending_review: false }))
+        .catch((e) => console.error('[CodeSpectra] ats assessment hook:', e))
+    }
     return NextResponse.json({ score: newScore, has_pending_review: stillPending })
   } catch (e: unknown) {
     const msg = 'Failed to save grades'

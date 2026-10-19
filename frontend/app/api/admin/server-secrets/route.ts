@@ -76,6 +76,15 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'session_secret',
   'typesafe_api_key',
   'custom_api_key',
+  // ATS bot screening
+  'meta_whatsapp_access_token',
+  'meta_whatsapp_app_secret',
+  'meta_whatsapp_verify_token',
+  'vapi_api_key',
+  'vapi_webhook_secret',
+  'voice_agent_webhook_secret',
+  'twilio_auth_token',
+  'exotel_webhook_token',
 ]
 
 const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
@@ -116,6 +125,18 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'openwa_default_country_code',
   'openwa_max_concurrency',
   'openwa_send_delay_ms',
+  // ATS bot screening
+  'meta_whatsapp_phone_number_id',
+  'meta_whatsapp_waba_id',
+  'meta_whatsapp_graph_version',
+  'meta_whatsapp_template_chat',
+  'meta_whatsapp_template_call',
+  'meta_whatsapp_template_language',
+  'meta_whatsapp_call_mode',
+  'vapi_phone_number_ids',
+  'vapi_whatsapp_trunk_number_id',
+  'voice_agent_sip_uri',
+  'voice_agent_webhook_url',
 ]
 
 const ALL_FIELDS: (keyof ServerSecretsRecord)[] = [...SECRET_FIELDS, ...PLAIN_FIELDS]

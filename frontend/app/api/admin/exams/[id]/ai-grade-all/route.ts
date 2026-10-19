@@ -87,6 +87,13 @@ export async function POST(
       const setOp: Record<string, unknown> = { details: updatedDetails, score: newScore, has_pending_review: stillPending }
       if (!stillPending) setOp.graded = true
       await db.collection('exam_submissions').updateOne({ exam_id: examId, user_id: userId }, { $set: setOp })
+      // Hiring pipeline: grading finished → record the assessment stage result.
+      if (!stillPending) {
+        const sub = submissions.find((x) => x.user_id === userId)
+        import('@/lib/ats/handlers/assessment')
+          .then(({ notifyAssessmentFinal }) => notifyAssessmentFinal({ id: sub?.id, exam_id: examId, user_id: userId, email: sub?.email, score: newScore, max_score: sub?.max_score, has_pending_review: false }))
+          .catch((e) => console.error('[CodeSpectra] ats assessment hook:', e))
+      }
     }
 
     outer:

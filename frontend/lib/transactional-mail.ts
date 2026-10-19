@@ -6,6 +6,8 @@ export async function sendEmailViaPostal(params: {
   html: string
   text?: string
   cc?: string
+  /** Optional attachments (Postal: name, content_type, base64 data). */
+  attachments?: { name: string; content_type: string; data: string }[]
 }): Promise<{ messageId: number | null }> {
   await warmServerSecretsCache()
   const s = getServerSecretsFromCache()
@@ -32,6 +34,7 @@ export async function sendEmailViaPostal(params: {
       subject: params.subject,
       html_body: params.html,
       ...(params.text ? { text_body: params.text } : {}),
+      ...(params.attachments?.length ? { attachments: params.attachments } : {}),
     }),
   })
 

@@ -55,3 +55,34 @@ describe('getRoundRobinKey legacy fallback', () => {
     }
   })
 })
+
+describe('resolveModel legacy key with per-task overrides', () => {
+  beforeEach(() => vi.resetModules())
+
+  it('gives the legacy key only when the resolved provider is the key owner', async () => {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    vi.mocked(getMongoDb).mockResolvedValue(mockLlmDoc({
+      provider: 'anthropic', model: 'claude-x', endpoint: '', api_key: RAW, keys: {},
+      taskOverrides: { review_model: { provider: 'openai', model: 'gpt-x' } },
+    }) as never)
+    const { resolveModel } = await import('@/lib/ai/get-user-model')
+    const review = await resolveModel('u1', 'review_model')
+    expect(review.providerOverride).toBe('openai')
+    expect(review.apiKeyOverride).toBeUndefined()
+    const chat = await resolveModel('u1', 'chat_model')
+    expect(chat.providerOverride).toBe('anthropic')
+    expect(chat.apiKeyOverride).toBe(RAW)
+  })
+
+  it('an override on the same provider still gets the legacy key', async () => {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    vi.mocked(getMongoDb).mockResolvedValue(mockLlmDoc({
+      provider: 'anthropic', model: 'claude-x', endpoint: '', api_key: RAW, keys: {},
+      taskOverrides: { grade_model: { provider: 'Anthropic', model: 'claude-y' } },
+    }) as never)
+    const { resolveModel } = await import('@/lib/ai/get-user-model')
+    const r = await resolveModel('u2', 'grade_model')
+    expect(r.modelOverride).toBe('claude-y')
+    expect(r.apiKeyOverride).toBe(RAW)
+  })
+})

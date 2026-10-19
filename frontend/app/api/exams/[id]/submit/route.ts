@@ -252,6 +252,11 @@ export async function POST(
       return NextResponse.json({ error: 'This attempt was already submitted.' }, { status: 409 })
     }
     knowledgeOnSubmission(examId, userId, (exam as { tenant_id?: unknown }).tenant_id)
+    // Hiring pipeline: an auto-graded attempt is final now → record the assessment stage result;
+    // one waiting for manual grading is marked submitted (on time) and recorded once graded.
+    import('@/lib/ats/handlers/assessment')
+      .then(({ notifyAssessmentFinal }) => notifyAssessmentFinal({ id: submission.id, exam_id: examId, user_id: userId, email, score: totalScore, max_score: maxScore, has_pending_review: !!hasPendingReview }))
+      .catch((e) => console.error('[CodeSpectra] ats assessment hook:', e))
     // The draft's answers belong to the attempt just stored; clear them so a
     // retake starts empty (start also resets them for a new attempt_no).
     await db.collection('exam_drafts').updateOne(

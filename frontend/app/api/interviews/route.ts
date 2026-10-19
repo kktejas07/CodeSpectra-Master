@@ -1,10 +1,13 @@
 import { formatDateTime } from '@/lib/format-datetime'
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, type APIUser } from '@/lib/route-auth'
 import { interviewSessions, createInterviewSession, newId, nowIso } from '@/lib/db/interviews'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
+import { resolveActorFor } from '@/lib/ats/access'
+import { profileTenantId } from '@/lib/auth-account'
+import { escapeHtml } from '@/lib/safe-html'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,9 +29,33 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ items })
 }
 
+/**
+ * Who may book a live interview for someone else: superadmin, a tenant_admin of
+ * an active organisation, or an active hiring-team member (ATS admin, recruiter,
+ * hiring manager, interviewer). Ordinary users/candidates can't — before this
+ * check any signed-in account could create sessions (and email any user).
+ * Candidate practice (AI mock interviews) uses /api/interviews/ai-mock/* and is
+ * not affected. Returns the tenant the session belongs to.
+ */
+async function interviewCreatorTenant(user: APIUser): Promise<{ ok: true; tenantId: string | null } | { ok: false }> {
+  if (user.role === 'superadmin') return { ok: true, tenantId: user.tenantId || null }
+  if (user.role === 'tenant_admin' && user.tenantId) return { ok: true, tenantId: user.tenantId }
+  try {
+    const actor = await resolveActorFor(user)
+    if (actor && actor.role !== 'client') return { ok: true, tenantId: actor.tenantId }
+  } catch (e) {
+    console.error('[Interview] ATS membership check failed:', e)
+  }
+  return { ok: false }
+}
+
 export async function POST(req: NextRequest) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const creator = await interviewCreatorTenant(gate.user)
+  if (!creator.ok) {
+    return NextResponse.json({ error: 'Only admins and hiring-team members can schedule interviews. To practise, use AI mock interviews.' }, { status: 403 })
+  }
 
   const rateCheck = await rateLimitAIRedis(req, gate.user.id)
   if (!rateCheck.ok) {
@@ -49,6 +76,21 @@ export async function POST(req: NextRequest) {
   if (!validTypes.includes(body.type)) {
     return NextResponse.json({ error: `type must be one of: ${validTypes.join(', ')}` }, { status: 400 })
   }
+  if (typeof body.title !== 'string' || typeof body.role !== 'string' || typeof body.candidate_id !== 'string' || typeof body.scheduled_at !== 'string'
+    || body.title.length > 200 || body.role.length > 200 || body.candidate_id.length > 128 || Number.isNaN(Date.parse(body.scheduled_at))) {
+    return NextResponse.json({ error: 'Invalid interview details' }, { status: 400 })
+  }
+  if (body.candidate_id === gate.user.id) {
+    return NextResponse.json({ error: "You can't interview yourself. To practise, use AI mock interviews." }, { status: 400 })
+  }
+  // The candidate must be a real account (and, for tenant staff, not another tenant's member).
+  const candidateDoc = await (await getMongoDb()).collection('user').findOne({ id: body.candidate_id }, { projection: { id: 1, tenantId: 1, organizationId: 1 } })
+  if (!candidateDoc) return NextResponse.json({ error: 'Candidate not found' }, { status: 404 })
+  const candidateTenant = profileTenantId(candidateDoc as Parameters<typeof profileTenantId>[0])
+  if (gate.user.role !== 'superadmin' && candidateTenant && candidateTenant !== creator.tenantId) {
+    return NextResponse.json({ error: 'Candidate not found' }, { status: 404 })
+  }
+  if (typeof body.resume_info === 'string') body.resume_info = body.resume_info.slice(0, 20000)
 
   const session = await createInterviewSession({
     title: body.title,
@@ -56,10 +98,10 @@ export async function POST(req: NextRequest) {
     role: body.role,
     interviewer_id: gate.user.id,
     candidate_id: body.candidate_id,
-    scheduled_at: body.scheduled_at,
+    scheduled_at: new Date(body.scheduled_at).toISOString(),
     duration_minutes: Math.min(180, Math.max(15, body.duration_minutes || 60)),
     resume_info: body.resume_info,
-    tenant_id: gate.user.tenantId || null,
+    tenant_id: creator.tenantId,
   })
 
   // Pin to calendar for interviewer + candidate
@@ -95,11 +137,11 @@ export async function POST(req: NextRequest) {
       const liveUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/interviews/${session.id}/live`
       const startTime = formatDateTime(session.scheduled_at)
       await sendEmail(candidate.email, {
-        subject: `Interview Scheduled: ${session.title}`,
+        subject: `Interview Scheduled: ${session.title.replace(/[\r\n]+/g, ' ')}`,
         html: `<p>You have been scheduled for an interview.</p>
-<p><strong>Title:</strong> ${session.title}</p>
-<p><strong>Role:</strong> ${session.role}</p>
-<p><strong>Type:</strong> ${session.type}</p>
+<p><strong>Title:</strong> ${escapeHtml(session.title)}</p>
+<p><strong>Role:</strong> ${escapeHtml(session.role)}</p>
+<p><strong>Type:</strong> ${escapeHtml(session.type)}</p>
 <p><strong>When:</strong> ${startTime}</p>
 <p><strong>Duration:</strong> ${session.duration_minutes} minutes</p>
 <p><a href="${liveUrl}">Join Live Interview →</a></p>`,
