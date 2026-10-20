@@ -244,7 +244,7 @@ export default function RolesPage() {
           <span className="text-sm font-medium tabular-nums text-foreground">{selected.size} selected</span>
           <div className="flex-1" />
           <Select value="" onValueChange={(v) => { if (v) bulkRoleChange(v) }}>
-            <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectTrigger aria-label="Change role for selected users" className="h-8 w-[160px] text-xs">
               <SelectValue placeholder="Change role" />
             </SelectTrigger>
             <SelectContent>

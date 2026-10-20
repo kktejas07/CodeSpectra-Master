@@ -2,7 +2,6 @@
 import { formatDateTime, formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -11,6 +10,9 @@ import {
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { useConfirm } from '@/lib/confirm-context'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -62,8 +64,10 @@ interface KycStats {
 export default function AdminKycPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const confirmDialog = useConfirm()
   const [records, setRecords] = useState<KycRecord[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [stats, setStats] = useState<KycStats>({ total: 0, approved: 0, rejected: 0, pending: 0, manual_review: 0 })
   const [selectedRecord, setSelectedRecord] = useState<KycRecord | null>(null)
   const [diditDetails, setDiditDetails] = useState<any>(null)
@@ -78,20 +82,30 @@ export default function AdminKycPage() {
       if (res.ok) {
         const data = await res.json()
         setDiditDetails(data)
+      } else {
+        addToast({ type: 'error', title: "Couldn't load the verification details", message: `HTTP ${res.status}. Try again in a moment.` })
       }
-    } catch { /* ignore */ }
+    } catch {
+      addToast({ type: 'error', title: "Couldn't load the verification details", message: 'Check your connection and try again.' })
+    }
     setLoadingDetails(false)
   }
 
   async function fetchData() {
+    setLoadError(null)
     try {
       const res = await csrfFetch('/api/admin/kyc', { credentials: 'include' })
       if (res.ok) {
         const data = await res.json() as { records: KycRecord[]; stats: KycStats }
         setRecords(data.records || [])
         setStats(data.stats || { total: 0, approved: 0, rejected: 0, pending: 0, manual_review: 0 })
+      } else {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        setLoadError(j.error || `Couldn't load identity checks (HTTP ${res.status}).`)
       }
-    } catch { /* ignore */ }
+    } catch {
+      setLoadError("Couldn't load identity checks. Check your connection and try again.")
+    }
     setLoading(false)
   }
 
@@ -105,21 +119,25 @@ export default function AdminKycPage() {
     }
   }
 
-// ... (some lines unchanged, jumping to columns)
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this KYC record?')) return
+    if (!(await confirmDialog({ title: 'Delete this record?', description: 'Delete this identity check record? This cannot be undone.', confirmText: 'Delete', destructive: true }))) return
     try {
-      const res = await csrfFetch(`/api/admin/kyc?id=${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        setRecords(records.filter(r => r.id !== id))
-        setStats(s => ({ ...s, total: s.total - 1 }))
+      const res = await csrfFetch(`/api/admin/kyc?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(j.error || `HTTP ${res.status}`)
       }
-    } catch { /* ignore */ }
+      setRecords((rs) => rs.filter(r => r.id !== id))
+      setStats(s => ({ ...s, total: Math.max(0, s.total - 1) }))
+      addToast({ type: 'success', title: 'Record deleted' })
+    } catch (e) {
+      addToast({ type: 'error', title: "Couldn't delete the record", message: e instanceof Error ? e.message : 'Try again.' })
+    }
   }
 
   // Decide a session Didit sent to manual review (PATCH /api/admin/kyc).
   const handleReview = async (r: KycRecord, decision: 'approved' | 'rejected') => {
-    if (!window.confirm(decision === 'approved' ? 'Approve this identity check?' : 'Reject this identity check?')) return
+    if (!(await confirmDialog({ title: decision === 'approved' ? 'Approve this identity check?' : 'Reject this identity check?', description: `${r.user_name || r.user_email || 'This person'} will be marked as ${decision === 'approved' ? 'verified' : 'not verified'}.`, confirmText: decision === 'approved' ? 'Approve' : 'Reject', destructive: decision === 'rejected' }))) return
     try {
       const res = await csrfFetch('/api/admin/kyc', {
         method: 'PATCH',
@@ -216,23 +234,22 @@ export default function AdminKycPage() {
           <SkeletonStats />
           <SkeletonTable />
         </div>
+      ) : loadError ? (
+        <EmptyState illustration="error" title="Couldn't load identity checks" description={loadError} actionLabel="Try again" onAction={() => { setLoading(true); void fetchData() }} />
       ) : (
         <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyState={{ illustration: 'security' }} emptyMessage="No identity checks yet. They appear here when candidates verify their ID." />
       )}
 
       {/* Detail Modal — Full Didit-style view */}
-      {selectedRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setSelectedRecord(null)}>
-          <Card role="dialog" aria-modal="true" aria-label="Identity check details" className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-semibold text-foreground">{selectedRecord.full_name || selectedRecord.user_name || 'User'}</h3>
-                <p className="text-sm text-muted-foreground">{selectedRecord.user_email}</p>
+      <Dialog open={!!selectedRecord} onOpenChange={(open) => { if (!open) setSelectedRecord(null) }}>
+        {selectedRecord && (
+          <DialogContent className="max-h-[90vh] overflow-y-auto rounded-3xl sm:max-w-3xl">
+            <div className="flex flex-wrap items-center justify-between gap-2 pr-8">
+              <div className="min-w-0">
+                <DialogTitle className="text-lg font-semibold text-foreground">{selectedRecord.full_name || selectedRecord.user_name || 'User'}</DialogTitle>
+                <DialogDescription className="break-all text-sm text-muted-foreground">{selectedRecord.user_email}</DialogDescription>
               </div>
-              <div className="flex items-center gap-2">
-                {getStatusBadge(selectedRecord.status)}
-                <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)} aria-label="Close">×</Button>
-              </div>
+              {getStatusBadge(selectedRecord.status)}
             </div>
 
             <div className="space-y-4">
@@ -370,9 +387,9 @@ export default function AdminKycPage() {
                 <span>{selectedRecord.created_at ? formatDateTime(selectedRecord.created_at) : '—'}</span>
               </div>
             </div>
-          </Card>
-        </div>
-      )}
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   )
 }

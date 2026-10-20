@@ -67,6 +67,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(doc)
   } catch (error) {
     console.error('[notifications] POST:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong with notifications. Try again.' }, { status: 500 })
   }
 }

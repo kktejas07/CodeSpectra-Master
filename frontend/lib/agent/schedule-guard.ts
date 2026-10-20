@@ -62,7 +62,7 @@ async function disable<T extends Wf>(wf: T, reason: string): Promise<null> {
     const ids = admins.map((a) => String(a.id || '')).filter((x) => x && x !== String(wf.created_by || ''))
     if (ids.length) {
       const { notifyMany } = await import('@/lib/notifications')
-      await notifyMany(ids, { type: 'system.alert', title, message, link: `/dashboard/admin/workflows/${wf.id}`, icon: 'alert-triangle' } as never)
+      await notifyMany(ids, { type: 'system.alert', title, message, link: `/dashboard/admin/workflows?workflow=${wf.id}`, icon: 'alert-triangle' } as never)
     }
   } catch (e) {
     console.error('[agent/schedule] notify admins failed:', (e as Error)?.message)

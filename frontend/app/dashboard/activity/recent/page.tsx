@@ -24,6 +24,7 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -90,6 +91,7 @@ const GROUP_ORDER = ['Today', 'Yesterday', 'Last 7 days', 'Older']
 
 export default function RecentlyViewedPage() {
   const gate = usePageGuard('user')
+  const addToast = useToast()
   const { startTour, setTourSeen } = useTour()
   const [items, setItems] = useState<RecentItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -204,14 +206,18 @@ export default function RecentlyViewedPage() {
   }, [filtered])
 
   async function removeItem(it: RecentItem) {
+    const before = items
     setItems((prev) => prev.filter((p) => !(p.type === it.type && p.id === it.id)))
     try {
-      await csrfFetch(
+      const res = await csrfFetch(
         `/api/user/recently-viewed?type=${encodeURIComponent(it.type)}&id=${encodeURIComponent(it.id)}`,
         { method: 'DELETE' },
       )
+      if (!res.ok) throw new Error(String(res.status))
+      addToast({ type: 'success', title: 'Removed from history' })
     } catch {
-      /* already removed locally */
+      setItems(before)
+      addToast({ type: 'error', title: 'Couldn’t remove this item', message: 'Please try again.' })
     }
   }
 
@@ -219,10 +225,14 @@ export default function RecentlyViewedPage() {
     if (!window.confirm('Clear your entire viewing history? This cannot be undone.')) return
     setClearing(true)
     try {
-      await csrfFetch('/api/user/recently-viewed', { method: 'DELETE' })
+      const res = await csrfFetch('/api/user/recently-viewed', { method: 'DELETE' })
+      if (!res.ok) throw new Error(String(res.status))
       setItems([])
       setQuery('')
       setTypeFilter('all')
+      addToast({ type: 'success', title: 'Viewing history cleared' })
+    } catch {
+      addToast({ type: 'error', title: 'Couldn’t clear your history', message: 'Please try again.' })
     } finally {
       setClearing(false)
     }

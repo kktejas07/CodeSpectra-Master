@@ -2,6 +2,7 @@
 
 import { useBrowserValue } from '@/hooks/use-browser-value'
 import { useEffect, useState } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { X, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AnonAadhaarVerify } from '@/components/kyc/AnonAadhaarVerify'
@@ -29,6 +30,8 @@ export function ExamAadhaarGate({
   examTitle?: string
 }) {
   const [mode, setMode] = useState<ExamMode | null>(null)
+  // The ocr_face branch renders IdentityVerification, which traps focus itself.
+  const panelRef = useFocusTrap<HTMLDivElement>(!(mode === 'ocr_face' && !!examId), onCancel)
   const search = useBrowserValue(() => window.location.search, '')
   const [seed, setSeed] = useState('314159265358979')
   const [testMode, setTestMode] = useState(true)
@@ -56,7 +59,7 @@ export function ExamAadhaarGate({
   if (!mode) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-6 text-sm text-foreground">
+        <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Loading ID check" className="flex items-center gap-2 rounded-2xl border border-border bg-card p-6 text-sm text-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading ID check…
         </div>
       </div>
@@ -80,7 +83,7 @@ export function ExamAadhaarGate({
   if (mode === 'off' || mode === 'ocr_face') {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true" aria-labelledby="exam-id-none-title">
-        <div className="relative w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
+        <div ref={panelRef} className="relative w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
             <h2 id="exam-id-none-title" className="text-base font-bold text-foreground">No extra ID check needed</h2>
@@ -98,7 +101,7 @@ export function ExamAadhaarGate({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="relative w-full max-w-lg space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="exam-aadhaar-title" className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
         <button
           type="button"
           aria-label="Close"
@@ -108,7 +111,7 @@ export function ExamAadhaarGate({
           <X className="h-4 w-4" />
         </button>
         <div>
-          <h2 className="text-base font-bold text-foreground">Exam identity (Anon Aadhaar)</h2>
+          <h2 id="exam-aadhaar-title" className="text-base font-bold text-foreground">Exam identity (Anon Aadhaar)</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Privacy-preserving Aadhaar proof. Does not replace full KYC on Identity Verify.
           </p>

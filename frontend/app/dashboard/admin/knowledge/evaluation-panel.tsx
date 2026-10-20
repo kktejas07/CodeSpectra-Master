@@ -191,7 +191,7 @@ export function EvaluationPanel() {
                 <p className="text-sm font-medium text-foreground">Trend</p>
                 <Sparkline values={trend.map((r) => r.success_at_3)} />
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[880px]">
                     <caption className="sr-only">Evaluation runs, newest first</caption>
                     <thead className="text-left text-xs text-muted-foreground">
                       <tr>

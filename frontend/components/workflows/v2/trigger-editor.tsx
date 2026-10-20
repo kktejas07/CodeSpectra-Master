@@ -47,11 +47,15 @@ export function TriggerEditor({ value, onChange, workflowId, hookUrl, secretHint
 
   async function rotate() {
     setErr(null)
-    const res = await csrfFetch(`/api/workflows/${workflowId}/secret`, { method: 'POST' })
-    const json = await res.json().catch(() => ({}))
-    if (!res.ok) return setErr(json.error || 'Could not create the secret')
-    setSecret(json.secret)
-    setHint(json.hint)
+    try {
+      const res = await csrfFetch(`/api/workflows/${workflowId}/secret`, { method: 'POST' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) return setErr(json.error || 'Could not create the secret')
+      setSecret(json.secret)
+      setHint(json.hint)
+    } catch {
+      setErr('Could not create the secret. Check your connection and try again.')
+    }
   }
 
   return (

@@ -633,7 +633,7 @@ function BillingContent() {
 
       {/* Upgrade */}
       <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Change plan</DialogTitle>
             <DialogDescription>Pick a plan and billing interval. Your plan changes once the payment is confirmed.</DialogDescription>

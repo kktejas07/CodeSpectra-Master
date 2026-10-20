@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import {
   ShieldCheck,
   Usb,
@@ -45,6 +46,8 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
   const [scanning, setScanning] = useState(true)
   const [completing, setCompleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Blocking step before the session: trap focus, no Escape-to-close.
+  const panelRef = useFocusTrap<HTMLDivElement>(true)
 
   const refresh = useCallback(async () => {
     setScanning(true)
@@ -162,7 +165,7 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-w-2xl w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground max-h-[90vh] overflow-y-auto">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Device check" className="max-w-2xl w-full rounded-3xl border border-border bg-card p-6 shadow-2xl dark:shadow-none space-y-5 text-foreground max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
             <ShieldCheck className="h-6 w-6" />

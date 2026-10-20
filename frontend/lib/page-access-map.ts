@@ -81,6 +81,13 @@ export const EXTRA_ROUTES: readonly Extra[] = [
   { route: '/qr', role: 'user', label: 'QR check-in' },
 ]
 
+/**
+ * User-list pages that also render for signed-out visitors (sidebar entry for
+ * users, but public marketing pages in the sitemap and footer). Without this
+ * the proxy bounced visitors from /companies to sign-in (wave 5 crawl).
+ */
+export const PUBLIC_USER_ROUTES: ReadonlySet<string> = new Set(['/companies'])
+
 let _map: RouteAccess[] | null = null
 const _defaults = new Map<string, Set<string>>()
 
@@ -123,7 +130,7 @@ export function getPageAccessMap(): readonly RouteAccess[] {
   // Per-event judges can be any user (assigned on the event's Judges tab); the
   // judge API returns only the events the caller judges. Sidebar: judges only.
   for (const r of JUDGE_ROUTES) add(r, 'user', { navRole: 'judge' })
-  for (const r of ALL_USER_ROUTES) add(r, 'user')
+  for (const r of ALL_USER_ROUTES) add(r, 'user', PUBLIC_USER_ROUTES.has(r) ? { auth: 'public' } : {})
   for (const e of EXTRA_ROUTES) add(e.route, e.role, { label: e.label, auth: e.auth ?? 'required', exact: !!e.exact })
   _map = [...byRoute.values()]
   return _map

@@ -3,6 +3,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { ObjectId } from 'mongodb'
 import { deleteFeedback } from '@/lib/db/feedback'
 import { requireSuperAdmin } from '@/lib/route-auth'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -30,6 +31,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       { $set }
     )
 
+    await auditAdmin(gate.user, 'admin.feedback.update', 'feedback', `feedback/${id}`, Object.keys($set).join(', '))
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Failed to update feedback:', error)
@@ -46,6 +48,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     const { id } = await params
     await deleteFeedback(id)
+    await auditAdmin(gate.user, 'admin.feedback.delete', 'feedback', `feedback/${id}`, undefined, 'warning')
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Failed to delete feedback:', error)

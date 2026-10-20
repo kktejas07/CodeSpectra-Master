@@ -38,6 +38,6 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     console.error('[item-bank/cad-step/generate]', msg)
-    return NextResponse.json({ error: `Save to item bank failed: ${msg}` }, { status: 502 })
+    return NextResponse.json({ error: 'Saving to the item bank failed. Try again in a moment.' }, { status: 502 })
   }
 }

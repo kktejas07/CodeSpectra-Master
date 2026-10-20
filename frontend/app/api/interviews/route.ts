@@ -10,6 +10,7 @@ import { profileTenantId } from '@/lib/auth-account'
 import { escapeHtml } from '@/lib/safe-html'
 import { canScheduleCandidate, normalizeCandidateEmail, CANDIDATE_UNAVAILABLE } from '@/lib/interview-access'
 import { limitRequest } from '@/lib/rate-limit'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
   const lookupLimited = await limitRequest(req, 'interview-candidate-lookup', gate.user.id, 30, 10 * 60_000)
   if (lookupLimited) return lookupLimited
 
-  const body = await req.json().catch(() => ({})) as {
+  const body = sanitizeMongoInput(await req.json().catch(() => ({}))) as {
     title?: string; type?: string; role?: string
     candidate_id?: string; candidate_email?: string; scheduled_at?: string; duration_minutes?: number
     resume_info?: string

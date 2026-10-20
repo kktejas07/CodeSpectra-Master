@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { CodeXml, Menu, X } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { usePathname } from 'next/navigation'
+import { copyrightLine } from '@/lib/copyright'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
@@ -17,6 +19,8 @@ const FooterAnimatedBackdrop = dynamic(
   { ssr: false },
 )
 import { FooterWordmark } from '@/components/landing/footer-wordmark'
+// Turnstile for the footer newsletter form — loaded only once someone starts typing.
+const TurnstileWidget = dynamic(() => import('@/components/auth/turnstile-widget').then((m) => m.TurnstileWidget), { ssr: false })
 
 export const DASHBOARD_HREF = '/dashboard'
 
@@ -29,6 +33,61 @@ export function PublicPageWrapper({
   const addToast = useToast()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const [subscribing, setSubscribing] = useState(false)
+  const [newsletterCaptchaOn, setNewsletterCaptchaOn] = useState(false)
+  const [newsletterCaptcha, setNewsletterCaptcha] = useState<string | null>(null)
+  const [newsletterCaptchaReset, setNewsletterCaptchaReset] = useState(0)
+  const pathname = usePathname()
+  const headerRef = useRef<HTMLElement>(null)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Close the mobile menu whenever the route changes (incl. back/forward).
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
+
+  // Mobile menu: lock page scroll, trap focus inside the header, Esc closes,
+  // and close when the viewport grows to the desktop nav.
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const header = headerRef.current
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const focusables = () =>
+      Array.from(
+        header?.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])') ?? [],
+      ).filter((el) => el.offsetParent !== null)
+    document.querySelector<HTMLElement>('#mobile-menu a[href]')?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setMobileMenuOpen(false)
+        menuButtonRef.current?.focus()
+        return
+      }
+      if (e.key !== 'Tab') return
+      const els = focusables()
+      if (!els.length) return
+      const first = els[0]
+      const last = els[els.length - 1]
+      if (e.shiftKey && (document.activeElement === first || !header?.contains(document.activeElement))) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && (document.activeElement === last || !header?.contains(document.activeElement))) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onMq = () => mq.matches && setMobileMenuOpen(false)
+    document.addEventListener('keydown', onKey)
+    mq.addEventListener('change', onMq)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      document.removeEventListener('keydown', onKey)
+      mq.removeEventListener('change', onMq)
+    }
+  }, [mobileMenuOpen])
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 60)
@@ -57,6 +116,7 @@ export function PublicPageWrapper({
 
       {/* Navigation */}
       <header
+        ref={headerRef}
         className={cn(
           'fixed inset-x-0 top-0 z-50 border-b transition-colors duration-200',
           // solid at all times: the hero below is white in both themes
@@ -105,6 +165,7 @@ export function PublicPageWrapper({
               </>
             )}
             <button
+              ref={menuButtonRef}
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cs-ink lg:hidden"
@@ -112,20 +173,24 @@ export function PublicPageWrapper({
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
             </button>
           </div>
         </div>
 
         {mobileMenuOpen && (
-          <div id="mobile-menu" className="border-t border-cs-grid bg-cs-paper px-4 pb-6 lg:hidden">
+          <div
+            id="mobile-menu"
+            className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-cs-grid bg-cs-paper px-4 pb-6 lg:hidden"
+          >
             <nav className="flex flex-col py-2" aria-label="Mobile">
               {navLinks.map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="border-b border-cs-grid py-3.5 text-lg font-medium"
+                  aria-current={pathname === l.href ? 'page' : undefined}
+                  className="border-b border-cs-grid py-3.5 text-lg font-medium aria-[current=page]:text-cs-accent"
                 >
                   {l.label}
                 </Link>
@@ -147,6 +212,13 @@ export function PublicPageWrapper({
           </div>
         )}
       </header>
+      {mobileMenuOpen && (
+        <div
+          aria-hidden
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-x-0 bottom-0 top-16 z-40 bg-black/40 backdrop-blur-[1px] lg:hidden"
+        />
+      )}
 
       <main id="main" className="flex-1 pt-16">
         {children}
@@ -167,7 +239,7 @@ export function PublicPageWrapper({
               </p>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-cs-ink mb-4">Product</h4>
+              <h2 className="text-sm font-semibold text-cs-ink mb-4">Product</h2>
               <ul className="space-y-3">
                 <li><Link href="/features" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Features</Link></li>
                 <li><Link href="/pricing" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Pricing</Link></li>
@@ -179,7 +251,7 @@ export function PublicPageWrapper({
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-cs-ink mb-4">Resources</h4>
+              <h2 className="text-sm font-semibold text-cs-ink mb-4">Resources</h2>
               <ul className="space-y-3">
                 <li><Link href="/docs" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Documentation</Link></li>
                 <li><Link href="/newsletter" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Newsletter</Link></li>
@@ -191,7 +263,7 @@ export function PublicPageWrapper({
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-cs-ink mb-4">Company</h4>
+              <h2 className="text-sm font-semibold text-cs-ink mb-4">Company</h2>
               <ul className="space-y-3">
                 <li><Link href="/about" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">About</Link></li>
                 <li><Link href="/contact" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Contact</Link></li>
@@ -202,7 +274,7 @@ export function PublicPageWrapper({
               </ul>
             </div>
             <div>
-              <h4 className="text-sm font-semibold text-cs-ink mb-4">Legal</h4>
+              <h2 className="text-sm font-semibold text-cs-ink mb-4">Legal</h2>
               <ul className="space-y-3">
                 <li><Link href="/privacy" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Privacy</Link></li>
                 <li><Link href="/terms" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Terms</Link></li>
@@ -211,7 +283,7 @@ export function PublicPageWrapper({
               </ul>
             </div>
             <div className="col-span-2 md:col-span-1">
-              <h4 className="text-sm font-semibold text-cs-ink mb-4">Newsletter</h4>
+              <h2 className="text-sm font-semibold text-cs-ink mb-4">Newsletter</h2>
               <p className="text-sm text-cs-ink-soft mb-4">New hackathons, assessment features and hiring guides, about once a month.</p>
               <form 
                 className="space-y-2"
@@ -221,13 +293,12 @@ export function PublicPageWrapper({
                   const formData = new FormData(form)
                   const email = ((formData.get('email') as string) || '').trim()
                   if (!email) return
-                  const btn = form.querySelector('button')
-                  if (btn) btn.disabled = true
+                  setSubscribing(true)
                   try {
                     const res = await csrfFetch('/api/newsletter/subscribe', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ email, source: 'footer' })
+                      body: JSON.stringify({ email, source: 'footer', turnstileToken: newsletterCaptcha || undefined })
                     })
                     let errMsg = `Subscribe failed (${res.status})`
                     let already = false
@@ -245,7 +316,10 @@ export function PublicPageWrapper({
                   } catch (err) {
                     addToast({ type: 'error', title: 'Failed to subscribe.', message: err instanceof Error ? err.message : undefined })
                   } finally {
-                    if (btn) btn.disabled = false
+                    // Turnstile tokens are single-use.
+                    setNewsletterCaptcha(null)
+                    setNewsletterCaptchaReset((k) => k + 1)
+                    setSubscribing(false)
                   }
                 }}
               >
@@ -255,26 +329,31 @@ export function PublicPageWrapper({
                   required
                   placeholder="Enter your email"
                   aria-label="Email address"
+                  onFocus={() => setNewsletterCaptchaOn(true)}
                   className="h-10 w-full rounded-md border border-cs-grid bg-cs-paper px-3 text-sm text-cs-ink placeholder:text-cs-ink-soft"
                 />
-                <button type="submit" className="h-10 w-full rounded-md bg-cs-ink text-sm font-semibold text-cs-paper disabled:opacity-60">
-                  Subscribe
+                {newsletterCaptchaOn && <TurnstileWidget onVerify={setNewsletterCaptcha} resetKey={newsletterCaptchaReset} />}
+                <button
+                  type="submit"
+                  disabled={subscribing}
+                  aria-busy={subscribing}
+                  className="h-10 w-full rounded-md bg-cs-ink text-sm font-semibold text-cs-paper disabled:opacity-60"
+                >
+                  {subscribing ? 'Subscribing…' : 'Subscribe'}
                 </button>
               </form>
             </div>
           </div>
           <div className="flex flex-col gap-6 border-t border-cs-grid pt-8 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-cs-ink-soft">© 2026 CodeSpectra. All rights reserved.</p>
+            <p className="text-xs text-cs-ink-soft" suppressHydrationWarning>{copyrightLine()}. All rights reserved.</p>
             <div className="flex flex-wrap items-center gap-4 sm:justify-end">
               <Link
                 href="/status"
                 className="flex items-center gap-2 rounded-full border border-cs-grid bg-cs-paper/60 px-3 py-1.5 text-xs text-cs-ink-soft transition-colors hover:text-cs-ink"
               >
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#5b84ff] opacity-40 motion-reduce:animate-none" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#2f5be7]" />
-                </span>
-                All systems operational
+                {/* Not a live claim: the status page reports the real state. */}
+                <span className="relative inline-flex h-2 w-2 shrink-0 rounded-full bg-[#2f5be7]" aria-hidden />
+                System status
               </Link>
               <Link href="/docs" className="text-cs-ink-soft transition-colors hover:text-cs-ink" aria-label="Documentation">
                 <CodeXml className="h-5 w-5" aria-hidden />

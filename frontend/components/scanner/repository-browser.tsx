@@ -178,7 +178,7 @@ export function RepositoryBrowser({
 
     return (
       <div key={file.path}>
-        <div
+        <div role="button" tabIndex={0} aria-expanded={isFolder ? isExpanded : undefined} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
           className="flex cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm hover:bg-accent"
           style={{ paddingLeft: `${depth * 16 + 12}px` }}
           onClick={() => {
@@ -191,16 +191,10 @@ export function RepositoryBrowser({
           }}
         >
           {isFolder && (
-            <button
-              type="button"
-              className="rounded p-0 hover:bg-background"
-              onClick={(e) => {
-                e.stopPropagation()
-                toggleFolder(file.path)
-              }}
-            >
+            // The whole row toggles the folder; the chevron is only a visual cue.
+            <span aria-hidden className="rounded p-0">
               {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </button>
+            </span>
           )}
           {!isFolder && <span className="w-4" />}
 

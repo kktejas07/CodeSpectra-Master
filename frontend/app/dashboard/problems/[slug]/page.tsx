@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { useToast } from '@/lib/toast-context'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
@@ -163,6 +164,15 @@ export default function ProblemDetailPage() {
   sourceRef.current = source
 
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false)
+  const [sampleIdx, setSampleIdx] = useState(0)
+  const [outputExpanded, setOutputExpanded] = useState(false)
+  const [editorExpanded, setEditorExpanded] = useState(false)
+  const [customInput, setCustomInput] = useState('')
+  const [customRunning, setCustomRunning] = useState(false)
+  const [customOutput, setCustomOutput] = useState<{ stdout: string; stderr: string } | null>(null)
+  const [customError, setCustomError] = useState<string | null>(null)
+  const feedbackRef = useFocusTrap<HTMLDivElement>(feedbackOpen, () => setFeedbackOpen(false))
+  const mentorRef = useFocusTrap<HTMLDivElement>(aiMentorOpen, () => setAiMentorOpen(false))
   const [headerMenuOpen, setHeaderMenuOpen] = useState(false)
   const [isDark, setIsDark] = useState(true)
   useEffect(() => {
@@ -393,6 +403,30 @@ export default function ProblemDetailPage() {
     setAnalysis(null)
   }
 
+  async function runCustom() {
+    if (!sourceRef.current.trim()) {
+      setCustomError('Write some code first.')
+      return
+    }
+    setCustomRunning(true)
+    setCustomError(null)
+    setCustomOutput(null)
+    try {
+      const res = await csrfFetch('/api/execute-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language, source: sourceRef.current, stdin: customInput }),
+      })
+      const j = (await res.json().catch(() => ({}))) as { error?: string; result?: { run?: { stdout?: string; stderr?: string }; compile?: { stderr?: string } } }
+      if (!res.ok || !j.result) throw new Error(j.error || (res.status === 429 ? 'Too many runs. Wait a moment and try again.' : 'Couldn’t run your code.'))
+      setCustomOutput({ stdout: j.result.run?.stdout ?? '', stderr: j.result.compile?.stderr || j.result.run?.stderr || '' })
+    } catch (e) {
+      setCustomError(e instanceof Error ? e.message : 'Couldn’t run your code.')
+    } finally {
+      setCustomRunning(false)
+    }
+  }
+
   async function execute(mode: 'run' | 'submit') {
     if (!problem) return
     setRunning(mode)
@@ -410,7 +444,7 @@ export default function ProblemDetailPage() {
         }),
       })
       const json = (await res.json()) as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
+      if (!res.ok) throw new Error(json.error || (res.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${res.status}). Please try again.`))
       setResult(json)
       if (mode === 'submit') {
         setAnalysisLoading(true)
@@ -450,6 +484,26 @@ export default function ProblemDetailPage() {
         : 'text-red-700 dark:text-red-400 bg-red-500/10'
   }, [problem])
 
+  // Keyboard shortcuts listed in the information panel. Capture phase so they
+  // work inside Monaco too (it would otherwise swallow Ctrl+Enter).
+  const executeRef = useRef<(mode: 'run' | 'submit') => void>(() => {})
+  executeRef.current = (mode) => { if (running === null) void execute(mode) }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopPropagation()
+        executeRef.current(e.shiftKey ? 'submit' : 'run')
+      } else if (e.shiftKey && (e.key === 'H' || e.key === 'h')) {
+        e.preventDefault()
+        setIsInfoPanelOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
+
   if (!gate.ready) return null
 
   if (packLock) {
@@ -476,9 +530,12 @@ export default function ProblemDetailPage() {
         <div className="rounded-3xl border border-destructive/40 bg-destructive/10 p-6">
           <h2 className="text-lg font-semibold text-destructive mb-1">Could not load problem</h2>
           <p className="text-sm text-muted-foreground">{loadError}</p>
-          <Link href="/dashboard/problems" className="inline-flex items-center gap-1 text-primary mt-3 text-sm">
-            <ArrowLeft className="h-4 w-4" /> Back to problems
-          </Link>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Button size="sm" variant="outline" onClick={() => { setLoadError(null); setReloadKey((k) => k + 1) }}>Try again</Button>
+            <Link href="/dashboard/problems" className="inline-flex items-center gap-1 text-primary text-sm">
+              <ArrowLeft className="h-4 w-4" aria-hidden /> Back to problems
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -510,6 +567,9 @@ export default function ProblemDetailPage() {
       </div>
     )
   }
+
+  const samples = problem.test_cases.filter((t) => t.is_sample)
+  const activeSample = samples[sampleIdx] ?? samples[0] ?? problem.test_cases[0]
 
   // Header secondary actions — inline on md+ screens, inside the collapsible menu below md.
   const headerSecondaryActions = (
@@ -567,12 +627,12 @@ export default function ProblemDetailPage() {
       <ProctorMonitor sessionKind="problem" sessionId={problem.slug} captureInterval={30000} blockKeyboardShortcuts lockdownBrowser detectFace />
 
       {/* Top Header */}
-      <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-card shrink-0" data-tour="problem-detail-header">
-        <div className="flex items-center gap-3">
+      <header className="flex items-center justify-between gap-2 px-4 h-14 border-b border-border bg-card shrink-0" data-tour="problem-detail-header">
+        <div className="flex min-w-0 items-center gap-3">
           <button onClick={() => router.push('/dashboard/problems')} aria-label="Back to problems" className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground">
              <ArrowLeft className="h-4 w-4" />
           </button>
-          <h1 className="font-bold text-foreground text-base">{problem.title}</h1>
+          <h1 className="min-w-0 truncate font-bold text-foreground text-base" title={problem.title}>{problem.title}</h1>
           <button aria-label="Toggle bookmark"
             type="button"
             className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
@@ -626,7 +686,7 @@ export default function ProblemDetailPage() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         
         {/* LEFT PANE */}
-        <section className="lg:w-[45%] flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0" data-tour="problem-detail-statement">
+        <section className={`lg:w-[45%] flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0 ${editorExpanded ? 'hidden' : ''}`} data-tour="problem-detail-statement">
            {/* Tabs */}
            <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
               <button onClick={() => setLeftTab('problem')} className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${leftTab === 'problem' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Problem</button>
@@ -789,7 +849,7 @@ export default function ProblemDetailPage() {
                </select>
              </div>
              <div className="flex items-center gap-2">
-                <Button aria-label="Expand editor" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Maximize2 className="h-4 w-4" /></Button>
+                <Button aria-label={editorExpanded ? 'Show problem statement' : 'Expand editor'} aria-pressed={editorExpanded} onClick={() => setEditorExpanded((v) => !v)} variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground"><Maximize2 className="h-4 w-4" aria-hidden /></Button>
              </div>
            </div>
 
@@ -814,7 +874,7 @@ export default function ProblemDetailPage() {
            </div>
 
            {/* Console / Output Panel */}
-           <div className="border-t border-border bg-card flex flex-col shrink-0 min-h-55">
+           <div className={`border-t border-border bg-card flex flex-col shrink-0 ${outputExpanded ? 'h-[60vh]' : 'min-h-55'}`}>
               
               <div className="flex items-center justify-between border-b border-border/50 px-2 bg-muted/20">
                  <div className="flex gap-1 pt-1">
@@ -824,7 +884,7 @@ export default function ProblemDetailPage() {
                     <button onClick={() => setRightBottomTab('analysis')} className={`px-4 py-2 text-xs font-semibold border-b-2 transition-colors ${rightBottomTab === 'analysis' ? 'border-primary text-primary bg-background' : 'border-transparent text-muted-foreground hover:bg-muted/50'}`}><Sparkles className="h-3 w-3 inline mr-1" /> AI analysis</button>
                  </div>
                  <div className="flex items-center text-muted-foreground gap-2 pr-2">
-                    <button aria-label="Expand panel" className="p-1 hover:bg-muted rounded"><Maximize2 className="h-3.5 w-3.5" /></button>
+                    <button type="button" aria-label={outputExpanded ? 'Shrink panel' : 'Expand panel'} aria-pressed={outputExpanded} onClick={() => setOutputExpanded((v) => !v)} className="p-1 hover:bg-muted rounded"><Maximize2 className="h-3.5 w-3.5" aria-hidden /></button>
                  </div>
               </div>
 
@@ -832,8 +892,14 @@ export default function ProblemDetailPage() {
                  {rightBottomTab === 'test' && (
                     <div className="space-y-4">
                        <div className="flex gap-2">
-                         {problem.test_cases.filter(t => t.is_sample).map((t, i) => (
-                            <button key={t.id} className="px-3 py-1.5 rounded bg-muted text-xs font-semibold hover:bg-muted/80 transition-colors">
+                         {samples.map((t, i) => (
+                            <button
+                              key={t.id}
+                              type="button"
+                              aria-pressed={i === sampleIdx}
+                              onClick={() => setSampleIdx(i)}
+                              className={`px-3 py-1.5 rounded text-xs font-semibold transition-colors ${i === sampleIdx ? 'bg-primary/10 text-primary' : 'bg-muted hover:bg-muted/80'}`}
+                            >
                                Test case {i+1}
                             </button>
                          ))}
@@ -841,13 +907,37 @@ export default function ProblemDetailPage() {
                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-muted/10 p-4 rounded-xl border border-border/50">
                           <div>
                             <h4 className="text-xs font-semibold text-muted-foreground mb-2">Input</h4>
-                            <pre className="text-sm font-mono text-foreground">{problem.test_cases[0]?.stdin}</pre>
+                            <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">{activeSample?.stdin}</pre>
                           </div>
                           <div>
                             <h4 className="text-xs font-semibold text-muted-foreground mb-2">Expected output</h4>
-                            <pre className="text-sm font-mono text-foreground">{problem.test_cases[0]?.expected_stdout}</pre>
+                            <pre className="text-sm font-mono text-foreground whitespace-pre-wrap break-all">{activeSample?.expected_stdout}</pre>
                           </div>
                        </div>
+                    </div>
+                 )}
+                 {rightBottomTab === 'custom' && (
+                    <div className="space-y-3">
+                       <label htmlFor="custom-stdin" className="text-xs font-semibold text-muted-foreground">Your input (stdin)</label>
+                       <textarea
+                         id="custom-stdin"
+                         value={customInput}
+                         onChange={(e) => setCustomInput(e.target.value)}
+                         rows={4}
+                         className="w-full rounded-lg border border-input bg-background p-3 font-mono text-sm"
+                       />
+                       <Button type="button" size="sm" variant="outline" onClick={() => void runCustom()} disabled={customRunning}>
+                         {customRunning ? <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden /> : <Play className="h-4 w-4 mr-2 text-primary" aria-hidden />}
+                         Run with this input
+                       </Button>
+                       {customError ? <p role="alert" className="text-sm text-destructive">{customError}</p> : null}
+                       {customOutput ? (
+                         <div className="space-y-2">
+                           <h4 className="text-xs font-semibold text-muted-foreground">Output</h4>
+                           <pre className="text-sm font-mono whitespace-pre-wrap break-all rounded-lg border border-border/50 bg-muted/20 p-2 text-foreground">{customOutput.stdout || '(no output)'}</pre>
+                           {customOutput.stderr ? <pre className="text-sm font-mono whitespace-pre-wrap break-all rounded-lg border border-destructive/30 bg-destructive/5 p-2 text-destructive">{customOutput.stderr}</pre> : null}
+                         </div>
+                       ) : null}
                     </div>
                  )}
                  {rightBottomTab === 'results' && (
@@ -891,26 +981,25 @@ export default function ProblemDetailPage() {
                  <h2 className="text-lg font-semibold text-foreground">Information</h2>
                  <button aria-label="Close information panel" onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
               </div>
-              <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
-                 <button className="pb-2 text-sm font-semibold border-b-2 border-primary text-primary">Shortcuts guide</button>
-                 <button className="pb-2 text-sm font-semibold border-b-2 border-transparent text-muted-foreground hover:text-foreground">Execution environment</button>
+              <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0">
+                 <h3 className="pb-2 text-sm font-semibold border-b-2 border-primary text-primary">Keyboard shortcuts</h3>
               </div>
               <div className="p-4 overflow-y-auto">
                  <p className="text-xs font-semibold text-muted-foreground mb-4 leading-relaxed">
-                   The options below will help you explore keyboard shortcuts. Master these keyboard shortcuts to navigate seamlessly and enhance your productivity throughout your workflow.
+                   Use these shortcuts anywhere on this page, including inside the editor. On a Mac, use Cmd instead of Ctrl.
                  </p>
                  <div className="space-y-2">
                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">1. Run / Save and run Code:</span>
+                       <span className="text-xs font-semibold text-muted-foreground">Save and run</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Enter</kbd>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">2. Submit code:</span>
+                       <span className="text-xs font-semibold text-muted-foreground">Submit code</span>
                        <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Shift + Enter</kbd>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-xl border border-border/50">
-                       <span className="text-xs font-semibold text-muted-foreground">3. Open Shortcut Help Modal:</span>
-                       <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + shift + H</kbd>
+                       <span className="text-xs font-semibold text-muted-foreground">Show or hide this panel</span>
+                       <kbd className="text-[10px] font-mono font-bold px-2 py-1 bg-muted rounded">Ctrl + Shift + H</kbd>
                     </div>
                  </div>
               </div>
@@ -920,8 +1009,8 @@ export default function ProblemDetailPage() {
           {/* Feedback Modal */}
           {feedbackOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
-              <div className="bg-background rounded-3xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-                <h3 className="text-lg font-semibold mb-4">
+              <div ref={feedbackRef} role="dialog" aria-modal="true" aria-labelledby="problem-feedback-title" className="bg-background rounded-3xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+                <h3 id="problem-feedback-title" className="text-lg font-semibold mb-4">
                   {feedbackType === 'bug' ? 'Report a bug' : feedbackType === 'feature' ? 'Request a feature' : 'Suggest an idea'}
                 </h3>
                 <textarea
@@ -944,10 +1033,10 @@ export default function ProblemDetailPage() {
           {/* AI Mentor Modal */}
           {aiMentorOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAiMentorOpen(false)}>
-              <div className="bg-background rounded-3xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+              <div ref={mentorRef} role="dialog" aria-modal="true" aria-labelledby="problem-mentor-title" className="bg-background rounded-3xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center gap-2 mb-4">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">AI mentor</h3>
+                  <Sparkles className="h-5 w-5 text-primary" aria-hidden />
+                  <h3 id="problem-mentor-title" className="text-lg font-semibold">AI mentor</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-4">
                   Ask questions about the problem. The AI will guide you without giving the full solution.

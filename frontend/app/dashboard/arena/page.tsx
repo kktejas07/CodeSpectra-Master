@@ -74,17 +74,21 @@ export default function ArenaPage() {
 
   const [challenges, setChallenges] = useState<ArenaChallenge[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
   const [difficulty, setDifficulty] = useState('all')
   const [category, setCategory] = useState('all')
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/arena/challenges')
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => { if (json.data) setChallenges(json.data) })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -150,6 +154,15 @@ export default function ArenaPage() {
           <FilterSkeleton />
           <GridSkeleton />
         </div>
+      ) : loadError ? (
+        <Panel className="p-4">
+          <EmptyState illustration="error"
+            title="Couldn't load arena challenges"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey((k) => k + 1)}
+          />
+        </Panel>
       ) : challenges.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="coding"

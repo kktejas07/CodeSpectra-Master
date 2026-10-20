@@ -519,7 +519,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                           <Link href={`/hackathons/${slug}/results`} className="block mt-6"><Trophy className="mr-2 h-4 w-4" /> View final results</Link>
                         </Button>
                       ) : (
-                        <Badge variant="outline" className="mt-4 py-1.5 px-3">Results coming soon</Badge>
+                        <Badge variant="outline" className="mt-4 py-1.5 px-3">Results not published yet</Badge>
                       )}
                     </div>
                   )}

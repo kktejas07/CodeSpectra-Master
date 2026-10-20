@@ -313,12 +313,16 @@ export default function BulkSchedulePage() {
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
-              className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors cursor-pointer ${
+              className={`flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:p-12 ${
                 dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
               }`}
               onClick={() => fileInputRef.current?.click()}
+              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
+              role="button"
+              tabIndex={0}
+              aria-label="Choose a CSV file of candidates"
             >
-              <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-3" />
+              <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-3" aria-hidden />
               <p className="text-sm font-medium">Drag & drop a CSV file or click to browse</p>
               <p className="text-xs text-muted-foreground mt-1">Supports .csv and .txt files</p>
             </div>

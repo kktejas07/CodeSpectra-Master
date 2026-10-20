@@ -2,13 +2,13 @@
 import { formatDate } from '@/lib/format-datetime'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import {
   CheckCircle2, ExternalLink, ShieldCheck, AlertTriangle, Loader2,
   Info, RefreshCcw, Globe, FileCheck, Eye, Clock, RotateCcw
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -201,7 +201,9 @@ export default function IdentityVerificationPage() {
         <p className="mx-auto max-w-[60ch] text-sm text-muted-foreground">
           Verification through DigiLocker isn&apos;t available yet. Please check back later.
         </p>
-        <Badge variant="outline">Coming soon</Badge>
+        <Button asChild variant="outline">
+          <Link href="/dashboard">Back to dashboard</Link>
+        </Button>
       </div>
     )
   }

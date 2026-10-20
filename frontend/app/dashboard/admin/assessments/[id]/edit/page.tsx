@@ -733,7 +733,7 @@ export default function ExamReviewPage() {
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Role:</Label>
-                  <Input
+                  <Input aria-label="Role"
                     value={metaSubject}
                     onChange={(e) => setMetaSubject(e.target.value)}
                     className="h-8 w-32 text-sm"
@@ -743,7 +743,7 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Level:</Label>
                   <Select value={metaLevel} onValueChange={setMetaLevel}>
-                    <SelectTrigger className="h-8 w-32 text-sm">
+                    <SelectTrigger aria-label="Level" className="h-8 w-32 text-sm">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -756,7 +756,7 @@ export default function ExamReviewPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Duration (mins):</Label>
-                  <Input
+                  <Input aria-label="Duration (mins)"
                     type="number"
                     value={metaDuration}
                     onChange={(e) => setMetaDuration(parseInt(e.target.value) || 30)}
@@ -766,7 +766,7 @@ export default function ExamReviewPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Available from:</Label>
-                  <Input
+                  <Input aria-label="Available from"
                     type="datetime-local"
                     value={metaStartsAt}
                     onChange={(e) => setMetaStartsAt(e.target.value)}
@@ -776,7 +776,7 @@ export default function ExamReviewPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Submit by:</Label>
-                  <Input
+                  <Input aria-label="Submit by"
                     type="datetime-local"
                     value={metaEndsAt}
                     onChange={(e) => setMetaEndsAt(e.target.value)}
@@ -918,7 +918,7 @@ export default function ExamReviewPage() {
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Certificate template:</Label>
-                  <select
+                  <select aria-label="Certificate template"
                     value={metaCertTemplate}
                     onChange={(e) => setMetaCertTemplate(e.target.value)}
                     className="h-8 rounded-md border border-border/60 bg-background px-2 py-1 text-xs"
@@ -931,7 +931,7 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Degree:</Label>
                   <Select value={metaDegreeType || 'any'} onValueChange={v => setMetaDegreeType(v === 'any' ? '' : v)}>
-                    <SelectTrigger className="h-8 w-32 text-sm">
+                    <SelectTrigger aria-label="Degree" className="h-8 w-32 text-sm">
                       <SelectValue placeholder="Any degree" />
                     </SelectTrigger>
                     <SelectContent>
@@ -943,7 +943,7 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Branch:</Label>
                   <Select value={metaBranch || 'any'} onValueChange={v => setMetaBranch(v === 'any' ? '' : v)}>
-                    <SelectTrigger className="h-8 w-36 text-sm">
+                    <SelectTrigger aria-label="Branch" className="h-8 w-36 text-sm">
                       <SelectValue placeholder="General" />
                     </SelectTrigger>
                     <SelectContent>
@@ -955,7 +955,7 @@ export default function ExamReviewPage() {
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Screening:</Label>
                   <Select value={metaScreeningType} onValueChange={setMetaScreeningType}>
-                    <SelectTrigger className="h-8 w-36 text-sm">
+                    <SelectTrigger aria-label="Screening" className="h-8 w-36 text-sm">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -1275,35 +1275,35 @@ export default function ExamReviewPage() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              <Input
+              <Input aria-label="Search bank questions"
                 placeholder="Search bank questions..."
                 value={bankQ}
                 onChange={(e) => setBankQ(e.target.value)}
                 className="h-9 flex-1 min-w-[180px] text-sm"
               />
               <Select value={bankBranch || 'all'} onValueChange={v => { setBankBranch(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
+                <SelectTrigger aria-label="Filter by branch" className="h-9 w-[150px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All branches</SelectItem>
                   {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.short}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankLevel || 'all'} onValueChange={v => { setBankLevel(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[110px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
+                <SelectTrigger aria-label="Filter by level" className="h-9 w-[110px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All levels</SelectItem>
                   {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankType || 'all'} onValueChange={v => { setBankType(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
+                <SelectTrigger aria-label="Filter by type" className="h-9 w-[120px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All types</SelectItem>
                   {BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={bankIndustry || 'all'} onValueChange={v => { setBankIndustry(v === 'all' ? '' : v); setBankPage(1) }}>
-                <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
+                <SelectTrigger aria-label="Filter by industry" className="h-9 w-[130px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All industries</SelectItem>
                   {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
@@ -1404,7 +1404,7 @@ export default function ExamReviewPage() {
               <div className="grid gap-2">
                 <Label>Question type</Label>
                 <Select value={t} onValueChange={(v) => setQ({ ...defaultsForType(v as QuestionType), type: v as QuestionType })}>
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="Question type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1498,7 +1498,7 @@ export default function ExamReviewPage() {
               {t === 'numeric' && (
                 <div className="grid gap-2">
                   <Label>Correct numeric answer</Label>
-                  <Input value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. 42" />
+                  <Input aria-label="Correct numeric answer" value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. 42" />
                   <Label htmlFor="q-tolerance">Accepted tolerance (±, 0 = exact)</Label>
                   <Input id="q-tolerance" type="number" min="0" step="any" value={editingQuestion.tolerance ?? 0} onChange={(e) => setQ({ tolerance: parseFloat(e.target.value) || 0 })} />
                 </div>
@@ -1507,7 +1507,7 @@ export default function ExamReviewPage() {
               {t === 'short_answer' && (
                 <div className="grid gap-2">
                   <Label>Correct answer <span className="text-muted-foreground font-normal">(matched case/space-insensitive)</span></Label>
-                  <Input value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. Binary Search" />
+                  <Input aria-label="Correct answer (matched case/space-insensitive)" value={editingQuestion.answer || ''} onChange={(e) => setQ({ answer: e.target.value })} placeholder="e.g. Binary Search" />
                 </div>
               )}
 
@@ -1596,7 +1596,7 @@ export default function ExamReviewPage() {
               {t === 'hotspot' && (
                 <div className="grid gap-3">
                   <Label>Image URL</Label>
-                  <Input value={editingQuestion.image_url || ''} onChange={(e) => setQ({ image_url: e.target.value })} placeholder="https://..." />
+                  <Input aria-label="Image URL" value={editingQuestion.image_url || ''} onChange={(e) => setQ({ image_url: e.target.value })} placeholder="https://..." />
                   <Label>Regions <span className="text-muted-foreground font-normal">(percentages 0-100; radio = correct region)</span></Label>
                   {(editingQuestion.regions || []).map((r, i) => (
                     <div key={r.id} className="flex items-center gap-2">
@@ -1636,7 +1636,7 @@ export default function ExamReviewPage() {
                   <div className="grid gap-2">
                     <Label>Language</Label>
                     <Select value={editingQuestion.language || 'python'} onValueChange={(v) => setQ({ language: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectTrigger aria-label="Language"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {CODE_LANGUAGES.map((l) => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
                       </SelectContent>

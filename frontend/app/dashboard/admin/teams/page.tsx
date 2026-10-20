@@ -187,7 +187,7 @@ export default function TeamsManagement() {
       )}
 
       <Dialog open={createOpen} onOpenChange={o => { if (!creating) setCreateOpen(o) }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <form onSubmit={handleCreate} className="space-y-4">
             <DialogHeader>
               <DialogTitle>Create team</DialogTitle>

@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState, use } from 'react'
+import Link from 'next/link'
 import { ChallengeEditor } from '@/components/challenges/challenge-editor'
 import { Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface ProblemData {
   id: string
@@ -40,9 +42,11 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   const [challenge, setChallenge] = useState<ChallengeData | null>(null)
   const [problem, setProblem] = useState<ProblemData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true)
       try {
         const chRes = await fetch(`/api/challenges/${challengeId}`, { credentials: 'include' })
         const chData = await chRes.json()
@@ -62,7 +66,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
       setLoading(false)
     }
     void load()
-  }, [challengeId])
+  }, [challengeId, reloadKey])
 
   if (loading) {
     return (
@@ -76,6 +80,23 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   }
 
   if (!gate.ready) return null
+
+  if (!challenge && !problem) {
+    return (
+      <div className="mx-auto max-w-xl py-10">
+        <EmptyState
+          illustration="error"
+          title="Couldn't load this challenge"
+          description="It may have been removed, or your connection dropped. Try again or go back to the challenge list."
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
+        <p className="mt-4 text-center text-sm">
+          <Link href="/dashboard/challenges" className="text-primary hover:underline">Back to challenges</Link>
+        </p>
+      </div>
+    )
+  }
 
   const title = problem?.title || challenge?.title || challengeId
   const description = problem?.statement_md || challenge?.description || ''

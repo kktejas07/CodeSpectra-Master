@@ -13,6 +13,7 @@ import {
   type AtsAction, can,
 } from './access'
 import type { AtsRole } from './contract'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -40,7 +41,8 @@ export async function gate(req: Request, action: AtsAction, roles: AtsRole[] = [
 
 export async function bodyOf(req: Request): Promise<Record<string, unknown>> {
   const b = await req.json().catch(() => null)
-  return b && typeof b === 'object' && !Array.isArray(b) ? (b as Record<string, unknown>) : {}
+  // $-operator / __proto__ keys stripped (lib/mongo-sanitize) — bodies feed Mongo filters.
+  return b && typeof b === 'object' && !Array.isArray(b) ? sanitizeMongoInput(b as Record<string, unknown>) : {}
 }
 
 export function idOk(id: unknown): id is string {

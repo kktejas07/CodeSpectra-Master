@@ -18,6 +18,6 @@ export async function POST() {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[CodeSpectra] Mark all notifications read error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong with notifications. Try again.' }, { status: 500 })
   }
 }

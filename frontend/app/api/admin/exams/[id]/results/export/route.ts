@@ -34,8 +34,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     const invites = await db.collection('candidate_invites').find({
       $or: [
-        { target_url: { $regex: id.replace(/-/g, '\\-') } },
-        { 'assigned_assessments.target_url': { $regex: id.replace(/-/g, '\\-') } },
+        { target_url: { $regex: id.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&') } },
+        { 'assigned_assessments.target_url': { $regex: id.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&') } },
       ],
     }).toArray()
 

@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Loader2, Bell, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -134,6 +135,7 @@ function resolveNotificationLink(n: Notification): string {
 
 export default function NotificationsPage() {
   const gate = usePageGuard('user')
+  const addToast = useToast()
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
 
@@ -238,14 +240,25 @@ export default function NotificationsPage() {
   }
 
   const markAllRead = async () => {
-    await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })
+    try {
+      const res = await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })
+      if (!res.ok) throw new Error(String(res.status))
+    } catch {
+      addToast({ type: 'error', title: 'Couldn’t mark notifications as read', message: 'Please try again.' })
+      return
+    }
+    addToast({ type: 'success', title: 'All notifications marked as read' })
     setOlder((prev) => prev.map((n) => ({ ...n, is_read: true })))
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
     setUnreadCount(0)
   }
 
   const markRead = async (id: string) => {
-    await csrfFetch(`/api/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) })
+    const res = await csrfFetch(`/api/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) }).catch(() => null)
+    if (!res?.ok) {
+      addToast({ type: 'error', title: 'Couldn’t mark this notification as read' })
+      return
+    }
     setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
     setOlder((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
     setUnreadCount((c) => Math.max(0, c - 1))

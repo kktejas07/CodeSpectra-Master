@@ -9,6 +9,7 @@ import {
   nowIso,
 } from '@/lib/db/billing'
 import { activatePaidOrder, ensureBillingIndexes } from '@/lib/billing-plans'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let body: VerifyReq
   try {
-    body = (await req.json()) as VerifyReq
+    body = sanitizeMongoInput(await req.json()) as VerifyReq
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }

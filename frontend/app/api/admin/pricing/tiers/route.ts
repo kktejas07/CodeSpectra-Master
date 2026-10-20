@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { pricingTiers, newId, nowIso } from '@/lib/db/misc'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export const dynamic = 'force-dynamic'
 
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
     const doc = { ...body, id: newId(), created_at: nowIso() }
     const col = await pricingTiers()
     await col.insertOne(doc as unknown as Parameters<typeof col.insertOne>[0])
+    await auditAdmin(gate.user, 'admin.pricing_tier.create', 'pricing', `tier/${String(doc.id)}`, undefined, 'warning')
     return NextResponse.json({ data: doc }, { status: 201 })
   } catch (error) {
     console.error('[CodeSpectra] Error creating pricing tier:', error)

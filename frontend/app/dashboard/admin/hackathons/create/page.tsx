@@ -369,11 +369,11 @@ export default function HackathonCreatePage() {
             <h3 className="font-semibold text-lg">Event details</h3>
             <div className="space-y-2">
               <Label>Event name</Label>
-              <Input autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Frostbyte Winter 2026" />
+              <Input aria-label="Event name" autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Frostbyte Winter 2026" />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <Textarea rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the event, theme, and what participants will build..." />
+              <Textarea aria-label="Description" rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the event, theme, and what participants will build..." />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
               <NumberField
@@ -428,7 +428,7 @@ export default function HackathonCreatePage() {
             <div className="grid gap-6 md:grid-cols-2 mt-6">
               <div className="space-y-2.5">
                 <Label className="text-sm font-medium">Starts at</Label>
-                <Input type="datetime-local" className="h-10" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
+                <Input aria-label="Starts at" type="datetime-local" className="h-10" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
                 <p className="mt-1.5 text-[11px] text-muted-foreground bg-muted/30 p-2 rounded-md border border-border/50 inline-block">
                   Ends at {/T\d{2}:\d{2}/.test(form.starts_at) ? formatDateTime(new Date(fromZonedDatetimeString(form.starts_at, tz)).getTime() + form.timeout_minutes * 60000) : '–'}
                 </p>
@@ -514,7 +514,7 @@ export default function HackathonCreatePage() {
             {problemSource === 'pick' && (
               <>
                 <div className="flex gap-2">
-                  <Input placeholder="Search problems..." value={problemSearch}
+                  <Input aria-label="Search problems" placeholder="Search problems..." value={problemSearch}
                     onChange={(e) => { setProblemSearch(e.target.value); searchProblems(e.target.value) }} />
                 </div>
                 {searchingProblems && <p className="text-xs text-muted-foreground">Searching...</p>}
@@ -560,13 +560,13 @@ export default function HackathonCreatePage() {
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Problem title *</Label>
-                      <Input value={ownForm.title}
+                      <Input aria-label="Problem title" value={ownForm.title}
                         onChange={(e) => setOwnForm((f) => ({ ...f, title: e.target.value }))}
                         placeholder="Two Sum" />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Difficulty</Label>
-                      <select className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                      <select aria-label="Difficulty" className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
                         value={ownForm.difficulty}
                         onChange={(e) => setOwnForm((f) => ({ ...f, difficulty: e.target.value as 'easy' | 'medium' | 'hard' }))}>
                         <option value="easy">Easy</option>
@@ -581,31 +581,31 @@ export default function HackathonCreatePage() {
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Topics (comma-separated)</Label>
-                      <Input value={ownForm.topics}
+                      <Input aria-label="Topics (comma-separated)" value={ownForm.topics}
                         onChange={(e) => setOwnForm((f) => ({ ...f, topics: e.target.value }))}
                         placeholder="arrays, dynamic programming, strings" />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Problem statement (Markdown)</Label>
-                      <Textarea rows={5} value={ownForm.statement_md}
+                      <Textarea aria-label="Problem statement (Markdown)" rows={5} value={ownForm.statement_md}
                         onChange={(e) => setOwnForm((f) => ({ ...f, statement_md: e.target.value }))}
                         placeholder="## Problem Description&#10;Given an array of integers, return indices of the two numbers that add up to a specific target..." />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Input format</Label>
-                      <Input value={ownForm.input_format}
+                      <Input aria-label="Input format" value={ownForm.input_format}
                         onChange={(e) => setOwnForm((f) => ({ ...f, input_format: e.target.value }))}
                         placeholder="First line contains n..." />
                     </div>
                     <div className="space-y-1.5">
                       <Label>Output format</Label>
-                      <Input value={ownForm.output_format}
+                      <Input aria-label="Output format" value={ownForm.output_format}
                         onChange={(e) => setOwnForm((f) => ({ ...f, output_format: e.target.value }))}
                         placeholder="Print the two indices..." />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Constraints</Label>
-                      <Input value={ownForm.constraints}
+                      <Input aria-label="Constraints" value={ownForm.constraints}
                         onChange={(e) => setOwnForm((f) => ({ ...f, constraints: e.target.value }))}
                         placeholder="2 ≤ n ≤ 10⁵, -10⁹ ≤ nums[i] ≤ 10⁹" />
                     </div>
@@ -643,7 +643,7 @@ export default function HackathonCreatePage() {
                         <div className="grid gap-2 sm:grid-cols-2">
                           <div>
                             <Label className="text-xs text-muted-foreground">Input</Label>
-                            <Textarea rows={2} value={tc.stdin}
+                            <Textarea aria-label="Input" rows={2} value={tc.stdin}
                               onChange={(e) => {
                                 const next = [...ownTestCases]
                                 next[i] = { ...next[i], stdin: e.target.value }
@@ -653,7 +653,7 @@ export default function HackathonCreatePage() {
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground">Expected output</Label>
-                            <Textarea rows={2} value={tc.expected}
+                            <Textarea aria-label="Expected output" rows={2} value={tc.expected}
                               onChange={(e) => {
                                 const next = [...ownTestCases]
                                 next[i] = { ...next[i], expected: e.target.value }
@@ -699,13 +699,13 @@ export default function HackathonCreatePage() {
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="space-y-1.5">
                         <Label>Role / persona</Label>
-                        <Input value={aiConfig.role}
+                        <Input aria-label="Role / persona" value={aiConfig.role}
                           onChange={(e) => setAiConfig((c) => ({ ...c, role: e.target.value }))}
                           placeholder="Software Engineer" />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Difficulty</Label>
-                        <select className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                        <select aria-label="Difficulty" className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
                           value={aiConfig.difficulty}
                           onChange={(e) => setAiConfig((c) => ({ ...c, difficulty: e.target.value as 'easy' | 'medium' | 'hard' }))}>
                           <option value="easy">Easy</option>
@@ -715,13 +715,13 @@ export default function HackathonCreatePage() {
                       </div>
                       <div className="space-y-1.5">
                         <Label>Language hint</Label>
-                        <Input value={aiConfig.language_hint}
+                        <Input aria-label="Language hint" value={aiConfig.language_hint}
                           onChange={(e) => setAiConfig((c) => ({ ...c, language_hint: e.target.value }))}
                           placeholder="python" />
                       </div>
                       <div className="space-y-1.5">
                         <Label>Topics (comma-separated)</Label>
-                        <Input value={aiConfig.topics}
+                        <Input aria-label="Topics (comma-separated)" value={aiConfig.topics}
                           onChange={(e) => setAiConfig((c) => ({ ...c, topics: e.target.value }))}
                           placeholder="arrays, strings, sorting" />
                       </div>
@@ -804,12 +804,12 @@ export default function HackathonCreatePage() {
                   </div>
                   <div className="space-y-2">
                     <Label>Rule title</Label>
-                    <Input value={r.title}
+                    <Input aria-label="Rule title" value={r.title}
                       onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x) }))} />
                   </div>
                   <div className="space-y-2">
                     <Label>Description</Label>
-                    <Textarea rows={2} value={r.description}
+                    <Textarea aria-label="Description" rows={2} value={r.description}
                       onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x) }))} />
                   </div>
                 </div>
@@ -914,7 +914,7 @@ export default function HackathonCreatePage() {
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
                   <Label className="text-sm font-medium">Demo video</Label>
-                  <select value={form.features.demo_video}
+                  <select aria-label="Demo video" value={form.features.demo_video}
                     onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, demo_video: e.target.value as 'required' | 'optional' | 'disabled' } }))}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
                     <option value="required">Required</option>
@@ -924,7 +924,7 @@ export default function HackathonCreatePage() {
                 </div>
                 <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
                   <Label className="text-sm font-medium">Live URL</Label>
-                  <select value={form.features.live_url}
+                  <select aria-label="Live URL" value={form.features.live_url}
                     onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, live_url: e.target.value as 'required' | 'optional' | 'disabled' } }))}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
                     <option value="required">Required</option>
@@ -1002,7 +1002,7 @@ export default function HackathonCreatePage() {
               <h4 className="text-sm font-semibold text-muted-foreground">Visibility and engagement</h4>
               <div className="rounded-2xl border bg-muted/30 p-4 space-y-2">
                 <Label className="text-sm font-medium">Leaderboard visibility</Label>
-                <select value={form.features.leaderboard_visibility}
+                <select aria-label="Leaderboard visibility" value={form.features.leaderboard_visibility}
                   onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, leaderboard_visibility: e.target.value as 'public' | 'private' | 'after_event' } }))}
                   className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
                   <option value="public">Public (visible during event)</option>

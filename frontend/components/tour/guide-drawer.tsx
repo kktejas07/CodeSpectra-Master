@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { X, BookOpenText, Sparkles, Lightbulb, Play } from 'lucide-react'
 import { GUIDE_CONTENT } from '@/components/tour/guide-content'
 import { replayPageTour, hasRegisteredTour } from '@/lib/tour-driver'
@@ -25,21 +26,18 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
   const content = tourId ? GUIDE_CONTENT[tourId] : undefined
   const canTour = !!tourId && hasRegisteredTour(tourId)
 
-  // Esc closes; lock body scroll while open.
+  // Esc closes, Tab stays inside, focus returns to the opener on close.
+  const panelRef = useFocusTrap<HTMLElement>(open, onClose)
+  // Lock body scroll while open; start on the close button.
   useEffect(() => {
     if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     closeRef.current?.focus()
     return () => {
-      window.removeEventListener('keydown', onKey)
       document.body.style.overflow = prev
     }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
@@ -53,11 +51,12 @@ export function GuideDrawer({ open, onClose, tourId, fallbackTitle = 'Guide' }: 
         aria-hidden
       />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={`${title} guide`}
         className={cn(
-          'fixed right-0 top-0 z-[1002] flex h-full w-[380px] max-w-[92vw] flex-col',
+          'fixed right-0 top-0 z-[1002] flex h-full w-full max-w-[92vw] flex-col sm:w-[380px]',
           'border-l border-border bg-card shadow-2xl',
           'motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-300',
         )}

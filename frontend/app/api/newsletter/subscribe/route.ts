@@ -12,6 +12,7 @@ import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { signPurposeToken } from '@/lib/session'
 import { sendEmail } from '@/lib/send-email'
 import { getAppOrigin } from '@/lib/app-origin'
+import { captchaGate } from '@/lib/captcha/require'
 
 
 export const runtime = 'nodejs'
@@ -23,7 +24,9 @@ export async function POST(req: NextRequest) {
   if (!limit.ok) {
     return NextResponse.json({ error: `Too many requests. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
   }
-  const body = await req.json().catch(() => ({})) as { email?: string; source?: string }
+  const body = await req.json().catch(() => ({})) as { email?: string; source?: string; turnstileToken?: string }
+  const captcha = await captchaGate(req, body.turnstileToken)
+  if (captcha) return captcha
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   if (!isEmail(email)) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })

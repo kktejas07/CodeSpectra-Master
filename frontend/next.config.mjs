@@ -50,13 +50,8 @@ const nextConfig = {
     unoptimized: true,
   },
   async redirects() {
-    return [
-      {
-        source: '/favicon.ico',
-        destination: '/icon.svg',
-        permanent: true,
-      },
-    ]
+    // /favicon.ico is a real multi-size ICO in public/ now (wave 5), no redirect.
+    return []
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,

@@ -49,9 +49,10 @@ export default function AnnouncementsPage() {
     try {
       const res = await fetch('/api/admin/announcements?limit=20', { cache: 'no-store' })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
       setHistory(data.announcements || [])
       setHistoryTotal(data.total || 0)
-    } catch { /* ignore */ }
+    } catch { addToast({ type: 'error', title: "Couldn't load past announcements", message: 'Refresh the page or try again in a moment.' }) }
     finally { setLoadingHistory(false) }
   }, [])
 
@@ -132,7 +133,7 @@ export default function AnnouncementsPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Title *</Label>
-                  <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mt-1.5" placeholder="Platform maintenance scheduled" maxLength={100} />
+                  <Input aria-label="Title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} className="mt-1.5" placeholder="Platform maintenance scheduled" maxLength={100} />
                   <p className="text-xs tabular-nums text-muted-foreground mt-1">{form.title.length}/100</p>
                 </div>
 
@@ -163,7 +164,7 @@ export default function AnnouncementsPage() {
 
                 <div>
                   <Label>Link <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="mt-1.5" placeholder="https://codespectra.ai/blog/update" type="url" />
+                  <Input aria-label="Link (optional)" value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="mt-1.5" placeholder="https://codespectra.ai/blog/update" type="url" />
                 </div>
 
                 <div>
@@ -187,10 +188,10 @@ export default function AnnouncementsPage() {
             <Panel>
               <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Bell className="h-4 w-4" /> Delivery channels</h2>
               <div className="space-y-3">
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">In-app notification</span></div><Switch checked={form.send_in_app} onCheckedChange={v => setForm(f => ({ ...f, send_in_app: v }))} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Email</span></div><Switch checked={form.send_email} onCheckedChange={v => setForm(f => ({ ...f, send_email: v }))} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Push notification</span></div><Switch checked={form.send_push} onCheckedChange={v => setForm(f => ({ ...f, send_push: v }))} /></div>
-                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span></div><Switch checked={form.send_whatsapp} onCheckedChange={v => setForm(f => ({ ...f, send_whatsapp: v }))} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Megaphone className="h-4 w-4 text-muted-foreground" /><span className="text-sm">In-app notification</span></div><Switch aria-label="In-app notification" checked={form.send_in_app} onCheckedChange={v => setForm(f => ({ ...f, send_in_app: v }))} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Email</span></div><Switch aria-label="Email" checked={form.send_email} onCheckedChange={v => setForm(f => ({ ...f, send_email: v }))} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><ExternalLink className="h-4 w-4 text-muted-foreground" /><span className="text-sm">Push notification</span></div><Switch aria-label="Push notification" checked={form.send_push} onCheckedChange={v => setForm(f => ({ ...f, send_push: v }))} /></div>
+                <div className="flex items-center justify-between"><div className="flex items-center gap-2"><MessageCircle className="h-4 w-4 text-muted-foreground" /><span className="text-sm">WhatsApp</span></div><Switch aria-label="WhatsApp" checked={form.send_whatsapp} onCheckedChange={v => setForm(f => ({ ...f, send_whatsapp: v }))} /></div>
               </div>
             </Panel>
 
@@ -198,7 +199,7 @@ export default function AnnouncementsPage() {
             <Panel>
               <h2 className="mb-4 flex items-center gap-2 font-semibold text-foreground"><Clock className="h-4 w-4" /> Schedule</h2>
               <Label>Schedule for later <span className="text-muted-foreground text-xs">(leave empty to send now)</span></Label>
-              <Input type="datetime-local" value={form.schedule_at} onChange={e => setForm(f => ({ ...f, schedule_at: e.target.value }))} className="mt-1.5" />
+              <Input aria-label="Schedule for later (leave empty to send now)" type="datetime-local" value={form.schedule_at} onChange={e => setForm(f => ({ ...f, schedule_at: e.target.value }))} className="mt-1.5" />
             </Panel>
 
             <div className="flex gap-3 justify-end">

@@ -39,14 +39,17 @@ export function AiAnalyticsDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'models' | 'providers'>('overview')
+  const [error, setError] = useState<string | null>(null)
 
   const fetchData = async () => {
     try {
       const res = await fetch('/api/admin/platform/ai-usage', { credentials: 'include' })
-      const json = await res.json()
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || `Couldn't load AI usage (HTTP ${res.status}).`)
       if (json.summary) setData(json)
+      setError(null)
     } catch (e) {
-      console.error('Failed to fetch AI usage data:', e)
+      setError(e instanceof Error ? e.message : "Couldn't load AI usage.")
     }
   }
 
@@ -68,13 +71,24 @@ export function AiAnalyticsDashboard() {
     )
   }
 
-  if (!data) return null
+  if (!data) {
+    if (!error) return null
+    return (
+      <Card role="alert" className="rounded-3xl border-border/70 p-6 mt-6 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-destructive">{error}</p>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} aria-hidden />
+          Try again
+        </Button>
+      </Card>
+    )
+  }
 
   const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-4))', 'hsl(var(--chart-3))', 'hsl(var(--chart-5))', '#f97316', 'hsl(var(--muted-foreground))']
 
   return (
     <Card className="rounded-3xl border-border/70 p-6 mt-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div className="flex items-center gap-2">
           <Activity className="h-5 w-5 text-primary" />
           <h3 className="font-semibold text-foreground">AI usage</h3>
@@ -201,7 +215,7 @@ export function AiAnalyticsDashboard() {
         <div className="space-y-4">
           <p className="text-sm font-medium">Usage by model</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[760px]">
               <thead>
                 <tr className="border-b border-border/50">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Model</th>

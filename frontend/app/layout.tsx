@@ -79,9 +79,15 @@ export async function generateMetadata(): Promise<Metadata> {
       ...(Object.keys(verificationOther).length ? { other: verificationOther } : {}),
     },
     icons: {
-      icon: '/icon.svg',
-      apple: '/apple-icon.svg',
+      icon: [
+        { url: '/favicon.ico', sizes: '48x48' },
+        { url: '/icon.svg', type: 'image/svg+xml' },
+        { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      ],
+      // iOS ignores SVG touch icons: PNG, full-bleed (iOS rounds the corners).
+      apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     },
+    manifest: '/manifest.webmanifest',
   }
 }
 

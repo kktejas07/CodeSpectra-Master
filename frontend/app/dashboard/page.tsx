@@ -82,6 +82,8 @@ export default function DashboardPage() {
   const [role, setRole] = useState<string | null>(null)
   const [stats, setStats] = useState({ scans: 0, reviews: 0, fixes: 0, challenges: 0, dailyChallenges: 0, streak: 0, xp: 0 })
   const [statsLoaded, setStatsLoaded] = useState(false)
+  const [statsFailed, setStatsFailed] = useState(false)
+  const [statsReloadKey, setStatsReloadKey] = useState(0)
   // Face enrolment from the session (the auth context doesn't carry it yet).
   const [faceEnrolled, setFaceEnrolled] = useState<boolean | null>(null)
   const [plan, setPlan] = useState<string | null>(null)
@@ -111,6 +113,7 @@ export default function DashboardPage() {
   }, [router, isPending, fbUser?.uid])
 
   useEffect(() => {
+    setStatsFailed(false)
     Promise.all([
       fetch('/api/user/stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/user/activity?limit=10', { credentials: 'include' }).then(r => r.json()).catch(() => null),
@@ -131,6 +134,8 @@ export default function DashboardPage() {
           xp: statsData.xp ?? 0,
         })
         setStatsLoaded(true)
+      } else {
+        setStatsFailed(true)
       }
       if (activityData?.data) setActivities(activityData.data)
       if (heatmapData?.cells) {
@@ -148,9 +153,11 @@ export default function DashboardPage() {
         setPlan(billingData.subscription.plan_id || null)
       }
     })
-  }, [])
+  }, [statsReloadKey])
 
   if (!gate.ready) return null
+  // Skeleton dash until the numbers arrive, so a slow load never reads as "0".
+  const statValue = (n: number) => (statsLoaded ? n : <span className="text-muted-foreground" aria-label="Loading">—</span>)
 
   const firstName = (fbUser?.displayName || '').trim().split(/\s+/)[0] || ''
 
@@ -196,10 +203,16 @@ export default function DashboardPage() {
       />
 
       <div data-tour="dashboard-overview">
+      {statsFailed ? (
+        <div role="alert" className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <span className="text-foreground">Couldn&apos;t load your stats.</span>
+          <Button size="sm" variant="outline" onClick={() => setStatsReloadKey((k) => k + 1)}>Try again</Button>
+        </div>
+      ) : null}
       <BentoGrid className="[&:not(:has(>[data-hint=daily-challenge]>*))]:lg:grid-cols-3">
-        <StatCard label="Code scans" value={stats.scans} icon={<Activity />} />
-        <StatCard label="Challenges" value={stats.challenges} icon={<Code />} />
-        <StatCard label="Fixes applied" value={stats.fixes} icon={<CheckCircle />} />
+        <StatCard label="Code scans" value={statValue(stats.scans)} icon={<Activity />} />
+        <StatCard label="Challenges" value={statValue(stats.challenges)} icon={<Code />} />
+        <StatCard label="Fixes applied" value={statValue(stats.fixes)} icon={<CheckCircle />} />
         <div data-hint="daily-challenge" className="min-w-0">
           <DailyChallengeWidget />
         </div>

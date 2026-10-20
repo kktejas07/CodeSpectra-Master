@@ -12,6 +12,7 @@ import { normalizeUserRole } from '@/lib/rbac'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export async function GET(
   _request: Request,
@@ -43,7 +44,7 @@ export async function PATCH(
 
   let body: { role?: string; full_name?: string; status?: string; plan?: string; password?: string; email?: string; tenantId?: string | null }
   try {
-    body = await request.json()
+    body = sanitizeMongoInput(await request.json())
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }

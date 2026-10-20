@@ -10,6 +10,7 @@ import { requireAuth, requireSuperAdmin, type APIUser } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import type { SellerDoc } from './db'
 import { MktError } from './settings'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -25,7 +26,8 @@ export function errorResponse(e: unknown, label: string) {
 
 export async function bodyOf(req: Request): Promise<Record<string, unknown>> {
   const b = await req.json().catch(() => null)
-  return b && typeof b === 'object' && !Array.isArray(b) ? (b as Record<string, unknown>) : {}
+  // $-operator / __proto__ keys stripped (lib/mongo-sanitize) — bodies feed Mongo filters.
+  return b && typeof b === 'object' && !Array.isArray(b) ? sanitizeMongoInput(b as Record<string, unknown>) : {}
 }
 
 export function idOk(id: unknown): id is string {

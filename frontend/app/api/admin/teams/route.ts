@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function GET() {
   const gate = await requireAdmin()
@@ -111,6 +112,7 @@ export async function POST(request: NextRequest) {
 
     const { name_key: _omit, ...data } = doc
     void _omit
+    await auditAdmin(gate.user, 'admin.team.create', 'team', `team/${String(doc.id)}`)
     return NextResponse.json({ data }, { status: 201 })
   } catch (e) {
     console.error('[CodeSpectra] admin/teams POST:', e)
@@ -165,6 +167,7 @@ export async function PATCH(request: NextRequest) {
       if (body.removeMemberId === team.admin_user_id) return NextResponse.json({ error: "The team admin can't be removed." }, { status: 400 })
       await db.collection('teams').updateOne({ id, member_ids: body.removeMemberId }, { $pull: { member_ids: body.removeMemberId } as never, $inc: { members: -1 }, $set: { updated_at: now } })
     }
+    await auditAdmin(gate.user, 'admin.team.update', 'team', `team/${id}`, Object.keys(body).join(', '))
     const data = await db.collection('teams').findOne({ id }, { projection: { _id: 0, name_key: 0 } })
     return NextResponse.json({ data })
   } catch (e) {
@@ -183,6 +186,7 @@ export async function DELETE(request: NextRequest) {
     const team = await manageableTeam(db, id, gate.user)
     if (!team) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     await db.collection('teams').deleteOne({ id })
+    await auditAdmin(gate.user, 'admin.team.delete', 'team', `team/${id}`, undefined, 'warning')
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[CodeSpectra] admin/teams DELETE:', e)

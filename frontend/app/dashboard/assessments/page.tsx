@@ -51,18 +51,22 @@ export default function MyAssessmentsPage() {
   const [attempts, setAttempts] = useState<Attempt[]>([])
   const [available, setAvailable] = useState<AvailableExam[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     if (!gate.ready) return
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/user/assessments', { credentials: 'include' })
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then(json => {
         if (json.attempts) setAttempts(json.attempts)
         if (Array.isArray(json.available)) setAvailable(json.available)
       })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [gate.ready])
+  }, [gate.ready, reloadKey])
 
   // Initialize tour on first visit
   useEffect(() => {
@@ -279,13 +283,22 @@ export default function MyAssessmentsPage() {
 
       {/* Attempts Table */}
       <div data-tour="assessments-table">
-      {attempts.length === 0 ? (
+      {loadError ? (
+        <Panel className="p-4">
+          <EmptyState illustration="error"
+            title="Couldn't load your assessments"
+            description="Check your connection and try again."
+            actionLabel="Try again"
+            onAction={() => setReloadKey((k) => k + 1)}
+          />
+        </Panel>
+      ) : attempts.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="assessment"
             title="No attempts yet"
-            description="When you finish an assessment, your score and certificate will show up here."
-            actionLabel="Browse assessments"
-            actionHref="/dashboard/assessments"
+            description="When you finish an assessment, your score and certificate will show up here. Meanwhile, practise with a mock test."
+            actionLabel="Try a mock test"
+            actionHref="/dashboard/mock-tests"
           />
         </Panel>
       ) : (

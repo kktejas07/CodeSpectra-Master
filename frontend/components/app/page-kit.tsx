@@ -35,7 +35,7 @@ export function PageHeader({
           </span>
         )}
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-balance text-foreground sm:text-[1.75rem]">{title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-balance wrap-break-word text-foreground sm:text-[1.75rem]">{title}</h1>
           {description && <p className="mt-1 max-w-[70ch] text-[15px] leading-relaxed text-muted-foreground">{description}</p>}
         </div>
       </div>

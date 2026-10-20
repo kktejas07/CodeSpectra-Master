@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/route-auth'
 import { callerFromUser } from '@/lib/agent/permissions'
 import type { AgentCaller } from '@/lib/agent/contract'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export async function requireAgentCaller(): Promise<{ caller: AgentCaller } | { response: NextResponse }> {
   const auth = await requireAdmin()
@@ -16,7 +17,7 @@ export async function requireAgentCaller(): Promise<{ caller: AgentCaller } | { 
 export async function readJson(req: Request): Promise<Record<string, unknown> | null> {
   try {
     const v = await req.json()
-    return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null
+    return v && typeof v === 'object' && !Array.isArray(v) ? sanitizeMongoInput(v as Record<string, unknown>) : null
   } catch {
     return null
   }

@@ -5,6 +5,7 @@ import { resolveModel } from '@/lib/ai/get-user-model'
 import { codeScans } from '@/lib/db/scans'
 import { aiCodeReviews, newId, nowIso } from '@/lib/db/ai'
 import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   let body: ReviewReq
   try {
-    body = (await req.json()) as ReviewReq
+    body = sanitizeMongoInput(await req.json()) as ReviewReq
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }

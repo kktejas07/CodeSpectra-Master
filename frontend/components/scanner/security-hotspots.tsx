@@ -118,7 +118,7 @@ export function SecurityHotspots({
           </Card>
         ) : (
           filtered.map((hotspot) => (
-            <Card
+            <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
               key={hotspot.id}
               className={`p-4 border cursor-pointer transition-all hover:shadow-lg ${
                 selectedId === hotspot.id ? 'border-primary bg-primary/5' : 'border-border'

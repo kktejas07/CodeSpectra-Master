@@ -1,17 +1,84 @@
-# Gitleaks config — extend the default rules, allowlist only provably-fake
-# test fixtures. Everything else that looks like a secret fails CI (see the
-# `secrets` job in .github/workflows/ci.yml).
+# Gitleaks config — default rules plus CodeSpectra-specific ones, with an
+# allowlist for provably-fake fixtures only. Everything else that looks like a
+# secret fails CI (the `secrets` job in .github/workflows/ci.yml) and the local
+# pre-commit hook (.pre-commit-config.yaml). Rotation runbook:
+# docs/devops/08-Secret-Rotation.md.
 #
-# Uses the single [allowlist] table: gitleaks-action pins gitleaks 8.24.x,
-# which ignores the newer [[allowlists]] array form (newer gitleaks accepts both).
+# Compatibility: gitleaks-action pins gitleaks 8.24.x, which ignores the newer
+# [[allowlists]] array form — keep the single [allowlist] table and no per-rule
+# allowlists (exclusions live in the rule regex instead). Tested with 8.24 and
+# 8.30: `gitleaks git . -c .gitleaks.toml` and `gitleaks dir <path> -c .gitleaks.toml`.
+title = "CodeSpectra gitleaks config"
+
 [extend]
 useDefault = true
 
+# ─── Custom rules ────────────────────────────────────────────────────────────
+
+[[rules]]
+id = "mongodb-uri-with-password"
+description = "MongoDB connection string with an inline password (mongodb:// or mongodb+srv://)"
+# Password group excludes template syntax (<pw>, ${PW}, {{pw}}, %s) so docs and
+# env-var interpolation don't match; placeholder words are in [allowlist].regexes.
+regex = '''mongodb(?:\+srv)?://[^\s:/@"'`<>]+:([^\s:/@"'`<>${}%]{4,})@[A-Za-z0-9._-]+'''
+secretGroup = 1
+keywords = ["mongodb://", "mongodb+srv://"]
+
+[[rules]]
+id = "database-uri-with-password"
+description = "Postgres / MySQL / Redis / AMQP connection string with an inline password"
+regex = '''(?i)\b(?:postgres(?:ql)?|mysql|rediss?|amqps?)://[^\s:/@"'`<>]*:([^\s:/@"'`<>${}%]{6,})@[A-Za-z0-9._-]+'''
+secretGroup = 1
+keywords = ["postgres://", "postgresql://", "mysql://", "redis://", "rediss://", "amqp://", "amqps://"]
+
+[[rules]]
+id = "firebase-service-account-private-key"
+description = "Firebase / Google service-account JSON private key"
+regex = '''"private_key"\s*:\s*"(-----BEGIN (?:RSA )?PRIVATE KEY-----(?:\\n|\n)[A-Za-z0-9+/=\\\n]{64,})'''
+secretGroup = 1
+keywords = ["private_key"]
+
+[[rules]]
+id = "firebase-service-account-key-id"
+description = "Firebase / Google service-account private_key_id next to a service account"
+regex = '''"private_key_id"\s*:\s*"([a-f0-9]{40})"'''
+secretGroup = 1
+keywords = ["private_key_id"]
+
+[[rules]]
+id = "pem-private-key-escaped"
+description = "PEM private key inside a string or env value (escaped \\n newlines)"
+regex = '''-----BEGIN (?:RSA |EC |DSA |OPENSSH |ENCRYPTED )?PRIVATE KEY-----(?:\\r)?\\n([A-Za-z0-9+/=]{40,})'''
+secretGroup = 1
+keywords = ["PRIVATE KEY-----"]
+
+[[rules]]
+id = "codespectra-server-secret"
+description = "CodeSpectra server secret assigned a literal value (internal backend secret, session secret, encryption keys, cron/webhook secrets)"
+regex = '''(?i)\b(?:INTERNAL_BACKEND_SECRET|SESSION_SECRET|SECRETS_ENCRYPTION_KEY|IDENTITY_MEDIA_KEY|CRON_SECRET|ATS_WEBHOOK_SECRET|TURNSTILE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|RAZORPAY_KEY_SECRET|PHONEPE_SALT_KEY)\b["']?[ \t]*[=:][ \t]*["']?([A-Za-z0-9_\-+/=]{20,})'''
+secretGroup = 1
+entropy = 3.5
+keywords = ["internal_backend_secret", "session_secret", "secrets_encryption_key", "identity_media_key", "cron_secret", "ats_webhook_secret", "turnstile_secret_key", "stripe_webhook_secret", "razorpay_key_secret", "phonepe_salt_key"]
+
+# ─── Allowlist ───────────────────────────────────────────────────────────────
+
 [allowlist]
-description = "Documented-fake keys in scanner/test fixtures, and one commit that held throwaway CI smoke-test keys (since replaced by per-run random keys)"
+description = "Documented-fake keys in scanner/test fixtures, placeholder passwords, and one commit that held throwaway CI smoke-test keys (since replaced by per-run random keys)"
 paths = [
   '''frontend/components/scanner/secret-scanner-panel.tsx''',
   '''frontend/tests/secret-scanner.test.ts''',
+  '''frontend/tests/scanner-libs.test.ts''',
   '''frontend/tests/llm-legacy-key.test.ts''',
+  '''frontend/tests/log-redact.test.ts''',
+  '''backend/tests/test_log_redaction_and_docs.py''',
 ]
 commits = ["de4ddf656aea2bf23b7d97b2770d4e49f4bb04ae"]
+# Matched against the extracted secret: placeholder passwords in docs/samples,
+# test-/fake-/dummy- prefixed fixture values, admin XP setting keys (`key: 'xp_streak_7day'`), and the fake Groq key in
+# tests/llm-keys-save.test.ts.
+regexes = [
+  '''(?i)^(?:pass(?:word)?|passwd|pwd|secret|changeme|change-me|example|placeholder|your[-_a-z]*|x{3,}|\*{3,}|\.{3,})$''',
+  '''^xp_[a-z0-9_]+$''',
+  '''^gsk_validkey1234567890$''',
+  '''(?i)^(?:test|fake|dummy|sample|mock)[-_][-_a-z0-9]*$''',
+]

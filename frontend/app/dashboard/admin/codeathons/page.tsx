@@ -192,7 +192,7 @@ function CodeathonFormFields({
       <div className="space-y-4">
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground">Title *</Label>
-          <Input
+          <Input aria-label="Title"
             value={formData.title}
             onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
             placeholder="e.g. Hackwave 3.0 X StudentAlumni"
@@ -202,7 +202,7 @@ function CodeathonFormFields({
 
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground">Description</Label>
-          <Textarea
+          <Textarea aria-label="Description"
             value={formData.description}
             onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
             rows={3}
@@ -213,7 +213,7 @@ function CodeathonFormFields({
 
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground">Rules & guidelines</Label>
-          <Textarea
+          <Textarea aria-label="Rules & guidelines"
             value={formData.rules}
             onChange={(e) => setFormData((prev) => ({ ...prev, rules: e.target.value }))}
             rows={3}
@@ -256,7 +256,7 @@ function CodeathonFormFields({
               value={formData.difficulty}
               onValueChange={(v) => setFormData((prev) => ({ ...prev, difficulty: v }))}
             >
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Difficulty" className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {DIFFICULTIES.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
@@ -267,7 +267,7 @@ function CodeathonFormFields({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">Max participants</Label>
-            <Input
+            <Input aria-label="Max participants"
               type="number"
               min={0}
               value={formData.maxParticipants || ''}
@@ -281,7 +281,7 @@ function CodeathonFormFields({
         <div className="grid grid-cols-1 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">Start date and time</Label>
-            <Input
+            <Input aria-label="Start date and time"
               type="datetime-local"
               value={formData.startDate}
               onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
@@ -291,7 +291,7 @@ function CodeathonFormFields({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">End date and time</Label>
-            <Input
+            <Input aria-label="End date and time"
               type="datetime-local"
               value={formData.endDate}
               onChange={(e) => setFormData((prev) => ({ ...prev, endDate: e.target.value }))}
@@ -303,7 +303,7 @@ function CodeathonFormFields({
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">Prize pool</Label>
-            <Input
+            <Input aria-label="Prize pool"
               value={formData.prizePool}
               onChange={(e) => setFormData((prev) => ({ ...prev, prizePool: e.target.value }))}
               placeholder="e.g. ₹50,000 / $1,000"
@@ -317,7 +317,7 @@ function CodeathonFormFields({
               value={formData.cert_template}
               onValueChange={(v) => setFormData((prev) => ({ ...prev, cert_template: v }))}
             >
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Certificate template" className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="classic">Classic (gold / serif)</SelectItem>
                 <SelectItem value="modern">Modern (dark gradient)</SelectItem>
@@ -331,7 +331,7 @@ function CodeathonFormFields({
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">Publishing</Label>
             <Select value={formData.status} onValueChange={(v) => setFormData((prev) => ({ ...prev, status: v }))}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Publishing" className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="draft">Draft — only admins see it</SelectItem>
                 <SelectItem value="upcoming">Published — upcoming</SelectItem>
@@ -343,7 +343,7 @@ function CodeathonFormFields({
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">Who can see it</Label>
             <Select value={formData.visibility} onValueChange={(v) => setFormData((prev) => ({ ...prev, visibility: v }))}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger aria-label="Who can see it" className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="public">Everyone on CodeSpectra</SelectItem>
                 <SelectItem value="organization">Only my organisation</SelectItem>
@@ -366,7 +366,7 @@ function CodeathonFormFields({
                 value={formData.event_type}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, event_type: v }))}
               >
-                <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Event type" className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="individual">Individual</SelectItem>
                   <SelectItem value="team">Team competition</SelectItem>
@@ -380,7 +380,7 @@ function CodeathonFormFields({
                 value={formData.problem_visibility}
                 onValueChange={(v) => setFormData((prev) => ({ ...prev, problem_visibility: v }))}
               >
-                <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="Problem visibility" className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="during_contest">When contest starts</SelectItem>
                   <SelectItem value="immediate">Immediate on publish</SelectItem>
@@ -393,7 +393,7 @@ function CodeathonFormFields({
             <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
               <div className="space-y-1">
                 <Label className="text-xs">Min team size</Label>
-                <Input
+                <Input aria-label="Min team size"
                   type="number"
                   min={1}
                   max={formData.team_size_max}
@@ -404,7 +404,7 @@ function CodeathonFormFields({
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Max team size</Label>
-                <Input
+                <Input aria-label="Max team size"
                   type="number"
                   min={formData.team_size_min}
                   value={formData.team_size_max}
@@ -899,7 +899,7 @@ export default function AdminCodeathonsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px_100px] gap-3">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-medium">Problem title *</Label>
-                  <Input
+                  <Input aria-label="Problem title"
                     value={problemForm.title}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, title: e.target.value }))}
                     placeholder="e.g. Dynamic Path Sum Optimization"
@@ -912,7 +912,7 @@ export default function AdminCodeathonsPage() {
                     value={problemForm.difficulty}
                     onValueChange={(v) => setProblemForm((prev) => ({ ...prev, difficulty: v as 'Easy' | 'Medium' | 'Hard' }))}
                   >
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Difficulty" className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Easy">Easy (50 pts)</SelectItem>
                       <SelectItem value="Medium">Medium (100 pts)</SelectItem>
@@ -922,7 +922,7 @@ export default function AdminCodeathonsPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px] font-medium">Points</Label>
-                  <Input
+                  <Input aria-label="Points"
                     type="number"
                     min={10}
                     value={problemForm.points}
@@ -934,7 +934,7 @@ export default function AdminCodeathonsPage() {
 
               <div className="space-y-1">
                 <Label className="text-[11px] font-medium">Problem statement</Label>
-                <Textarea
+                <Textarea aria-label="Problem statement"
                   value={problemForm.description}
                   onChange={(e) => setProblemForm((prev) => ({ ...prev, description: e.target.value }))}
                   rows={3}
@@ -946,7 +946,7 @@ export default function AdminCodeathonsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-medium">Sample input</Label>
-                  <Textarea
+                  <Textarea aria-label="Sample input"
                     value={problemForm.sample_input}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, sample_input: e.target.value }))}
                     rows={2}
@@ -956,7 +956,7 @@ export default function AdminCodeathonsPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-[11px] font-medium">Sample output</Label>
-                  <Textarea
+                  <Textarea aria-label="Sample output"
                     value={problemForm.sample_output}
                     onChange={(e) => setProblemForm((prev) => ({ ...prev, sample_output: e.target.value }))}
                     rows={2}
@@ -1036,11 +1036,11 @@ export default function AdminCodeathonsPage() {
 
             {/* Tab 3: AI Problem Generator */}
             <TabsContent value="ai" className="space-y-3 pt-3">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <div className="space-y-1">
                   <Label className="text-[11px] font-medium">Domain / role</Label>
                   <Select value={aiRole} onValueChange={setAiRole}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Domain / role" className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Software Engineer">Software engineer</SelectItem>
                       <SelectItem value="Full Stack Developer">Full stack developer</SelectItem>
@@ -1054,7 +1054,7 @@ export default function AdminCodeathonsPage() {
                 <div className="space-y-1">
                   <Label className="text-[11px] font-medium">Difficulty</Label>
                   <Select value={aiDifficulty} onValueChange={(v) => setAiDifficulty(v as 'Easy' | 'Medium' | 'Hard')}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectTrigger aria-label="Difficulty" className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Easy">Easy (50 pts)</SelectItem>
                       <SelectItem value="Medium">Medium (100 pts)</SelectItem>
@@ -1065,7 +1065,7 @@ export default function AdminCodeathonsPage() {
 
                 <div className="space-y-1">
                   <Label className="text-[11px] font-medium">Focus topic</Label>
-                  <Input
+                  <Input aria-label="Focus topic"
                     value={aiTopic}
                     onChange={(e) => setAiTopic(e.target.value)}
                     placeholder="e.g. Graph Algorithms"
@@ -1237,8 +1237,9 @@ export default function AdminCodeathonsPage() {
             asChild
             className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-foreground"
             title="Open participant arena"
+            aria-label="Open participant arena in a new tab"
           >
-            <Link href={`/dashboard/codeathons/${r.id}`} target="_blank">
+            <Link href={`/dashboard/codeathons/${r.id}`} target="_blank" rel="noopener">
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           </Button>
@@ -1596,7 +1597,7 @@ export default function AdminCodeathonsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Score (points)</Label>
-                      <Input
+                      <Input aria-label="Score (points)"
                         type="number"
                         value={reviewScore}
                         onChange={(e) => setReviewScore(Number(e.target.value) || 0)}
@@ -1607,7 +1608,7 @@ export default function AdminCodeathonsPage() {
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold">Status</Label>
                       <Select value={reviewStatus} onValueChange={setReviewStatus}>
-                        <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectTrigger aria-label="Status" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="accepted">Accepted (full credit)</SelectItem>
                           <SelectItem value="needs_improvement">Needs improvement (partial credit)</SelectItem>
@@ -1619,7 +1620,7 @@ export default function AdminCodeathonsPage() {
 
                   <div className="space-y-1.5">
                     <Label className="text-xs font-semibold">Judge feedback</Label>
-                    <Textarea
+                    <Textarea aria-label="Judge feedback"
                       value={reviewNotes}
                       onChange={(e) => setReviewNotes(e.target.value)}
                       rows={3}
@@ -1643,8 +1644,8 @@ export default function AdminCodeathonsPage() {
             ) : (
               /* Submissions Table */
               <div className="space-y-3">
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <table className="w-full text-xs text-left">
+                <div className="overflow-x-auto rounded-xl border border-border">
+                  <table className="w-full min-w-[640px] text-xs text-left">
                     <thead className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
                       <tr>
                         <th className="p-3">Participant</th>

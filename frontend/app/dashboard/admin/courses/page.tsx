@@ -237,7 +237,7 @@ export default function AdminCoursesPage() {
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Title *</Label>
-              <Input
+              <Input aria-label="Title"
                 value={form.title}
                 onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
                 placeholder="e.g. Master Full-Stack Web Development"
@@ -247,7 +247,7 @@ export default function AdminCoursesPage() {
             
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground">Description</Label>
-              <Textarea
+              <Textarea aria-label="Description"
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
                 rows={3}
@@ -263,7 +263,7 @@ export default function AdminCoursesPage() {
                   value={form.category}
                   onValueChange={(v) => setForm((prev) => ({ ...prev, category: v }))}
                 >
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Category" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
@@ -275,7 +275,7 @@ export default function AdminCoursesPage() {
                   value={form.level}
                   onValueChange={(v) => setForm((prev) => ({ ...prev, level: v }))}
                 >
-                  <SelectTrigger className="h-9 text-sm capitalize"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Level" className="h-9 text-sm capitalize"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {LEVELS.map(l => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}
                   </SelectContent>

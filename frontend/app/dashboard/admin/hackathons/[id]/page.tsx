@@ -1,6 +1,7 @@
 'use client'
 import { formatDateTime } from '@/lib/format-datetime'
 import { useConfirm } from '@/lib/confirm-context'
+import { useToast } from '@/lib/toast-context'
 
 /**
  * /dashboard/admin/hackathons/[id] — event detail (superadmin, or the event's own company admin).
@@ -92,6 +93,7 @@ export default function HackathonDetailPage({
   const confirmDialog = useConfirm()
   const { id } = use(params)
   const gate = usePageGuard('tenant_admin')
+  const addToast = useToast()
   const [event, setEvent] = useState<Hackathon | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
@@ -194,6 +196,7 @@ export default function HackathonDetailPage({
         achievement: op === 'ach' ? '' : state.achievement,
         rename: op === 'rename' ? '' : state.rename
       })
+      addToast({ type: 'success', title: op === 'xp' ? 'XP granted' : op === 'ach' ? 'Achievement granted' : op === 'sub' ? 'Submission marked' : 'Team renamed', message: team.name })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -203,9 +206,14 @@ export default function HackathonDetailPage({
   }
 
   async function removeTeam(team: Team) {
-    if (!await confirmDialog({ title: 'Confirmation', description: `Disqualify "${team.name}"?` })) return
+    if (!await confirmDialog({ title: 'Disqualify this team?', description: `Disqualify "${team.name}"?`, confirmText: 'Disqualify', destructive: true })) return
     try {
-      await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, { method: 'DELETE' })
+      const res = await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Could not disqualify the team')
+      }
+      addToast({ type: 'success', title: 'Team disqualified', message: team.name })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -223,6 +231,7 @@ export default function HackathonDetailPage({
       if (!res.ok) throw new Error('Failed to update team name')
       setEditingTeamId(null)
       setEditNameInput('')
+      addToast({ type: 'success', title: 'Team renamed' })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -241,6 +250,7 @@ export default function HackathonDetailPage({
       if (!res.ok) throw new Error(data.error || 'Failed to add member')
       setAddingMemberTeamId(null)
       setAddMemberInput('')
+      addToast({ type: 'success', title: 'Member added', message: team.name })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -253,6 +263,7 @@ export default function HackathonDetailPage({
         method: 'DELETE',
       })
       if (!res.ok) throw new Error('Failed to remove member')
+      addToast({ type: 'success', title: 'Member removed', message: team.name })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -271,6 +282,7 @@ export default function HackathonDetailPage({
         try { const errBody = await res.clone().json(); if (errBody.error) msg += `: ${errBody.error}` } catch {}
         throw new Error(msg)
       }
+      addToast({ type: 'success', title: 'Judges saved' })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -329,6 +341,7 @@ export default function HackathonDetailPage({
         try { const errBody = await res.clone().json(); if (errBody.error) msg += `: ${errBody.error}` } catch {}
         throw new Error(msg)
       }
+      addToast({ type: 'success', title: 'Judging settings saved' })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -411,7 +424,7 @@ export default function HackathonDetailPage({
                 value={event.status}
                 onChange={async (e) => {
                   const newStatus = e.target.value
-                  if (!await confirmDialog({ title: 'Confirmation', description: `Change status from "${event.status}" to "${newStatus}"?` })) return
+                  if (!await confirmDialog({ title: 'Change the event status?', description: `Change status from "${event.status}" to "${newStatus}"?` })) return
                   try {
                     const res = await csrfFetch(`/api/hackathons/${id}`, {
                       method: 'PATCH',
@@ -422,6 +435,7 @@ export default function HackathonDetailPage({
                       const data = await res.json().catch(() => ({}))
                       throw new Error(data.error || 'Could not change the status')
                     }
+                    addToast({ type: 'success', title: 'Status updated', message: newStatus })
                     await load()
                   } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
                 }}
@@ -571,7 +585,7 @@ export default function HackathonDetailPage({
           </div>
           <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
             <Label className="text-xs font-medium">Advance top-N</Label>
-            <Input
+            <Input aria-label="Advance top-N"
               type="number"
               min={1}
               max={100}
@@ -582,7 +596,7 @@ export default function HackathonDetailPage({
           </div>
           <div className="space-y-2 rounded-2xl border border-border/60 bg-muted/30 p-3">
             <Label className="text-xs font-medium">Publish top-N</Label>
-            <Input
+            <Input aria-label="Publish top-N"
               type="number"
               min={1}
               max={100}
@@ -863,7 +877,7 @@ export default function HackathonDetailPage({
                 size="lg"
                 className="font-semibold rounded-xl px-8 h-12"
                 onClick={async () => {
-                  if (!await confirmDialog({ title: 'Confirmation', description: 'Release all results to participants? This action cannot be undone.' })) return
+                  if (!await confirmDialog({ title: 'Release results?', description: 'Release all results to participants? This action cannot be undone.', confirmText: 'Release' })) return
                   setBusy(true)
                   try {
                     const post = (force: boolean) => csrfFetch(`/api/hackathons/${id}/release-results`, {
@@ -878,6 +892,7 @@ export default function HackathonDetailPage({
                       data = await res.json().catch(() => ({}))
                     }
                     if (!res.ok) throw new Error(data.error || 'Could not release results')
+                    addToast({ type: 'success', title: 'Results released', message: 'Participants can now see their results.' })
                     await load()
                   } catch (e) {
                     setError(e instanceof Error ? e.message : String(e))

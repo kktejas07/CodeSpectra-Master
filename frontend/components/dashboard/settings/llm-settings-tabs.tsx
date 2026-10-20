@@ -303,13 +303,10 @@ export function LlmSettingsTabs() {
     const skipped: string[] = []
     const importedKeys: string[] = []
     try {
-      const XLSX = await import('xlsx')
+      const { readSpreadsheetRows } = await import('@/lib/xlsx-lite')
       for (const file of files) {
         const data = await file.arrayBuffer()
-        const workbook = XLSX.read(data, { type: 'array' })
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
-        if (!firstSheet) continue
-        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { header: 1 })
+        const rows = readSpreadsheetRows(data)
       const providerMap: Record<string, string> = {
         'openai': 'openai_api_key', 'anthropic': 'anthropic_api_key', 'google gemini': 'gemini_api_key', 'gemini': 'gemini_api_key',
         'groq': 'groq_api_key', 'openrouter': 'openrouter_api_key', 'nvidia': 'nvidia_api_key', 'deepseek': 'deepseek_api_key',
@@ -349,7 +346,7 @@ export function LlmSettingsTabs() {
       }
       if (imported > 0) addToast({ type: 'success', title: `Imported ${imported} key${imported > 1 ? 's' : ''} from ${files.length} file${files.length > 1 ? 's' : ''}`, message: 'Click "Save keys" to persist.' })
       else addToast({ type: 'error', title: 'No matching providers found' })
-    } catch (err) { addToast({ type: 'error', title: 'Failed to parse file' }) }
+    } catch (err) { addToast({ type: 'error', title: 'Failed to parse file', message: err instanceof Error ? err.message : undefined }) }
     e.target.value = ''
   }, [addToast])
 
@@ -434,8 +431,8 @@ export function LlmSettingsTabs() {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
-        <TabsTrigger value="keys" className="flex items-center gap-2"><Key className="h-4 w-4" /> API Keys</TabsTrigger>
+      <TabsList className="grid h-auto w-full grid-cols-2 sm:grid-cols-4">
+        <TabsTrigger value="keys" className="flex items-center gap-2"><Key className="h-4 w-4" /> API keys</TabsTrigger>
         <TabsTrigger value="health" className="flex items-center gap-2"><Activity className="h-4 w-4" /> Health</TabsTrigger>
         <TabsTrigger value="usage" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Usage stats</TabsTrigger>
         <TabsTrigger value="routing" className="flex items-center gap-2"><Zap className="h-4 w-4" /> Routing</TabsTrigger>
@@ -449,7 +446,7 @@ export function LlmSettingsTabs() {
         <Card className="p-4 flex flex-wrap items-center gap-3">
           <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border/60 bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm font-medium">
             <Upload className="h-4 w-4" /> Import from Excel/CSV
-            <input type="file" accept=".xlsx,.xls,.csv" multiple className="hidden" onChange={handleImport} />
+            <input type="file" accept=".xlsx,.csv" multiple className="hidden" onChange={handleImport} />
           </label>
           <div className="flex-1" />
           <Button onClick={saveKeys} disabled={saving}>
@@ -664,7 +661,7 @@ export function LlmSettingsTabs() {
         {usageStats.length > 0 ? (
           <Card className="border rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs min-w-[760px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-3 font-medium">Model</th>

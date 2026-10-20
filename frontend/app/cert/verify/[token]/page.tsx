@@ -91,7 +91,7 @@ export default function CertVerifyPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-muted-foreground" data-testid="cert-verify-loading">
+      <main role="status" aria-live="polite" className="min-h-screen flex items-center justify-center p-6 text-muted-foreground" data-testid="cert-verify-loading">
         Verifying…
       </main>
     )

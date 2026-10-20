@@ -83,7 +83,7 @@ export function AskCodeSpectra() {
       })
       if (!res.ok || !res.body) {
         const j = await res.json().catch(() => ({ error: 'request failed' }))
-        throw new Error(j.error || `HTTP ${res.status}`)
+        throw new Error(j.error || (res.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${res.status}). Please try again.`))
       }
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
@@ -184,6 +184,7 @@ export function AskCodeSpectra() {
               size="icon"
               onClick={newChat}
               title="New chat"
+              aria-label="New chat"
               data-testid="chat-new"
             >
               <MessageSquarePlus className="h-4 w-4" />
@@ -193,6 +194,7 @@ export function AskCodeSpectra() {
               size="icon"
               onClick={() => setOpen(false)}
               title="Close"
+              aria-label="Close chat"
               data-testid="chat-close"
             >
               <X className="h-4 w-4" />
@@ -273,6 +275,7 @@ export function AskCodeSpectra() {
               type="submit"
               size="icon"
               disabled={busy || !input.trim()}
+              aria-label={busy ? 'Sending' : 'Send message'}
               data-testid="chat-send"
             >
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

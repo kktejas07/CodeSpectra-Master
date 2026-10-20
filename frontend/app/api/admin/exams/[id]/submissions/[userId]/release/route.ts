@@ -5,6 +5,7 @@ import { nowIso } from '@/lib/db/ai'
 import { notifyResultsReleased } from '@/lib/exam-release-notify'
 import { deliverExamCertificate, issueExamCertificate } from '@/lib/db/certifications'
 import { examPassPercent } from '@/lib/exam-access'
+import { auditAdmin } from '@/lib/admin-audit'
 
 export async function PATCH(
   _request: Request,
@@ -76,6 +77,7 @@ export async function PATCH(
     // Same channels as the bulk release (in-app + WhatsApp + email).
     await notifyResultsReleased(db, { ...(exam || {}), id: examId, title: examTitle } as Record<string, unknown>, submission as Record<string, unknown>)
 
+    await auditAdmin(gate.user, 'admin.submission.release', 'exam_submission', `exam/${examId}/user/${userId}`)
     return NextResponse.json({ success: true, released_at: nowIso(), certificate_url: certificateUrl })
   } catch (e: unknown) {
     const msg = 'Failed to release score'

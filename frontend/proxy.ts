@@ -6,7 +6,7 @@ import { isCsrfExempt } from '@/lib/csrf-exempt'
 import { isPublicMarketingPath } from '@/lib/seo/public-routes'
 import { PERMISSIONS_POLICY } from '@/lib/security-headers'
 import { TAG_CONNECT_HOSTS, TAG_FRAME_HOSTS, TAG_SCRIPT_HOSTS } from '@/lib/analytics/integrations'
-import { bearerSkipsCsrf, impersonationBlocked, isPageRequestPath, loginCsrfBlocked } from '@/lib/request-guards'
+import { bearerSkipsCsrf, corsAllowedOrigins, httpsRedirectUrl, impersonationBlocked, isPageRequestPath, loginCsrfBlocked } from '@/lib/request-guards'
 
 // Optional analytics / ad tags (Admin → Settings → Analytics) load only after
 // visitor consent (components/analytics/third-party-tags.tsx); their hosts are
@@ -88,6 +88,14 @@ function isPageRequest(pathname: string): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Force HTTPS when a TLS-terminating proxy forwarded a plain-http request.
+  const httpsUrl = httpsRedirectUrl(request.url, request.headers)
+  if (httpsUrl) {
+    const redirect = NextResponse.redirect(httpsUrl, 308)
+    redirect.headers.set('Strict-Transport-Security', HSTS)
+    return redirect
+  }
 
   const response = (isPageRequest(pathname) ? await pageGate(request) : null) ?? NextResponse.next()
 
@@ -179,11 +187,9 @@ export async function proxy(request: NextRequest) {
 
   // CORS — only allow known origins, never reflect arbitrary origins with credentials
   const origin = request.headers.get('origin')
-  const allowedOrigins = [
-    'https://codespectra.ai',
-    // localhost only in development
-    ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000', 'http://localhost:3001'] : []),
-  ]
+  // Exact allowlist (lib/request-guards): codespectra.ai, NEXT_PUBLIC_APP_URL,
+  // CORS_ALLOWED_ORIGINS; localhost only in development.
+  const allowedOrigins = corsAllowedOrigins()
   const isAllowedOrigin = allowedOrigins.includes(origin || '')
   // Only set CORS headers for allowed origins; block disallowed origins
   if (isAllowedOrigin && origin) {

@@ -12,6 +12,7 @@ import { SkeletonCard, SkeletonStats, SkeletonText, SkeletonButton } from '@/com
 import { CollabEditor } from '@/components/interviews/collab-editor'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
@@ -41,6 +42,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const [error, setError] = useState<string | null>(null)
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const addToast = useToast()
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -124,14 +126,21 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
     if (!currentAnswer.trim()) return
     setSubmitting(true)
     try {
-      await csrfFetch(`/api/interviews/${id}/questions`, {
+      const res = await csrfFetch(`/api/interviews/${id}/questions`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question_id: questionId, answer: currentAnswer, time_spent_seconds: 30 }),
       })
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(j.error || 'Your answer wasn’t saved.')
+      }
       setCurrentAnswer('')
+      addToast({ type: 'success', title: 'Answer saved' })
       await load()
-    } catch {} finally { setSubmitting(false) }
+    } catch (e) {
+      addToast({ type: 'error', title: 'Couldn’t save your answer', message: e instanceof Error ? e.message : 'Please try again.' })
+    } finally { setSubmitting(false) }
   }
 
   if (!gate.ready) return null

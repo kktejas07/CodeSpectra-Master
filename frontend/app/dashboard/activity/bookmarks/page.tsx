@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/app/page-kit'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
@@ -31,6 +32,7 @@ type Tab = 'problems' | 'quizzes'
 
 function BookmarksInner() {
   const gate = usePageGuard('user')
+  const addToast = useToast()
   const { startTour, setTourSeen } = useTour()
   const search = useSearchParams()
   const router = useRouter()
@@ -94,26 +96,38 @@ function BookmarksInner() {
   }, [gate.ready, startTour, setTourSeen])
 
   async function removeProblem(problemId: string, slug: string, title: string) {
-    await csrfFetch('/api/user/problem-bookmarks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ problemId, slug, title }),
-    })
-    setProblems((prev) => prev.filter((i) => i.problemId !== problemId))
+    try {
+      const res = await csrfFetch('/api/user/problem-bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problemId, slug, title }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      setProblems((prev) => prev.filter((i) => i.problemId !== problemId))
+      addToast({ type: 'success', title: 'Bookmark removed' })
+    } catch {
+      addToast({ type: 'error', title: 'Couldn’t remove the bookmark', message: 'Please try again.' })
+    }
   }
 
   async function removeQuiz(it: QuizItem) {
-    await csrfFetch('/api/user/quiz-bookmarks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        courseId: it.courseId,
-        lessonId: it.lessonId,
-        questionId: it.questionId,
-        question: it.question,
-      }),
-    })
-    setQuizzes((prev) => prev.filter((x) => x.id !== it.id))
+    try {
+      const res = await csrfFetch('/api/user/quiz-bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId: it.courseId,
+          lessonId: it.lessonId,
+          questionId: it.questionId,
+          question: it.question,
+        }),
+      })
+      if (!res.ok) throw new Error(String(res.status))
+      setQuizzes((prev) => prev.filter((x) => x.id !== it.id))
+      addToast({ type: 'success', title: 'Bookmark removed' })
+    } catch {
+      addToast({ type: 'error', title: 'Couldn’t remove the bookmark', message: 'Please try again.' })
+    }
   }
 
   function setTab(next: Tab) {

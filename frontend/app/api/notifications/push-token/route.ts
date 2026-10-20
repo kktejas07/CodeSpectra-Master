@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { randomUUID } from 'node:crypto'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -72,7 +73,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   const userId = gate.user.id
-  const body = await req.json().catch(() => ({})) as { token?: string }
+  const body = sanitizeMongoInput(await req.json().catch(() => ({}))) as { token?: string }
   if (!validToken(body.token)) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
   }

@@ -49,7 +49,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const page = resolveDoc(slug)
   if (!page) return { ...fallback, robots: { index: false, follow: true } }
   return buildMetadata({
-    title: `${page.meta.title}: ${page.meta.sectionLabel}`,
+    // The doc's own H1 ("Frequently Asked Questions"), not the file name ("Faq"), plus where it lives.
+    title: `${page.content.match(/^#\s+(.+)$/m)?.[1]?.trim() || page.meta.title} · ${page.meta.section === 'public' ? 'Docs' : 'User guide'}`,
     description: docDescription(page.content),
     path: docHref(page.meta),
     kind: 'docs',

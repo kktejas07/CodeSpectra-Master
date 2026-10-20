@@ -62,9 +62,9 @@ export default function PermissionsPage() {
           addToast({ type: 'success', title: 'Ready', message: `${data.roles.length} roles loaded with ${data.allResources.length} resources` })
         }
       } else {
-        addToast({ type: 'error', title: 'Failed', message: data.error })
+        addToast({ type: 'error', title: "Couldn't load roles", message: data.error })
       }
-    } catch { /* ignore */ }
+    } catch { addToast({ type: 'error', title: "Couldn't load roles", message: 'Refresh the page or try again in a moment.' }) }
     finally { setLoading(false) }
   }, [addToast])
 
@@ -78,8 +78,8 @@ export default function PermissionsPage() {
         const data = await res.json()
         setLockedPages(Array.isArray(data?.locked_pages) ? data.locked_pages : [])
         setLockedFeatures(Array.isArray(data?.locked_features) ? data.locked_features : [])
-      }
-    } catch { /* ignore */ }
+      } else addToast({ type: 'error', title: "Couldn't load locked pages", message: 'Refresh the page or try again in a moment.' })
+    } catch { addToast({ type: 'error', title: "Couldn't load locked pages", message: 'Refresh the page or try again in a moment.' }) }
     finally { setLocksLoading(false) }
   }, [])
 
@@ -265,7 +265,7 @@ export default function PermissionsPage() {
       {/* Role selector */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={selectedRole} onValueChange={v => { setSelectedRole(v); setEditing({}) }}>
-          <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+          <SelectTrigger aria-label="Role" className="w-[200px]"><SelectValue /></SelectTrigger>
           <SelectContent>
             {roles.map(r => (
               <SelectItem key={r.role} value={r.role}>
@@ -295,7 +295,7 @@ export default function PermissionsPage() {
 
       {/* Search + category filter */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter resources..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
+        <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input aria-label="Filter resources" placeholder="Filter resources..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
         <div className="flex items-center gap-1.5">
           {([['all', 'All'], ['platform', 'Platform'], ['organization', 'Organization'], ['user', 'User']] as const).map(([key, label]) => (
             <button
@@ -377,7 +377,7 @@ export default function PermissionsPage() {
           <Card className="rounded-2xl p-4 border-amber-500/20 bg-amber-500/5 flex items-center gap-2">
             <Lock className="h-4 w-4 text-amber-600" />
             <span className="text-sm text-amber-700 dark:text-amber-300">
-              Lock a page to show a &quot;Coming Soon&quot; screen to all non-superadmin users.
+              Lock a page to show a &quot;This page isn&apos;t available yet&quot; screen to everyone except platform admins.
               Pages with sub-features (like scanner modes, tabs) can be expanded to lock individual features.
             </span>
           </Card>
@@ -388,7 +388,7 @@ export default function PermissionsPage() {
             </div>
           ) : (
             <>
-              <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter pages..." value={lockFilter} onChange={e => setLockFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
+              <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input aria-label="Filter pages" placeholder="Filter pages..." value={lockFilter} onChange={e => setLockFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
             <Panel className="overflow-hidden p-0">
               <div className="max-h-[60vh] overflow-y-auto">
                 <table className="w-full text-xs">

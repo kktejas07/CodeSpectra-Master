@@ -68,7 +68,7 @@ const plainText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  const post = await (await blogPosts()).findOne({ slug, status: 'published' }, { projection: { _id: 0, body: 0 } }).catch(() => null)
+  const post = await blogPosts().then((c) => c.findOne({ slug, status: 'published' }, { projection: { _id: 0, body: 0 } })).catch(() => null)
   if (!post) return { title: 'Post not found', robots: { index: false, follow: true } }
   return buildMetadata({
     title: post.title,

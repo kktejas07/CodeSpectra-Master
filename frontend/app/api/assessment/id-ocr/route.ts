@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { limitRequest } from '@/lib/rate-limit'
+import { decodeBase64Image } from '@/lib/upload-sniff'
 import { getAPIUser } from '@/lib/route-auth'
 import { parseIdOcrPayload, type IdOcrResult } from '@/lib/assessment/id-ocr-parse'
 import { getApiKey } from '@/lib/ai/get-api-key'
@@ -69,11 +71,17 @@ export async function POST(req: Request) {
     const user = await getAPIUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Each call spends vision-model credits: cap per user.
+    const limited = await limitRequest(req, 'id-ocr', user.id, 10, 60_000)
+    if (limited) return limited
+
     const { imageBase64 } = await req.json()
     if (!imageBase64) return NextResponse.json({ error: 'Missing image' }, { status: 400 })
 
-    const base64Data = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64
-    const dataUrl = `data:image/jpeg;base64,${base64Data}`
+    // Real JPEG/PNG/WebP bytes only, at most 6 MB (magic-byte check, lib/upload-sniff).
+    const image = decodeBase64Image(imageBase64, 6 * 1024 * 1024)
+    if (!image) return NextResponse.json({ error: 'Upload a JPEG, PNG or WebP photo under 6 MB.' }, { status: 400 })
+    const dataUrl = `data:${image.mime};base64,${image.bytes.toString('base64')}`
     const userName = user.name || ''
 
     // Get API keys using unified utility with round-robin support
@@ -133,7 +141,7 @@ export async function POST(req: Request) {
               {
                 parts: [
                   { text: OCR_PROMPT },
-                  { inline_data: { mime_type: 'image/jpeg', data: base64Data } },
+                  { inline_data: { mime_type: image.mime, data: image.bytes.toString('base64') } },
                 ],
               },
             ],

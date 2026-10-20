@@ -481,7 +481,7 @@ export default function AiMockSetupPage() {
           {/* Upload PDF Panel */}
           {resumeSource === 'upload' && (
             <div className="space-y-3">
-              <div
+              <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
                 onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                 onDragLeave={() => setDragOver(false)}
                 onDrop={handleDrop}
@@ -600,7 +600,7 @@ export default function AiMockSetupPage() {
               {/* Show inline upload if selected resume has no text */}
               {selectedResumeId && extractError && (
                 <div className="space-y-2">
-                  <div
+                  <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}

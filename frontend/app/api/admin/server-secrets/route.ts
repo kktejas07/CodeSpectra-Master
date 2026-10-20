@@ -8,6 +8,7 @@ import {
   type ServerSecretsRecord,
 } from '@/lib/server-secrets-cache'
 import { SECRET_FIELDS, PLAIN_FIELDS, HIRING_FIELDS } from '@/lib/server-secrets-fields'
+import { auditAdmin } from '@/lib/admin-audit'
 
 const ALL_FIELDS: (keyof ServerSecretsRecord)[] = [...SECRET_FIELDS, ...PLAIN_FIELDS]
 
@@ -89,6 +90,7 @@ export async function PATCH(request: Request) {
 
   try {
     const updated = await writeServerSecrets(patch)
+    await auditAdmin(gate.user, 'admin.server_secrets.update', 'settings', 'server-secrets', `fields: ${Object.keys(patch).join(', ')}`, 'critical')
     return NextResponse.json({
       ok: true,
       secrets: {

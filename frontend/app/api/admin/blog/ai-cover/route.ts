@@ -8,6 +8,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { buildNewsCoverPrompt, generateCoverImage } from '@/lib/ai-image'
 import { nowIso } from '@/lib/db/blog-posts'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 export const maxDuration = 120
@@ -16,7 +17,7 @@ export async function POST(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  const body = (await req.json().catch(() => ({}))) as {
+  const body = sanitizeMongoInput(await req.json().catch(() => ({}))) as {
     slug?: string
     title?: string
     excerpt?: string

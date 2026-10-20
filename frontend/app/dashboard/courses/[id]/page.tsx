@@ -629,7 +629,7 @@ const handleEnroll = async () => {
                       ? 'All lesson videos ready'
                       : lessonsWithVideo > 0
                         ? 'Some lesson videos are still being added'
-                        : 'Lesson videos are coming soon'}
+                        : 'Lesson videos haven’t been added yet'}
                   </p>
                   <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
                     {lessonsWithVideo} of {totalLessons} lessons have video ({videosReadyPct}%).{' '}

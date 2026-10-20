@@ -12,6 +12,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { codeScans } from '@/lib/db/scans'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 import { chargeAiFeature, outOfCredits } from '@/lib/user-credits'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest): Promise<Response> {
 
   let body: ChatPostBody
   try {
-    body = (await req.json()) as ChatPostBody
+    body = sanitizeMongoInput(await req.json()) as ChatPostBody
   } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }

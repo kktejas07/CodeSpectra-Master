@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { DataTable, type BulkAction } from '@/components/ui/data-table'
 import { unmaskedAuditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   Shield, Users, LogIn, Ban, Globe, Monitor, Smartphone, Tablet,
@@ -205,13 +206,13 @@ function SessionRow({ session }: { session: UserSession }) {
       {expanded && (
         <tr className="bg-muted/20">
           <td colSpan={6} className="py-3 px-8">
-            <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
-              <div><span className="font-medium text-foreground">Session ID</span><p className="font-mono mt-0.5">{session.id}</p></div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 text-xs text-muted-foreground">
+              <div><span className="font-medium text-foreground">Session ID</span><p className="font-mono mt-0.5 break-all">{session.id}</p></div>
               <div><span className="font-medium text-foreground">User agent</span><p className="truncate mt-0.5">{session.user_agent}</p></div>
               <div><span className="font-medium text-foreground">ISP</span><p className="mt-0.5">{session.isp || '—'}</p></div>
               <div><span className="font-medium text-foreground">Signed in</span><p className="mt-0.5">{formatDateTime(session.created_at)}</p></div>
               <div><span className="font-medium text-foreground">Last seen</span><p className="mt-0.5">{lastSeen.toLocaleString()}</p></div>
-              <div><span className="font-medium text-foreground">User ID</span><p className="font-mono mt-0.5">{session.user_id}</p></div>
+              <div><span className="font-medium text-foreground">User ID</span><p className="font-mono mt-0.5 break-all">{session.user_id}</p></div>
             </div>
           </td>
         </tr>
@@ -222,6 +223,15 @@ function SessionRow({ session }: { session: UserSession }) {
 
 export default function Security() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
+  /** Success / error toast for a security mutation (reads the API error message). */
+  const report = useCallback(async (res: Response, ok: string, fail: string) => {
+    if (res.ok) { addToast({ type: 'success', title: ok }); return true }
+    const j = (await res.json().catch(() => ({}))) as { error?: string }
+    addToast({ type: 'error', title: fail, message: j.error || `HTTP ${res.status}` })
+    return false
+  }, [addToast])
+  const offline = useCallback((fail: string) => addToast({ type: 'error', title: fail, message: 'Check your connection and try again.' }), [addToast])
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
@@ -236,11 +246,12 @@ export default function Security() {
       const params = new URLSearchParams({ limit: '1000' })
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`)
       const json = await res.json()
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
       if (json.data) setAuditLogs(json.data)
       if (json.stats) setAuditStats(json.stats)
-    } catch { /* ignore */ }
+    } catch { offline("Couldn't load audit logs") }
     setAuditLoading(false)
-  }, [])
+  }, [offline])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -264,9 +275,10 @@ export default function Security() {
           geoStats: [],
         })
       }
-    } catch {}
+      if (!dashRes.ok && !setRes.ok) addToast({ type: 'error', title: "Couldn't load security data", message: dashJson.error || `HTTP ${dashRes.status}` })
+    } catch { offline("Couldn't load security data") }
     setLoading(false)
-  }, [])
+  }, [addToast, offline])
 
   useEffect(() => { load(); fetchAuditLogs() }, [load, fetchAuditLogs])
 
@@ -279,15 +291,15 @@ export default function Security() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, status: newStatus }),
       })
-      if (res.ok) {
+      if (await report(res, newStatus === 'enabled' ? 'Setting turned on' : 'Setting turned off', "Couldn't change the setting")) {
         setData(prev => prev ? {
           ...prev,
           settings: prev.settings.map(s => s.name === name ? { ...s, status: newStatus } : s),
         } : prev)
       }
-    } catch {}
+    } catch { offline("Couldn't change the setting") }
     setToggling(null)
-  }, [])
+  }, [report, offline])
 
   const [newBlockIp, setNewBlockIp] = useState('')
   const [newBlockReason, setNewBlockReason] = useState('')
@@ -303,14 +315,14 @@ export default function Security() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ip, reason: newBlockReason || 'Manual block by admin' }),
       })
-      if (res.ok) {
+      if (await report(res, `Blocked ${ip}`, "Couldn't block the IP")) {
         setNewBlockIp('')
         setNewBlockReason('')
         load()
       }
-    } catch {}
+    } catch { offline("Couldn't block the IP") }
     setMutating(null)
-  }, [newBlockIp, newBlockReason, load])
+  }, [newBlockIp, newBlockReason, load, report, offline])
 
   const unblockIp = useCallback(async (ip: string) => {
     setMutating(ip)
@@ -318,10 +330,10 @@ export default function Security() {
       const res = await csrfFetch(`/api/admin/security/blocked-ips?ip=${encodeURIComponent(ip)}`, {
         method: 'DELETE',
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, `Unblocked ${ip}`, "Couldn't unblock the IP")) load()
+    } catch { offline("Couldn't unblock the IP") }
     setMutating(null)
-  }, [load])
+  }, [load, report, offline])
 
   const toggleFingerprintBlock = useCallback(async (visitorId: string, blocked: boolean, reason?: string) => {
     setMutating(visitorId)
@@ -335,10 +347,10 @@ export default function Security() {
           reason: reason || 'Blocked from Security dashboard',
         }),
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, blocked ? 'Device unblocked' : 'Device blocked', "Couldn't update the device")) load()
+    } catch { offline("Couldn't update the device") }
     setMutating(null)
-  }, [load])
+  }, [load, report, offline])
 
   const [whitelistDraft, setWhitelistDraft] = useState('')
   const [concurrentLimitDraft, setConcurrentLimitDraft] = useState('')
@@ -353,26 +365,29 @@ export default function Security() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: setting.name, status: setting.status, allowed_ips: ips }),
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, 'Allowed IPs saved', "Couldn't save the allowed IPs")) load()
+    } catch { offline("Couldn't save the allowed IPs") }
     setMutating(null)
-  }, [whitelistDraft, load])
+  }, [whitelistDraft, load, report, offline])
 
   const saveConcurrentLimit = useCallback(async (setting: SecuritySetting | undefined) => {
     if (!setting) return
-    setMutating('concurrent')
     const n = parseInt(concurrentLimitDraft, 10)
-    if (Number.isNaN(n) || n < 1) return
+    if (Number.isNaN(n) || n < 1) {
+      addToast({ type: 'error', title: 'Enter a whole number of 1 or more' })
+      return
+    }
+    setMutating('concurrent')
     try {
       const res = await csrfFetch('/api/admin/security', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: setting.name, status: setting.status, limit: n }),
       })
-      if (res.ok) load()
-    } catch {}
+      if (await report(res, 'Session limit saved', "Couldn't save the session limit")) load()
+    } catch { offline("Couldn't save the session limit") }
     setMutating(null)
-  }, [concurrentLimitDraft, load])
+  }, [concurrentLimitDraft, load, report, offline, addToast])
 
   const handleAuditExport = useCallback((ids: string[]) => {
     const selected = auditLogs.filter(l => ids.includes(l.id))
@@ -500,13 +515,15 @@ export default function Security() {
         </div>
       ) : (
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="mb-4">
+          <div className="-mx-1 mb-4 overflow-x-auto px-1 pb-1">
+          <TabsList className="w-max">
             <TabsTrigger value="overview" className="gap-1.5"><Activity className="h-4 w-4" />Overview</TabsTrigger>
             <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" />Audit logs</TabsTrigger>
             <TabsTrigger value="fingerprints" className="gap-1.5"><Fingerprint className="h-4 w-4" />Device fingerprints</TabsTrigger>
             <TabsTrigger value="blocked" className="gap-1.5"><Ban className="h-4 w-4" />Blocked IPs</TabsTrigger>
             <TabsTrigger value="events" className="gap-1.5"><ShieldAlert className="h-4 w-4" />Security events</TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="overview" className="space-y-6">
           <ScanBanner />
@@ -607,7 +624,7 @@ export default function Security() {
             </div>
             {data?.activeSessions && data.activeSessions.length > 0 ? (
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm min-w-[640px]">
                   <thead>
                     <tr className="border-b border-border/40 text-muted-foreground text-xs">
                       <th className="text-left py-3 px-4 font-medium">Device / browser</th>
@@ -889,7 +906,7 @@ export default function Security() {
               </div>
               {data?.fingerprints && data.fingerprints.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[640px]">
                     <thead>
                       <tr className="border-b border-border/40 text-muted-foreground text-xs">
                         <th className="text-left py-3 px-4 font-medium">Fingerprint</th>
@@ -989,7 +1006,7 @@ export default function Security() {
               </div>
               {data?.blockedIps && data.blockedIps.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm min-w-[640px]">
                     <thead>
                       <tr className="border-b border-border/40 text-muted-foreground text-xs">
                         <th className="text-left py-3 px-4 font-medium">IP</th>

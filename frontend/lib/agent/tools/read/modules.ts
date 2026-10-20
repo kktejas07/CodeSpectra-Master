@@ -242,7 +242,7 @@ export const listWorkflowsTool = readTool({
     const filter: Doc = { ...workflowScope(workflowGateFor(ctx.caller)) }
     if (a.active !== undefined) filter.is_active = a.active
     const rows = await (await col('workflows')).find(filter, { projection: { _id: 0, webhook_secret_enc: 0, steps: 0, nodes: 0, edges: 0, sample_payload: 0 } }).sort({ updated_at: -1 }).limit(a.limit).toArray()
-    return { data: { total: rows.length, workflows: rows.map((w: Doc) => ({ id: w.id, name: w.name, trigger: w.trigger, cron: w.cron_expression ?? null, event: w.event_type ?? null, active: !!w.is_active, last_run_at: w.last_run_at ?? null, last_run_status: w.last_run_status ?? null, link: `/dashboard/admin/workflows/${w.id}` })) } }
+    return { data: { total: rows.length, workflows: rows.map((w: Doc) => ({ id: w.id, name: w.name, trigger: w.trigger, cron: w.cron_expression ?? null, event: w.event_type ?? null, active: !!w.is_active, last_run_at: w.last_run_at ?? null, last_run_status: w.last_run_status ?? null, link: `/dashboard/admin/workflows?workflow=${w.id}` })) } }
   },
 })
 

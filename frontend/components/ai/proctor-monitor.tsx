@@ -391,7 +391,7 @@ export function ProctorMonitor({
           <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur shadow-lg max-w-lg">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span className="flex-1">{showWarning}</span>
-            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0" onClick={() => setShowWarning(null)}>
+            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0" aria-label="Dismiss warning" onClick={() => setShowWarning(null)}>
               <X className="h-3 w-3" />
             </Button>
           </div>

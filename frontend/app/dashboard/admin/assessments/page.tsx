@@ -666,9 +666,9 @@ export default function AdminExamsPage() {
 
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/70 bg-card p-3">
         <span className="text-sm font-medium text-muted-foreground">Created:</span>
-        <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+        <Input aria-label="Created from" type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
         <span className="text-muted-foreground">to</span>
-        <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+        <Input aria-label="Created to" type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
         <div className="flex items-center gap-1">
           {([['7d', '7D'], ['30d', '30D'], ['90d', '90D'], ['year', 'Year']] as const).map(([val, label]) => (
             <Button key={val} size="sm" variant={datePreset === val ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => handleDatePreset(val)}>
@@ -722,7 +722,7 @@ export default function AdminExamsPage() {
             <div className="grid gap-2">
               <Label>Level</Label>
               <Select value={level} onValueChange={setLevel}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Level">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -735,7 +735,7 @@ export default function AdminExamsPage() {
             <div className="grid gap-2">
               <Label>Degree (optional)</Label>
               <Select value={degreeType || 'any'} onValueChange={v => setDegreeType(v === 'any' ? '' : v)}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Degree (optional)">
                   <SelectValue placeholder="Any degree" />
                 </SelectTrigger>
                 <SelectContent>
@@ -747,7 +747,7 @@ export default function AdminExamsPage() {
             <div className="grid gap-2">
               <Label>Branch (optional)</Label>
               <Select value={branch || 'any'} onValueChange={v => setBranch(v === 'any' ? '' : v)}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Branch (optional)">
                   <SelectValue placeholder="General / all branches" />
                 </SelectTrigger>
                 <SelectContent>
@@ -759,7 +759,7 @@ export default function AdminExamsPage() {
             <div className="grid gap-2">
               <Label>Screening type</Label>
               <Select value={screeningType} onValueChange={setScreeningType}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="Screening type">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -1218,7 +1218,7 @@ export default function AdminExamsPage() {
                 </button>
               </div>
               {linkPreset === 'custom' && (
-                <Input type="datetime-local" value={linkCustom} onChange={(e) => setLinkCustom(e.target.value)} className="max-w-60" />
+                <Input aria-label="Custom link expiry" type="datetime-local" value={linkCustom} onChange={(e) => setLinkCustom(e.target.value)} className="max-w-60" />
               )}
             </div>
             <div className="grid gap-2">
@@ -1276,7 +1276,7 @@ export default function AdminExamsPage() {
                             <p className="text-muted-foreground">No usage recorded yet.</p>
                           ) : (
                             <div className="space-y-1 max-h-48 overflow-y-auto">
-                              <div className="grid grid-cols-12 gap-2 text-[11px] font-medium text-muted-foreground px-2 pb-1 border-b border-border/30">
+                              <div className="grid min-w-[560px] grid-cols-12 gap-2 text-[11px] font-medium text-muted-foreground px-2 pb-1 border-b border-border/30">
                                 <span className="col-span-2">Time</span>
                                 <span className="col-span-2">IP</span>
                                 <span className="col-span-2">Device</span>
@@ -1285,7 +1285,7 @@ export default function AdminExamsPage() {
                                 <span className="col-span-2">User</span>
                               </div>
                               {usageRows.map((u) => (
-                                <div key={u.id} className="grid grid-cols-12 gap-2 px-2 py-1 rounded hover:bg-muted/30">
+                                <div key={u.id} className="grid min-w-[560px] grid-cols-12 gap-2 px-2 py-1 rounded hover:bg-muted/30">
                                   <span className="col-span-2 text-muted-foreground">{formatDateTime(u.accessed_at)}</span>
                                   <span className="col-span-2 font-mono text-muted-foreground">{u.ip_address || '—'}</span>
                                   <span className="col-span-2 flex items-center gap-1">

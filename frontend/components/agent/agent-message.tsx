@@ -110,7 +110,7 @@ function CitationChips({ hits }: { hits: KnowledgeHit[] }) {
                 <span className="truncate">{h.title || 'Source'}</span>
               </button>
             </PopoverTrigger>
-            <PopoverContent className="w-80 space-y-2" align="start">
+            <PopoverContent className="w-80 max-w-[calc(100vw-2rem)] space-y-2" align="start">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <FileText className="h-3.5 w-3.5" aria-hidden />
                 {SOURCE_LABEL[h.source_type] ?? h.source_type}

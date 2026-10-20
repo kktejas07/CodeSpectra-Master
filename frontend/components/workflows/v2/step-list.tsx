@@ -35,7 +35,7 @@ function AddStepMenu({ onAdd, platform, label = 'Add step' }: { onAdd: (type: st
       <PopoverTrigger asChild>
         <Button type="button" variant="outline" size="sm"><Plus className="h-3.5 w-3.5" aria-hidden /> {label}</Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 p-2">
+      <PopoverContent align="start" className="w-80 max-w-[calc(100vw-2rem)] p-2">
         <div className="max-h-80 overflow-y-auto">
           {groups.map((g) => (
             <div key={g} className="mb-2">

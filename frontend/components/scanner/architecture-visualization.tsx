@@ -303,7 +303,7 @@ export function ArchitectureVisualization({
               ) : (
                 <div className="grid gap-3">
                   {components.map((comp) => (
-                    <Card
+                    <Card role="button" tabIndex={0} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.currentTarget.click() } }}
                       key={comp.id}
                       className={`p-4 cursor-pointer transition-all ${selectedComponent === comp.id ? 'ring-2 ring-primary bg-primary/5' : 'hover:shadow-md'}`}
                       onClick={() => setSelectedComponent(comp.id)}
@@ -320,10 +320,10 @@ export function ArchitectureVisualization({
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className={getHealthColor(comp.health)}>{comp.health}</Badge>
-                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onEditComponent?.(comp.id) }}>
+                          <Button size="sm" variant="ghost" aria-label={`Edit ${comp.name}`} onClick={(e) => { e.stopPropagation(); onEditComponent?.(comp.id) }}>
                             <Edit2 className="w-4 h-4" />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); onDeleteComponent?.(comp.id) }}>
+                          <Button size="sm" variant="ghost" aria-label={`Delete ${comp.name}`} onClick={(e) => { e.stopPropagation(); onDeleteComponent?.(comp.id) }}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>

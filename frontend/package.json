@@ -68,6 +68,7 @@
     "d3": "^7.9.0",
     "date-fns": "^4.4.0",
     "driver.js": "^1.8.0",
+    "fflate": "^0.8.1",
     "firebase": "^12.17.1",
     "firebase-admin": "^14.5.0",
     "framer-motion": "^13.4.4",
@@ -115,7 +116,6 @@
     "ua-parser-js": "^2.0.10",
     "vaul": "^1.1.2",
     "vidstack": "^1.15.6",
-    "xlsx": "^0.18.5",
     "zod": "^4.5.4",
     "zustand": "^5.0.15"
   },

@@ -353,55 +353,55 @@ export default function QuestionBankPage() {
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <Select value={branchFilter || 'all'} onValueChange={v => { setBranchFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[160px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by branch" className="h-9 w-[160px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All branches</SelectItem>
             {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={degreeFilter || 'all'} onValueChange={v => { setDegreeFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-35 text-sm"><SelectValue placeholder="All degrees" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by degree" className="h-9 w-35 text-sm"><SelectValue placeholder="All degrees" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All degrees</SelectItem>
             {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={difficultyFilter || 'all'} onValueChange={v => { setDifficultyFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All difficulty" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by difficulty" className="h-9 w-[130px] text-sm"><SelectValue placeholder="All difficulty" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All difficulty</SelectItem>
             {['Easy', 'Medium', 'Hard'].map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={typeFilter || 'all'} onValueChange={v => { setTypeFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by type" className="h-9 w-[130px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All types</SelectItem>
             {BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={levelFilter || 'all'} onValueChange={v => { setLevelFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by level" className="h-9 w-[120px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All levels</SelectItem>
             {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={industryFilter || 'all'} onValueChange={v => { setIndustryFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by industry" className="h-9 w-[150px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All industries</SelectItem>
             {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={categoryFilter || 'all'} onValueChange={v => { setCategoryFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectTrigger aria-label="Filter by category" className="h-9 w-[130px] text-sm"><SelectValue placeholder="All categories" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
             {ASSESSMENT_CATEGORIES.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Input
+        <Input aria-label="Search questions, subjects, tags"
           placeholder="Search questions, subjects, tags..."
           className="h-9 flex-1 min-w-50 text-sm"
           value={search}
@@ -413,7 +413,7 @@ export default function QuestionBankPage() {
       {/* Table */}
       <Panel className="overflow-hidden p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[880px]">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
                 <th className="text-left py-3 px-4 font-medium text-xs text-muted-foreground">Question</th>
@@ -490,7 +490,7 @@ export default function QuestionBankPage() {
 
       {/* Add / Edit modal */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit question' : 'Add question'}</DialogTitle>
             <DialogDescription>Create or update an engineering question.</DialogDescription>
@@ -498,24 +498,24 @@ export default function QuestionBankPage() {
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Short title</Label>
-              <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g., Time complexity of binary search" />
+              <Input aria-label="Short title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g., Time complexity of binary search" />
             </div>
             <div className="space-y-2">
               <Label>Question</Label>
-              <Textarea value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} rows={3} placeholder="Full question prompt" />
+              <Textarea aria-label="Question" value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} rows={3} placeholder="Full question prompt" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Type</Label>
                 <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as QuestionType })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Type" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>{QUESTION_TYPES.map(t => <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Difficulty</Label>
                 <Select value={form.difficulty} onValueChange={v => setForm({ ...form, difficulty: v as 'Easy' | 'Medium' | 'Hard' })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Difficulty" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Easy">Easy</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Hard">Hard</SelectItem>
                   </SelectContent>
@@ -538,22 +538,22 @@ export default function QuestionBankPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Correct answer</Label>
-                <Input value={form.answer} onChange={e => setForm({ ...form, answer: e.target.value })} placeholder="Correct option text or explanation" />
+                <Input aria-label="Correct answer" value={form.answer} onChange={e => setForm({ ...form, answer: e.target.value })} placeholder="Correct option text or explanation" />
               </div>
               <div className="space-y-2">
                 <Label>Marks</Label>
-                <Input type="number" min={1} value={form.marks} onChange={e => setForm({ ...form, marks: Number(e.target.value) || 10 })} />
+                <Input aria-label="Marks" type="number" min={1} value={form.marks} onChange={e => setForm({ ...form, marks: Number(e.target.value) || 10 })} />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Explanation</Label>
-              <Textarea value={form.explanation} onChange={e => setForm({ ...form, explanation: e.target.value })} rows={2} placeholder="Optional — shown after answering" />
+              <Textarea aria-label="Explanation" value={form.explanation} onChange={e => setForm({ ...form, explanation: e.target.value })} rows={2} placeholder="Optional — shown after answering" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Branch</Label>
                 <Select value={form.branch} onValueChange={v => setForm({ ...form, branch: v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="General" /></SelectTrigger>
+                  <SelectTrigger aria-label="Branch" className="h-9 text-sm"><SelectValue placeholder="General" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">General / none</SelectItem>
                     {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
@@ -563,7 +563,7 @@ export default function QuestionBankPage() {
               <div className="space-y-2">
                 <Label>Degree</Label>
                 <Select value={form.degree_type} onValueChange={v => setForm({ ...form, degree_type: v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Any degree" /></SelectTrigger>
+                  <SelectTrigger aria-label="Degree" className="h-9 text-sm"><SelectValue placeholder="Any degree" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Any degree</SelectItem>
                     {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
@@ -575,7 +575,7 @@ export default function QuestionBankPage() {
               <div className="space-y-2">
                 <Label>Industry</Label>
                 <Select value={form.industry || 'none'} onValueChange={v => setForm({ ...form, industry: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Industry" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
@@ -585,7 +585,7 @@ export default function QuestionBankPage() {
               <div className="space-y-2">
                 <Label>Level</Label>
                 <Select value={form.level || 'none'} onValueChange={v => setForm({ ...form, level: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Level" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
@@ -595,7 +595,7 @@ export default function QuestionBankPage() {
               <div className="space-y-2">
                 <Label>Category</Label>
                 <Select value={form.assessment_category || 'none'} onValueChange={v => setForm({ ...form, assessment_category: v === 'none' ? '' : v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Category" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">None</SelectItem>
                     {ASSESSMENT_CATEGORIES.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
@@ -605,16 +605,16 @@ export default function QuestionBankPage() {
             </div>
             <div className="space-y-2">
               <Label>Subject or topic</Label>
-              <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="e.g., Data Structures, Thermodynamics" />
+              <Input aria-label="Subject or topic" value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="e.g., Data Structures, Thermodynamics" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Tech stack (comma separated)</Label>
-                <Input value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder="e.g., Java, React" />
+                <Input aria-label="Tech stack (comma separated)" value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder="e.g., Java, React" />
               </div>
               <div className="space-y-2">
                 <Label>Tags (comma separated)</Label>
-                <Input value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="e.g., arrays, dp" />
+                <Input aria-label="Tags (comma separated)" value={form.tags} onChange={e => setForm({ ...form, tags: e.target.value })} placeholder="e.g., arrays, dp" />
               </div>
             </div>
           </div>
@@ -627,7 +627,7 @@ export default function QuestionBankPage() {
 
       {/* View modal */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-primary" />
@@ -693,7 +693,7 @@ export default function QuestionBankPage() {
             <div className="space-y-2">
               <Label>Branch</Label>
               <Select value={aiForm.branch || 'all'} onValueChange={v => setAiForm({ ...aiForm, branch: v === 'all' ? '' : v })}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select branch" /></SelectTrigger>
+                <SelectTrigger aria-label="Branch" className="h-9 text-sm"><SelectValue placeholder="Select branch" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">None (subject-driven)</SelectItem>
                   {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
@@ -702,13 +702,13 @@ export default function QuestionBankPage() {
             </div>
             <div className="space-y-2">
               <Label>Subject or topic</Label>
-              <Input value={aiForm.subject} onChange={e => setAiForm({ ...aiForm, subject: e.target.value })} placeholder="e.g., Binary Trees, Thermodynamics" />
+              <Input aria-label="Subject or topic" value={aiForm.subject} onChange={e => setAiForm({ ...aiForm, subject: e.target.value })} placeholder="e.g., Binary Trees, Thermodynamics" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Difficulty</Label>
                 <Select value={aiForm.difficulty} onValueChange={v => setAiForm({ ...aiForm, difficulty: v })}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger aria-label="Difficulty" className="h-9 text-sm"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="mixed">Mixed</SelectItem>
                     <SelectItem value="Easy">Easy</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="Hard">Hard</SelectItem>
@@ -717,12 +717,12 @@ export default function QuestionBankPage() {
               </div>
               <div className="space-y-2">
                 <Label>Count</Label>
-                <Input type="number" min={1} max={1000} value={aiForm.count} onChange={e => setAiForm({ ...aiForm, count: Number(e.target.value) || 25 })} />
+                <Input aria-label="Count" type="number" min={1} max={1000} value={aiForm.count} onChange={e => setAiForm({ ...aiForm, count: Number(e.target.value) || 25 })} />
               </div>
             </div>
             <div className="space-y-2">
               <Label>Question types (comma separated)</Label>
-              <Input value={aiForm.types} onChange={e => setAiForm({ ...aiForm, types: e.target.value })} placeholder="mcq,true_false,coding" />
+              <Input aria-label="Question types (comma separated)" value={aiForm.types} onChange={e => setAiForm({ ...aiForm, types: e.target.value })} placeholder="mcq,true_false,coding" />
             </div>
           </div>
           <DialogFooter>

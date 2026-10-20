@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ScoresPanel } from '@/components/admin/analytics/scores-panel'
 import { ProctoringPanel } from '@/components/admin/analytics/proctoring-panel'
@@ -214,6 +215,9 @@ function KpiCard({ icon, label, value, trend, suffix }: {
 
 export default function AnalyticsPage() {
   const gate = usePageGuard('/dashboard/admin/analytics')
+  const addToast = useToast()
+  /** Last section that failed to load (shown once above the tabs, not as a toast storm from polling). */
+  const [loadIssue, setLoadIssue] = useState<string | null>(null)
 
   const [range, setRange] = useState('24h')
   const [activeTab, setActiveTab] = useState('insights')
@@ -268,8 +272,9 @@ export default function AnalyticsPage() {
     try {
       const res = await fetch(`/api/admin/analytics/overview?range=${range}`, { credentials: 'include' })
       const json = await res.json()
-      if (res.ok) setOverview(json)
-    } catch { /* ignore */ }
+      if (res.ok) { setOverview(json); setLoadIssue(null) }
+      else setLoadIssue('the overview')
+    } catch { setLoadIssue('the overview') }
     finally { setOverviewLoading(false) }
   }, [gate.ready, range])
 
@@ -282,7 +287,7 @@ export default function AnalyticsPage() {
       if (res.ok) {
         setPagesData({ topPages: Array.isArray(json?.topPages) ? json.topPages : [] })
       }
-    } catch { /* ignore */ }
+    } catch { setLoadIssue('top pages') }
     finally { setPagesLoading(false) }
   }, [gate.ready, range])
 
@@ -307,7 +312,7 @@ export default function AnalyticsPage() {
             .slice(0, 10),
         })
       }
-    } catch { /* ignore */ }
+    } catch { setLoadIssue('events') }
     finally { setEventsLoading(false) }
   }, [gate.ready])
 
@@ -318,7 +323,8 @@ export default function AnalyticsPage() {
       const res = await fetch(`/api/analytics/web-vitals/summary?range=7d`, { credentials: 'include' })
       const json = await res.json()
       if (res.ok) setVitalsData(json)
-    } catch { /* ignore */ }
+      else setLoadIssue('web vitals')
+    } catch { setLoadIssue('web vitals') }
     finally { setVitalsLoading(false) }
   }, [gate.ready])
 
@@ -329,7 +335,8 @@ export default function AnalyticsPage() {
       const res = await fetch('/api/admin/analytics/funnels', { credentials: 'include' })
       const json = await res.json()
       if (res.ok) setFunnels(json.funnels || [])
-    } catch { /* ignore */ }
+      else setLoadIssue('funnels')
+    } catch { setLoadIssue('funnels') }
     finally { setFunnelLoading(false) }
   }, [gate.ready])
 
@@ -339,7 +346,8 @@ export default function AnalyticsPage() {
       const res = await fetch(`/api/admin/analytics/funnels?id=${funnelId}&range=${range}`, { credentials: 'include' })
       const json = await res.json()
       if (res.ok) setFunnelResult(json)
-    } catch { /* ignore */ }
+      else setLoadIssue('the funnel')
+    } catch { setLoadIssue('the funnel') }
   }, [gate.ready, range])
 
   const createFunnel = useCallback(async () => {
@@ -359,11 +367,15 @@ export default function AnalyticsPage() {
         setShowFunnelForm(false)
         setNewFunnelName('')
         setNewFunnelSteps('')
+        addToast({ type: 'success', title: 'Funnel created' })
         void loadFunnels()
+      } else {
+        const j = await res.json().catch(() => ({}))
+        addToast({ type: 'error', title: "Couldn't create the funnel", message: j.error || `HTTP ${res.status}` })
       }
-    } catch { /* ignore */ }
+    } catch { addToast({ type: 'error', title: "Couldn't create the funnel", message: 'Check your connection and try again.' }) }
     setCreatingFunnel(false)
-  }, [newFunnelName, newFunnelSteps, loadFunnels])
+  }, [newFunnelName, newFunnelSteps, loadFunnels, addToast])
 
   const loadRetention = useCallback(async () => {
     if (!gate.ready) return
@@ -372,7 +384,8 @@ export default function AnalyticsPage() {
       const res = await fetch('/api/admin/analytics/retention?weeks=8', { credentials: 'include' })
       const json = await res.json()
       if (res.ok) setRetentionData(json)
-    } catch { /* ignore */ }
+      else setLoadIssue('retention')
+    } catch { setLoadIssue('retention') }
     finally { setRetentionLoading(false) }
   }, [gate.ready])
 
@@ -383,7 +396,8 @@ export default function AnalyticsPage() {
       const res = await fetch(`/api/analytics/ai?range=${range}`, { credentials: 'include' })
       const json = await res.json()
       if (res.ok) setAiData(json)
-    } catch { /* ignore */ }
+      else setLoadIssue('AI usage')
+    } catch { setLoadIssue('AI usage') }
     finally { setAiLoading(false) }
   }, [gate.ready, range])
 
@@ -394,7 +408,8 @@ export default function AnalyticsPage() {
       const res = await fetch(`/api/admin/analytics/revenue?range=${range}`, { credentials: 'include' })
       const json = await res.json()
       if (res.ok) setRevenueData(json)
-    } catch { /* ignore */ }
+      else setLoadIssue('revenue')
+    } catch { setLoadIssue('revenue') }
     finally { setRevenueLoading(false) }
   }, [gate.ready, range])
 
@@ -405,38 +420,55 @@ export default function AnalyticsPage() {
       const res = await fetch('/api/admin/analytics/feature-flags', { credentials: 'include' })
       const json = await res.json()
       if (res.ok) setFeatureFlags(json.flags || [])
-    } catch { /* ignore */ }
+      else setLoadIssue('feature flags')
+    } catch { setLoadIssue('feature flags') }
     finally { setFfLoading(false) }
   }, [gate.ready])
 
   const toggleFlag = useCallback(async (name: string, enabled: boolean) => {
-    await csrfFetch('/api/admin/analytics/feature-flags', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, enabled }),
-    })
-    setFeatureFlags(prev => prev.map(f => f.id === name ? { ...f, enabled } : f))
-  }, [])
+    try {
+      const res = await csrfFetch('/api/admin/analytics/feature-flags', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, enabled }),
+      })
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || `HTTP ${res.status}`)
+      setFeatureFlags(prev => prev.map(f => f.id === name ? { ...f, enabled } : f))
+      addToast({ type: 'success', title: enabled ? 'Flag turned on' : 'Flag turned off', message: name })
+    } catch (e) {
+      addToast({ type: 'error', title: "Couldn't change the flag", message: e instanceof Error ? e.message : 'Try again.' })
+    }
+  }, [addToast])
 
   const createFlag = useCallback(async () => {
     if (!newFfName.trim()) return
-    const res = await csrfFetch('/api/admin/analytics/feature-flags', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newFfName, description: newFfDesc }),
-    })
-    if (res.ok) {
+    try {
+      const res = await csrfFetch('/api/admin/analytics/feature-flags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newFfName, description: newFfDesc }),
+      })
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || `HTTP ${res.status}`)
       setShowFfForm(false)
       setNewFfName('')
       setNewFfDesc('')
+      addToast({ type: 'success', title: 'Flag created' })
       void loadFeatureFlags()
+    } catch (e) {
+      addToast({ type: 'error', title: "Couldn't create the flag", message: e instanceof Error ? e.message : 'Try again.' })
     }
-  }, [newFfName, newFfDesc, loadFeatureFlags])
+  }, [newFfName, newFfDesc, loadFeatureFlags, addToast])
 
   const deleteFlag = useCallback(async (name: string) => {
-    await csrfFetch(`/api/admin/analytics/feature-flags?id=${name}`, { method: 'DELETE' })
-    setFeatureFlags(prev => prev.filter(f => f.id !== name))
-  }, [])
+    try {
+      const res = await csrfFetch(`/api/admin/analytics/feature-flags?id=${encodeURIComponent(name)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error || `HTTP ${res.status}`)
+      setFeatureFlags(prev => prev.filter(f => f.id !== name))
+      addToast({ type: 'success', title: 'Flag deleted', message: name })
+    } catch (e) {
+      addToast({ type: 'error', title: "Couldn't delete the flag", message: e instanceof Error ? e.message : 'Try again.' })
+    }
+  }, [addToast])
 
   // ─── Initial Load ────────────────────────────────────────────────────────
 
@@ -556,6 +588,13 @@ export default function AnalyticsPage() {
         className="mb-0"
       />
       </div>
+
+      {loadIssue && (
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <span>Couldn&apos;t load {loadIssue}. Showing the last data we have.</span>
+          <Button variant="ghost" size="sm" onClick={() => setLoadIssue(null)}>Dismiss</Button>
+        </div>
+      )}
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -1147,7 +1186,7 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
+              <Input aria-label="Search events"
                 placeholder="Search events…"
                 value={search}
                 onChange={(e) => onSearchChange(e.target.value)}
@@ -1155,7 +1194,7 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
               />
             </div>
             <Select value={filter} onValueChange={onFilterChange}>
-              <SelectTrigger className="w-35 h-8 text-xs">
+              <SelectTrigger aria-label="Filter by event" className="w-35 h-8 text-xs">
                 <SelectValue placeholder="All events" />
               </SelectTrigger>
               <SelectContent>
@@ -1198,7 +1237,7 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
         </div>
         <div className="flex gap-2">
           <Select value={selectedFunnel} onValueChange={onSelectFunnel}>
-            <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Select a funnel" /></SelectTrigger>
+            <SelectTrigger aria-label="Select a funnel" className="w-[200px] h-9"><SelectValue placeholder="Select a funnel" /></SelectTrigger>
             <SelectContent>
               {funnels.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
             </SelectContent>
@@ -1210,7 +1249,7 @@ function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, 
       {showForm && (
         <Panel className="p-6 space-y-4">
           <h3 className="font-semibold">Create a funnel</h3>
-          <Input placeholder="Funnel name (e.g. Signup to Paid)" value={funnelName} onChange={e => onFunnelNameChange(e.target.value)} />
+          <Input aria-label="Funnel name" placeholder="Funnel name (e.g. Signup to Paid)" value={funnelName} onChange={e => onFunnelNameChange(e.target.value)} />
           <div>
             <p className="text-xs text-muted-foreground mb-1">Steps (one per line: <code>event_name</code> or <code>event_name|/path</code>)</p>
             <textarea aria-label="Funnel steps" className="w-full h-32 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" placeholder={"page_view|/signup\nsignup_completed\nproject_created\ncode_run\nsubscription_started"} value={funnelSteps} onChange={e => onFunnelStepsChange(e.target.value)} />
@@ -1600,8 +1639,8 @@ function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onF
       {showForm && (
         <Panel className="p-6 space-y-4">
           <h3 className="font-semibold">Create a feature flag</h3>
-          <Input placeholder="Flag name (e.g. new_dashboard)" value={flagName} onChange={e => onFlagNameChange(e.target.value)} />
-          <Input placeholder="Description (optional)" value={flagDesc} onChange={e => onFlagDescChange(e.target.value)} />
+          <Input aria-label="Flag name" placeholder="Flag name (e.g. new_dashboard)" value={flagName} onChange={e => onFlagNameChange(e.target.value)} />
+          <Input aria-label="Flag description" placeholder="Description (optional)" value={flagDesc} onChange={e => onFlagDescChange(e.target.value)} />
           <Button onClick={onCreate} disabled={!flagName.trim()}>Create flag</Button>
         </Panel>
       )}

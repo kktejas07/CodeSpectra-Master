@@ -48,18 +48,21 @@ export default function SkillAnalyticsPage() {
   const [data, setData] = useState<SkillData | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
+    setLoading(true)
+    setErr(null)
     fetch('/api/analytics/skills', { cache: 'no-store' })
       .then(async (r) => {
-        const j = await r.json()
-        if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`)
+        const j = await r.json().catch(() => ({}))
+        if (!r.ok) throw new Error(j.error || (r.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${r.status}). Please try again.`))
         return j as SkillData
       })
       .then(setData)
-      .catch((e) => setErr(e instanceof Error ? e.message : String(e)))
+      .catch((e) => setErr(e instanceof Error ? e.message : 'Please try again.'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
@@ -108,9 +111,12 @@ export default function SkillAnalyticsPage() {
   }
   if (err) {
     return (
-      <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-5 text-sm text-destructive" role="alert">
-        Couldn&apos;t load your skill analytics: {err}
-      </div>
+      <EmptyState illustration="error"
+        title="Couldn't load your skill analytics"
+        description={err}
+        actionLabel="Try again"
+        onAction={() => setReloadKey((k) => k + 1)}
+      />
     )
   }
   if (!data || !data.totals) {

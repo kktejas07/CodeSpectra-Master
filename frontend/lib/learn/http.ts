@@ -1,6 +1,7 @@
 /** Route helpers for /api/learn/** (server only). */
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin, type APIUser } from '@/lib/route-auth'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 /** Learn admin = platform superadmin (the hub is platform-wide public content). */
 export async function learnAdmin(): Promise<{ user: APIUser } | { res: NextResponse }> {
@@ -12,7 +13,7 @@ export async function learnAdmin(): Promise<{ user: APIUser } | { res: NextRespo
 export async function readJson(req: Request): Promise<Record<string, unknown>> {
   try {
     const body = await req.json()
-    return body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
+    return body && typeof body === 'object' && !Array.isArray(body) ? sanitizeMongoInput(body as Record<string, unknown>) : {}
   } catch {
     return {}
   }

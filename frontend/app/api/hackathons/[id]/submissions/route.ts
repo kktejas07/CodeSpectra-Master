@@ -6,6 +6,7 @@ import { isHackathonStaff } from '@/lib/hackathons/access'
 import type { SubmissionStatus } from '@/lib/hackathons/submission-state'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { clientIpOrEmpty } from '@/lib/client-ip'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
   if (!team) return NextResponse.json({ error: 'you are not on a team in this event' }, { status: 403 })
 
-  const body = await req.json().catch(() => ({})) as {
+  const body = sanitizeMongoInput(await req.json().catch(() => ({}))) as {
     problem_slug?: string
     repo_url?: string
     commit_sha?: string

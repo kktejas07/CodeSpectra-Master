@@ -753,7 +753,7 @@ export default function SystemAdminDashboard() {
             </Badge>
           </h2>
           <div className="flex items-center gap-2">
-            <select
+            <select aria-label="Time range"
               value={webVitalsRange}
               onChange={(e) => setWebVitalsRange(e.target.value)}
               className="h-8 rounded-md border border-input bg-background px-2 text-xs"

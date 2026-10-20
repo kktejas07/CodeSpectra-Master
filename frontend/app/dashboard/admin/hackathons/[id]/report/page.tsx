@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { NotEventStaff } from '@/components/hackathons/not-event-staff'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -75,6 +76,7 @@ function formatDuration(ms: number): string {
 export default function HackathonReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const gate = usePageGuard('tenant_admin')
+  const addToast = useToast()
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [submissions, setSubmissions] = useState<Submission[]>([])
@@ -102,7 +104,8 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
       setSubmissions(sData.items || [])
       const pData = pRes.ok ? await pRes.json() : { events: [] }
       setProctorEvents(pData.events || [])
-    } catch { /* ignore */ }
+      if (!tRes.ok || !sRes.ok || !pRes.ok) addToast({ type: 'error', title: 'Some report data is missing', message: 'Teams, submissions or proctoring events could not be loaded. Refresh to try again.' })
+    } catch { addToast({ type: 'error', title: "Couldn't load the report", message: 'Refresh the page or try again in a moment.' }) }
     finally { setLoading(false) }
   }, [id])
 
@@ -330,7 +333,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
           <EmptyState illustration="proctoring" variant="search" title="No proctoring events at this severity" description="Choose All to see every event." className="border-0 bg-transparent py-6 md:py-8" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b text-xs text-muted-foreground">
                   <th className="font-medium text-left py-2 pr-4">Team</th>

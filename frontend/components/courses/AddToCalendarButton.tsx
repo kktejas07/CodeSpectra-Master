@@ -2,6 +2,7 @@
 import { formatDateTime } from '@/lib/format-datetime'
 
 import { useMemo, useState } from 'react'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { Calendar, Download, ExternalLink, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -29,6 +30,7 @@ export function AddToCalendarButton({
   variant = 'hero',
 }: Props) {
   const [open, setOpen] = useState(false)
+  const panelRef = useFocusTrap<HTMLDivElement>(open, () => setOpen(false))
 
   const options = useMemo(() => {
     if (dates?.length) return dates
@@ -112,11 +114,11 @@ export function AddToCalendarButton({
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <button type="button" className="absolute inset-0 bg-black/50" aria-label="Close" onClick={() => setOpen(false)} />
-          <div className="relative w-full max-w-sm rounded-3xl border border-border bg-card text-foreground shadow-2xl p-5 space-y-4">
+          <button type="button" tabIndex={-1} className="absolute inset-0 bg-black/50" aria-label="Close" onClick={() => setOpen(false)} />
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="add-to-calendar-title" className="relative w-full max-w-sm max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card text-foreground shadow-2xl p-5 space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-bold text-base">Select dates to add</h3>
+                <h3 id="add-to-calendar-title" className="font-bold text-base">Select dates to add</h3>
                 <p className="text-xs text-muted-foreground mt-1">
                   Save on CodeSpectra (recommended), or optionally export .ics / Google.
                 </p>

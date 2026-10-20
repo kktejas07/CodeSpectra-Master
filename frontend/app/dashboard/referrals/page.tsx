@@ -9,6 +9,8 @@ import { Loader2, Users, Link2, Copy, Check, Star } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
+import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Illustration } from '@/components/illustrations/spot'
@@ -31,14 +33,19 @@ export default function ReferralsPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [loadError, setLoadError] = useState(false)
+  const [reloadKey, setReloadKey] = useState(0)
+  const addToast = useToast()
 
   useEffect(() => {
+    setLoading(true)
+    setLoadError(false)
     fetch('/api/referral/stats')
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.json() })
       .then((json) => { if (!json.error) setStats(json) })
-      .catch(() => {})
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reloadKey])
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   // Only 2 steps: the stats grid and referred-users list render only after a
@@ -66,18 +73,24 @@ export default function ReferralsPage() {
     setGenerating(true)
     try {
       const res = await csrfFetch('/api/referral/generate', { method: 'POST' })
-      const json = await res.json()
-      if (json.code) {
-        setStats((prev) => prev ? { ...prev, code: json.code, url: json.url } : { code: json.code, url: json.url, total_referrals: 0, completed_referrals: 0, pending_referrals: 0, total_xp_earned: 0, total_commission_earned: 0, referrals: [] })
-      }
-    } catch { /* ignore */ }
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok || !json.code) throw new Error(json.error || 'Couldn’t create your code.')
+      setStats((prev) => prev ? { ...prev, code: json.code, url: json.url } : { code: json.code, url: json.url, total_referrals: 0, completed_referrals: 0, pending_referrals: 0, total_xp_earned: 0, total_commission_earned: 0, referrals: [] })
+      addToast({ type: 'success', title: 'Your referral code is ready' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Couldn’t create your referral code', message: e instanceof Error ? e.message : 'Please try again.' })
+    }
     setGenerating(false)
   }
 
   function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    navigator.clipboard.writeText(text).then(
+      () => {
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      },
+      () => addToast({ type: 'error', title: 'Couldn’t copy', message: 'Select the link and copy it manually.' }),
+    )
   }
 
   if (!gate.ready) return null
@@ -111,7 +124,15 @@ export default function ReferralsPage() {
       </div>
 
       <div data-tour="referrals-action" className="space-y-6">
-      {!stats?.code ? (
+      {loadError ? (
+        <EmptyState
+          illustration="error"
+          title="Couldn't load your referrals"
+          description="Check your connection and try again."
+          actionLabel="Try again"
+          onAction={() => setReloadKey((k) => k + 1)}
+        />
+      ) : !stats?.code ? (
         <Panel className="p-10 text-center">
           <Illustration name="team" className="mx-auto w-36" />
           <p className="mt-4 text-muted-foreground">Generate your referral code to start inviting friends.</p>

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { copyrightLine } from '@/lib/copyright'
 import { forwardRef, useId, useState } from 'react'
 import { ChevronDown, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -15,6 +16,9 @@ import { NavThemeSwitch } from '@/components/nav-theme-switch'
 export function AuthShell({ aside, children }: { aside: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="cs-brand grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
+      <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-cs-sheet focus:px-4 focus:py-2">
+        Skip to content
+      </a>
       <div className="flex flex-col px-5 py-6 sm:px-10 lg:px-16">
         <header className="flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2.5" aria-label="CodeSpectra home">
@@ -23,12 +27,12 @@ export function AuthShell({ aside, children }: { aside: React.ReactNode; childre
           <NavThemeSwitch compact />
         </header>
 
-        <main className="flex flex-1 items-center py-10">
+        <main id="main" className="flex flex-1 items-center py-10">
           <div className="w-full max-w-[26rem]">{children}</div>
         </main>
 
         <footer className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-cs-ink-soft">
-          <span>© 2026 CodeSpectra</span>
+          <span suppressHydrationWarning>{copyrightLine()}</span>
           <Link href="/privacy" className="hover:text-cs-ink">Privacy</Link>
           <Link href="/terms" className="hover:text-cs-ink">Terms</Link>
           <Link href="/support" className="hover:text-cs-ink">Help</Link>

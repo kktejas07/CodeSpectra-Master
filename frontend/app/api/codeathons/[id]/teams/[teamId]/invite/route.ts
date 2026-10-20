@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export const runtime = 'nodejs'
 
@@ -13,7 +14,7 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id: codeathonId, teamId } = await params
-  const body = await request.json() as { email: string }
+  const body = sanitizeMongoInput(await request.json()) as { email: string }
 
   if (!body.email?.trim()) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })

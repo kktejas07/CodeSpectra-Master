@@ -250,7 +250,7 @@ export default function SettingsPage() {
       <div className="space-y-8">
         <div className="space-y-2">
           <div className="h-8 w-24 bg-muted/60 rounded animate-pulse" />
-          <div className="h-4 w-72 bg-muted/40 rounded animate-pulse" />
+          <div className="h-4 w-72 max-w-full bg-muted/40 rounded animate-pulse" />
         </div>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">

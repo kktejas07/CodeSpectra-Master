@@ -15,6 +15,7 @@ import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { COURSE_LEVELS, INDUSTRIES, subjectsForIndustry, estimateCourse } from '@/lib/courses/syllabus'
 
 const LEVELS = [...COURSE_LEVELS]
@@ -40,6 +41,7 @@ export default function GenerateCoursePage() {
   const [progress, setProgress] = useState(0)
   const [currentTask, setCurrentTask] = useState('Initializing AI Agents...')
   const [showUpsell, setShowUpsell] = useState(false)
+  const upsellRef = useFocusTrap<HTMLDivElement>(showUpsell, () => setShowUpsell(false))
   
   const [userCredits, setUserCredits] = useState<number | null>(null)
   const { startTour, setTourSeen } = useTour()
@@ -379,23 +381,34 @@ export default function GenerateCoursePage() {
         </Card>
       )}
 
-      {/* PRO Upsell Modal Overlay */}
+      {/* Out-of-credits modal */}
       {showUpsell && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-md rounded-3xl p-8 border-amber-500/30 shadow-2xl relative overflow-hidden">
-            <div className="absolute -top-20 -right-20 w-40 h-40 bg-amber-500/20 rounded-full blur-3xl" />
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowUpsell(false)}>
+          <Card
+            ref={upsellRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="course-upsell-title"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-3xl p-6 sm:p-8 border-amber-500/30 shadow-2xl relative overflow-hidden"
+          >
+            <div aria-hidden className="absolute -top-20 -right-20 w-40 h-40 bg-amber-500/20 rounded-full blur-3xl" />
+
             <div className="relative z-10 text-center">
               <div className="mx-auto w-16 h-16 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center mb-6">
-                <ShieldAlert className="h-8 w-8 text-amber-600 dark:text-amber-400" />
+                <ShieldAlert aria-hidden className="h-8 w-8 text-amber-600 dark:text-amber-400" />
               </div>
-              <h2 className="text-2xl font-bold mb-3">Out of AI credits</h2>
+              <h2 id="course-upsell-title" className="text-2xl font-bold mb-3">Not enough AI credits</h2>
               <p className="text-muted-foreground mb-8">
-                Generating a full video course requires 10 credits. You currently have 0 credits. Upgrade to PRO to get 1,000 monthly credits and unlimited course generation.
+                Generating a full video course uses 10 credits
+                {userCredits !== null ? <> and you have <span className="tabular-nums">{userCredits}</span></> : null}.
+                Upgrade your plan or top up credits to continue.
               </p>
               <div className="space-y-3">
-                <Button className="w-full bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg">
-                  <Zap className="mr-2 h-4 w-4" /> Upgrade to PRO ($15/mo)
+                <Button asChild className="w-full">
+                  <Link href="/dashboard/pricing">
+                    <Zap aria-hidden className="mr-2 h-4 w-4" /> See plans and credits
+                  </Link>
                 </Button>
                 <Button variant="ghost" className="w-full" onClick={() => setShowUpsell(false)}>
                   Cancel

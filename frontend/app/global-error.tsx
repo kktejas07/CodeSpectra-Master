@@ -89,6 +89,10 @@ export default function GlobalErrorPage({
             <a href="/" className="ge-btn ge-secondary">
               Go home
             </a>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a href="/status" className="ge-btn ge-secondary">
+              System status
+            </a>
           </div>
         </main>
       </body>

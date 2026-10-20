@@ -183,7 +183,7 @@ function ProofSync({
           body: JSON.stringify({ proof, purpose }),
         })
         const data = await res.json()
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`)
+        if (!res.ok) throw new Error(data.error || (res.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${res.status}). Please try again.`))
         onOk((data.revealed || {}) as Revealed)
       } catch (e) {
         setSent(false)
