@@ -289,6 +289,9 @@ async function main() {
   const titleIssues = []
   for (const [p, e] of Object.entries(report.pages)) {
     if (e.error) continue
+    // A page that redirected (e.g. signed-out checkout → sign-in) shows the target's
+    // title; that target is checked on its own, so don't count it as a duplicate.
+    if (e.redirectedTo) continue
     if (!e.title) { titleIssues.push({ page: p, issue: 'missing' }); continue }
     if (!byTitle.has(e.title)) byTitle.set(e.title, [])
     byTitle.get(e.title).push(p)
