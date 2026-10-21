@@ -88,12 +88,12 @@ export function LanguageSelect({ className, onChanged }: { className?: string; o
 }
 
 /** Compact native <select> for tight headers (auth pages). */
-export function LanguageCompactSelect({ className }: { className?: string }) {
+export function LanguageCompactSelect({ className, iconClassName }: { className?: string; iconClassName?: string }) {
   const { t, locale } = useT()
   const { switchTo, busy } = useSwitchLocale()
   return (
     <label className={cn('inline-flex items-center gap-1.5 text-sm', className)}>
-      <Languages className="h-4 w-4 opacity-70" aria-hidden />
+      <Languages className={cn('h-4 w-4 opacity-70', iconClassName)} aria-hidden />
       <span className="sr-only">{t('common.language')}</span>
       <select
         value={locale}

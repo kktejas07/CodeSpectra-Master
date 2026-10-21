@@ -23,12 +23,12 @@ export function AuthShell({ aside, children }: { aside: React.ReactNode; childre
         {t('common.skipToContent')}
       </a>
       <div className="flex flex-col px-5 py-6 sm:px-10 lg:px-16">
-        <header className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5" aria-label={t('common.homeAria')}>
+        <header className="flex min-w-0 items-center justify-between gap-2">
+          <Link href="/" className="flex min-w-0 shrink items-center gap-2.5 overflow-hidden" aria-label={t('common.homeAria')}>
             <BrandLogo />
           </Link>
-          <div className="flex items-center gap-2">
-            <LanguageCompactSelect />
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+            <LanguageCompactSelect className="hidden sm:inline-flex" />
             <NavThemeSwitch compact />
           </div>
         </header>
@@ -38,6 +38,8 @@ export function AuthShell({ aside, children }: { aside: React.ReactNode; childre
         </main>
 
         <footer className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-cs-ink-soft">
+          {/* Narrow phones: the header has no room for both switches. */}
+          <LanguageCompactSelect className="w-full sm:hidden" />
           <span suppressHydrationWarning>{copyrightLine()}</span>
           <Link href="/privacy" className="hover:text-cs-ink">{t('common.privacy')}</Link>
           <Link href="/terms" className="hover:text-cs-ink">{t('common.terms')}</Link>
