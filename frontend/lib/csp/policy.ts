@@ -131,11 +131,19 @@ export function makeNonce(): string {
  * enforced while CSP_ENFORCE is off so production keeps its current
  * protection during the report-only period.
  */
-export function legacyCsp(tags: TagHosts = NO_TAGS, storage: string | null = null): string {
+export function legacyCsp(tags: TagHosts = NO_TAGS, storage: string | null = null, nonce?: string): string {
   const st = storage ? ` ${storage}` : ''
   const scripts = `'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com ${tags.script.join(' ')}`.trim()
   return join([
     "default-src 'self'",
+    // Next.js copies a proxy's RESPONSE headers onto the request it renders
+    // (server/lib/router-utils/resolve-routes.js), so during the report-only
+    // period it reads its nonce from THIS policy, taking the first directive
+    // that starts with "script-src". Carrying the nonce in script-src-attr lets
+    // Next stamp its scripts without changing what inline <script> elements the
+    // enforced legacy policy allows. Side effect: inline event-handler
+    // attributes (onclick="…") are blocked, which the strict policy blocks too.
+    nonce ? `script-src-attr 'nonce-${nonce}' 'unsafe-inline'` : null,
     `script-src ${scripts}`,
     `script-src-elem ${scripts}`,
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
@@ -233,7 +241,7 @@ export function cspHeaders(opts: { mode: CspMode; variant: CspVariant; nonce?: s
   if (opts.mode === 'enforce') {
     response['Content-Security-Policy'] = strict
   } else {
-    response['Content-Security-Policy'] = legacyCsp(opts.tags, opts.storage)
+    response['Content-Security-Policy'] = legacyCsp(opts.tags, opts.storage, opts.variant === 'nonce' ? opts.nonce : undefined)
     response['Content-Security-Policy-Report-Only'] = strict
   }
   return { response, requestCsp: opts.variant === 'nonce' ? strict : undefined }

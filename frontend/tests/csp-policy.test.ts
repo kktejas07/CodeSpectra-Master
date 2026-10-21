@@ -87,7 +87,7 @@ describe('strictCsp', () => {
 describe('cspHeaders rollout', () => {
   it('report-only: legacy stays enforced, strict goes to Report-Only, nonce forwarded to Next', () => {
     const plan = cspHeaders({ mode: 'report-only', variant: 'nonce', nonce: 'abc' })
-    expect(plan.response['Content-Security-Policy']).toBe(legacyCsp())
+    expect(plan.response['Content-Security-Policy']).toBe(legacyCsp(undefined, null, 'abc'))
     expect(plan.response['Content-Security-Policy-Report-Only']).toContain("'nonce-abc'")
     expect(plan.response['Reporting-Endpoints']).toBe('csp="/api/csp-report"')
     expect(plan.requestCsp).toContain("'nonce-abc'")
@@ -224,5 +224,23 @@ describe('hitOnly data cache (detail pages)', () => {
     expect(store.size).toBe(1) // 404s leave no entries
     await expect(load('boom')).rejects.toThrow('db down')
     expect(store.size).toBe(1)
+  })
+})
+
+describe('nonce reaches Next during the report-only period', () => {
+  // Next copies the proxy's response headers onto the rendered request and
+  // reads `content-security-policy` first, so the ENFORCED header must carry
+  // the nonce in its first script-src* directive (regression: CI smoke).
+  it('report-only + nonce variant: Next extracts the nonce from the enforced header', async () => {
+    const { getScriptNonceFromHeader } = await import('next/dist/server/app-render/get-script-nonce-from-header')
+    const nonce = makeNonce()
+    const plan = cspHeaders({ mode: 'report-only', variant: 'nonce', nonce })
+    expect(getScriptNonceFromHeader(plan.response['Content-Security-Policy'])).toBe(nonce)
+    // the enforced policy still allows inline <script> elements as before
+    expect(plan.response['Content-Security-Policy']).toMatch(/script-src 'self' 'unsafe-inline'/)
+  })
+  it('static variant adds no nonce', () => {
+    const plan = cspHeaders({ mode: 'report-only', variant: 'static' })
+    expect(plan.response['Content-Security-Policy']).not.toMatch(/nonce-/)
   })
 })
