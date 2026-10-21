@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useT } from '@/lib/i18n/client'
 import { QuestionAnswerInput, type AnswerQuestion } from '@/components/assessment/QuestionAnswerInput'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export interface AdaptiveViewPayload {
   question: (AnswerQuestion & { title?: string; prompt?: string }) | null
@@ -41,6 +42,7 @@ export function AdaptiveRunner({
   submitting: boolean
   onExpired: () => void
 }) {
+  const apiError = useApiError()
   const addToast = useToast()
   const { t, td } = useT()
   const [view, setView] = useState(initial)
@@ -66,7 +68,7 @@ export function AdaptiveRunner({
       })
       const j = await res.json().catch(() => ({})) as { adaptive?: AdaptiveViewPayload; error?: string; expired?: boolean }
       if (res.status === 410 || j.expired) { onExpired(); return }
-      if (!res.ok || !j.adaptive) throw new Error(j.error || t('assessment.answerSaveFailed'))
+      if (!res.ok || !j.adaptive) throw new Error(apiError(j, t('assessment.answerSaveFailed')))
       setView(j.adaptive)
       setValue(undefined)
     } catch (e) {

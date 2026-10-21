@@ -13,8 +13,10 @@ import {
 } from '@/lib/github-service'
 import { useToast } from '@/lib/toast-context'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export function GitHubIntegration() {
+  const apiError = useApiError()
   const { t } = useT()
   const addToast = useToast()
   const [isConnecting, setIsConnecting] = useState(false)
@@ -48,7 +50,7 @@ export function GitHubIntegration() {
         addToast({
           type: 'error',
           title: t('tools.githubConnectionIssue'),
-          message: list.error || t('tools.couldNotLoadRepositoriesMakeSurec83'),
+          message: apiError(list, t('tools.couldNotLoadRepositoriesMakeSurec83')),
           duration: 6000,
         })
       } else if (list.repositories.length === 0) {

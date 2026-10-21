@@ -23,6 +23,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/difficulty-levels'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const PAGE_SIZE = 10
 
@@ -100,6 +101,7 @@ const CourseSkeleton = () => (
 )
 
 function LearningPageInner() {
+  const apiError = useApiError()
   const { td, t: tr } = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -192,7 +194,7 @@ function LearningPageInner() {
         body: JSON.stringify({ courseId: id }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || tr('learning.wishlistFailed'))
+      if (!res.ok) throw new Error(apiError(data, tr('learning.wishlistFailed')))
       setSavedCourses(prev => {
         const next = new Set(prev)
         if (data.saved) next.add(id)

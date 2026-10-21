@@ -21,6 +21,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { PageHeader } from '@/components/app/page-kit'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 // Anon Aadhaar pulls in snarkjs / the ZK prover; load it only when its card renders.
 const AnonAadhaarProfileCard = dynamic(
@@ -70,6 +71,7 @@ async function parseAiChatStream(res: Response): Promise<string> {
 }
 
 export default function EditProfileWizard() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
@@ -382,7 +384,7 @@ export default function EditProfileWizard() {
         body: JSON.stringify(extendedData),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || t('account.saveFailed'))
+      if (!res.ok) throw new Error(apiError(json, t('account.saveFailed')))
       // Also update display name when possible
       if (basic.firstName || basic.lastName) {
         const name = `${basic.firstName} ${basic.lastName}`.trim()
@@ -633,7 +635,7 @@ export default function EditProfileWizard() {
                                 body: JSON.stringify({ phone: basic.phone, countryCode: basic.countryCode || '+91' }),
                               })
                               const json = await res.json()
-                              if (!res.ok) throw new Error(json.error || t('account.failedToSendCode'))
+                              if (!res.ok) throw new Error(apiError(json, t('account.failedToSendCode')))
                               setPhoneOtpSent(true)
                               addToast({ type: 'success', title: json.message || t('account.verificationCodeSentToYourEmail') })
                             } catch (e: any) {
@@ -1495,7 +1497,7 @@ export default function EditProfileWizard() {
                   try {
                     const res = await csrfFetch('/api/user/email-change/request', { method: 'POST', body: JSON.stringify({ email: newEmail.trim(), password: emailReauth, code: emailReauth }) })
                     const json = await res.json()
-                    if (!res.ok) throw new Error(json.error || t('account.failed'))
+                    if (!res.ok) throw new Error(apiError(json, t('account.failed')))
                     setEmailOtpSent(true)
                     setEmailReauth('')
                     addToast({ type: 'success', title: t('account.codeSentToNewEmail') })
@@ -1509,7 +1511,7 @@ export default function EditProfileWizard() {
                   try {
                     const res = await csrfFetch('/api/user/email-change/confirm', { method: 'POST', body: JSON.stringify({ email: newEmail.trim(), code: emailOtp.trim() }) })
                     const json = await res.json()
-                    if (!res.ok) throw new Error(json.error || t('account.invalidCode'))
+                    if (!res.ok) throw new Error(apiError(json, t('account.invalidCode')))
                     setBasic(prev => ({ ...prev, email: newEmail.trim() }))
                     setShowEmailUpdate(false)
                     addToast({ type: 'success', title: t('account.emailUpdated') })
@@ -1546,7 +1548,7 @@ export default function EditProfileWizard() {
                     body: JSON.stringify({ phone: basic.phone, countryCode: basic.countryCode || '+91', code: phoneOtp.trim() }),
                   })
                   const json = await res.json()
-                  if (!res.ok) throw new Error(json.error || t('account.invalidCode'))
+                  if (!res.ok) throw new Error(apiError(json, t('account.invalidCode')))
                   setIsPhoneVerified(true)
                   setPhoneOtpSent(false)
                   addToast({ type: 'success', title: t('account.mobileNumberSaved') })

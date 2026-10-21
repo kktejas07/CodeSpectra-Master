@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.DiffEditor), { ssr: false })
@@ -59,6 +60,7 @@ const SUGGESTED_PROMPTS = [
  *   RIGHT : live Monaco editor showing the code as the agent edits it + Diff + Runner
  */
 export default function AgentPage() {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
@@ -107,7 +109,7 @@ export default function AgentPage() {
         body: JSON.stringify({ language, source: code }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || tr('tools.executionFailed'))
+      if (!res.ok) throw new Error(apiError(data, tr('tools.executionFailed')))
       setConsoleOutput({
         stdout: data.result?.run?.stdout || (data.passed ? 'Code executed successfully (no stdout).' : ''),
         stderr: data.result?.run?.stderr || '',

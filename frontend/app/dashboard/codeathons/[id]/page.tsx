@@ -24,6 +24,7 @@ import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
 import { CodeathonResultsCard } from '@/components/codeathons/codeathon-results-card'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Problem {
   id: string
@@ -107,6 +108,7 @@ function CountdownTimer({ target }: { target: string }) {
 }
 
 export default function CodeathonDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
   const { formatDateTime } = useLocaleDates()
   const { t: tr } = useT()
   const { id } = React.use(params)
@@ -205,7 +207,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         setCodeathon(prev => prev ? { ...prev, registered: true } : prev)
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: tr('compete.failed'), message: data.error || tr('compete.registrationFailed') })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.registrationFailed')) })
       }
     } catch {
       addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToRegister') })
@@ -232,7 +234,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         addToast({ type: 'success', title: tr('compete.teamCreated') })
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: tr('compete.failed'), message: data.error || tr('compete.failedToCreateTeam') })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.failedToCreateTeam')) })
       }
     } catch {
       addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToCreateTeam') })
@@ -256,7 +258,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         void fetchData()
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: tr('compete.failed'), message: data.error || tr('compete.failedToJoin') })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.failedToJoin')) })
       }
     } catch {
       addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToJoinTeam') })
@@ -295,7 +297,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         addToast({ type: 'success', title: tr('compete.invitationSent') })
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: tr('compete.failed'), message: data.error || tr('compete.failedToInvite') })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.failedToInvite')) })
       }
     } catch {
       addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToSendInvitation') })

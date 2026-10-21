@@ -23,6 +23,7 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ActivityItem {
   ts: string
@@ -33,6 +34,7 @@ interface ActivityItem {
 }
 
 function TwoFactorAuth() {
+  const apiError = useApiError()
   const { t } = useT()
   const [status, setStatus] = useState<{ enabled: boolean; setupAt?: string | null; verifiedAt?: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -70,7 +72,7 @@ function TwoFactorAuth() {
         const url = await QRCode.toDataURL(json.otpauth, { width: 200, margin: 2 })
         setQrCode(url)
       } else {
-        setSetupError(json.error || t('account.couldntStart2faSetupTryAgain'))
+        setSetupError(apiError(json, t('account.couldntStart2faSetupTryAgain')))
       }
     } catch { setSetupError(t('account.couldntReachTheServerCheckYour6e9')) }
     setLoading(false)
@@ -92,7 +94,7 @@ function TwoFactorAuth() {
         setVerifyToken('')
         await fetchStatus()
       } else {
-        setVerifyError(json.error || t('account.verificationFailed'))
+        setVerifyError(apiError(json, t('account.verificationFailed')))
       }
     } catch { setVerifyError(t('account.networkError')) }
     setVerifying(false)
@@ -113,7 +115,7 @@ function TwoFactorAuth() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setDisableError(json.error || t('account.couldntTurnOff2faTryAgain'))
+        setDisableError(apiError(json, t('account.couldntTurnOff2faTryAgain')))
       } else {
         setDisableOpen(false)
         setDisableSecret('')

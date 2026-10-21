@@ -19,6 +19,7 @@ import {
 } from '@/lib/question-extensions'
 import { typingStats } from '@/lib/grading-extended'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export interface ExamContext {
   examId: string
@@ -476,6 +477,7 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
 // ─── Reverse coding: black-box runner ────────────────────────────────────────
 
 export function BlackBoxRunner({ questionId, runs, examContext }: { questionId: string; runs: number; examContext?: ExamContext }) {
+  const apiError = useApiError()
   const { t } = useT()
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
@@ -493,7 +495,7 @@ export function BlackBoxRunner({ questionId, runs, examContext }: { questionId: 
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; output?: string; message?: string; error?: string; truncated?: boolean }
       if (res.status === 429) setLeft(0)
       else if (res.ok) setLeft((n) => Math.max(0, n - 1))
-      if (!res.ok) setResult({ ok: false, text: j.error || t('exam.runFailed') })
+      if (!res.ok) setResult({ ok: false, text: apiError(j, t('exam.runFailed')) })
       else setResult({ ok: !!j.ok, text: j.ok ? `${j.output ?? ''}${j.truncated ? '\n… (output cut)' : ''}` : j.message || t('exam.noOutput') })
     } catch {
       setResult({ ok: false, text: t('exam.networkErrorTryAgain') })

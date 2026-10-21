@@ -19,6 +19,7 @@ import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type Category = 'global' | 'practice' | 'arena' | 'hackathon' | 'exams'
 type Period = 'all' | 'month'
@@ -37,6 +38,7 @@ const periods = (t: Translator): { id: Period; label: string }[] => ([
 ])
 
 export default function LeaderboardPage() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
   const { user } = useAuth()
@@ -58,7 +60,7 @@ export default function LeaderboardPage() {
       const res = await fetch(`/api/leaderboard?category=${activeCategory}&period=${activeTab}&limit=80`, { credentials: 'include' })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(json.error || t('compete.requestFailedStatus', { status: res.status }))
+        throw new Error(apiError(json, t('compete.requestFailedStatus', { status: res.status })))
       }
       setEntries(Array.isArray(json.entries) ? json.entries : [])
       setMyPoints(Number(json.currentUser?.points) || 0)

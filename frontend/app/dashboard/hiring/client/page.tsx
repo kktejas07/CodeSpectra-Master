@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface PortalJob {
   id: string
@@ -25,6 +26,7 @@ interface PortalJob {
 const STATUS_LABEL = (t: Translator): Record<string, string> => ({ open: t('hiring.open'), on_hold: t('hiring.onHold'), closed: t('hiring.closed'), filled: t('hiring.filled') })
 
 function PortalInner() {
+  const apiError = useApiError()
   const { t } = useT()
   const sp = useSearchParams()
   const tenant = sp.get('tenant')
@@ -39,7 +41,7 @@ function PortalInner() {
       .then(async (r) => ({ ok: r.ok, json: await r.json() }))
       .then(({ ok, json }) => {
         if (cancelled) return
-        if (!ok) setError(json.error || t('hiring.couldNotLoadYourJobs'))
+        if (!ok) setError(apiError(json, t('hiring.couldNotLoadYourJobs')))
         else { setJobs(json.jobs || []); setClient(json.client || null) }
       })
       .catch(() => { if (!cancelled) setError(t('hiring.couldNotLoadYourJobs')) })

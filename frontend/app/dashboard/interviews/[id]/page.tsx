@@ -17,6 +17,7 @@ import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -33,6 +34,7 @@ interface Interview {
 }
 
 export default function InterviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
   const { formatDateTime } = useLocaleDates()
   const { t } = useT()
   const gate = usePageGuard('user')
@@ -136,7 +138,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       })
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string }
-        throw new Error(j.error || t('career.yourAnswerWasntSaved'))
+        throw new Error(apiError(j, t('career.yourAnswerWasntSaved')))
       }
       setCurrentAnswer('')
       addToast({ type: 'success', title: t('career.answerSaved') })

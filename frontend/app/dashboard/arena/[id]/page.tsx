@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -80,6 +81,7 @@ function arenaPointsMessage(p: ArenaPoints): string {
 }
 
 function ArenaChallengeInner() {
+  const apiError = useApiError()
   const { t } = useT()
   const params = useParams()
   const router = useRouter()
@@ -183,7 +185,7 @@ function ArenaChallengeInner() {
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || t('practice.runFailed'))
+      if (!res.ok) throw new Error(apiError(json, t('practice.runFailed')))
       setResult(json)
     } catch (e: any) {
       setResult({
@@ -222,7 +224,7 @@ function ArenaChallengeInner() {
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || t('practice.submitFailed'))
+      if (!res.ok) throw new Error(apiError(json, t('practice.submitFailed')))
       setResult(json)
       if (json.status === 'accepted' && nextId) {
         // Leave time to read the points line before moving on.

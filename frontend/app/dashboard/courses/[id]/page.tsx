@@ -29,6 +29,7 @@ import { Player } from '@remotion/player'
 import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
 import { QuizComponent, type QuizQuestion, type QuizGradeResult } from '@/components/courses/QuizComponent'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Resource {
   title?: string
@@ -102,6 +103,7 @@ function formatDuration(seconds: number): string {
 }
 
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
@@ -186,7 +188,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       body: JSON.stringify({ sectionIndex, answers }),
     })
     const j = await res.json().catch(() => null)
-    if (!res.ok || !j?.success) throw new Error(j?.error || tr('learning.couldNotCheckYourAnswersTry223'))
+    if (!res.ok || !j?.success) throw new Error(apiError(j, tr('learning.couldNotCheckYourAnswersTry223')))
     if (j.passed) {
       setProgress(prev => ({
         ...(prev || { completedModules: [], quizScores: {}, currentModule: 0, skippedToFinal: false }),
@@ -203,7 +205,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     try {
       const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { method: 'POST' })
       const j = await res.json().catch(() => null)
-      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(j?.error || tr('learning.couldNotIssueYourCertificate'))
+      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(apiError(j, tr('learning.couldNotIssueYourCertificate')))
       setCertificate({ verifyUrl: j.certificate.verifyUrl })
       addToast({ type: 'success', title: tr('learning.yourCertificateIsReady') })
     } catch (e) {
@@ -271,7 +273,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
         body: JSON.stringify({ courseId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || tr('learning.wishlistUpdateFailed'))
+      if (!res.ok) throw new Error(apiError(data, tr('learning.wishlistUpdateFailed')))
       setSaved(!!data.saved)
       addToast({
         title: data.saved ? tr('learning.addedToWishlist') : tr('learning.removedFromWishlist'),
@@ -324,7 +326,7 @@ const handleEnroll = async () => {
         method: 'POST',
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || tr('learning.enrollmentFailed'))
+      if (!res.ok) throw new Error(apiError(data, tr('learning.enrollmentFailed')))
       addToast({ title: tr('learning.enrolledInTitle', { title: course?.title }), type: 'success' })
     } catch (e: any) {
       setEnrolled(false)

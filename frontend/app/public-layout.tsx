@@ -11,6 +11,7 @@ import { useToast } from '@/lib/toast-context'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 import { LanguageSuggestBanner, PublicLanguageLinks, PublicLanguageMenu, useLocalizedHref } from '@/components/i18n/public-language'
 import dynamic from 'next/dynamic'
 
@@ -50,6 +51,7 @@ export function PublicPageWrapper({
   const pathname = usePathname()
   // Public pages are English unless rendered under app/[lang] (Hindi / Telugu provider).
   const { t } = useT()
+  const apiError = useApiError()
   const lp = useLocalizedHref()
   const headerRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -291,7 +293,7 @@ export function PublicPageWrapper({
                       const data = (await res.json()) as { ok?: boolean; already_subscribed?: boolean; confirmation_required?: boolean; error?: string }
                       if (data?.already_subscribed) already = true
                       if (data?.confirmation_required) needsConfirm = true
-                      if (data?.error) errMsg = data.error
+                      if (data?.error) errMsg = apiError(data, errMsg)
                     } catch { /* non-JSON body — keep status message */ }
                     if (!res.ok) throw new Error(errMsg)
                     if (needsConfirm) addToast({ type: 'info', title: t('public.checkEmail'), message: t('public.confirmResubscribe') })

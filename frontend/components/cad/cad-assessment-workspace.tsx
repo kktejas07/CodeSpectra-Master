@@ -56,6 +56,7 @@ import {
 } from '@/lib/cad-submission'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) => m.CADEditor), {
   ssr: false,
@@ -124,6 +125,7 @@ export function CadAssessmentWorkspace({
   inviteToken?: string | null
   linkToken?: string | null
 }) {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const addToast = useToast()
   const isDemo = mode === 'demo'
@@ -237,7 +239,7 @@ export function CadAssessmentWorkspace({
         addToast({ type: 'error', title: tr('exam.identityCheckNeeded'), message: j.error })
         return
       }
-      if (!res.ok || !j.started_at) throw new Error(j.error || tr('exam.couldNotStartTheTest'))
+      if (!res.ok || !j.started_at) throw new Error(apiError(j, tr('exam.couldNotStartTheTest')))
       const startedMs = Date.parse(j.started_at)
       const serverNowMs = j.server_now ? Date.parse(j.server_now) : Date.now()
       const elapsedMs = Math.max(0, serverNowMs - startedMs)
@@ -281,7 +283,7 @@ export function CadAssessmentWorkspace({
         addToast({ type: 'error', title: tr('exam.identityCheckNeeded'), message: tr('exam.redoTheIdentityCheckToSubmit928') })
         return
       }
-      if (!res.ok) throw new Error(j.error || tr('exam.submitFailed'))
+      if (!res.ok) throw new Error(apiError(j, tr('exam.submitFailed')))
       try {
         localStorage.removeItem(draftKey)
       } catch { /* storage unavailable */ }
@@ -354,7 +356,7 @@ export function CadAssessmentWorkspace({
       if (linkToken) form.set('linkToken', linkToken)
       const res = await csrfFetch(`/api/exams/${encodeURIComponent(examId)}/cad-submission/files`, { method: 'POST', body: form })
       const j = await res.json().catch(() => ({})) as { error?: string; file?: CadFileMeta }
-      if (!res.ok || !j.file) throw new Error(j.error || tr('exam.uploadFailed'))
+      if (!res.ok || !j.file) throw new Error(apiError(j, tr('exam.uploadFailed')))
       setStaged((prev) => ({ ...prev, [kind]: j.file }))
       addToast({ type: 'success', title: tr('exam.valueUploaded', { value: FILE_LABEL(tr)[kind] }) })
     } catch (e) {

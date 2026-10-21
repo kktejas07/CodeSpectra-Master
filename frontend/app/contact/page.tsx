@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { DeviceShowcase } from '@/components/visuals'
 import { Illustration } from '@/components/illustrations/spot'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 import { useLocalizedHref } from '@/components/i18n/public-language'
 
 // Labels: publicPages.contactTopic<Value> / contactTopic<Value>Hint.
@@ -28,6 +29,7 @@ const field =
 
 function ContactInner() {
   const { t, rich } = useT()
+  const apiError = useApiError()
   const lp = useLocalizedHref()
   const params = useSearchParams()
   const initial = (TOPICS.find((x) => x.value === params.get('topic'))?.value ?? 'pilot') as Topic
@@ -65,7 +67,7 @@ function ContactInner() {
       const data = (await res.json().catch(() => ({}))) as { error?: string; fields?: Record<string, string> }
       if (!res.ok) {
         if (data.fields) setErrors(data.fields)
-        setFormError(data.error || t('publicPages.contactErrSend'))
+        setFormError(apiError(data, t('publicPages.contactErrSend')))
         setTurnstileToken(null)
         setTurnstileResetKey((k) => k + 1)
         return

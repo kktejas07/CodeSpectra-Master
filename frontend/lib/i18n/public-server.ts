@@ -34,6 +34,8 @@ import hiPublic from './messages/hi/public.json'
 import hiPublicPages from './messages/hi/publicPages.json'
 import hiLearn from './messages/hi/learn.json'
 import hiCommon from './messages/hi/common.json'
+import hiErrors from './messages/hi/errors.json'
+import hiApiErrors from './messages/hi/apiErrors.json'
 
 import teSeo from './messages/te/seo.json'
 import teLanding from './messages/te/landing.json'
@@ -45,6 +47,8 @@ import tePublic from './messages/te/public.json'
 import tePublicPages from './messages/te/publicPages.json'
 import teLearn from './messages/te/learn.json'
 import teCommon from './messages/te/common.json'
+import teErrors from './messages/te/errors.json'
+import teApiErrors from './messages/te/apiErrors.json'
 
 const EN = { seo: enSeo, landing: enLanding, marketing: enMarketing, faq: enFaq, legal: enLegal, hubs: enHubs, public: enPublic, publicPages: enPublicPages, learn: enLearn, common: enCommon }
 type Tables = Record<keyof typeof EN, Record<string, string>>
@@ -108,5 +112,7 @@ export function publicT(locale: Locale): PublicTranslator {
 export function publicClientMessages(locale: Locale): Messages {
   if (locale === 'en') return {}
   const t = BY_LOCALE[locale]
-  return { common: t.common, public: t.public, publicPages: t.publicPages, learn: t.learn } as Messages
+  // errors / apiErrors: localized API error text on public forms (lib/i18n/use-api-error.ts).
+  const errs = locale === 'hi' ? { errors: hiErrors, apiErrors: hiApiErrors } : { errors: teErrors, apiErrors: teApiErrors }
+  return { common: t.common, public: t.public, publicPages: t.publicPages, learn: t.learn, ...errs } as Messages
 }

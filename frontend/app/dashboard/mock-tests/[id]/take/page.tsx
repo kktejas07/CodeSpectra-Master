@@ -24,6 +24,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const TEST_DURATION_SEC = 15 * 60
 
@@ -64,6 +65,7 @@ interface GradedResult {
 }
 
 export default function TakeMockTestPage() {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
@@ -158,7 +160,7 @@ export default function TakeMockTestPage() {
       }),
     })
     const data = await res.json().catch(() => null)
-    if (!res.ok) throw new Error(data?.error || tr('practice.failedToGenerateTest'))
+    if (!res.ok) throw new Error(apiError(data, tr('practice.failedToGenerateTest')))
     return data
   }, [company, role, difficulty])
 
@@ -283,7 +285,7 @@ export default function TakeMockTestPage() {
         }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.error || tr('practice.couldNotSaveYourAnswers'))
+      if (!res.ok) throw new Error(apiError(data, tr('practice.couldNotSaveYourAnswers')))
       setResult(data as GradedResult)
       clearLocal(sessionId)
     } catch (err) {

@@ -11,6 +11,7 @@ import { faceMatchScore, type FaceMatchReport } from '@/components/proctoring/fa
 import { identityRequirement, type ExamIdentityPolicy, type NoCameraPolicy } from '@/lib/exam-access'
 import { X, ShieldAlert, ArrowRight, FileText, AlertCircle, RefreshCw, Camera, CameraOff, User, Check, Loader2, Upload } from 'lucide-react'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export interface IdentityResult {
   idPhoto: string | null
@@ -76,6 +77,7 @@ export function IdentityVerification({
   inviteToken = null,
   linkToken = null,
 }: IdentityVerificationProps) {
+  const apiError = useApiError()
   const { t } = useT()
   const needId = requireId !== false
   const needFace = requireFace !== false
@@ -241,7 +243,7 @@ export function IdentityVerification({
         })
         const data = await res.json()
         if (!res.ok) {
-          throw new Error(data.error || t('exam.failedToVerifyId'))
+          throw new Error(apiError(data, t('exam.failedToVerifyId')))
         }
 
         setNameMatch(data.nameMatch === 'partial' ? 'partial' : 'match')
@@ -288,7 +290,7 @@ export function IdentityVerification({
         }),
       })
       const data = await res.json().catch(() => ({})) as { error?: string }
-      if (!res.ok) throw new Error(data.error || t('exam.weCouldntSaveYourIdentityCheck595'))
+      if (!res.ok) throw new Error(apiError(data, t('exam.weCouldntSaveYourIdentityCheck595')))
       if (useAsProfile && facePhoto) setProfileAvatar(facePhoto)
       onComplete({ idPhoto: needId ? idPhoto : null, facePhoto: needFace ? facePhoto : null, needsReview: nameMatch === 'partial' })
     } catch (err) {
@@ -326,7 +328,7 @@ export function IdentityVerification({
       if (linkToken) form.set('linkToken', linkToken)
       const res = await csrfFetch(`/api/exams/${encodeURIComponent(examId)}/identity`, { method: 'POST', body: form })
       const data = await res.json().catch(() => ({})) as { error?: string }
-      if (!res.ok) throw new Error(data.error || t('exam.uploadFailedTryAgain'))
+      if (!res.ok) throw new Error(apiError(data, t('exam.uploadFailedTryAgain')))
       onComplete({ idPhoto: null, facePhoto: null, needsReview: true })
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : t('exam.uploadFailedTryAgain'))

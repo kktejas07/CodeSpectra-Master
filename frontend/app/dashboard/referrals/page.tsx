@@ -15,6 +15,7 @@ import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Illustration } from '@/components/illustrations/spot'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ReferralStats {
   code: string | null
@@ -28,6 +29,7 @@ interface ReferralStats {
 }
 
 export default function ReferralsPage() {
+  const apiError = useApiError()
   const { formatDate } = useLocaleDates()
   const { t } = useT()
   const gate = usePageGuard('user')
@@ -77,7 +79,7 @@ export default function ReferralsPage() {
     try {
       const res = await csrfFetch('/api/referral/generate', { method: 'POST' })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok || !json.code) throw new Error(json.error || t('account.couldntCreateYourCode'))
+      if (!res.ok || !json.code) throw new Error(apiError(json, t('account.couldntCreateYourCode')))
       setStats((prev) => prev ? { ...prev, code: json.code, url: json.url } : { code: json.code, url: json.url, total_referrals: 0, completed_referrals: 0, pending_referrals: 0, total_xp_earned: 0, total_commission_earned: 0, referrals: [] })
       addToast({ type: 'success', title: t('account.yourReferralCodeIsReady') })
     } catch (e) {

@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { ALL_CATEGORIES, CATEGORY_LABELS, DIFFICULTY_LEVELS, type FluencyCategory } from '@/lib/assessments/ai-fluency-types'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const DIFFICULTY_LABELS = (t: Translator): Record<string, string> => ({
   beginner: t('practice.beginnerSimplePromptsObviousBugs'),
@@ -29,6 +30,7 @@ const CATEGORY_DESCRIPTIONS = (t: Translator): Record<FluencyCategory, string> =
 })
 
 export default function AiFluencySetupPage() {
+  const apiError = useApiError()
   const { td, t } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
@@ -70,7 +72,7 @@ export default function AiFluencySetupPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || t('practice.failedToStartAssessment'))
+        setError(apiError(data, t('practice.failedToStartAssessment')))
         setStarting(false)
         return
       }

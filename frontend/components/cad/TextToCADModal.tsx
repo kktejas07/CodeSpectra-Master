@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface CadConstraint {
   name: string;
@@ -66,6 +67,7 @@ const PRESET_PROMPTS = (t: Translator) => ([
 ]);
 
 export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADModalProps) {
+  const apiError = useApiError()
   const { t } = useT()
   const [prompt, setPrompt] = useState('');
   const [regionStandard, setRegionStandard] = useState('ISO');
@@ -105,7 +107,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
       if (data.ok && data.item_payload) {
         setGeneratedPayload(data.item_payload);
       } else {
-        throw new Error(data.error || t('exam.invalidResponseFromAiCadService'));
+        throw new Error(apiError(data, t('exam.invalidResponseFromAiCadService')));
       }
     } catch (err: any) {
       setErrorMsg(err.message || t('exam.anErrorOccurredDuringCadModel598'));

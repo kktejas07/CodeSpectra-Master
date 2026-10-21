@@ -32,6 +32,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ExamQuestion {
   id: string
@@ -53,6 +54,7 @@ interface ExamDoc {
 }
 
 export default function ExamPage() {
+  const apiError = useApiError()
   const { t } = useT()
   const params = useParams()
   const router = useRouter()
@@ -196,7 +198,7 @@ export default function ExamPage() {
         body: JSON.stringify({ answers: serialized, auto_submitted: autoSubmitted }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || t('practice.submitFailed'))
+      if (!res.ok) throw new Error(apiError(data, t('practice.submitFailed')))
       setResults(data)
       setSubmitted(true)
       if (typeof window !== 'undefined') {

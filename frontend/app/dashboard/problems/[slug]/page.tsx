@@ -21,6 +21,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { Illustration } from '@/components/illustrations/spot'
 import { UnlockPackButton } from '../unlock-pack-button'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -103,6 +104,7 @@ const TOP_LANGUAGES = [
 ]
 
 export default function ProblemDetailPage() {
+  const apiError = useApiError()
   const { formatDateTime } = useLocaleDates()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
@@ -197,7 +199,7 @@ export default function ProblemDetailPage() {
           return
         }
         setPackLock(null)
-        if (!res.ok) throw new Error(json.error || tr('practice.failedToLoadProblem'))
+        if (!res.ok) throw new Error(apiError(json, tr('practice.failedToLoadProblem')))
         const p = json as Problem
         setProblem(p)
         const initialLang = TOP_LANGUAGES.find((l) => p.starter_code?.[l.id])?.id || 'python'

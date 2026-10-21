@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CATEGORY_LABELS, type FluencyQuestion, type FluencyEvaluation, type CategoryBreakdown } from '@/lib/assessments/ai-fluency-types'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface StoredSession {
   sessionId: string
@@ -31,6 +32,7 @@ function formatTime(sec: number): string {
 }
 
 export default function AiFluencySessionPage() {
+  const apiError = useApiError()
   const { td, t: tr } = useT()
   const gate = usePageGuard('user')
   const searchParams = useSearchParams()
@@ -95,7 +97,7 @@ export default function AiFluencySessionPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || tr('practice.failedToSubmitAnswer'))
+        setError(apiError(data, tr('practice.failedToSubmitAnswer')))
         setSubmitting(false)
         return
       }

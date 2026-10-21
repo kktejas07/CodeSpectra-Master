@@ -15,6 +15,7 @@ import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { batchName, deptName, useConsole } from './console-context'
 import { Field, StatusPill, errorOf, fieldClass } from './shared'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const SAMPLE = 'name,email,roll_no,department,batch,cgpa,backlogs\nAsha Rao,asha@college.edu,21CS001,CSE,2027,8.4,0\n'
 
@@ -125,6 +126,7 @@ export function PlacementStudents() {
 }
 
 function BulkImport({ onDone }: { onDone: () => void }) {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const { url, college } = useConsole()
   const addToast = useToast()
@@ -147,7 +149,7 @@ function BulkImport({ onDone }: { onDone: () => void }) {
       const r = await csrfFetch(url('/api/campus/students'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ csv: text, send_invites: sendInvites }) })
       const d = await r.json().catch(() => ({}))
       if (r.status === 422) { setResult({ issues: d.issues || [], valid: d.valid || 0, total: d.total || 0 }); return }
-      if (!r.ok) { addToast({ type: 'error', title: d.error || tr('career.importFailed') }); return }
+      if (!r.ok) { addToast({ type: 'error', title: apiError(d, tr('career.importFailed')) }); return }
       addToast({ type: 'success', title: tr('career.createdAddedUpdatedUpdatedValue', { created: d.created, updated: d.updated, value: d.invited ? `, ${d.invited} invites sending` : '' }) })
       if (d.skipped_invites) addToast({ type: 'warning', title: tr('career.skippedInvitesInvitesWereHeldBack46a', { skipped_invites: d.skipped_invites }) })
       setText(''); setResult(null)

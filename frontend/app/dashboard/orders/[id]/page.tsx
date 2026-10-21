@@ -15,6 +15,7 @@ import { formatMinor } from '@/lib/marketplace/pricing'
 import type { BuyerLineView, BuyerOrderView } from '@/lib/marketplace/orders'
 import { STATUS_TEXT, STATUS_TONE } from '@/components/marketplace/order-status'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const LINE_STATUS: Record<string, string> = {
   unfulfilled: 'Waiting for the seller', processing: 'Being prepared', shipped: 'Shipped', delivered: 'Delivered',
@@ -26,6 +27,7 @@ function when(iso: string) {
 }
 
 export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
   const { t } = useT()
   const { id } = use(params)
   const gate = usePageGuard('/dashboard/orders/[id]')
@@ -66,7 +68,7 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     try {
       const res = await csrfFetch(`/api/marketplace/orders/${encodeURIComponent(id)}/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok) { addToast({ type: 'error', title: j.error || t('market.somethingWentWrong') }); return null }
+      if (!res.ok) { addToast({ type: 'error', title: apiError(j, t('market.somethingWentWrong')) }); return null }
       return j
     } finally {
       setBusy(null)

@@ -15,6 +15,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SoftGlow } from '@/components/visuals/stage'
 import type { EbookPage } from '@/lib/db/ebooks'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type EbookDetail = {
   slug: string
@@ -29,6 +30,7 @@ type EbookDetail = {
 }
 
 export default function EbookReaderPage() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
@@ -49,7 +51,7 @@ export default function EbookReaderPage() {
     setLoading(true)
     fetch(`/api/resources/ebooks/${encodeURIComponent(slug)}`, { credentials: 'include' })
       .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || t('learning.notFound'))
+        if (!r.ok) throw new Error(apiError(await r.json().catch(() => ({})), t('learning.notFound')))
         return r.json()
       })
       .then((d) => setEbook(d.item))

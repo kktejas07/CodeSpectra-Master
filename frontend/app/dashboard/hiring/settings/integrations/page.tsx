@@ -21,6 +21,7 @@ import { useConfirm } from '@/lib/confirm-context'
 import type { MeetingProvider } from '@/lib/ats/contract'
 import { PlatformAdminHint } from '@/components/hiring/platform-admin-hint'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type Connectable = 'zoom' | 'google_meet' | 'teams'
 interface Row { provider: Connectable; status: 'connected' | 'error' | 'disconnected'; account_label: string | null; connected_at: string | null; last_error: string | null }
@@ -50,6 +51,7 @@ function zones(): string[] {
 }
 
 function IntegrationsInner() {
+  const apiError = useApiError()
   const { t } = useT()
   const sp = useSearchParams()
   const tenant = sp.get('tenant')
@@ -72,7 +74,7 @@ function IntegrationsInner() {
     try {
       const r = await fetch(`/api/ats/integrations/meetings${q}`, { credentials: 'include', cache: 'no-store' })
       const j = await r.json().catch(() => ({}))
-      if (!r.ok) { setError(j.error || t('hiring.couldNotLoadIntegrations')); return }
+      if (!r.ok) { setError(apiError(j, t('hiring.couldNotLoadIntegrations'))); return }
       setData(j); setError(null)
       setSched({ timezone: j.settings.timezone, start: String(j.settings.work_start_hour), end: String(j.settings.work_end_hour) })
     } catch {

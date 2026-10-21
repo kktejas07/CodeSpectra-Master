@@ -9,8 +9,10 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { ArrowLeft, Mic, MicOff, VideoIcon, VideoOff } from 'lucide-react'
 import Link from 'next/link'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export default function LiveInterviewPage() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
   const { id } = useParams<{ id: string }>()
@@ -46,7 +48,7 @@ export default function LiveInterviewPage() {
         })
         if (!res.ok) {
           const json = await res.json().catch(() => ({}))
-          throw new Error(json.error || t('career.failedToGetToken'))
+          throw new Error(apiError(json, t('career.failedToGetToken')))
         }
         const { token, url } = await res.json()
         if (cancelled) return

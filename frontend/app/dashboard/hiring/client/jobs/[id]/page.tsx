@@ -16,6 +16,7 @@ import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ReviewComment { id: string; author_name: string; author_role: string; body: string; created_at: string }
 interface ReviewApp {
@@ -53,6 +54,7 @@ const OUTCOME = (t: Translator): Record<string, { label: string; cls: string }> 
 })
 
 function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onChanged: () => Promise<void> }) {
+  const apiError = useApiError()
   const { formatDate } = useLocaleDates()
   const { t } = useT()
   const addToast = useToast()
@@ -72,7 +74,7 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision: accept ? 'approve' : 'reject' }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) addToast({ type: 'error', title: json.error || t('hiring.couldNotSaveYourDecision') })
+      if (!res.ok) addToast({ type: 'error', title: apiError(json, t('hiring.couldNotSaveYourDecision')) })
       else { addToast({ type: 'success', title: accept ? t('hiring.nameApproved', { name: app.candidate.name }) : t('hiring.nameRejected', { name: app.candidate.name }) }); await onChanged() }
     } catch {
       addToast({ type: 'error', title: t('hiring.networkErrorTryAgain') })
@@ -90,7 +92,7 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body: comment, visibility: 'client' }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) addToast({ type: 'error', title: json.error || t('hiring.couldNotPostYourComment') })
+      if (!res.ok) addToast({ type: 'error', title: apiError(json, t('hiring.couldNotPostYourComment')) })
       else { setComment(''); await onChanged() }
     } catch {
       addToast({ type: 'error', title: t('hiring.networkErrorTryAgain') })
@@ -204,6 +206,7 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
 }
 
 function ReviewInner() {
+  const apiError = useApiError()
   const { t } = useT()
   const params = useParams<{ id: string }>()
   const sp = useSearchParams()
@@ -217,7 +220,7 @@ function ReviewInner() {
     try {
       const res = await fetch(`/api/ats/client/jobs/${encodeURIComponent(params.id)}${q}`, { credentials: 'include', cache: 'no-store' })
       const json = await res.json()
-      if (!res.ok) setError(json.error || t('hiring.couldNotLoadCandidates'))
+      if (!res.ok) setError(apiError(json, t('hiring.couldNotLoadCandidates')))
       else { setData(json); setError(null) }
     } catch {
       setError(t('hiring.couldNotLoadCandidates'))

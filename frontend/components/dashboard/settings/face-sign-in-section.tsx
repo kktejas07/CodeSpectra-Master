@@ -11,6 +11,7 @@ import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
 import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface TrustedDevice {
   id: string
@@ -31,6 +32,7 @@ interface FaceStatus {
  * that can use it without an emailed code.
  */
 export function FaceSignInSection() {
+  const apiError = useApiError()
   const { formatDateTime } = useLocaleDates()
   const { t } = useT()
   const addToast = useToast()
@@ -68,7 +70,7 @@ export function FaceSignInSection() {
         body: JSON.stringify({ enabled }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || t('dash.couldntSaveTheSetting'))
+      if (!res.ok) throw new Error(apiError(json, t('dash.couldntSaveTheSetting')))
       setFace(json)
       addToast({ type: 'success', title: enabled ? t('dash.faceSignInTurnedOn') : t('dash.faceSignInTurnedOff') })
     } catch (e) {
@@ -95,7 +97,7 @@ export function FaceSignInSection() {
         body: JSON.stringify(target),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || t('dash.couldntRemoveTheDevice'))
+      if (!res.ok) throw new Error(apiError(json, t('dash.couldntRemoveTheDevice')))
       setDevices((prev) => (all ? [] : (prev || []).filter((d) => d.id !== target.id)))
       addToast({ type: 'success', title: all ? t('dash.allDevicesRemoved') : t('dash.deviceRemoved') })
     } catch (e) {

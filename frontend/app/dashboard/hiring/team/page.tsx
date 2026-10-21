@@ -18,6 +18,7 @@ import { ATS_ROLES, ROLE_LABELS, type AtsAccessSettings } from '@/lib/ats/access
 import type { AtsMember, AtsRole } from '@/lib/ats/contract'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type Member = AtsMember & { last_invited_at?: string | null; accepted_at?: string | null }
 interface TeamData {
@@ -44,6 +45,7 @@ function statusBadge(t: Translator, s: Member['status']) {
 }
 
 function TeamPageInner() {
+  const apiError = useApiError()
   const { td, t } = useT()
   const sp = useSearchParams()
   const tenant = sp.get('tenant')
@@ -66,7 +68,7 @@ function TeamPageInner() {
     try {
       const res = await fetch(`/api/ats/team${q}`, { credentials: 'include', cache: 'no-store' })
       const json = await res.json()
-      if (!res.ok) { setError(json.error || t('hiring.couldNotLoadTheTeam')); setData(null) }
+      if (!res.ok) { setError(apiError(json, t('hiring.couldNotLoadTheTeam'))); setData(null) }
       else { setData(json); setError(null) }
     } catch {
       setError(t('hiring.couldNotLoadTheTeam'))
@@ -85,7 +87,7 @@ function TeamPageInner() {
     try {
       const res = await csrfFetch(url, { credentials: 'include', headers: { 'Content-Type': 'application/json' }, ...init })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) { addToast({ type: 'error', title: json.error || t('hiring.somethingWentWrong') }); return false }
+      if (!res.ok) { addToast({ type: 'error', title: apiError(json, t('hiring.somethingWentWrong')) }); return false }
       addToast({ type: 'success', title: okMsg, message: json.emailed === false ? t('hiring.theEmailCouldntBeSentCheck6ab') : undefined })
       await load()
       return true

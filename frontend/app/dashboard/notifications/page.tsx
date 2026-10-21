@@ -20,6 +20,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import DOMPurify from 'isomorphic-dompurify'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 function sanitizeHtml(html: string): string {
   return DOMPurify.sanitize(html || '', {
@@ -136,6 +137,7 @@ function resolveNotificationLink(n: Notification): string {
 }
 
 export default function NotificationsPage() {
+  const apiError = useApiError()
   const { formatDate } = useLocaleDates()
   const { t } = useT()
   const gate = usePageGuard('user')
@@ -217,7 +219,7 @@ export default function NotificationsPage() {
       const res = await fetch(`/api/newsletter/${encodeURIComponent(id)}`, { cache: 'no-store' })
       const data = await res.json()
       if (!res.ok) {
-        setNewsletterError(data.error || t('dash.newsletterNotFound'))
+        setNewsletterError(apiError(data, t('dash.newsletterNotFound')))
         return
       }
       setNewsletter(data)

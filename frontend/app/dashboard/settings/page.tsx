@@ -25,6 +25,7 @@ import { FaceSignInSection } from '@/components/dashboard/settings/face-sign-in-
 import { LanguageSelect } from '@/components/i18n/language-switcher'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const LS = {
   emailNotif: 'codespectra:user:emailNotif',
@@ -40,6 +41,7 @@ const themes = (t: Translator) => ([
 
 
 export default function SettingsPage() {
+  const apiError = useApiError()
   const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
   const { user, signOut } = useAuth()
@@ -139,7 +141,7 @@ export default function SettingsPage() {
     try {
       const res = await csrfFetch('/api/auth/verify-email', { method: 'POST' })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) { addToast({ type: 'error', title: t('account.couldntSendEmail'), message: json.error || t('account.tryAgainLater') }); return }
+      if (!res.ok) { addToast({ type: 'error', title: t('account.couldntSendEmail'), message: apiError(json, t('account.tryAgainLater')) }); return }
       if (json.alreadyVerified) { setEmailVerified(true); addToast({ type: 'success', title: t('account.emailAlreadyVerified') }); return }
       addToast({ type: 'success', title: t('account.verificationEmailSent'), message: t('account.openTheLinkInItWithinc89') })
     } catch { addToast({ type: 'error', title: t('account.networkError'), message: t('account.couldNotReachServer') }) }
@@ -182,7 +184,7 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
       })
       const json = await res.json()
-      if (!res.ok) { setPwError(json.error || t('account.failedToChangePassword')); return }
+      if (!res.ok) { setPwError(apiError(json, t('account.failedToChangePassword'))); return }
       addToast({ type: 'success', title: t('account.passwordChanged'), message: t('account.useYourNewPasswordNextTimee2d') })
       setPwDialogOpen(false); setPwCurrent(''); setPwNew('')
     } catch { setPwError(t('account.networkError')) }
@@ -218,7 +220,7 @@ export default function SettingsPage() {
       })
       const json = await res.json()
 
-      if (!res.ok) { addToast({ type: 'error', title: t('account.deleteFailed'), message: json.error || t('account.failed') }); setDeletingAccount(false); return }
+      if (!res.ok) { addToast({ type: 'error', title: t('account.deleteFailed'), message: apiError(json, t('account.failed')) }); setDeletingAccount(false); return }
       addToast({ type: 'success', title: t('account.accountDeleted'), message: t('account.weAreSorryToSeeYou474') })
       // /auth/logout isn't a page; clear the session, then leave the dashboard.
       await signOut().catch(() => {})

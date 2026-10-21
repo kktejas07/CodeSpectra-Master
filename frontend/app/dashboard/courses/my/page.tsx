@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type Course = {
   id: string
@@ -33,6 +34,7 @@ type Course = {
 }
 
 export default function MyCoursesPage() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
@@ -49,7 +51,7 @@ export default function MyCoursesPage() {
     try {
       const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { method: 'POST' })
       const j = await res.json().catch(() => null)
-      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(j?.error || t('learning.couldNotGetYourCertificate'))
+      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(apiError(j, t('learning.couldNotGetYourCertificate')))
       window.location.assign(j.certificate.verifyUrl)
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : t('learning.couldNotGetYourCertificate') })

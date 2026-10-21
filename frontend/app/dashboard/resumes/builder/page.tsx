@@ -11,6 +11,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { ArrowLeft, Save, Download, FileText, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon, Sparkles, Loader2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 // Basic Resume Data Structure
 interface ResumeData {
@@ -81,6 +82,7 @@ function printElement(el: HTMLElement, title: string) {
 }
 
 export default function ResumeBuilderPage() {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
@@ -153,7 +155,7 @@ export default function ResumeBuilderPage() {
         body: JSON.stringify({ id: draftId || undefined, name: resumeName, template, data }),
       })
       const j = await res.json().catch(() => null)
-      if (!res.ok || !j?.draft?.id) throw new Error(j?.error || tr('career.couldNotSaveYourDraft'))
+      if (!res.ok || !j?.draft?.id) throw new Error(apiError(j, tr('career.couldNotSaveYourDraft')))
       setDraftId(j.draft.id)
       setLastSavedAt(j.draft.updated_at)
       writeLocalDraft({ id: j.draft.id, name: resumeName, template, data, saved_at: j.draft.updated_at, synced: true })
@@ -180,7 +182,7 @@ export default function ResumeBuilderPage() {
       })
       const j = await res.json().catch(() => null)
       if (!res.ok) {
-        addToast({ type: 'error', title: j?.error || tr('career.aiWritingIsUnavailableRightNow'), ...(res.status === 402 ? { message: tr('career.topUpCreditsFromBillingOr63c') } : {}) })
+        addToast({ type: 'error', title: apiError(j, tr('career.aiWritingIsUnavailableRightNow')), ...(res.status === 402 ? { message: tr('career.topUpCreditsFromBillingOr63c') } : {}) })
         return
       }
       if (target === 'summary' && typeof j?.summary === 'string') {

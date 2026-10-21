@@ -9,6 +9,7 @@ import { PageHero } from '@/components/landing/page-hero'
 import { CONTACT_SALES_HREF, inAppPricingHref, planCheckoutMode, type PlanCheckoutMode } from '@/lib/billing-plan-mode'
 import { getCurrencySymbol } from '@/lib/currency'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 import { useLocalizedHref } from '@/components/i18n/public-language'
 
 export type PublicPlan = {
@@ -32,6 +33,7 @@ export type PublicPlan = {
  */
 export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan[] | null; faqs: { q: string; a: string }[] }) {
   const { t, rich } = useT()
+  const apiError = useApiError()
   const lp = useLocalizedHref()
   const [annual, setAnnual] = useState(false)
   const [plans, setPlans] = useState<PublicPlan[] | null>(initialPlans)
@@ -45,7 +47,7 @@ export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan
       try {
         const r = await fetch('/api/pricing/plans')
         const j = await r.json()
-        if (!r.ok) throw new Error(typeof j.error === 'string' ? j.error : t('publicPages.pricingLoadFailed'))
+        if (!r.ok) throw new Error(apiError(j, t('publicPages.pricingLoadFailed')))
         if (!cancelled && Array.isArray(j)) setPlans(j)
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : t('publicPages.pricingLoadFailed'))
@@ -54,7 +56,7 @@ export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan
     return () => {
       cancelled = true
     }
-  }, [initialPlans, t])
+  }, [initialPlans, t, apiError])
 
   const annualSavingsPct = useMemo(() => {
     if (!plans?.length) return 15

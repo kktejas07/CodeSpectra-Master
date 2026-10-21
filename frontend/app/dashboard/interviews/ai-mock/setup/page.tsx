@@ -18,6 +18,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { ROLE_OPTIONS, DIFFICULTY_LEVELS } from '@/lib/interviews/ai-mock-types'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const DIFFICULTY_LABELS = (t: Translator): Record<string, string> => ({
   beginner: t('career.beginner'),
@@ -87,6 +88,7 @@ async function extractTextFromPdf(file: File): Promise<string> {
 }
 
 export default function AiMockSetupPage() {
+  const apiError = useApiError()
   const { formatDate } = useLocaleDates()
   const { t } = useT()
   const gate = usePageGuard('user')
@@ -295,7 +297,7 @@ export default function AiMockSetupPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || t('career.failedToStartInterview'))
+        setError(apiError(data, t('career.failedToStartInterview')))
         setStarting(false)
         return
       }

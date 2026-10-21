@@ -313,7 +313,7 @@
   "addManifestFile": "मैनिफ़ेस्ट फ़ाइल जोड़ें",
   "filePathEGPackageJson": "फ़ाइल पाथ (जैसे package.json)",
   "fileContent": "फ़ाइल का कंटेंट",
-  "nDependenciesNLodash417520": "{\n  \"dependencies\": {\n    \"lodash\": \"^4.17.19\"\n  }\n}",
+  "nDependenciesNLodash417520": "{\\n  \"dependencies\": {\\n    \"lodash\": \"^4.17.19\"\\n  }\\n}",
   "add": "जोड़ें",
   "githubSignInIsntAvailable": "GitHub साइन-इन उपलब्ध नहीं",
   "githubSignInIsntSetUp13c": "इस प्लेटफ़ॉर्म पर GitHub साइन-इन अभी सेट नहीं है। कृपया सपोर्ट से संपर्क करें।",

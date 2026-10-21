@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 import { EventCard } from './event-card'
 import { NotifyBox } from './notify-box'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 import { LOCALE_META } from '@/lib/i18n/config'
 
 const chip = (on: boolean) =>
@@ -89,6 +90,7 @@ function MonthCalendar({ events }: { events: PublicFeedEvent[] }) {
 export function EventsExplorer({ events, origin }: { events: PublicFeedEvent[]; origin: string }) {
   const addToast = useToast()
   const { t, td, locale } = useT()
+  const apiError = useApiError()
   const cName = (c: string) => (locale === 'en' ? countryName(c) : (() => { try { return new Intl.DisplayNames([LOCALE_META[locale].intl], { type: 'region' }).of(c) || c } catch { return c } })())
   const [f, setF] = useState<UiFilters>({})
   const [view, setView] = useState<'list' | 'calendar'>('list')
@@ -120,10 +122,10 @@ export function EventsExplorer({ events, origin }: { events: PublicFeedEvent[]; 
       return
     }
     const d = await res.json().catch(() => ({}))
-    if (!res.ok) { addToast({ type: 'error', title: d.error || t('public.evSaveFailed') }); return }
+    if (!res.ok) { addToast({ type: 'error', title: apiError(d, t('public.evSaveFailed')) }); return }
     setSaved(d.saved_events || [])
     addToast({ type: 'success', title: save ? t('public.evReminderSet') : t('public.evReminderRemoved') })
-  }, [addToast, t])
+  }, [addToast, t, apiError])
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">

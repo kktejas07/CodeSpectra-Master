@@ -16,6 +16,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Problem {
   id: string
@@ -64,6 +65,7 @@ const LANGUAGES = [
 ]
 
 export default function ProblemPage({ params }: { params: Promise<{ id: string; problemId: string }> }) {
+  const apiError = useApiError()
   const { t } = useT()
   const { id, problemId } = use(params)
   const router = useRouter()
@@ -126,7 +128,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
       })
 
       const data = await res.json() as Submission & { error?: string }
-      if (!res.ok) throw new Error(data.error || t('compete.submissionFailed'))
+      if (!res.ok) throw new Error(apiError(data, t('compete.submissionFailed')))
 
       setSubmissions(prev => [data, ...prev])
       addToast({
@@ -156,7 +158,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
       })
 
       const data = await res.json() as { output?: string; error?: string; executionTime?: number }
-      if (!res.ok) throw new Error(data.error || t('compete.runFailed'))
+      if (!res.ok) throw new Error(apiError(data, t('compete.runFailed')))
 
       addToast({
         type: 'success',

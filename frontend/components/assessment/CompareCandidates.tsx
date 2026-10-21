@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/lib/toast-context'
 import { OutcomeBadge, saveOutcomes } from '@/components/assessment/HiringOutcome'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface CompareQuestion { id: string; title: string; type: string; points: number; scored: boolean; coding: boolean; section_id: string | null }
 interface CompareCandidate {
@@ -52,6 +53,7 @@ const humanize = (t: string) => t.replace(/_/g, ' ').replace(/^\w/, (c) => c.toU
 export function CompareCandidates({
   examId, userIds, open, onOpenChange, onChanged,
 }: { examId: string; userIds: string[]; open: boolean; onOpenChange: (o: boolean) => void; onChanged?: () => void }) {
+  const apiError = useApiError()
   const { t } = useT()
   const addToast = useToast()
   const [data, setData] = useState<CompareData | null>(null)
@@ -66,7 +68,7 @@ export function CompareCandidates({
     try {
       const res = await fetch(`/api/admin/exams/${encodeURIComponent(examId)}/compare?users=${encodeURIComponent(key)}`, { credentials: 'include' })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(j.error || t('exam.couldNotLoadTheComparison'))
+      if (!res.ok) throw new Error(apiError(j, t('exam.couldNotLoadTheComparison')))
       setData(j as CompareData)
     } catch (e) {
       setData(null)

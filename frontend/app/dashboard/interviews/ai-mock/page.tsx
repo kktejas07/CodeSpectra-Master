@@ -16,6 +16,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import type { Question, Evaluation } from '@/lib/interviews/ai-mock-types'
 import { createVoiceManager, getVoiceCapabilities } from '@/lib/interviews/ai-mock-voice'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface StoredSession {
   sessionId: string
@@ -43,6 +44,7 @@ function formatTime(sec: number): string {
 }
 
 export default function AiMockSessionPage() {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
   const searchParams = useSearchParams()
@@ -144,7 +146,7 @@ export default function AiMockSessionPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || tr('career.failedToSubmitAnswer'))
+        setError(apiError(data, tr('career.failedToSubmitAnswer')))
         processingRef.current = false
         setStatus('listening')
         return

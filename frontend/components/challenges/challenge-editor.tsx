@@ -32,6 +32,7 @@ import remarkGfm from 'remark-gfm'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -202,6 +203,7 @@ export function ChallengeEditor({
   memoryLimitKb,
   onSubmitSuccess,
 }: ChallengeEditorProps) {
+  const apiError = useApiError()
   const { t } = useT()
   const hasTimeLimit = typeof timeLimitMs === 'number' && Number.isFinite(timeLimitMs) && timeLimitMs > 0
   const hasMemoryLimit = typeof memoryLimitKb === 'number' && Number.isFinite(memoryLimitKb) && memoryLimitKb > 0
@@ -246,7 +248,7 @@ export function ChallengeEditor({
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || t('practice.runFailed'))
+      if (!res.ok) throw new Error(apiError(data, t('practice.runFailed')))
       setTestResults({
         status: data.status,
         testsPassed: data.passed_tests,
@@ -287,7 +289,7 @@ export function ChallengeEditor({
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || t('practice.submitFailed'))
+      if (!res.ok) throw new Error(apiError(data, t('practice.submitFailed')))
 
       if (hackathonId) {
         await csrfFetch(`/api/hackathons/${hackathonId}/submissions`, {

@@ -7,8 +7,10 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { LiveRoom } from '@/app/interview/_components/live-room'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export default function PanelLiveRoomPage() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
   const { id = '' } = useParams<{ id: string }>()
@@ -16,7 +18,7 @@ export default function PanelLiveRoomPage() {
   const getToken = useCallback(async () => {
     const r = await csrfFetch(`/api/ats/interviews/${encodeURIComponent(id)}/live/token`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
     const j = await r.json().catch(() => ({}))
-    if (!r.ok) throw new Error(j.error || t('hiring.couldNotJoinTheRoom'))
+    if (!r.ok) throw new Error(apiError(j, t('hiring.couldNotJoinTheRoom')))
     return { token: j.token as string, url: j.url as string }
   }, [id])
   if (!gate.ready) return null

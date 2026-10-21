@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { DEFAULT_RANGE, FunnelView, KpiGrid, RangePicker, formatValue, rangeQuery, type FunnelData, type KpiItem, type RangeValue } from '@/components/analytics/kit'
 import { BarList } from './ui'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Resp {
   kpis: KpiItem[]
@@ -25,6 +26,7 @@ interface Resp {
 }
 
 export function AssessmentAnalytics() {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const [range, setRange] = useState<RangeValue>(DEFAULT_RANGE)
   const q = useMemo(() => rangeQuery(range), [range])
@@ -34,7 +36,7 @@ export function AssessmentAnalytics() {
     let alive = true
     setError(null)
     fetch(`/api/ats/analytics/assessments?${q}${range.compare ? '' : '&compare=0'}`, { credentials: 'include' })
-      .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || tr('hiring.couldNotLoadAnalytics')); return j as Resp })
+      .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(apiError(j, tr('hiring.couldNotLoadAnalytics'))); return j as Resp })
       .then((d) => { if (alive) setData(d) })
       .catch((e) => { if (alive) setError((e as Error).message) })
     return () => { alive = false }

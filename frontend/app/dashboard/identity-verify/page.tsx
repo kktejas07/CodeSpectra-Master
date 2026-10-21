@@ -15,6 +15,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 // Helper to render warnings (handles both strings and Didit warning objects)
 function renderWarning(w: unknown): string {
@@ -70,6 +71,7 @@ interface SessionResponse {
 }
 
 export default function IdentityVerificationPage() {
+  const apiError = useApiError()
   const { formatDate } = useLocaleDates()
   const { t } = useT()
   const gate = usePageGuard('user')
@@ -122,7 +124,7 @@ export default function IdentityVerificationPage() {
         credentials: 'include',
       })
       const data = await res.json() as SessionResponse & { error?: string }
-      if (!res.ok) throw new Error(data.error || t('account.failedToStartVerification'))
+      if (!res.ok) throw new Error(apiError(data, t('account.failedToStartVerification')))
 
       // Redirect to Didit's hosted verification page (most reliable across browsers)
       if (data.url) {

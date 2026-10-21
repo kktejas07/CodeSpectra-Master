@@ -18,10 +18,12 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useFocusTrap } from '@/hooks/use-focus-trap'
 import { COURSE_LEVELS, INDUSTRIES, subjectsForIndustry, estimateCourse } from '@/lib/courses/syllabus'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const LEVELS = [...COURSE_LEVELS]
 
 export default function GenerateCoursePage() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
   const { user } = useAuth()
@@ -124,7 +126,7 @@ export default function GenerateCoursePage() {
         return
       }
       if (!genRes.ok) {
-        throw new Error(genData.error || t('learning.generationFailed'))
+        throw new Error(apiError(genData, t('learning.generationFailed')))
       }
 
       if (typeof genData.creditsCharged === 'number' && userCredits !== null) {

@@ -24,6 +24,7 @@ import type { ResumeUploadResult, TalentSuggestion } from '../lib/types'
 import { ChipInput, ErrorState, Field, InlineError, LoadingRows, MatchScore, NativeSelect } from '../ui'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const ACCEPT = '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown'
 const MAX_BYTES = 5 * 1024 * 1024
@@ -263,6 +264,7 @@ function AddCandidate({ jobId, onAdded }: { jobId: string; onAdded: () => void }
 }
 
 function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
+  const apiError = useApiError()
   const { t } = useT()
   const addToast = useToast()
   const [preview, setPreview] = useState<{ name: string; text: string; valid: CsvCandidate[]; invalid: number } | null>(null)
@@ -322,7 +324,7 @@ function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
         <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" aria-label={t('hiring.chooseCsvFile')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />
         {failures.length > 0 && (
           <ul className="max-h-32 space-y-0.5 overflow-y-auto text-xs text-amber-700 dark:text-amber-400">
-            {failures.slice(0, 20).map((f) => <li key={f.line}>{t('hiring.lineLine', { line: f.line })}{' '}{f.error || t('hiring.skipped2')}</li>)}
+            {failures.slice(0, 20).map((f) => <li key={f.line}>{t('hiring.lineLine', { line: f.line })}{' '}{apiError(f, t('hiring.skipped2'))}</li>)}
           </ul>
         )}
         <InlineError message={error} />

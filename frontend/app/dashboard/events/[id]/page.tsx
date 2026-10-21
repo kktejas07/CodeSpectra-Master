@@ -39,6 +39,7 @@ import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -104,6 +105,7 @@ interface LeaderboardEntry {
 type JudgeSubTab = 'evaluate' | 'board' | 'compare' | 'reports'
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
   const { formatDateTime } = useLocaleDates()
   const { td, t: tr } = useT()
   const { id } = use(params)
@@ -392,7 +394,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ aSubmissionId: cmpA, bSubmissionId: cmpB, criterion: cmpCrit }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || tr('compete.compareFailed'))
+      if (!res.ok) throw new Error(apiError(data, tr('compete.compareFailed')))
       setCmpResult({ winner: String(data.winner || 'tie'), reason: String(data.reason || 'no reason given') })
     } catch (e: any) {
       addToast({ type: 'error', title: e.message || tr('compete.compareFailed') })
@@ -419,7 +421,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || tr('compete.failedToSubmitScore'))
+        throw new Error(apiError(data, tr('compete.failedToSubmitScore')))
       }
       addToast({ type: 'success', title: tr('compete.scoreSubmitted') })
       setSelectedSub(null)
@@ -445,7 +447,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || tr('compete.failedToUpdateStatus'))
+        throw new Error(apiError(data, tr('compete.failedToUpdateStatus')))
       }
       addToast({ type: 'success', title: tr('compete.submissionNewstatus', { newStatus }) })
       void loadJudgeSubmissions()
@@ -476,7 +478,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         res = await post(true)
         data = await res.json().catch(() => ({}))
       }
-      if (!res.ok) throw new Error(data.error || tr('compete.couldNotReleaseResults'))
+      if (!res.ok) throw new Error(apiError(data, tr('compete.couldNotReleaseResults')))
       addToast({ type: 'success', title: tr('compete.resultsReleased') })
       window.location.reload()
     } catch (err: any) {

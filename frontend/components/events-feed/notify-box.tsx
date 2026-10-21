@@ -20,9 +20,11 @@ import { NEWS_TOPICS } from '@/lib/signals/feeds'
 import { cn } from '@/lib/utils'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export function NotifyBox({ topic = 'events', className, compact = false }: { topic?: 'events' | 'blog' | 'news'; className?: string; compact?: boolean }) {
   const { t, td, rich } = useT()
+  const apiError = useApiError()
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [useEmail, setUseEmail] = useState(true)
@@ -66,7 +68,7 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || t('public.notifyErrGeneric'))
+      if (!res.ok) throw new Error(apiError(data, t('public.notifyErrGeneric')))
       setDone({ email: data.email, whatsapp: data.whatsapp, link: data.whatsapp_start_link })
     } catch (err) {
       setError((err as Error).message)

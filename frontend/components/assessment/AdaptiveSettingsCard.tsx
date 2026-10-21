@@ -17,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ADAPTIVE_LENGTH_DEFAULT, ADAPTIVE_LENGTH_MAX } from '@/lib/adaptive-test'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Payload {
   settings: { adaptive: boolean; adaptive_domain: string | null; adaptive_length: number }
@@ -25,6 +26,7 @@ interface Payload {
 }
 
 export function AdaptiveSettingsCard({ examId, onSaved }: { examId: string; onSaved?: (s: Payload['settings']) => void }) {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const addToast = useToast()
   const [data, setData] = useState<Payload | null>(null)
@@ -73,7 +75,7 @@ export function AdaptiveSettingsCard({ examId, onSaved }: { examId: string; onSa
         body: JSON.stringify({ adaptive: on, adaptive_domain: domain || null, adaptive_length: Number(length) }),
       })
       const j = await r.json().catch(() => ({})) as { error?: string; settings?: Payload['settings'] }
-      if (!r.ok || !j.settings) throw new Error(j.error || tr('exam.couldNotSave'))
+      if (!r.ok || !j.settings) throw new Error(apiError(j, tr('exam.couldNotSave')))
       addToast({ type: 'success', title: on ? tr('exam.adaptiveModeIsOn') : tr('exam.adaptiveModeIsOff') })
       onSaved?.(j.settings)
     } catch (e) {

@@ -23,6 +23,7 @@ import type { BotChannel } from '@/lib/ats/contract'
 import { PlatformAdminHint } from '@/components/hiring/platform-admin-hint'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface RegionRow { key: string; whatsapp_phone_number_id: string; whatsapp_display_number: string; call_number: string; vapi_phone_number_id: string; provider: 'vapi' | 'exotel' | 'twilio' }
 interface Status {
@@ -95,6 +96,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
 // ─── Test with my number ────────────────────────────────────────────────────
 
 function TestPanel({ q, status }: { q: string; status: Status }) {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const addToast = useToast()
   const [phone, setPhone] = useState('')
@@ -122,7 +124,7 @@ function TestPanel({ q, status }: { q: string; status: Status }) {
     try {
       const res = await csrfFetch(`/api/ats/screening/test${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, channel }) })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || tr('hiring.couldNotStartTheTest'))
+      if (!res.ok) throw new Error(apiError(json, tr('hiring.couldNotStartTheTest')))
       setCall(json.call)
       addToast({ type: 'success', title: json.call?.simulated ? tr('hiring.simulatedTestStarted') : tr('hiring.testStartedCheckYourPhone') })
     } catch (e) {
@@ -138,7 +140,7 @@ function TestPanel({ q, status }: { q: string; status: Status }) {
     try {
       const res = await csrfFetch(`/api/ats/screening/${call.id}${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || tr('hiring.couldNotUpdate'))
+      if (!res.ok) throw new Error(apiError(json, tr('hiring.couldNotUpdate')))
       if (json.call) setCall(json.call)
       setReply('')
     } catch (e) {
@@ -243,6 +245,7 @@ function toRows(regions: SettingsResp['settings']['regions']): RegionRow[] {
 }
 
 function ScreeningSettingsInner() {
+  const apiError = useApiError()
   const { t } = useT()
   const sp = useSearchParams()
   const tenant = sp.get('tenant')
@@ -259,7 +262,7 @@ function ScreeningSettingsInner() {
     try {
       const res = await fetch(`/api/ats/screening/settings${q}`, { credentials: 'include', cache: 'no-store' })
       const json = await res.json()
-      if (!res.ok) { setError(json.error || t('hiring.couldNotLoadSettings')); return }
+      if (!res.ok) { setError(apiError(json, t('hiring.couldNotLoadSettings'))); return }
       setData(json)
       setError(null)
       const s = json.settings as SettingsResp['settings']
@@ -298,7 +301,7 @@ function ScreeningSettingsInner() {
         }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || t('hiring.saveFailed'))
+      if (!res.ok) throw new Error(apiError(json, t('hiring.saveFailed')))
       addToast({ type: 'success', title: t('hiring.screeningSettingsSaved') })
       await load()
     } catch (e) {
@@ -313,7 +316,7 @@ function ScreeningSettingsInner() {
     try {
       const res = await csrfFetch(`/api/ats/screening/settings${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'apply_sip', phone_number_id: pnid }) })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || t('hiring.failed'))
+      if (!res.ok) throw new Error(apiError(json, t('hiring.failed')))
       addToast({ type: 'success', title: t('hiring.whatsappCallingEnabledOnThisNumber') })
     } catch (e) {
       addToast({ type: 'error', title: t('hiring.couldNotEnableCalling'), message: (e as Error).message })

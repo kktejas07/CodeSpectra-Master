@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface InviteInfo {
   org_name: string | null
@@ -21,6 +22,7 @@ interface InviteInfo {
 }
 
 export default function TeamInvitePage() {
+  const apiError = useApiError()
   const { t } = useT()
   const params = useParams<{ token: string }>()
   const token = params.token || ''
@@ -64,7 +66,7 @@ export default function TeamInvitePage() {
         setDone({ ok: true, message: t('hiring.youreNowAMemberOfValue', { value: json.tenant_name || 'the organization' }) })
         setTimeout(() => router.push('/dashboard'), 1500)
       } else {
-        setDone({ ok: false, message: json.error || t('hiring.failedToAcceptInvitation') })
+        setDone({ ok: false, message: apiError(json, t('hiring.failedToAcceptInvitation')) })
       }
     } catch {
       setDone({ ok: false, message: t('hiring.failedToAcceptInvitation') })
@@ -88,7 +90,7 @@ export default function TeamInvitePage() {
         <Panel className="w-full max-w-md p-8 text-center">
           <Illustration name="error" className="mx-auto w-36" />
           <h1 className="mt-3 text-lg font-semibold text-foreground">{t('hiring.invitationUnavailable')}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{info?.error || t('hiring.thisInviteMayHaveExpiredOr041')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{apiError(info, t('hiring.thisInviteMayHaveExpiredOr041'))}</p>
           <Button className="mt-5" onClick={() => router.push('/dashboard')}>{t('hiring.goToDashboard')}</Button>
         </Panel>
       </div>

@@ -21,6 +21,7 @@ import { QuizComponent, type QuizQuestion, type QuizGradeResult } from '@/compon
 import { quizLessonId, parseQuizLessonId } from '@/lib/courses/module-quiz'
 import { stripEmbeddedQuizzes, stripQuizSlides } from '@/lib/courses/strip-embedded-quizzes'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Resource {
   title?: string
@@ -168,6 +169,7 @@ let lessonShellCache: {
 } | null = null
 
 export default function LessonPlayerPage({ params }: { params: Promise<{ id: string, lessonId: string }> }) {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
@@ -429,7 +431,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       body: JSON.stringify({ sectionIndex: quizSectionIndex, answers }),
     })
     const j = await res.json().catch(() => null)
-    if (!res.ok || !j?.success) throw new Error(j?.error || tr('learning.couldNotCheckYourAnswersTry223'))
+    if (!res.ok || !j?.success) throw new Error(apiError(j, tr('learning.couldNotCheckYourAnswersTry223')))
     return { score: j.score, total: j.total, passed: j.passed, results: j.results }
   }
 

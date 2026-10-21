@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -68,6 +69,7 @@ function getCompletedProblems(dayNum: number): Set<string> {
 }
 
 export default function DayPage() {
+  const apiError = useApiError()
   const { t } = useT()
   const gate = usePageGuard('user')
 
@@ -161,7 +163,7 @@ export default function DayPage() {
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || t('practice.runFailed'))
+      if (!res.ok) throw new Error(apiError(json, t('practice.runFailed')))
       setResult(json)
     } catch (e: any) { setResult({ status: 'error', passed_tests: 0, total_tests: problem.examples.length, total_time_ms: 0, stderr_excerpt: e.message, results: [] }) }
     finally { setRunning(false) }
@@ -183,7 +185,7 @@ export default function DayPage() {
         }),
       })
       const json = await res.json() as RunResponse & { error?: string }
-      if (!res.ok) throw new Error(json.error || t('practice.submitFailed'))
+      if (!res.ok) throw new Error(apiError(json, t('practice.submitFailed')))
       setResult(json)
       if (json.status === 'accepted') {
         const next = new Set(completedProblems)

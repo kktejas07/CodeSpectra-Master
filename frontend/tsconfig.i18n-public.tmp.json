@@ -11,6 +11,6 @@
     "app/leagues/page.tsx", "app/leagues/leagues-view.tsx", "app/mentors/page.tsx", "app/mentors/mentors-view.tsx",
     "app/marketplace/page.tsx", "app/marketplace/marketplace-view.tsx",
     "components/i18n/*.tsx", "components/public/*.tsx", "components/landing/*.tsx", "components/contests/*.tsx",
-    "lib/i18n/*.ts", "lib/seo/*.ts", "lib/csp/*.ts", "proxy.ts", "tests/csp-policy.test.ts", "tests/seo.test.ts"
+    "lib/i18n/*.ts", "lib/seo/*.ts", "components/events-feed/*.tsx", "components/learn/post-card.tsx", "components/marketplace/product-card.tsx", "components/marketplace/cart-drawer.tsx", "tests/i18n-public*.ts", "tests/csp-dynamic-routes.test.ts", "lib/csp/*.ts", "proxy.ts", "tests/csp-policy.test.ts", "tests/seo.test.ts"
   ]
 }

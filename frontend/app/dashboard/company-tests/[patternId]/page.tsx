@@ -24,6 +24,7 @@ import { LEVEL_LABEL, PRACTICE_LEVELS, isPracticeLevel, type PracticeLevel } fro
 import { cn } from '@/lib/utils'
 import { useT, type ClientI18n } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface PatternInfo {
   id: string
@@ -90,6 +91,7 @@ const STATUS_LABEL = (t: Translator): Record<string, string> => ({ correct: t('p
 const levelText = (td: ClientI18n['td'], l: PracticeLevel) => td(`dashboard.practiceLevel:${l}`, LEVEL_LABEL[l] ?? l)
 
 export default function CompanyTestRunnerPage() {
+  const apiError = useApiError()
   const gate = usePageGuard('user')
   const { t, td, fmt } = useT()
   const router = useRouter()
@@ -131,7 +133,7 @@ export default function CompanyTestRunnerPage() {
       .then(({ ok, d }) => {
         if (!live) return
         if (ok && d.attempt) setAttempt(d.attempt)
-        else setLoadError(d.error || t('dashboard.ctOpenRunFailed'))
+        else setLoadError(apiError(d, t('dashboard.ctOpenRunFailed')))
       })
       .catch(() => { if (live) setLoadError(t('dashboard.ctOpenRunFailedRefresh')) })
     return () => { live = false }
@@ -147,7 +149,7 @@ export default function CompanyTestRunnerPage() {
         body: JSON.stringify({ patternId, level }),
       })
       const d = await res.json().catch(() => ({}))
-      if (!res.ok || !d.attempt) { setError(d.error || t('dashboard.ctStartFailed')); return }
+      if (!res.ok || !d.attempt) { setError(apiError(d, t('dashboard.ctStartFailed'))); return }
       setAttempt(d.attempt)
       router.replace(`/dashboard/company-tests/${patternId}?attempt=${d.attempt.id}`)
     } catch {

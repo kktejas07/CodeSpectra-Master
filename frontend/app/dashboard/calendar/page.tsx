@@ -17,6 +17,7 @@ import { useToast } from '@/lib/toast-context'
 import { PageHeader } from '@/components/app/page-kit'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type CalEvent = {
   id: string
@@ -63,6 +64,7 @@ function daysInMonth(d: Date) {
 }
 
 export default function CalendarPage() {
+  const apiError = useApiError()
   const { formatDateTime } = useLocaleDates()
   const { t } = useT()
   const gate = usePageGuard('user')
@@ -168,7 +170,7 @@ export default function CalendarPage() {
         }),
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || t('dash.failed'))
+      if (!res.ok) throw new Error(apiError(json, t('dash.failed')))
       setTitle('')
       setWhen('')
       await load()

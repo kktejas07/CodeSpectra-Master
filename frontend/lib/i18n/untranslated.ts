@@ -5,6 +5,16 @@
  * is missing from hi / te or merely copied from English.
  */
 export const INTENTIONALLY_ENGLISH: ReadonlySet<string> = new Set([
+  // Test-taking (exam): product names, device classes, a Mermaid sample, units.
+  'exam.anonAadhaar',
+  'exam.codespectraDeviceAudit',
+  'exam.devtools',
+  'exam.graphLrClientLbLoadBalancerb8d',
+  'exam.hid',
+  'exam.usb',
+  'exam.valueKb',
+  'exam.wpm',
+  'exam.wpm2',
   'nav.label:Cloudflare',
   'nav.label:CDN & edge',
   'nav.label:Cron jobs',

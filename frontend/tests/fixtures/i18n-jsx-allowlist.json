@@ -1,0 +1,500 @@
+{
+ "_note": "Hard-coded JSX text allowed to stay English in the signed-in app areas. Per file: why + the exact strings. Remove entries as they get translated; tests/i18n-app-areas.test.ts fails on new text and on stale entries.",
+ "app/dashboard/100-days/[day]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "passed ·"
+  ]
+ },
+ "app/dashboard/agent/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "label=\"Code\""
+  ]
+ },
+ "app/dashboard/arena/[id]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "passed"
+  ]
+ },
+ "app/dashboard/assessments/[id]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "pts"
+  ]
+ },
+ "app/dashboard/assessments/ai-fluency/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "question"
+  ]
+ },
+ "app/dashboard/cad/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Loading CAD editor…"
+  ]
+ },
+ "app/dashboard/certifications/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Free"
+  ]
+ },
+ "app/dashboard/codeathons/[id]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Teams ("
+  ]
+ },
+ "app/dashboard/courses/[id]/lesson/[lessonId]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "lessons done — check back soon."
+  ]
+ },
+ "app/dashboard/courses/[id]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Free",
+   "X / Twitter"
+  ]
+ },
+ "app/dashboard/courses/my/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "lessons"
+  ]
+ },
+ "app/dashboard/events/[id]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "CI",
+   "label=\"Teams\""
+  ]
+ },
+ "app/dashboard/hiring/clients/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "placeholder=\"Email\""
+  ]
+ },
+ "app/dashboard/hiring/team/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Email"
+  ]
+ },
+ "app/dashboard/interview-prep/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "correct"
+  ]
+ },
+ "app/dashboard/interviews/[id]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "answered"
+  ]
+ },
+ "app/dashboard/pricing/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Free"
+  ]
+ },
+ "app/dashboard/problems/[slug]/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "passed •"
+  ]
+ },
+ "app/dashboard/profile/edit/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "+86 (CN)",
+   "Email",
+   "GitHub URL",
+   "LinkedIn URL",
+   "Loading Aadhaar verification…",
+   "aria-label=\"GitHub URL\"",
+   "aria-label=\"LinkedIn URL\""
+  ]
+ },
+ "app/dashboard/resumes/builder/page.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Email",
+   "aria-label=\"Email\""
+  ]
+ },
+ "components/cad/cad-assessment-workspace.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Loading CAD editor…"
+  ]
+ },
+ "components/codeathons/codeathon-results-card.tsx": {
+  "why": "shared with the cached public /codeathons pages (public-site agent)",
+  "text": [
+   "Full results",
+   "Results are out",
+   "View certificate",
+   "of",
+   "with"
+  ]
+ },
+ "components/codeathons/release-results-dialog.tsx": {
+  "why": "admin-only dialog",
+  "text": [
+   ". Everyone is included in the release.",
+   "Certificate",
+   "Certificates",
+   "Certificates can be checked by anyone on the verify page. Emails are never shown.",
+   "Close",
+   "Everyone who submitted (ranked wording for the top places)",
+   "Final leaderboard",
+   "Issue missing certificates",
+   "Loading results…",
+   "No certificates",
+   "None",
+   "Only the top places",
+   "Participation",
+   "Points",
+   "Rank",
+   "Ranked",
+   "Release results",
+   "Released",
+   "Results for",
+   "Showing the top",
+   "Solved",
+   "View public results",
+   "actionLabel=\"Try again\"",
+   "description=\"Results appear here once participants submit solutions.\"",
+   "label=\"Ranked certificates for places 1 to\"",
+   "members",
+   "of",
+   "ranked ·",
+   "title=\"Couldn't load results\"",
+   "title=\"No submissions yet\"",
+   "took part"
+  ]
+ },
+ "components/dashboard/contribution-graph.tsx": {
+  "why": "shared with public /users profiles",
+  "text": [
+   "Current streak",
+   "Longest streak",
+   "No activity yet",
+   "Solve a problem to start filling this in.",
+   "description=\"Solve a problem or run a scan, and your activity will show up here.\"",
+   "title=\"No activity yet\""
+  ]
+ },
+ "components/dashboard/digital-id-card.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Email"
+  ]
+ },
+ "components/dashboard/pricing-catalog-stripe-hint.tsx": {
+  "why": "admin-only",
+  "text": [
+   ". Stripe Checkout still uses the",
+   "Catalog amounts (reference only)",
+   "Enterprise — catalog:",
+   "IDs below — they must match products/prices in your Stripe Dashboard.",
+   "Pricing management",
+   "Pro — catalog:",
+   "Shown amounts come from"
+  ]
+ },
+ "components/gamification/world-map.tsx": {
+  "why": "admin-only",
+  "text": [
+   "No country data yet",
+   "Top Countries",
+   "requests"
+  ]
+ },
+ "components/hiring/board/intake-panel.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "label=\"Email\""
+  ]
+ },
+ "components/hiring/compensation-fields.tsx": {
+  "why": "shared with public /jobs apply and /hr-form",
+  "text": [
+   "Breakup (optional)",
+   "Currency",
+   "Expected CTC (",
+   "Experience",
+   "Fixed",
+   "I'm currently employed",
+   "My expectation is negotiable",
+   "Paid",
+   "Variable / bonus",
+   "aria-label=\"Experience\"",
+   "aria-label=\"I'm currently employed\"",
+   "aria-label=\"My expectation is negotiable\""
+  ]
+ },
+ "components/hiring/ui.tsx": {
+  "why": "shared with admin and public /bgv",
+  "text": [
+   "Item",
+   "Try again",
+   "Value",
+   "We couldn't load this",
+   "aria-label=\"Loading\"",
+   "match score"
+  ]
+ },
+ "components/marketplace/buy-box.tsx": {
+  "why": "public marketplace",
+  "text": [
+   "Buy now",
+   "Loading times…",
+   "No free times in these two weeks — try the next ones.",
+   "Only",
+   "Option",
+   "Pick a time",
+   "Quantity",
+   "Times in",
+   "aria-label=\"Dates\"",
+   "aria-label=\"Earlier dates\"",
+   "aria-label=\"Later dates\"",
+   "aria-label=\"Start time\"",
+   "left"
+  ]
+ },
+ "components/marketplace/cart-lines.tsx": {
+  "why": "public marketplace",
+  "text": [
+   "Discount",
+   "Move to cart",
+   "Remove",
+   "Save for later",
+   "Saved for later",
+   "Shipping",
+   "Subtotal",
+   "Total"
+  ]
+ },
+ "components/marketplace/checkout-client.tsx": {
+  "why": "public marketplace",
+  "text": [
+   "). Items are held for 30 minutes while you pay.",
+   "Address line 1",
+   "Address line 2 (optional)",
+   "Apply",
+   "Checkout",
+   "City",
+   "Contact",
+   "Country",
+   "Coupon",
+   "Coupon code",
+   "Delivery address",
+   "Full name",
+   "Items",
+   "Order summary",
+   "Phone for delivery (if different)",
+   "Phone number",
+   "Postal code",
+   "Receipts and updates go to",
+   "Review cart",
+   "State",
+   "You will pay securely on our payment partner's page (",
+   "actionLabel=\"Browse the marketplace\"",
+   "aria-label=\"Loading checkout\"",
+   "description=\"Add something from the marketplace first.\"",
+   "placeholder=\"Coupon code\"",
+   "title=\"Your cart is empty\""
+  ]
+ },
+ "components/marketplace/product-extras.tsx": {
+  "why": "public marketplace",
+  "text": [
+   "Bought this?",
+   "Copy link",
+   "Post review",
+   "Review",
+   "Share",
+   "Sign in",
+   "Title",
+   "Write a review",
+   "aria-label=\"Rating\"",
+   "placeholder=\"Title (optional)\"",
+   "placeholder=\"What did you like? What could be better?\"",
+   "to leave a review."
+  ]
+ },
+ "components/marketplace/seller/coupons.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Code",
+   "label=\"Code\""
+  ]
+ },
+ "components/marketplace/seller/products.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "Microsoft Teams"
+  ]
+ },
+ "components/mentors/offering-booker.tsx": {
+  "why": "public /mentors",
+  "text": [
+   "Session type",
+   "Times are shown in your time zone. You pay at checkout; the meeting link and a calendar invite arrive by e-mail. Free cancellation up to",
+   "hours before the session.",
+   "min · online"
+  ]
+ },
+ "components/passport/skill-list.tsx": {
+  "why": "shared with public /p and /verify",
+  "text": [
+   "Score",
+   "aria-label=\"Proctored\"",
+   "result"
+  ]
+ },
+ "components/problems/problem-view-dialog.tsx": {
+  "why": "admin-only",
+  "text": [
+   "Loading problem…",
+   "MB memory",
+   "No sample test cases.",
+   "Open in arena",
+   "Sample",
+   "Sample test cases (",
+   "hidden test cases",
+   "label=\"Expected output\"",
+   "label=\"Input\"",
+   "ms time limit",
+   "title=\"Constraints\"",
+   "title=\"Input format\"",
+   "title=\"Output format\""
+  ]
+ },
+ "components/pwa/offline-practice.tsx": {
+  "why": "public /offline page",
+  "text": [
+   "All saved questions",
+   "Back to dashboard",
+   "Daily challenge ·",
+   "Language",
+   "Loading saved questions…",
+   "Open",
+   "Sample input",
+   "Sample output",
+   "Submit answer",
+   "Tests run on our servers, so results appear once your answer is sent.",
+   "You are offline. Pages that need your account will open again when the connection is back.",
+   "Your answers",
+   "Your code",
+   "Your draft is saved on this device as you type.",
+   "description=\"On your dashboard, tap Save for offline on the daily challenge. It will be here even without a connection.\"",
+   "description=\"Questions you saved on this device. Answers are sent and graded when you are back online.\"",
+   "description=\"Use a recent version of Chrome, Edge, Safari or Firefox.\"",
+   "title=\"Constraints\"",
+   "title=\"Input\"",
+   "title=\"Nothing saved yet\"",
+   "title=\"Offline practice is not available in this browser\"",
+   "title=\"Offline practice\"",
+   "title=\"Output\""
+  ]
+ },
+ "components/pwa/pwa-mount.tsx": {
+  "why": "root layout, outside any provider",
+  "text": [
+   "A new version of CodeSpectra is ready.",
+   "Refresh",
+   "aria-label=\"Remind me later\""
+  ]
+ },
+ "components/resources/ebook-outline-review.tsx": {
+  "why": "admin-only",
+  "text": [
+   "\" before generating content.",
+   "Add chapter",
+   "Cancel",
+   "Generate ebook",
+   "Review and edit the chapter outline for \"",
+   "Review outline",
+   "aria-label=\"Cancel editing\"",
+   "aria-label=\"Chapter description\"",
+   "aria-label=\"Chapter title\"",
+   "aria-label=\"Save chapter\"",
+   "chapters",
+   "placeholder=\"Brief description\"",
+   "placeholder=\"Chapter title\""
+  ]
+ },
+ "components/scanner/code-review-panel.tsx": {
+  "why": "not used by any page",
+  "text": [
+   "Add Comment",
+   "Clear",
+   "Code Review (",
+   "Mark as Resolved",
+   "No comments yet. Be the first to review!",
+   "Post comment",
+   "Reply",
+   "aria-label=\"Dislike comment\"",
+   "aria-label=\"Like comment\"",
+   "placeholder=\"Share your thoughts on this issue...\"",
+   "placeholder=\"Write a reply...\"",
+   "title=\"Delete\""
+  ]
+ },
+ "components/scanner/metrics-trend-chart.tsx": {
+  "why": "not used by any page",
+  "text": [
+   "Change",
+   "Current",
+   "No trend data yet. Run a few scans and your quality trend will show up here.",
+   "Previous",
+   "trend"
+  ]
+ },
+ "components/scanner/pr-integration.tsx": {
+  "why": "fragment next to a value or brand/tech word (Email, Free, CI, units); low value, revisit",
+  "text": [
+   "• by",
+   "• on branch"
+  ]
+ },
+ "components/scanner/scanner-config-panel.tsx": {
+  "why": "not used by any page",
+  "text": [
+   "Advanced Options",
+   "Auto scan enabled",
+   "Automatically scan code uploads",
+   "Automation",
+   "Block deployments if critical issues are found",
+   "Code below this score will be flagged",
+   "Custom rules",
+   "Customize code scanning behavior and thresholds",
+   "Define custom linting and analysis rules",
+   "Email notifications",
+   "Fail on Critical Issues",
+   "Get notified when critical issues are detected",
+   "Max Bugs Allowed",
+   "Max Vulnerabilities Allowed",
+   "Minimum Quality Score",
+   "Notifications",
+   "Quality Thresholds",
+   "Reset",
+   "Rule Configuration (JSON)",
+   "Save changes",
+   "Scan GitHub repositories on every push",
+   "Scan on Push",
+   "Scanner Configuration",
+   "Slack Integration Coming Soon",
+   "placeholder=\"{\"rules\": [{\"name\": \"my-rule\", \"severity\": \"error\"}]}\""
+  ]
+ }
+}

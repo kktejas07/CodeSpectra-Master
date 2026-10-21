@@ -26,6 +26,7 @@ import { levelLabel, roundLabel, type SimSessionView } from '@/lib/interview-sim
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/client'
 import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 // ponytail: module-level translator handle so the plain fetch helper speaks the page language.
 let apiT: Translator | null = null
@@ -45,6 +46,7 @@ function pickRecMime(video: boolean): string {
 
 /** Whole-session recording (opt-in at setup): start by click, stop + upload when the interview ends. */
 function useSessionRecorder(sessionId: string) {
+  const apiError = useApiError()
   const { t } = useT()
   const [state, setState] = useState<'off' | 'recording' | 'uploading' | 'saved' | 'error'>('off')
   const [message, setMessage] = useState<string | null>(null)
@@ -67,7 +69,7 @@ function useSessionRecorder(sessionId: string) {
         fd.append('duration_s', String(durationS))
         const res = await csrfFetch(url, { method: 'POST', body: fd, credentials: 'include' })
         const j = await res.json().catch(() => ({}))
-        if (!res.ok) throw new Error(j.error || t('dashboard.recordingSaveFailed'))
+        if (!res.ok) throw new Error(apiError(j, t('dashboard.recordingSaveFailed')))
       }
       setState('saved')
       setMessage(t('dashboard.recordingSaved'))
@@ -111,6 +113,7 @@ function useSessionRecorder(sessionId: string) {
 }
 
 export default function InterviewSessionPage() {
+  const apiError = useApiError()
   const gate = usePageGuard('user')
   const params = useParams<{ sessionId: string }>()
   const id = String(params?.sessionId || '')
@@ -237,7 +240,7 @@ export default function InterviewSessionPage() {
       const res = await fetch(`/api/interview-sim/${encodeURIComponent(id)}/recording`, { credentials: 'include' })
       if ((res.headers.get('content-type') || '').includes('application/json')) {
         const j = await res.json()
-        if (!res.ok || !j.url) throw new Error(j.error || t('dashboard.recordingNotAvailable'))
+        if (!res.ok || !j.url) throw new Error(apiError(j, t('dashboard.recordingNotAvailable')))
         window.open(j.url, '_blank', 'noopener,noreferrer')
       } else {
         if (!res.ok) throw new Error(t('dashboard.recordingNotAvailable'))

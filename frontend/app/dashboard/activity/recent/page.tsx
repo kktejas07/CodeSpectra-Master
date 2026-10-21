@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
 import { useT } from '@/lib/i18n/client'
 import type { MessageKey, Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type RecentItem = {
   type: string
@@ -92,6 +93,7 @@ function dayGroup(iso: string): string {
 const GROUP_ORDER = ['Today', 'Yesterday', 'Last 7 days', 'Older']
 
 export default function RecentlyViewedPage() {
+  const apiError = useApiError()
   const { t: tr } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
@@ -109,7 +111,7 @@ export default function RecentlyViewedPage() {
     try {
       const r = await fetch('/api/user/recently-viewed', { credentials: 'include' })
       const d = await r.json().catch(() => ({}))
-      if (!r.ok) throw new Error(d.error || tr('dash.requestFailedStatus', { status: r.status }))
+      if (!r.ok) throw new Error(apiError(d, tr('dash.requestFailedStatus', { status: r.status })))
       setItems(Array.isArray(d.items) ? d.items : [])
     } catch (e) {
       setItems([])

@@ -40,6 +40,7 @@ import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 import { useCurrency } from '@/lib/use-currency'
 import { Illustration } from '@/components/illustrations/spot'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type InvoiceRow = {
   id: string
@@ -93,6 +94,7 @@ type PaymentMethod = {
 }
 
 function BillingContent() {
+  const apiError = useApiError()
   const { formatDate, formatDateTime } = useLocaleDates()
   const { t } = useT()
   const addToast = useToast()
@@ -279,7 +281,7 @@ function BillingContent() {
     try {
       const res = await fetch(`/api/billing/invoices/${inv.id}`, { credentials: 'include' })
       const j = await res.json()
-      if (!res.ok) throw new Error(j.error || t('account.failed'))
+      if (!res.ok) throw new Error(apiError(j, t('account.failed')))
       setInvoiceDetail(j)
     } catch (e) {
       addToast({
