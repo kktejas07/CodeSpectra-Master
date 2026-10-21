@@ -8,7 +8,7 @@ import type { Collection, Db } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import { sanitizeRegex } from '@/lib/sanitize'
-import { findDuplicateTitle, seedTopicRows, topicHash } from './topics'
+import { findDuplicateTitle, missingSeedRows, seedTopicRows, topicHash } from './topics'
 import {
   DEFAULT_LEARN_SETTINGS, LEARN_LANGUAGES, isLearnCategory, isLearnLanguage, isLearnLevel,
   type LearnPostDoc, type LearnSettings, type LearnSourceDoc, type LearnTopicDoc, type PracticeLink,
@@ -132,12 +132,17 @@ let seeded = false
 export async function ensureTopicSeed(): Promise<void> {
   if (seeded) return
   const col = await learnTopics()
-  if ((await col.estimatedDocumentCount()) > 0) {
+  // A live database gets only the seed rows it is missing (new categories), never duplicates.
+  const existing = (await col.estimatedDocumentCount()) > 0
+    ? ((await col.find({}, { projection: { _id: 0, hash: 1, title: 1 } }).limit(20_000).toArray()) as { hash: string; title: string }[])
+    : null
+  const seedRows = existing ? missingSeedRows(existing) : seedTopicRows()
+  if (!seedRows.length) {
     seeded = true
     return
   }
   const now = nowIso()
-  const rows: LearnTopicDoc[] = seedTopicRows().map((r) => ({
+  const rows: LearnTopicDoc[] = seedRows.map((r) => ({
     ...r, id: newId(), enabled: true, generated_count: 0, last_generated_at: null, source: 'seed', created_at: now, updated_at: now,
   }))
   try {

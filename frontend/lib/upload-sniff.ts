@@ -81,3 +81,48 @@ export function decodeBase64Image(
   if (!mime || !allowed.includes(mime)) return null
   return { mime, bytes }
 }
+
+/**
+ * Answer files (file_upload / video_response questions): the upload kind the
+ * bytes really are, checked against the kind the file name claims. Office
+ * formats are ZIP containers, so docx/xlsx/pptx/zip share the PK signature and
+ * rely on the extension + the container's marker file name. 'text' = no NUL
+ * bytes and valid UTF-8 in the first 8 KB.
+ */
+export type AnswerFileKind = 'pdf' | 'image' | 'docx' | 'xlsx' | 'pptx' | 'zip' | 'text' | 'webm' | 'mp4'
+
+export function sniffAnswerFile(bytes: Uint8Array, claimed: AnswerFileKind): boolean {
+  switch (claimed) {
+    case 'pdf':
+      return ascii(bytes, 0, 5) === '%PDF-'
+    case 'image':
+      return sniffImageMime(bytes) !== null
+    case 'zip':
+    case 'docx':
+    case 'xlsx':
+    case 'pptx': {
+      if (!startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]) && !startsWith(bytes, [0x50, 0x4b, 0x05, 0x06])) return false
+      if (claimed === 'zip') return true
+      const marker = claimed === 'docx' ? 'word/' : claimed === 'xlsx' ? 'xl/' : 'ppt/'
+      // The member names sit in the local headers; the first few KB always name the main part.
+      return ascii(bytes, 0, Math.min(bytes.length, 64 * 1024)).includes(marker) || ascii(bytes, 0, 2048).includes('[Content_Types].xml')
+    }
+    case 'text': {
+      const head = bytes.subarray(0, 8192)
+      if (head.includes(0)) return false
+      try {
+        // stream: a multi-byte character cut at the 8 KB edge is not an error.
+        new TextDecoder('utf-8', { fatal: true }).decode(head, { stream: true })
+        return true
+      } catch {
+        return false
+      }
+    }
+    case 'webm':
+      return startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])
+    case 'mp4':
+      return ascii(bytes, 4, 8) === 'ftyp'
+    default:
+      return false
+  }
+}

@@ -55,6 +55,7 @@ export async function autoGradeSubmission(submissionId: string): Promise<{ grade
         pairs: Array.isArray(q.pairs) ? (q.pairs as never) : undefined,
         matrix: (q.matrix as never) || undefined,
         table: (q.table as never) || undefined,
+        question: q,
       }), GRADE_TIMEOUT_MS, 'grading')
       results[d.qId] = { ...r, graded_by: r.graded_by ?? 'auto' }
     } catch (e) {
@@ -118,6 +119,7 @@ export async function finalizeAbandonedAttempts(now = new Date(), limit = 100): 
   const { attemptDeadlineMs, EXAM_SUBMIT_GRACE_MS, recordExamAttempt, getIdentityCheck, identitySummary } = await import('@/lib/exam-access')
   const { compareObjectiveAnswer } = await import('@/lib/grading')
   const { isScoredType, isDeterministicType } = await import('@/lib/question-types')
+  const gradeExt = await import('@/lib/grading-extended')
   const drafts = (await db.collection('exam_drafts').find({
     attempt_started_at: { $gte: new Date(now.getTime() - 14 * 86_400_000).toISOString(), $lte: new Date(now.getTime() - EXAM_SUBMIT_GRACE_MS).toISOString() },
     $or: [{ submitted_at: { $exists: false } }, { submitted_at: null }],
@@ -167,6 +169,13 @@ export async function finalizeAbandonedAttempts(now = new Date(), limit = 100): 
       const a = String(kept[String(q.id)] || '').trim()
       let correct = false
       let pending = false
+      const { gradeInstant } = gradeExt
+      const instant = scored && a ? gradeInstant(q, a, points) : null
+      if (instant) {
+        if (instant.requires_human_review) { pending = true; pendingAny = true }
+        score += instant.awarded
+        return { qId: String(q.id), correct: instant.awarded > 0, points, answer: a, pending_review: pending, awarded: instant.awarded, remarks: instant.feedback, requires_human_review: !!instant.requires_human_review, graded_by: 'auto' }
+      }
       if (scored && isDeterministicType(q.type)) {
         correct = compareObjectiveAnswer({ type: q.type as string, options: q.options as never, answer: String(q.answer ?? q.correct_answer ?? ''), tolerance: q.tolerance as never, pairs: q.pairs as never, matrix: q.matrix as never, table: q.table as never }, a).correct
       } else if (scored && a) {
@@ -199,6 +208,7 @@ export async function finalizeAbandonedAttempts(now = new Date(), limit = 100): 
       face_photo: typeof identity?.face_photo === 'string' ? identity.face_photo : null,
       identity_check: identitySummary(identity),
       details,
+      ...(() => { const ts = gradeExt.traitScores(questions, kept); return ts.length ? { trait_scores: ts } : {} })(),
       device_info: null,
       question_timings: {},
       total_time_ms: deadline !== null ? Math.max(0, deadline - Date.parse(String(draft.attempt_started_at))) : 0,

@@ -12,7 +12,7 @@
 import { escapeHtml } from '@/lib/safe-html'
 import { PUBLIC_ROUTES } from './public-routes'
 
-export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'blog', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
+export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'blog', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
 export type SitemapType = (typeof SITEMAP_TYPES)[number]
 
 export interface SitemapEntry {
@@ -102,10 +102,17 @@ export async function loadSitemapEntries(type: SitemapType): Promise<SitemapEntr
         const { latestPublished } = await import('@/lib/learn/queries')
         return (await latestPublished(MAX_URLS)).map((p) => ({ path: `/learn/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly', priority: 0.7 }))
       })
+    case 'news':
+      return safe(async () => {
+        const { newsPostsCol } = await import('@/lib/signals/store')
+        const rows = await (await newsPostsCol()).find({ status: 'published', tags: 'signals' }, { projection: { _id: 0, slug: 1, updated_at: 1, published_at: 1 } }).sort({ published_at: -1 }).limit(MAX_URLS).toArray()
+        return rows.map((p) => ({ path: `/news/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly', priority: 0.5 }))
+      })
     case 'blog':
       return safe(async () => {
         const { blogPosts } = await import('@/lib/db/blog-posts')
-        const rows = await (await blogPosts()).find({ status: 'published' }, { projection: { _id: 0, slug: 1, updated_at: 1, published_at: 1 } }).sort({ published_at: -1 }).limit(MAX_URLS).toArray()
+        // News posts (tag 'signals') live at /news/<slug>; /blog/<slug> redirects there.
+        const rows = await (await blogPosts()).find({ status: 'published', tags: { $ne: 'signals' } }, { projection: { _id: 0, slug: 1, updated_at: 1, published_at: 1 } }).sort({ published_at: -1 }).limit(MAX_URLS).toArray()
         return rows.map((p) => ({ path: `/blog/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly', priority: 0.5 }))
       })
     case 'docs':

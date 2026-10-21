@@ -3,12 +3,13 @@
  *  { action: 'toggle', id, enabled, confirm_permission? }
  *  { action: 'add_feed', type: 'rss'|'ical', name, url, kind?, mode?, country? }
  *  { action: 'remove_feed', id }
+ *  { action: 'configure', id, url }   feed URL of a configurable built-in (Lu.ma, Eventbrite, …); '' clears
  *  { action: 'run', only?: string[] }   pull now (all enabled sources, or the listed ones)
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { auditAdmin } from '@/lib/admin-audit'
-import { addFeed, removeFeed, setSourceEnabled } from '@/lib/events-feed/admin'
+import { addFeed, removeFeed, setSourceConfig, setSourceEnabled } from '@/lib/events-feed/admin'
 import { runPull } from '@/lib/events-feed/pipeline'
 
 export const runtime = 'nodejs'
@@ -32,6 +33,12 @@ export async function POST(req: NextRequest) {
       if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 })
       await auditAdmin(auth.user, 'events_feed.feed_add', 'events_feed_source', r.id!)
       return NextResponse.json(r)
+    }
+    case 'configure': {
+      const r = await setSourceConfig(id, b)
+      if (!r.ok) return NextResponse.json({ error: r.error }, { status: 400 })
+      await auditAdmin(auth.user, 'events_feed.source_configure', 'events_feed_source', id)
+      return NextResponse.json({ ok: true })
     }
     case 'remove_feed': {
       if (!(await removeFeed(id))) return NextResponse.json({ error: 'Only admin-added feeds can be removed' }, { status: 400 })

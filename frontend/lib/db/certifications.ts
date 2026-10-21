@@ -558,6 +558,8 @@ export interface CodeathonCertificateInput {
   scoreLabel: string
   rank: number | null
   template?: string
+  /** Line under the title (default "CodeSpectra codeathon"; hosted contests pass their format). */
+  source?: string
 }
 
 /**
@@ -589,7 +591,7 @@ export async function issueCodeathonCertificate(
     cert_snapshot: {
       title: String(input.codeathonTitle || 'Codeathon').slice(0, 200),
       level: input.level,
-      source: 'CodeSpectra codeathon',
+      source: input.source ? String(input.source).slice(0, 80) : 'CodeSpectra codeathon',
     },
     event_title: input.codeathonTitle || null,
     codeathon_id: input.codeathonId,

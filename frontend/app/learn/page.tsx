@@ -8,6 +8,7 @@ import { Search, Rss } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LearnPostCardView } from '@/components/learn/post-card'
+import { LearnCategoryIcon } from '@/components/learn/category-icon'
 import { NotifyBox } from '@/components/events-feed/notify-box'
 import { listPublished, parseListParams, publishedSeries } from '@/lib/learn/queries'
 import { LEARN_CATEGORIES, LEARN_LEVELS, categoryLabel } from '@/lib/learn/types'
@@ -116,7 +117,7 @@ export default async function LearnPage({ searchParams }: { searchParams: SP }) 
         <nav aria-label="Filter by category" className="mt-6 flex flex-wrap gap-2">
           <Chip href={hrefWith(cur, { category: null })} active={!params.category}>All topics</Chip>
           {LEARN_CATEGORIES.map((c) => (
-            <Chip key={c.id} href={hrefWith(cur, { category: c.id })} active={params.category === c.id}>{c.label}</Chip>
+            <Chip key={c.id} href={hrefWith(cur, { category: c.id })} active={params.category === c.id}><LearnCategoryIcon id={c.id} className="mr-1.5 h-3.5 w-3.5" />{c.label}</Chip>
           ))}
         </nav>
         <nav aria-label="Filter by level" className="mt-3 flex flex-wrap items-center gap-2">

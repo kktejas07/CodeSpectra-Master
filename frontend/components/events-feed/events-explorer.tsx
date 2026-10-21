@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Public events explorer: filters (kind, online / in person, country, theme,
- * prize, deadline soon, dates), list / calendar toggle, event cards and the
+ * Public events explorer: filters (kind, online / in person, region, country,
+ * theme, prize, student-friendly, deadline soon, dates), list / calendar toggle, event cards and the
  * "Notify me" box. Filtering is client-side over the server-rendered list.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label'
 import { EmptyState } from '@/components/ui/empty-state'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
-import { countryName, filterEvents, KIND_LABELS, MODE_LABELS, type UiFilters } from '@/lib/events-feed/public'
+import { countryName, filterEvents, KIND_LABELS, MODE_LABELS, REGION_LABELS, REGIONS, regionOf, type Region, type UiFilters } from '@/lib/events-feed/public'
 import { EVENT_KINDS, EVENT_MODES, type PublicFeedEvent } from '@/lib/events-feed/types'
 import { cn } from '@/lib/utils'
 import { EventCard } from './event-card'
@@ -100,10 +100,11 @@ export function EventsExplorer({ events, origin }: { events: PublicFeedEvent[]; 
     for (const e of events) for (const t of e.themes) n.set(t, (n.get(t) || 0) + 1)
     return [...n.entries()].sort((a, b) => b[1] - a[1]).slice(0, 16).map(([t]) => t)
   }, [events])
+  const regions = useMemo(() => { const have = new Set(events.map((e) => regionOf(e.country)).filter(Boolean)); return REGIONS.filter((r) => have.has(r)) }, [events])
   const shown = useMemo(() => filterEvents(events, f), [events, f])
   const active = Object.values(f).some((v) => (Array.isArray(v) ? v.length : Boolean(v)))
 
-  const toggleIn = <K extends 'kinds' | 'modes' | 'countries' | 'themes'>(k: K, v: string) =>
+  const toggleIn = <K extends 'kinds' | 'modes' | 'countries' | 'themes' | 'regions'>(k: K, v: string) =>
     setF((p) => { const cur = (p[k] as string[] | undefined) || []; return { ...p, [k]: cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v] } })
 
   const toggleSave = useCallback(async (id: string, save: boolean) => {
@@ -139,7 +140,13 @@ export function EventsExplorer({ events, origin }: { events: PublicFeedEvent[]; 
             {EVENT_MODES.map((m) => <button key={m} type="button" className={chip(Boolean(f.modes?.includes(m)))} aria-pressed={Boolean(f.modes?.includes(m))} onClick={() => toggleIn('modes', m)}>{MODE_LABELS[m]}</button>)}
             <button type="button" className={chip(Boolean(f.prize))} aria-pressed={Boolean(f.prize)} onClick={() => setF((p) => ({ ...p, prize: !p.prize }))}>Has cash prize</button>
             <button type="button" className={chip(Boolean(f.deadline_soon))} aria-pressed={Boolean(f.deadline_soon)} onClick={() => setF((p) => ({ ...p, deadline_soon: !p.deadline_soon }))}>Closing this week</button>
+            <button type="button" className={chip(Boolean(f.student))} aria-pressed={Boolean(f.student)} onClick={() => setF((p) => ({ ...p, student: !p.student }))}>Student-friendly</button>
           </div>
+          {regions.length > 0 && (
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Region (in-person and hybrid events)">
+              {regions.map((r: Region) => <button key={r} type="button" className={chip(Boolean(f.regions?.includes(r)))} aria-pressed={Boolean(f.regions?.includes(r))} onClick={() => toggleIn('regions', r)}>{REGION_LABELS[r]}</button>)}
+            </div>
+          )}
           {countries.length > 0 && (
             <div className="flex flex-wrap gap-2" role="group" aria-label="Country">
               {countries.map((c) => <button key={c} type="button" className={chip(Boolean(f.countries?.includes(c)))} aria-pressed={Boolean(f.countries?.includes(c))} onClick={() => toggleIn('countries', c)}>{countryName(c)}</button>)}

@@ -28,7 +28,7 @@ import type { EventsFeedSettings } from '@/lib/events-feed/settings'
 import type { SubscriptionSettings } from '@/lib/subscriptions/settings'
 import type { DeliveryDoc } from '@/lib/subscriptions/types'
 
-type AdminSource = SourceState & { label: string; homepage: string; access: string; terms: string; needs_permission: boolean; requires: string | null; builtin: boolean }
+type AdminSource = SourceState & { label: string; homepage: string; access: string; terms: string; needs_permission: boolean; requires: string | null; configurable?: { hint: string } | null; builtin: boolean }
 interface Overview {
   sources: AdminSource[]
   counts: { total: number; published: number; hidden: number; archived: number; featured: number }
@@ -121,6 +121,25 @@ export default function EventsFeedAdminPage() {
 
 type RunFn = (key: string, fn: () => Promise<unknown>, ok?: string) => Promise<void>
 
+/** Feed URL for a configurable built-in source (Lu.ma, Eventbrite, Google / Microsoft / AWS events). */
+function SourceUrlField({ source, busy, run }: { source: AdminSource; busy: string | null; run: RunFn }) {
+  const [url, setUrl] = useState(source.config?.url || '')
+  const id = `src-url-${source.id}`
+  return (
+    <div className="mt-2 space-y-1">
+      <Label htmlFor={id} className="text-xs text-foreground">Feed URL</Label>
+      <div className="flex gap-1.5">
+        <Input id={id} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className="h-8 text-xs" maxLength={2048} />
+        <Button size="sm" variant="outline" className="h-8 px-2 text-xs" disabled={busy === `cfg:${source.id}` || url === (source.config?.url || '')}
+          onClick={() => run(`cfg:${source.id}`, () => api('/api/events-feed/admin/sources', 'POST', { action: 'configure', id: source.id, url: url.trim() }), url.trim() ? 'Feed URL saved' : 'Feed URL cleared')}>
+          Save
+        </Button>
+      </div>
+      <p className="text-[11px] leading-snug">{source.configurable?.hint}</p>
+    </div>
+  )
+}
+
 function SourcesTab({ ov, busy, run }: { ov: Overview; busy: string | null; run: RunFn }) {
   const [confirm, setConfirm] = useState<AdminSource | null>(null)
   const [feed, setFeed] = useState({ type: 'rss', name: '', url: '', kind: '', mode: '', country: '' })
@@ -153,6 +172,7 @@ function SourcesTab({ ov, busy, run }: { ov: Overview; busy: string | null; run:
                     {s.needs_permission && <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">{s.permission_confirmed_at ? 'Permission confirmed' : 'Needs permission'}</Badge>}
                   </div>
                   {s.terms}{s.requires && <div className="mt-1">Needs: {s.requires}</div>}
+                  {s.configurable && <SourceUrlField source={s} busy={busy} run={run} />}
                 </td>
                 <td className="p-4 text-xs">
                   <div className="text-foreground">{ago(s.last_run_at)}</div>
@@ -399,7 +419,7 @@ function SettingsTab({ ov, run, busy }: { ov: Overview; run: RunFn; busy: string
           <div className="space-y-1"><Label htmlFor="s-dh">Hour</Label><Input id="s-dh" type="number" min={0} max={23} value={f.digest_hour} onChange={(e) => setF({ ...f, digest_hour: Number(e.target.value) })} /></div>
           <div className="space-y-1"><Label htmlFor="s-tz">Time zone</Label><Input id="s-tz" value={f.digest_timezone} onChange={(e) => setF({ ...f, digest_timezone: e.target.value })} /></div>
         </div>
-        {bool('digest_enabled', 'Weekly email digest')}
+        {bool('digest_enabled', 'Weekly digest (email, plus WhatsApp for people who chose weekly)')}
         {bool('alerts_enabled', 'Instant WhatsApp alerts for new events')}
         {bool('reminders_enabled', 'Deadline reminders (48 h before)')}
         {bool('ai_summaries_enabled', 'AI summaries for long descriptions')}
@@ -409,6 +429,7 @@ function SettingsTab({ ov, run, busy }: { ov: Overview; run: RunFn; busy: string
         <p className="text-xs text-muted-foreground">Uses the Meta WhatsApp Cloud API keys from Settings → Hiring integrations. Without them, messages go to a simulated outbox. Template names must match templates approved in WhatsApp Manager.</p>
         <div className="space-y-1"><Label htmlFor="w-alert">New-event alert template</Label><Input id="w-alert" value={f.whatsapp_template_alert} onChange={(e) => setF({ ...f, whatsapp_template_alert: e.target.value })} placeholder="event_alert" /></div>
         <div className="space-y-1"><Label htmlFor="w-rem">Deadline reminder template</Label><Input id="w-rem" value={f.whatsapp_template_reminder} onChange={(e) => setF({ ...f, whatsapp_template_reminder: e.target.value })} placeholder="event_deadline_reminder" /></div>
+        <div className="space-y-1"><Label htmlFor="w-dig">Weekly “hackathons this week” template</Label><Input id="w-dig" value={f.whatsapp_template_digest} onChange={(e) => setF({ ...f, whatsapp_template_digest: e.target.value })} placeholder="events_weekly" /><p className="text-xs text-muted-foreground">{'{{1}}'} = summary, {'{{2}}'} = events link. For people who chose weekly WhatsApp.</p></div>
         <div className="space-y-1"><Label htmlFor="w-opt">Opt-in confirmation template</Label><Input id="w-opt" value={s.whatsapp_optin_template} onChange={(e) => setS({ ...s, whatsapp_optin_template: e.target.value })} placeholder="updates_optin" /></div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1"><Label htmlFor="w-lang">Template language</Label><Input id="w-lang" value={s.whatsapp_template_language} onChange={(e) => setS({ ...s, whatsapp_template_language: e.target.value })} placeholder="en" /></div>

@@ -7,7 +7,7 @@
  * Saves `sections` through PATCH /api/exams; rules in lib/exam-sections.ts.
  */
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, GripVertical, Layers, Loader2, Plus, Save, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Brain, GripVertical, Layers, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,8 +19,9 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { MAX_SECTIONS, MAX_SECTION_MINUTES, normalizeSections, type ExamSection } from '@/lib/exam-sections'
 import { isScoredType, metaFor } from '@/lib/question-types'
+import { aptitudeSections } from '@/lib/question-extensions'
 
-interface QuestionLite { id: string; title: string; type: string; score?: number }
+interface QuestionLite { id: string; title: string; type: string; score?: number; aptitude_area?: string }
 
 const UNASSIGNED = '__none__'
 
@@ -67,6 +68,12 @@ export function SectionsEditor({
     update([...sections, { id: newSectionId(), title: `Section ${sections.length + 1}`, time_limit_minutes: null, lock_after_leave: false, question_ids: [] }])
   }
   const removeSection = (i: number) => update(sections.filter((_, j) => j !== i))
+  // Aptitude tests: one locked, timed section per area (Quant → Logical → Verbal), from each question's aptitude area.
+  const hasAptitude = questions.some((q) => !!q.aptitude_area)
+  const buildAptitude = () => {
+    const built = aptitudeSections(questions)
+    if (built.length) update(built)
+  }
   const move = (from: number, to: number) => {
     if (to < 0 || to >= sections.length || from === to) return
     const next = [...sections]
@@ -160,7 +167,12 @@ export function SectionsEditor({
             Split the test into ordered parts, each with its own timer if you like. Leave this empty for a single, untimed-by-section test.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {hasAptitude && (
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={buildAptitude} title="Replace the sections with one 20-minute section per aptitude area. Adjust the times before saving.">
+              <Brain className="h-4 w-4" aria-hidden /> Aptitude sections
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={addSection} disabled={sections.length >= MAX_SECTIONS}>
             <Plus className="h-4 w-4" aria-hidden /> Add section
           </Button>

@@ -27,6 +27,8 @@ export interface Connector {
   needsPermission: boolean
   /** Credentials / config it needs before it can run (shown in admin). */
   requires?: string
+  /** Built-in source that reads a feed URL an admin sets (Admin → Sources). */
+  configurable?: { hint: string }
   fetch(ctx: ConnectorCtx): Promise<ExternalEvent[]>
 }
 

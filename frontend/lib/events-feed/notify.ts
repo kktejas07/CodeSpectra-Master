@@ -3,7 +3,9 @@
  *  - Instant alerts (WhatsApp): new published events matching a subscriber's
  *    filters, first seen in the last 48 h, max 3 per person per run; quiet
  *    hours defer to the next run. Email subscribers get these in the digest.
- *  - Weekly digest (email): new this week + registration closing within 7 days.
+ *  - Weekly digest (email): new this week, happening this week, registration
+ *    closing within 7 days. WhatsApp subscribers who chose `frequency: 'weekly'`
+ *    get one "hackathons this week" message instead of instant alerts.
  *  - Deadline reminders (email + WhatsApp): 48 h before registration closes, for
  *    events the person saved.
  * Every send is idempotent per (subscriber, type, ref, channel) via the
@@ -45,8 +47,11 @@ export function alertCandidates(events: FeedEventDoc[], now: Date): FeedEventDoc
   return events.filter((e) => upcoming(e, now) && Date.parse(e.first_seen_at) >= t - ALERT_WINDOW_MS && (!e.starts_at || Date.parse(e.starts_at) > t))
 }
 
+/** Pure: does this subscriber want instant WhatsApp alerts (default) or the weekly message? */
+export const wantsWeekly = (sub: Pick<SubscriberDoc, 'filters'>) => sub.filters?.events?.frequency === 'weekly'
+
 /** Pure: what goes into one subscriber's weekly digest. */
-export function selectDigest(events: FeedEventDoc[], sub: Pick<SubscriberDoc, 'filters'>, now: Date, opts: { maxNew?: number; maxClosing?: number } = {}) {
+export function selectDigest(events: FeedEventDoc[], sub: Pick<SubscriberDoc, 'filters'>, now: Date, opts: { maxNew?: number; maxClosing?: number; maxThisWeek?: number } = {}) {
   const t = now.getTime()
   const mine = events.filter((e) => upcoming(e, now) && matchesEventFilters(filterable(e), sub.filters?.events))
   const byStart = (a: FeedEventDoc, b: FeedEventDoc) => (a.featured !== b.featured ? (a.featured ? -1 : 1) : (Date.parse(a.starts_at || '') || Infinity) - (Date.parse(b.starts_at || '') || Infinity))
@@ -56,7 +61,24 @@ export function selectDigest(events: FeedEventDoc[], sub: Pick<SubscriberDoc, 'f
     .filter((e) => !freshIds.has(e.id) && e.registration_deadline && Date.parse(e.registration_deadline) >= t && Date.parse(e.registration_deadline) <= t + 7 * DAY)
     .sort((a, b) => Date.parse(a.registration_deadline!) - Date.parse(b.registration_deadline!))
     .slice(0, opts.maxClosing ?? 5)
-  return { fresh, closing }
+  const shown = new Set([...freshIds, ...closing.map((e) => e.id)])
+  // "Hackathons this week": starting in the next 7 days, not already listed above.
+  const thisWeek = mine
+    .filter((e) => !shown.has(e.id) && e.starts_at && Date.parse(e.starts_at) >= t && Date.parse(e.starts_at) <= t + 7 * DAY)
+    .sort(byStart)
+    .slice(0, opts.maxThisWeek ?? 5)
+  return { fresh, closing, thisWeek }
+}
+
+/** Pure: plain-text weekly WhatsApp message (one line per event, max 6). */
+export function weeklyWhatsAppText(fresh: FeedEventDoc[], closing: FeedEventDoc[], thisWeek: FeedEventDoc[], tz: string, link: string): string {
+  const line = (e: FeedEventDoc, note?: string) => `• ${e.title} — ${formatRange(e.starts_at, e.ends_at, tz)}${note ? ` (${note})` : ''}`
+  const rows = [
+    ...thisWeek.map((e) => line(e, 'this week')),
+    ...closing.map((e) => line(e, 'registration closing')),
+    ...fresh.map((e) => line(e, 'new')),
+  ].slice(0, 6)
+  return `Hackathons this week on CodeSpectra:\n${rows.join('\n')}\n\nAll events: ${link}\n\nReply STOP to stop these messages.`
 }
 
 /** Pure: saved events whose registration closes within the next 48 h. */
@@ -80,10 +102,10 @@ function cardHtml(e: FeedEventDoc): string {
   </div>`
 }
 
-export function digestHtml(intro: string, fresh: FeedEventDoc[], closing: FeedEventDoc[]): string {
+export function digestHtml(intro: string, fresh: FeedEventDoc[], closing: FeedEventDoc[], thisWeek: FeedEventDoc[] = []): string {
   const sec = (title: string, list: FeedEventDoc[]) => (list.length ? `<h2 style="font-size:16px;margin:20px 0 10px;color:#0f1729">${escapeHtml(title)}</h2>${list.map(cardHtml).join('')}` : '')
   return `<p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#374151">${escapeHtml(intro)}</p>
-    ${sec('New this week', fresh)}${sec('Registration closing soon', closing)}
+    ${sec('Happening this week', thisWeek)}${sec('New this week', fresh)}${sec('Registration closing soon', closing)}
     <p style="margin:16px 0 0;font-size:13px"><a href="${escapeHtml(getAppOrigin())}/events" style="color:#2F5BE7">See all events</a></p>`
 }
 
@@ -107,6 +129,7 @@ export async function runAlerts(now: Date, settings: EventsFeedSettings): Promis
   if (!events.length) return rep
   const { recipientsFor, sendSubscriberWhatsApp } = await import('@/lib/subscriptions')
   for (const sub of await recipientsFor('events', 'whatsapp')) {
+    if (wantsWeekly(sub)) continue // gets the weekly message instead
     let sentThisRun = 0
     for (const e of events.filter((x) => matchesEventFilters(filterable(x), sub.filters?.events))) {
       if (sentThisRun >= MAX_ALERTS_PER_RUN) break
@@ -134,17 +157,32 @@ export async function runDigest(now: Date, settings: EventsFeedSettings, weekKey
   const rep = emptyReport()
   if (!settings.digest_enabled) return rep
   const events = await loadUpcoming(now)
-  const { recipientsFor, sendSubscriberEmail } = await import('@/lib/subscriptions')
+  const { recipientsFor, sendSubscriberEmail, sendSubscriberWhatsApp } = await import('@/lib/subscriptions')
   for (const sub of await recipientsFor('events', 'email')) {
-    const { fresh, closing } = selectDigest(events, sub, now)
-    if (!fresh.length && !closing.length) { rep.skipped++; continue }
+    const { fresh, closing, thisWeek } = selectDigest(events, sub, now)
+    if (!fresh.length && !closing.length && !thisWeek.length) { rep.skipped++; continue }
     const out = await sendSubscriberEmail(sub, {
       type: 'digest', ref: weekKey, topic: 'events',
-      subject: fillTemplate(settings.digest_subject, { count: String(fresh.length + closing.length), week: weekKey }),
+      subject: fillTemplate(settings.digest_subject, { count: String(fresh.length + closing.length + thisWeek.length), week: weekKey }),
       heading: 'Hackathons and coding events this week',
-      preheader: `${fresh.length} new, ${closing.length} closing soon`,
-      bodyHtml: digestHtml(settings.digest_intro, fresh, closing),
+      preheader: `${thisWeek.length} this week, ${fresh.length} new, ${closing.length} closing soon`,
+      bodyHtml: digestHtml(settings.digest_intro, fresh, closing, thisWeek),
       reason: 'You get this weekly email because you subscribed to CodeSpectra event updates.',
+    })
+    rep[out]++
+  }
+  // WhatsApp: only people who chose the weekly cadence (instant ones already got alerts).
+  const link = `${getAppOrigin()}/events`
+  const language = settings.whatsapp_template_digest ? await lang() : 'en'
+  for (const sub of await recipientsFor('events', 'whatsapp')) {
+    if (!wantsWeekly(sub)) continue
+    const { fresh, closing, thisWeek } = selectDigest(events, sub, now, { maxNew: 3, maxClosing: 3, maxThisWeek: 3 })
+    if (!fresh.length && !closing.length && !thisWeek.length) { rep.skipped++; continue }
+    const summary = `${thisWeek.length} this week, ${fresh.length} new, ${closing.length} closing soon`
+    const out = await sendSubscriberWhatsApp(sub, {
+      type: 'digest', ref: weekKey, topic: 'events', now,
+      text: weeklyWhatsAppText(fresh, closing, thisWeek, sub.timezone || 'UTC', link),
+      template: settings.whatsapp_template_digest ? { name: settings.whatsapp_template_digest, language, params: [summary, link] } : null,
     })
     rep[out]++
   }

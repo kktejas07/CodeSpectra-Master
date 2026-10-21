@@ -9,6 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
 import { RefreshCw, ClipboardCheck, Flag } from 'lucide-react'
+import { useSearchParams } from 'next/navigation'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { QuestionDraftsReview } from '@/components/question-bot/QuestionDraftsReview'
 
 interface ReviewTask {
   id: string
@@ -22,6 +25,11 @@ interface ReviewTask {
 
 export default function SMEReviewPage() {
   const gate = usePageGuard('tenant_admin')
+  // Question drafts (the platform bank) are superadmin only; ?tab=drafts opens them.
+  const isSuper = gate.user?.role === 'superadmin'
+  const tabParam = useSearchParams().get('tab')
+  const [tab, setTab] = useState('answers')
+  useEffect(() => { if (tabParam === 'drafts' && isSuper) setTab('drafts') }, [tabParam, isSuper])
   const [tasks, setTasks] = useState<ReviewTask[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -66,16 +74,33 @@ export default function SMEReviewPage() {
         actions={<Button variant="outline" size="sm" onClick={fetchData} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard label="Review tasks" value={tasks.length} icon={<ClipboardCheck />} />
-        <StatCard label="With flags" value={tasks.filter((t) => (t.flags || []).length > 0).length} icon={<Flag />} />
-      </div>
+      {(() => {
+        const answersView = (
+          <div className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <StatCard label="Review tasks" value={tasks.length} icon={<ClipboardCheck />} />
+              <StatCard label="With flags" value={tasks.filter((t) => (t.flags || []).length > 0).length} icon={<Flag />} />
+            </div>
 
-      {loading ? (
-        <SkeletonTable />
-      ) : (
-        <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyState={loadError ? { illustration: 'error', title: "Couldn't load review tasks", description: 'Check your connection and try again.', actionLabel: 'Try again', onAction: () => void fetchData() } : { illustration: 'assessment' }} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
-      )}
+            {loading ? (
+              <SkeletonTable />
+            ) : (
+              <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyState={loadError ? { illustration: 'error', title: "Couldn't load review tasks", description: 'Check your connection and try again.', actionLabel: 'Try again', onAction: () => void fetchData() } : { illustration: 'assessment' }} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
+            )}
+          </div>
+        )
+        if (!isSuper) return answersView
+        return (
+          <Tabs value={tab} onValueChange={setTab}>
+            <TabsList>
+              <TabsTrigger value="answers">Answers to grade</TabsTrigger>
+              <TabsTrigger value="drafts">Question drafts</TabsTrigger>
+            </TabsList>
+            <TabsContent value="answers" className="mt-6">{answersView}</TabsContent>
+            <TabsContent value="drafts" className="mt-6"><QuestionDraftsReview /></TabsContent>
+          </Tabs>
+        )
+      })()}
     </div>
   )
 }

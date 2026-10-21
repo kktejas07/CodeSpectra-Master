@@ -5,7 +5,7 @@ import { getSiteOrigin } from '@/lib/seo/settings'
 import { JsonLd } from '@/components/seo/json-ld'
 import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import DOMPurify from 'isomorphic-dompurify'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { blogPosts, categoryLabel } from '@/lib/db/blog-posts'
@@ -94,6 +94,8 @@ export default async function BlogArticlePage({
   const col = await blogPosts()
   const post = await col.findOne({ slug, status: 'published' })
   if (!post) notFound()
+  // Tech news (Signals) has its own section.
+  if (post.tags?.includes('signals')) permanentRedirect(`/news/${encodeURIComponent(post.slug)}`)
 
   const related = await col
     .find({ status: 'published', category: post.category, slug: { $ne: post.slug } })

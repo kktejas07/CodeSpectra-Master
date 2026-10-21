@@ -26,6 +26,9 @@ export type GradingKind =
   | 'exec' // code execution / LLM review (coding + variants)
   | 'llm' // free-text LLM / manual (descriptive)
   | 'unscored' // attitudinal, no right answer (likert, rating)
+  | 'composite' // linked objective sub-questions, score = sum (case_study)
+  | 'typing' // WPM + accuracy against author thresholds (typing_test)
+  | 'upload' // a file / recording a person marks (file_upload, video_response)
 
 export type QuestionType =
   // objective / auto-graded
@@ -55,8 +58,16 @@ export type QuestionType =
   | 'regex_config'
   | 'refactoring'
   | 'test_case_writing'
+  | 'theory_to_code'
+  | 'reverse_coding'
   // written / subjective
   | 'descriptive'
+  | 'system_design'
+  // wave 6: composite / media / skills
+  | 'case_study'
+  | 'video_response'
+  | 'file_upload'
+  | 'typing_test'
 
 export interface QuestionTypeMeta {
   label: string
@@ -71,6 +82,15 @@ export interface QuestionTypeMeta {
   /** Builder shows an editable options / item list. */
   hasOptions: boolean
   description: string
+  /**
+   * Marked without a person when true (objective keys, hidden tests, typing
+   * thresholds). Absent = derived: deterministic or code-execution types.
+   */
+  autoGraded?: boolean
+  /** Hidden test cases decide the score (Piston), like `coding`. */
+  hiddenTests?: boolean
+  /** Always ends with a human check, even after an AI suggestion. */
+  humanReview?: boolean
 }
 
 export const QUESTION_TYPE_META: Record<QuestionType, QuestionTypeMeta> = {
@@ -103,6 +123,14 @@ export const QUESTION_TYPE_META: Record<QuestionType, QuestionTypeMeta> = {
   test_case_writing: { label: 'Test-Case Writing', short: 'Tests', group: 'coding', kind: 'exec', deterministic: false, scored: true, hasOptions: false, description: 'Write test cases for given code / a spec.' },
   // ── Written ──
   descriptive: { label: 'Descriptive / Essay', short: 'Written', group: 'written', kind: 'llm', deterministic: false, scored: true, hasOptions: false, description: 'Long-form written response, essay, case study, or design prompt.' },
+  // ── Wave 6 ──
+  theory_to_code: { label: 'Theory to code', short: 'Theory→code', group: 'coding', kind: 'exec', deterministic: false, scored: true, hasOptions: false, autoGraded: true, hiddenTests: true, description: 'Read a concept, algorithm or paper summary, then implement it; scored by hidden tests.' },
+  reverse_coding: { label: 'Reverse coding (black box)', short: 'Reverse', group: 'coding', kind: 'exec', deterministic: false, scored: true, hasOptions: false, autoGraded: true, hiddenTests: true, description: 'Only input→output samples are shown (plus an optional black-box runner); write code that behaves the same.' },
+  system_design: { label: 'System design', short: 'Design', group: 'written', kind: 'llm', deterministic: false, scored: true, hasOptions: false, autoGraded: false, humanReview: true, description: 'Written design plus an optional text/mermaid diagram; AI-marked against your rubric, then checked by a person.' },
+  case_study: { label: 'Case study', short: 'Case', group: 'objective', kind: 'composite', deterministic: false, scored: true, hasOptions: false, autoGraded: true, description: 'One scenario with linked objective / short-answer sub-questions; score is the sum of the parts.' },
+  video_response: { label: 'Video response', short: 'Video', group: 'written', kind: 'upload', deterministic: false, scored: true, hasOptions: false, autoGraded: false, humanReview: true, description: 'Candidate records a short video answer in the browser; marked by a person.' },
+  file_upload: { label: 'File upload', short: 'File', group: 'written', kind: 'upload', deterministic: false, scored: true, hasOptions: false, autoGraded: false, humanReview: true, description: 'Candidate uploads a file of the types you allow; marked by a person.' },
+  typing_test: { label: 'Typing test', short: 'Typing', group: 'objective', kind: 'typing', deterministic: false, scored: true, hasOptions: false, autoGraded: true, description: 'Type a passage; marked on words per minute and accuracy against your thresholds.' },
 }
 
 /** Ordered list for builders / pickers. */
@@ -150,7 +178,14 @@ const TYPE_ALIASES: Record<string, QuestionType> = {
   regexconfig: 'regex_config', regex: 'regex_config', cli: 'regex_config', config: 'regex_config', configuration: 'regex_config', terminal: 'regex_config', shellcommand: 'regex_config',
   refactoring: 'refactoring', refactor: 'refactoring', optimization: 'refactoring', optimisation: 'refactoring', optimize: 'refactoring', optimise: 'refactoring',
   testcasewriting: 'test_case_writing', testcase: 'test_case_writing', testcases: 'test_case_writing', testcasewrite: 'test_case_writing', writetestcases: 'test_case_writing',
-  descriptive: 'descriptive', essay: 'descriptive', longanswer: 'descriptive', freetext: 'descriptive', written: 'descriptive', writtenresponse: 'descriptive', casestudy: 'descriptive', design: 'descriptive', shortessay: 'descriptive',
+  descriptive: 'descriptive', essay: 'descriptive', longanswer: 'descriptive', freetext: 'descriptive', written: 'descriptive', writtenresponse: 'descriptive', design: 'descriptive', shortessay: 'descriptive',
+  theorytocode: 'theory_to_code', implementalgorithm: 'theory_to_code', papertocode: 'theory_to_code', implementation: 'theory_to_code',
+  reversecoding: 'reverse_coding', blackbox: 'reverse_coding', reverseengineering: 'reverse_coding', blackboxcoding: 'reverse_coding',
+  systemdesign: 'system_design', architecture: 'system_design', designinterview: 'system_design',
+  casestudy: 'case_study', scenario: 'case_study', caselet: 'case_study',
+  videoresponse: 'video_response', video: 'video_response', videoanswer: 'video_response', recordvideo: 'video_response',
+  fileupload: 'file_upload', upload: 'file_upload', fileanswer: 'file_upload', attachment: 'file_upload',
+  typingtest: 'typing_test', typing: 'typing_test', typingspeed: 'typing_test', wpm: 'typing_test',
 }
 
 /** Normalize a raw type string to the alias-lookup form. */
@@ -192,4 +227,21 @@ export function isDeterministicType(raw: unknown): boolean {
 
 export function isScoredType(raw: unknown): boolean {
   return metaFor(raw).scored
+}
+
+/** Marked without a person (objective keys, hidden tests, typing thresholds). */
+export function isAutoGradedType(raw: unknown): boolean {
+  const m = metaFor(raw)
+  return m.autoGraded ?? (m.deterministic || m.kind === 'exec')
+}
+
+/** Hidden test cases decide the score (coding, theory_to_code, reverse_coding). */
+export function runsHiddenTests(raw: unknown): boolean {
+  const t = canonicalType(raw)
+  return t === 'coding' || QUESTION_TYPE_META[t].hiddenTests === true
+}
+
+/** Always finishes with a person's check (system design, uploads, video). */
+export function needsHumanReview(raw: unknown): boolean {
+  return metaFor(raw).humanReview === true
 }

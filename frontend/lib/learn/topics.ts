@@ -153,6 +153,75 @@ export const SEED_TOPICS: Record<LearnCategoryId, SeedRow[]> = {
     ['Reading other people\'s code', 'beginner', []],
     ['Technical writing for engineers', 'intermediate', []],
   ],
+  languages: [
+    ['When to use Python', 'beginner', ['python'], 'Python'],
+    ['Your first Python project: an expense tracker CLI', 'beginner', ['python'], 'Python'],
+    ['Python interview questions', 'intermediate', ['python'], 'Python'],
+    ['When to use Java', 'beginner', ['java'], 'Java'],
+    ['Your first Java project: a library management console app', 'beginner', ['java'], 'Java'],
+    ['Java interview questions', 'intermediate', ['java'], 'Java'],
+    ['When to use JavaScript and TypeScript', 'beginner', ['javascript', 'typescript'], 'JavaScript and TypeScript'],
+    ['Your first TypeScript project: a to-do web app', 'beginner', ['javascript', 'typescript'], 'JavaScript and TypeScript'],
+    ['JavaScript and TypeScript interview questions', 'intermediate', ['javascript', 'typescript'], 'JavaScript and TypeScript'],
+    ['When to use C++', 'beginner', ['c++'], 'C++'],
+    ['Your first C++ project: a terminal snake game', 'intermediate', ['c++'], 'C++'],
+    ['C++ interview questions: memory, pointers and the STL', 'intermediate', ['c++'], 'C++'],
+    ['When to use Go', 'beginner', ['go'], 'Go'],
+    ['Your first Go project: a website uptime checker', 'beginner', ['go'], 'Go'],
+    ['Go interview questions: goroutines and channels', 'intermediate', ['go'], 'Go'],
+    ['When to use Rust', 'beginner', ['rust'], 'Rust'],
+    ['Your first Rust project: a word-count CLI', 'intermediate', ['rust'], 'Rust'],
+    ['Rust interview questions: ownership and borrowing', 'advanced', ['rust'], 'Rust'],
+    ['When to use Kotlin', 'beginner', ['kotlin'], 'Kotlin'],
+    ['Your first Kotlin project: an Android notes app', 'beginner', ['kotlin', 'android'], 'Kotlin'],
+    ['Kotlin interview questions: null safety and coroutines', 'intermediate', ['kotlin'], 'Kotlin'],
+    ['When to use SQL', 'beginner', ['sql'], 'SQL'],
+    ['Your first SQL project: analysing a sales dataset', 'beginner', ['sql'], 'SQL'],
+    ['SQL interview questions: window functions and GROUP BY', 'intermediate', ['sql'], 'SQL'],
+  ],
+  technologies: [
+    ['React fundamentals: components, props and state', 'beginner', ['react', 'javascript'], 'Frontend stack'],
+    ['React hooks in practice', 'intermediate', ['react'], 'Frontend stack'],
+    ['Next.js App Router: routing, layouts and server components', 'intermediate', ['next.js', 'react'], 'Frontend stack'],
+    ['Server rendering vs static generation in Next.js', 'intermediate', ['next.js'], 'Frontend stack'],
+    ['Node.js and the event loop', 'intermediate', ['node.js', 'javascript'], 'Backend stack'],
+    ['Building a REST API with Node.js and Express', 'beginner', ['node.js', 'rest'], 'Backend stack'],
+    ['Spring Boot: your first REST service', 'beginner', ['spring boot', 'java'], 'Backend stack'],
+    ['Spring Boot with JPA and a relational database', 'intermediate', ['spring boot', 'sql'], 'Backend stack'],
+    ['Docker for application developers: images, volumes and Compose', 'beginner', ['docker'], 'Shipping to production'],
+    ['Deploying an app to Kubernetes: deployments, services and ingress', 'intermediate', ['kubernetes'], 'Shipping to production'],
+    ['AWS essentials: EC2, S3, Lambda and IAM', 'beginner', ['aws', 'cloud'], 'Cloud platforms'],
+    ['Azure essentials: App Service, Blob Storage and Entra ID', 'beginner', ['azure', 'cloud'], 'Cloud platforms'],
+    ['Google Cloud essentials: Cloud Run, Cloud Storage and BigQuery', 'beginner', ['gcp', 'cloud'], 'Cloud platforms'],
+    ['Choosing between AWS, Azure and GCP', 'intermediate', ['aws', 'azure', 'gcp'], 'Cloud platforms'],
+    ['How large language models work, for developers', 'intermediate', ['llm'], 'Building with LLMs'],
+    ['Building an LLM app with retrieval end to end', 'advanced', ['llm', 'rag'], 'Building with LLMs'],
+    ['Function calling and tool-using AI agents', 'intermediate', ['llm', 'agents'], 'Building with LLMs'],
+    ['Data engineering fundamentals: ETL, ELT and pipelines', 'beginner', ['data engineering'], 'Data engineering'],
+    ['Batch vs stream processing with Spark and Kafka', 'intermediate', ['data engineering', 'kafka', 'spark'], 'Data engineering'],
+    ['Data warehouses and lakehouses', 'intermediate', ['data engineering', 'sql'], 'Data engineering'],
+  ],
+  'competitions-careers': [
+    ['Why join hackathons as a student', 'beginner', ['hackathon'], 'Hackathons'],
+    ['Hackathon vs codeathon vs CTF: which one to join', 'beginner', ['hackathon', 'ctf'], 'Hackathons'],
+    ['Building a hackathon team', 'beginner', ['hackathon'], 'Hackathons'],
+    ['How to win a hackathon', 'intermediate', ['hackathon'], 'Hackathons'],
+    ['Pitching and demoing your hackathon project', 'beginner', ['hackathon'], 'Hackathons'],
+    ['Turning a hackathon project into a portfolio piece', 'beginner', ['hackathon', 'portfolio'], 'Hackathons'],
+    ['What a datathon is and how to prepare', 'beginner', ['datathon', 'data science']],
+    ['Ideathons: pitching an idea without writing code', 'beginner', ['ideathon']],
+    ['Competitive programming contests: getting started', 'beginner', ['competitive programming']],
+    ['CTF basics: categories, tools and your first flag', 'beginner', ['ctf', 'security'], 'Capture the flag'],
+    ['Web exploitation challenges in CTFs', 'intermediate', ['ctf', 'security'], 'Capture the flag'],
+    ['Open-source sprints and your first contribution', 'beginner', ['open source', 'git'], 'Open source'],
+    ['Google Summer of Code and other open-source programmes', 'beginner', ['open source'], 'Open source'],
+    ['How company exams like TCS NQT work', 'beginner', ['aptitude', 'campus hiring'], 'Campus hiring'],
+    ['Preparing for aptitude and logical reasoning tests', 'beginner', ['aptitude'], 'Campus hiring'],
+    ['Online coding assessments in campus placements', 'intermediate', ['campus hiring', 'coding test'], 'Campus hiring'],
+    ['Landing your first internship', 'beginner', ['internship']],
+    ['Off-campus job hunting for freshers', 'beginner', ['job search']],
+    ['Building a project portfolio that gets interviews', 'beginner', ['portfolio']],
+  ],
 }
 
 const STOPWORDS = new Set(['a', 'an', 'the', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'with', 'how', 'what', 'is', 'vs', 'versus', 'it', 'your', 'do', 'done', 'right', 'introduction', 'intro', 'guide', 'basics', 'explained', 'understanding'])
@@ -237,6 +306,24 @@ export function seedTopicRows(): Array<Pick<LearnTopicDoc, 'title' | 'category' 
       if (series) seriesCount.set(series, order!)
       out.push({ title, category, level, tags, series: series ?? null, series_order: order, hash: topicHash(title, category), priority: 0 })
     }
+  }
+  return out
+}
+
+/**
+ * Seed rows not in the database yet (pure). A row is skipped when its hash is
+ * already stored, or when its title duplicates a stored topic in ANY category
+ * (e.g. a new "Docker" topic vs an admin's existing one) — so new seed
+ * categories can be added to a live database without duplicates.
+ */
+export function missingSeedRows(existing: readonly { hash: string; title: string }[]): ReturnType<typeof seedTopicRows> {
+  const hashes = new Set(existing.map((t) => t.hash))
+  const titles = existing.map((t) => t.title)
+  const out: ReturnType<typeof seedTopicRows> = []
+  for (const r of seedTopicRows()) {
+    if (hashes.has(r.hash) || findDuplicateTitle(r.title, titles)) continue
+    out.push(r)
+    titles.push(r.title)
   }
   return out
 }

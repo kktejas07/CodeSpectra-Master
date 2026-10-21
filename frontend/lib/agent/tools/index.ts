@@ -20,6 +20,10 @@ import {
   createCodeathonTool, releaseCodeathonResultsTool,
 } from './write/events'
 import { createProblemTool } from './write/problems'
+import { createContestTool, publishContestTool, releaseContestResultsTool } from './write/contests'
+import { getQuestionCoverageTool } from './read/question-bot'
+import { runQuestionBotTool } from './write/question-bot'
+import { buildCompanyTestTool } from './write/company-tests'
 import {
   listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
 } from './read/ats'
@@ -43,7 +47,7 @@ export const ALL_TOOLS: AnyTool[] = [
   searchKnowledgeTool,
   listTestsTool, getTestTool, getTestResultsTool, getCandidateTool, listInvitesTool,
   listHackathonsTool, getHackathonTool, listCodeathonsTool, getCodeathonTool,
-  searchQuestionBankTool, searchProblemsTool,
+  searchQuestionBankTool, searchProblemsTool, getQuestionCoverageTool,
   getAnalyticsTool, getPlanUsageTool,
   // hiring pipeline (ATS)
   listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
@@ -53,10 +57,12 @@ export const ALL_TOOLS: AnyTool[] = [
   listWorkflowsTool, listWorkflowRunsTool, listWorkflowTemplatesTool, getCopilotUsageTool, getPlatformKpisTool,
   // write
   createTestTool, updateTestTool, publishTestTool,
+  buildCompanyTestTool,
   inviteCandidatesTool, sendRemindersTool,
   releaseScoresTool, recordOutcomesTool, shortlistCandidatesTool,
   createHackathonTool, updateHackathonTool, publishHackathonTool, assignJudgesTool, releaseHackathonResultsTool,
   createCodeathonTool, releaseCodeathonResultsTool,
+  createContestTool, publishContestTool, releaseContestResultsTool,
   createProblemTool,
   revokeCertificateTool,
   createJobTool, updateJobTool, setJobStatusTool, moveApplicationStageTool, rejectApplicationTool, shortlistApplicantsTool,
@@ -64,6 +70,7 @@ export const ALL_TOOLS: AnyTool[] = [
   moderateProductTool, decideRefundTool, decidePayoutTool, generateLearnDraftTool, setLearnPostStatusTool, setFeedEventVisibilityTool,
   createWorkflowFromTemplateTool, setWorkflowEnabledTool, rerunWorkflowRunTool, scheduleAgentTaskTool,
   updateCodeathonTool, publishCodeathonTool, updateProblemTool, publishProblemTool, addQuestionsToBankTool,
+  runQuestionBotTool,
 ]
 
 const BY_NAME = new Map<string, AnyTool>(ALL_TOOLS.map((t) => [t.name, t]))

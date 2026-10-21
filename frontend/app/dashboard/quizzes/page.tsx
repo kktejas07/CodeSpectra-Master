@@ -13,11 +13,12 @@ import { AllFiltersDialog, type FilterState } from '@/components/listings/all-fi
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { MOCK_TESTS, mockTestQuery } from '@/lib/mock-tests'
+import { MOCK_TESTS, mockTestHref } from '@/lib/mock-tests'
 
 // One catalogue with Mock Tests (A-049 / CORE-002): every mock test is a quiz here, so
-// nothing is missing or duplicated when the catalogue changes.
-const QUIZZES = MOCK_TESTS.map((t) => ({ ...t, href: `/dashboard/mock-tests/${t.id}?${mockTestQuery(t.company, t.role)}` }))
+// nothing is missing or duplicated when the catalogue changes. Entries tied to a company
+// exam pattern open the timed, sectioned practice run.
+const QUIZZES = MOCK_TESTS.map((t) => ({ ...t, href: mockTestHref(t) }))
 const CATEGORIES = [...new Set(MOCK_TESTS.map((t) => t.type as string))]
 const LEVELS = [...new Set(MOCK_TESTS.map((t) => t.level as string))]
 
@@ -121,7 +122,7 @@ export default function QuizzesPage() {
                   <Badge variant="outline">{item.type}</Badge>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">{item.role}</p>
-                <p className="mt-3 text-xs text-muted-foreground">{item.level}</p>
+                <p className="mt-3 text-xs text-muted-foreground">{item.level}{item.pattern ? ' · real test pattern, timed sections' : ''}</p>
               </Panel>
             </Link>
           ))}

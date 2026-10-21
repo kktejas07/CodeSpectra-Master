@@ -62,6 +62,8 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
   '/dashboard/admin/question-generator',
+  '/dashboard/admin/question-bot',
+  '/dashboard/admin/company-patterns',
   '/dashboard/admin/courses',
   '/dashboard/admin/courses/[id]',
   '/dashboard/admin/cron-jobs',
@@ -129,6 +131,8 @@ export const EVENT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/hackathons/create',
   '/dashboard/admin/hackathons/edit',
   '/dashboard/admin/codeathons',
+  // Hosted contests (lib/contests): /api/contests* scope company admins to their organisation.
+  '/dashboard/admin/contests',
 ]
 
 /**
@@ -205,6 +209,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/interviews/ai-mock/setup',
   '/dashboard/mock-tests',
   '/dashboard/mock-tests/history',
+  '/dashboard/company-tests/[patternId]',
   '/dashboard/resumes',
   '/dashboard/assessments',
   '/dashboard/assessments/ai-fluency',
@@ -311,6 +316,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/jobs': 'Jobs',
   '/dashboard/admin/resumes': 'Resumes',
   '/dashboard/admin/codeathons': 'Codeathons',
+  '/dashboard/admin/contests': 'Contests',
   '/dashboard/admin/coupons': 'Coupons',
   '/dashboard/admin/assessments': 'Assessments',
   '/dashboard/admin/assessments/bulk': 'Invite candidates',
@@ -321,6 +327,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/cron-jobs': 'Cron jobs',
   '/dashboard/admin/automations': 'Automations',
   '/dashboard/admin/question-generator': 'Question generator',
+  '/dashboard/admin/question-bot': 'Question bot',
+  '/dashboard/admin/company-patterns': 'Company patterns',
   '/dashboard/admin/courses': 'Course management',
   '/dashboard/admin/courses/[id]': 'Edit course',
   '/dashboard/admin/hackathons/create': 'Create hackathon',
@@ -368,6 +376,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/interviews/ai-mock/setup': 'AI Mock Setup',
   '/dashboard/mock-tests': 'Mock Tests',
   '/dashboard/mock-tests/history': 'Mock Test History',
+  '/dashboard/company-tests/[patternId]': 'Company practice test',
   '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',

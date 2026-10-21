@@ -379,15 +379,25 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     await job('learn', minute, async () => (await import('./learn/generate')).runLearnTick(now), { leaseMs: 10 * 60_000 })
     // Events feed (lib/events-feed/tick.ts): source pulls, WhatsApp alerts + reminders, weekly digest.
     await job('events-feed', minute, async () => (await import('./events-feed/tick')).tickEventsFeed(now), { leaseMs: 10 * 60_000 })
+    // Tech news (lib/signals/digest.ts): daily digest to opted-in 'news' subscribers at the configured local hour.
+    const nd = await import('./signals/digest')
+    const newsDay = await nd.newsDigestDue(now).catch(() => null)
+    if (newsDay) await job('news-digest', newsDay, async () => nd.runNewsDigest(now, newsDay), { maxAttempts: 3, retryAfterMs: 10 * 60_000, leaseMs: 20 * 60_000 })
     // Analytics (lib/analytics/rollup.ts): mirror the automation outbox into analytics events,
     // rebuild today's / yesterday's daily rollups, backfill missing days. Once per 15 minutes.
     await job('analytics', `${iso.slice(0, 13)}q${Math.floor(now.getUTCMinutes() / 15)}`, async () => (await import('./analytics/rollup')).runAnalyticsTick(now), { leaseMs: 10 * 60_000 })
     // SEO (lib/seo/indexnow.ts): submit public URLs changed since the last successful
     // submit to IndexNow. No-op until enabled in Admin → Settings → SEO. Once per 10 minutes.
     await job('seo-indexnow', `${iso.slice(0, 15)}x`, async () => (await import('./seo/indexnow')).runIndexNowSweep(now), { leaseMs: 5 * 60_000 })
+    // Question bank bot (lib/question-bot/run.ts): nightly gap-filling drafts within the daily +
+    // monthly AI caps. Off until enabled in Admin → Question bot; once per UTC day from its run hour.
+    const qb = await import('./question-bot/run')
+    if (await qb.questionBotDue(now).catch(() => false)) {
+      await job('question-bot', dayWindow(now), async () => qb.runQuestionBot({ trigger: 'cron', now }), { maxAttempts: 2, retryAfterMs: 30 * 60_000, leaseMs: 30 * 60_000 })
+    }
   }
   if (opts.heavyInBackground) {
-    report.background = ['learn', 'events-feed', 'analytics', 'seo-indexnow']
+    report.background = ['learn', 'events-feed', 'news-digest', 'analytics', 'seo-indexnow', 'question-bot']
     void heavy().catch((e) => console.error('[scheduler] content lane error:', e))
   } else {
     await heavy()

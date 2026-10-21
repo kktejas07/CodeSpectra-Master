@@ -11,6 +11,8 @@
  *  - ordering / ranking / matrix / table_fill → comma-separated CSV string
  *  - matching / drag_drop → JSON string `{ left: right, ... }`
  *  - coding + variants → JSON string `{ language, code }`
+ *  - wave 6 (system_design, case_study, typing_test, file_upload,
+ *    video_response) → JSON envelopes, see lib/question-extensions.ts
  *
  * ponytail: click/dropdown/reorder-button interactions only (no HTML5
  * drag-and-drop yet) — see Phase 2 decision. Hotspot regions are percentages
@@ -21,6 +23,8 @@ import { CodingQuestionEditor } from '@/components/assessment/CodingQuestionEdit
 import { normalizeCodeLang } from '@/lib/code-languages'
 import { canonicalType, metaFor } from '@/lib/question-types'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { BlackBoxRunner, ExtendedAnswerInput, type ExamContext, type ExtendedQuestion } from '@/components/assessment/ExtendedAnswerInput'
+import { EXTENDED_INPUT_TYPES } from '@/lib/question-extensions'
 
 export interface AnswerQuestion {
   id: string
@@ -35,6 +39,13 @@ export interface AnswerQuestion {
   regions?: { id: string; x: number; y: number; w: number; h: number; label?: string }[]
   language?: string
   starter_code?: string
+  /** Wave 6 fields (sub_questions, typing, upload, video, black_box_runs, allow_diagram). */
+  sub_questions?: ExtendedQuestion['sub_questions']
+  typing?: ExtendedQuestion['typing']
+  upload?: ExtendedQuestion['upload']
+  video?: ExtendedQuestion['video']
+  black_box_runs?: number
+  allow_diagram?: boolean
 }
 
 export interface QuestionAnswerInputProps {
@@ -45,6 +56,8 @@ export interface QuestionAnswerInputProps {
   shuffledOptions?: string[]
   readOnly?: boolean
   showSavedBadge?: boolean
+  /** Live test only: lets uploads, recordings and the black-box runner reach the exam API. */
+  examContext?: ExamContext
 }
 
 function asCsv(value: string | string[] | undefined): string[] {
@@ -70,10 +83,20 @@ function SavedBadge({ show }: { show?: boolean }) {
 
 const inputCls = 'w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm'
 
-export function QuestionAnswerInput({ question, value, onChange, shuffledOptions, readOnly, showSavedBadge }: QuestionAnswerInputProps) {
+export function QuestionAnswerInput({ question, value, onChange, shuffledOptions, readOnly, showSavedBadge, examContext }: QuestionAnswerInputProps) {
   const type = canonicalType(question.type)
   const meta = metaFor(type)
   const kind = meta.kind
+
+  // ── Wave 6: system design, case study, typing, file upload, video ──
+  if (EXTENDED_INPUT_TYPES.has(type)) {
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-end"><SavedBadge show={showSavedBadge} /></div>
+        <ExtendedAnswerInput question={question} value={value} onChange={onChange} readOnly={readOnly} examContext={examContext} SubInput={QuestionAnswerInput} />
+      </div>
+    )
+  }
 
   // ── Hotspot: click the correct image region ──
   if (type === 'hotspot') {
@@ -416,7 +439,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         <pre className="w-full min-h-32 p-4 text-sm bg-card text-foreground rounded-lg border border-border overflow-auto font-mono">{code || '— no answer —'}</pre>
       )
     }
-    return (
+    const editor = (
       <CodingQuestionEditor
         question={{ ...question, starter_code: question.starter_code } as never}
         answer={code}
@@ -426,6 +449,16 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
         onLanguageChange={(nextLang) => writeAnswer(nextLang, code)}
       />
     )
+    // Reverse coding: optional black box that runs the hidden reference on the candidate's input.
+    if (type === 'reverse_coding' && (question.black_box_runs || 0) > 0) {
+      return (
+        <div className="space-y-4">
+          {editor}
+          <BlackBoxRunner questionId={question.id} runs={question.black_box_runs || 0} examContext={examContext} />
+        </div>
+      )
+    }
+    return editor
   }
 
   // ── Descriptive / written (fallback) ──

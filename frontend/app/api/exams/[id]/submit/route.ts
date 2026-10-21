@@ -7,9 +7,12 @@ import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
 import { compareObjectiveAnswer } from '@/lib/grading'
 import { isScoredType, isDeterministicType } from '@/lib/question-types'
+import { gradeInstant, traitScores } from '@/lib/grading-extended'
 import { attemptTimeState, checkExamEntry, checkIdentityForAttempt, extensionRequired, getExamDraft, identitySummary, recordExamAttempt, sectionsAtSubmit, EXAM_SUBMIT_GRACE_MS } from '@/lib/exam-access'
 
 import { toMediaRef } from '@/lib/identity-media'
+import { isAdaptiveExam } from '@/lib/adaptive-test'
+import { adaptiveSubmission, examAdaptiveLength, type AdaptiveState } from '@/lib/adaptive-test-server'
 import { clientIpOrEmpty } from '@/lib/client-ip'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -164,11 +167,24 @@ export async function POST(
     }
     let totalScore = 0
     let maxScore = 0
-    const details: Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review: boolean }> = []
+    const details: Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; graded_by?: string }> = []
 
     let hasPendingReview = false
 
-    for (const q of questions) {
+    // Adaptive test: each answer was graded when it came in (POST ./adaptive);
+    // the score weights difficulty (lib/adaptive-test.ts). The browser's answers are ignored.
+    const adaptiveRun = isAdaptiveExam(exam as Record<string, unknown>)
+      ? adaptiveSubmission(draft?.adaptive as AdaptiveState | undefined, examAdaptiveLength(exam as Record<string, unknown>))
+      : null
+    if (adaptiveRun) {
+      for (const k of Object.keys(answers)) delete answers[k]
+      Object.assign(answers, adaptiveRun.answers)
+      totalScore = adaptiveRun.score
+      maxScore = adaptiveRun.maxScore
+      details.push(...adaptiveRun.details)
+    }
+
+    for (const q of (adaptiveRun ? [] : questions)) {
       const points = q.points || q.score || 10
       const scored = isScoredType(q.type)
       if (scored) maxScore += points
@@ -176,11 +192,19 @@ export async function POST(
 
       let correct = false
       let pendingReview = false
+      // Wave 6: case study (sum of sub-scores) and typing test are marked now, with partial credit.
+      const instant = scored && userAnswer ? gradeInstant(q, userAnswer, points) : null
 
       if (!scored) {
         // Attitudinal scales (Likert/rating) are recorded but never graded and
         // never counted toward the max score.
         correct = false
+      } else if (instant) {
+        correct = instant.awarded > 0
+        if (instant.requires_human_review) {
+          pendingReview = true
+          hasPendingReview = true
+        }
       } else if (isDeterministicType(q.type)) {
         // All objective kinds (choice/multi/blanks/numeric/text/sequence/
         // pairs/matrix/table) go through one grader so submit and AI-grade
@@ -200,8 +224,12 @@ export async function POST(
         hasPendingReview = true
       }
 
-      if (correct && scored) totalScore += points
-      details.push({ qId: q.id, correct, points, answer: userAnswer, pending_review: pendingReview })
+      if (instant) totalScore += instant.awarded
+      else if (correct && scored) totalScore += points
+      details.push({
+        qId: q.id, correct, points, answer: userAnswer, pending_review: pendingReview,
+        ...(instant ? { awarded: instant.awarded, remarks: instant.feedback, requires_human_review: !!instant.requires_human_review, graded_by: 'auto' } : {}),
+      })
     }
 
     // Identity photos: stored encrypted outside the submission (lib/identity-media.ts, A-011/A-042);
@@ -230,6 +258,9 @@ export async function POST(
       face_photo: facePhotoRef,
       identity_check: identitySummary(identityRecord),
       details,
+      ...(adaptiveRun ? { adaptive: adaptiveRun.summary } : {}),
+      // Psychometric Likert items (trait + reverse key): per-trait scores, never in the pass mark.
+      ...(() => { const ts = traitScores(questions, answers); return ts.length ? { trait_scores: ts } : {} })(),
       device_info: { 
         ua: req.headers.get('user-agent') || '', 
         ...parseUserAgent(req.headers.get('user-agent') || ''), 

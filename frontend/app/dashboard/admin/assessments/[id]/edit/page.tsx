@@ -21,6 +21,9 @@ import { CODE_LANGUAGES } from '@/lib/code-languages'
 import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 import { SectionsEditor } from '@/components/assessment/SectionsEditor'
+import { AdaptiveSettingsCard } from '@/components/assessment/AdaptiveSettingsCard'
+import { ExtendedQuestionEditor } from '@/components/assessment/ExtendedQuestionEditor'
+import { EXTENDED_FIELD_RESET, extendedDefaultsForType, extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
 import type { ExamSection } from '@/lib/exam-sections'
 
 const TYPE_ICONS: Record<string, React.ReactNode> = {
@@ -35,7 +38,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 const typeIcon = (t: string) => TYPE_ICONS[t] || <List className="h-3 w-3 mr-1" />
 const typeLabel = (t: string) => metaFor(t).label
 
-interface Question {
+interface Question extends ExtendedQuestionFields {
   id: string
   type: QuestionType
   title: string
@@ -69,6 +72,7 @@ function defaultsForType(type: QuestionType): Partial<Question> {
     options: undefined, answer: undefined, pairs: undefined, matrix: undefined, table: undefined,
     scale: undefined, image_url: undefined, regions: undefined, tolerance: undefined,
     language: undefined, starter_code: undefined, test_cases: undefined,
+    ...EXTENDED_FIELD_RESET, ...extendedDefaultsForType(type),
   }
   switch (type) {
     case 'true_false': return { ...base, options: ['True', 'False'] }
@@ -94,12 +98,14 @@ function defaultsForType(type: QuestionType): Partial<Question> {
     case 'sql':
     case 'regex_config':
     case 'refactoring':
-    case 'test_case_writing': return { ...base, language: 'python', test_cases: [] }
+    case 'test_case_writing':
+    case 'theory_to_code':
+    case 'reverse_coding': return { ...base, language: 'python', test_cases: [] }
     default: return base
   }
 }
 
-interface BankQuestionRow {
+interface BankQuestionRow extends ExtendedQuestionFields {
   id: string
   title: string
   question: string
@@ -184,6 +190,7 @@ function mapImportItem(item: any, i: number): Question {
     regions: Array.isArray(item.regions) ? item.regions : undefined,
     language: item.language || undefined,
     starter_code: item.starter_code || undefined,
+    ...extendedFieldsOf(item && typeof item === 'object' ? item : {}),
   }
 }
 
@@ -608,6 +615,7 @@ export default function ExamReviewPage() {
         regions: r.regions,
         language: r.language,
         starter_code: r.starter_code,
+        ...extendedFieldsOf(r as unknown as Record<string, unknown>),
       }))
     if (newQuestions.length === 0) {
       addToast({ type: 'error', title: 'All selected questions are already in this exam' })
@@ -996,6 +1004,8 @@ export default function ExamReviewPage() {
           </Button>
         </div>
       </div>
+
+      {exam.kind !== 'cad' && <AdaptiveSettingsCard examId={exam.id} />}
 
       {exam.kind !== 'cad' && exam.questionList.length > 0 && (
         <SectionsEditor
@@ -1712,6 +1722,7 @@ export default function ExamReviewPage() {
                   <p className="text-xs text-muted-foreground">Shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.</p>
                 </div>
               )}
+              <ExtendedQuestionEditor question={editingQuestion} onChange={(patch) => setQ(patch as Partial<Question>)} />
               <div className="grid gap-2">
                 <Label htmlFor="q-score">Score (points)</Label>
                 <Input id="q-score" type="number" min="0" value={editingQuestion.score} onChange={(e) => setQ({ score: parseInt(e.target.value) || 0 })} />

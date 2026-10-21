@@ -1,7 +1,8 @@
 import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { compareObjectiveAnswer } from '@/lib/grading'
-import { isDeterministicType, metaFor } from '@/lib/question-types'
+import { canonicalType, isDeterministicType, metaFor, needsHumanReview, runsHiddenTests } from '@/lib/question-types'
+import { gradeInstant, humanOnlyGrade, systemDesignText } from '@/lib/grading-extended'
 import { parseCodingAnswer } from '@/lib/coding-answer'
 import { executeOnce } from '@/lib/piston'
 import { verifyGrade, isJevConfigured } from '@/lib/ai/jev'
@@ -112,6 +113,8 @@ export async function gradeAnswer(input: {
   pairs?: { left: string; right: string }[]
   matrix?: { rows: string[]; columns: string[] }
   table?: { columns: string[]; rows: string[] }
+  /** The stored question (wave-6 fields: sub_questions, typing, rubric, …). */
+  question?: Record<string, unknown>
 }): Promise<GradeResult> {
   const { questionText, candidateAnswer, modelAnswer, type, maxPoints, options, testCases, tolerance, pairs, matrix, table } = input
   const t = (type || '').toLowerCase()
@@ -148,11 +151,23 @@ export async function gradeAnswer(input: {
     return { recommended, verdict, feedback }
   }
 
+  // ── Wave 6: case study / typing (instant) and uploads (a person marks) ──
+  const instant = gradeInstant({ ...(input.question ?? {}), type }, candidateAnswer, maxPoints) ?? humanOnlyGrade(type)
+  if (instant) {
+    const verdict = instant.awarded >= maxPoints && maxPoints > 0 ? 'correct' : instant.awarded > 0 ? 'partial' : 'incorrect'
+    return { recommended: instant.awarded, verdict, feedback: instant.feedback, confidence: 1, requires_human_review: !!instant.requires_human_review, graded_by: null }
+  }
+  // system_design: mark the text + diagram against the author's rubric.
+  const isDesign = canonicalType(type) === 'system_design'
+  const answerForLlm = isDesign ? systemDesignText(candidateAnswer) : candidateAnswer
+  const rubric = isDesign && typeof input.question?.rubric === 'string' ? input.question.rubric.slice(0, 8000) : ''
+  const referenceText = rubric ? `${modelAnswer ? `${modelAnswer}\n\n` : ''}RUBRIC (award points per item covered):\n${rubric}` : modelAnswer
+
   // ── Free-text (code / descriptive): grade with the configured LLM ──
   // ponytail: the free-first fallback chain walks every keyed provider, so a
   // dead/quota-hit key transparently grades on the next one. graded_by records
   // the winner for auditability in the review UI.
-  const isCoding = t.replace(/[-_]/g, '') === 'coding' || t === 'code'
+  const isCoding = t.replace(/[-_]/g, '') === 'coding' || t === 'code' || runsHiddenTests(type)
   
   let finalAwarded: number | undefined = undefined
   let prompt = ''
@@ -218,7 +233,7 @@ Respond ONLY as JSON with this exact shape:
   } else {
     // Stored as {"language":"java","code":"..."} — judge the code, not the envelope.
     const parsedAnswer = isCoding ? parseCodingAnswer(candidateAnswer) : null
-    const candidateDisplay = parsedAnswer?.isStructured ? parsedAnswer.code : candidateAnswer
+    const candidateDisplay = parsedAnswer?.isStructured ? parsedAnswer.code : answerForLlm
     const langLabel = parsedAnswer?.isStructured && parsedAnswer.language ? ` (${parsedAnswer.language})` : ''
     codeScan = scanUntrusted(candidateDisplay)
     const fencedAnswer = fenceUntrusted('candidate_answer', codeScan.flagged ? neutraliseUntrusted(candidateDisplay) : candidateDisplay)
@@ -229,7 +244,7 @@ QUESTION:
 ${questionText}
 
 MODEL ANSWER / REFERENCE:
-${modelAnswer || '(No model answer provided — judge based on the question and general correctness.)'}
+${referenceText || '(No model answer provided — judge based on the question and general correctness.)'}
 
 MAX POINTS: ${maxPoints}
 
@@ -298,6 +313,8 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
   // auto-release bar never completes on its own (auto release reads this flag).
   if (codeScan.flagged) requires_human_review = true
   if (finalAwarded === undefined && confidence < AUTO_RELEASE_MIN_CONFIDENCE) requires_human_review = true
+  // System design (and other human-review types): the AI mark is a suggestion.
+  if (needsHumanReview(type)) requires_human_review = true
   const graded_by =
     res.provider && res.model
       ? `${res.provider}/${res.model}`

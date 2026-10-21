@@ -265,6 +265,7 @@ export function tagThemes(sourceTags: string[], text: string): string[] {
 
 const KIND_LABEL: Record<EventKind, string> = {
   hackathon: 'hackathon', codeathon: 'coding contest', buildathon: 'buildathon', ctf: 'CTF', competition: 'competition', conference: 'conference',
+  datathon: 'datathon', ideathon: 'ideathon', promptathon: 'prompt-a-thon', debugathon: 'debug-a-thon', code_golf: 'code golf contest', design_jam: 'system design jam', open_source: 'open-source sprint',
 }
 
 function fmtDay(iso: string | null): string | null {

@@ -15,16 +15,17 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { KIND_LABELS, MODE_LABELS } from '@/lib/events-feed/public'
 import { EVENT_KINDS, EVENT_MODES, type EventKind, type EventMode } from '@/lib/events-feed/types'
+import { NEWS_TOPICS } from '@/lib/signals/feeds'
 import { cn } from '@/lib/utils'
 
 interface View {
   email: string | null; phone: string | null
   email_status: string; whatsapp_status: string
-  topics: string[]; filters: { events?: { kinds?: EventKind[]; modes?: EventMode[]; countries?: string[] } }
+  topics: string[]; filters: { events?: { kinds?: EventKind[]; modes?: EventMode[]; countries?: string[]; frequency?: 'instant' | 'weekly' }; news?: { topics?: string[] }; blog?: { categories?: string[] } }
   timezone: string
 }
 
-const TOPIC_LABELS: Record<string, string> = { events: 'Hackathons and coding events', blog: 'New articles' }
+const TOPIC_LABELS: Record<string, string> = { events: 'Hackathons and coding events', blog: 'New articles', news: 'Daily tech news digest' }
 
 export function ManagePreferences({ s, t, action, scope }: { s: string; t: string; action: string; scope: string }) {
   const [view, setView] = useState<View | null>(null)
@@ -119,10 +120,27 @@ export function ManagePreferences({ s, t, action, scope }: { s: string; t: strin
             <div className="flex flex-wrap gap-2">
               {EVENT_MODES.map((m) => <button key={m} type="button" aria-pressed={Boolean(ev.modes?.includes(m))} onClick={() => setEv({ modes: toggle(ev.modes, m) })} className={cn('min-h-9 rounded-full border px-3 text-xs', ev.modes?.includes(m) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground')}>{MODE_LABELS[m]}</button>)}
             </div>
+            <fieldset className="space-y-1.5">
+              <legend className="text-sm font-medium text-foreground">WhatsApp: how often</legend>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground"><input type="radio" name="pref-freq" checked={ev.frequency !== 'weekly'} onChange={() => setEv({ frequency: 'instant' })} className="accent-[var(--primary)]" /> As events are announced</label>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground"><input type="radio" name="pref-freq" checked={ev.frequency === 'weekly'} onChange={() => setEv({ frequency: 'weekly' })} className="accent-[var(--primary)]" /> Once a week: hackathons this week</label>
+              <p className="text-xs text-muted-foreground">Email is always one weekly digest.</p>
+            </fieldset>
             <div className="space-y-1">
               <Label htmlFor="pref-countries" className="text-xs text-muted-foreground">In-person events in (country codes, comma separated)</Label>
               <input id="pref-countries" className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm uppercase" defaultValue={(ev.countries || []).join(', ')}
                 onBlur={(e) => setEv({ countries: e.target.value.toUpperCase().split(/[,\s]+/).filter((c) => /^[A-Z]{2}$/.test(c)) })} />
+            </div>
+          </div>
+        )}
+        {view.topics.includes('news') && (
+          <div className="space-y-3 border-t border-border pt-4">
+            <p className="text-sm font-medium text-foreground">Only news about (none = all)</p>
+            <div className="flex flex-wrap gap-2">
+              {NEWS_TOPICS.map((t) => {
+                const cur = view.filters.news?.topics || []
+                return <button key={t.id} type="button" aria-pressed={cur.includes(t.id)} onClick={() => setView({ ...view, filters: { ...view.filters, news: { topics: toggle(cur, t.id) } } })} className={cn('min-h-9 rounded-full border px-3 text-xs', cur.includes(t.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground')}>{t.label}</button>
+              })}
             </div>
           </div>
         )}

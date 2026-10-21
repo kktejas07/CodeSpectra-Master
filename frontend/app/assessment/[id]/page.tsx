@@ -17,6 +17,7 @@ import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
 import { QuestionAnswerInput } from '@/components/assessment/QuestionAnswerInput'
+import { AdaptiveRunner, type AdaptiveViewPayload } from '@/components/assessment/AdaptiveRunner'
 import { metaFor } from '@/lib/question-types'
 import { useDateFormat } from '@/lib/use-platform-timezone'
 import ReactMarkdown from 'react-markdown'
@@ -169,6 +170,8 @@ export default function CandidateAssessmentPage() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [currentQIndex, setCurrentQIndex] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  /** Adaptive test: the server hands out one question at a time (null = normal test). */
+  const [adaptiveView, setAdaptiveView] = useState<AdaptiveViewPayload | null>(null)
   /** Sectioned tests: server section state (null = no sections). */
   const [sections, setSections] = useState<CandidateSectionView[] | null>(null)
   const [currentSectionId, setCurrentSectionId] = useState<string | null>(null)
@@ -548,6 +551,7 @@ export default function CandidateAssessmentPage() {
         error?: string; expired?: boolean; questionList?: Question[]; started_at?: string; deadline?: string | null
         server_now?: string; answers?: Record<string, string | string[]>; attempt_no?: number
         identity_required?: boolean
+        adaptive?: AdaptiveViewPayload
       }
       if (res.status === 410 && j.expired) { setTimeUp(true); return }
       if (j.identity_required) {
@@ -565,6 +569,7 @@ export default function CandidateAssessmentPage() {
       deadlineLocalRef.current = j.deadline ? Date.parse(j.deadline) + offset : null
       const no = j.attempt_no || attemptNo
       setAttemptNo(no)
+      setAdaptiveView(j.adaptive ?? null)
 
       // ponytail: per-candidate question shuffle, stable across refresh via an
       // email+exam seed. Answers/drafts/timings are keyed by question id, so
@@ -1005,7 +1010,9 @@ export default function CandidateAssessmentPage() {
         <div className="min-w-0">
           <h1 className="font-bold text-lg tracking-tight text-foreground truncate">{exam.title}</h1>
           <p className="text-xs text-muted-foreground tabular-nums">
-            {currentSection
+            {adaptiveView
+              ? <>Adaptive test · <span className="tabular-nums">{adaptiveView.total}</span> questions</>
+              : currentSection
               ? <>Section {sectionPos + 1} of {sections!.length}: {currentSection.title} · question {posInNav + 1} of {navIdx.length}</>
               : <>Question {safeIdx + 1} of {exam.questionList.length}</>}
           </p>
@@ -1045,7 +1052,7 @@ export default function CandidateAssessmentPage() {
       {/* Main Content Workspace */}
       <main className="flex-1 flex overflow-hidden">
         {/* Left Side: Question List Sidebar */}
-        <aside className="w-64 border-r border-border bg-muted/20 p-4 overflow-y-auto hidden md:block">
+        <aside className={`w-64 border-r border-border bg-muted/20 p-4 overflow-y-auto ${adaptiveView ? 'hidden' : 'hidden md:block'}`}>
           <div className="mb-4 flex items-baseline justify-between">
             <h3 className="text-sm font-semibold text-foreground">{currentSection ? currentSection.title : 'Questions'}</h3>
             <span className="text-xs text-muted-foreground tabular-nums">
@@ -1137,7 +1144,15 @@ export default function CandidateAssessmentPage() {
                 {currentSection.lock_after_leave && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Once you leave this section you can’t come back to it.</p>}
               </div>
             )}
-            {!currentQ ? (
+            {adaptiveView ? (
+              <AdaptiveRunner
+                examId={exam.id}
+                initial={adaptiveView}
+                submitting={isSubmitting}
+                onSubmit={handleManualSubmit}
+                onExpired={() => { if (!autoSubmitAttemptedRef.current) { autoSubmitAttemptedRef.current = true; void submitAssessment(true) } }}
+              />
+            ) : !currentQ ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
                 {sections && !currentSection
                   ? 'All sections are finished. Submit your assessment to hand it in.'
@@ -1178,6 +1193,7 @@ export default function CandidateAssessmentPage() {
                 value={answers[currentQ.id]}
                 shuffledOptions={shuffledOpts[currentQ.id]}
                 showSavedBadge
+                examContext={{ examId: String(params.id), inviteToken: searchParams.get('inviteToken'), linkToken: searchParams.get('link') }}
                 onChange={(v) => {
                   setAnswers((prev) => ({ ...prev, [currentQ.id]: v }))
                   trackAnswer(currentQ.id, "answer")
