@@ -25,7 +25,7 @@ import { canSendFinalAdverse, caseSummary, purgeDue, purgedCase, rollUpStatus, s
 import { getBgvSettings, getVendorSecrets } from './settings'
 import { deleteDocuments, MAX_DOCS_PER_CASE, storeDocument } from './storage'
 import { fieldActive, missingItems, sanitizeCheckData } from './validate'
-import { DEMO_VENDOR_ID, getVendor, simulatedVendorAllowed, VendorError, type VendorContext, type VendorPii } from './vendors'
+import { DEMO_VENDOR_ID, getVendor, simulatedVendorAllowed, VendorError, type VendorContext, type VendorPii, type WebhookEvent } from './vendors'
 import { notifyTeam, sendFinalAdverse, sendInfoRequest, sendInvite, sendPreAdverse } from './notify'
 import { DECIDED, type BgvCaseDoc, type BgvCheck, type BgvCheckStatus, type BgvDocument, type BgvSettingsDoc } from './types'
 
@@ -110,7 +110,7 @@ async function mutate(c: Pick<BgvCaseDoc, 'id' | 'tenant_id'>, fn: (cur: BgvCase
     if ((next.status === 'clear' || next.status === 'failed' || next.status === 'cancelled') && !next.closed_at) next.closed_at = next.updated_at
     if (next.status === 'consider' && cur.status !== 'consider') next.consider_at = next.updated_at
     // Fields written by atomic claims elsewhere are never overwritten from a stale read.
-    const { id: _i, tenant_id: _t, sent: _s, vendor_events: _v, result_recorded: _r, link_resent_at: _l, ...set } = next
+    const { id: _i, tenant_id: _t, sent: _s, vendor_events: _v, result_recorded: _r, link_resent_at: _l, vendor_polled_at: _p, ...set } = next
     const r = await col.updateOne({ id: cur.id, tenant_id: cur.tenant_id, updated_at: cur.updated_at }, { $set: set })
     if (r.matchedCount) {
       await afterChange(cur, next)
@@ -532,13 +532,17 @@ async function vendorContext(c: BgvCaseDoc): Promise<VendorContext> {
     dl_number: mvrSens.dl_number || null,
     dl_state: ((mvr?.data || {}) as Record<string, unknown>).dl_state as string || null,
   }
-  return { case: c, settings, secrets, pii }
+  // Per-check sensitive values (PAN, ID numbers), decrypted only when a vendor asks while ordering.
+  const sensitive = async (type: BgvCheckType) => (await decryptSensitive<Record<string, string>>(c.checks.find((k) => k.type === type)?.enc)) || {}
+  return { case: c, settings, secrets, pii, sensitive }
 }
 
 export async function orderVendor(c: BgvCaseDoc): Promise<BgvCaseDoc> {
   const vendor = getVendor(c.vendor)
   if (vendor.id === 'manual') return c
   if (!vendor.ready) throw new AtsError(400, `${vendor.label} isn't available yet. Use manual verification.`)
+  // Nothing goes to a vendor without the candidate's (unwithdrawn) consent — DPDP / FCRA.
+  if (!c.consent || c.consent.withdrawn_at) throw new AtsError(409, 'The candidate has not given (or has withdrawn) consent for background verification')
   // Atomic claim: concurrent submit / assign can't place two orders with the vendor.
   const claim = `vendor_order:${vendor.id}`
   if (!(await claimSend(c.id, claim))) throw new AtsError(409, 'Already sent to this vendor')
@@ -560,9 +564,29 @@ export async function orderVendor(c: BgvCaseDoc): Promise<BgvCaseDoc> {
     cur.vendor_invitation_url = res.invitation_url ?? null
     for (const k of cur.checks) {
       if (res.checks.includes(k.type) && (k.status === 'submitted' || k.status === 'not_started')) { k.status = 'in_progress'; k.updated_at = nowIso() }
+      const ref = res.check_refs?.[k.type]
+      if (ref) k.vendor_ref = ref
+      const f = res.failed?.find((x) => x.type === k.type)
+      if (f) { k.notes = clip(`${k.notes ? `${k.notes}\n` : ''}Not sent to ${vendor.label} — verify manually: ${f.message}`, 2000); k.updated_at = nowIso() }
     }
     return cur
   })
+}
+
+/** Pure: is a polling vendor due for another status read? */
+export function vendorPollDue(c: Pick<BgvCaseDoc, 'vendor_ordered_at' | 'vendor_polled_at' | 'checks'>, now = new Date()): boolean {
+  if (!c.vendor_ordered_at || !c.checks.some((k) => k.status === 'in_progress' && !k.info_request)) return false
+  const last = Date.parse(c.vendor_polled_at || c.vendor_ordered_at)
+  return !Number.isFinite(last) || now.getTime() - last >= VENDOR_POLL_EVERY_MS
+}
+export const VENDOR_POLL_EVERY_MS = 30 * 60_000
+
+/** Pure: which check a vendor reference points at (per-check vendor_ref, or our "<case id>:<type>"). */
+export function checkForRef(c: Pick<BgvCaseDoc, 'id' | 'checks'>, ref: string): BgvCheckType | null {
+  const byRef = c.checks.find((k) => k.vendor_ref === ref)
+  if (byRef) return byRef.type
+  const m = /^(.+):([a-z_]+)$/.exec(ref)
+  return m && m[1] === c.id && c.checks.some((k) => k.type === m[2]) ? (m[2] as BgvCheckType) : null
 }
 
 /** Apply vendor per-check results (webhook / poll). Verifier decisions already made stay. */
@@ -610,12 +634,17 @@ export function adverseOpen(c: Pick<BgvCaseDoc, 'adverse_action'>): boolean {
   return !!a?.pre_adverse_sent_at && !a.withdrawn_at && !a.final_sent_at
 }
 
-/** Checkr webhook (signature verified by the caller). Idempotent per event id. */
-export async function handleVendorEvent(tenantId: string, vendorId: string, ev: { id: string; type: string; report_ref: string | null; candidate_ref: string | null }): Promise<'ok' | 'unknown_case' | 'duplicate'> {
+/** Vendor webhook (authenticity verified by the caller). Idempotent per event id. */
+export async function handleVendorEvent(tenantId: string, vendorId: string, ev: WebhookEvent): Promise<'ok' | 'unknown_case' | 'duplicate'> {
   const col = await bgvCases()
   const or: Record<string, string>[] = []
   if (ev.report_ref) or.push({ vendor_report_ref: ev.report_ref })
   if (ev.candidate_ref) or.push({ vendor_ref: ev.candidate_ref })
+  for (const ref of ev.check_refs || []) {
+    or.push({ 'checks.vendor_ref': ref })
+    const m = /^(.+):[a-z_]+$/.exec(ref)
+    if (m) or.push({ id: m[1] })
+  }
   if (!or.length) return 'unknown_case'
   const c = (await col.findOne({ tenant_id: tenantId, vendor: vendorId, $or: or }, { projection: { _id: 0 } })) as BgvCaseDoc | null
   if (!c) return 'unknown_case'
@@ -624,10 +653,15 @@ export async function handleVendorEvent(tenantId: string, vendorId: string, ev: 
   if (ev.report_ref && !c.vendor_report_ref) {
     cur = await mutate(c, (x) => { x.vendor_report_ref = ev.report_ref; return x })
   }
-  if (ev.type.startsWith('report.')) {
+  if (ev.refresh || ev.type.startsWith('report.')) {
     const vendor = getVendor(vendorId)
     const st = await vendor.getStatus(await vendorContext(cur))
     await applyVendorResults(cur, st.checks)
+  } else if (ev.check_updates?.length) {
+    const results = ev.check_updates
+      .map((u) => ({ type: checkForRef(cur, u.ref), status: u.status, notes: u.notes ?? null }))
+      .filter((r): r is { type: BgvCheckType; status: BgvCheckStatus; notes: string | null } => !!r.type && r.status !== 'in_progress')
+    await applyVendorResults(cur, results)
   }
   // Recorded after processing, so a failed attempt is retried; re-applying is a no-op.
   await col.updateOne({ id: c.id, tenant_id: tenantId }, { $push: { vendor_events: { $each: [ev.id], $slice: -200 } } } as never)
@@ -904,6 +938,16 @@ export async function runBgvSweep(now = new Date()): Promise<{ reminded: number;
         const st = await getVendor('simulated').getStatus(await vendorContext(c))
         await applyVendorResults(c, st.checks)
         out.vendor++
+      }
+      // Polling vendors (IDfy, AuthBridge): webhook fallback, at most every VENDOR_POLL_EVERY_MS per case.
+      const pv = getVendor(c.vendor)
+      if (pv.poll && vendorPollDue(c, now)) {
+        const r = await col.updateOne({ id: c.id, tenant_id: c.tenant_id, vendor_polled_at: c.vendor_polled_at ?? null } as never, { $set: { vendor_polled_at: nowIsoStr } })
+        if (r.modifiedCount) {
+          const st = await pv.getStatus(await vendorContext(c))
+          await applyVendorResults(c, st.checks)
+          out.vendor++
+        }
       }
       // US adverse action: tell the recruiter when the waiting period is over.
       const a = c.adverse_action

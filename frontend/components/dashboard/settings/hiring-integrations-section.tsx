@@ -388,10 +388,10 @@ export function HiringIntegrationsSection() {
         ))}
 
         <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="hiring-bgv">
-          <p className="text-sm font-semibold text-foreground">Background checks (Checkr)</p>
+          <p className="text-sm font-semibold text-foreground">Background checks (Checkr, IDfy, AuthBridge)</p>
           <p className="text-xs text-muted-foreground">
-            Checkr keys are set per company on Hiring → Settings → Background checks. Each company adds this webhook in
-            Checkr with its own company ID in place of &lt;tenantId&gt; — that page shows the exact URL.
+            Vendor keys are set per company on Hiring → Settings → Background checks. Each company adds the webhook in
+            its vendor account with its own company ID in place of &lt;tenantId&gt; — that page shows the exact URLs (IDfy and AuthBridge too).
           </p>
           {origin && <CopyBox label="Checkr webhook URL" value={urlFor('/api/ats/bgv/webhooks/checkr?tenant=<tenantId>')} />}
         </div>

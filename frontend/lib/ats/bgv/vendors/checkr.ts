@@ -140,6 +140,15 @@ export const checkrVendor: BgvVendor = {
   verifyWebhook(raw, headers, secrets) {
     return verifyCheckrSignature(raw, headers.get('x-checkr-signature'), webhookSecret(secrets))
   },
+  async testConnection(_settings, secrets) {
+    if (!secrets.checkr_api_key) return { ok: false, message: 'Add the Checkr API key first.' }
+    try {
+      await call(secrets.checkr_api_key, 'GET', '/account')
+      return { ok: true, message: 'Connected to Checkr.' }
+    } catch (e) {
+      return { ok: false, message: e instanceof VendorError ? e.message : 'Could not reach Checkr.' }
+    }
+  },
   parseWebhook(raw): WebhookEvent | null {
     try {
       const j = JSON.parse(raw) as { id?: unknown; type?: unknown; data?: { object?: Record<string, unknown> } }

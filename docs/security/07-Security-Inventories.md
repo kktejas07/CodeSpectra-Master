@@ -8,7 +8,7 @@ Snapshot taken 2026-10-20 (wave 5). Re-run the checks below after adding routes;
 
 | Kind | Count | Guard | Routes |
 |------|------:|-------|--------|
-| Provider webhooks | 14 | Signature on the raw body (HMAC / Stripe `constructEvent` / X-VERIFY checksum / shared token, constant-time compare) | `billing/stripe-webhook`, `billing/webhook` (Razorpay), `billing/phonepe-webhook`, `marketplace/webhooks/stripe`, `marketplace/webhooks/phonepe`, `github/webhook`, `kyc/didit/webhook`, `webhooks/postal`, `ats/bgv/webhooks/checkr`, `ats/screening/webhooks/{twilio,exotel,vapi,whatsapp}`, `workflows/hooks/[id]` |
+| Provider webhooks | 16 | Signature on the raw body (HMAC / Stripe `constructEvent` / X-VERIFY checksum / shared token, constant-time compare) | `billing/stripe-webhook`, `billing/webhook` (Razorpay), `billing/phonepe-webhook`, `marketplace/webhooks/stripe`, `marketplace/webhooks/phonepe`, `github/webhook`, `kyc/didit/webhook`, `webhooks/postal`, `ats/bgv/webhooks/{checkr,idfy,authbridge}`, `ats/screening/webhooks/{twilio,exotel,vapi,whatsapp}`, `workflows/hooks/[id]` |
 | Payment browser returns | 2 | Nothing in the request is trusted; order settled from the provider status API | `billing/phonepe-callback`, `marketplace/webhooks/phonepe/return` |
 | Sign-in / account recovery | 9 | Rate limits + lockout; Turnstile on login, signup, forgot-password; reset uses a single-use token | `auth/{login,signup,forgot-password,reset-password,logout,mobile-token,sso,sso/callback,face-verify}` |
 | Signed capability links | 16 | Single-use or signed purpose tokens (hashed at rest), OAuth `state` bound to the user | `assessment/invite/[token]`, `ats/bgv/portal`, `ats/bgv/portal/upload`, `ats/hr-form`, `ats/interviews/{join,self-schedule}`, `ats/integrations/meetings/{google,microsoft}/callback`, `automation/unsubscribe`, `certifications/verify/[token]`, `hackathons/verify/[token]`, `newsletter/{confirm,unsubscribe}`, `subscriptions/{confirm,preferences,unsubscribe}`, `user/email-change/undo` |
@@ -51,6 +51,8 @@ Objects in R2/S3 are private; reads go through signed URLs (1 h) — `lib/s3-sto
 | `kyc/didit/webhook` | HMAC, `timingSafeEqual` | session/status de-dup |
 | `webhooks/postal` | Postal RSA signature or query secret (`lib/postal-webhook-verify`) | bounce marking is naturally idempotent |
 | `ats/bgv/webhooks/checkr` | `X-Checkr-Signature` HMAC (per tenant) | per event id |
+| `ats/bgv/webhooks/idfy` | per-tenant random token in the URL (constant-time) + optional IP allow-list; body only triggers an authenticated re-read | per request id + status |
+| `ats/bgv/webhooks/authbridge` | HMAC on the raw body, header / algorithm / encoding per tenant | per event id (or body hash) |
 | `ats/screening/webhooks/twilio` | `X-Twilio-Signature` (URL + params) | call status upsert |
 | `ats/screening/webhooks/whatsapp` | `X-Hub-Signature-256` (Meta app secret); GET verify token | message id |
 | `ats/screening/webhooks/vapi` | `x-vapi-secret` / Bearer, constant-time | call id |

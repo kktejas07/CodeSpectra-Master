@@ -27,7 +27,7 @@ export const CSRF_EXEMPT: readonly string[] = [
   '/api/kyc/didit/webhook',
   // ATS bot screening webhooks (Meta HMAC, Vapi secret, Twilio signature, Exotel token)
   '/api/ats/screening/webhooks',
-  // ATS background-check vendor webhooks (Checkr X-Checkr-Signature HMAC)
+  // ATS background-check vendor webhooks (Checkr X-Checkr-Signature HMAC, AuthBridge HMAC, IDfy URL token + IP allow-list)
   '/api/ats/bgv/webhooks',
   '/api/security/track',
   // Face sign-in starts a sign-in (no session yet), like /api/auth/login.

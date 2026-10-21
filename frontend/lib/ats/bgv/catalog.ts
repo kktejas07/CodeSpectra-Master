@@ -26,7 +26,7 @@ export interface FieldDef {
   hint?: string
   autoComplete?: string
   /** stored encrypted; the case keeps only a mask */
-  sensitive?: 'pan' | 'ssn' | 'dl_number'
+  sensitive?: 'pan' | 'ssn' | 'dl_number' | 'id_number'
   /** only required / shown when another field has this value */
   when?: { key: string; equals: unknown }
 }
@@ -126,6 +126,10 @@ const IN: CheckDef[] = [
       { key: 'dob', label: 'Date of birth', type: 'date', required: true, autoComplete: 'bday' },
       { key: 'father_name', label: "Father's name", type: 'text', required: true, max: 160 },
       { key: 'id_type', label: 'Government ID', type: 'select', required: true, options: IN_ID_TYPES },
+      // Optional ID numbers let a verification partner check the ID at source (e.g. IDfy). Never an Aadhaar number.
+      { key: 'dl_number', label: 'Driving licence number (optional)', type: 'text', upper: true, max: 20, pattern: '^[A-Z]{2}[0-9A-Z -]{8,18}$', patternHint: 'As printed on your licence, e.g. MH1420110062821', sensitive: 'dl_number', autoComplete: 'off', hint: 'Speeds up verification', when: { key: 'id_type', equals: 'driving_licence' } },
+      { key: 'voter_id_number', label: 'Voter ID (EPIC) number (optional)', type: 'text', upper: true, max: 10, pattern: '^[A-Z]{3}[0-9]{7}$', patternHint: '3 letters and 7 digits, e.g. ABC1234567', sensitive: 'id_number', autoComplete: 'off', hint: 'Speeds up verification', when: { key: 'id_type', equals: 'voter_id' } },
+      { key: 'passport_file_number', label: 'Passport file number (optional)', type: 'text', upper: true, max: 20, pattern: '^[A-Z]{2}[0-9A-Z]{6,18}$', patternHint: 'The file number on your passport application receipt, e.g. HY1234567890123', sensitive: 'id_number', autoComplete: 'off', hint: 'Speeds up verification', when: { key: 'id_type', equals: 'passport' } },
     ],
     documents: [
       { slot: 'photo', label: 'Recent passport-size photo', required: true, hint: 'JPG or PNG, face clearly visible' },
@@ -499,7 +503,7 @@ const IN_CONSENT = `Consent for background verification (Digital Personal Data P
 
 Purpose: to verify your identity, address, education, employment history, references and court / police records for employment.
 
-Personal data we process: your name, date of birth, father's name, photo, contact details, PAN, the last 4 digits of your Aadhaar (only if you choose to share it), addresses, education and employment records, UAN service history, references' contact details, and the documents you upload. We may share them with our verification partner and with the institutions, employers and authorities we contact to verify them.
+Personal data we process: your name, date of birth, father's name, photo, contact details, PAN, the number of the government ID you choose (only if you choose to give it), the last 4 digits of your Aadhaar (only if you choose to share it), addresses, education and employment records, UAN service history, references' contact details, and the documents you upload. We may share them with our verification partner and with the institutions, employers and authorities we contact to verify them; your PAN, ID number and UAN may be checked against government records through our verification partner.
 
 Retention: we keep your documents for {{retention_days}} days after the verification closes, then delete them and keep only the outcome.
 
@@ -530,7 +534,7 @@ export const SUMMARY_OF_RIGHTS_PLACEHOLDER = 'A Summary of Your Rights Under the
 
 export function defaultRegionSettings(region: BgvRegion, at = new Date(0).toISOString()): BgvRegionSettings {
   if (region === 'IN') {
-    return { default_checks: DEFAULT_CHECKS.IN, critical_checks: DEFAULT_CRITICAL.IN, consent: { version: 'in-1', text: IN_CONSENT, updated_at: at }, history: [] }
+    return { default_checks: DEFAULT_CHECKS.IN, critical_checks: DEFAULT_CRITICAL.IN, consent: { version: 'in-2', text: IN_CONSENT, updated_at: at }, history: [] }
   }
   return {
     default_checks: DEFAULT_CHECKS.US,
