@@ -10,13 +10,6 @@ import { PageHeader } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectValue,
-  SelectTrigger,
-} from '@/components/ui/select'
 import { Loader2, Settings, Moon, Sun, Palette, Bell, Shield, ChevronRight, CheckCircle2, XCircle, Key, Download, Trash2, Camera } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useToast } from '@/lib/toast-context'
@@ -29,20 +22,13 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { FaceSignInSection } from '@/components/dashboard/settings/face-sign-in-section'
+import { LanguageSelect } from '@/components/i18n/language-switcher'
+import { useT } from '@/lib/i18n/client'
 
 const LS = {
-  language: 'codespectra:user:language',
   emailNotif: 'codespectra:user:emailNotif',
   pushNotif: 'codespectra:user:pushNotif',
 } as const
-
-const languages = [
-  { id: 'en', label: 'English' },
-  { id: 'es', label: 'Español' },
-  { id: 'fr', label: 'Français' },
-  { id: 'de', label: 'Deutsch' },
-  { id: 'zh', label: '中文' },
-]
 
 /** Matches `next-themes` / root `ThemeProvider` (`storageKey="codespectra-theme"`). */
 const themes = [
@@ -60,7 +46,8 @@ export default function SettingsPage() {
 
   const addToast = useToast()
   const { theme: nextTheme, setTheme } = useTheme()
-  const [language, setLanguage] = useState('en')
+  // Interface language lives on the profile + cs_locale cookie (lib/i18n), not localStorage.
+  const { t } = useT()
   const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null)
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
   const [resendingVerify, setResendingVerify] = useState(false)
@@ -81,8 +68,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     try {
-      const lang = window.localStorage.getItem(LS.language)
-      if (lang) setLanguage(lang)
+      window.localStorage.removeItem('codespectra:user:language')
       /** One-time migration from old appearance key to `next-themes`. */
       const legacy = window.localStorage.getItem('codespectra:user:theme')
       if (legacy === 'auto') {
@@ -169,20 +155,19 @@ export default function SettingsPage() {
   const saveAppearance = useCallback(() => {
     setSavingKey('appearance')
     try {
-      const t = nextTheme === 'dark' || nextTheme === 'light' || nextTheme === 'system' ? nextTheme : 'light'
-      setTheme(t)
-      window.localStorage.setItem(LS.language, language)
+      const chosen = nextTheme === 'dark' || nextTheme === 'light' || nextTheme === 'system' ? nextTheme : 'light'
+      setTheme(chosen)
       addToast({
         type: 'success',
-        title: 'Appearance saved',
-        message: 'Theme applies across the app; language is stored for this browser.',
+        title: t('dashboard.appearanceSaved'),
+        message: t('dashboard.appearanceSavedBody'),
       })
     } catch {
       addToast({ type: 'error', title: 'Could not save', message: 'Local storage may be disabled.' })
     } finally {
       setSavingKey(null)
     }
-  }, [addToast, language, nextTheme, setTheme])
+  }, [addToast, nextTheme, setTheme, t])
 
 
   const handleChangePassword = async () => {
@@ -298,21 +283,20 @@ export default function SettingsPage() {
                 <h2 className="text-lg font-semibold">Appearance</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                Theme matches the sidebar control and applies across the whole app. Language is remembered on this
-                device only.
+                {t('dashboard.appearanceHint')}
               </p>
             </div>
             <div className="px-6 py-5">
             <Label className="text-sm font-medium text-foreground">Theme</Label>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {themes.map((t) => {
-                const Icon = t.icon
-                const active = (nextTheme ?? 'light') === t.id
+              {themes.map((th) => {
+                const Icon = th.icon
+                const active = (nextTheme ?? 'light') === th.id
                 return (
                   <button
-                    key={t.id}
+                    key={th.id}
                     type="button"
-                    onClick={() => setTheme(t.id)}
+                    onClick={() => setTheme(th.id)}
                     className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-medium transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-primary ${
                       active
                         ? 'border-primary bg-primary/10 text-primary'
@@ -320,27 +304,20 @@ export default function SettingsPage() {
                     }`}
                   >
                     <Icon className="h-4 w-4 shrink-0" aria-hidden />
-                    {t.label}
+                    {th.label}
                 </button>
               )
             })}
             </div>
             <Separator className="my-6" />
-            <Label htmlFor="language" className="text-sm font-medium text-foreground">
-              Language
+            <Label id="language-label" className="text-sm font-medium text-foreground">
+              {t('common.language')}
             </Label>
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger id="language" className="mt-2 h-10 w-full max-w-md rounded-lg border-border/60" size="default">
-                <SelectValue placeholder="Select language" />
-              </SelectTrigger>
-              <SelectContent>
-                {languages.map((lang) => (
-                  <SelectItem key={lang.id} value={lang.id}>
-                    {lang.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <p className="mt-1 text-sm text-muted-foreground">{t('dashboard.languageHint')}</p>
+            <LanguageSelect
+              className="mt-3"
+              onChanged={() => addToast({ type: 'success', title: t('dashboard.languageSaved'), message: t('dashboard.languageSavedBody') })}
+            />
             </div>
             <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
               <Button

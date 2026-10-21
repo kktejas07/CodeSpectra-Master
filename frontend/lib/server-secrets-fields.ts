@@ -89,6 +89,8 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'livekit_api_secret',
   // Knowledge vector store (Postgres URL carries credentials)
   'pgvector_url',
+  // Web push (PWA) VAPID private key
+  'webpush_vapid_private_key',
 ]
 
 export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
@@ -131,6 +133,9 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'firebase_messaging_sender_id',
   'firebase_app_id',
   'firebase_vapid_key',
+  // Web push (PWA): public key is sent to browsers; subject = mailto:/https: contact
+  'webpush_vapid_public_key',
+  'webpush_vapid_subject',
   'phonepe_merchant_id',
   'phonepe_salt_index',
   'upstash_redis_rest_url',

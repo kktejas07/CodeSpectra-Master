@@ -24,6 +24,8 @@ import {
   LEVELS, READINESS_LABEL, ROUNDS, SIM_LANGUAGES, levelLabel, roundLabel, type RoundType, type SimHistoryItem, type SimLanguage, type SimLevel, type SimMode,
 } from '@/lib/interview-sim/types'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
+import { LOCALE_META } from '@/lib/i18n/config'
 
 interface Options {
   companies: Array<{ slug: string; name: string; patterns: Array<{ id: string; name: string }> }>
@@ -39,6 +41,9 @@ export default function InterviewSimPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
   const addToast = useToast()
+  const { t, td, fmt, locale } = useT()
+  const roundText = (id: string) => td(`dashboard.round:${id}`, roundLabel(id))
+  const levelText = (id: string) => td(`dashboard.simLevel:${id}`, levelLabel(id))
   const [options, setOptions] = useState<Options | null>(null)
   const [history, setHistory] = useState<SimHistoryItem[] | null>(null)
   const [loadError, setLoadError] = useState(false)
@@ -49,7 +54,8 @@ export default function InterviewSimPage() {
   const [role, setRole] = useState('Software engineer')
   const [level, setLevel] = useState<SimLevel>('entry')
   const [round, setRound] = useState<RoundType>('technical')
-  const [language, setLanguage] = useState<SimLanguage>('en-IN')
+  // Default the spoken language to the interface language (hi → hi-IN, te → te-IN).
+  const [language, setLanguage] = useState<SimLanguage>(LOCALE_META[locale].speech)
   const [mode, setMode] = useState<SimMode>('text')
   const [codeLanguage, setCodeLanguage] = useState('python')
   const [record, setRecord] = useState(false)
@@ -76,8 +82,8 @@ export default function InterviewSimPage() {
 
   const start = async (retakeOf?: string) => {
     setStartError(null)
-    if (!retakeOf && role.trim().length < 2) { setStartError('Enter the role you are preparing for.'); return }
-    if (needsConsent && !consent) { setStartError('Please read and accept the microphone notice first.'); return }
+    if (!retakeOf && role.trim().length < 2) { setStartError(t('dashboard.simEnterRole')); return }
+    if (needsConsent && !consent) { setStartError(t('dashboard.simAcceptNotice')); return }
     if (retakeOf) setBusyId(retakeOf)
     else setStarting(true)
     try {
@@ -91,11 +97,11 @@ export default function InterviewSimPage() {
         }),
       })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok || !j.session?.id) throw new Error(j.error || 'The interview could not start. Try again.')
+      if (!res.ok || !j.session?.id) throw new Error(j.error || t('dashboard.simStartFailed'))
       router.push(`/dashboard/interview-sim/${encodeURIComponent(j.session.id)}`)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'The interview could not start. Try again.'
-      if (retakeOf) addToast({ type: 'error', title: 'Could not start', message: msg })
+      const msg = e instanceof Error ? e.message : t('dashboard.simStartFailed')
+      if (retakeOf) addToast({ type: 'error', title: t('dashboard.couldNotStart'), message: msg })
       else setStartError(msg)
     } finally {
       setStarting(false)
@@ -104,14 +110,14 @@ export default function InterviewSimPage() {
   }
 
   const remove = async (id: string) => {
-    if (!window.confirm('Delete this interview, its report and any recording? This cannot be undone.')) return
+    if (!window.confirm(t('dashboard.simDeleteConfirm'))) return
     setBusyId(id)
     try {
       const res = await csrfFetch(`/api/interview-sim/${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
       if (!res.ok) throw new Error()
       setHistory((h) => (h ? h.filter((x) => x.id !== id) : h))
     } catch {
-      addToast({ type: 'error', title: 'Could not delete', message: 'Try again in a moment.' })
+      addToast({ type: 'error', title: t('dashboard.couldNotDelete'), message: t('errors.tryAgainMoment') })
     } finally {
       setBusyId(null)
     }
@@ -132,32 +138,32 @@ export default function InterviewSimPage() {
         illustration="interview"
         className="mb-0"
         icon={<Mic aria-hidden />}
-        title="Mock interview"
-        description="Practise a real interview round with an AI interviewer, then get scored feedback, model answers and what to study next."
-        actions={<Button asChild variant="outline" size="sm"><Link href="/dashboard/interview-prep">Interview prep questions</Link></Button>}
+        title={t('dashboard.mockInterview')}
+        description={t('dashboard.simDesc')}
+        actions={<Button asChild variant="outline" size="sm"><Link href="/dashboard/interview-prep">{t('dashboard.interviewPrepQuestions')}</Link></Button>}
       />
 
       {loadError && (
         <Panel className="flex flex-wrap items-center justify-between gap-3 border-red-500/30">
-          <p className="text-sm text-foreground">We couldn’t load mock interviews.</p>
-          <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>Try again</Button>
+          <p className="text-sm text-foreground">{t('dashboard.simLoadFailed')}</p>
+          <Button variant="outline" size="sm" onClick={() => setReload((n) => n + 1)}>{t('common.tryAgain')}</Button>
         </Panel>
       )}
 
       {options && !options.settings.enabled ? (
-        <EmptyState illustration="interview" title="Mock interviews are switched off" description="Your platform admin has paused mock interviews. Check back later, or practise with interview prep questions." actionLabel="Interview prep" actionHref="/dashboard/interview-prep" />
+        <EmptyState illustration="interview" title={t('dashboard.simOff')} description={t('dashboard.simOffDesc')} actionLabel={t('dashboard.interviewPrep')} actionHref="/dashboard/interview-prep" />
       ) : options && (
-        <Section title="Set up your interview" description={`${options.settings.questions_per_session} questions, about ${options.settings.questions_per_session * 3} minutes. ${left} of ${options.settings.daily_sessions_per_user} left today.`}>
+        <Section title={t('dashboard.simSetUp')} description={t('dashboard.simSetUpDesc', { q: options.settings.questions_per_session, min: options.settings.questions_per_session * 3, left, max: options.settings.daily_sessions_per_user })}>
           <Panel>
             <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); void start() }}>
               <fieldset className="space-y-3">
-                <legend className="text-sm font-semibold text-foreground">Round</legend>
+                <legend className="text-sm font-semibold text-foreground">{t('dashboard.round')}</legend>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                   {ROUNDS.map((r) => (
                     <label key={r.id} className={cn('flex cursor-pointer flex-col gap-1 rounded-2xl border p-4 transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring', round === r.id ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/40')}>
                       <input type="radio" name="round" value={r.id} checked={round === r.id} onChange={() => setRound(r.id)} className="sr-only" />
-                      <span className="font-medium text-foreground">{r.label}</span>
-                      <span className="text-xs text-muted-foreground">{r.hint}</span>
+                      <span className="font-medium text-foreground">{roundText(r.id)}</span>
+                      <span className="text-xs text-muted-foreground">{td(`dashboard.roundHint:${r.id}`, r.hint)}</span>
                     </label>
                   ))}
                 </div>
@@ -165,41 +171,41 @@ export default function InterviewSimPage() {
 
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="sim-role">Role</Label>
+                  <Label htmlFor="sim-role">{t('dashboard.role')}</Label>
                   <Input id="sim-role" list="sim-role-list" value={role} maxLength={80} onChange={(e) => setRole(e.target.value)} className="h-11 rounded-xl" />
                   <datalist id="sim-role-list">{ROLE_SUGGESTIONS.map((r) => <option key={r} value={r} />)}</datalist>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="sim-level">Level</Label>
+                  <Label htmlFor="sim-level">{t('assessment.level')}</Label>
                   <select id="sim-level" className={selectCls} value={level} onChange={(e) => setLevel(e.target.value as SimLevel)}>
-                    {LEVELS.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+                    {LEVELS.map((l) => <option key={l.id} value={l.id}>{levelText(l.id)}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="sim-company">Company (optional)</Label>
+                  <Label htmlFor="sim-company">{t('dashboard.companyOptional')}</Label>
                   <select id="sim-company" className={selectCls} value={company} onChange={(e) => { setCompany(e.target.value); setPatternId('') }}>
-                    <option value="">General interview</option>
+                    <option value="">{t('dashboard.generalInterview')}</option>
                     {options.companies.map((c) => <option key={c.slug} value={c.slug}>{c.name}</option>)}
                   </select>
                 </div>
                 {companyRow && companyRow.patterns.length > 1 && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="sim-pattern">Hiring track</Label>
+                    <Label htmlFor="sim-pattern">{t('dashboard.hiringTrack')}</Label>
                     <select id="sim-pattern" className={selectCls} value={patternId} onChange={(e) => setPatternId(e.target.value)}>
-                      <option value="">Any</option>
+                      <option value="">{t('dashboard.any')}</option>
                       {companyRow.patterns.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                 )}
                 <div className="space-y-1.5">
-                  <Label htmlFor="sim-language">Interview language</Label>
+                  <Label htmlFor="sim-language">{t('dashboard.interviewLanguage')}</Label>
                   <select id="sim-language" className={selectCls} value={language} onChange={(e) => setLanguage(e.target.value as SimLanguage)}>
-                    {SIM_LANGUAGES.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
+                    {SIM_LANGUAGES.map((l) => <option key={l.id} value={l.id}>{td(`dashboard.simLang:${l.id}`, l.label)}</option>)}
                   </select>
                 </div>
                 {round === 'coding' && (
                   <div className="space-y-1.5">
-                    <Label htmlFor="sim-code-lang">Coding language</Label>
+                    <Label htmlFor="sim-code-lang">{t('dashboard.codingLanguage')}</Label>
                     <select id="sim-code-lang" className={selectCls} value={codeLanguage} onChange={(e) => setCodeLanguage(e.target.value)}>
                       {CODE_LANGUAGES.map((l) => <option key={l.id} value={l.id}>{l.label}</option>)}
                     </select>
@@ -208,36 +214,36 @@ export default function InterviewSimPage() {
               </div>
 
               <fieldset className="space-y-3">
-                <legend className="text-sm font-semibold text-foreground">How you answer</legend>
+                <legend className="text-sm font-semibold text-foreground">{t('dashboard.howYouAnswer')}</legend>
                 <div className="flex flex-wrap gap-3">
                   {(['text', 'voice'] as const).map((m) => (
                     <label key={m} className={cn('flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-4 py-2 text-sm transition-colors duration-150 focus-within:ring-2 focus-within:ring-ring', mode === m ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-foreground hover:border-primary/40', m === 'voice' && !voiceAllowed && 'cursor-not-allowed opacity-50')}>
                       <input type="radio" name="mode" value={m} checked={mode === m} disabled={m === 'voice' && !voiceAllowed} onChange={() => setMode(m)} className="sr-only" />
                       {m === 'voice' ? <Mic className="h-4 w-4" aria-hidden /> : null}
-                      {m === 'text' ? 'Type answers' : 'Speak answers'}
+                      {m === 'text' ? t('dashboard.typeAnswers') : t('dashboard.speakAnswers')}
                     </label>
                   ))}
                 </div>
-                {mode === 'voice' && <p className="text-xs text-muted-foreground">The interviewer reads questions aloud and your browser turns your speech into text. If your browser can’t, you can still type.</p>}
+                {mode === 'voice' && <p className="text-xs text-muted-foreground">{t('dashboard.voiceModeHint')}</p>}
                 {options.settings.allow_recordings && (
                   <label className="flex min-h-11 items-start gap-3 text-sm text-foreground">
                     <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={record} onChange={(e) => setRecord(e.target.checked)} />
-                    <span><span className="inline-flex items-center gap-1 font-medium"><Video className="h-4 w-4" aria-hidden />Record this session</span> <span className="text-muted-foreground">(optional) — so you can watch yourself back. Kept for {options.settings.recording_retention_days} days, then deleted. You can delete it any time.</span></span>
+                    <span><span className="inline-flex items-center gap-1 font-medium"><Video className="h-4 w-4" aria-hidden />{t('dashboard.recordSession')}</span> <span className="text-muted-foreground">{t('dashboard.recordSessionHint', { days: options.settings.recording_retention_days })}</span></span>
                   </label>
                 )}
               </fieldset>
 
               {needsConsent && (
                 <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-foreground">
-                  <p className="font-medium">Before we use your microphone{record ? ' or camera' : ''}</p>
+                  <p className="font-medium">{record ? t('dashboard.beforeMicOrCamera') : t('dashboard.beforeMic')}</p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
-                    {mode === 'voice' && <li>Your browser asks for microphone access. Speech is turned into text in your browser{options.server_transcription ? ', or by our speech-to-text provider if your browser can’t' : ''}; we keep the text of your answers, not the audio.</li>}
-                    {record && <li>If you start a recording, it is stored privately on our servers for {options.settings.recording_retention_days} days, visible only to you, then deleted automatically.</li>}
-                    <li>Your answers are scored by an AI model. Don’t share personal details you wouldn’t say in an interview.</li>
+                    {mode === 'voice' && <li>{options.server_transcription ? t('dashboard.micNoticeServer') : t('dashboard.micNoticeBrowser')}</li>}
+                    {record && <li>{t('dashboard.recordingNotice', { days: options.settings.recording_retention_days })}</li>}
+                    <li>{t('dashboard.aiScoredNotice')}</li>
                   </ul>
                   <label className="mt-3 flex min-h-11 items-center gap-3">
                     <input type="checkbox" className="h-4 w-4 accent-primary" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
-                    <span className="font-medium">I understand and agree</span>
+                    <span className="font-medium">{t('dashboard.iUnderstandAgree')}</span>
                   </label>
                 </div>
               )}
@@ -245,18 +251,18 @@ export default function InterviewSimPage() {
               {startError && <p role="alert" className="text-sm text-red-700 dark:text-red-400">{startError}</p>}
               <div className="flex flex-wrap items-center gap-3">
                 <Button type="submit" className="min-h-11 rounded-full px-6" disabled={starting || left === 0}>
-                  {starting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />Preparing your interviewer…</> : 'Start interview'}
+                  {starting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />{t('dashboard.preparingInterviewer')}</> : t('dashboard.startInterview')}
                 </Button>
-                {left === 0 && <p className="text-sm text-muted-foreground">You’ve used today’s mock interviews. Come back tomorrow.</p>}
+                {left === 0 && <p className="text-sm text-muted-foreground">{t('dashboard.simDailyUsed')}</p>}
               </div>
             </form>
           </Panel>
         </Section>
       )}
 
-      <Section title="Your interviews" description="Reports are private to you unless you share a link.">
+      <Section title={t('dashboard.yourInterviews')} description={t('dashboard.reportsPrivate')}>
         {history.length === 0 ? (
-          <EmptyState compact illustration="interview" title="No mock interviews yet" description="Set up your first round above — you’ll see your scores and feedback here." />
+          <EmptyState compact illustration="interview" title={t('dashboard.noInterviewsYet')} description={t('dashboard.noInterviewsYetDesc')} />
         ) : (
           <ul className="space-y-3">
             {history.map((h) => (
@@ -264,30 +270,30 @@ export default function InterviewSimPage() {
                 <Panel className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <Link href={`/dashboard/interview-sim/${encodeURIComponent(h.id)}`} className="font-medium text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
-                      {roundLabel(h.round)} · {h.role}
+                      {roundText(h.round)} · {h.role}
                     </Link>
                     <p className="text-xs text-muted-foreground">
-                      {h.company_name ? `${h.company_name} · ` : ''}{levelLabel(h.level)} · {new Date(h.created_at).toLocaleDateString()}
+                      {h.company_name ? `${h.company_name} · ` : ''}{levelText(h.level)} · {fmt.date(h.created_at)}
                     </p>
                     <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {h.status === 'active' && <Badge variant="outline">In progress</Badge>}
-                      {h.readiness && <Badge variant="outline">{READINESS_LABEL[h.readiness]}</Badge>}
-                      {h.mode === 'voice' && <Badge variant="outline"><Mic className="mr-1 h-3 w-3" aria-hidden />Voice</Badge>}
-                      {h.shared && <Badge variant="outline"><Share2 className="mr-1 h-3 w-3" aria-hidden />Shared</Badge>}
-                      {h.has_recording && <Badge variant="outline"><Video className="mr-1 h-3 w-3" aria-hidden />Recording</Badge>}
+                      {h.status === 'active' && <Badge variant="outline">{t('assessment.secInProgress')}</Badge>}
+                      {h.readiness && <Badge variant="outline">{td(`dashboard.readiness:${h.readiness}`, READINESS_LABEL[h.readiness])}</Badge>}
+                      {h.mode === 'voice' && <Badge variant="outline"><Mic className="mr-1 h-3 w-3" aria-hidden />{t('dashboard.voice')}</Badge>}
+                      {h.shared && <Badge variant="outline"><Share2 className="mr-1 h-3 w-3" aria-hidden />{t('dashboard.shared')}</Badge>}
+                      {h.has_recording && <Badge variant="outline"><Video className="mr-1 h-3 w-3" aria-hidden />{t('assessment.recording')}</Badge>}
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     {h.overall !== null && <span className="mr-2 font-mono text-lg font-semibold tabular-nums text-foreground">{h.overall}<span className="text-xs text-muted-foreground">/100</span></span>}
                     <Button asChild size="sm" variant={h.status === 'active' ? 'default' : 'outline'} className="min-h-11 sm:min-h-9">
-                      <Link href={`/dashboard/interview-sim/${encodeURIComponent(h.id)}`}>{h.status === 'active' ? 'Continue' : 'View report'}</Link>
+                      <Link href={`/dashboard/interview-sim/${encodeURIComponent(h.id)}`}>{h.status === 'active' ? t('common.continue') : t('dashboard.viewReport')}</Link>
                     </Button>
                     {h.status !== 'active' && (
-                      <Button size="sm" variant="outline" className="min-h-11 sm:min-h-9" disabled={busyId === h.id || left === 0} onClick={() => void start(h.id)} aria-label={`Retake ${roundLabel(h.round)} for ${h.role}`}>
-                        <RotateCcw className="h-4 w-4" aria-hidden /><span className="ml-1 hidden sm:inline">Retake</span>
+                      <Button size="sm" variant="outline" className="min-h-11 sm:min-h-9" disabled={busyId === h.id || left === 0} onClick={() => void start(h.id)} aria-label={t('dashboard.retakeAria', { round: roundText(h.round), role: h.role })}>
+                        <RotateCcw className="h-4 w-4" aria-hidden /><span className="ml-1 hidden sm:inline">{t('dashboard.retake')}</span>
                       </Button>
                     )}
-                    <Button size="sm" variant="ghost" className="min-h-11 sm:min-h-9" disabled={busyId === h.id} onClick={() => void remove(h.id)} aria-label="Delete interview">
+                    <Button size="sm" variant="ghost" className="min-h-11 sm:min-h-9" disabled={busyId === h.id} onClick={() => void remove(h.id)} aria-label={t('dashboard.deleteInterview')}>
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </Button>
                   </div>

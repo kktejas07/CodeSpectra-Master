@@ -14,6 +14,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface RecognitionLike {
   continuous: boolean
@@ -44,6 +45,7 @@ function audioMime(): string {
 export type VoicePhase = 'idle' | 'listening' | 'transcribing'
 
 export function useInterviewVoice(opts: { sessionId: string; language: string; serverTranscription: boolean }) {
+  const { t } = useT()
   const [phase, setPhase] = useState<VoicePhase>('idle')
   const [transcript, setTranscript] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -123,8 +125,8 @@ export function useInterviewVoice(opts: { sessionId: string; language: string; s
       rec.onerror = (e) => {
         if (e.error === 'no-speech' || e.error === 'aborted') return
         setError(e.error === 'not-allowed' || e.error === 'service-not-allowed'
-          ? 'Microphone access is blocked. Allow it for this site, or type your answer.'
-          : 'Speech recognition stopped. Try again, or type your answer.')
+          ? t('errors.micBlocked')
+          : t('errors.sttStopped'))
       }
       rec.onend = () => {
         durationRef.current = Date.now() - startedAt.current
@@ -136,12 +138,12 @@ export function useInterviewVoice(opts: { sessionId: string; language: string; s
         rec.start()
         setPhase('listening')
       } catch {
-        setError('Speech recognition could not start. Type your answer instead.')
+        setError(t('errors.sttCouldNotStart'))
       }
       return
     }
     if (!caps.serverStt) {
-      setError('Voice answers are not available in this browser. Type your answer instead.')
+      setError(t('errors.voiceUnavailable'))
       return
     }
     try {
@@ -161,11 +163,11 @@ export function useInterviewVoice(opts: { sessionId: string; language: string; s
             method: 'POST', credentials: 'include', body: blob, headers: { 'Content-Type': mime.split(';')[0], 'x-language': opts.language },
           })
           const j = (await res.json().catch(() => ({}))) as { text?: string; error?: string }
-          if (!res.ok || !j.text) throw new Error(j.error || 'We could not transcribe that. Type your answer instead.')
+          if (!res.ok || !j.text) throw new Error(j.error || t('errors.transcribeFailed'))
           finalText.current = j.text
           setTranscript(j.text)
         } catch (e) {
-          setError(e instanceof Error ? e.message : 'We could not transcribe that. Type your answer instead.')
+          setError(e instanceof Error ? e.message : t('errors.transcribeFailed'))
         } finally {
           setPhase('idle')
         }
@@ -176,10 +178,10 @@ export function useInterviewVoice(opts: { sessionId: string; language: string; s
       setPhase('listening')
     } catch (e) {
       const name = e instanceof DOMException ? e.name : ''
-      setError(name === 'NotAllowedError' ? 'Microphone access is blocked. Allow it for this site, or type your answer.' : 'The microphone could not start. Type your answer instead.')
+      setError(name === 'NotAllowedError' ? t('errors.micBlocked') : t('errors.micCouldNotStart'))
       releaseMic()
     }
-  }, [caps.serverStt, opts.language, opts.sessionId, stopSpeaking])
+  }, [caps.serverStt, opts.language, opts.sessionId, stopSpeaking, t])
 
   const stop = useCallback(() => {
     if (recRef.current) { recRef.current.stop(); recRef.current = null }

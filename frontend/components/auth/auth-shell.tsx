@@ -7,6 +7,8 @@ import { ChevronDown, Eye, EyeOff, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { BrandLogo } from '@/app/public-layout'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
+import { useT } from '@/lib/i18n/client'
+import { LanguageCompactSelect } from '@/components/i18n/language-switcher'
 
 /**
  * Shared frame for /auth/login and /auth/signup in the CodeSpectra brand.
@@ -14,17 +16,21 @@ import { NavThemeSwitch } from '@/components/nav-theme-switch'
  * on the right with context that actually helps someone signing in.
  */
 export function AuthShell({ aside, children }: { aside: React.ReactNode; children: React.ReactNode }) {
+  const { t } = useT()
   return (
     <div className="cs-brand grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-cs-sheet focus:px-4 focus:py-2">
-        Skip to content
+        {t('common.skipToContent')}
       </a>
       <div className="flex flex-col px-5 py-6 sm:px-10 lg:px-16">
         <header className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="CodeSpectra home">
+          <Link href="/" className="flex items-center gap-2.5" aria-label={t('common.homeAria')}>
             <BrandLogo />
           </Link>
-          <NavThemeSwitch compact />
+          <div className="flex items-center gap-2">
+            <LanguageCompactSelect />
+            <NavThemeSwitch compact />
+          </div>
         </header>
 
         <main id="main" className="flex flex-1 items-center py-10">
@@ -33,9 +39,9 @@ export function AuthShell({ aside, children }: { aside: React.ReactNode; childre
 
         <footer className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-cs-ink-soft">
           <span suppressHydrationWarning>{copyrightLine()}</span>
-          <Link href="/privacy" className="hover:text-cs-ink">Privacy</Link>
-          <Link href="/terms" className="hover:text-cs-ink">Terms</Link>
-          <Link href="/support" className="hover:text-cs-ink">Help</Link>
+          <Link href="/privacy" className="hover:text-cs-ink">{t('common.privacy')}</Link>
+          <Link href="/terms" className="hover:text-cs-ink">{t('common.terms')}</Link>
+          <Link href="/support" className="hover:text-cs-ink">{t('common.help')}</Link>
         </footer>
       </div>
 
@@ -74,6 +80,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
   ref,
 ) {
   const autoId = useId()
+  const { t } = useT()
   const inputId = id ?? autoId
   const hintId = hint ? `${inputId}-hint` : undefined
   return (
@@ -81,7 +88,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
       <div className="mb-1.5 flex items-baseline justify-between gap-3">
         <label htmlFor={inputId} className="text-[15px] font-medium">
           {label}
-          {optional && <span className="ml-1.5 font-normal text-cs-ink-soft">(optional)</span>}
+          {optional && <span className="ml-1.5 font-normal text-cs-ink-soft">{t('common.optionalParen')}</span>}
         </label>
         {labelAction}
       </div>
@@ -100,6 +107,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
 
 export function PasswordField(props: Omit<FieldProps, 'type' | 'trailing'>) {
   const [visible, setVisible] = useState(false)
+  const { t } = useT()
   return (
     <Field
       {...props}
@@ -108,7 +116,7 @@ export function PasswordField(props: Omit<FieldProps, 'type' | 'trailing'>) {
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          aria-label={visible ? 'Hide password' : 'Show password'}
+          aria-label={visible ? t('auth.hidePassword') : t('auth.showPassword')}
           aria-pressed={visible}
           className="flex h-9 w-9 items-center justify-center rounded text-cs-ink-soft hover:text-cs-ink"
         >
@@ -189,9 +197,10 @@ export function FormError({ children }: { children: React.ReactNode }) {
 }
 
 export function LastUsedBadge() {
+  const { t } = useT()
   return (
     <span className="absolute -top-2.5 right-3 rounded-full bg-cs-mark px-2 py-0.5 text-xs font-semibold text-cs-accent-ink">
-      Last used
+      {t('auth.lastUsed')}
     </span>
   )
 }

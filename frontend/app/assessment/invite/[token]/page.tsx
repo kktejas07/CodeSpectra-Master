@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 import { SoftGlow } from '@/components/visuals'
 import { Illustration } from '@/components/illustrations/spot'
 import { Scene } from '@/components/illustrations/scenes'
+import { useT } from '@/lib/i18n/client'
 
 interface AssessmentStepData {
   id: string
@@ -23,6 +24,7 @@ interface AssessmentStepData {
 
 export default function CandidateInviteLandingPage() {
   const { user } = useAuth()
+  const { t, rich } = useT()
   const params = useParams()
   const router = useRouter()
   const token = params?.token as string
@@ -53,7 +55,7 @@ export default function CandidateInviteLandingPage() {
         if (!res.ok) {
           if (json.is_used) setIsUsed(true)
           if (json.is_expired) setIsExpired(true)
-          throw new Error(json.error || 'Invalid or expired invitation link.')
+          throw new Error(json.error || t('assessment.inviteInvalidExpired'))
         }
         setCandidateData({
           email: json.email,
@@ -64,7 +66,7 @@ export default function CandidateInviteLandingPage() {
           allowed_languages: json.allowed_languages,
         })
       } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Verification failed')
+        setError(e instanceof Error ? e.message : t('assessment.verificationFailed'))
       } finally {
         setLoading(false)
       }
@@ -80,11 +82,11 @@ export default function CandidateInviteLandingPage() {
         method: 'POST',
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Failed to request new link')
-      setRenewedMsg(json.message || 'A new invitation link has been sent to your email.')
+      if (!res.ok) throw new Error(json.error || t('assessment.requestLinkFailed'))
+      setRenewedMsg(json.message || t('assessment.newLinkSent'))
       setRenewedEmail(candidateData?.email || '')
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to request new link')
+      setError(e instanceof Error ? e.message : t('assessment.requestLinkFailed'))
     } finally {
       setRenewing(false)
     }
@@ -95,7 +97,7 @@ export default function CandidateInviteLandingPage() {
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          Checking your invitation…
+          {t('assessment.checkingInvite')}
         </div>
       </div>
     )
@@ -109,16 +111,16 @@ export default function CandidateInviteLandingPage() {
           {renewedMsg ? (
             <>
               <Illustration name="inbox" className="mx-auto w-36" />
-              <h1 className="text-xl font-bold text-foreground">New link requested</h1>
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.newLinkRequested')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {renewedMsg}
               </p>
               <div className="bg-muted/40 border border-border rounded-2xl p-4 text-left space-y-2">
-                <p className="text-sm font-medium">What happens next?</p>
+                <p className="text-sm font-medium">{t('assessment.whatNext')}</p>
                 <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
-                  <li>Open your email inbox (<span className="font-mono text-foreground">{renewedEmail}</span>)</li>
-                  <li>Click the new invitation link from the email</li>
-                  <li>Sign in or create your account to start the assessment</li>
+                  <li>{rich('assessment.nextOpenInbox', { email: <span className="font-mono text-foreground">{renewedEmail}</span> })}</li>
+                  <li>{t('assessment.nextClickLink')}</li>
+                  <li>{t('assessment.nextSignIn')}</li>
                 </ol>
               </div>
               <div className="pt-2 flex flex-col gap-2">
@@ -130,33 +132,33 @@ export default function CandidateInviteLandingPage() {
                   className="w-full"
                 >
                     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-                    Open Gmail
+                    {t('assessment.openGmail')}
                   </a>
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/auth/login" className="block">Go to sign in</Link>
+                  <Link href="/auth/login" className="block">{t('assessment.goToSignIn')}</Link>
                 </Button>
               </div>
             </>
           ) : isUsed ? (
             <>
               <Illustration name="success" className="mx-auto w-36" />
-              <h1 className="text-xl font-bold text-foreground">Assessment already completed</h1>
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.alreadyCompleted')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This invitation has already been used to complete the assessment. If you need to retake the assessment, please contact your administrator.
+                {t('assessment.alreadyCompletedBody')}
               </p>
               <div className="pt-2">
                 <Button className="w-full" asChild>
-                  <Link href="/auth/login" className="block">Go to sign in</Link>
+                  <Link href="/auth/login" className="block">{t('assessment.goToSignIn')}</Link>
                 </Button>
               </div>
             </>
           ) : isExpired ? (
             <>
               <Illustration name="calendar" className="mx-auto w-36" />
-              <h1 className="text-xl font-bold text-foreground">Invitation link expired</h1>
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.inviteExpired')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This candidate assessment link has expired. Request a fresh link and check your email to start the assessment.
+                {t('assessment.inviteExpiredBody')}
               </p>
               <div className="pt-2 space-y-2">
                 <Button 
@@ -165,26 +167,26 @@ export default function CandidateInviteLandingPage() {
                   className="w-full font-semibold"
                 >
                   {renewing ? (
-                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Requesting…</>
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> {t('assessment.requesting')}</>
                   ) : (
-                    'Request a new link'
+                    t('assessment.requestNewLink')
                   )}
                 </Button>
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/auth/login" className="block">Go to sign in</Link>
+                  <Link href="/auth/login" className="block">{t('assessment.goToSignIn')}</Link>
                 </Button>
               </div>
             </>
           ) : (
             <>
               <Illustration name="error" className="mx-auto w-36" />
-              <h1 className="text-xl font-bold text-foreground">Invitation link not valid</h1>
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.inviteNotValid')}</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                {error || 'This candidate assessment link is invalid or has already been used.'}
+                {error || t('assessment.inviteNotValidBody')}
               </p>
               <div className="pt-2">
                 <Button variant="outline" className="w-full" asChild>
-                  <Link href="/auth/login">Go to sign in</Link>
+                  <Link href="/auth/login">{t('assessment.goToSignIn')}</Link>
                 </Button>
               </div>
             </>
@@ -216,27 +218,27 @@ export default function CandidateInviteLandingPage() {
               <Code2 className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Your assessment</h1>
-              <p className="text-xs text-muted-foreground">Check your details, then start each stage when you're ready.</p>
+              <h1 className="text-xl font-bold text-foreground">{t('assessment.yourAssessment')}</h1>
+              <p className="text-xs text-muted-foreground">{t('assessment.checkDetails')}</p>
             </div>
           </div>
           <span className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400 bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 font-medium">
-            <ShieldCheck className="h-3.5 w-3.5" /> Invite verified
+            <ShieldCheck className="h-3.5 w-3.5" /> {t('assessment.inviteVerified')}
           </span>
         </div>
 
         <div className="rounded-2xl border border-border bg-muted/30 p-4 space-y-2 text-sm">
           <div className="flex justify-between py-1 border-b border-border/40">
-            <span className="text-muted-foreground">Name</span>
+            <span className="text-muted-foreground">{t('assessment.name')}</span>
             <span className="font-semibold text-foreground">{candidateData.full_name}</span>
           </div>
           <div className="flex justify-between py-1 border-b border-border/40">
-            <span className="text-muted-foreground">Email</span>
+            <span className="text-muted-foreground">{t('auth.email')}</span>
             <span className="font-mono text-foreground">{candidateData.email}</span>
           </div>
           {candidateData.allowed_languages && candidateData.allowed_languages.length > 0 && (
             <div className="flex justify-between py-1">
-              <span className="text-muted-foreground">Allowed languages</span>
+              <span className="text-muted-foreground">{t('assessment.allowedLanguages')}</span>
               <span className="font-semibold text-foreground capitalize">
                 {candidateData.allowed_languages.join(', ')}
               </span>
@@ -246,8 +248,8 @@ export default function CandidateInviteLandingPage() {
 
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <span>Your assessment stages</span>
-            <span className="text-xs font-normal text-muted-foreground">({steps.length} {steps.length === 1 ? 'stage' : 'stages'})</span>
+            <span>{t('assessment.yourStages')}</span>
+            <span className="text-xs font-normal text-muted-foreground">({t('assessment.stagesCount', { count: steps.length })})</span>
           </h2>
 
           <div className="grid gap-3">
@@ -269,7 +271,7 @@ export default function CandidateInviteLandingPage() {
                       <span className="font-mono bg-muted px-2 py-0.5 rounded border border-border">{step.target_url}</span>
                       {langs && langs.length > 0 && (
                         <span className="text-muted-foreground">
-                          Languages: {langs.join(', ')}
+                          {t('assessment.languagesList', { list: langs.join(', ') })}
                         </span>
                       )}
                     </div>
@@ -286,11 +288,11 @@ export default function CandidateInviteLandingPage() {
                               body: JSON.stringify({ email: candidateData.email }),
                             })
                             const json = await res.json()
-                            if (!res.ok) throw new Error(json.error || 'Failed to activate invite')
+                            if (!res.ok) throw new Error(json.error || t('assessment.activateFailed'))
                             const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
                             router.push(url)
                           } catch (e: unknown) {
-                            const msg = e instanceof Error ? e.message : 'Failed to start'
+                            const msg = e instanceof Error ? e.message : t('assessment.startFailed')
                             setError(msg)
                             setStarting(null)
                           }
@@ -300,9 +302,9 @@ export default function CandidateInviteLandingPage() {
                         className="gap-1.5 shrink-0 self-end sm:self-center"
                       >
                         {starting === (step.id || 'start') ? (
-                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Activating…</>
+                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {t('assessment.activating')}</>
                         ) : (
-                          <><Lock className="h-3.5 w-3.5" /> Start stage <ArrowRight className="h-3.5 w-3.5" /></>
+                          <><Lock className="h-3.5 w-3.5" /> {t('assessment.startStage')} <ArrowRight className="h-3.5 w-3.5" /></>
                         )}
                       </Button>
                     ) : (
@@ -314,7 +316,7 @@ export default function CandidateInviteLandingPage() {
                         size="sm"
                         className="gap-1.5 shrink-0 self-end sm:self-center bg-primary hover:bg-primary/95 text-primary-foreground font-semibold"
                       >
-                        <User className="h-3.5 w-3.5" /> Sign in to start <ArrowRight className="h-3.5 w-3.5" />
+                        <User className="h-3.5 w-3.5" /> {t('assessment.signInToStart')} <ArrowRight className="h-3.5 w-3.5" />
                       </Button>
                     )
                   ) : (
@@ -326,7 +328,7 @@ export default function CandidateInviteLandingPage() {
                       size="sm"
                       className="gap-1.5 shrink-0 self-end sm:self-center font-semibold"
                     >
-                      <User className="h-3.5 w-3.5" /> Register to start <ArrowRight className="h-3.5 w-3.5" />
+                      <User className="h-3.5 w-3.5" /> {t('assessment.registerToStart')} <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
                   )}
                 </div>
@@ -338,11 +340,11 @@ export default function CandidateInviteLandingPage() {
         {starting && (
           <p className="text-[11px] text-center text-muted-foreground pt-2">
             <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
-            Opening your assessment — please wait…
+            {t('assessment.opening')}
           </p>
         )}
         <p className="text-[11px] text-center text-muted-foreground pt-2">
-          This invite link works once. An identity check and proctoring (webcam and screen monitoring) run during the assessment.
+          {t('assessment.inviteFootnote')}
         </p>
       </Card>
     </div>

@@ -6,9 +6,15 @@
  * ./dashboard-shell.tsx (client component).
  */
 import DashboardShell from './dashboard-shell'
+import { LocaleRoot } from '@/components/i18n/locale-root'
 
 export const dynamic = 'force-dynamic'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return <DashboardShell>{children}</DashboardShell>
+  // Interface language (lib/i18n): profile → cookie → Accept-Language.
+  return (
+    <LocaleRoot>
+      <DashboardShell>{children}</DashboardShell>
+    </LocaleRoot>
+  )
 }

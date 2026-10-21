@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { csrfFetch } from "@/lib/csrf-fetch";
 import { safeRedirect } from "@/lib/safe-redirect";
+import { useT } from "@/lib/i18n/client";
 
 type Policy = { status: "ok" } | { status: "grace"; daysLeft: number } | { status: "required" };
 
@@ -24,6 +25,7 @@ function TwoFactorSetupInner() {
   const router = useRouter();
   const params = useSearchParams();
   const redirectTo = safeRedirect(params.get("redirectTo"));
+  const { t } = useT();
   const [loading, setLoading] = useState(true);
   const [signedIn, setSignedIn] = useState(true);
   const [enabled, setEnabled] = useState(false);
@@ -42,7 +44,7 @@ function TwoFactorSetupInner() {
         setEnabled(j.enabled === true);
         if (j.policy) setPolicy(j.policy);
       })
-      .catch(() => setError("We couldn’t check your account. Refresh to try again."))
+      .catch(() => setError(t("auth.checkAccountFailed")))
       .finally(() => setLoading(false));
   }, []);
 
@@ -52,12 +54,12 @@ function TwoFactorSetupInner() {
     try {
       const res = await csrfFetch("/api/user/2fa/setup", { method: "POST" });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.otpauth) throw new Error(j.error || "Couldn’t start setup. Try again.");
+      if (!res.ok || !j.otpauth) throw new Error(j.error || t("auth.setupStartFailed"));
       const QRCode = await import("qrcode");
       setQr(await QRCode.toDataURL(j.otpauth, { width: 200, margin: 2 }));
       setSecret(j.secret);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn’t start setup. Try again.");
+      setError(e instanceof Error ? e.message : t("auth.setupStartFailed"));
     } finally {
       setBusy(false);
     }
@@ -74,12 +76,12 @@ function TwoFactorSetupInner() {
         body: JSON.stringify({ token: code.replace(/\s/g, "") }),
       });
       const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.success) throw new Error(j.error || "That code didn’t work. Try the newest code in your app.");
+      if (!res.ok || !j.success) throw new Error(j.error || t("auth.totpUseNewest"));
       setEnabled(true);
       router.replace(redirectTo);
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "That code didn’t work.");
+      setError(e instanceof Error ? e.message : t("auth.codeDidNotWork"));
     } finally {
       setBusy(false);
     }
@@ -89,43 +91,43 @@ function TwoFactorSetupInner() {
     <AuthShell aside={<Illustration name="security" className="mx-auto w-72" />}>
       <div className="space-y-6">
         <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Turn on two-factor sign-in</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("auth.turnOn2fa")}</h1>
           <p className="text-sm text-muted-foreground">
             {policy.status === "required"
-              ? "Admin accounts must use an authenticator app. Set it up to keep using the dashboard."
+              ? t("auth.admin2faRequired")
               : policy.status === "grace"
-                ? `Admin accounts must use an authenticator app. You have ${policy.daysLeft} day${policy.daysLeft === 1 ? "" : "s"} left to set it up.`
-                : "Protect your account with a code from an authenticator app (Google Authenticator, 1Password, Authy…)."}
+                ? t("auth.admin2faGrace", { count: policy.daysLeft })
+                : t("auth.protect2fa")}
           </p>
         </div>
 
         {loading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> Checking your account…</div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> {t("auth.checkingAccount")}</div>
         ) : !signedIn ? (
-          <Button asChild className="w-full rounded-lg"><Link href={`/auth/login?redirectTo=${encodeURIComponent("/auth/two-factor-setup")}`}>Sign in first</Link></Button>
+          <Button asChild className="w-full rounded-lg"><Link href={`/auth/login?redirectTo=${encodeURIComponent("/auth/two-factor-setup")}`}>{t("auth.signInFirst")}</Link></Button>
         ) : enabled ? (
           <div className="space-y-4 rounded-2xl border border-border bg-card p-5">
-            <p className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400"><ShieldCheck className="h-4 w-4" /> Two-factor sign-in is on.</p>
-            <Button className="w-full rounded-lg" onClick={() => router.replace(redirectTo)}>Continue</Button>
+            <p className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400"><ShieldCheck className="h-4 w-4" /> {t("auth.twoFactorOn")}</p>
+            <Button className="w-full rounded-lg" onClick={() => router.replace(redirectTo)}>{t("common.continue")}</Button>
           </div>
         ) : !qr ? (
           <Button className="h-11 w-full rounded-lg" onClick={() => void start()} disabled={busy}>
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
-            Set up authenticator app
+            {t("auth.setUpAuthenticator")}
           </Button>
         ) : (
           <form onSubmit={verify} className="space-y-4 rounded-2xl border border-border bg-card p-5">
-            <p className="text-sm text-muted-foreground">Scan this code with your authenticator app, then enter the 6-digit code it shows.</p>
+            <p className="text-sm text-muted-foreground">{t("auth.scanQr")}</p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="QR code for your authenticator app" className="mx-auto h-48 w-48 rounded-lg bg-white p-2" />
-            <p className="text-center text-xs text-muted-foreground">Can’t scan? Enter this key: <span className="font-mono break-all text-foreground">{secret}</span></p>
+            <img src={qr} alt={t("auth.qrAlt")} className="mx-auto h-48 w-48 rounded-lg bg-white p-2" />
+            <p className="text-center text-xs text-muted-foreground">{t("auth.cantScan")} <span className="font-mono break-all text-foreground">{secret}</span></p>
             <div className="space-y-1.5">
-              <Label htmlFor="totp-code">6-digit code</Label>
+              <Label htmlFor="totp-code">{t("auth.sixDigitCode")}</Label>
               <Input id="totp-code" inputMode="numeric" autoComplete="one-time-code" maxLength={7} value={code} onChange={(e) => setCode(e.target.value)} />
             </div>
             <Button type="submit" className="h-11 w-full rounded-lg" disabled={busy || code.replace(/\s/g, "").length !== 6}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
-              Turn on
+              {t("auth.turnOn")}
             </Button>
           </form>
         )}

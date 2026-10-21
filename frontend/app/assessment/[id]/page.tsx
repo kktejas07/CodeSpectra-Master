@@ -39,6 +39,7 @@ import { Illustration } from '@/components/illustrations/spot'
 import { INVITE_ONLY_MESSAGE } from '@/lib/exam-access'
 import type { CandidateSectionView } from '@/lib/exam-sections'
 import { isMobileUserAgent } from '@/lib/proctoring/fullscreen'
+import { useT } from '@/lib/i18n/client'
 
 interface Question {
   id: string
@@ -82,8 +83,9 @@ function pseudoRandom(n: number): number {
   return x - Math.floor(x)
 }
 
-function typeLabel(type: string): string {
-  return metaFor(type).label
+/** Question-type badge: English label from lib/question-types, translated when a catalog entry exists. */
+function typeLabel(type: string, td: (key: string, fallback: string) => string): string {
+  return td(`assessment.qtype:${type}`, metaFor(type).label)
 }
 
 interface Exam {
@@ -147,6 +149,7 @@ export default function CandidateAssessmentPage() {
   const searchParams = useSearchParams()
   const { user } = useAuth()
   const { dateTime: fmtDateTime } = useDateFormat()
+  const { t, td, fmt } = useT()
   
   const isShareLink = searchParams.get('share') === 'true'
   
@@ -286,14 +289,14 @@ export default function CandidateAssessmentPage() {
         if (linkToken) qs.set('link', linkToken)
         const res = await fetch(`/api/exams/${params.id}${qs.toString() ? `?${qs}` : ''}`, { credentials: 'include' })
         if (!res.ok) {
-          addToast({ type: 'error', title: 'Assessment unavailable or invalid.' })
+          addToast({ type: 'error', title: t('assessment.unavailable') })
           router.push('/')
           return
         }
         const found = await res.json() as Exam & { published?: boolean; submission?: unknown; entry?: EntryInfo; require_token_links?: boolean }
 
         if (!found || !found.published) {
-          addToast({ type: 'error', title: 'Assessment unavailable or invalid.' })
+          addToast({ type: 'error', title: t('assessment.unavailable') })
           router.push('/')
           return
         }
@@ -348,12 +351,12 @@ export default function CandidateAssessmentPage() {
             const linkRes = await fetch(`/api/exams/${params.id}/links?token=${encodeURIComponent(linkToken)}`)
             if (!linkRes.ok) {
               const linkErr = await linkRes.json().catch(() => ({}))
-              setAccessError(linkErr.error || 'This link has expired or been revoked.')
+              setAccessError(linkErr.error || t('assessment.linkRevoked'))
               setLoading(false)
               return
             }
           } catch {
-            setAccessError('This link could not be verified. Please try again.')
+            setAccessError(t('assessment.linkUnverified'))
             setLoading(false)
             return
           }
@@ -369,7 +372,7 @@ export default function CandidateAssessmentPage() {
         // Server entry check: invite (right account, not revoked, retakes
         // allowed), link, window, attempts, personal-link requirement.
         if (!found.entry?.ok) {
-          setAccessError(found.entry?.error || 'You can’t start this assessment.')
+          setAccessError(found.entry?.error || t('assessment.cannotStart'))
           setLoading(false)
           return
         }
@@ -382,7 +385,7 @@ export default function CandidateAssessmentPage() {
         if (found.entry.attempt?.status === 'expired') setTimeUp(true)
         setExam(found)
       } catch {
-        addToast({ type: 'error', title: 'Failed to load assessment' })
+        addToast({ type: 'error', title: t('assessment.loadFailed') })
       } finally {
         setLoading(false)
       }
@@ -413,7 +416,7 @@ export default function CandidateAssessmentPage() {
     // <= not ===: the deadline-based countdown can skip a second.
     if (hasStarted && timeLeft !== null && timeLeft <= 1800 && timeLeft > 0 && (exam?.duration ?? 0) * 60 > 1800 && !isSubmitted && !isSubmitting && !hasWarned30Min.current) {
       hasWarned30Min.current = true
-      addToast({ type: 'warning', title: '30 minutes remaining!' })
+      addToast({ type: 'warning', title: t('assessment.thirtyMinutesLeft') })
       csrfFetch('/api/proctor/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -494,13 +497,13 @@ export default function CandidateAssessmentPage() {
       const j = await res.json().catch(() => ({})) as SectionPayload & { error?: string }
       applySectionPayload(j)
       if (!res.ok) {
-        addToast({ type: 'error', title: 'Couldn’t change section', message: j.error })
+        addToast({ type: 'error', title: t('assessment.sectionChangeFailed'), message: j.error })
         return null
       }
       lastSavedRef.current = JSON.stringify(answersRef.current)
       return j
     } catch {
-      addToast({ type: 'error', title: 'Couldn’t change section', message: 'Check your connection and try again.' })
+      addToast({ type: 'error', title: t('assessment.sectionChangeFailed'), message: t('errors.checkConnection') })
       return null
     } finally {
       setSwitchingSection(false)
@@ -521,8 +524,8 @@ export default function CandidateAssessmentPage() {
     if (overall !== null && dl >= overall) { setSectionTimeLeft(null); return }
     const tick = () => setSectionTimeLeft(Math.max(0, Math.round((dl - Date.now()) / 1000)))
     tick()
-    const t = setInterval(tick, 1000)
-    return () => clearInterval(t)
+    const iv = setInterval(tick, 1000)
+    return () => clearInterval(iv)
   }, [hasStarted, isSubmitted, currentSection?.id, currentSection?.deadline])
 
   // Section time is up: move on (the server does the same on its next request).
@@ -534,10 +537,10 @@ export default function CandidateAssessmentPage() {
     const next = rest.find((x) => x.status === 'open' || x.status === 'upcoming')
     void (async () => {
       if (next) {
-        addToast({ type: 'warning', title: `Time is up for ${currentSection.title}`, message: `Moving on to ${next.title}.` })
+        addToast({ type: 'warning', title: t('assessment.sectionTimeUp', { section: currentSection.title }), message: t('assessment.movingOnTo', { section: next.title }) })
         await goToSection(next.id)
       } else {
-        addToast({ type: 'warning', title: 'Time is up for the last section', message: 'Submitting your answers.' })
+        addToast({ type: 'warning', title: t('assessment.lastSectionTimeUp'), message: t('assessment.submittingAnswers') })
         autoSubmitAttemptedRef.current = true
         await submitAssessment(true)
       }
@@ -564,10 +567,10 @@ export default function CandidateAssessmentPage() {
       if (j.identity_required) {
         afterIdentityRef.current = { kind: 'start' }
         setShowVerification(true)
-        addToast({ type: 'error', title: 'Identity check needed', message: j.error })
+        addToast({ type: 'error', title: t('assessment.identityNeeded'), message: j.error })
         return
       }
-      if (!res.ok || !Array.isArray(j.questionList) || !j.started_at) throw new Error(j.error || 'Could not start the assessment')
+      if (!res.ok || !Array.isArray(j.questionList) || !j.started_at) throw new Error(j.error || t('assessment.couldNotStart'))
 
       const serverNow = j.server_now ? Date.parse(j.server_now) : Date.now()
       const offset = Date.now() - serverNow
@@ -616,14 +619,14 @@ export default function CandidateAssessmentPage() {
       setTimeLeft(deadlineLocalRef.current !== null ? Math.max(0, Math.round((deadlineLocalRef.current - Date.now()) / 1000)) : null)
       setHasStarted(true)
     } catch (e) {
-      addToast({ type: 'error', title: 'Couldn’t start the assessment', message: e instanceof Error ? e.message : undefined })
+      addToast({ type: 'error', title: t('assessment.couldNotStartTitle'), message: e instanceof Error ? e.message : undefined })
     } finally {
       setStarting(false)
     }
   }
 
   const handleAutoSubmit = async () => {
-    addToast({ type: 'error', title: 'Time is up! Auto-submitting...' })
+    addToast({ type: 'error', title: t('assessment.timeUpAutoSubmitting') })
     await submitAssessment(true)
   }
 
@@ -660,10 +663,10 @@ export default function CandidateAssessmentPage() {
           // Answers stay saved; redo the identity check, then this submit runs again.
           afterIdentityRef.current = { kind: 'submit', auto: autoSubmitted }
           setShowVerification(true)
-          addToast({ type: 'error', title: 'Identity check needed', message: 'Redo the identity check to submit. Your answers are saved.' })
+          addToast({ type: 'error', title: t('assessment.identityNeeded'), message: t('assessment.redoIdentity') })
           return
         }
-        throw new Error(err.error || 'Failed to submit')
+        throw new Error(err.error || t('assessment.submitFailed'))
       }
       const okJson = await res.json().catch(() => ({})) as { attempt_no?: number; max_attempts?: number }
       if (typeof okJson.attempt_no === 'number' && typeof okJson.max_attempts === 'number') {
@@ -696,24 +699,20 @@ export default function CandidateAssessmentPage() {
           }),
         })
       } catch { /* fire-and-forget */ }
-      addToast({ type: 'success', title: 'Assessment submitted successfully!' })
+      addToast({ type: 'success', title: t('assessment.submittedToast') })
     } catch (e: any) {
       const reason = e.message || ''
       if (autoSubmitted) {
-        addToast({ type: 'error', title: 'Auto-submit failed', message: `${reason} Your answers are auto-saved on this device — do not close this tab. Contact your administrator with your email address.` })
+        addToast({ type: 'error', title: t('assessment.autoSubmitFailed'), message: `${reason} ${t('assessment.autoSubmitFailedBody')}` })
       } else {
-        addToast({ type: 'error', title: 'Failed to submit', message: reason })
+        addToast({ type: 'error', title: t('assessment.submitFailed'), message: reason })
       }
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60)
-    const s = seconds % 60
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-  }
+  const formatTime = (seconds: number) => fmt.clock(seconds)
 
   const identityDialog = exam && showVerification ? (
     <IdentityVerification
@@ -741,7 +740,7 @@ export default function CandidateAssessmentPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Preparing your assessment…
+        <Loader2 className="h-6 w-6 animate-spin mr-2" /> {t('assessment.preparing')}
       </div>
     )
   }
@@ -755,15 +754,15 @@ export default function CandidateAssessmentPage() {
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 mx-auto text-destructive">
             <ShieldX className="h-7 w-7" />
           </div>
-          <h1 className="text-xl font-bold">{windowState === 'closed' ? 'Assessment closed' : 'Assessment not open yet'}</h1>
+          <h1 className="text-xl font-bold">{windowState === 'closed' ? t('assessment.closed') : t('assessment.notOpenYet')}</h1>
           <p className="text-sm text-muted-foreground">
             {windowState === 'closed'
-              ? `This assessment closed on ${exam.ends_at ? fmtDateTime(exam.ends_at) : 'its deadline'}. Please contact your administrator if you need access.`
-              : `This assessment opens on ${exam.starts_at ? fmtDateTime(exam.starts_at) : 'its scheduled start time'}. Please check back then.`}
+              ? t('assessment.closedOn', { when: exam.ends_at ? fmtDateTime(exam.ends_at) : t('assessment.itsDeadline') })
+              : t('assessment.opensOn', { when: exam.starts_at ? fmtDateTime(exam.starts_at) : t('assessment.itsStartTime') })}
           </p>
           <div className="pt-2">
             <Button variant="outline" className="w-full" asChild>
-              <Link href="/">Return home</Link>
+              <Link href="/">{t('assessment.returnHome')}</Link>
             </Button>
           </div>
         </Card>
@@ -776,11 +775,11 @@ export default function CandidateAssessmentPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full rounded-3xl p-8 text-center border-destructive/30 space-y-4">
           <Illustration name="locked" className="mx-auto w-40" />
-          <h1 className="text-xl font-bold">{accessError === INVITE_ONLY_MESSAGE ? 'Invite-only test' : 'Access denied'}</h1>
-          <p className="text-sm text-muted-foreground">{accessError}</p>
+          <h1 className="text-xl font-bold">{accessError === INVITE_ONLY_MESSAGE ? t('assessment.inviteOnlyTitle') : t('assessment.accessDenied')}</h1>
+          <p className="text-sm text-muted-foreground">{accessError === INVITE_ONLY_MESSAGE ? t('assessment.inviteOnlyBody') : accessError}</p>
           <div className="pt-2">
             <Button variant="outline" className="w-full" asChild>
-              <Link href="/">Return home</Link>
+              <Link href="/">{t('assessment.returnHome')}</Link>
             </Button>
           </div>
         </Card>
@@ -794,27 +793,27 @@ export default function CandidateAssessmentPage() {
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-md w-full rounded-3xl p-8 text-center border-border/70 space-y-4">
           <Illustration name="success" className="mx-auto w-40" />
-          <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('assessment.submittedTitle')}</h1>
           <p className="text-muted-foreground">
-            Thank you for completing the {exam.title} assessment. Your answers have been saved and sent to the hiring team for review.
+            {t('assessment.submittedThanks', { title: exam.title })}
             <br/><br/>
-            <strong>Your final score will be released after the admin reviews and evaluates your answers.</strong>
+            <strong>{t('assessment.scoreReleasedLater')}</strong>
           </p>
           {attemptInfo && attemptInfo.max > 1 && (
             <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm text-left space-y-1.5">
-              <div className="flex justify-between"><span className="text-muted-foreground">Attempts used</span><span className="font-medium tabular-nums">{attemptInfo.used} of {attemptInfo.max}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('assessment.attemptsUsed')}</span><span className="font-medium tabular-nums">{t('assessment.nOfM', { n: attemptInfo.used, m: attemptInfo.max })}</span></div>
               {attemptInfo.best && attemptInfo.best.total > 0 && (
-                <div className="flex justify-between"><span className="text-muted-foreground">Best released score</span><span className="font-medium tabular-nums">{Math.round((attemptInfo.best.score / attemptInfo.best.total) * 100)}% (attempt {attemptInfo.best.attempt_no})</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">{t('assessment.bestReleasedScore')}</span><span className="font-medium tabular-nums">{t('assessment.bestScoreValue', { percent: fmt.percent(attemptInfo.best.score / attemptInfo.best.total), attempt: attemptInfo.best.attempt_no })}</span></div>
               )}
             </div>
           )}
           <div className="pt-4 flex flex-col gap-2 sm:flex-row sm:justify-center">
             {attemptInfo?.can_retake && (
               <Button onClick={() => window.location.reload()}>
-                Start attempt {attemptInfo.used + 1} of {attemptInfo.max}
+                {t('assessment.startAttemptNofM', { n: attemptInfo.used + 1, m: attemptInfo.max })}
               </Button>
             )}
-            <Button variant="outline" onClick={() => router.push('/')}>Return to home</Button>
+            <Button variant="outline" onClick={() => router.push('/')}>{t('assessment.returnHome')}</Button>
           </div>
         </Card>
       </div>
@@ -829,13 +828,13 @@ export default function CandidateAssessmentPage() {
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/10 mx-auto text-amber-700 dark:text-amber-300">
             <Clock className="h-7 w-7" />
           </div>
-          <h1 className="text-xl font-bold">Time is up</h1>
+          <h1 className="text-xl font-bold">{t('assessment.timeIsUp')}</h1>
           <p className="text-sm text-muted-foreground">
-            The time for this attempt has run out. The answers saved before the deadline will be submitted for review.
+            {t('assessment.timeRanOutBody')}
           </p>
           <Button className="w-full gap-2" onClick={() => submitAssessment(true)} disabled={isSubmitting}>
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Submit saved answers
+            {t('assessment.submitSavedAnswers')}
           </Button>
         </Card>
         {identityDialog}
@@ -861,19 +860,19 @@ export default function CandidateAssessmentPage() {
             <Illustration name="assessment" className="mx-auto w-36" />
             <div>
               <h1 className="text-xl font-bold">{exam.title}</h1>
-              <p className="text-sm text-muted-foreground mt-1">Sign in or create an account to take this assessment</p>
+              <p className="text-sm text-muted-foreground mt-1">{t('assessment.signInToTake')}</p>
             </div>
             <div className="bg-muted/40 border border-border rounded-2xl p-4 text-sm text-left space-y-2">
-              <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-medium tabular-nums">{exam.duration} min</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Questions</span><span className="font-medium tabular-nums">{questionCount}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Level</span><span className="font-medium capitalize">{exam.level}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('assessment.duration')}</span><span className="font-medium tabular-nums">{t('assessment.minutesShort', { count: exam.duration })}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('assessment.questions')}</span><span className="font-medium tabular-nums">{fmt.number(questionCount)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">{t('assessment.level')}</span><span className="font-medium capitalize">{td(`assessment.level:${String(exam.level).toLowerCase()}`, exam.level)}</span></div>
             </div>
             <div className="space-y-2">
               <Button className="w-full gap-2" asChild>
-                <Link href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}><LogIn className="h-4 w-4" /> Sign in</Link>
+                <Link href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}><LogIn className="h-4 w-4" /> {t('auth.signIn')}</Link>
               </Button>
               <Button variant="outline" className="w-full gap-2" asChild>
-                <Link href={`/auth/signup?redirect=${encodeURIComponent(loginRedirect)}`}><User className="h-4 w-4" /> Create account</Link>
+                <Link href={`/auth/signup?redirect=${encodeURIComponent(loginRedirect)}`}><User className="h-4 w-4" /> {t('auth.createAccountButton')}</Link>
               </Button>
             </div>
           </Card>
@@ -888,33 +887,33 @@ export default function CandidateAssessmentPage() {
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-2">{exam.title}</h1>
             <p className="text-muted-foreground text-sm">
-              You have been invited to complete a {exam.level} level technical assessment.
+              {t('assessment.invitedToComplete', { level: td(`assessment.level:${String(exam.level).toLowerCase()}`, exam.level) })}
             </p>
           </div>
 
           <div className="bg-muted/40 border border-border rounded-2xl p-4 space-y-3 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Duration</span>
-              <span className="font-semibold tabular-nums">{exam.duration} minutes</span>
+              <span className="text-muted-foreground">{t('assessment.duration')}</span>
+              <span className="font-semibold tabular-nums">{t('assessment.minutes', { count: exam.duration })}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Questions</span>
-              <span className="font-semibold tabular-nums">{questionCount}</span>
+              <span className="text-muted-foreground">{t('assessment.questions')}</span>
+              <span className="font-semibold tabular-nums">{fmt.number(questionCount)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Format</span>
-              <span className="font-semibold">{exam.duration > 0 ? 'Timed, submits automatically at zero' : 'No time limit'}</span>
+              <span className="text-muted-foreground">{t('assessment.format')}</span>
+              <span className="font-semibold">{exam.duration > 0 ? t('assessment.formatTimed') : t('assessment.noTimeLimit')}</span>
             </div>
             {exam.sections && exam.sections.length > 0 && (
               <div className="border-t border-border pt-3">
-                <p className="mb-2 text-muted-foreground">Sections, in order</p>
+                <p className="mb-2 text-muted-foreground">{t('assessment.sectionsInOrder')}</p>
                 <ol className="space-y-1.5">
                   {exam.sections.map((sec, i) => (
                     <li key={sec.id} className="flex items-start justify-between gap-3">
                       <span className="font-medium"><span className="tabular-nums">{i + 1}.</span> {sec.title}</span>
                       <span className="shrink-0 text-right text-xs text-muted-foreground">
-                        <span className="tabular-nums">{sec.question_ids.length}</span> questions · {sec.time_limit_minutes ? <><span className="tabular-nums">{sec.time_limit_minutes}</span> min</> : 'shares the test time'}
-                        {sec.lock_after_leave ? <><br />locks when you leave</> : null}
+                        {t('assessment.questionsCount', { count: sec.question_ids.length })} · {sec.time_limit_minutes ? t('assessment.minutesShort', { count: sec.time_limit_minutes }) : t('assessment.sharesTestTime')}
+                        {sec.lock_after_leave ? <><br />{t('assessment.locksWhenYouLeave')}</> : null}
                       </span>
                     </li>
                   ))}
@@ -923,8 +922,8 @@ export default function CandidateAssessmentPage() {
             )}
             {attemptInfo && attemptInfo.max > 1 && (
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Attempt</span>
-                <span className="font-semibold tabular-nums">{attemptInfo.used + 1} of {attemptInfo.max}</span>
+                <span className="text-muted-foreground">{t('assessment.attempt')}</span>
+                <span className="font-semibold tabular-nums">{t('assessment.nOfM', { n: attemptInfo.used + 1, m: attemptInfo.max })}</span>
               </div>
             )}
           </div>
@@ -932,14 +931,14 @@ export default function CandidateAssessmentPage() {
           <div className="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 p-4 rounded-xl flex items-start gap-3 text-sm">
             <AlertTriangle className="h-5 w-5 shrink-0 mt-0.5" />
             <p>
-              <strong>Before you start:</strong> once you begin, the timer cannot be paused. If the timer reaches zero, your assessment will be automatically submitted regardless of completion. Ensure you have a stable internet connection and {exam.duration} minutes of uninterrupted time.
+              <strong>{t('assessment.beforeYouStart')}</strong> {t('assessment.beforeYouStartBody', { minutes: exam.duration })}
             </p>
           </div>
 
           {onMobile && (
             <div role="note" className="bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 p-3 rounded-xl flex items-start gap-2 text-sm">
               <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span><strong>Use a laptop or desktop computer.</strong> Phones and tablets can&apos;t share the screen or stay in full screen, so a proctored test may be flagged or cut short here.</span>
+              <span><strong>{t('assessment.useLaptop')}</strong> {t('assessment.useLaptopBody')}</span>
             </div>
           )}
 
@@ -951,32 +950,32 @@ export default function CandidateAssessmentPage() {
               className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
             />
             <span className="text-xs text-muted-foreground leading-relaxed">
-              I consent to session recording (webcam and screen) during this assessment. The recording is used solely for proctoring integrity verification and will be stored securely.
+              {t('assessment.recordingConsent')}
             </span>
           </label>
 
           {user?.has_enrolled_face === false && exam.require_face_capture !== false && (
             <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-xl text-xs flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>First time here? Your face biometrics will be enrolled during the identity verification step.</span>
+              <span>{t('assessment.firstTimeFace')}</span>
             </div>
           )}
           {(exam.require_id_verification === false || exam.require_face_capture === false) && (
             <div className="bg-muted/40 border border-border p-3 rounded-xl text-xs text-muted-foreground">
-              Identity check for this assessment: {exam.require_id_verification === false && exam.require_face_capture === false ? 'consent only — no ID or face capture required' : exam.require_id_verification === false ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
+              {t('assessment.identityCheckFor', { mode: exam.require_id_verification === false && exam.require_face_capture === false ? t('assessment.identityConsentOnly') : exam.require_id_verification === false ? t('assessment.identityFaceOnly') : t('assessment.identityIdOnly') })}
             </div>
           )}
           {(exam.require_id_verification !== false || exam.require_face_capture !== false) && (
             <p className="text-xs text-muted-foreground">
               {exam.no_camera_policy === 'block'
-                ? 'This test needs a working camera for the identity check.'
-                : 'No camera on this device? You can upload a photo of your ID instead, and the organiser will check it by hand.'}
+                ? t('assessment.needsCamera')
+                : t('assessment.noCameraUpload')}
             </p>
           )}
           {resuming && (
             <div className="bg-primary/10 border border-primary/20 text-foreground p-3 rounded-xl text-xs flex items-center gap-2">
               <Clock className="h-4 w-4 shrink-0 text-primary" />
-              <span>You already started this attempt. The timer kept running; your saved answers will be restored.</span>
+              <span>{t('assessment.alreadyStarted')}</span>
             </div>
           )}
           {integrity.config && integrityOn && (
@@ -984,7 +983,7 @@ export default function CandidateAssessmentPage() {
           )}
           <Button onClick={() => { afterIdentityRef.current = { kind: 'start' }; setShowVerification(true) }} disabled={starting || integrityBlocksStart} className="w-full text-base font-semibold h-12 rounded-xl gap-2">
             {starting && <Loader2 className="h-4 w-4 animate-spin" />}
-            {resuming ? 'Resume assessment' : 'Start assessment'}
+            {resuming ? t('assessment.resume') : t('assessment.start')}
           </Button>
         </Card>
 
@@ -1006,12 +1005,12 @@ export default function CandidateAssessmentPage() {
     ? [...sections.slice(sectionPos + 1)].find((x) => x.status === 'open' || x.status === 'upcoming') ?? null
     : null
   const isAnsweredId = (id: string) => (Array.isArray(answers[id]) ? (answers[id] as string[]).length > 0 : !!answers[id])
-  const sectionStatusLabel: Record<string, string> = { upcoming: 'Not started', active: 'In progress', open: 'Started', locked: 'Locked', expired: 'Time is up' }
+  const sectionStatusLabel: Record<string, string> = { upcoming: t('assessment.secNotStarted'), active: t('assessment.secInProgress'), open: t('assessment.secStarted'), locked: t('assessment.secLocked'), expired: t('assessment.timeIsUp') }
 
   return (
     <ExtensionGate bypass={extensionBypass}>
     <>
-      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined} identityStatus={identityStatus} examTitle={exam.title}>
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName={t('assessment.candidate')} sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined} identityStatus={identityStatus} examTitle={exam.title}>
       <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted} enforceFullscreen={hasStarted}>
       {/* With integrity checks on, continuous video runs only when the author enabled it. */}
       <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent && (!integrityOn || !!integrity.config?.continuous_video)} />
@@ -1025,10 +1024,10 @@ export default function CandidateAssessmentPage() {
           <h1 className="font-bold text-lg tracking-tight text-foreground truncate">{exam.title}</h1>
           <p className="text-xs text-muted-foreground tabular-nums">
             {adaptiveView
-              ? <>Adaptive test · <span className="tabular-nums">{adaptiveView.total}</span> questions</>
+              ? <>{t('assessment.adaptiveTest')} · {t('assessment.questionsCount', { count: adaptiveView.total })}</>
               : currentSection
-              ? <>Section {sectionPos + 1} of {sections!.length}: {currentSection.title} · question {posInNav + 1} of {navIdx.length}</>
-              : <>Question {safeIdx + 1} of {exam.questionList.length}</>}
+              ? <>{t('assessment.sectionNofM', { n: sectionPos + 1, m: sections!.length, title: currentSection.title })} · {t('assessment.questionNofMLower', { n: posInNav + 1, m: navIdx.length })}</>
+              : <>{t('assessment.questionNofM', { n: safeIdx + 1, m: exam.questionList.length })}</>}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
@@ -1038,27 +1037,27 @@ export default function CandidateAssessmentPage() {
                 <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
               </span>
-              Recording
+              {t('assessment.recording')}
             </div>
           )}
           {sectionTimeLeft !== null && (
-            <div role="timer" aria-label="Time left in this section" className={`flex items-center gap-2 px-3 py-1.5 rounded-full border font-mono font-bold tabular-nums ${
+            <div role="timer" aria-label={t('assessment.sectionTimeLeftAria')} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border font-mono font-bold tabular-nums ${
               sectionTimeLeft < 120 ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' : 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300'
             }`}>
-              <span className="font-sans font-medium text-xs">Section</span>{formatTime(sectionTimeLeft)}
+              <span className="font-sans font-medium text-xs">{t('assessment.section')}</span>{formatTime(sectionTimeLeft)}
             </div>
           )}
-          <div role="timer" aria-label="Time remaining" className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold tabular-nums transition-colors duration-300 ${
+          <div role="timer" aria-label={t('assessment.timeRemainingAria')} className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold tabular-nums transition-colors duration-300 ${
             timeLeft === null ? 'bg-primary/5 border-primary/20 text-foreground' :
             timeLeft < 300 ? 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400' :
             timeLeft <= 1800 ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-300' : 'bg-primary/5 border-primary/20 text-foreground'
           }`}>
             <Clock className="h-4 w-4" />
-            {timeLeft === null ? 'No time limit' : <>{formatTime(timeLeft)}<span className="hidden sm:inline font-sans font-medium text-xs opacity-80">left</span></>}
+            {timeLeft === null ? t('assessment.noTimeLimit') : <>{formatTime(timeLeft)}<span className="hidden sm:inline font-sans font-medium text-xs opacity-80">{t('assessment.left')}</span></>}
           </div>
           <Button onClick={handleManualSubmit} disabled={isSubmitting} variant="destructive" size="sm" className="gap-2">
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            <span className="hidden sm:inline">Submit assessment</span><span className="sm:hidden">Submit</span>
+            <span className="hidden sm:inline">{t('assessment.submitAssessment')}</span><span className="sm:hidden">{t('assessment.submitShort')}</span>
           </Button>
         </div>
       </header>
@@ -1068,9 +1067,9 @@ export default function CandidateAssessmentPage() {
         {/* Left Side: Question List Sidebar */}
         <aside className={`w-64 border-r border-border bg-muted/20 p-4 overflow-y-auto ${adaptiveView ? 'hidden' : 'hidden md:block'}`}>
           <div className="mb-4 flex items-baseline justify-between">
-            <h3 className="text-sm font-semibold text-foreground">{currentSection ? currentSection.title : 'Questions'}</h3>
+            <h3 className="text-sm font-semibold text-foreground">{currentSection ? currentSection.title : t('assessment.questions')}</h3>
             <span className="text-xs text-muted-foreground tabular-nums">
-              {navIdx.filter((i) => isAnsweredId(exam.questionList[i].id)).length}/{navIdx.length} answered
+              {t('assessment.answeredOf', { n: navIdx.filter((i) => isAnsweredId(exam.questionList[i].id)).length, m: navIdx.length })}
             </span>
           </div>
           <div className="space-y-2">
@@ -1096,7 +1095,7 @@ export default function CandidateAssessmentPage() {
           </div>
           {sections && (
             <div className="mt-6 border-t border-border pt-4">
-              <h3 className="mb-2 text-sm font-semibold text-foreground">Sections</h3>
+              <h3 className="mb-2 text-sm font-semibold text-foreground">{t('assessment.sections')}</h3>
               <ol className="space-y-2">
                 {sections.map((sec, i) => {
                   const closed = sec.status === 'locked' || sec.status === 'expired'
@@ -1117,9 +1116,9 @@ export default function CandidateAssessmentPage() {
                           <span className="truncate"><span className="tabular-nums">{i + 1}.</span> {sec.title}</span>
                         </span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {sectionStatusLabel[sec.status]} · <span className="tabular-nums">{sec.question_ids.length}</span> questions
-                          {sec.time_limit_minutes ? <> · <span className="tabular-nums">{sec.time_limit_minutes}</span> min</> : null}
-                          {sec.lock_after_leave && !closed ? ' · locks when you leave' : ''}
+                          {sectionStatusLabel[sec.status]} · {t('assessment.questionsCount', { count: sec.question_ids.length })}
+                          {sec.time_limit_minutes ? <> · {t('assessment.minutesShort', { count: sec.time_limit_minutes })}</> : null}
+                          {sec.lock_after_leave && !closed ? ` · ${t('assessment.locksWhenYouLeave')}` : ''}
                         </span>
                       </button>
                     </li>
@@ -1135,7 +1134,7 @@ export default function CandidateAssessmentPage() {
           <div className="max-w-4xl mx-auto space-y-8">
             {sections && (
               <div className="md:hidden">
-                <label htmlFor="section-pick" className="mb-1 block text-xs font-medium text-muted-foreground">Section</label>
+                <label htmlFor="section-pick" className="mb-1 block text-xs font-medium text-muted-foreground">{t('assessment.section')}</label>
                 <select
                   id="section-pick"
                   className="h-11 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -1153,9 +1152,9 @@ export default function CandidateAssessmentPage() {
             )}
             {currentSection?.instructions && (
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm text-foreground">
-                <p className="mb-1 font-semibold">{currentSection.title}: instructions</p>
+                <p className="mb-1 font-semibold">{t('assessment.sectionInstructions', { title: currentSection.title })}</p>
                 <p className="whitespace-pre-wrap text-muted-foreground">{currentSection.instructions}</p>
-                {currentSection.lock_after_leave && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">Once you leave this section you can’t come back to it.</p>}
+                {currentSection.lock_after_leave && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">{t('assessment.cantComeBack')}</p>}
               </div>
             )}
             {adaptiveView ? (
@@ -1169,18 +1168,18 @@ export default function CandidateAssessmentPage() {
             ) : !currentQ ? (
               <div className="rounded-2xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
                 {sections && !currentSection
-                  ? 'All sections are finished. Submit your assessment to hand it in.'
-                  : 'No questions to show.'}
+                  ? t('assessment.allSectionsFinished')
+                  : t('assessment.noQuestions')}
                 <div className="mt-4">
-                  <Button onClick={handleManualSubmit} className="gap-2"><Send className="h-4 w-4" /> Submit assessment</Button>
+                  <Button onClick={handleManualSubmit} className="gap-2"><Send className="h-4 w-4" /> {t('assessment.submitAssessment')}</Button>
                 </div>
               </div>
             ) : (
             <>
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{typeLabel(currentQ.type)}</Badge>
-                <span className="text-xs text-muted-foreground tabular-nums">Question {posInNav + 1} of {navIdx.length}</span>
+                <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary">{typeLabel(currentQ.type, td)}</Badge>
+                <span className="text-xs text-muted-foreground tabular-nums">{t('assessment.questionNofM', { n: posInNav + 1, m: navIdx.length })}</span>
               </div>
               <h2 className="text-2xl font-bold tracking-tight text-foreground">{currentQ.title}</h2>
               <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg p-5 sm:p-6 rounded-2xl bg-card border border-border/70 text-foreground">
@@ -1222,21 +1221,21 @@ export default function CandidateAssessmentPage() {
                 onClick={() => setCurrentQIndex(navIdx[Math.max(0, posInNav - 1)] ?? safeIdx)}
                 disabled={posInNav <= 0}
               >
-                <ChevronLeft className="h-4 w-4 mr-2" /> Previous
+                <ChevronLeft className="h-4 w-4 mr-2" /> {t('common.previous')}
               </Button>
               
               {posInNav < navIdx.length - 1 ? (
                 <Button onClick={() => setCurrentQIndex(navIdx[posInNav + 1])}>
-                  Next question <ChevronRight className="h-4 w-4 ml-2" />
+                  {t('assessment.nextQuestion')} <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : nextSection ? (
                 <Button onClick={() => requestSection(nextSection.id)} disabled={switchingSection}>
                   {switchingSection ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-                  Next section: {nextSection.title} <ChevronRight className="h-4 w-4 ml-2" />
+                  {t('assessment.nextSection', { title: nextSection.title })} <ChevronRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
                 <Button onClick={handleManualSubmit} variant="default" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  Finish and submit <Send className="h-4 w-4 ml-2" />
+                  {t('assessment.finishAndSubmit')} <Send className="h-4 w-4 ml-2" />
                 </Button>
               )}
             </div>
@@ -1252,18 +1251,18 @@ export default function CandidateAssessmentPage() {
     <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
+          <AlertDialogTitle>{t('assessment.confirmSubmitTitle')}</AlertDialogTitle>
           <AlertDialogDescription>
-            You cannot return to the assessment once submitted. Please verify all your answers before submitting.
+            {t('assessment.confirmSubmitBody')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
             setShowSubmitConfirm(false)
             await submitAssessment(false)
           }}>
-            Submit
+            {t('common.submit')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -1271,15 +1270,15 @@ export default function CandidateAssessmentPage() {
     <AlertDialog open={!!confirmLeave} onOpenChange={(o) => { if (!o) setConfirmLeave(null) }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Leave {currentSection?.title ?? 'this section'}?</AlertDialogTitle>
+          <AlertDialogTitle>{t('assessment.leaveSectionTitle', { title: currentSection?.title ?? t('assessment.thisSection') })}</AlertDialogTitle>
           <AlertDialogDescription>
-            This section locks when you leave it. You won’t be able to come back or change these answers.
+            {t('assessment.leaveSectionBody')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Stay here</AlertDialogCancel>
-          <AlertDialogAction onClick={() => { const t = confirmLeave; setConfirmLeave(null); if (t) void goToSection(t) }}>
-            Leave and lock
+          <AlertDialogCancel>{t('assessment.stayHere')}</AlertDialogCancel>
+          <AlertDialogAction onClick={() => { const target = confirmLeave; setConfirmLeave(null); if (target) void goToSection(target) }}>
+            {t('assessment.leaveAndLock')}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

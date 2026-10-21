@@ -127,8 +127,21 @@ export interface LearnPostDoc {
   generated_by: 'bot' | 'admin'
   model?: string | null
   stats: { views: number; shares: Partial<Record<ShareChannel, number>>; share_total: number }
+  /** Content language (absent = English). Hindi / Telugu posts are AI translations of an English post (lib/learn/translate.ts). */
+  locale?: LearnContentLocale
+  /** For a translation: the English post's id (hreflang alternates link them). */
+  translation_of?: string | null
   created_at: string
   updated_at: string
+}
+
+/** Languages a Learn post can be written in (interface locales, lib/i18n/config). */
+export const LEARN_CONTENT_LOCALES = ['en', 'hi', 'te'] as const
+export type LearnContentLocale = (typeof LEARN_CONTENT_LOCALES)[number]
+export const LEARN_TRANSLATION_LOCALES = ['hi', 'te'] as const
+export type LearnTranslationLocale = (typeof LEARN_TRANSLATION_LOCALES)[number]
+export function isLearnTranslationLocale(v: unknown): v is LearnTranslationLocale {
+  return typeof v === 'string' && (LEARN_TRANSLATION_LOCALES as readonly string[]).includes(v)
 }
 
 export interface LearnSourceDoc {
@@ -157,6 +170,9 @@ export interface LearnSettings {
   daily_count?: number
   /** ISO week (e.g. 2026-W42) the "new on Learn" subscriber digest last ran. */
   last_digest_week?: string | null
+  /** AI spend caps for Hindi / Telugu translation drafts (count per UTC day / month). */
+  translate_daily_cap?: number
+  translate_monthly_cap?: number
   updated_at?: string
   updated_by?: string | null
 }
@@ -169,6 +185,8 @@ export const DEFAULT_LEARN_SETTINGS: LearnSettings = {
   research_enabled: true,
   auto_approve: false,
   auto_approve_min_score: 85,
+  translate_daily_cap: 10,
+  translate_monthly_cap: 100,
 }
 
 /** Public post card (list endpoints and the landing section). */

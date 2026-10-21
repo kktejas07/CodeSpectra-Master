@@ -38,8 +38,12 @@ export function parseListParams(sp: URLSearchParams | Record<string, string | st
   }
 }
 
+/** Content locales that are translations of an English post (not listed on their own). */
+const TRANSLATED_LOCALES: NonNullable<LearnPostDoc['locale']>[] = ['hi', 'te']
+
 function publishedFilter(p: ListParams): Filter<LearnPostDoc> {
-  const filter: Filter<LearnPostDoc> = { status: 'published' }
+  // Hindi / Telugu translations are reached from their English post (language links + hreflang), not listed twice.
+  const filter: Filter<LearnPostDoc> = { status: 'published', locale: { $nin: TRANSLATED_LOCALES } }
   if (isLearnCategory(p.category)) filter.category = p.category
   if (isLearnLevel(p.level)) filter.level = p.level
   const tag = typeof p.tag === 'string' ? p.tag.trim().toLowerCase().slice(0, 40) : ''
@@ -86,10 +90,18 @@ export async function getPublishedPost(slug: string): Promise<LearnPostDoc | nul
   return (await col.findOne({ slug, status: 'published' }, { projection: { _id: 0 } })) as LearnPostDoc | null
 }
 
+/** Published language versions of a post (itself included): the English original and its translations. */
+export async function publishedTranslations(post: Pick<LearnPostDoc, 'id' | 'translation_of'>): Promise<Array<Pick<LearnPostDoc, 'slug' | 'locale' | 'title'>>> {
+  const root = post.translation_of || post.id
+  const col = await learnPosts()
+  const rows = await col.find({ status: 'published', $or: [{ id: root }, { translation_of: root }] }, { projection: { _id: 0, slug: 1, locale: 1, title: 1 } }).limit(5).toArray()
+  return rows.map((r) => ({ slug: r.slug, title: r.title, locale: r.locale ?? 'en' }))
+}
+
 /** Same series first, then same category, then shared tags. */
 export async function relatedPosts(post: LearnPostDoc, limit = 4): Promise<LearnPostCard[]> {
   const col = await learnPosts()
-  const base = { status: 'published' as const, slug: { $ne: post.slug } }
+  const base: Filter<LearnPostDoc> = { status: 'published', slug: { $ne: post.slug }, locale: post.locale && post.locale !== 'en' ? post.locale : { $nin: TRANSLATED_LOCALES } }
   const out: LearnPostCard[] = []
   const seen = new Set<string>()
   const add = (rows: LearnPostCard[]) => { for (const r of rows) if (!seen.has(r.slug) && out.length < limit) { seen.add(r.slug); out.push(r) } }

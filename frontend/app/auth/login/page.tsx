@@ -12,6 +12,8 @@ import { FaceCamera, type LivenessCapture } from "@/components/auth/face-camera"
 import { pickLivenessChallenge, type LivenessChallenge } from "@/lib/auth-face-liveness";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { DeviceShowcase } from "@/components/visuals";
+import { useT } from "@/lib/i18n/client";
+import type { Translator } from "@/lib/i18n/catalog";
 import {
   AuthShell,
   AuthHeading,
@@ -29,41 +31,39 @@ import {
 type Mode = "password" | "sso" | "face";
 
 /** Plain-language text for the `?error=` codes the SSO / OAuth callbacks send back. */
-function loginErrorMessage(code: string | null): string | null {
+function loginErrorMessage(code: string | null, t: Translator): string | null {
   if (!code) return null;
   switch (code) {
     case "sso_idp_error":
-      return "Your organisation’s sign-in page reported a problem. Try again, or ask your admin.";
+      return t("auth.ssoIdpError");
     case "sso_missing_code":
     case "sso_invalid_state":
-      return "Your single sign-on attempt expired or was started in another tab. Start again from this page.";
+      return t("auth.ssoExpired");
     case "sso_provider_not_found":
     case "sso_unsupported_provider_type":
-      return "Single sign-on isn’t available for your organisation right now. Sign in with email, or ask your admin.";
+      return t("auth.ssoUnavailable");
     case "sso_discovery_failed":
     case "sso_bad_discovery":
     case "sso_token_exchange_failed":
     case "sso_token_exchange_error":
     case "sso_userinfo_failed":
     case "sso_userinfo_error":
-      return "We couldn’t reach your organisation’s sign-in service. Try again in a few minutes.";
+      return t("auth.ssoUnreachable");
     case "sso_no_email":
     case "sso_email_unverified":
-      return "Your organisation didn’t share a verified email address with us. Ask your admin to check the single sign-on setup.";
+      return t("auth.ssoNoEmail");
     case "sso_domain_mismatch":
-      return "That account’s email isn’t on a domain your organisation’s single sign-on covers. Use your work account, or sign in with email.";
+      return t("auth.ssoDomainMismatch");
     case "sso_account_disabled":
-      return "This account has been deactivated. Contact your administrator.";
+      return t("auth.accountDisabled");
     case "sso_maintenance":
-      return "We’re doing some maintenance right now. Please try again a little later.";
+      return t("auth.maintenance");
     case "sso_registration_closed":
-      return "New sign-ups are closed right now. Ask your organisation’s admin to invite you, then sign in again.";
+      return t("auth.registrationClosed");
     case "access_denied":
-      return "Sign-in was cancelled. Choose a sign-in method to try again.";
+      return t("auth.signInCancelled");
     default:
-      return code.startsWith("sso_")
-        ? "Single sign-on didn’t complete. Try again, or sign in with email."
-        : "Sign-in didn’t complete. Try again, or use another sign-in method.";
+      return code.startsWith("sso_") ? t("auth.ssoIncomplete") : t("auth.signInIncomplete");
   }
 }
 
@@ -71,21 +71,22 @@ function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = safeRedirect(searchParams.get("redirectTo") || searchParams.get("redirect"));
+  const { t, rich } = useT();
 
   const [mode, setMode] = useState<Mode>("password");
   const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(
-    () => loginErrorMessage(searchParams.get("error")) || (searchParams.get("verify_error") ? "That verification link is invalid or has expired. Sign in and send a new one from Settings." : null),
+    () => loginErrorMessage(searchParams.get("error"), t) || (searchParams.get("verify_error") ? t("auth.verifyLinkInvalid") : null),
   );
   const notice =
     searchParams.get("verified") === "true"
-      ? "Your email is verified. Sign in to continue."
+      ? t("auth.emailVerified")
       : searchParams.get("verify_sent") === "1"
-        ? "Account created. We emailed you a verification link — click it, then sign in."
+        ? t("auth.accountCreatedVerify")
       : searchParams.get("expired") === "1"
-        ? "Your session ended. Sign in again to continue."
+        ? t("auth.sessionEnded")
         : null;
   // First factor passed with face or SSO; the server holds a 5-minute pending
   // sign-in until the authenticator code is entered (POST /api/auth/two-factor).
@@ -152,12 +153,12 @@ function LoginInner() {
           setPendingSecondFactor(null);
           setTotpCode("");
         }
-        throw new Error(data.error || "That code didn’t work. Try again.");
+        throw new Error(data.error || t("auth.codeDidNotWork"));
       }
       router.push(safeRedirect(data.redirect || redirectTo));
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "That code didn’t work. Try again.");
+      setError(err instanceof Error ? err.message : t("auth.codeDidNotWork"));
       setLoading(false);
     }
   }
@@ -176,9 +177,9 @@ function LoginInner() {
       setTurnstileResetKey((k) => k + 1);
       if (err && typeof err === "object" && "twoFactorRequired" in err) {
         setTotpRequired(true);
-        setError("Enter the 6-digit code from your authenticator app to finish signing in.");
+        setError(t("auth.enterTotpToFinish"));
       } else {
-        setError(err instanceof Error ? err.message : "That email and password don’t match an account. Check both and try again.");
+        setError(err instanceof Error ? err.message : t("auth.badCredentials"));
       }
     } finally {
       setLoading(false);
@@ -199,7 +200,7 @@ function LoginInner() {
         return;
       }
       const name = provider === "google" ? "Google" : "GitHub";
-      setError(err instanceof Error ? err.message : `${name} sign-in didn’t complete. Try again, or sign in with email.`);
+      setError(err instanceof Error ? err.message : t("auth.oauthIncomplete", { provider: name }));
     } finally {
       setLoading(false);
     }
@@ -216,10 +217,10 @@ function LoginInner() {
         body: JSON.stringify({ email: email.trim().toLowerCase(), redirect: redirectTo }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "SSO isn’t set up for this email domain. Ask your admin, or sign in with email.");
+      if (!res.ok) throw new Error(data.error || t("auth.ssoNotSetUp"));
       if (data.redirect_url) window.location.href = data.redirect_url;
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "SSO sign-in failed.");
+      setError(err instanceof Error ? err.message : t("auth.ssoFailed"));
       setLoading(false);
     }
   }
@@ -227,7 +228,7 @@ function LoginInner() {
   async function handleFaceLogin(result: LivenessCapture) {
     setError(null);
     if (!email) {
-      setError("Enter your email first, then look at the camera.");
+      setError(t("auth.faceEnterEmailFirst"));
       newFaceAttempt();
       return;
     }
@@ -243,7 +244,7 @@ function LoginInner() {
         }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || "Face sign-in didn’t work. Try again, or use your password.");
+      if (!res.ok) throw new Error(data.error || t("auth.faceFailed"));
       if (data.emailCodeRequired) {
         setEmailCode("");
         setEmailCodeNotice(null);
@@ -260,7 +261,7 @@ function LoginInner() {
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Face sign-in didn’t work. Try again, or use your password.");
+      setError(err instanceof Error ? err.message : t("auth.faceFailed"));
       newFaceAttempt();
       setLoading(false);
     }
@@ -284,7 +285,7 @@ function LoginInner() {
           setEmailCode("");
           newFaceAttempt();
         }
-        throw new Error(data.error || "That code didn’t work. Try again.");
+        throw new Error(data.error || t("auth.codeDidNotWork"));
       }
       if (data.twoFactorRequired) {
         setEmailCodePending(false);
@@ -296,7 +297,7 @@ function LoginInner() {
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "That code didn’t work. Try again.");
+      setError(err instanceof Error ? err.message : t("auth.codeDidNotWork"));
       setLoading(false);
     }
   }
@@ -317,12 +318,12 @@ function LoginInner() {
           setEmailCodePending(false);
           newFaceAttempt();
         }
-        throw new Error(data.error || "We couldn’t send a new code. Try again in a minute.");
+        throw new Error(data.error || t("auth.resendFailed"));
       }
       setEmailCode("");
-      setEmailCodeNotice("We sent a new code. Earlier codes no longer work.");
+      setEmailCodeNotice(t("auth.newCodeSent"));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "We couldn’t send a new code. Try again in a minute.");
+      setError(err instanceof Error ? err.message : t("auth.resendFailed"));
     } finally {
       setLoading(false);
     }
@@ -331,7 +332,7 @@ function LoginInner() {
   const emailField = (
     <Field
       id="email"
-      label={mode === "sso" ? "Work email" : "Email"}
+      label={mode === "sso" ? t("auth.workEmail") : t("auth.email")}
       type="email"
       placeholder={mode === "sso" ? "you@company.com" : "you@example.com"}
       value={email}
@@ -347,33 +348,30 @@ function LoginInner() {
       aside={
         <div className="space-y-8">
           <DeviceShowcase variant="candidate" compact className="mx-0 max-w-[360px]" />
-          <p className="cs-display max-w-[18ch] text-4xl">Your assessments, results and shortlists.</p>
+          <p className="cs-display max-w-[18ch] text-4xl">{t("auth.loginAsideHeadline")}</p>
           <div className="space-y-6">
-            <AsideNote title="Taking an assessment?">
-              Sign in with the email address your invite was sent to. No account yet? Open the invite link and it
-              will take you to create one.
+            <AsideNote title={t("auth.asideAssessmentTitle")}>
+              {t("auth.asideAssessmentBody")}
             </AsideNote>
-            <AsideNote title="Signing in for your company or college?">
-              {platformSettings.enable_sso_login
-                ? "Use single sign-on if your organisation has it set up, or the email your admin invited."
-                : "Use the email address your admin invited to your organisation’s workspace."}
+            <AsideNote title={t("auth.asideOrgTitle")}>
+              {platformSettings.enable_sso_login ? t("auth.asideOrgBodySso") : t("auth.asideOrgBody")}
             </AsideNote>
           </div>
         </div>
       }
     >
-      <AuthHeading title={mode === "sso" ? "Sign in with SSO" : mode === "face" ? "Sign in with your face" : "Sign in"}>
+      <AuthHeading title={mode === "sso" ? t("auth.signInWithSso") : mode === "face" ? t("auth.signInWithFace") : t("auth.signIn")}>
         {mode === "password" ? (
           <>
-            New to CodeSpectra?{" "}
+            {t("auth.newToCodeSpectra")}{" "}
             <Link href={`/auth/signup${redirectTo !== "/dashboard" ? `?redirect=${encodeURIComponent(redirectTo)}` : ""}`} className="font-semibold text-cs-accent-text underline decoration-2 underline-offset-4">
-              Create an account
+              {t("auth.createAccount")}
             </Link>
           </>
         ) : mode === "sso" ? (
-          "We’ll send you to your organisation’s sign-in page."
+          t("auth.ssoHeadingHint")
         ) : (
-          "Works if you’ve enrolled your face in your account settings."
+          t("auth.faceHeadingHint")
         )}
       </AuthHeading>
 
@@ -388,16 +386,15 @@ function LoginInner() {
         <form onSubmit={handleSecondFactor} className="space-y-5">
           <p className="text-cs-ink-soft">
             {pendingSecondFactor === "face"
-              ? "Face recognised."
+              ? t("auth.faceRecognised")
               : pendingSecondFactor === "oauth"
-                ? "Your Google or GitHub account is confirmed."
-                : "Your organisation signed you in."}{" "}
-            Enter the 6-digit code
-            from your authenticator app to finish.
+                ? t("auth.oauthConfirmed")
+                : t("auth.orgSignedIn")}{" "}
+            {t("auth.enterTotpToFinishShort")}
           </p>
           <Field
             id="pending-totp-code"
-            label="Authenticator code"
+            label={t("auth.authenticatorCode")}
             inputMode="numeric"
             maxLength={6}
             value={totpCode}
@@ -409,7 +406,7 @@ function LoginInner() {
             className="text-center text-xl tracking-[0.4em] tabular-nums"
           />
           <PrimaryButton type="submit" loading={loading} disabled={totpCode.length !== 6}>
-            Verify and sign in
+            {t("auth.verifyAndSignIn")}
           </PrimaryButton>
         </form>
       )}
@@ -420,22 +417,22 @@ function LoginInner() {
             {emailField}
             <PasswordField
               id="password"
-              label="Password"
-              placeholder="Your password"
+              label={t("auth.password")}
+              placeholder={t("auth.passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
               labelAction={
                 <Link href="/auth/forgot-password" className="text-sm font-medium text-cs-accent-text hover:underline">
-                  Forgot password?
+                  {t("auth.forgotPassword")}
                 </Link>
               }
             />
             {totpRequired && (
               <Field
                 id="totp-code"
-                label="Authenticator code"
+                label={t("auth.authenticatorCode")}
                 inputMode="numeric"
                 maxLength={6}
                 value={totpCode}
@@ -447,12 +444,12 @@ function LoginInner() {
               />
             )}
             <PrimaryButton type="submit" loading={loading}>
-              Sign in
+              {t("auth.signIn")}
             </PrimaryButton>
             <TurnstileWidget onVerify={(token) => setTurnstileToken(token)} resetKey={turnstileResetKey} />
           </form>
 
-          <Divider>or</Divider>
+          <Divider>{t("auth.or")}</Divider>
 
           <div className="grid grid-cols-2 gap-3">
             <SecondaryButton onClick={() => handleOAuth("google")} disabled={loading}>
@@ -471,13 +468,13 @@ function LoginInner() {
             {platformSettings.enable_sso_login && (
               <button type="button" onClick={() => goTo("sso")} className="relative inline-flex items-center gap-2 font-medium text-cs-ink-soft hover:text-cs-ink">
                 <ShieldCheck className="h-4 w-4" aria-hidden />
-                Use single sign-on (SSO)
-                {lastLogin?.method === "sso" && <span className="rounded-full bg-cs-mark px-2 text-xs font-semibold text-cs-accent-ink">Last used</span>}
+                {t("auth.useSso")}
+                {lastLogin?.method === "sso" && <span className="rounded-full bg-cs-mark px-2 text-xs font-semibold text-cs-accent-ink">{t("auth.lastUsed")}</span>}
               </button>
             )}
             <button type="button" onClick={() => goTo("face")} className="inline-flex items-center gap-2 font-medium text-cs-ink-soft hover:text-cs-ink">
               <ScanFace className="h-4 w-4" aria-hidden />
-              Sign in with your face
+              {t("auth.signInWithFace")}
             </button>
           </div>
         </>
@@ -487,7 +484,7 @@ function LoginInner() {
         <form onSubmit={handleSso} className="space-y-5">
           {emailField}
           <PrimaryButton type="submit" loading={loading}>
-            Continue to your organisation
+            {t("auth.continueToOrg")}
           </PrimaryButton>
         </form>
       )}
@@ -495,8 +492,7 @@ function LoginInner() {
       {!pendingSecondFactor && mode === "face" && emailCodePending && (
         <form onSubmit={handleEmailCode} className="space-y-5">
           <p className="text-cs-ink-soft">
-            Face recognised. This is a new device, so we emailed a 6-digit code to{" "}
-            <span className="font-semibold text-cs-ink">{email.trim().toLowerCase()}</span>. It expires in 10 minutes.
+            {rich("auth.faceNewDeviceCode", { email: <span className="font-semibold text-cs-ink">{email.trim().toLowerCase()}</span> })}
           </p>
           {emailCodeNotice && (
             <p role="status" className="rounded-md border border-cs-grid px-4 py-3 text-[15px] text-cs-ink-soft">
@@ -505,7 +501,7 @@ function LoginInner() {
           )}
           <Field
             id="face-email-code"
-            label="Code from your email"
+            label={t("auth.codeFromEmail")}
             inputMode="numeric"
             maxLength={6}
             value={emailCode}
@@ -517,7 +513,7 @@ function LoginInner() {
             className="text-center text-xl tracking-[0.4em] tabular-nums"
           />
           <PrimaryButton type="submit" loading={loading} disabled={emailCode.length !== 6}>
-            Verify and sign in
+            {t("auth.verifyAndSignIn")}
           </PrimaryButton>
           <button
             type="button"
@@ -525,9 +521,9 @@ function LoginInner() {
             disabled={loading}
             className="text-[15px] font-medium text-cs-ink-soft hover:text-cs-ink disabled:opacity-50"
           >
-            Send a new code
+            {t("auth.sendNewCode")}
           </button>
-          <p className="text-sm text-cs-ink-soft">After this, we’ll remember this device for face sign-in.</p>
+          <p className="text-sm text-cs-ink-soft">{t("auth.rememberDevice")}</p>
         </form>
       )}
 
@@ -546,24 +542,25 @@ function LoginInner() {
               />
             </div>
           ) : (
-            <p className="text-cs-ink-soft">Enter your email to turn on the camera.</p>
+            <p className="text-cs-ink-soft">{t("auth.enterEmailForCamera")}</p>
           )}
           <p className="text-sm text-cs-ink-soft">
-            We’ll ask you to blink or turn your head to check it’s really you. On a new device we’ll also email you a code.
+            {t("auth.livenessHint")}
           </p>
         </div>
       )}
 
       {(mode !== "password" || pendingSecondFactor) && (
         <button type="button" onClick={() => goTo("password")} className="mt-6 text-[15px] font-semibold text-cs-accent-text hover:underline">
-          Sign in with a password instead
+          {t("auth.usePasswordInstead")}
         </button>
       )}
 
       <p className="mt-10 text-sm text-cs-ink-soft">
-        By signing in you agree to the{" "}
-        <Link href="/terms" className="underline hover:text-cs-ink">terms</Link> and{" "}
-        <Link href="/privacy" className="underline hover:text-cs-ink">privacy policy</Link>.
+        {rich("auth.agreeSignIn", {
+          terms: <Link href="/terms" className="underline hover:text-cs-ink">{t("auth.terms")}</Link>,
+          privacy: <Link href="/privacy" className="underline hover:text-cs-ink">{t("auth.privacyPolicy")}</Link>,
+        })}
       </p>
     </AuthShell>
   );

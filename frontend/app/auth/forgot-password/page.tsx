@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth-context";
 import { SoftGlow } from "@/components/visuals";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { Illustration } from "@/components/illustrations/spot";
+import { useT } from "@/lib/i18n/client";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -27,6 +28,7 @@ export default function ForgotPasswordPage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const { sendPasswordReset } = useAuth();
+  const { t } = useT();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,7 +39,7 @@ export default function ForgotPasswordPage() {
       await sendPasswordReset(email.trim().toLowerCase(), turnstileToken || undefined);
       setSent(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to send reset email";
+      const msg = err instanceof Error ? err.message : t("auth.resetSendFailed");
       setError(msg);
       setTurnstileResetKey((k) => k + 1);
     } finally {
@@ -56,11 +58,9 @@ export default function ForgotPasswordPage() {
             </div>
             <span className="font-semibold text-lg tracking-tight">CodeSpectra</span>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Reset your password</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t("auth.resetYourPassword")}</h1>
           <p className="text-muted-foreground mt-2">
-            {sent
-              ? "Check your email for the reset link"
-              : "Enter your email and we&apos;ll send you a reset link"}
+            {sent ? t("auth.checkEmailForReset") : t("auth.enterEmailForReset")}
           </p>
         </div>
 
@@ -69,12 +69,12 @@ export default function ForgotPasswordPage() {
             <div className="text-center space-y-4">
               <Illustration name="inbox" className="mx-auto w-40" />
               <p className="text-sm text-muted-foreground">
-                If an account exists with that email, you&apos;ll receive a password reset link shortly.
+                {t("auth.resetSentBody")}
               </p>
               <Button variant="outline" asChild className="mt-4">
                 <Link href="/auth/login">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to sign in
+                  {t("auth.backToSignIn")}
                 </Link>
               </Button>
             </div>
@@ -88,7 +88,7 @@ export default function ForgotPasswordPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("auth.email")}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -110,7 +110,7 @@ export default function ForgotPasswordPage() {
                 ) : (
                   <Mail className="w-4 h-4" />
                 )}
-                {loading ? "Sending..." : "Send reset link"}
+                {loading ? t("auth.sending") : t("auth.sendResetLink")}
               </Button>
               <TurnstileWidget
                 onVerify={(token) => setTurnstileToken(token)}
@@ -126,7 +126,7 @@ export default function ForgotPasswordPage() {
             className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
           >
             <ArrowLeft className="w-3 h-3" />
-            Back to sign in
+            {t("auth.backToSignIn")}
           </Link>
         </p>
       </div>

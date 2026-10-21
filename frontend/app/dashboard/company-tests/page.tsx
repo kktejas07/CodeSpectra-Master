@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { LEVEL_LABEL, type PracticeLevel } from '@/lib/company-tests/types'
+import { useT } from '@/lib/i18n/client'
 
 interface PatternCard {
   id: string
@@ -32,6 +33,8 @@ interface PatternCard {
 
 export default function CompanyTestsPage() {
   const gate = usePageGuard('user')
+  const { t, td } = useT()
+  const levelLabel = (l: PracticeLevel) => td(`dashboard.practiceLevel:${l}`, LEVEL_LABEL[l])
   const [items, setItems] = useState<PatternCard[] | null>(null)
   const [error, setError] = useState(false)
   const [reload, setReload] = useState(0)
@@ -69,11 +72,11 @@ export default function CompanyTestsPage() {
         illustration="assessment"
         className="mb-0"
         icon={<ListChecks aria-hidden />}
-        title="Company tests"
-        description="Practise each company's real test pattern: timed sections, cut-offs and marking, at three levels."
+        title={t('dashboard.companyTestsTitle')}
+        description={t('dashboard.companyTestsDesc')}
         actions={
           <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/mock-tests">AI mock tests</Link>
+            <Link href="/dashboard/mock-tests">{t('dashboard.aiMockTests')}</Link>
           </Button>
         }
       />
@@ -81,32 +84,32 @@ export default function CompanyTestsPage() {
       {error ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load company tests"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('dashboard.companyTestsLoadFailed')}
+          description={t('errors.checkConnection')}
+          actionLabel={t('common.tryAgain')}
           onAction={() => { setItems(null); setReload((k) => k + 1) }}
         />
       ) : items.length === 0 ? (
         <EmptyState
           illustration="courses"
-          title="No company tests yet"
-          description="Company test patterns are being prepared. Browse company pages or take an AI mock test meanwhile."
-          actionLabel="Browse companies"
+          title={t('dashboard.noCompanyTests')}
+          description={t('dashboard.noCompanyTestsDesc')}
+          actionLabel={t('dashboard.browseCompanies')}
           actionHref="/companies"
         />
       ) : (
         <>
           <div className="relative max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-            <Input className="rounded-xl pl-9" aria-label="Search company tests" placeholder="Search by company or test" value={q} onChange={(e) => setQ(e.target.value)} />
+            <Input className="rounded-xl pl-9" aria-label={t('dashboard.searchCompanyTests')} placeholder={t('dashboard.searchCompanyTestsPlaceholder')} value={q} onChange={(e) => setQ(e.target.value)} />
           </div>
           {filtered.length === 0 ? (
             <Panel className="p-4">
               <EmptyState
                 variant="search"
-                title="No tests match your search"
-                description="Try another company name, or clear the search."
-                actionLabel="Clear search"
+                title={t('dashboard.noTestsMatch')}
+                description={t('dashboard.noTestsMatchDesc')}
+                actionLabel={t('common.clearSearch')}
                 onAction={() => setQ('')}
               />
             </Panel>
@@ -121,22 +124,22 @@ export default function CompanyTestsPage() {
                       </Link>
                       <p className="mt-0.5 text-sm text-muted-foreground">{p.examName}</p>
                     </div>
-                    {!p.verified ? <Badge variant="outline" title="Based on commonly reported public information">Unverified</Badge> : null}
+                    {!p.verified ? <Badge variant="outline" title={t('dashboard.unverifiedHint')}>{t('dashboard.unverified')}</Badge> : null}
                   </div>
                   <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    <span className="inline-flex items-center gap-1"><ListChecks className="h-3.5 w-3.5" aria-hidden /><span className="tabular-nums">{p.totals.questions}</span> questions</span>
-                    <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden /><span className="tabular-nums">{p.totals.minutes}</span> min</span>
-                    <span><span className="tabular-nums">{p.sections.length}</span> {p.sections.length === 1 ? 'section' : 'sections'}</span>
-                    <span>Cut-off <span className="tabular-nums">{p.cutoffPercent}%</span></span>
+                    <span className="inline-flex items-center gap-1"><ListChecks className="h-3.5 w-3.5" aria-hidden />{t('assessment.questionsCount', { count: p.totals.questions })}</span>
+                    <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden />{t('assessment.minutesShort', { count: p.totals.minutes })}</span>
+                    <span>{t('dashboard.sectionsCount', { count: p.sections.length })}</span>
+                    <span>{t('dashboard.cutoff', { percent: `${p.cutoffPercent}%` })}</span>
                   </p>
-                  <div className="mt-auto flex flex-wrap gap-2 pt-4" role="group" aria-label={`Practise ${p.companyName} ${p.examName} at a level`}>
+                  <div className="mt-auto flex flex-wrap gap-2 pt-4" role="group" aria-label={t('dashboard.practiseAtLevel', { company: p.companyName, exam: p.examName })}>
                     {p.levels.map((l) => l.ready ? (
                       <Button key={l.level} asChild size="sm" className="min-h-10 rounded-full">
-                        <Link href={`/dashboard/company-tests/${encodeURIComponent(p.id)}?level=${l.level}`}>{LEVEL_LABEL[l.level]}</Link>
+                        <Link href={`/dashboard/company-tests/${encodeURIComponent(p.id)}?level=${l.level}`}>{levelLabel(l.level)}</Link>
                       </Button>
                     ) : (
-                      <span key={l.level} className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-xs text-muted-foreground" title="Being prepared">
-                        {LEVEL_LABEL[l.level]} · coming soon
+                      <span key={l.level} className="inline-flex min-h-10 items-center rounded-full border border-border px-4 text-xs text-muted-foreground" title={t('dashboard.beingPrepared')}>
+                        {levelLabel(l.level)} · {t('dashboard.comingSoon')}
                       </span>
                     ))}
                   </div>

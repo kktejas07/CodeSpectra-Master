@@ -27,6 +27,7 @@ async function db(): Promise<Db> {
       d.collection('learn_posts').createIndex({ status: 1, published_at: -1 }),
       d.collection('learn_posts').createIndex({ status: 1, publish_at: 1 }),
       d.collection('learn_posts').createIndex({ topic_id: 1 }),
+      d.collection('learn_posts').createIndex({ translation_of: 1, locale: 1 }, { sparse: true }),
       d.collection('learn_topics').createIndex({ hash: 1 }, { unique: true }),
       d.collection('learn_topics').createIndex({ id: 1 }, { unique: true }),
       d.collection('learn_sources').createIndex({ domain: 1 }, { unique: true }),
@@ -77,6 +78,16 @@ export function cleanSettingsPatch(raw: Record<string, unknown>): { patch: Parti
     const n = Number(raw.auto_approve_min_score)
     if (!Number.isFinite(n) || n < 50 || n > 100) return { patch, error: 'Minimum score must be 50–100.' }
     patch.auto_approve_min_score = Math.round(n)
+  }
+  if ('translate_daily_cap' in raw) {
+    const n = Number(raw.translate_daily_cap)
+    if (!Number.isInteger(n) || n < 0 || n > 50) return { patch, error: 'Translations per day must be 0–50.' }
+    patch.translate_daily_cap = n
+  }
+  if ('translate_monthly_cap' in raw) {
+    const n = Number(raw.translate_monthly_cap)
+    if (!Number.isInteger(n) || n < 0 || n > 1000) return { patch, error: 'Translations per month must be 0–1000.' }
+    patch.translate_monthly_cap = n
   }
   if ('languages' in raw) {
     const langs = Array.isArray(raw.languages) ? [...new Set(raw.languages.filter(isLearnLanguage))] : []

@@ -188,7 +188,8 @@
 
 
 @theme inline {
-  --font-sans: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Indic faces (lib/i18n/fonts.ts) sit after the brand face: Latin keeps Jakarta, Hindi / Telugu glyphs fall through. */
+  --font-sans: var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, 'SF Mono', monospace;
   --font-circular: 'Circular', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-source-code-pro: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -261,7 +262,7 @@
   body {
     @apply bg-background text-foreground font-sans;
     font-family:
-      var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system,
+      var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, -apple-system,
       'Segoe UI', sans-serif;
     font-feature-settings: 'rounding-metrics' 1;
     -webkit-font-smoothing: antialiased;
@@ -921,11 +922,22 @@
   --color-cs-flag: var(--cs-flag);
 }
 
+/* Hindi / Telugu subtrees (components/i18n/locale-root.tsx, Learn posts): re-resolve the
+   stack where the Noto variables are defined, so inherited text picks them up. */
+:where([lang='hi'], [lang='te']) {
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, sans-serif;
+  /* Indic scripts need more room for matras / vowel signs above and below. */
+  line-height: 1.6;
+}
+:where([lang='hi'], [lang='te']) :where(button, a, label, th, td, p, li, span) {
+  overflow-wrap: anywhere;
+}
+
 .cs-brand {
   --primary: 226 79% 54%;
   --primary-foreground: 0 0% 100%;
   --ring: 226 79% 54%;
-  font-family: var(--font-jakarta), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-jakarta), 'Plus Jakarta Sans', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, sans-serif;
   background: var(--cs-paper);
   color: var(--cs-ink);
   font-stretch: 100%;
@@ -939,7 +951,7 @@
 }
 .cs-display, .cs-heading {
   text-wrap: balance;
-  font-family: var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-archivo), 'Archivo', var(--font-devanagari, 'Noto Sans Devanagari'), var(--font-telugu, 'Noto Sans Telugu'), ui-sans-serif, system-ui, sans-serif;
 }
 .cs-heading {
   font-stretch: 78%;

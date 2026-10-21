@@ -151,7 +151,7 @@ function QueueTab() {
         </ul>
       )}
 
-      <PostEditor postId={openId} onClose={() => setOpenId(null)} onChanged={load} />
+      <PostEditor postId={openId} onClose={() => setOpenId(null)} onChanged={load} onOpenPost={setOpenId} />
     </div>
   )
 }
@@ -392,7 +392,7 @@ function SettingsTab() {
     try {
       const d = await api<{ settings: LearnSettings }>('/api/learn/admin/settings', {
         method: 'PUT',
-        body: JSON.stringify({ enabled: s.enabled, posts_per_day: s.posts_per_day, run_hour_utc: s.run_hour_utc, languages: s.languages, research_enabled: s.research_enabled, auto_approve: s.auto_approve, auto_approve_min_score: s.auto_approve_min_score }),
+        body: JSON.stringify({ enabled: s.enabled, posts_per_day: s.posts_per_day, run_hour_utc: s.run_hour_utc, languages: s.languages, research_enabled: s.research_enabled, auto_approve: s.auto_approve, auto_approve_min_score: s.auto_approve_min_score, translate_daily_cap: s.translate_daily_cap ?? 10, translate_monthly_cap: s.translate_monthly_cap ?? 100 }),
       })
       setS(d.settings)
       addToast({ type: 'success', title: 'Settings saved' })
@@ -436,6 +436,14 @@ function SettingsTab() {
           <div className="max-w-40"><Label htmlFor="st-min">Minimum quality score</Label><Input id="st-min" type="number" min={50} max={100} value={s.auto_approve_min_score} onChange={(e) => setS({ ...s, auto_approve_min_score: Number(e.target.value) })} /></div>
         )}
       </div>
+      <fieldset className="space-y-2 rounded-2xl border border-border p-4">
+        <legend className="px-1 text-sm font-medium text-foreground">Hindi and Telugu translations</legend>
+        <p className="text-sm text-muted-foreground">Translation drafts use the platform model. These limits cap AI spend; 0 turns translations off.</p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div><Label htmlFor="st-tday">Per day</Label><Input id="st-tday" type="number" min={0} max={50} value={s.translate_daily_cap ?? 10} onChange={(e) => setS({ ...s, translate_daily_cap: Number(e.target.value) })} /></div>
+          <div><Label htmlFor="st-tmonth">Per month</Label><Input id="st-tmonth" type="number" min={0} max={1000} value={s.translate_monthly_cap ?? 100} onChange={(e) => setS({ ...s, translate_monthly_cap: Number(e.target.value) })} /></div>
+        </div>
+      </fieldset>
       <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}Save settings</Button>
     </Panel>
   )

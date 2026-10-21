@@ -119,6 +119,8 @@ export interface RunTurnInput {
   selfCheck?: boolean
   /** Proposals still allowed in this turn (sub-agents share the parent's allowance). */
   proposalAllowance?: number
+  /** Caller's interface language — the model replies in it (buildSystemPrompt). */
+  locale?: 'en' | 'hi' | 'te'
 }
 
 export interface UsageRecord {
@@ -337,6 +339,7 @@ export async function runAgentTurn(input: RunTurnInput, deps: RunTurnDeps): Prom
     specialists: specialists.map((s) => ({ id: s.id, label: s.label, description: s.description })),
     specialist: input.specialist ? { label: input.specialist.label, focus: input.specialist.focus } : null,
     memorySummary: input.memorySummary,
+    locale: input.locale,
   })
   const specs = [...toolSpecs(deps.tools), ...control]
 

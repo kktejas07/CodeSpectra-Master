@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Calendar, Flame, ArrowRight, Loader2, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { OfflineDownloadButton } from '@/components/pwa/offline-download-button'
 
 interface DailyData {
   today: string
@@ -102,6 +103,7 @@ export function DailyChallengeWidget() {
           >
             <Sparkles className="h-3 w-3" /> Solve now <ArrowRight className="h-3 w-3" />
           </Link>
+          <OfflineDownloadButton day={data.today} className="ml-2 align-middle" />
         </div>
       </div>
     </Card>
