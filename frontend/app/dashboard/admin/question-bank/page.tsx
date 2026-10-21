@@ -16,12 +16,13 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye, CheckCircle2 } from 'lucide-react'
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 import { metaFor, QUESTION_TYPES } from '@/lib/question-types'
+import { extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { EmptyState } from '@/components/ui/empty-state'
 
 /** Structured fields (pairs/matrix/table/hotspot/scale/tolerance/coding) are
  * authored as JSON in the bank form and merged into the payload on save. */
-interface StructuredFields {
+interface StructuredFields extends ExtendedQuestionFields {
   tolerance?: number
   pairs?: { left: string; right: string }[]
   matrix?: { rows: string[]; columns: string[] }
@@ -33,11 +34,23 @@ interface StructuredFields {
   starter_code?: string
 }
 
-const STRUCTURED_TYPES = ['matching', 'drag_drop', 'matrix', 'table_fill', 'hotspot', 'numeric', 'likert', 'rating']
+const STRUCTURED_TYPES = ['matching', 'drag_drop', 'matrix', 'table_fill', 'hotspot', 'numeric', 'likert', 'rating', 'theory_to_code', 'reverse_coding', 'system_design', 'case_study', 'video_response', 'file_upload', 'typing_test']
+
+/** Wave-6 JSON shapes, shown as the placeholder for those types. */
+const EXTENDED_HINT: Record<string, string> = {
+  theory_to_code: '{"language":"python","test_cases":[{"input":"3","output":"6","hidden":true}]}',
+  reverse_coding: '{"test_cases":[{"input":"2 3","output":"5"},{"input":"10 4","output":"14","hidden":true}],"reference_solution":{"language":"python","code":"a,b=map(int,input().split())\nprint(a+b)"},"black_box_runs":10}',
+  system_design: '{"rubric":"- Requirements (2)\n- Data model (3)","allow_diagram":true}',
+  case_study: '{"sub_questions":[{"id":"s1","type":"mcq","prompt":"…","options":["A","B","C","D"],"answer":"B","points":5},{"id":"s2","type":"numeric","prompt":"…","answer":"42","points":5}]}',
+  video_response: '{"video":{"max_seconds":120,"retakes":1,"allow_text_alternative":true}}',
+  file_upload: '{"upload":{"allowed":["pdf","image"],"max_mb":5}}',
+  typing_test: '{"typing":{"passage":"…","min_wpm":35,"min_accuracy":92}}',
+  likert: '{"scale":{"min":1,"max":5},"trait":"Conscientiousness","reverse_scored":false}',
+}
 
 const STRUCTURED_HINT = '{"pairs":[{"left":"A","right":"1"}],"matrix":{"rows":["r1"],"columns":["T","F"]},"table":{"rows":["r1"]},"scale":{"min":1,"max":5},"image_url":"https://...","regions":[{"id":"r1","x":10,"y":10,"w":15,"h":15,"label":"L"}],"tolerance":0.5,"language":"python","starter_code":"..."}'
 
-interface BankQuestion {
+interface BankQuestion extends ExtendedQuestionFields {
   id: string
   title: string
   question: string
@@ -191,6 +204,7 @@ export default function QuestionBankPage() {
       ...(q.regions ? { regions: q.regions } : {}),
       ...(q.language ? { language: q.language } : {}),
       ...(q.starter_code ? { starter_code: q.starter_code } : {}),
+      ...extendedFieldsOf(q as unknown as Record<string, unknown>),
     } : {}
     setForm(q ? {
       title: q.title, question: q.question, type: q.type, options: (q.options || []).join('\n'), answer: q.answer || '',
@@ -530,8 +544,8 @@ export default function QuestionBankPage() {
             )}
             {STRUCTURED_TYPES.includes(form.type) && (
               <div className="space-y-2">
-                <Label>Advanced fields (JSON) <span className="text-muted-foreground font-normal">— pairs / matrix / table / hotspot / scale / tolerance / language</span></Label>
-                <Textarea value={form.structured} onChange={e => setForm({ ...form, structured: e.target.value })} rows={4} className="font-mono text-xs" placeholder={STRUCTURED_HINT} />
+                <Label>Advanced fields (JSON) <span className="text-muted-foreground font-normal">— pairs / matrix / table / hotspot / scale / tolerance / language / sub-questions / upload / typing</span></Label>
+                <Textarea value={form.structured} onChange={e => setForm({ ...form, structured: e.target.value })} rows={4} className="font-mono text-xs" placeholder={EXTENDED_HINT[form.type] || STRUCTURED_HINT} />
                 <p className="text-xs text-muted-foreground">Optional. Use the assessment editor for a guided UI of these fields.</p>
               </div>
             )}

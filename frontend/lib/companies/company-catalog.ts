@@ -28,9 +28,14 @@ export interface CompanyEntry {
   difficultyDistribution: DifficultyDistribution
   sampleQuestions: SampleQuestion[]
   tips: string[]
-  salaryRange: string
-  glassdoor: number
+  /** Omitted when we have no sourced figure. */
+  salaryRange?: string
+  glassdoor?: number
+  /** Shown on the page: these facts are summaries of public information, to check before relying on them. */
+  verifyNote?: string
 }
+
+const MASS_RECRUITER_NOTE = 'Summarised from commonly reported public information, not from the company. Hiring tests change often — check the company\'s careers page for the current process.'
 
 export const COMPANY_CATALOG: CompanyEntry[] = [
   {
@@ -477,6 +482,192 @@ export const COMPANY_CATALOG: CompanyEntry[] = [
     ],
     salaryRange: '$110K - $300K+',
     glassdoor: 4.1,
+  },
+
+  // ── Mass recruiters (India campus hiring). Facts unverified: see verifyNote. ──
+  {
+    slug: 'tcs',
+    name: 'TCS',
+    logo: '🏢',
+    industry: 'IT services',
+    founded: 1968,
+    headquarters: 'Mumbai, India',
+    techStack: ['Java', 'Python', 'C', 'C++', 'SQL', 'JavaScript', 'Cloud'],
+    interviewProcess: [
+      { step: 'TCS NQT (online test)', description: 'Foundation sections (numerical, verbal, reasoning), then an advanced part (advanced aptitude and coding) for higher-band roles.', tip: 'Practise under section timers — each section closes on its own clock.' },
+      { step: 'Technical interview', description: 'Questions on your projects, one programming language, DBMS, OOP and basic data structures.', tip: 'Be ready to explain every line of a project you list on your resume.' },
+      { step: 'Managerial round', description: 'Situational questions, teamwork and how you handle pressure.', tip: 'Use short, concrete examples from college projects or internships.' },
+      { step: 'HR round', description: 'Relocation, shifts, documents and expectations.', tip: 'Keep your academic documents and ID ready; confirm any service agreement terms.' },
+    ],
+    difficultyDistribution: { easy: 40, medium: 45, hard: 15 },
+    sampleQuestions: [
+      { question: 'A train crosses a 200 m platform in 20 s and a pole in 10 s. Find its length.', difficulty: 'easy', category: 'Quantitative aptitude' },
+      { question: 'Find the second largest element in an array in one pass.', difficulty: 'medium', category: 'Coding' },
+      { question: 'Explain the difference between a primary key and a unique key.', difficulty: 'easy', category: 'DBMS' },
+    ],
+    tips: [
+      'Speed matters in the foundation sections: skip a question that takes too long and come back.',
+      'For coding, handle input and output exactly as the problem states.',
+      'Revise one language well rather than several partly.',
+    ],
+    verifyNote: MASS_RECRUITER_NOTE,
+  },
+  {
+    slug: 'infosys',
+    name: 'Infosys',
+    logo: '🏢',
+    industry: 'IT services',
+    founded: 1981,
+    headquarters: 'Bengaluru, India',
+    techStack: ['Java', 'Python', 'C++', 'SQL', 'JavaScript', 'Spring', 'Cloud'],
+    interviewProcess: [
+      { step: 'Online test', description: 'Reasoning, mathematical and verbal ability, pseudocode and, for SP/DSE roles, a coding round.', tip: 'Pseudocode questions reward tracing loops carefully on paper.' },
+      { step: 'Technical interview', description: 'Data structures, OOP, DBMS and your projects; SP roles go deeper into problem solving.', tip: 'Talk through your approach before writing code.' },
+      { step: 'HR interview', description: 'Background, relocation and role expectations.', tip: 'Research the role you applied for (SE, DSE or SP) and say why it fits.' },
+    ],
+    difficultyDistribution: { easy: 30, medium: 45, hard: 25 },
+    sampleQuestions: [
+      { question: 'Trace a nested loop pseudocode and give the final value of a counter.', difficulty: 'medium', category: 'Pseudocode' },
+      { question: 'Find the longest substring without repeating characters.', difficulty: 'medium', category: 'Coding' },
+      { question: 'If 6 workers finish a job in 12 days, how long do 8 workers take?', difficulty: 'easy', category: 'Quantitative aptitude' },
+    ],
+    tips: [
+      'The coding round for SP/DSE expects optimised solutions — know your time complexity.',
+      'Practise puzzles and pattern questions; they appear in the reasoning section.',
+      'Read questions fully — verbal questions often hinge on one word.',
+    ],
+    verifyNote: MASS_RECRUITER_NOTE,
+  },
+  {
+    slug: 'wipro',
+    name: 'Wipro',
+    logo: '🏢',
+    industry: 'IT services',
+    founded: 1945,
+    headquarters: 'Bengaluru, India',
+    techStack: ['Java', 'Python', 'C', 'SQL', 'JavaScript', 'Testing', 'Cloud'],
+    interviewProcess: [
+      { step: 'Online assessment (Elite NTH)', description: 'Logical, quantitative and English sections, a short essay and two coding problems.', tip: 'Keep the essay structured: introduction, two or three points, conclusion.' },
+      { step: 'Technical interview', description: 'Programming basics, OOP, DBMS and your final-year project.', tip: 'Revise the theory behind the language you code in.' },
+      { step: 'HR interview', description: 'Communication, flexibility and joining details.', tip: 'Answer clearly and briefly; ask about training and location.' },
+    ],
+    difficultyDistribution: { easy: 40, medium: 45, hard: 15 },
+    sampleQuestions: [
+      { question: 'Write an essay of about 200 words on remote work.', difficulty: 'easy', category: 'Essay writing' },
+      { question: 'Check whether a string is a palindrome ignoring case and spaces.', difficulty: 'easy', category: 'Coding' },
+      { question: 'Find the next number in the series 2, 6, 12, 20, 30, ?', difficulty: 'easy', category: 'Logical reasoning' },
+    ],
+    tips: [
+      'Sections are short and timed — pace yourself.',
+      'Check grammar and spelling in the essay; it is read for clarity.',
+      'Test your code against edge cases such as empty input.',
+    ],
+    verifyNote: MASS_RECRUITER_NOTE,
+  },
+  {
+    slug: 'accenture',
+    name: 'Accenture',
+    logo: '🏢',
+    industry: 'IT services',
+    founded: 1989,
+    headquarters: 'Dublin, Ireland',
+    techStack: ['Java', 'Python', '.NET', 'SQL', 'Cloud', 'SAP', 'Salesforce'],
+    interviewProcess: [
+      { step: 'Cognitive and technical assessment', description: 'English, critical reasoning and abstract reasoning, then technical questions on pseudocode, networking, security and cloud basics.', tip: 'Brush up on MS Office and networking fundamentals — they show up in the technical part.' },
+      { step: 'Coding assessment', description: 'Two programming problems in a language of your choice.', tip: 'Get a working solution first, then improve it.' },
+      { step: 'Communication assessment', description: 'Spoken English: reading aloud, listening and short answers.', tip: 'Speak clearly and at a steady pace.' },
+      { step: 'Interview', description: 'Technical and HR questions together, often in one round.', tip: 'Prepare a two-minute introduction that covers your strongest project.' },
+    ],
+    difficultyDistribution: { easy: 35, medium: 50, hard: 15 },
+    sampleQuestions: [
+      { question: 'Which OSI layer is responsible for routing?', difficulty: 'easy', category: 'Networking' },
+      { question: 'Return the count of elements greater than the average of an array.', difficulty: 'easy', category: 'Coding' },
+      { question: 'Find the odd figure out in a sequence of shapes.', difficulty: 'medium', category: 'Abstract reasoning' },
+    ],
+    tips: [
+      'The cognitive part is broad — practise a little of every area rather than one deeply.',
+      'Coding problems are usually function-based; read the given signature carefully.',
+      'Practise speaking answers aloud for the communication round.',
+    ],
+    verifyNote: MASS_RECRUITER_NOTE,
+  },
+  {
+    slug: 'cognizant',
+    name: 'Cognizant',
+    logo: '🏢',
+    industry: 'IT services',
+    founded: 1994,
+    headquarters: 'Teaneck, NJ',
+    techStack: ['Java', 'Python', '.NET', 'SQL', 'JavaScript', 'Cloud', 'Testing'],
+    interviewProcess: [
+      { step: 'Online test (GenC)', description: 'Quantitative, logical and verbal sections; GenC Next and Pro add coding.', tip: 'Practise the coding problems for the track you are applying to.' },
+      { step: 'Technical interview', description: 'Programming fundamentals, SQL queries and your projects.', tip: 'Write SQL joins and group-by queries by hand before the interview.' },
+      { step: 'HR interview', description: 'Background, flexibility and joining.', tip: 'Be honest about location and shift preferences.' },
+    ],
+    difficultyDistribution: { easy: 35, medium: 45, hard: 20 },
+    sampleQuestions: [
+      { question: 'Write a query to find the second highest salary in a table.', difficulty: 'medium', category: 'SQL' },
+      { question: 'Reverse the words in a sentence without reversing the letters.', difficulty: 'easy', category: 'Coding' },
+      { question: 'A sum doubles in 8 years at simple interest. Find the rate.', difficulty: 'easy', category: 'Quantitative aptitude' },
+    ],
+    tips: [
+      'Know which GenC track you are sitting — the coding depth differs.',
+      'Revise percentages, ratios and time-and-work for the quantitative section.',
+      'Explain your project\'s tech choices, not just what it does.',
+    ],
+    verifyNote: MASS_RECRUITER_NOTE,
+  },
+  {
+    slug: 'capgemini',
+    name: 'Capgemini',
+    logo: '🏢',
+    industry: 'IT services',
+    founded: 1967,
+    headquarters: 'Paris, France',
+    techStack: ['Java', 'Python', '.NET', 'SQL', 'Cloud', 'SAP', 'Testing'],
+    interviewProcess: [
+      { step: 'Online assessment', description: 'Pseudocode, English communication, a game-based aptitude round and a behavioural survey; some roles add coding.', tip: 'For pseudocode, trace variables step by step instead of guessing.' },
+      { step: 'Technical interview', description: 'Programming basics, OOP, DBMS and projects.', tip: 'Have one or two data-structure problems you can explain end to end.' },
+      { step: 'HR interview', description: 'Communication, flexibility and joining details.', tip: 'Keep answers short and specific.' },
+    ],
+    difficultyDistribution: { easy: 35, medium: 50, hard: 15 },
+    sampleQuestions: [
+      { question: 'What does this recursive pseudocode print for n = 4?', difficulty: 'medium', category: 'Pseudocode' },
+      { question: 'Choose the correctly punctuated sentence.', difficulty: 'easy', category: 'English' },
+      { question: 'Find all pairs in an array that sum to a target.', difficulty: 'medium', category: 'Coding' },
+    ],
+    tips: [
+      'The game-based round rewards accuracy over speed — read each rule first.',
+      'Answer the behavioural survey honestly and consistently.',
+      'Pseudocode questions often test recursion and bit operations.',
+    ],
+    verifyNote: MASS_RECRUITER_NOTE,
+  },
+  {
+    slug: 'hcltech',
+    name: 'HCLTech',
+    logo: '🏢',
+    industry: 'IT services',
+    founded: 1976,
+    headquarters: 'Noida, India',
+    techStack: ['Java', 'C', 'Python', 'SQL', 'Networking', 'Cloud', 'Testing'],
+    interviewProcess: [
+      { step: 'Online test', description: 'Quantitative aptitude, logical reasoning and English; engineering roles add technical questions.', tip: 'Work on accuracy — the sections are short.' },
+      { step: 'Technical or communication interview', description: 'Basics of programming or, for the TechBee programme, communication and learning ability.', tip: 'Show curiosity: talk about something you taught yourself.' },
+      { step: 'HR interview', description: 'Programme details, location and documents.', tip: 'Ask about the training plan and what the first months look like.' },
+    ],
+    difficultyDistribution: { easy: 45, medium: 40, hard: 15 },
+    sampleQuestions: [
+      { question: 'If 3 pens cost ₹45, what do 7 pens cost?', difficulty: 'easy', category: 'Quantitative aptitude' },
+      { question: 'Statement and conclusions: which conclusion follows?', difficulty: 'medium', category: 'Logical reasoning' },
+      { question: 'Pick the synonym of “meticulous”.', difficulty: 'easy', category: 'English' },
+    ],
+    tips: [
+      'The TechBee programme is for school leavers; read its eligibility rules first.',
+      'Revise basic arithmetic shortcuts for the quantitative section.',
+      'Practise reading comprehension passages under time.',
+    ],
+    verifyNote: MASS_RECRUITER_NOTE,
   },
 ]
 

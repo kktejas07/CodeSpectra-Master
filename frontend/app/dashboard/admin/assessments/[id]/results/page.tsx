@@ -41,6 +41,7 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CompareCandidates } from '@/components/assessment/CompareCandidates'
+import { ExtendedAnswerView, TraitScoresPanel, hasExtendedView, useAnswerFiles } from '@/components/assessment/ExtendedAnswerView'
 import { HiringOutcomePanel, OutcomeBadge, OutcomeBulkDialog } from '@/components/assessment/HiringOutcome'
 import { OUTCOME_LABELS, isOutcomeStatus } from '@/lib/hiring-outcomes'
 
@@ -347,6 +348,8 @@ export default function ExamResultsPage() {
   const [outcomeIds, setOutcomeIds] = useState<string[] | null>(null)
   const [reviewCandidate, setReviewCandidate] = useState<CandidateResult | null>(null)
   const [reviewData, setReviewData] = useState<ReviewData | null>(null)
+  // Wave 6: file / video answers of the candidate under review.
+  const answerFiles = useAnswerFiles(String(params.id), reviewData ? (reviewCandidate?.userId || reviewCandidate?.id) : null)
   const [reviewLoading, setReviewLoading] = useState(false)
   const [releasing, setReleasing] = useState<string | null>(null)
   const [bulkReleasing, setBulkReleasing] = useState(false)
@@ -2031,6 +2034,7 @@ export default function ExamResultsPage() {
                         </div>
                       )
                     })()}
+                    <TraitScoresPanel questions={reviewData.questions as Array<Record<string, unknown>>} answers={reviewData.submission.answers} />
                     {reviewData.questions.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
                     ) : (
@@ -2161,7 +2165,9 @@ export default function ExamResultsPage() {
                                 <div>
                                   <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
                                   {userAnswer ? (
-                                    showStructuredCode ? (
+                                    hasExtendedView(q.type) ? (
+                                      <ExtendedAnswerView question={q as never} answer={userAnswer} examId={String(params.id)} files={answerFiles} />
+                                    ) : showStructuredCode ? (
                                       <div className="space-y-1.5">
                                         <Badge variant="outline" className="text-[10px] font-mono">{parsedCoding?.language || 'code'}</Badge>
                                         <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-80 overflow-y-auto border wrap-break-word">{parsedCoding?.code || '(empty code)'}</pre>

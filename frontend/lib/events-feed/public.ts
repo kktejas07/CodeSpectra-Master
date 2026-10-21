@@ -6,6 +6,7 @@ import type { EventKind, EventMode, FeedEventDoc, PublicFeedEvent } from './type
 
 export const KIND_LABELS: Record<EventKind, string> = {
   hackathon: 'Hackathon', codeathon: 'Codeathon', buildathon: 'Buildathon', ctf: 'CTF', competition: 'Competition', conference: 'Conference',
+  datathon: 'Datathon', ideathon: 'Ideathon', promptathon: 'Prompt-a-thon', debugathon: 'Debug-a-thon', code_golf: 'Code golf', design_jam: 'Design jam', open_source: 'Open-source sprint',
 }
 export const MODE_LABELS: Record<EventMode, string> = { online: 'Online', in_person: 'In person', hybrid: 'Hybrid' }
 
@@ -17,7 +18,57 @@ export function toPublic(d: FeedEventDoc): PublicFeedEvent {
     prize_text: d.prize?.text || null, prize_usd_minor: d.prize?.usd_minor ?? null,
     themes: d.themes || [], image: d.image, summary: d.description_summary,
     featured: d.featured, internal: d.internal, source: d.source,
+    student_friendly: isStudentFriendly({ title: d.title, organiser: d.organiser, themes: d.themes || [], source: d.source, internal: d.internal }),
   }
+}
+
+/** Sources whose listings are (almost) all student events. */
+const STUDENT_SOURCES = new Set(['hackclub', 'mlh', 'devfolio', 'unstop'])
+const STUDENT_RE = /\b(students?|universit(y|ies)|colleges?|campus|undergrad\w*|high[- ]school|freshers?|first[- ]timers?|beginners?|iit|nit|bits|mlh|hack club)\b/i
+
+/** Pure: is this event aimed at / open to students? Our own events always are. */
+export function isStudentFriendly(e: { title: string; organiser: string | null; themes: string[]; source: string; internal?: boolean }): boolean {
+  if (e.internal || STUDENT_SOURCES.has(e.source)) return true
+  if (e.themes.some((t) => t === 'students' || t === 'beginner-friendly' || t === 'mlh')) return true
+  return STUDENT_RE.test(`${e.title} ${e.organiser || ''}`)
+}
+
+export const REGIONS = ['india', 'asia-pacific', 'europe', 'north-america', 'latin-america', 'middle-east-africa'] as const
+export type Region = (typeof REGIONS)[number]
+export const REGION_LABELS: Record<Region, string> = {
+  india: 'India', 'asia-pacific': 'Asia-Pacific', europe: 'Europe', 'north-america': 'North America', 'latin-america': 'Latin America', 'middle-east-africa': 'Middle East & Africa',
+}
+const REGION_COUNTRIES: Record<Exclude<Region, 'india'>, string> = {
+  'asia-pacific': 'PK BD LK NP BT MV SG MY ID PH VN TH KH MM JP KR CN HK TW MO AU NZ',
+  europe: 'GB IE DE FR ES IT NL BE LU CH AT PT PL CZ SK HU SE NO DK FI IS EE LV LT GR RO BG HR SI RS UA TR',
+  'north-america': 'US CA MX',
+  'latin-america': 'BR AR CL CO PE UY PY BO EC VE CR PA GT DO',
+  'middle-east-africa': 'AE SA QA KW BH OM JO LB IL EG NG KE GH ZA MA TN ET RW UG TZ',
+}
+
+/** Pure: ISO-2 country → region, or null (unknown / online). */
+export function regionOf(country: string | null | undefined): Region | null {
+  const c = (country || '').toUpperCase()
+  if (!/^[A-Z]{2}$/.test(c)) return null
+  if (c === 'IN') return 'india'
+  for (const [r, list] of Object.entries(REGION_COUNTRIES)) if (list.split(' ').includes(c)) return r as Region
+  return null
+}
+
+const icsStamp = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+
+/** Pure: Google Calendar "add event" link (no end → 2 hours). */
+export function googleCalendarUrl(ev: Pick<PublicFeedEvent, 'title' | 'starts_at' | 'ends_at' | 'summary' | 'mode' | 'city' | 'country'>, pageUrl: string): string | null {
+  if (!ev.starts_at || !Number.isFinite(Date.parse(ev.starts_at))) return null
+  const end = ev.ends_at && Date.parse(ev.ends_at) > Date.parse(ev.starts_at) ? ev.ends_at : new Date(Date.parse(ev.starts_at) + 2 * 3600_000).toISOString()
+  const q = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: ev.title.slice(0, 200),
+    dates: `${icsStamp(ev.starts_at)}/${icsStamp(end)}`,
+    details: `${ev.summary.slice(0, 600)}\n\n${pageUrl}`,
+    location: ev.mode === 'online' ? 'Online' : [ev.city, ev.country].filter(Boolean).join(', '),
+  })
+  return `https://calendar.google.com/calendar/render?${q.toString()}`
 }
 
 export interface UiFilters {
@@ -30,6 +81,10 @@ export interface UiFilters {
   prize?: boolean
   /** Registration closes within 7 days. */
   deadline_soon?: boolean
+  /** In-person / hybrid events in these regions. */
+  regions?: Region[]
+  /** Only events aimed at / open to students. */
+  student?: boolean
   from?: string | null
   to?: string | null
 }
@@ -48,6 +103,8 @@ export function filterEvents(events: PublicFeedEvent[], f: UiFilters, now = new 
     if (f.countries?.length && !(e.country && f.countries.includes(e.country))) return false
     if (f.themes?.length && !e.themes.some((t) => f.themes!.includes(t))) return false
     if (f.prize && !(e.prize_usd_minor && e.prize_usd_minor > 0)) return false
+    if (f.regions?.length) { const r = regionOf(e.country); if (!r || !f.regions.includes(r)) return false }
+    if (f.student && !(e.student_friendly ?? isStudentFriendly(e))) return false
     if (f.deadline_soon) {
       const d = e.registration_deadline ? new Date(e.registration_deadline).getTime() : null
       if (!d || d < now.getTime() || d > now.getTime() + 7 * DAY) return false

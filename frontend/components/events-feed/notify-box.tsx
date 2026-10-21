@@ -3,7 +3,9 @@
 /**
  * "Notify me" subscribe box: email (double opt-in) and/or WhatsApp (explicit
  * consent + YES/START confirmation). Reusable for other topics via `topic`;
- * 'blog' (Learn) is a weekly email digest, so it offers email only.
+ * 'blog' (Learn) is a weekly email digest, so it offers email only; 'news' is
+ * the daily tech news digest (email and/or WhatsApp, optional topics). Events
+ * on WhatsApp can be instant or one weekly "hackathons this week" message.
  */
 import { useState } from 'react'
 import { Bell, Loader2, MailCheck, MessageCircle } from 'lucide-react'
@@ -14,17 +16,20 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { KIND_LABELS, MODE_LABELS } from '@/lib/events-feed/public'
 import { EVENT_KINDS, EVENT_MODES, type EventKind, type EventMode } from '@/lib/events-feed/types'
+import { NEWS_TOPICS } from '@/lib/signals/feeds'
 import { cn } from '@/lib/utils'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
 
 const CONSENT = 'I agree to receive CodeSpectra updates on WhatsApp for the topics I picked. I can reply STOP at any time to stop.'
 
-export function NotifyBox({ topic = 'events', className, compact = false }: { topic?: 'events' | 'blog'; className?: string; compact?: boolean }) {
+export function NotifyBox({ topic = 'events', className, compact = false }: { topic?: 'events' | 'blog' | 'news'; className?: string; compact?: boolean }) {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [useEmail, setUseEmail] = useState(true)
   const [useWa, setUseWa] = useState(false)
-  const waOffered = topic === 'events'
+  const waOffered = topic === 'events' || topic === 'news'
+  const [weekly, setWeekly] = useState(false)
+  const [newsTopics, setNewsTopics] = useState<string[]>([])
   const [consent, setConsent] = useState(false)
   const [kinds, setKinds] = useState<EventKind[]>([])
   const [modes, setModes] = useState<EventMode[]>([])
@@ -53,7 +58,7 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
           phone: useWa ? phone : undefined,
           channels,
           topics: [topic],
-          filters: topic === 'events' ? { events: { kinds, modes, countries: country ? [country] : [] } } : undefined,
+          filters: topic === 'events' ? { events: { kinds, modes, countries: country ? [country] : [], ...(useWa && weekly ? { frequency: 'weekly' } : {}) } } : topic === 'news' ? { news: { topics: newsTopics } } : undefined,
           whatsapp_consent: useWa ? consent : undefined,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           source: `${topic}-page`,
@@ -99,8 +104,8 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bell className="h-5 w-5" /></span>
         <div>
-          <h2 id="notify-title" className="text-lg font-semibold text-foreground">{topic === 'events' ? 'Notify me' : 'Subscribe to new posts'}</h2>
-          <p className="text-sm text-muted-foreground">{topic === 'events' ? 'Get new hackathons and coding events by email (weekly) or WhatsApp (as they’re announced).' : 'One email a week with the new explainers on Learn. No spam.'}</p>
+          <h2 id="notify-title" className="text-lg font-semibold text-foreground">{topic === 'events' ? 'Notify me' : topic === 'news' ? 'Daily tech news' : 'Subscribe to new posts'}</h2>
+          <p className="text-sm text-muted-foreground">{topic === 'events' ? 'Get new hackathons and coding events by email (weekly) or WhatsApp (as they’re announced, or once a week).' : topic === 'news' ? 'One short digest a day by email or WhatsApp, only on days with news. Opt in, stop any time.' : 'One email a week with the new explainers on Learn. No spam.'}</p>
         </div>
       </div>
 
@@ -122,9 +127,30 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
                 <Checkbox className="mt-0.5" checked={consent} onCheckedChange={(v) => setConsent(v === true)} aria-label="Agree to WhatsApp messages" />
                 <span>{CONSENT}</span>
               </label>
+              {topic === 'events' && (
+                <fieldset className="space-y-1.5">
+                  <legend className="text-xs font-medium text-foreground">How often on WhatsApp</legend>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="radio" name="notify-freq" checked={!weekly} onChange={() => setWeekly(false)} className="accent-[var(--primary)]" /> As events are announced</label>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="radio" name="notify-freq" checked={weekly} onChange={() => setWeekly(true)} className="accent-[var(--primary)]" /> Once a week: hackathons this week</label>
+                </fieldset>
+              )}
             </>
           )}
         </div>}
+
+        {topic === 'news' && !compact && (
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-foreground">Topics (optional, none = all)</legend>
+            <div className="flex flex-wrap gap-2">
+              {NEWS_TOPICS.map((t) => (
+                <button key={t.id} type="button" onClick={() => setNewsTopics(toggle(newsTopics, t.id))} aria-pressed={newsTopics.includes(t.id)}
+                  className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors', newsTopics.includes(t.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         {topic === 'events' && !compact && (
           <fieldset className="space-y-3">

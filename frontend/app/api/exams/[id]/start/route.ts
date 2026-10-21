@@ -21,6 +21,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import { applySectionUpdate, attemptTimeState, candidateExamView, checkExamEntry, checkIdentityForAttempt, getExamDraft, startExamAttempt } from '@/lib/exam-access'
 import { candidateSectionsView, resolveSections, visibleQuestionIds } from '@/lib/exam-sections'
+import { isAdaptiveExam } from '@/lib/adaptive-test'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -90,6 +91,23 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       props: { exam_id: examId, attempt: access.attemptNo, via: access.invite ? 'invite' : 'link' },
       key: `test_started:${examId}:${userId}:${access.attemptNo}`,
     })).catch(() => {})
+
+    // Adaptive test: the server hands out one question at a time (never the pool) — ./adaptive.
+    if (isAdaptiveExam(exam)) {
+      const { startAdaptive } = await import('@/lib/adaptive-test-server')
+      const adaptive = await startAdaptive(db, exam, userId, access.attemptNo, draft)
+      return NextResponse.json({
+        ok: true,
+        questionList: [],
+        adaptive,
+        started_at: state.startedAt,
+        deadline: state.deadline !== null ? new Date(state.deadline).toISOString() : null,
+        server_now: new Date().toISOString(),
+        answers: {},
+        attempt_no: access.attemptNo,
+        max_attempts: access.maxAttempts,
+      })
+    }
 
     const view = candidateExamView(exam)
     let questionList = (Array.isArray(view.questionList) ? view.questionList : (Array.isArray(view.questions) ? view.questions : [])) as Array<Record<string, unknown>>

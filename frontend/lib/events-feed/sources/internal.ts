@@ -23,6 +23,9 @@ export const internal: Connector = {
   terms: 'Our own events.', defaultEnabled: true, needsPermission: false,
   async fetch() {
     const { listPublicEvents } = await import('@/lib/hackathons/public-events')
-    return mapInternal(await listPublicEvents(), getAppOrigin())
+    const own = mapInternal(await listPublicEvents(), getAppOrigin())
+    // Hosted contests (lib/contests) publish with their format's kind.
+    const contests = await import('@/lib/contests/feed').then((m) => m.listFeedContests()).catch(() => [] as ExternalEvent[])
+    return [...own, ...contests]
   },
 }

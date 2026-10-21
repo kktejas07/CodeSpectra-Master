@@ -35,7 +35,7 @@ export async function listPublishedFeed(now = new Date(), limit = 1000): Promise
       out.push({
         id: feedId(key), title: e.title, url: e.url, organiser: e.organiser, kind: e.kind, mode: e.mode, city: null, country: null,
         starts_at: e.starts_at, ends_at: e.ends_at, registration_deadline: e.registration_deadline, prize_text: null, prize_usd_minor: null,
-        themes: e.themes, image: e.image, summary: e.description_summary, featured: true, internal: true, source: 'codespectra',
+        themes: e.themes, image: e.image, summary: e.description_summary, featured: true, internal: true, source: 'codespectra', student_friendly: true,
       })
     }
   } catch { /* our own listing is best-effort here */ }

@@ -16,6 +16,8 @@ export interface EventsFeedSettings {
   /** Approved Meta templates (names as approved in WhatsApp Manager). */
   whatsapp_template_alert: string
   whatsapp_template_reminder: string
+  /** Weekly "hackathons this week" WhatsApp for people who chose weekly ({{1}} = summary, {{2}} = link). */
+  whatsapp_template_digest: string
   /** Message templates (plain text; {placeholders} listed in the admin UI). */
   digest_subject: string
   digest_intro: string
@@ -42,6 +44,7 @@ export const EVENTS_FEED_DEFAULTS: EventsFeedSettings = {
   ai_summaries_enabled: true,
   whatsapp_template_alert: '',
   whatsapp_template_reminder: '',
+  whatsapp_template_digest: '',
   digest_subject: 'This week’s hackathons and coding events',
   digest_intro: 'Here are new and closing-soon events that match your choices.',
   alert_subject: 'New event: {title}',
@@ -68,6 +71,7 @@ export function normalizeEventsFeedSettings(o: Record<string, unknown>): EventsF
     ai_summaries_enabled: bool(o.ai_summaries_enabled, D.ai_summaries_enabled),
     whatsapp_template_alert: tpl(o.whatsapp_template_alert),
     whatsapp_template_reminder: tpl(o.whatsapp_template_reminder),
+    whatsapp_template_digest: tpl(o.whatsapp_template_digest),
     digest_subject: text(o.digest_subject, D.digest_subject, 150),
     digest_intro: text(o.digest_intro, D.digest_intro, 600),
     alert_subject: text(o.alert_subject, D.alert_subject, 150),

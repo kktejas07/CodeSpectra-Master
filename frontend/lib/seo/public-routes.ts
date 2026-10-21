@@ -34,11 +34,12 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   { path: '/support', title: 'Support and help centre', description: 'Get help with CodeSpectra: candidate test-day help, account issues, billing and contacting support.', group: 'pages', updated: U, priority: 0.5, changefreq: 'monthly', schema: ['WebPage'] },
   { path: '/jobs', title: 'Job board: open tech roles', description: 'Open software, QA and engineering roles posted on CodeSpectra. Search by title, company or skill and apply online.', group: 'pages', updated: U, priority: 0.8, changefreq: 'daily', schema: ['CollectionPage', 'BreadcrumbList'], llms: true },
   { path: '/hackathons', title: 'Hackathons and coding contests on CodeSpectra', description: 'Join CodeSpectra hackathons and speed contests: team up, solve problems, submit your repository and get judged on a shared rubric.', group: 'pages', updated: U, priority: 0.8, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
+  { path: '/contests', title: 'Datathons, CTFs, ideathons and coding sprints', description: 'Hosted contests on CodeSpectra: CTFs, datathons, prompt-a-thons, debug-a-thons, code golf, ideathons, system design jams and open-source sprints.', group: 'pages', updated: U, priority: 0.8, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
   { path: '/events', title: 'Hackathons, codeathons and contests worldwide', description: 'Upcoming hackathons, codeathons, buildathons, CTFs and coding contests worldwide. Filter by format, country and deadline.', group: 'pages', updated: U, priority: 0.8, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
   { path: '/learn', title: 'Learn: algorithms, system design and engineering', description: 'Free explainers on algorithms, system design, design patterns and engineering practice, with runnable code and practice problems.', group: 'pages', updated: U, priority: 0.8, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
   { path: '/marketplace', title: 'Marketplace: books, courses and mock interviews', description: 'Buy books, courses, e-books and templates, or book mentoring and mock interviews with CodeSpectra and approved sellers.', group: 'pages', updated: U, priority: 0.7, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
   { path: '/companies', title: 'Company interview prep guides', description: 'How top tech companies interview: rounds, difficulty mix and sample questions, with practice on CodeSpectra.', group: 'pages', updated: U, priority: 0.7, changefreq: 'monthly', schema: ['CollectionPage'], llms: true },
-  { path: '/blog', title: 'Newsroom and product blog', description: 'CodeSpectra product news, release notes and hiring insights from the team.', group: 'pages', updated: U, priority: 0.6, changefreq: 'weekly', schema: ['Blog'] },
+  { path: '/news', title: 'Tech news for developers and students', description: 'Daily tech news for builders: cloud releases, security advisories, language releases, AI and India tech careers, summarised from primary sources.', group: 'pages', updated: '2026-10-21', priority: 0.7, changefreq: 'daily', schema: ['CollectionPage', 'ItemList'], llms: true },
   { path: '/newsletter', title: 'Newsletter', description: 'Subscribe to the CodeSpectra newsletter for new Learn posts, events and product updates. Browse past issues.', group: 'pages', updated: U, priority: 0.4, changefreq: 'weekly', schema: [] },
   { path: '/docs', title: 'Documentation and user guides', description: 'CodeSpectra documentation: getting started, building assessments, proctoring, hackathons, integrations and the API.', group: 'pages', updated: U, priority: 0.7, changefreq: 'weekly', schema: ['BreadcrumbList'], llms: true },
   { path: '/api-reference', title: 'API reference', description: 'The CodeSpectra REST API: authentication, assessments, candidates, results and webhooks.', group: 'pages', updated: U, priority: 0.5, changefreq: 'monthly', schema: [], llms: true },
@@ -58,7 +59,7 @@ export function publicRoute(path: string): PublicRoute | undefined {
 }
 
 /** Prefixes of public content sections (detail pages live under these). */
-const PUBLIC_PREFIXES = ['/learn/', '/events/', '/jobs/', '/marketplace/p/', '/marketplace/s/', '/companies/', '/docs/', '/blog/', '/newsletter/', '/compare/']
+const PUBLIC_PREFIXES = ['/learn/', '/events/', '/jobs/', '/marketplace/p/', '/marketplace/s/', '/companies/', '/docs/', '/news/', '/newsletter/', '/compare/']
 
 /**
  * True for public, cacheable marketing/content pages (no per-user cookies needed).
@@ -94,6 +95,8 @@ export const DISALLOWED_PATHS = [
   '/hackathons/*/join/',
   '/hackathons/*/workspace',
   '/hackathons/*/report',
+  '/contests/*/workspace',
+  '/contests/*/judge',
   '/codeathons/',
   '/users/',
   '/subscriptions/',

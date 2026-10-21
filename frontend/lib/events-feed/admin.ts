@@ -21,6 +21,7 @@ export async function listSourcesForAdmin() {
       terms: c?.terms || '',
       needs_permission: Boolean(c?.needsPermission),
       requires: c?.requires || null,
+      configurable: c?.configurable || null,
       builtin: BUILTIN_CONNECTORS.some((b) => b.id === s.id),
     }
   }).sort((a, b) => Number(b.builtin) - Number(a.builtin) || a.id.localeCompare(b.id))
@@ -38,6 +39,25 @@ export async function setSourceEnabled(id: string, enabled: boolean, actor: stri
     set.permission_confirmed_at = nowIso()
   }
   await (await sourcesCol()).updateOne({ id }, { $set: set })
+  return { ok: true }
+}
+
+/** Pure: validate the feed URL for a configurable built-in source (https only; empty clears it). */
+export function validateSourceConfig(b: Record<string, unknown>): { ok: true; url: string | null } | { ok: false; error: string } {
+  if (b.url === '' || b.url === null) return { ok: true, url: null }
+  const url = httpUrl(b.url)
+  if (!url || !url.startsWith('https://')) return { ok: false, error: 'Enter an https:// feed URL.' }
+  return { ok: true, url }
+}
+
+/** Set (or clear) the feed URL of a configurable built-in source. */
+export async function setSourceConfig(id: string, b: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
+  const c = BUILTIN_CONNECTORS.find((x) => x.id === id)
+  if (!c?.configurable) return { ok: false, error: 'This source has no feed URL to set.' }
+  const v = validateSourceConfig(b)
+  if (!v.ok) return v
+  await ensureSources()
+  await (await sourcesCol()).updateOne({ id }, { $set: { config: v.url ? { url: v.url } : null, last_error: null } })
   return { ok: true }
 }
 

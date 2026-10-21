@@ -3,13 +3,17 @@
  * disclosure texts (versioned — a changed text gets a new version and the old
  * one is kept, so every signed consent traces to its exact text), US state
  * notices, retention, reminder cadence, adverse-action waiting period, vendor
- * keys (Checkr API key + webhook secret, AES-GCM encrypted; never returned).
+ * keys (Checkr, IDfy, AuthBridge — AES-GCM encrypted; never returned, only
+ * "is set" flags) and the IDfy / AuthBridge connection settings.
  */
 import type { BgvRegion } from '@/lib/ats/contract'
 import { defaultRegionSettings, normalizeChecks, REGIONS, US_STATES } from './catalog'
 import { decryptSensitive, encryptSensitive } from './crypto'
 import { bgvSettings, nowIso } from './db'
-import type { BgvRegionSettings, BgvSettingsDoc, BgvStateNotice, VendorSecrets } from './types'
+import { VENDOR_SECRET_NAMES, type BgvRegionSettings, type BgvSettingsDoc, type BgvStateNotice, type VendorSecrets } from './types'
+import { cleanBaseUrl, cleanPath } from './vendors/http'
+import { cleanIdfySettings, defaultIdfySettings, newWebhookToken } from './vendors/idfy'
+import { cleanAuthBridgeSettings, defaultAuthBridgeSettings, settingsOf as authBridgeSettingsOf } from './vendors/authbridge'
 
 export const DEFAULTS = {
   retention_days: 180,
@@ -26,6 +30,8 @@ export function defaultSettings(tenantId: string): BgvSettingsDoc {
     ...DEFAULTS,
     vendor_secret: null,
     checkr: { package: null, mode: 'report', work_state: null, work_city: null },
+    idfy: defaultIdfySettings(),
+    authbridge: defaultAuthBridgeSettings(),
     updated_at: new Date(0).toISOString(),
     updated_by: 'system',
   }
@@ -43,6 +49,8 @@ export async function getBgvSettings(tenantId: string): Promise<BgvSettingsDoc> 
       US: { ...base.regions.US, ...(doc.regions?.US || {}) },
     },
     checkr: { ...base.checkr!, ...(doc.checkr || {}) },
+    idfy: { ...base.idfy!, ...(doc.idfy || {}), tasks: { ...base.idfy!.tasks, ...(doc.idfy?.tasks || {}) } },
+    authbridge: authBridgeSettingsOf({ ...base, authbridge: doc.authbridge || null }),
   }
 }
 
@@ -55,7 +63,7 @@ export async function getVendorSecrets(tenantId: string): Promise<VendorSecrets>
 export async function publicSettings(s: BgvSettingsDoc) {
   const secrets = (await decryptSensitive<VendorSecrets>(s.vendor_secret)) || {}
   const { vendor_secret: _v, ...rest } = s
-  return { ...rest, vendor_keys: { checkr_api_key: !!secrets.checkr_api_key, checkr_webhook_secret: !!secrets.checkr_webhook_secret } }
+  return { ...rest, vendor_keys: Object.fromEntries(VENDOR_SECRET_NAMES.map((n) => [n, !!secrets[n]])) as Record<(typeof VENDOR_SECRET_NAMES)[number], boolean> }
 }
 
 const clampInt = (v: unknown, lo: number, hi: number, dflt: number) => {
@@ -89,6 +97,46 @@ function cleanNotices(raw: unknown, prev: BgvStateNotice[] = []): BgvStateNotice
     if (!text) continue
     const old = prev.find((n) => n.state === state)
     out.push({ state, title: cleanText(o.title, 120) || `${state} notice`, text, version: old && old.text !== text ? bumpVersion(old.version) : old?.version || '1' })
+  }
+  return out
+}
+
+/** Pure: a user-facing error for vendor URLs / paths the cleaners would drop, or null. */
+export function vendorSettingsError(patch: Record<string, unknown>): string | null {
+  for (const v of ['idfy', 'authbridge'] as const) {
+    const p = patch[v]
+    if (!p || typeof p !== 'object') continue
+    const o = p as Record<string, unknown>
+    for (const k of ['sandbox_base_url', 'production_base_url']) {
+      const u = o[k]
+      if (typeof u === 'string' && u.trim() && !cleanBaseUrl(u)) return `${v === 'idfy' ? 'IDfy' : 'AuthBridge'}: base URLs must be plain https:// addresses (no query string).`
+    }
+    if (v === 'idfy' && o.tasks && typeof o.tasks === 'object') {
+      for (const [k, x] of Object.entries(o.tasks as Record<string, unknown>)) {
+        if (typeof x === 'string' && x.trim() && !/^[a-z0-9_]+(\/[a-z0-9_]+){0,3}$/.test(x.trim())) return `IDfy: the task path for ${k.replace(/[._]/g, ' ')} should look like verify_with_source/ind_pan.`
+      }
+    }
+    if (v === 'authbridge') {
+      for (const k of ['token_path', 'status_path', 'test_path']) {
+        const x = o[k]
+        if (typeof x === 'string' && x.trim() && !cleanPath(x)) return `AuthBridge: "${x.slice(0, 60)}" isn't a valid path (start with /, no spaces).`
+      }
+      const checks = (o.checks && typeof o.checks === 'object' ? o.checks : {}) as Record<string, { path?: unknown } | null>
+      for (const [t, c] of Object.entries(checks)) {
+        if (c && typeof c.path === 'string' && c.path.trim() && !cleanPath(c.path)) return `AuthBridge: the path for ${t.replace(/_/g, ' ')} isn't valid (start with /, no spaces).`
+      }
+    }
+  }
+  return null
+}
+
+/** Pure: write-only key patch — string sets, null clears, anything else keeps. The IDfy webhook token is generated, never set. */
+export function applySecretPatch(cur: VendorSecrets, k: Record<string, unknown>): VendorSecrets {
+  const out: VendorSecrets = { ...cur }
+  for (const name of VENDOR_SECRET_NAMES) {
+    if (name === 'idfy_webhook_token') { if (k[name] === null) out[name] = null; continue }
+    if (k[name] === null) out[name] = null
+    else if (typeof k[name] === 'string' && (k[name] as string).trim()) out[name] = (k[name] as string).trim().slice(0, 500)
   }
   return out
 }
@@ -131,14 +179,17 @@ export async function saveBgvSettings(tenantId: string, patch: Record<string, un
       work_city: cleanText(c.work_city, 120) || null,
     }
   }
-  if (patch.vendor_keys && typeof patch.vendor_keys === 'object') {
-    const k = patch.vendor_keys as Record<string, unknown>
+  if (patch.idfy && typeof patch.idfy === 'object') next.idfy = cleanIdfySettings(patch.idfy, cur.idfy || defaultIdfySettings())
+  if (patch.authbridge && typeof patch.authbridge === 'object') next.authbridge = cleanAuthBridgeSettings(patch.authbridge, cur.authbridge || defaultAuthBridgeSettings())
+  const rotateIdfyToken = patch.rotate_idfy_webhook_token === true
+  if ((patch.vendor_keys && typeof patch.vendor_keys === 'object') || rotateIdfyToken || next.idfy?.enabled) {
+    const k = (patch.vendor_keys && typeof patch.vendor_keys === 'object' ? patch.vendor_keys : {}) as Record<string, unknown>
     const secrets = (await decryptSensitive<VendorSecrets>(cur.vendor_secret)) || {}
-    for (const name of ['checkr_api_key', 'checkr_webhook_secret'] as const) {
-      if (k[name] === null) secrets[name] = null
-      else if (typeof k[name] === 'string' && (k[name] as string).trim()) secrets[name] = (k[name] as string).trim().slice(0, 300)
-    }
-    next.vendor_secret = await encryptSensitive(secrets)
+    const before = JSON.stringify(secrets)
+    const updated = applySecretPatch(secrets, k)
+    // IDfy callbacks aren't signed: the URL carries a random shared token (generated, never typed).
+    if (rotateIdfyToken || (next.idfy?.enabled && !updated.idfy_webhook_token)) updated.idfy_webhook_token = newWebhookToken()
+    if (JSON.stringify(updated) !== before) next.vendor_secret = await encryptSensitive(updated)
   }
   const { tenant_id: _t, ...set } = next
   await (await bgvSettings()).updateOne({ tenant_id: tenantId }, { $set: set, $setOnInsert: { tenant_id: tenantId } }, { upsert: true })

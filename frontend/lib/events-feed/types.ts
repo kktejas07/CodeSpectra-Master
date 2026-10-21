@@ -88,6 +88,8 @@ export interface PublicFeedEvent {
   featured: boolean
   internal: boolean
   source: string
+  /** Aimed at / open to students (heuristic: source, title, organiser, themes). */
+  student_friendly?: boolean
 }
 
 export interface SourceState {

@@ -16,6 +16,9 @@ export const LEARN_CATEGORIES = [
   { id: 'ai-ml', label: 'AI/ML engineering' },
   { id: 'interview-prep', label: 'Interview prep' },
   { id: 'career', label: 'Career skills' },
+  { id: 'languages', label: 'Programming languages' },
+  { id: 'technologies', label: 'Frameworks & technologies' },
+  { id: 'competitions-careers', label: 'Competitions & careers' },
 ] as const
 
 export type LearnCategoryId = (typeof LEARN_CATEGORIES)[number]['id']
@@ -40,7 +43,7 @@ export const SHARE_CHANNELS = ['linkedin', 'whatsapp', 'x', 'facebook', 'telegra
 export type ShareChannel = (typeof SHARE_CHANNELS)[number]
 
 /** Categories where code examples are not the point (process / people topics). */
-export const PROSE_FIRST_CATEGORIES: ReadonlySet<LearnCategoryId> = new Set(['methodologies', 'career'])
+export const PROSE_FIRST_CATEGORIES: ReadonlySet<LearnCategoryId> = new Set(['methodologies', 'career', 'competitions-careers'])
 
 export function isLearnCategory(v: unknown): v is LearnCategoryId {
   return typeof v === 'string' && LEARN_CATEGORIES.some((c) => c.id === v)

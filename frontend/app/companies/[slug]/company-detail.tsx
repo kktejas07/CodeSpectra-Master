@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { CompanyEntry } from '@/lib/companies/company-catalog'
+import { CompanyPractice } from './company-practice'
 
 type Tab = 'overview' | 'process' | 'questions' | 'tips'
 
@@ -65,6 +66,10 @@ export function CompanyDetail({ company }: { company: CompanyEntry }) {
           </div>
         </div>
 
+        {company.verifyNote ? (
+          <p className="mb-6 rounded-xl bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">{company.verifyNote}</p>
+        ) : null}
+
         {/* Tabs */}
         <div className="mb-6 flex gap-1 overflow-x-auto border-b border-cs-grid" role="tablist" aria-label={`${company.name} interview prep`}>
           {TABS.map(tab => (
@@ -88,6 +93,7 @@ export function CompanyDetail({ company }: { company: CompanyEntry }) {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <div className="space-y-6">
+            <CompanyPractice companySlug={company.slug} companyName={company.name} />
             {/* Tech Stack */}
             <section className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none">
               <h2 className="mb-4 text-lg font-bold text-cs-ink">Tech stack</h2>

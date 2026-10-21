@@ -203,7 +203,7 @@ export function courseJsonLd(args: { site: string; name: string; description: st
 
 export function articleJsonLd(args: {
   site: string
-  type?: 'TechArticle' | 'BlogPosting' | 'Article'
+  type?: 'TechArticle' | 'BlogPosting' | 'Article' | 'NewsArticle'
   path: string
   headline: string
   description: string

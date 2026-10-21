@@ -43,6 +43,8 @@ export const bgvCases = lazy<BgvCaseDoc>('ats_bgv_cases', (c) =>
     c.createIndex({ tenant_id: 1, application_id: 1, created_at: -1 }, { name: 'ats_bgv_cases_tenant_app' }),
     c.createIndex({ status: 1, deadline: 1 }, { name: 'ats_bgv_cases_open' }),
     c.createIndex({ tenant_id: 1, vendor_ref: 1 }, { name: 'ats_bgv_cases_vendor_ref', sparse: true }),
+    c.createIndex({ tenant_id: 1, vendor_report_ref: 1 }, { name: 'ats_bgv_cases_vendor_report_ref', sparse: true }),
+    c.createIndex({ tenant_id: 1, 'checks.vendor_ref': 1 }, { name: 'ats_bgv_cases_check_vendor_ref', sparse: true }),
     c.createIndex({ closed_at: 1, purged_at: 1 }, { name: 'ats_bgv_cases_retention', sparse: true }),
   ]),
 )

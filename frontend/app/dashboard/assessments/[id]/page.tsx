@@ -484,6 +484,7 @@ export default function ExamPage() {
 
               <QuestionAnswerInput
                 question={{
+                  ...(question as any),
                   id: question.id,
                   type: question.type,
                   prompt: question.prompt || question.question,

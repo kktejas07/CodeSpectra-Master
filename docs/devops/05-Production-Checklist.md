@@ -93,6 +93,8 @@ Base URL = `NEXT_PUBLIC_APP_URL`.
 | Didit KYC | `/api/kyc/didit/webhook` | `DIDIT_WEBHOOK_SECRET` (HMAC `X-Signature-V2`) |
 | GitHub App | `/api/github/webhook` | `GITHUB_WEBHOOK_SECRET` |
 | Checkr (BGV) | `/api/ats/bgv/webhooks/checkr?tenant=<tenant id>` | per-tenant webhook secret |
+| IDfy (BGV) | `/api/ats/bgv/webhooks/idfy?tenant=<tenant id>&token=<callback token>` | per-tenant random URL token (+ optional IDfy IP allow-list); results re-read over the API |
+| AuthBridge (BGV) | `/api/ats/bgv/webhooks/authbridge?tenant=<tenant id>` | per-tenant HMAC (header / algorithm configurable) |
 | WhatsApp (Meta Cloud API) | `/api/ats/screening/webhooks/whatsapp` | `meta_whatsapp_app_secret` (+ verify token) |
 | Vapi / Twilio / Exotel | `/api/ats/screening/webhooks/{vapi,twilio,exotel}` | their secrets in Hiring integrations |
 

@@ -205,7 +205,7 @@ describe('connector parsers', () => {
   })
   it('sources whose terms need permission are off by default', () => {
     const off = BUILTIN_CONNECTORS.filter((c) => c.needsPermission).map((c) => c.id).sort()
-    expect(off).toEqual(['codechef', 'devfolio', 'devpost', 'hackerearth', 'leetcode', 'mlh', 'unstop'])
+    expect(off).toEqual(['codechef', 'devfolio', 'devpost', 'eventbrite', 'hackerearth', 'leetcode', 'mlh', 'unstop'])
     expect(BUILTIN_CONNECTORS.filter((c) => c.needsPermission).every((c) => !c.defaultEnabled)).toBe(true)
   })
 })

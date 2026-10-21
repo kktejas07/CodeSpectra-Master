@@ -2,10 +2,12 @@
 import type { Connector } from './base'
 import { codechef } from './codechef'
 import { codeforces } from './codeforces'
+import { awsDev, eventbrite, googleDev, luma, microsoftDev } from './configurable'
 import { ctftime } from './ctftime'
 import { devfolio } from './devfolio'
 import { devpost } from './devpost'
 import { feedConnector } from './feeds'
+import { hackclub } from './hackclub'
 import { hackerearth } from './hackerearth'
 import { internal } from './internal'
 import { kaggle } from './kaggle'
@@ -17,7 +19,7 @@ import type { SourceState } from '../types'
 
 export type { Connector, ConnectorCtx } from './base'
 
-export const BUILTIN_CONNECTORS: Connector[] = [internal, codeforces, ctftime, kaggle, devpost, mlh, devfolio, unstop, hackerearth, codechef, leetcode, simulated]
+export const BUILTIN_CONNECTORS: Connector[] = [internal, codeforces, ctftime, kaggle, devpost, mlh, devfolio, unstop, hackerearth, codechef, leetcode, hackclub, luma, eventbrite, googleDev, microsoftDev, awsDev, simulated]
 
 export function isFeedSourceId(id: string): boolean {
   return /^(rss|ical):[a-z0-9-]{2,40}$/.test(id)

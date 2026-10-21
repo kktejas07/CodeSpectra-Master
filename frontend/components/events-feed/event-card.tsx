@@ -2,12 +2,12 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { BellPlus, BellRing, CalendarPlus, Check, Copy, ExternalLink, Globe, MapPin, MessageCircle, Share2, Sparkles, Trophy, Clock } from 'lucide-react'
+import { BellPlus, BellRing, CalendarPlus, Check, Copy, Download, ExternalLink, Globe, GraduationCap, MapPin, MessageCircle, Share2, Sparkles, Trophy, Clock } from 'lucide-react'
 import { Linkedin } from '@/components/ui/brand-icons'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { countryName, formatRange, KIND_LABELS, MODE_LABELS, shareLinks, withUtm } from '@/lib/events-feed/public'
+import { countryName, formatRange, googleCalendarUrl, KIND_LABELS, MODE_LABELS, shareLinks, withUtm } from '@/lib/events-feed/public'
 import type { PublicFeedEvent } from '@/lib/events-feed/types'
 import { cn } from '@/lib/utils'
 
@@ -19,6 +19,24 @@ export function deadlineLabel(iso: string | null, now = Date.now()): { text: str
   if (days < 1) return { text: 'Registration closes today', urgent: true }
   if (days < 7) return { text: `Registration closes in ${days} day${days === 1 ? '' : 's'}`, urgent: days <= 2 }
   return { text: `Register by ${new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`, urgent: false }
+}
+
+/** "Add to calendar": .ics download (Apple / Outlook) or Google Calendar. */
+export function AddToCalendar({ ev, pageUrl, label }: { ev: PublicFeedEvent; pageUrl: string; label?: string }) {
+  const google = googleCalendarUrl(ev, pageUrl)
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        {label
+          ? <Button variant="outline" className="h-11 rounded-xl"><CalendarPlus className="h-4 w-4" /> {label}</Button>
+          : <Button size="icon-sm" variant="outline" aria-label="Add to calendar"><CalendarPlus className="h-4 w-4" /></Button>}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {google && <DropdownMenuItem asChild><a href={google} target="_blank" rel="noopener noreferrer"><CalendarPlus className="h-4 w-4" /> Google Calendar</a></DropdownMenuItem>}
+        <DropdownMenuItem asChild><a href={`/api/events-feed/${ev.id}/ics`} download><Download className="h-4 w-4" /> Download .ics (Apple, Outlook)</a></DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
 }
 
 export function EventCard({ ev, origin, saved, onToggleSave }: { ev: PublicFeedEvent; origin: string; saved?: boolean; onToggleSave?: (id: string, save: boolean) => void }) {
@@ -48,6 +66,7 @@ export function EventCard({ ev, origin, saved, onToggleSave }: { ev: PublicFeedE
           {ev.featured && <Badge className="gap-1 bg-primary text-primary-foreground"><Sparkles className="h-3 w-3" /> Featured</Badge>}
           <Badge variant="secondary">{KIND_LABELS[ev.kind]}</Badge>
           <Badge variant="outline" className="gap-1">{ev.mode === 'online' ? <Globe className="h-3 w-3" /> : <MapPin className="h-3 w-3" />}{MODE_LABELS[ev.mode]}</Badge>
+          {ev.student_friendly && <Badge variant="outline" className="gap-1"><GraduationCap className="h-3 w-3" /> Students</Badge>}
         </div>
         <div>
           <h3 className="text-base font-semibold leading-snug text-foreground">
@@ -73,11 +92,7 @@ export function EventCard({ ev, origin, saved, onToggleSave }: { ev: PublicFeedE
               Register {!ev.internal && <ExternalLink className="h-3.5 w-3.5" aria-hidden />}
             </a>
           </Button>
-          {ev.starts_at && (
-            <Button asChild size="icon-sm" variant="outline" aria-label="Add to calendar">
-              <a href={`/api/events-feed/${ev.id}/ics`} download><CalendarPlus className="h-4 w-4" /></a>
-            </Button>
-          )}
+          {ev.starts_at && <AddToCalendar ev={ev} pageUrl={page} />}
           {onToggleSave && ev.registration_deadline && Date.parse(ev.registration_deadline) > Date.now() && (
             <Button size="icon-sm" variant={saved ? 'secondary' : 'outline'} aria-pressed={saved} aria-label={saved ? 'Remove deadline reminder' : 'Remind me before registration closes'} onClick={() => onToggleSave(ev.id, !saved)}>
               {saved ? <BellRing className="h-4 w-4 text-primary" /> : <BellPlus className="h-4 w-4" />}

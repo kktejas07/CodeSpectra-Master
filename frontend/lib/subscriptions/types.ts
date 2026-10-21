@@ -9,10 +9,14 @@ export const CHANNELS = ['email', 'whatsapp'] as const
 export type Channel = (typeof CHANNELS)[number]
 
 /** Add a topic here when a new feature needs opt-in notifications. */
-export const TOPICS = ['events', 'blog'] as const
+export const TOPICS = ['events', 'blog', 'news'] as const
 export type Topic = (typeof TOPICS)[number]
 
-export const EVENT_KINDS = ['hackathon', 'codeathon', 'buildathon', 'ctf', 'competition', 'conference'] as const
+export const EVENT_KINDS = [
+  'hackathon', 'codeathon', 'buildathon', 'ctf', 'competition', 'conference',
+  // Hosted contest formats (lib/contests/formats).
+  'datathon', 'ideathon', 'promptathon', 'debugathon', 'code_golf', 'design_jam', 'open_source',
+] as const
 export type EventKind = (typeof EVENT_KINDS)[number]
 export const EVENT_MODES = ['online', 'in_person', 'hybrid'] as const
 export type EventMode = (typeof EVENT_MODES)[number]
@@ -26,12 +30,23 @@ export interface EventFilters {
   themes?: string[]
   /** Only events with a cash prize of at least this (integer minor units, USD). */
   min_prize_usd_minor?: number
+  /**
+   * WhatsApp cadence: 'instant' (default) = alerts as events appear; 'weekly' =
+   * no instant alerts, one "hackathons this week" message instead. Email is
+   * always the weekly digest.
+   */
+  frequency?: EventFrequency
 }
+
+export const EVENT_FREQUENCIES = ['instant', 'weekly'] as const
+export type EventFrequency = (typeof EVENT_FREQUENCIES)[number]
 
 /** Free-form filters for other topics (e.g. blog categories). */
 export interface TopicFilters {
   events?: EventFilters
   blog?: { categories?: string[] }
+  /** Tech news daily digest (lib/signals): news topic ids; none = all. */
+  news?: { topics?: string[] }
 }
 
 export type EmailStatus = 'none' | 'pending' | 'active' | 'unsubscribed' | 'bounced'

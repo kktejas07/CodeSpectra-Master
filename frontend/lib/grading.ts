@@ -8,6 +8,7 @@
  * scored consistently everywhere.
  */
 import { metaFor, resolveQuestionType, type GradingKind } from '@/lib/question-types'
+import { sanitizeExtendedQuestionFields } from '@/lib/question-extensions'
 
 /**
  * Legacy alias table kept for backward compatibility. New code should rely on
@@ -419,6 +420,9 @@ function sanitizeStructuredQuestionFields(q: Record<string, unknown>, clean: Rec
   if (language) clean.language = language
   const starter = qStr(q.starter_code ?? q.starterCode, 20000)
   if (starter) clean.starter_code = starter
+
+  // Wave 6 types (case study, typing, uploads, black box, traits, aptitude area).
+  sanitizeExtendedQuestionFields(q, clean)
 }
 
 export function sanitizeExamQuestion(raw: unknown): Record<string, unknown> {

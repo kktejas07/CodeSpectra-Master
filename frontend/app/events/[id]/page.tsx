@@ -1,11 +1,12 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, CalendarPlus, Clock, ExternalLink, Globe, MapPin, Sparkles, Trophy } from 'lucide-react'
+import { ArrowLeft, Clock, ExternalLink, Globe, MapPin, Sparkles, Trophy } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { NotifyBox } from '@/components/events-feed/notify-box'
+import { AddToCalendar } from '@/components/events-feed/event-card'
 import { getFeedEvent, listPublishedFeed } from '@/lib/events-feed/query'
 import { countryName, formatRange, KIND_LABELS, MODE_LABELS, toPublic, withUtm } from '@/lib/events-feed/public'
 import type { PublicFeedEvent } from '@/lib/events-feed/types'
@@ -119,9 +120,7 @@ export default async function EventDetailPage({ params }: Props) {
                 </a>
               </Button>
             )}
-            {ev.starts_at && (
-              <Button asChild variant="outline" className="h-11 rounded-xl"><a href={`/api/events-feed/${ev.id}/ics`} download><CalendarPlus className="h-4 w-4" /> Add to calendar</a></Button>
-            )}
+            {ev.starts_at && <AddToCalendar ev={ev} pageUrl={`${site}/events/${ev.id}`} label="Add to calendar" />}
           </div>
           {!ev.internal && <p className="text-xs text-muted-foreground">This summary is written by CodeSpectra from the organiser’s public listing. Check the organiser’s page for rules and eligibility.</p>}
           <section aria-labelledby="event-faq" className="pt-4">

@@ -101,6 +101,8 @@ export interface BgvCaseDoc {
   vendor_invitation_url?: string | null
   /** processed vendor webhook event ids (idempotency) */
   vendor_events?: string[]
+  /** last scheduler poll of the vendor (polling vendors: IDfy, AuthBridge); written by an atomic claim */
+  vendor_polled_at?: string | null
   consent: BgvConsent | null
   status: BgvCaseStatus
   submitted_at: string | null
@@ -172,14 +174,92 @@ export interface BgvSettingsDoc {
   max_reminders: number
   form_deadline_days: number
   adverse_waiting_days: number
-  /** encrypted vendor credentials: { checkr_api_key, checkr_webhook_secret } */
+  /** encrypted vendor credentials (VendorSecrets) */
   vendor_secret?: string | null
   checkr?: { package: string | null; mode: 'report' | 'invitation'; work_state: string | null; work_city: string | null } | null
+  idfy?: IdfySettings | null
+  authbridge?: AuthBridgeSettings | null
   updated_at: string
   updated_by: string
+}
+
+export type VendorEnv = 'sandbox' | 'production'
+
+/**
+ * IDfy (Eve v3 tasks API). `tasks` maps our check (or identity sub-type) to the
+ * IDfy task path, e.g. pan → "verify_with_source/ind_pan"; an empty path keeps
+ * that check manual. Only task types enabled on your IDfy account work.
+ */
+export interface IdfySettings {
+  enabled: boolean
+  env: VendorEnv
+  sandbox_base_url: string
+  production_base_url: string
+  tasks: Record<string, string>
+  /** PAN / ID: a name at source that doesn't match the candidate's → discrepancy */
+  name_match: boolean
+  /** reject callbacks from IPs outside ip_allowlist (IDfy publishes its webhook IPs) */
+  enforce_ip_allowlist: boolean
+  ip_allowlist: string[]
+}
+
+export type AuthBridgeAuthMode = 'oauth_client_credentials' | 'api_key' | 'basic'
+
+/**
+ * AuthBridge — every value comes from the tenant's AuthBridge onboarding pack
+ * (their API is not public). Paths are relative to the base URL.
+ */
+export interface AuthBridgeSettings {
+  enabled: boolean
+  env: VendorEnv
+  sandbox_base_url: string | null
+  production_base_url: string | null
+  auth_mode: AuthBridgeAuthMode
+  /** oauth_client_credentials: token endpoint path */
+  token_path: string
+  /** optional OAuth scope */
+  scope: string | null
+  /** api_key: header that carries the key */
+  api_key_header: string
+  /** GET path used by "Test connection" (optional) */
+  test_path: string | null
+  /** our check type → { path to POST the check to, the vendor's check code } */
+  checks: Record<string, { path: string; code: string }>
+  /** GET path for a check's status; "{ref}" is replaced by the vendor's reference (optional: webhook only) */
+  status_path: string | null
+  mapping: AuthBridgeMapping
+  webhook: { header: string; algorithm: 'sha256' | 'sha512' | 'sha1'; encoding: 'hex' | 'base64'; prefix: string }
+}
+
+export interface AuthBridgeMapping {
+  /** dotted paths into the vendor's JSON */
+  ref_field: string
+  status_field: string
+  notes_field: string | null
+  webhook_event_id_field: string
+  webhook_ref_field: string
+  webhook_status_field: string
+  /** vendor status values (case-insensitive) → our verdicts; anything else = in progress */
+  verified: string[]
+  discrepancy: string[]
+  unable_to_verify: string[]
 }
 
 export interface VendorSecrets {
   checkr_api_key?: string | null
   checkr_webhook_secret?: string | null
+  idfy_account_id?: string | null
+  idfy_api_key?: string | null
+  /** shared secret in the IDfy callback URL (IDfy doesn't sign callbacks) */
+  idfy_webhook_token?: string | null
+  authbridge_client_id?: string | null
+  authbridge_client_secret?: string | null
+  authbridge_api_key?: string | null
+  authbridge_webhook_secret?: string | null
 }
+
+export const VENDOR_SECRET_NAMES = [
+  'checkr_api_key', 'checkr_webhook_secret',
+  'idfy_account_id', 'idfy_api_key', 'idfy_webhook_token',
+  'authbridge_client_id', 'authbridge_client_secret', 'authbridge_api_key', 'authbridge_webhook_secret',
+] as const satisfies readonly (keyof VendorSecrets)[]

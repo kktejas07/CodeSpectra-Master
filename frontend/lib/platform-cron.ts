@@ -114,6 +114,19 @@ export async function runPlatformCron(now: Date = new Date()): Promise<PlatformC
     }, daily)
   }
 
+  // ── weekly company test refresh (off by default: Admin → Company patterns) ──
+  // Checked once an hour; the week window is claimed in the database, so it runs once a week.
+  if (afterWindow && minute.getUTCMinutes() === 10) {
+    const { getCompanyTestSettings } = await import('./company-tests/db')
+    if ((await getCompanyTestSettings().catch(() => null))?.refreshEnabled) {
+      const { intervalWindow } = await import('./automation/job-lease')
+      await run('company-tests-refresh', intervalWindow(minute, 10080), async () => {
+        const { runCompanyTestsRefresh } = await import('./company-tests/refresh')
+        await runCompanyTestsRefresh(now)
+      }, { maxAttempts: 3, retryAfterMs: 60 * 60_000, leaseMs: 60 * 60_000 })
+    }
+  }
+
   // ── HTTP cron routes on their schedules ──────────────────────────────────
   if (process.env.PLATFORM_CRON_IN_PROCESS !== '0') {
     const due = SCHEDULED_ROUTES.filter((r) => isDue(r.cron, minute))

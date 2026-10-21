@@ -17,7 +17,7 @@ import type { SystemAutomation } from './types'
 type Doc = Record<string, unknown>
 
 export interface Moment {
-  kind: 'hackathon' | 'codeathon'
+  kind: 'hackathon' | 'codeathon' | 'contest'
   id: string
   name: string
   tenantId: string | null
@@ -55,6 +55,19 @@ export async function collectMoments(now: Date): Promise<Moment[]> {
       const iso = at ? new Date(String(at)).toISOString() : null
       const win = reminderWindow(iso, now)
       if (win && iso) out.push({ kind: 'codeathon', id: String(c.id), name: String(c.title || 'Codeathon'), tenantId: (c.tenant_id as string) ?? null, phase, at: iso, window: win, url: `${origin}/dashboard/codeathons/${String(c.id)}`, userIds })
+    }
+  }
+  // Hosted contests (lib/contests).
+  const cts = (await db.collection('contests').find({ status: 'published', results_released: false, $or: [{ 'schedule.starts_at': { $gt: lo, $lte: hi } }, { 'schedule.ends_at': { $gt: lo, $lte: hi } }] }, { projection: { _id: 0, id: 1, title: 1, slug: 1, schedule: 1, tenant_id: 1 } }).limit(200).toArray()) as Doc[]
+  for (const c of cts) {
+    const sch = (c.schedule || {}) as { starts_at?: string; ends_at?: string }
+    const userIds = async () => {
+      const rows = (await db.collection('contest_entries').find({ contest_id: c.id }, { projection: { member_ids: 1 } }).limit(20000).toArray()) as Doc[]
+      return [...new Set(rows.flatMap((r) => (r.member_ids || []) as string[]).filter(Boolean))]
+    }
+    for (const [phase, at] of [['start', sch.starts_at], ['submission_close', sch.ends_at]] as const) {
+      const win = reminderWindow(at || null, now)
+      if (win && at) out.push({ kind: 'contest', id: String(c.id), name: String(c.title || 'Contest'), tenantId: (c.tenant_id as string) ?? null, phase, at, window: win, url: `${origin}/contests/${String(c.slug || c.id)}`, userIds })
     }
   }
   return out

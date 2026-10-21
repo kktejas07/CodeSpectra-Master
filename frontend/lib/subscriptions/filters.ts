@@ -3,7 +3,7 @@
  * the WhatsApp 24-hour session window. No I/O.
  */
 import {
-  CHANNELS, EVENT_KINDS, EVENT_MODES, TOPICS,
+  CHANNELS, EVENT_FREQUENCIES, EVENT_KINDS, EVENT_MODES, TOPICS,
   type Channel, type EventFilters, type EventKind, type EventMode, type Topic, type TopicFilters,
 } from './types'
 
@@ -37,6 +37,7 @@ export function normalizeEventFilters(v: unknown): EventFilters {
   if (themes.length) out.themes = themes
   const minPrize = Number(o.min_prize_usd_minor)
   if (Number.isInteger(minPrize) && minPrize > 0) out.min_prize_usd_minor = Math.min(minPrize, 1e12)
+  if ((EVENT_FREQUENCIES as readonly string[]).includes(String(o.frequency)) && o.frequency !== 'instant') out.frequency = o.frequency as EventFilters['frequency']
   return out
 }
 
@@ -47,6 +48,10 @@ export function normalizeTopicFilters(v: unknown): TopicFilters {
   if (o.blog && typeof o.blog === 'object') {
     const categories = strList((o.blog as Record<string, unknown>).categories).map(slugTheme)
     out.blog = categories.length ? { categories } : {}
+  }
+  if (o.news && typeof o.news === 'object') {
+    const topics = strList((o.news as Record<string, unknown>).topics, 20).map(slugTheme)
+    out.news = topics.length ? { topics } : {}
   }
   return out
 }

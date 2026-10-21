@@ -1,19 +1,21 @@
-import type { Metadata } from 'next'
-import { buildMetadata, ogImagePath } from '@/lib/seo/metadata'
-import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
-import { getSiteOrigin } from '@/lib/seo/settings'
+/**
+ * A "From the team" post (blog_posts, written in the admin blog editor) shown
+ * at /learn/<slug>. Same article layout the old /blog/<slug> page used.
+ */
+import Link from 'next/link'
+import DOMPurify from 'isomorphic-dompurify'
+import { Clock, ChevronRight, ExternalLink } from 'lucide-react'
+import { PublicPageWrapper } from '@/app/public-layout'
 import { JsonLd } from '@/components/seo/json-ld'
 import { formatDate as tzFormatDate } from '@/lib/format-datetime'
-import Link from 'next/link'
-import { notFound } from 'next/navigation'
-import DOMPurify from 'isomorphic-dompurify'
-import { PublicPageWrapper } from '@/app/public-layout'
-import { blogPosts, categoryLabel } from '@/lib/db/blog-posts'
-import { ensureBlogSeed } from '@/lib/blog-seed'
 import { coverForPost } from '@/lib/blog-covers'
-import { Clock, ChevronRight, ExternalLink } from 'lucide-react'
+import type { BlogPostDoc } from '@/lib/db/blog-posts'
+import { ogImagePath } from '@/lib/seo/metadata'
+import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
+import { TEAM_LABEL, TEAM_SOURCE, teamCategoryLabel } from '@/lib/learn/team-posts'
+import type { TeamPostCard } from '@/lib/learn/team-queries'
 
-export const dynamic = 'force-dynamic'
+const categoryLabel = teamCategoryLabel
 
 function formatDate(iso?: string | null) {
   if (!iso) return ''
@@ -66,41 +68,7 @@ function shouldShowSourceNote(note?: string | null, urls?: string[] | null): boo
 
 const plainText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const { slug } = await params
-  const post = await blogPosts().then((c) => c.findOne({ slug, status: 'published' }, { projection: { _id: 0, body: 0 } })).catch(() => null)
-  if (!post) return { title: 'Post not found', robots: { index: false, follow: true } }
-  return buildMetadata({
-    title: post.title,
-    description: post.excerpt,
-    path: `/blog/${post.slug}`,
-    kind: 'article',
-    type: 'article',
-    image: post.cover_image || undefined,
-    publishedTime: post.published_at,
-    modifiedTime: post.updated_at,
-    section: categoryLabel(post.category),
-    tags: post.tags,
-  })
-}
-
-export default async function BlogArticlePage({
-  params,
-}: {
-  params: Promise<{ slug: string }>
-}) {
-  const { slug } = await params
-  await ensureBlogSeed()
-  const col = await blogPosts()
-  const post = await col.findOne({ slug, status: 'published' })
-  if (!post) notFound()
-
-  const related = await col
-    .find({ status: 'published', category: post.category, slug: { $ne: post.slug } })
-    .sort({ published_at: -1 })
-    .limit(4)
-    .toArray()
-
+export function TeamArticle({ post, path, related, site }: { post: BlogPostDoc; path: string; related: TeamPostCard[]; site: string }) {
   const toc = extractToc(post.body || '')
   const safeBody = DOMPurify.sanitize(injectHeadingIds(post.body || ''))
   const cover = coverForPost({
@@ -109,9 +77,8 @@ export default async function BlogArticlePage({
     cover_image: post.cover_image,
   })
   const showSources = shouldShowSourceNote(post.source_note, post.source_urls)
-
-  const site = await getSiteOrigin()
-  const path = `/blog/${post.slug}`
+  const teamHref = `/learn?source=${TEAM_SOURCE}`
+  const catHref = `${teamHref}&category=${encodeURIComponent(post.category)}`
   const jsonLd = [
     articleJsonLd({
       site,
@@ -128,7 +95,7 @@ export default async function BlogArticlePage({
       citations: post.source_urls?.length ? post.source_urls : undefined,
       wordCount: plainText(post.body || '').split(' ').filter(Boolean).length,
     }),
-    breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Newsroom', path: '/blog' }, { name: categoryLabel(post.category), path: `/blog?category=${post.category}` }, { name: post.title, path }], site),
+    breadcrumbJsonLd([{ name: 'Home', path: '/' }, { name: 'Learn', path: '/learn' }, { name: TEAM_LABEL, path: teamHref }, { name: categoryLabel(post.category), path: catHref }, { name: post.title, path }], site),
   ]
 
   return (
@@ -149,11 +116,15 @@ export default async function BlogArticlePage({
             Home
           </Link>
           <ChevronRight className="h-3 w-3" aria-hidden />
-          <Link href="/blog" className="hover:text-cs-ink">
-            Newsroom
+          <Link href="/learn" className="hover:text-cs-ink">
+            Learn
           </Link>
           <ChevronRight className="h-3 w-3" aria-hidden />
-          <Link href={`/blog?category=${post.category}`} className="hover:text-cs-ink">
+          <Link href={teamHref} className="hover:text-cs-ink">
+            {TEAM_LABEL}
+          </Link>
+          <ChevronRight className="h-3 w-3" aria-hidden />
+          <Link href={catHref} className="hover:text-cs-ink">
             {categoryLabel(post.category)}
           </Link>
           <ChevronRight className="h-3 w-3" aria-hidden />
@@ -235,8 +206,8 @@ export default async function BlogArticlePage({
             ) : null}
 
             <p className="mt-10">
-              <Link href="/blog" className="text-sm font-semibold text-cs-accent-text hover:underline">
-                ← Back to Newsroom
+              <Link href="/learn" className="text-sm font-semibold text-cs-accent-text hover:underline">
+                ← Back to Learn
               </Link>
             </p>
           </article>
@@ -262,9 +233,9 @@ export default async function BlogArticlePage({
                 </h2>
                 <ul className="space-y-3">
                   {related.map((r) => (
-                    <li key={r.id}>
+                    <li key={r.slug}>
                       <Link
-                        href={`/blog/${r.slug}`}
+                        href={`/learn/${encodeURIComponent(r.slug)}`}
                         className="block rounded-2xl border border-cs-grid bg-cs-sheet p-3 text-sm font-medium text-cs-ink transition-colors duration-200 hover:border-cs-accent/40 hover:text-cs-accent-text"
                       >
                         {r.title}

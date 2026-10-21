@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Hiring settings → Background checks: vendor keys (Checkr), default and
+ * Hiring settings → Background checks: vendor keys (Checkr, IDfy, AuthBridge), default and
  * critical checks per region, consent / disclosure texts (versioned) and US
  * state notices, retention, reminders, deadlines, adverse-action waiting days.
  * Admins edit; recruiters can read. Keys are write-only.
@@ -21,9 +21,10 @@ import { REGION_LABELS, REVIEW_WITH_COUNSEL, US_STATES } from '@/lib/ats/bgv/cat
 import type { BgvRegion, BgvCheckType } from '@/lib/ats/contract'
 import type { BgvRegionSettings, BgvSettingsDoc, BgvStateNotice } from '@/lib/ats/bgv/types'
 import { useToast } from '@/lib/toast-context'
+import { IndiaVendorSettings, TestConnection, type VendorSettingsData } from '@/components/hiring/bgv/vendor-settings'
 
-type PublicSettings = Omit<BgvSettingsDoc, 'vendor_secret'> & { vendor_keys: { checkr_api_key: boolean; checkr_webhook_secret: boolean } }
-interface Data {
+type PublicSettings = Omit<BgvSettingsDoc, 'vendor_secret'> & { vendor_keys: Record<string, boolean> & { checkr_api_key: boolean; checkr_webhook_secret: boolean } }
+interface Data extends VendorSettingsData {
   settings: PublicSettings
   can_manage: boolean
   checks: Record<BgvRegion, { type: BgvCheckType; label: string; candidate_input: boolean }[]>
@@ -63,15 +64,20 @@ function Inner() {
   const manage = d.can_manage
   const setRegion = (r: BgvRegion, patch: Partial<BgvRegionSettings>) => setForm({ ...form, regions: { ...form.regions, [r]: { ...form.regions[r], ...patch } } })
 
-  async function save(key: string, body: Record<string, unknown>, okText: string) {
+  const tenantQuery = tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''
+  async function save(key: string, body: Record<string, unknown>, okText: string): Promise<boolean> {
     setBusy(key); setErr((e) => ({ ...e, [key]: null }))
     try {
-      const url = `/api/ats/bgv/settings${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''}`
+      const url = `/api/ats/bgv/settings${tenantQuery}`
       const r = await atsSend<{ settings: PublicSettings }>(url, 'PATCH', body)
       q.setData((p) => (p ? { ...p, settings: r.settings } : p))
+      setForm((f) => (f ? { ...f, vendor_keys: r.settings.vendor_keys, ...(body.idfy ? { idfy: r.settings.idfy } : {}), ...(body.authbridge ? { authbridge: r.settings.authbridge } : {}) } : f))
+      if (key === 'idfy' && (body.rotate_idfy_webhook_token || (body.idfy as { enabled?: boolean } | undefined)?.enabled)) q.reload()
       addToast({ type: 'success', title: okText })
+      return true
     } catch (e) {
       setErr((x) => ({ ...x, [key]: errorMessage(e) }))
+      return false
     } finally {
       setBusy(null)
     }
@@ -144,7 +150,7 @@ function Inner() {
       </p>
       {!manage && <p className="rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground">Only hiring admins can change these settings.</p>}
 
-      <Section title="Vendor: Checkr (USA)" description="Optional. Without a vendor, your team verifies each check manually. India vendors (AuthBridge, IDfy) need API access from the vendor first.">
+      <Section title="Vendor: Checkr (USA)" description="Optional. Without a vendor, your team verifies each check manually. India vendors (IDfy, AuthBridge) are below.">
         <Panel className="space-y-4">
           <div className="flex flex-wrap gap-2 text-sm">
             <Badge variant={form.vendor_keys.checkr_api_key ? 'success' : 'outline'}>{form.vendor_keys.checkr_api_key ? <><CheckCircle2 aria-hidden /> API key set</> : 'No API key'}</Badge>
@@ -166,10 +172,26 @@ function Inner() {
           <InlineError message={err.vendor} />
           <div className="flex flex-wrap gap-2">
             {saveBtn('vendor', () => void save('vendor', { checkr: form.checkr, vendor_keys: { ...(keys.checkr_api_key ? { checkr_api_key: keys.checkr_api_key } : {}), ...(keys.checkr_webhook_secret ? { checkr_webhook_secret: keys.checkr_webhook_secret } : {}) } }, 'Vendor settings saved'))}
+            {manage && form.vendor_keys.checkr_api_key && <TestConnection vendor="checkr" tenantQuery={tenantQuery} />}
             {manage && form.vendor_keys.checkr_api_key && <Button variant="outline" className="min-h-11" disabled={!!busy} onClick={() => void save('vendor', { vendor_keys: { checkr_api_key: null, checkr_webhook_secret: null } }, 'Checkr keys removed')}>Remove keys</Button>}
           </div>
         </Panel>
       </Section>
+
+      {form.idfy && form.authbridge && (
+        <IndiaVendorSettings
+          idfy={form.idfy}
+          authbridge={form.authbridge}
+          keys={form.vendor_keys}
+          data={d}
+          manage={manage}
+          busy={busy}
+          err={err}
+          tenantQuery={tenantQuery}
+          onChange={(p) => setForm({ ...form, ...p })}
+          save={save}
+        />
+      )}
 
       {regionSection('IN')}
       {regionSection('US')}

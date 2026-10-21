@@ -25,20 +25,24 @@ function tag(block: string, name: string): string {
   return m ? decodeEntities(m[1].trim()) : ''
 }
 
+/** RSS 2.0 <item> or Atom <entry> (Go / Rust blogs publish Atom). */
 export function parseRssItems(xml: string, limit = 8): RssItem[] {
-  const chunks = xml.split(/<item[\s>]/i).slice(1)
+  const atom = !/<item[\s>]/i.test(xml) && /<entry[\s>]/i.test(xml)
+  const open = atom ? /<entry[\s>]/i : /<item[\s>]/i
+  const close = atom ? /<\/entry>/i : /<\/item>/i
+  const chunks = xml.split(open).slice(1)
   const items: RssItem[] = []
   for (const raw of chunks) {
-    const block = raw.split(/<\/item>/i)[0] || ''
+    const block = raw.split(close)[0] || ''
     const title = tag(block, 'title').replace(/<[^>]+>/g, '').trim()
-    const link = tag(block, 'link').replace(/<[^>]+>/g, '').trim() ||
-      (block.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1] || '')
-    const summary = (tag(block, 'description') || tag(block, 'summary') || '')
+    const altHref = block.match(/<link[^>]+rel=["']alternate["'][^>]*href=["']([^"']+)["']/i)?.[1] || block.match(/<link[^>]+href=["']([^"']+)["']/i)?.[1] || ''
+    const link = (atom ? '' : tag(block, 'link').replace(/<[^>]+>/g, '').trim()) || decodeEntities(altHref)
+    const summary = (tag(block, 'description') || tag(block, 'summary') || tag(block, 'content') || '')
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 600)
-    const publishedAt = tag(block, 'pubDate') || tag(block, 'published') || undefined
+    const publishedAt = tag(block, 'pubDate') || tag(block, 'published') || tag(block, 'updated') || undefined
     if (!title || !link) continue
     items.push({ title, link, summary, publishedAt })
     if (items.length >= limit) break

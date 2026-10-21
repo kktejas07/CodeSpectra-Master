@@ -127,6 +127,7 @@ The app also caps spend itself (per-user AI rate limits, copilot budgets in Supe
 - **Twilio** — Console → Account → API keys & tokens: create a **secondary auth token**, deploy it, then **promote** it (the old primary stops working). Prefer an API key/secret pair scoped to the sub-account.
 - **Exotel** — API settings: regenerate the API token; update the shared webhook token.
 - **Checkr** — Account settings → Developer settings: create a new API key, update it per tenant in the ATS BGV settings, delete the old key (Checkr signs webhooks with the API key, so the webhook check follows automatically).
+- **IDfy / AuthBridge (BGV, India)** — per tenant in Hiring → Settings → Background checks: paste the new IDfy API key / AuthBridge client secret or API key and save (old values are replaced, never shown). IDfy callback token: **New callback token**, then email IDfy the new callback URL. AuthBridge webhook secret: set the new one on both sides at the same time.
 - **Didit (KYC)** — dashboard: new API key + webhook secret → `DIDIT_API_KEY`, `DIDIT_WEBHOOK_SECRET`.
 - **Postal** — Postal UI → server → Credentials: new API credential; delete the old one.
 - **Cloudflare** — use **API tokens** (not the Global API key) scoped to the one zone with only `Zone.Cache Purge` (CDN purge) and, separately, R2 tokens scoped to the one bucket with Object Read & Write. Turnstile: widget → rotate secret key.

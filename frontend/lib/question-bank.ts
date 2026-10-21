@@ -8,6 +8,7 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { createHash } from 'crypto'
 import { sanitizeTestCases, sanitizeExamQuestion } from '@/lib/grading'
+import { extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
 import { canonicalType, metaFor, BANK_QUESTION_TYPES as ALL_QUESTION_TYPES, type QuestionType } from '@/lib/question-types'
 import type { Collection } from 'mongodb'
 
@@ -20,7 +21,7 @@ export interface BankTestCase {
   hidden?: true
 }
 
-export interface BankQuestionDoc {
+export interface BankQuestionDoc extends ExtendedQuestionFields {
   id: string
   /** Short question label (for tables/lists). */
   title: string
@@ -61,6 +62,12 @@ export interface BankQuestionDoc {
   /** Coding language + starter snippet (coding variants). */
   language?: string
   starter_code?: string
+  /** Question-bot domain (lib/question-bot/domains.ts) — set on bot drafts. */
+  domain?: string
+  /** Bot quality gate: 0–100 score and reasons shown to reviewers. */
+  quality_score?: number
+  quality_reasons?: string[]
+  bot_run_id?: string
   source: 'seed' | 'ai' | 'import' | 'manual'
   /**
    * AI-generated and imported questions start as `draft` and are never
@@ -272,6 +279,7 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     regions: (sf.regions as BankQuestionDoc['regions']) || undefined,
     language: typeof sf.language === 'string' ? sf.language : undefined,
     starter_code: typeof sf.starter_code === 'string' ? sf.starter_code : undefined,
+    ...extendedFieldsOf(sf),
     source: sourceRaw === 'ai' || sourceRaw === 'seed' || sourceRaw === 'import' ? (sourceRaw as BankQuestionDoc['source']) : 'manual',
     review_status: raw.review_status === 'draft' ? 'draft' : 'approved',
     is_active: raw.is_active !== false,
@@ -306,6 +314,7 @@ export function bankToExamQuestion(b: BankQuestionDoc): Record<string, unknown> 
     ...(b.regions ? { regions: b.regions } : {}),
     ...(b.language ? { language: b.language } : {}),
     ...(b.starter_code ? { starter_code: b.starter_code } : {}),
+    ...extendedFieldsOf(b as unknown as Record<string, unknown>),
     ...(b.branch ? { branch: b.branch } : {}),
     ...(b.subject ? { subject: b.subject } : {}),
     ...(b.difficulty ? { difficulty: b.difficulty } : {}),

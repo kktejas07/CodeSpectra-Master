@@ -37,6 +37,7 @@ export const SCHEDULED_JOBS: readonly RegisteredJob[] = [
   { id: 'events-feed', label: 'Events feed', group: 'Content', everyMinutes: 1 },
   { id: 'analytics', label: 'Analytics rollups', group: 'Content', everyMinutes: 15 },
   { id: 'seo-indexnow', label: 'IndexNow submissions', group: 'Content', everyMinutes: 10, optional: true },
+  { id: 'question-bot', label: 'Question bank bot (nightly drafts)', group: 'Content', everyMinutes: 1440, optional: true },
   { id: 'assessment-invites', label: 'Bulk assessment invite emails', group: 'Platform', everyMinutes: 1 },
   { id: 'events-feed-digest', label: 'Events feed weekly digest', group: 'Content', everyMinutes: 10080, optional: true },
   { id: 'status-check', label: 'Status check', group: 'Cron routes', everyMinutes: 5 },

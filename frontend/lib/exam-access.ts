@@ -12,6 +12,7 @@ import {
   parseSectionsState, resolveSections, sectionScores, type ExamSection, type SectionScore, type SectionsState,
 } from '@/lib/exam-sections'
 import { isScoredType } from '@/lib/question-types'
+import { candidateExtendedFields } from '@/lib/question-extensions'
 
 type Doc = Record<string, unknown>
 
@@ -64,6 +65,9 @@ function candidateQuestion(raw: unknown): Doc {
         }
       })
   }
+  // Wave 6: sub-questions without keys, upload/video/typing config, black-box
+  // run budget (never the reference solution, rubric or trait keys).
+  candidateExtendedFields(q, out)
   return out
 }
 

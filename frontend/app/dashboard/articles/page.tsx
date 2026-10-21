@@ -15,6 +15,7 @@ import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
 type Post = {
   slug: string
+  href: string
   title: string
   excerpt?: string
   category?: string
@@ -40,6 +41,7 @@ export default function ArticlesNewsroomPage() {
         setPosts(
           (d.items || []).map((p: Record<string, unknown>) => ({
             slug: String(p.slug || ''),
+            href: typeof p.public_path === 'string' && p.public_path.startsWith('/') ? p.public_path : `/learn/${encodeURIComponent(String(p.slug || ''))}`,
             title: String(p.title || ''),
             excerpt: String(p.excerpt || ''),
             category: String(p.category || ''),
@@ -64,8 +66,8 @@ export default function ArticlesNewsroomPage() {
         },
         {
           target: '[data-tour="open-public-newsroom"]',
-          title: 'Open public newsroom',
-          description: 'Visit the public newsroom to see all published articles.',
+          title: 'Open in Learn',
+          description: 'Team posts are public in Learn, under From the team.',
           position: 'bottom',
         },
         {
@@ -97,8 +99,8 @@ export default function ArticlesNewsroomPage() {
         description="Insights, product updates and career advice from the CodeSpectra team."
         actions={
           <Button asChild variant="outline" size="sm" data-tour="open-public-newsroom">
-            <Link href="/blog" target="_blank">
-              Open public newsroom
+            <Link href="/learn?source=team" target="_blank">
+              Open in Learn
             </Link>
           </Button>
         }
@@ -117,14 +119,14 @@ export default function ArticlesNewsroomPage() {
           variant="default"
           title="No published articles yet"
           description="New articles will show up here as soon as they are published. Check back soon."
-          actionLabel="Open public newsroom"
-          actionHref="/blog"
+          actionLabel="Open Learn"
+          actionHref="/learn"
         />
       ) : (
         <div data-tour="articles-grid">
         <BentoGrid className="lg:grid-cols-3">
           {posts.map((p) => (
-            <Link key={p.slug} href={`/blog/${p.slug}`}>
+            <Link key={p.slug} href={p.href}>
               <Panel interactive className="h-full p-5">
                 {p.category ? (
                   <Badge variant="secondary" className="mb-2">

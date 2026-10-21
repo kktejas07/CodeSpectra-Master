@@ -70,6 +70,7 @@ export async function POST(
       pairs: Array.isArray(q.pairs) ? q.pairs : undefined,
       matrix: q.matrix || undefined,
       table: q.table || undefined,
+      question: q,
     })
 
     return NextResponse.json({

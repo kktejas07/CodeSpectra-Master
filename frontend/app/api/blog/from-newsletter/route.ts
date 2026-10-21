@@ -3,6 +3,7 @@
  * POST /api/blog/from-newsletter  { campaignId, publish?: boolean }
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { teamPublicPaths } from '@/lib/learn/team-queries'
 import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
 import { emailCampaigns } from '@/lib/db/email-campaigns'
 import {
@@ -39,8 +40,8 @@ export async function POST(req: NextRequest) {
         ok: true,
         already: true,
         post: existing,
-        url: `/blog/${existing.slug}`,
-        message: 'Already published to Newsroom',
+        url: (await teamPublicPaths([existing]).catch(() => new Map<string, string>())).get(existing.slug) || `/learn/${existing.slug}`,
+        message: 'Already published to Learn',
       })
     }
 
@@ -85,8 +86,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       post: doc,
-      url: `/blog/${doc.slug}`,
-      message: publish ? 'Published to Newsroom' : 'Saved as Newsroom draft',
+      url: (await teamPublicPaths([doc]).catch(() => new Map<string, string>())).get(doc.slug) || `/learn/${doc.slug}`,
+      message: publish ? 'Published to Learn' : 'Saved as a draft',
     })
   } catch (e) {
     console.error('[blog] from-newsletter:', e)

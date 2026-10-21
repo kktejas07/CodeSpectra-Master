@@ -1,15 +1,20 @@
 /**
  * /learn — public Learn hub: search, filters (category, level, tag, series),
- * pagination. Server-rendered from published posts only.
+ * pagination. Server-rendered from published posts only. Also holds the
+ * team's posts (blog_posts, "From the team", ?source=team&category=<blog
+ * category>); news stays at /news. See lib/learn/team-posts.ts.
  */
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Search, Rss } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { EmptyState } from '@/components/ui/empty-state'
-import { LearnPostCardView } from '@/components/learn/post-card'
+import { HubCardView } from '@/components/learn/post-card'
+import { LearnCategoryIcon } from '@/components/learn/category-icon'
 import { NotifyBox } from '@/components/events-feed/notify-box'
-import { listPublished, parseListParams, publishedSeries } from '@/lib/learn/queries'
+import { parseListParams, publishedSeries } from '@/lib/learn/queries'
+import { listHub } from '@/lib/learn/team-queries'
+import { TEAM_CATEGORIES, TEAM_LABEL, TEAM_SOURCE, isTeamCategory, teamCategoryLabel } from '@/lib/learn/team-posts'
 import { LEARN_CATEGORIES, LEARN_LEVELS, categoryLabel } from '@/lib/learn/types'
 import { cn } from '@/lib/utils'
 import { buildMetadata } from '@/lib/seo/metadata'
@@ -25,9 +30,19 @@ type SP = Promise<Record<string, string | string[] | undefined>>
  */
 export async function generateMetadata({ searchParams }: { searchParams: SP }): Promise<Metadata> {
   const p = parseListParams(await searchParams)
-  const cat = p.category && LEARN_CATEGORIES.some((c) => c.id === p.category) ? p.category : null
+  const team = p.source === TEAM_SOURCE
+  const cat = !team && p.category && LEARN_CATEGORIES.some((c) => c.id === p.category) ? p.category : null
+  const teamCat = team && isTeamCategory(p.category) ? p.category : null
   const other = !!(p.q || p.tag || p.level || p.series || (p.page && p.page > 1))
-  const base = cat
+  const base = team
+    ? buildMetadata({
+        title: teamCat ? `${TEAM_LABEL}: ${teamCategoryLabel(teamCat)}` : `${TEAM_LABEL}: product, engineering and campus`,
+        description: 'Product updates, engineering notes, career advice and campus stories from the CodeSpectra team.',
+        path: '/learn',
+        canonical: teamCat ? `/learn?source=${TEAM_SOURCE}&category=${encodeURIComponent(teamCat)}` : `/learn?source=${TEAM_SOURCE}`,
+        noIndex: other ? 'follow' : false,
+      })
+    : cat
     ? buildMetadata({
         title: `${categoryLabel(cat)} explainers and tutorials`,
         description: `Free, original ${categoryLabel(cat).toLowerCase()} explainers from CodeSpectra Learn, with runnable code, interview questions and practice problems.`,
@@ -71,15 +86,17 @@ function Chip({ href, active, children }: { href: string; active: boolean; child
 export default async function LearnPage({ searchParams }: { searchParams: SP }) {
   const raw = await searchParams
   const params = parseListParams(raw)
-  let data: Awaited<ReturnType<typeof listPublished>> = { items: [], total: 0, page: 1, pages: 1 }
+  let data: Awaited<ReturnType<typeof listHub>> = { items: [], total: 0, page: 1, pages: 1 }
   let series: string[] = []
   try {
-    ;[data, series] = await Promise.all([listPublished(params), publishedSeries()])
+    ;[data, series] = await Promise.all([listHub(params), publishedSeries()])
   } catch (e) {
     console.error('[learn] page:', (e as Error)?.message)
   }
-  const cur = { q: params.q, category: params.category, level: params.level, tag: params.tag, series: params.series }
-  const filtered = !!(params.q || params.category || params.level || params.tag || params.series)
+  const team = params.source === TEAM_SOURCE
+  const cur = { q: params.q, category: params.category, level: params.level, tag: params.tag, series: params.series, source: team ? TEAM_SOURCE : null }
+  const filtered = !!(params.q || params.category || params.level || params.tag || params.series || team)
+  const catLabel = params.category ? (team ? teamCategoryLabel(params.category) : categoryLabel(params.category)) : ''
 
   return (
     <PublicPageWrapper>
@@ -89,11 +106,13 @@ export default async function LearnPage({ searchParams }: { searchParams: SP }) 
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-foreground sm:text-5xl">Learn how software really works</h1>
           <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
             Clear explainers on algorithms, system design, patterns and engineering practices — with worked examples,
-            code in several languages, interview questions and problems to practise.
+            code in several languages, interview questions and problems to practise. Plus product, engineering and campus
+            notes from the CodeSpectra team.
           </p>
         </header>
 
         <form action="/learn" method="get" role="search" className="mt-8 flex max-w-xl gap-2">
+          {team ? <input type="hidden" name="source" value={TEAM_SOURCE} /> : null}
           {params.category ? <input type="hidden" name="category" value={params.category} /> : null}
           {params.level ? <input type="hidden" name="level" value={params.level} /> : null}
           <label htmlFor="learn-q" className="sr-only">Search posts</label>
@@ -114,11 +133,21 @@ export default async function LearnPage({ searchParams }: { searchParams: SP }) 
         </form>
 
         <nav aria-label="Filter by category" className="mt-6 flex flex-wrap gap-2">
-          <Chip href={hrefWith(cur, { category: null })} active={!params.category}>All topics</Chip>
+          <Chip href={hrefWith(cur, { category: null, source: null })} active={!params.category && !team}>All topics</Chip>
           {LEARN_CATEGORIES.map((c) => (
-            <Chip key={c.id} href={hrefWith(cur, { category: c.id })} active={params.category === c.id}>{c.label}</Chip>
+            <Chip key={c.id} href={hrefWith(cur, { category: c.id, source: null })} active={!team && params.category === c.id}><LearnCategoryIcon id={c.id} className="mr-1.5 h-3.5 w-3.5" />{c.label}</Chip>
           ))}
+          <Chip href={hrefWith(cur, { category: null, level: null, series: null, source: TEAM_SOURCE })} active={team}>{TEAM_LABEL}</Chip>
         </nav>
+        {team ? (
+          <nav aria-label={`Filter ${TEAM_LABEL.toLowerCase()} posts`} className="mt-3 flex flex-wrap items-center gap-2">
+            <Chip href={hrefWith(cur, { category: null })} active={!params.category}>All team posts</Chip>
+            {TEAM_CATEGORIES.map((c) => (
+              <Chip key={c.id} href={hrefWith(cur, { category: c.id })} active={params.category === c.id}>{c.label}</Chip>
+            ))}
+          </nav>
+        ) : null}
+        {!team ? <>
         <nav aria-label="Filter by level" className="mt-3 flex flex-wrap items-center gap-2">
           <span className="mr-1 text-sm text-muted-foreground">Level</span>
           <Chip href={hrefWith(cur, { level: null })} active={!params.level}>Any</Chip>
@@ -134,11 +163,13 @@ export default async function LearnPage({ searchParams }: { searchParams: SP }) 
             ))}
           </nav>
         )}
+        </> : null}
 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground" aria-live="polite">
             <span className="tabular-nums">{data.total}</span> {data.total === 1 ? 'post' : 'posts'}
-            {params.category ? ` in ${categoryLabel(params.category)}` : ''}
+            {team ? ` from the team` : ''}
+            {catLabel ? ` in ${catLabel}` : ''}
             {params.tag ? ` tagged “${params.tag}”` : ''}
             {params.series ? ` in the “${params.series}” series` : ''}
           </p>
@@ -159,7 +190,7 @@ export default async function LearnPage({ searchParams }: { searchParams: SP }) 
           />
         ) : (
           <div className="cs-stagger mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-            {data.items.map((p) => <LearnPostCardView key={p.slug} post={p} />)}
+            {data.items.map((p) => <HubCardView key={`${p.kind}:${p.slug}`} post={p} />)}
           </div>
         )}
 
