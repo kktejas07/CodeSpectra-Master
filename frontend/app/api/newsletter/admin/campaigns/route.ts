@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ campaigns, stats: stats[0] || { totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0, totalWhatsAppSent: 0 } })
   } catch (e) {
     console.error('[newsletter] list campaigns error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }
 

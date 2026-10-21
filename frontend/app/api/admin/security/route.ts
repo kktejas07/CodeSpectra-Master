@@ -11,7 +11,7 @@ export async function GET() {
     const db = await getMongoDb()
     const data = await db.collection('security_settings').find({}).toArray()
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function PATCH(request: Request) {
@@ -34,5 +34,5 @@ export async function PATCH(request: Request) {
     invalidateSecurityPolicyCache()
     await auditAdmin(gate.user, 'admin.security_policy.update', 'settings', `security/${String(name)}`, `status: ${status}`, 'warning')
     return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

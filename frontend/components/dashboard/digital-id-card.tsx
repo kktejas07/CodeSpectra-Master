@@ -2,6 +2,7 @@
 import { formatDate as tzFormatDate } from '@/lib/format-datetime'
 
 import { useState, useEffect, useRef } from 'react'
+import { useT } from '@/lib/i18n/client'
 
 interface DigitalIdCardProps {
   name: string
@@ -22,6 +23,7 @@ function formatDate(iso?: string): string {
 }
 
 export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycVerified }: DigitalIdCardProps) {
+  const { t } = useT()
   const [flipped, setFlipped] = useState(false)
   const [copied, setCopied] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')
@@ -131,7 +133,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
         role="button"
         tabIndex={0}
         aria-pressed={flipped}
-        aria-label={flipped ? 'Show front of ID card' : 'Show back of ID card'}
+        aria-label={flipped ? t('dash.showFrontOfIdCard') : t('dash.showBackOfIdCard')}
         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFlipped(!flipped) } }}
       >
         <div
@@ -147,7 +149,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-white/80">CodeSpectra</p>
-                  <p className="text-2xl font-bold text-white">Official ID</p>
+                  <p className="text-2xl font-bold text-white">{t('dash.officialId')}</p>
                 </div>
                 <div className="rounded-lg border border-white/30 bg-white/15 px-3 py-1">
                   <span className="text-xs font-bold text-white">{roleBadge}</span>
@@ -160,7 +162,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
                 </div>
                 <div className="flex-1">
                   <p className="text-lg font-bold text-white">{name}</p>
-                  <p className="text-sm text-white/85">{role === 'superadmin' ? 'Superadmin · Full access' : role === 'tenant_admin' ? 'Platform admin · Full access' : 'User · Limited access'}</p>
+                  <p className="text-sm text-white/85">{role === 'superadmin' ? t('dash.superadminFullAccess') : role === 'tenant_admin' ? t('dash.platformAdminFullAccess') : t('dash.userLimitedAccess')}</p>
                 </div>
               </div>
 
@@ -174,14 +176,14 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
                   <p className="text-sm font-bold text-white/95">{email}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-white/75">Issued</p>
+                  <p className="text-xs font-medium text-white/75">{t('dash.issued')}</p>
                   <p className="text-xs font-bold text-white/90">{now}</p>
                 </div>
               </div>
 
               <div className="flex-1" />
               <div className="flex items-center justify-end">
-                <p className="text-xs font-medium text-white/80">Tap for verification →</p>
+                <p className="text-xs font-medium text-white/80">{t('dash.tapForVerification')}</p>
               </div>
             </div>
           </div>
@@ -195,10 +197,10 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold text-white/80">CodeSpectra</p>
-                  <p className="text-2xl font-bold text-white">{kycVerified ? 'Verified credential' : 'Digital credential'}</p>
+                  <p className="text-2xl font-bold text-white">{kycVerified ? t('dash.verifiedCredential') : t('dash.digitalCredential')}</p>
                 </div>
                 <div className={`rounded-lg border px-3 py-1 ${kycVerified ? 'border-green-300/50 bg-green-500/30' : 'border-white/30 bg-white/15'}`}>
-                  <span className="text-xs font-bold text-white">{kycVerified ? 'Verified' : 'Not verified'}</span>
+                  <span className="text-xs font-bold text-white">{kycVerified ? t('dash.verified') : t('dash.notVerified')}</span>
                 </div>
               </div>
 
@@ -209,15 +211,15 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
                     <p className="text-sm font-bold text-white/95">{email}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-white/75">Role</p>
+                    <p className="text-xs font-medium text-white/75">{t('dash.role')}</p>
                     <p className="text-sm font-bold text-white/95">{roleBadge}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-white/75">Access level</p>
-                    <p className="text-sm font-bold text-white/95">{role === 'superadmin' || role === 'tenant_admin' ? 'Full access' : 'Standard'}</p>
+                    <p className="text-xs font-medium text-white/75">{t('dash.accessLevel')}</p>
+                    <p className="text-sm font-bold text-white/95">{role === 'superadmin' || role === 'tenant_admin' ? t('dash.fullAccess') : t('dash.standard')}</p>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-white/75">Expires</p>
+                    <p className="text-xs font-medium text-white/75">{t('dash.expires')}</p>
                     <p className="text-xs font-bold text-white/90">{exp}</p>
                   </div>
                 </div>
@@ -225,7 +227,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
                   {qrDataUrl ? (
                     <div className="h-25 w-25 rounded-lg bg-white p-1">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={qrDataUrl} alt="QR code linking to this ID's verification page" className="h-full w-full" />
+                      <img src={qrDataUrl} alt={t('dash.qrCodeLinkingToThisIds4dd')} className="h-full w-full" />
                     </div>
                   ) : (
                     <div className="flex h-25 w-25 items-center justify-center rounded-lg bg-white p-1">
@@ -242,7 +244,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
 
               <div className="flex-1" />
               <div className="flex items-center justify-end">
-                <p className="text-xs font-medium text-white/80">Tap to flip back →</p>
+                <p className="text-xs font-medium text-white/80">{t('dash.tapToFlipBack')}</p>
               </div>
             </div>
           </div>
@@ -253,25 +255,21 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
       <div className="flex flex-wrap justify-center gap-2">
         <button type="button" onClick={(e) => { e.stopPropagation(); handleCopyId() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
-          {copied ? 'Copied' : 'Copy ID'}
+          {copied ? t('dash.copied') : t('dash.copyId')}
         </button>
         <button type="button" onClick={(e) => { e.stopPropagation(); handleShare() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          Share profile
-        </button>
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>{t('dash.shareProfile')}</button>
         <button type="button" onClick={(e) => { e.stopPropagation(); handleDownload() }} className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>
-          Download card
-        </button>
+          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>{t('dash.downloadCard')}</button>
       </div>
 
       {/* Info badges */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>, title: 'Verified identity', desc: kycVerified ? 'Identity checked via KYC.' : 'Complete KYC to verify.' },
-          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>, title: 'Platform-wide', desc: 'Recognised across CodeSpectra.' },
-          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>, title: 'Instant share', desc: 'QR works at events.' },
-          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, title: 'Secure access', desc: 'Links to a verification page.' },
+          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>, title: t('dash.verifiedIdentity'), desc: kycVerified ? t('dash.identityCheckedViaKyc') : t('dash.completeKycToVerify') },
+          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>, title: t('dash.platformWide'), desc: t('dash.recognisedAcrossCodespectra') },
+          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="5" height="5" rx="1"/><rect x="16" y="3" width="5" height="5" rx="1"/><rect x="3" y="16" width="5" height="5" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3"/></svg>, title: t('dash.instantShare'), desc: t('dash.qrWorksAtEvents') },
+          { icon: <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, title: t('dash.secureAccess'), desc: t('dash.linksToAVerificationPage') },
         ].map((b) => (
           <div key={b.title} className="rounded-2xl border border-border/70 bg-card p-3">
             <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">

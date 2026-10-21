@@ -13,7 +13,8 @@ import { getMongoDb } from '@/lib/mongodb'
 import { notify } from '@/lib/notifications'
 import { getCurrencySymbol } from '@/lib/currency'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { recipientLocaleFrom } from '@/lib/i18n/recipient'
 
 export type SettleOutcome = 'success' | 'failed' | 'pending' | 'unknown'
 
@@ -76,6 +77,8 @@ export async function settlePhonePeOrder(merchantTransactionId: string): Promise
       type: 'billing.payment_success',
       title: 'Payment successful',
       message: `Payment of ${sym}${(amount / 100).toFixed(2)} completed via PhonePe.`,
+      title_i18n: { key: 'billing.success.title' },
+      message_i18n: { key: 'billing.paidPhonePe.message', params: { amount: `${sym}${(amount / 100).toFixed(2)}` } },
       icon: 'credit-card',
       link: '/dashboard/billing',
     }).catch(() => {})
@@ -84,6 +87,7 @@ export async function settlePhonePeOrder(merchantTransactionId: string): Promise
     const db = await getMongoDb()
     const user = await db.collection('user').findOne({ $or: [{ id: order.user_id }, { _id: order.user_id }] } as never)
     if (user?.email) {
+      const emailTemplates = emailTemplatesFor(recipientLocaleFrom(user as { ui_locale?: unknown }))
       const template = order.plan_kind === 'one_time'
         ? emailTemplates.invoiceNotification(order.receipt, amount, planName, order.currency)
         : emailTemplates.subscriptionConfirmation(planName, amount, order.currency)

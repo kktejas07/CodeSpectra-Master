@@ -264,7 +264,7 @@ async function finishRefund(orderId: string, ids: string[], amount: number, refu
   if (!done.modifiedCount) return // another call finished it (and told the buyer)
   if (amount > 0) await sendRefundProcessed(order, amount, lines)
   const { notify } = await import('@/lib/notifications')
-  await notify({ user_id: order.buyer_id, type: 'mkt.refund_processed', title: 'Refund processed', message: `Refund for order ${order.number} is on its way.`, link: `/dashboard/orders/${order.id}`, icon: 'credit-card' }).catch(() => null)
+  await notify({ user_id: order.buyer_id, type: 'mkt.refund_processed', title: 'Refund processed', message: `Refund for order ${order.number} is on its way.`, title_i18n: { key: 'mkt.refund.title' }, message_i18n: { key: 'mkt.refund.message', params: { number: order.number } }, link: `/dashboard/orders/${order.id}`, icon: 'credit-card' }).catch(() => null)
 }
 
 

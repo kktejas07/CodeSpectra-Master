@@ -92,7 +92,7 @@ export async function PATCH(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-screening-settings', g.actor.userId, 30, 60_000)
   if (limited) return limited
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
-  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
 
   const set: Partial<TenantScreeningSettings> = {}
   if ('regions' in body) {
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-screening-sip', g.actor.userId, 5, 60_000)
   if (limited) return limited
   const body = (await req.json().catch(() => ({}))) as { action?: unknown; phone_number_id?: unknown }
-  if (body.action !== 'apply_sip') return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+  if (body.action !== 'apply_sip') return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
   const pnid = typeof body.phone_number_id === 'string' ? body.phone_number_id.trim() : ''
   const [cfg, tenant] = await Promise.all([getPlatformConfig(), getTenantSettings(g.actor.tenantId)])
   const allowed = new Set([cfg.whatsapp.phone_number_id, ...Object.values(tenant.regions).map((r) => r.whatsapp_phone_number_id)].filter(Boolean))

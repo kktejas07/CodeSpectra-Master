@@ -29,7 +29,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   }
   const { id: userId, email } = gate.user
   const { id: examId } = await ctx.params
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const rl = rateLimitSlidingWindow(`exam-start:${userId}:${examId}`, 30, 10 * 60_000)
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many requests. Please try again shortly.' },
+      { error: 'Too many requests. Please try again shortly.', code: 'rate_limited_shortly' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const db = await getMongoDb()
     const exam = (await db.collection('exams').findOne({ id: examId })) as Record<string, unknown> | null
-    if (!exam || !exam.published) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam || !exam.published) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     let access = await checkExamEntry(db, exam, { id: userId, email }, { inviteToken, linkToken }, { claimLinkUse: true })
     if (!access.ok) {
@@ -75,9 +75,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const draft = await startExamAttempt(db, examId, userId, access.attemptNo)
     const state = attemptTimeState(exam, draft, access.attemptNo)
     if (state.status === 'expired') {
-      return NextResponse.json({ error: 'Time is up for this attempt.', expired: true }, { status: 410 })
+      return NextResponse.json({ error: 'Time is up for this attempt.', code: 'exam_time_up', expired: true }, { status: 410 })
     }
-    if (state.status !== 'running') return NextResponse.json({ error: 'Could not start the test' }, { status: 500 })
+    if (state.status !== 'running') return NextResponse.json({ error: 'Could not start the test', code: 'exam_start_failed' }, { status: 500 })
 
     if (access.invite && inviteToken && access.invite.status === 'pending') {
       await db.collection('candidate_invites').updateOne(
@@ -135,6 +135,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
   } catch (e) {
     console.error('[exams/start] POST:', e)
-    return NextResponse.json({ error: 'Could not start the test' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not start the test', code: 'exam_start_failed' }, { status: 500 })
   }
 }

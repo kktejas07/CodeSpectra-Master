@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { AlertTriangle, Clock, ListChecks, Timer } from 'lucide-react'
 import { LEVEL_LABEL, type PracticeLevel } from '@/lib/company-tests/types'
+import { useT } from '@/lib/i18n/client'
 
 interface PatternCard {
   id: string
@@ -26,6 +27,7 @@ interface PatternCard {
 const card = 'rounded-3xl border border-cs-grid bg-cs-sheet p-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] dark:shadow-none'
 
 export function CompanyPractice({ companySlug, companyName }: { companySlug: string; companyName: string }) {
+  const { t, td, rich } = useT()
   const [items, setItems] = useState<PatternCard[] | null>(null)
   const [error, setError] = useState(false)
 
@@ -41,14 +43,14 @@ export function CompanyPractice({ companySlug, companyName }: { companySlug: str
   if (error) {
     return (
       <section className={card} aria-labelledby="practice-heading">
-        <h2 id="practice-heading" className="text-lg font-bold text-cs-ink">Practice tests</h2>
-        <p className="mt-2 text-sm text-cs-ink-soft">Couldn&apos;t load the practice tests. Refresh the page to try again.</p>
+        <h2 id="practice-heading" className="text-lg font-bold text-cs-ink">{t('publicPages.practiceTests')}</h2>
+        <p className="mt-2 text-sm text-cs-ink-soft">{t('publicPages.practiceLoadFailed')}</p>
       </section>
     )
   }
   if (items === null) {
     return (
-      <section className={card} aria-busy="true" aria-label="Loading practice tests">
+      <section className={card} aria-busy="true" aria-label={t('publicPages.practiceLoading')}>
         <div className="h-5 w-48 animate-pulse rounded bg-cs-grid motion-reduce:animate-none" />
         <div className="mt-4 h-11 w-full animate-pulse rounded-xl bg-cs-grid motion-reduce:animate-none" />
       </section>
@@ -62,12 +64,12 @@ export function CompanyPractice({ companySlug, companyName }: { companySlug: str
         <section key={p.id} className={card} aria-labelledby={`practice-${p.id}`}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 id={`practice-${p.id}`} className="text-lg font-bold text-cs-ink">Practise the {p.examName} pattern</h2>
+              <h2 id={`practice-${p.id}`} className="text-lg font-bold text-cs-ink">{t('publicPages.practisePattern', { exam: p.examName })}</h2>
               <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-cs-ink-soft">
-                <span className="inline-flex items-center gap-1"><ListChecks className="h-3.5 w-3.5" aria-hidden /> <span className="tabular-nums">{p.totals.questions}</span> questions</span>
-                <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden /> <span className="tabular-nums">{p.totals.minutes}</span> min</span>
-                <span>{p.negativeMarking > 0 ? `Negative marking: −${p.negativeMarking} per wrong answer` : 'No negative marking'}</span>
-                <span>Cut-off <span className="tabular-nums">{p.cutoffPercent}%</span></span>
+                <span className="inline-flex items-center gap-1"><ListChecks className="h-3.5 w-3.5" aria-hidden /> {t('publicPages.practiceQuestions', { count: p.totals.questions })}</span>
+                <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden /> {t('publicPages.practiceMinutes', { count: p.totals.minutes })}</span>
+                <span>{p.negativeMarking > 0 ? t('publicPages.practiceNegative', { marks: `−${p.negativeMarking}` }) : t('publicPages.practiceNoNegative')}</span>
+                <span>{t('publicPages.practiceCutoff', { pct: `${p.cutoffPercent}%` })}</span>
               </p>
             </div>
           </div>
@@ -81,33 +83,33 @@ export function CompanyPractice({ companySlug, companyName }: { companySlug: str
             ))}
           </ol>
 
-          <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label={`Practise ${p.examName} at a level`}>
+          <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label={t('publicPages.practiseAtLevel', { exam: p.examName })}>
             {p.levels.map((l) => l.ready ? (
               <Link
                 key={l.level}
                 href={`/dashboard/company-tests/${p.id}?level=${l.level}`}
                 className="inline-flex min-h-11 items-center justify-center rounded-full bg-cs-accent px-5 text-sm font-semibold text-cs-accent-ink transition-colors duration-200 hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cs-accent"
               >
-                {LEVEL_LABEL[l.level]}
+                {td(`publicPages.level:${l.level}`, LEVEL_LABEL[l.level])}
               </Link>
             ) : (
-              <span key={l.level} className="inline-flex min-h-11 items-center rounded-full border border-cs-grid px-5 text-sm text-cs-ink-soft" title="Being prepared">
-                {LEVEL_LABEL[l.level]} · coming soon
+              <span key={l.level} className="inline-flex min-h-11 items-center rounded-full border border-cs-grid px-5 text-sm text-cs-ink-soft" title={t('publicPages.practiceBeingPrepared')}>
+                {td(`publicPages.level:${l.level}`, LEVEL_LABEL[l.level])} · {t('publicPages.practiceComingSoon')}
               </span>
             ))}
           </div>
-          <p className="mt-3 text-xs text-cs-ink-soft">Sign in to practise. Each section has its own timer, like the real test.</p>
+          <p className="mt-3 text-xs text-cs-ink-soft">{t('publicPages.practiceSignIn')}</p>
 
           {!p.verified ? (
             <p className="mt-3 flex items-start gap-2 rounded-xl bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-300">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
               <span>
-                This pattern is based on commonly reported public information and hasn&apos;t been checked against {companyName}&apos;s current test yet.
-                {p.sourceUrl ? <> Check the <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">official careers page</a>.</> : null}
+                {t('publicPages.practiceUnverified', { company: companyName })}
+                {p.sourceUrl ? <> {rich('publicPages.practiceCheckOfficial', { link: <a href={p.sourceUrl} target="_blank" rel="noopener noreferrer" className="font-semibold underline">{t('publicPages.practiceOfficialPage')}</a> })}</> : null}
               </span>
             </p>
           ) : p.lastReviewed ? (
-            <p className="mt-3 text-xs text-cs-ink-soft">Pattern last checked {p.lastReviewed}.</p>
+            <p className="mt-3 text-xs text-cs-ink-soft">{t('publicPages.practiceLastChecked', { date: p.lastReviewed })}</p>
           ) : null}
         </section>
       ))}

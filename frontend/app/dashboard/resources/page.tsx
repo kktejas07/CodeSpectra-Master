@@ -11,51 +11,54 @@ import { PageHeader, Panel, Section, BentoGrid } from '@/components/app/page-kit
 import { SoftGlow } from '@/components/visuals'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-const LINK_RESOURCES = [
+const LINK_RESOURCES = (t: Translator) => ([
   {
-    title: 'Platform documentation',
-    description: 'Getting started, product overview, API, and user guides.',
+    title: t('learning.platformDocumentation'),
+    description: t('learning.gettingStartedProductOverviewApiAnd436'),
     href: '/docs',
     tag: 'Docs',
     icon: BookOpen,
     minutes: 10,
   },
   {
-    title: 'User handbook',
-    description: 'Day-to-day workflows inside the dashboard.',
+    title: t('learning.userHandbook'),
+    description: t('learning.dayToDayWorkflowsInsideThe31a'),
     href: '/docs/user/dashboard-guide',
     tag: 'Guide',
     icon: GraduationCap,
     minutes: 12,
   },
   {
-    title: 'Resume builder',
-    description: 'Craft a standout resume in minutes.',
+    title: t('learning.resumeBuilder'),
+    description: t('learning.craftAStandoutResumeInMinutes'),
     href: '/dashboard/resumes',
     tag: 'Tool',
     icon: FileText,
     minutes: 8,
   },
   {
-    title: 'Security & privacy',
-    description: 'How CodeSpectra protects assessments and personal data.',
+    title: t('learning.securityPrivacy'),
+    description: t('learning.howCodespectraProtectsAssessmentsAndPers9aa'),
     href: '/security',
     tag: 'Policy',
     icon: Shield,
     minutes: 6,
   },
   {
-    title: 'Newsroom / articles',
-    description: 'Long-form updates and career Signals.',
+    title: t('learning.newsroomArticles'),
+    description: t('learning.longFormUpdatesAndCareerSignals'),
     href: '/dashboard/articles',
     tag: 'Editorial',
     icon: Library,
     minutes: 5,
   },
-]
+])
 
 export default function ResourcesPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const [ebooks, setEbooks] = useState<EbookCardData[]>([])
   const [loadingEbooks, setLoadingEbooks] = useState(true)
@@ -110,30 +113,29 @@ export default function ResourcesPage() {
           illustration="courses"
           className="mb-0"
           icon={<Library aria-hidden />}
-          title="Explore resources"
-          description="Pocket ebooks and career essentials — original CodeSpectra guides you can flip through."
+          title={t('learning.exploreResources')}
+          description={t('learning.pocketEbooksAndCareerEssentialsOriginal2d7')}
         />
       </div>
 
-      <Section title="Ebooks" description="Flip-through pocket guides. Tap a cover to start reading.">
+      <Section title={t('learning.ebooks')} description={t('learning.flipThroughPocketGuidesTapAaa6')}>
         {loadingEbooks ? (
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading ebooks…
-          </div>
+            <Loader2 className="h-4 w-4 animate-spin" />{' '}{t('learning.loadingEbooks')}</div>
         ) : ebooksError ? (
           <EmptyState
             illustration="error"
-            title="Couldn't load ebooks"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={t('learning.couldntLoadEbooks')}
+            description={t('learning.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
             onAction={() => setReloadKey((k) => k + 1)}
           />
         ) : ebooks.length === 0 ? (
           <EmptyState illustration="courses"
             variant="default"
-            title="No published ebooks yet"
-            description="New pocket guides will show up here when published. Check back soon."
-            actionLabel="Browse docs"
+            title={t('learning.noPublishedEbooksYet')}
+            description={t('learning.newPocketGuidesWillShowUpe72')}
+            actionLabel={t('learning.browseDocs')}
             actionHref="/docs"
           />
         ) : (
@@ -145,9 +147,9 @@ export default function ResourcesPage() {
         )}
       </Section>
 
-      <Section title="More resources">
+      <Section title={t('learning.moreResources')}>
         <BentoGrid className="lg:grid-cols-3">
-          {LINK_RESOURCES.map((r) => {
+          {LINK_RESOURCES(t).map((r) => {
             const Icon = r.icon
             return (
               <Link key={r.href} href={r.href}>

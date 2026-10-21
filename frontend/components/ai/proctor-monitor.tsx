@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { AlertTriangle, Camera, Fullscreen, ShieldOff, X, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface ProctorMonitorProps {
   sessionKind: 'problem' | 'exam' | 'interview'
@@ -90,6 +91,7 @@ export function ProctorMonitor({
   onEvent,
   onViolation,
 }: ProctorMonitorProps) {
+  const { t: tr } = useT()
   const [counts, setCounts] = useState({ blur: 0, copy: 0, paste: 0, rclick: 0, idle: 0, fsExit: 0, keyBlock: 0, noFace: 0 })
   const [showWarning, setShowWarning] = useState<string | null>(null)
   const [cameraSnapshot, setCameraSnapshot] = useState<string | null>(null)
@@ -138,7 +140,7 @@ export function ProctorMonitor({
     window.open = (() => {
       send('new_tab_blocked')
       setCounts(c => ({ ...c, keyBlock: c.keyBlock + 1 }))
-      setShowWarning('Opening new tabs/windows is not allowed during this session.')
+      setShowWarning(tr('dash.openingNewTabsWindowsIsNotd9e'))
       return null
     }) as typeof window.open
     return () => { window.open = origOpen }
@@ -171,7 +173,7 @@ export function ProctorMonitor({
         e.stopPropagation()
         setCounts(c => ({ ...c, keyBlock: c.keyBlock + 1 }))
         send('keyboard_shortcut_blocked', { key: `${e.altKey ? 'Alt+' : ''}${e.metaKey ? 'Cmd+' : ''}${e.ctrlKey ? 'Ctrl+' : ''}${e.shiftKey ? 'Shift+' : ''}${key}` })
-        setShowWarning('Keyboard shortcuts are disabled during this session.')
+        setShowWarning(tr('dash.keyboardShortcutsAreDisabledDuringThis004'))
         onViolation?.('keyboard_blocked', counts.keyBlock + 1)
       }
     }
@@ -198,7 +200,7 @@ export function ProctorMonitor({
           const newCount = c.fsExit + 1
           send('fullscreen_exit')
           if (newCount >= 3) {
-            setShowWarning('Multiple fullscreen exits detected. This session may be flagged.')
+            setShowWarning(tr('dash.multipleFullscreenExitsDetectedThisSessi36b'))
             onViolation?.('fullscreen_exit', newCount)
           }
           return { ...c, fsExit: newCount }
@@ -233,11 +235,11 @@ export function ProctorMonitor({
           const remaining = kickoutThreshold - newCount
           setShowWarning(
             remaining > 0
-              ? `Tab switch detected. ${remaining} more switch${remaining > 1 ? 'es' : ''} and you will be removed.`
-              : 'Final warning: one more tab switch will remove you from this session.'
+              ? tr('dash.tabSwitchDetectedCountMoreSwitchesda2', { count: remaining })
+              : tr('dash.finalWarningOneMoreTabSwitch16c')
           )
         } else if (newCount >= 1) {
-          setShowWarning('Tab switch detected. Do not navigate away during the session.')
+          setShowWarning(tr('dash.tabSwitchDetectedDoNotNavigate6de'))
         }
         onViolation?.('tab_blur', newCount)
         return { ...c, blur: newCount }
@@ -341,7 +343,7 @@ export function ProctorMonitor({
                 const newNoFace = c.noFace + 1
                 send('no_face', { consecutive: newNoFace, timestamp: Date.now() })
                 if (newNoFace >= 3) {
-                  setShowWarning('No face detected in camera. Please ensure you are visible.')
+                  setShowWarning(tr('dash.noFaceDetectedInCameraPleasecd7'))
                   onViolation?.('no_face', newNoFace)
                 }
                 return { ...c, noFace: newNoFace }
@@ -371,14 +373,9 @@ export function ProctorMonitor({
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90">
         <div className="text-center space-y-4 p-8">
           <ShieldOff className="h-16 w-16 mx-auto text-red-500" />
-          <h2 className="text-2xl font-bold text-white">Session terminated</h2>
-          <p className="text-white/70 max-w-md">
-            You have been removed from this session due to proctoring violations.
-            Your progress has been saved and reported to the administrator.
-          </p>
-          <Button variant="destructive" onClick={() => window.location.href = '/dashboard'}>
-            Return to Dashboard
-          </Button>
+          <h2 className="text-2xl font-bold text-white">{tr('dash.sessionTerminated')}</h2>
+          <p className="text-white/70 max-w-md">{tr('dash.youHaveBeenRemovedFromThis07a')}</p>
+          <Button variant="destructive" onClick={() => window.location.href = '/dashboard'}>{tr('dash.returnToDashboard')}</Button>
         </div>
       </div>
     )
@@ -391,7 +388,7 @@ export function ProctorMonitor({
           <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur shadow-lg max-w-lg">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span className="flex-1">{showWarning}</span>
-            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0" aria-label="Dismiss warning" onClick={() => setShowWarning(null)}>
+            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0" aria-label={tr('dash.dismissWarning')} onClick={() => setShowWarning(null)}>
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -401,13 +398,11 @@ export function ProctorMonitor({
       {!isMobile && (
       <div className="fixed top-3 right-3 z-30 flex items-center gap-2 rounded-full border border-border bg-card/90 backdrop-blur px-3 py-1 text-[11px] font-medium tabular-nums text-foreground shadow-sm">
         <span className="flex items-center gap-1">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" aria-hidden />
-          Proctored
-        </span>
-        <span title="Tab blur">T:{counts.blur}</span>
-        <span title="Copy events">C:{counts.copy}</span>
-        <span title="Fullscreen exits">F:{counts.fsExit}</span>
-        {blockKeyboardShortcuts && counts.keyBlock > 0 && <span title="Blocked shortcuts">K:{counts.keyBlock}</span>}
+          <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse motion-reduce:animate-none" aria-hidden />{tr('dash.proctored')}</span>
+        <span title={tr('dash.tabBlur')}>T:{counts.blur}</span>
+        <span title={tr('dash.copyEvents')}>C:{counts.copy}</span>
+        <span title={tr('dash.fullscreenExits')}>F:{counts.fsExit}</span>
+        {blockKeyboardShortcuts && counts.keyBlock > 0 && <span title={tr('dash.blockedShortcuts')}>K:{counts.keyBlock}</span>}
         {detectFace && (
           counts.noFace > 0
             ? <EyeOff className="h-3 w-3 text-red-500" />

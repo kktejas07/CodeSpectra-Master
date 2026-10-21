@@ -6,9 +6,18 @@ import { formatMinor } from '@/lib/marketplace/pricing'
 const KIND_ICON = { physical: Package, digital: Download, service: CalendarClock }
 const KIND_TEXT = { physical: 'Ships to you', digital: 'Instant download', service: 'Book a time' }
 
-export function Stars({ value, className }: { value: number; className?: string }) {
+/** Card chrome in the page language (Hindi / Telugu marketplace); listings stay as sellers wrote them. */
+export interface ProductCardLabels {
+  kind: Record<keyof typeof KIND_TEXT, string>
+  soldOut: string
+  by: (seller: string) => string
+  stars: (value: string) => string
+}
+const ENGLISH: ProductCardLabels = { kind: KIND_TEXT, soldOut: 'Sold out', by: (s) => `by ${s}`, stars: (v) => `${v} out of 5` }
+
+export function Stars({ value, className, label }: { value: number; className?: string; label?: string }) {
   return (
-    <span className={`inline-flex items-center gap-0.5 ${className ?? ''}`} aria-label={`${value.toFixed(1)} out of 5`}>
+    <span className={`inline-flex items-center gap-0.5 ${className ?? ''}`} aria-label={label ?? `${value.toFixed(1)} out of 5`}>
       {[1, 2, 3, 4, 5].map((i) => (
         <Star key={i} aria-hidden className={`h-3.5 w-3.5 ${value >= i - 0.25 ? 'fill-amber-400 text-amber-400' : 'text-cs-grid'}`} />
       ))}
@@ -16,7 +25,7 @@ export function Stars({ value, className }: { value: number; className?: string 
   )
 }
 
-export function ProductCard({ p }: { p: Card }) {
+export function ProductCard({ p, labels = ENGLISH }: { p: Card; labels?: ProductCardLabels }) {
   const Icon = KIND_ICON[p.kind]
   return (
     <Link
@@ -30,18 +39,18 @@ export function ProductCard({ p }: { p: Card }) {
         ) : (
           <div className="flex h-full w-full items-center justify-center text-cs-ink-soft"><Icon className="h-10 w-10" aria-hidden /></div>
         )}
-        {!p.in_stock && <span className="absolute left-3 top-3 rounded-full bg-cs-sheet/95 px-2.5 py-1 text-xs font-semibold text-cs-ink">Sold out</span>}
+        {!p.in_stock && <span className="absolute left-3 top-3 rounded-full bg-cs-sheet/95 px-2.5 py-1 text-xs font-semibold text-cs-ink">{labels.soldOut}</span>}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-4">
-        <p className="inline-flex items-center gap-1 text-xs text-cs-ink-soft"><Icon className="h-3.5 w-3.5" aria-hidden />{KIND_TEXT[p.kind]}</p>
+        <p className="inline-flex items-center gap-1 text-xs text-cs-ink-soft"><Icon className="h-3.5 w-3.5" aria-hidden />{labels.kind[p.kind]}</p>
         <h3 className="line-clamp-2 font-semibold tracking-tight text-cs-ink group-hover:text-cs-accent-text">{p.title}</h3>
-        {p.seller && <p className="text-xs text-cs-ink-soft">by {p.seller.name}</p>}
+        {p.seller && <p className="text-xs text-cs-ink-soft">{labels.by(p.seller.name)}</p>}
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <p className="text-base font-bold tabular-nums text-cs-ink">
             {formatMinor(p.price, p.currency)}
             {p.compare_at_price && p.compare_at_price > p.price ? <span className="ml-1.5 text-xs font-normal text-cs-ink-soft line-through">{formatMinor(p.compare_at_price, p.currency)}</span> : null}
           </p>
-          {p.rating && p.rating.count > 0 ? <span className="inline-flex items-center gap-1 text-xs text-cs-ink-soft"><Stars value={p.rating.avg} /><span className="tabular-nums">({p.rating.count})</span></span> : null}
+          {p.rating && p.rating.count > 0 ? <span className="inline-flex items-center gap-1 text-xs text-cs-ink-soft"><Stars value={p.rating.avg} label={labels.stars(p.rating.avg.toFixed(1))} /><span className="tabular-nums">({p.rating.count})</span></span> : null}
         </div>
       </div>
     </Link>

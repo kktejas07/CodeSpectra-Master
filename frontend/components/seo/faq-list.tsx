@@ -6,11 +6,11 @@ import { ChevronDown } from 'lucide-react'
 import { faqJsonLd, type QA } from '@/lib/seo/jsonld'
 import { JsonLd } from './json-ld'
 
-export function FaqList({ items, schema = true, idPrefix = 'faq', className }: { items: QA[]; schema?: boolean; idPrefix?: string; className?: string }) {
+export function FaqList({ items, schema = true, idPrefix = 'faq', className, inLanguage }: { items: QA[]; schema?: boolean; idPrefix?: string; className?: string; inLanguage?: string }) {
   if (!items.length) return null
   return (
     <div className={className}>
-      {schema ? <JsonLd data={faqJsonLd(items)} /> : null}
+      {schema ? <JsonLd data={faqJsonLd(items, inLanguage)} /> : null}
       <div className="space-y-3">
         {items.map((item, i) => (
           <details key={item.q} id={`${idPrefix}-${i}`} className="group overflow-hidden rounded-2xl border border-cs-grid bg-cs-sheet">
@@ -27,13 +27,13 @@ export function FaqList({ items, schema = true, idPrefix = 'faq', className }: {
 }
 
 /** Titled FAQ block for marketing pages. */
-export function FaqSection({ title = 'Frequently asked questions', items, id = 'faq' }: { title?: string; items: QA[]; id?: string }) {
+export function FaqSection({ title = 'Frequently asked questions', items, id = 'faq', inLanguage }: { title?: string; items: QA[]; id?: string; inLanguage?: string }) {
   if (!items.length) return null
   return (
     <section className="border-b border-cs-grid" aria-labelledby={`${id}-heading`}>
       <div className="mx-auto max-w-[900px] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
         <h2 id={`${id}-heading`} className="cs-heading mb-8 text-3xl sm:text-4xl">{title}</h2>
-        <FaqList items={items} idPrefix={id} />
+        <FaqList items={items} idPrefix={id} inLanguage={inLanguage} />
       </div>
     </section>
   )

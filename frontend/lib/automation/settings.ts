@@ -22,6 +22,12 @@ export interface SystemAutomationConfig {
   wa_template_payment?: string
   wa_template_event?: string
   wa_template_language?: string
+  /**
+   * Interface languages (hi, te) whose translations of these templates are
+   * approved in Meta under the same names. Recipients who use one get it;
+   * everyone else gets wa_template_language (lib/i18n/whatsapp-language).
+   */
+  wa_template_locales?: string[]
   /** Generic templates (values: title, message, link) for notices, hiring updates and newsletters. */
   wa_template_notification?: string
   wa_template_hiring?: string
@@ -34,7 +40,7 @@ export interface SystemAutomationConfig {
   whatsapp_unofficial_enabled?: boolean
 }
 
-export const CONFIG_DEFAULTS: Required<Omit<SystemAutomationConfig, 'alert_webhook_url' | 'alert_emails' | 'wa_template_payment' | 'wa_template_event' | 'wa_template_notification' | 'wa_template_hiring' | 'wa_template_newsletter' | 'whatsapp_unofficial_enabled'>> = {
+export const CONFIG_DEFAULTS: Required<Omit<SystemAutomationConfig, 'alert_webhook_url' | 'alert_emails' | 'wa_template_locales' | 'wa_template_payment' | 'wa_template_event' | 'wa_template_notification' | 'wa_template_hiring' | 'wa_template_newsletter' | 'whatsapp_unofficial_enabled'>> = {
   hiring_idle_days: 5,
   retention_proctor_days: 180,
   retention_email_log_days: 180,
@@ -136,6 +142,13 @@ export async function saveSystemConfig(raw: Record<string, unknown>, by: string)
     const v = String(raw.wa_template_language || '').trim()
     if (v && !/^[a-z]{2}(_[A-Z]{2})?$/.test(v)) errs.push('wa_template_language looks like en or en_US')
     else set['config.wa_template_language'] = v || 'en'
+  }
+  if (raw.wa_template_locales !== undefined) {
+    const { parseApprovedLocales } = await import('@/lib/i18n/whatsapp-language')
+    const list = Array.isArray(raw.wa_template_locales) ? raw.wa_template_locales : String(raw.wa_template_locales || '').split(/[,\s]+/).filter(Boolean)
+    const ok = parseApprovedLocales(list)
+    if (ok.length !== new Set(list.map((v) => String(v).trim().toLowerCase())).size) errs.push('wa_template_locales: use hi and/or te')
+    else set['config.wa_template_locales'] = ok
   }
   if (raw.whatsapp_unofficial_enabled !== undefined) {
     if (typeof raw.whatsapp_unofficial_enabled !== 'boolean') errs.push('whatsapp_unofficial_enabled must be true or false')

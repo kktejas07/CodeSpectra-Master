@@ -426,6 +426,8 @@ export async function runStudyPlanTick(now = new Date(), opts: { maxAdapt?: numb
     await notify({
       user_id: p.user_id, type: 'study_plan.reminder', title: "Today's study plan",
       message: `${open.length} item${open.length === 1 ? '' : 's'} left today (about ${mins} min): ${open.slice(0, 2).map((i) => i.title).join('; ').slice(0, 160)}`,
+      title_i18n: { key: 'studyPlan.title' },
+      message_i18n: { key: 'studyPlan.message', params: { count: open.length, mins, items: open.slice(0, 2).map((i) => i.title).join('; ').slice(0, 160) } },
       link: '/dashboard/study-plan', icon: 'calendar-check',
       // E-mail honours the learner's notification preferences + unsubscribe; WhatsApp only with consent (lib/whatsapp-send).
       send_email: p.reminders.email, send_whatsapp: p.reminders.whatsapp, skip_push: false,

@@ -102,7 +102,7 @@ export async function runStandaloneInterviewReminders(now = new Date()): Promise
     const link = `/dashboard/interviews/${String(iv.id)}/live`
     for (const [uid, who] of [[iv.candidate_id, 'candidate'], [iv.interviewer_id, 'interviewer']] as const) {
       if (typeof uid !== 'string' || !uid) continue
-      await notify({ user_id: uid, type: 'interview.reminder', title: `Interview in ${left}: ${String(iv.title || '')}`.trim(), message: `Starts ${when}.`, link, icon: 'clock' })
+      await notify({ user_id: uid, type: 'interview.reminder', title: `Interview in ${left}: ${String(iv.title || '')}`.trim(), message: `Starts ${when}.`, title_i18n: { key: 'interview.reminder.title', params: { left, title: String(iv.title || '') } }, message_i18n: { key: 'interview.reminder.message', params: { when } }, link, icon: 'clock' })
       const u = (await db.collection('user').findOne({ id: uid }, { projection: { email: 1, name: 1, fullName: 1 } })) as Doc | null
       if (!u?.email) continue
       await sendAutomationEmail({

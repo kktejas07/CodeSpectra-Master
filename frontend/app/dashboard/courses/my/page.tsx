@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
+import { useT } from '@/lib/i18n/client'
 
 type Course = {
   id: string
@@ -32,6 +33,7 @@ type Course = {
 }
 
 export default function MyCoursesPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const [courses, setCourses] = useState<Course[]>([])
@@ -47,10 +49,10 @@ export default function MyCoursesPage() {
     try {
       const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/certificate`, { method: 'POST' })
       const j = await res.json().catch(() => null)
-      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(j?.error || 'Could not get your certificate')
+      if (!res.ok || !j?.certificate?.verifyUrl) throw new Error(j?.error || t('learning.couldNotGetYourCertificate'))
       window.location.assign(j.certificate.verifyUrl)
     } catch (e) {
-      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Could not get your certificate' })
+      addToast({ type: 'error', title: e instanceof Error ? e.message : t('learning.couldNotGetYourCertificate') })
       setClaimingId(null)
     }
   }
@@ -72,20 +74,20 @@ export default function MyCoursesPage() {
       const myCoursesTour: TourStep[] = [
         {
           target: '[data-tour="my-courses-header"]',
-          title: 'Your enrolled courses hub',
-          description: 'This page collects every course you enrolled in so you can resume learning quickly.',
+          title: t('learning.yourEnrolledCoursesHub'),
+          description: t('learning.thisPageCollectsEveryCourseYou131'),
           position: 'bottom',
         },
         {
           target: '[data-tour="my-courses-actions"]',
-          title: 'Open watchlist or catalog',
-          description: 'Visit your watchlist or browse the full catalog to find courses to start.',
+          title: t('learning.openWatchlistOrCatalog'),
+          description: t('learning.visitYourWatchlistOrBrowseThe6bf'),
           position: 'bottom',
         },
         {
           target: '[data-tour="my-courses-list"]',
-          title: 'Resume any course here',
-          description: 'Tip: click any course card to open its detail page and continue lessons.',
+          title: t('learning.resumeAnyCourseHere'),
+          description: t('learning.tipClickAnyCourseCardTo259'),
           position: 'top',
         },
       ]
@@ -106,19 +108,18 @@ export default function MyCoursesPage() {
       <div data-tour="my-courses-header">
         <PageHeader
           illustration="courses"
-          title="My courses"
-          description="Courses you're enrolled in. Pick one to carry on where you left off."
+          title={t('learning.myCourses')}
+          description={t('learning.coursesYoureEnrolledInPickOne653')}
           icon={<BookOpen />}
           className="mb-0"
           actions={
             <div className="flex gap-2" data-tour="my-courses-actions">
               <Button asChild variant="outline" size="sm">
                 <Link href="/dashboard/courses/wishlist">
-                  <Heart className="mr-1.5 h-4 w-4" /> Wishlist
-                </Link>
+                  <Heart className="mr-1.5 h-4 w-4" />{' '}{t('learning.wishlist')}</Link>
               </Button>
               <Button asChild size="sm">
-                <Link href="/dashboard/courses">Browse all</Link>
+                <Link href="/dashboard/courses">{t('learning.browseAll')}</Link>
               </Button>
             </div>
           }
@@ -130,9 +131,9 @@ export default function MyCoursesPage() {
         <Panel className="p-4">
           <EmptyState
             illustration="error"
-            title="Couldn't load your courses"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={t('learning.couldntLoadYourCourses')}
+            description={t('learning.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
             onAction={() => setReloadKey((k) => k + 1)}
           />
         </Panel>
@@ -140,9 +141,9 @@ export default function MyCoursesPage() {
         <Panel className="p-4">
           <EmptyState
             variant="courses"
-            title="No courses yet"
-            description="Enroll in a course from the catalogue and it will show up here."
-            actionLabel="Explore courses"
+            title={t('learning.noCoursesYet')}
+            description={t('learning.enrollInACourseFromThebea')}
+            actionLabel={t('learning.exploreCourses')}
             actionHref="/dashboard/courses"
           />
         </Panel>
@@ -164,8 +165,7 @@ export default function MyCoursesPage() {
                     </Link>
                     {c.completed ? (
                       <Badge variant="outline" className="shrink-0 gap-1 border-green-500/40 bg-green-500/10 text-green-700 dark:text-green-400">
-                        <CheckCircle2 className="h-3 w-3" aria-hidden /> Completed
-                      </Badge>
+                        <CheckCircle2 className="h-3 w-3" aria-hidden />{' '}{t('learning.completed')}</Badge>
                     ) : null}
                   </div>
                   {c.category || c.level ? (
@@ -182,27 +182,25 @@ export default function MyCoursesPage() {
                   {total > 0 ? (
                     <>
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Progress</span>
+                        <span className="text-muted-foreground">{t('learning.progress')}</span>
                         <span className="font-medium tabular-nums text-foreground">{pct}%</span>
                       </div>
-                      <Progress value={pct} aria-label={`${c.title} progress`} />
+                      <Progress value={pct} aria-label={t('learning.titleProgress', { title: c.title })} />
                       <p className="text-xs text-muted-foreground tabular-nums">
                         {Number(c.lessonsDone) || 0}/{total} lessons
-                        {quizzes > 0 ? ` · ${Number(c.quizzesPassed) || 0}/${quizzes} quizzes passed` : ''}
+                        {quizzes > 0 ? t('learning.valueQuizzesQuizzesPassed', { value: Number(c.quizzesPassed) || 0, quizzes }) : ''}
                       </p>
                     </>
                   ) : (
-                    <p className="text-xs text-muted-foreground">No lessons published yet.</p>
+                    <p className="text-xs text-muted-foreground">{t('learning.noLessonsPublishedYet')}</p>
                   )}
                   <div className="flex flex-wrap gap-2 pt-1">
                     <Button asChild size="sm" variant={c.completed ? 'outline' : 'default'}>
-                      <Link href={`/dashboard/courses/${c.id}`}>{c.completed ? 'Review course' : pct > 0 ? 'Continue' : 'Start'}</Link>
+                      <Link href={`/dashboard/courses/${c.id}`}>{c.completed ? t('learning.reviewCourse') : pct > 0 ? t('common.continue') : t('learning.start')}</Link>
                     </Button>
                     {c.completed ? (
                       <Button size="sm" className="gap-1.5" onClick={() => getCertificate(c.id)} disabled={claimingId === c.id}>
-                        {claimingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Award className="h-4 w-4" aria-hidden />}
-                        Get certificate
-                      </Button>
+                        {claimingId === c.id ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Award className="h-4 w-4" aria-hidden />}{t('learning.getCertificate')}</Button>
                     ) : null}
                   </div>
                 </div>

@@ -20,14 +20,14 @@ async function auditsCol() {
 async function checkJudgeOrAdmin(hackathonId: string, user: { id: string; role?: string; tenantId?: string }) {
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id: hackathonId }, { slug: hackathonId }] })
-  if (!hk) return { error: 'not found', status: 404 } as const
+  if (!hk) return { error: 'not found', code: 'not_found', status: 404 } as const
   if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
-    return { error: 'Forbidden', status: 403 } as const
+    return { error: 'Forbidden', code: 'forbidden', status: 403 } as const
   }
   const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const isJudge = (hk.judges || []).includes(user.id)
   if (!isAdmin && !isJudge) {
-    return { error: 'Forbidden', status: 403 } as const
+    return { error: 'Forbidden', code: 'forbidden', status: 403 } as const
   }
   return { hk }
 }
@@ -112,7 +112,7 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id } = await ctx.params
   const gate = await checkJudgeOrAdmin(id, user as { id: string; role?: string; tenantId?: string })
@@ -152,7 +152,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const userId = user.id
 
   const rateCheck = await rateLimitAIRedis(req, userId)
@@ -169,7 +169,7 @@ export async function POST(
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const col = await auditsCol()

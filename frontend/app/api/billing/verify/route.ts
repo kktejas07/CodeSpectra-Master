@@ -35,13 +35,13 @@ interface VerifyReq {
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: VerifyReq
   try {
     body = sanitizeMongoInput(await req.json()) as VerifyReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   if (!body.razorpay_order_id || !body.razorpay_payment_id || !body.razorpay_signature) {
     return NextResponse.json({ error: 'missing fields' }, { status: 400 })

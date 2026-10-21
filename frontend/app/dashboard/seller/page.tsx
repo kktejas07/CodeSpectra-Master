@@ -17,6 +17,7 @@ import { SellerBookings, SellerOrders, SellerReturns } from '@/components/market
 import { SellerEarnings, SellerPayouts, SellerReviews } from '@/components/marketplace/seller/money'
 import { SellerSettings, type SellerMe } from '@/components/marketplace/seller/settings'
 import { SellerCoupons } from '@/components/marketplace/seller/coupons'
+import { useT } from '@/lib/i18n/client'
 
 interface Me {
   seller: SellerMe | null
@@ -32,6 +33,7 @@ const TABS = [
 ] as const
 
 function SellerDashboard() {
+  const { t: tr } = useT()
   const gate = usePageGuard('/dashboard/seller')
   const sp = useSearchParams()
   const router = useRouter()
@@ -55,22 +57,22 @@ function SellerDashboard() {
   }
 
   if (!gate.ready) return null
-  if (err) return <EmptyState illustration="error" title="We could not load your seller dashboard" description={err} actionLabel="Try again" onAction={() => { setErr(null); load() }} />
+  if (err) return <EmptyState illustration="error" title={tr('market.weCouldNotLoadYourSeller8a5')} description={err} actionLabel={tr('common.tryAgain')} onAction={() => { setErr(null); load() }} />
   if (!me) return <div className="h-48 animate-pulse rounded-3xl bg-muted/40 motion-reduce:animate-none" />
 
   const s = me.seller
   const storeSwitch = me.is_superadmin && (
-    <div className="flex gap-1 rounded-xl bg-muted p-1" role="group" aria-label="Store">
-      <Button size="sm" variant={!asPlatform ? 'secondary' : 'ghost'} aria-pressed={!asPlatform} onClick={() => go(tab, { as: null })}>My store</Button>
-      <Button size="sm" variant={asPlatform ? 'secondary' : 'ghost'} aria-pressed={asPlatform} onClick={() => go(tab, { as: 'platform' })}>CodeSpectra store</Button>
+    <div className="flex gap-1 rounded-xl bg-muted p-1" role="group" aria-label={tr('market.store')}>
+      <Button size="sm" variant={!asPlatform ? 'secondary' : 'ghost'} aria-pressed={!asPlatform} onClick={() => go(tab, { as: null })}>{tr('market.myStore')}</Button>
+      <Button size="sm" variant={asPlatform ? 'secondary' : 'ghost'} aria-pressed={asPlatform} onClick={() => go(tab, { as: 'platform' })}>{tr('market.codespectraStore')}</Button>
     </div>
   )
 
   if (!s) {
     return (
       <div className="mx-auto max-w-4xl">
-        <PageHeader title="Seller dashboard" icon={<Store />} actions={storeSwitch} />
-        <EmptyState illustration="launch" title="Start selling on CodeSpectra" description="Apply once with your store details, tax info and payout method. After approval you can list digital, physical and service products." actionLabel="Apply to sell" actionHref="/dashboard/seller/apply" />
+        <PageHeader title={tr('market.sellerDashboard')} icon={<Store />} actions={storeSwitch} />
+        <EmptyState illustration="launch" title={tr('market.startSellingOnCodespectra')} description={tr('market.applyOnceWithYourStoreDetailsd4f')} actionLabel={tr('market.applyToSell')} actionHref="/dashboard/seller/apply" />
       </div>
     )
   }
@@ -78,11 +80,11 @@ function SellerDashboard() {
   if (s.status !== 'approved') {
     return (
       <div className="mx-auto max-w-3xl">
-        <PageHeader title={s.display_name} icon={<Store />} description="Seller dashboard" actions={storeSwitch} />
+        <PageHeader title={s.display_name} icon={<Store />} description={tr('market.sellerDashboard')} actions={storeSwitch} />
         <Panel className="space-y-3">
-          <div className="flex items-center gap-2"><StatusBadge status={s.status} /><span className="font-medium">{s.status === 'pending' ? 'Your application is under review' : s.status === 'rejected' ? 'Your application was not approved' : 'Your seller account is suspended'}</span></div>
-          <p className="text-sm text-muted-foreground">{s.status === 'pending' ? "We'll email you as soon as it's reviewed — usually within two working days." : s.review_note ? `Reason: ${s.review_note}` : 'Contact support if you have questions.'}</p>
-          {s.status !== 'suspended' && <Button asChild variant="outline"><Link href="/dashboard/seller/apply">{s.status === 'pending' ? 'Update application' : 'Apply again'}</Link></Button>}
+          <div className="flex items-center gap-2"><StatusBadge status={s.status} /><span className="font-medium">{s.status === 'pending' ? tr('market.yourApplicationIsUnderReview') : s.status === 'rejected' ? tr('market.yourApplicationWasNotApproved') : tr('market.yourSellerAccountIsSuspended')}</span></div>
+          <p className="text-sm text-muted-foreground">{s.status === 'pending' ? tr('market.wellEmailYouAsSoonAs8d0') : s.review_note ? tr('market.reasonReviewNote', { review_note: s.review_note }) : tr('market.contactSupportIfYouHaveQuestions')}</p>
+          {s.status !== 'suspended' && <Button asChild variant="outline"><Link href="/dashboard/seller/apply">{s.status === 'pending' ? tr('market.updateApplication') : tr('market.applyAgain')}</Link></Button>}
         </Panel>
       </div>
     )
@@ -94,8 +96,8 @@ function SellerDashboard() {
       <PageHeader
         title={s.display_name}
         icon={<Store />}
-        description={s.is_platform ? 'CodeSpectra’s own store — no commission.' : 'Manage your products, orders and earnings.'}
-        actions={<>{storeSwitch}<Button asChild variant="outline"><Link href={`/marketplace/s/${s.slug}`}>View store</Link></Button></>}
+        description={s.is_platform ? tr('market.codespectrasOwnStoreNoCommission') : tr('market.manageYourProductsOrdersAndEarnings')}
+        actions={<>{storeSwitch}<Button asChild variant="outline"><Link href={`/marketplace/s/${s.slug}`}>{tr('market.viewStore')}</Link></Button></>}
       />
       <Tabs value={tab} onValueChange={(t) => go(t)} className="gap-5">
         <div className="-mx-1 overflow-x-auto px-1 pb-1">

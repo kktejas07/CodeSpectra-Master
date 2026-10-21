@@ -32,11 +32,11 @@ const body = z.discriminatedUnion('action', [
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   const user = gate.user
   const { id: examId } = await ctx.params
   const parsed = body.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   const input = parsed.data
 
   const limited = await limitRequest(req, input.action === 'start' ? 'answer-upload' : 'answer-upload-finish', user.id, input.action === 'start' ? 20 : 60, 10 * 60_000)
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
     if (!done.ok) return NextResponse.json({ error: done.error }, { status: done.status })
     const up = await claimUpload({ uploadId: input.upload_id, ownerId: user.id, scope })
-    if (!up) return NextResponse.json({ error: 'This upload was already used. Upload the file again.' }, { status: 409 })
+    if (!up) return NextResponse.json({ error: 'This upload was already used. Upload the file again.', code: 'exam_upload_reused' }, { status: 409 })
     const kind = String(up.meta?.kind || '') as AnswerFileKind
     const meta = await saveAnswerFile(db, {
       exam: g.exam, examId, user: { id: user.id, email: user.email }, questionId: input.question_id, attemptNo: g.attemptNo,
@@ -77,6 +77,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: true, file: meta }, { status: 201 })
   } catch (e) {
     console.error('[answer-files/direct] POST:', e instanceof Error ? e.message : 'error')
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Upload failed', code: 'upload_failed' }, { status: 500 })
   }
 }

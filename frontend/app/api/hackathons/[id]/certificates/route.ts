@@ -98,13 +98,13 @@ const TEMPLATES: Record<string, typeof renderClassic> = {
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id } = await ctx.params
   const template = new URL(req.url).searchParams.get('template') || ''
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
-  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!hk) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   if (!hk.results_released) return NextResponse.json({ error: 'results not yet released' }, { status: 400 })
 
   if (hk.features && hk.features.certificates === false) return NextResponse.json({ error: 'Certificates are off for this event' }, { status: 404 })

@@ -20,7 +20,7 @@ export async function GET() {
   } catch (error) {
     console.error('[quality-gates/export]', error)
     return NextResponse.json(
-      { success: false, error: 'Failed' },
+      { success: false, error: 'Failed', code: 'failed' },
       { status: 500 },
     )
   }

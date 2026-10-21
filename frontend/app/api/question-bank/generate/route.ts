@@ -14,9 +14,9 @@ export async function POST(request: NextRequest) {
     try {
       raw = (await request.json()) as Record<string, unknown>
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
     }
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
     const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : undefined)
     const difficulty = ['Easy', 'Medium', 'Hard', 'mixed'].includes(String(raw.difficulty)) ? (raw.difficulty as GenerateRequest['difficulty']) : undefined
     // Only plain generator fields come from the client (no domain / extra prompt rules).

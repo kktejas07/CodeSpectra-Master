@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Shield, AlertCircle, CheckCircle2, Eye, Code } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface SecurityHotspot {
   id: string
@@ -31,6 +32,7 @@ export function SecurityHotspots({
   onMarkSafe,
   onMarkFixed,
 }: SecurityHotspotsProps) {
+  const { t } = useT()
   const [filter, setFilter] = useState<'all' | 'to-review' | 'fixed' | 'safe'>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -63,28 +65,26 @@ export function SecurityHotspots({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="sr-only">Security hotspots</h2>
-        <p className="text-sm text-muted-foreground">
-          Review security-sensitive code that requires attention. {hotspots.length} total hotspots
-        </p>
+        <h2 className="sr-only">{t('tools.securityHotspots')}</h2>
+        <p className="text-sm text-muted-foreground">{t('tools.reviewSecuritySensitiveCodeThatRequiresc93', { count: hotspots.length })}</p>
       </div>
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-4">
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground mb-2">To review</p>
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.toReview')}</p>
           <p className="text-3xl font-bold text-yellow-500">{stats.toReview}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground mb-2">Fixed</p>
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.fixed')}</p>
           <p className="text-3xl font-bold text-green-500">{stats.fixed}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground mb-2">Safe</p>
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.safe')}</p>
           <p className="text-3xl font-bold text-blue-500">{stats.safe}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-sm text-muted-foreground mb-2">Reviewed</p>
+          <p className="text-sm text-muted-foreground mb-2">{t('tools.reviewed')}</p>
           <p className="text-3xl font-bold">{stats.fixed + stats.safe}</p>
         </Card>
       </div>
@@ -101,10 +101,10 @@ export function SecurityHotspots({
                 : 'border-transparent text-muted-foreground hover:text-foreground'
             }`}
           >
-            {status === 'all' && `All (${hotspots.length})`}
-            {status === 'to-review' && `To Review (${stats.toReview})`}
-            {status === 'fixed' && `Fixed (${stats.fixed})`}
-            {status === 'safe' && `Safe (${stats.safe})`}
+            {status === 'all' && t('tools.allCount', { count: hotspots.length })}
+            {status === 'to-review' && t('tools.toReviewToreview', { toReview: stats.toReview })}
+            {status === 'fixed' && t('tools.fixedFixed', { fixed: stats.fixed })}
+            {status === 'safe' && t('tools.safeSafe', { safe: stats.safe })}
           </button>
         ))}
       </div>
@@ -114,7 +114,7 @@ export function SecurityHotspots({
         {filtered.length === 0 ? (
           <Card className="rounded-3xl p-8 text-center border border-dashed">
             <Shield className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-muted-foreground">No security hotspots {filter !== 'all' ? `with status "${filter}"` : ''}</p>
+            <p className="text-muted-foreground">{t('tools.noSecurityHotspots')}{' '}{filter !== 'all' ? t('tools.withStatusFilter', { filter }) : ''}</p>
           </Card>
         ) : (
           filtered.map((hotspot) => (
@@ -134,7 +134,7 @@ export function SecurityHotspots({
                     <p className="text-sm text-muted-foreground mt-1">{hotspot.message}</p>
                     <div className="flex gap-2 mt-2">
                       <Badge variant="outline">{hotspot.file}</Badge>
-                      <Badge variant="outline">Line {hotspot.line}</Badge>
+                      <Badge variant="outline">{t('tools.lineLine2', { line: hotspot.line })}</Badge>
                       <Badge variant="outline">{hotspot.category}</Badge>
                       <Badge className={getPriorityColor(hotspot.priority)}>{hotspot.priority}</Badge>
                       <Badge
@@ -169,17 +169,13 @@ export function SecurityHotspots({
                           onClick={() => onMarkSafe?.(hotspot.id)}
                           className="gap-2 bg-blue-500 hover:bg-blue-600"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
-                          Mark as Safe
-                        </Button>
+                          <CheckCircle2 className="w-4 h-4" />{t('tools.markAsSafe')}</Button>
                         <Button
                           size="sm"
                           onClick={() => onMarkFixed?.(hotspot.id)}
                           className="gap-2 bg-green-500 hover:bg-green-600"
                         >
-                          <CheckCircle2 className="w-4 h-4" />
-                          Mark as Fixed
-                        </Button>
+                          <CheckCircle2 className="w-4 h-4" />{t('tools.markAsFixed')}</Button>
                       </>
                     )}
                     <Button
@@ -188,9 +184,7 @@ export function SecurityHotspots({
                       onClick={() => onReview?.(hotspot.id)}
                       className="gap-2"
                     >
-                      <Eye className="w-4 h-4" />
-                      Review Details
-                    </Button>
+                      <Eye className="w-4 h-4" />{t('tools.reviewDetails')}</Button>
                   </div>
                 </div>
               )}

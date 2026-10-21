@@ -20,6 +20,6 @@ export async function GET() {
     return NextResponse.json({ count })
   } catch (e) {
     console.error('[newsletter] count error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

@@ -47,7 +47,7 @@ function safeName(raw: string): string {
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   }
   const user = gate.user
   const { id: examId } = await ctx.params
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const rl = rateLimitSlidingWindow(`cad-upload:${user.id}`, 20, 10 * 60_000)
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many uploads. Try again in a few minutes.' },
+      { error: 'Too many uploads. Try again in a few minutes.', code: 'exam_uploads_wait' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }
@@ -64,12 +64,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     form = await req.formData()
   } catch {
-    return NextResponse.json({ error: 'Upload could not be read. Files must be under 9 MB.' }, { status: 400 })
+    return NextResponse.json({ error: 'Upload could not be read. Files must be under 9 MB.', code: 'upload_unreadable_9mb' }, { status: 400 })
   }
   const file = form.get('file')
   const kindRaw = String(form.get('kind') || '')
-  if (!(file instanceof File)) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-  if (kindRaw !== 'native' && kindRaw !== 'step') return NextResponse.json({ error: 'Unknown file type' }, { status: 400 })
+  if (!(file instanceof File)) return NextResponse.json({ error: 'No file provided', code: 'upload_no_file' }, { status: 400 })
+  if (kindRaw !== 'native' && kindRaw !== 'step') return NextResponse.json({ error: 'Unknown file type', code: 'file_unknown_type' }, { status: 400 })
   const kind = kindRaw as CadFileKind
   const name = safeName(file.name)
   if (!cadFileExtOk(kind, name)) {
@@ -78,13 +78,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       { status: 400 },
     )
   }
-  if (file.size <= 0) return NextResponse.json({ error: 'This file is empty.' }, { status: 400 })
-  if (file.size > CAD_MAX_FILE_BYTES) return NextResponse.json({ error: 'Files must be under 9 MB.' }, { status: 413 })
+  if (file.size <= 0) return NextResponse.json({ error: 'This file is empty.', code: 'file_empty' }, { status: 400 })
+  if (file.size > CAD_MAX_FILE_BYTES) return NextResponse.json({ error: 'Files must be under 9 MB.', code: 'exam_files_max_9mb' }, { status: 413 })
 
   try {
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: user.id, email: user.email }, {
       inviteToken: String(form.get('inviteToken') || '') || null,
@@ -93,15 +93,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
 
     const bytes = Buffer.from(await file.arrayBuffer())
-    if (bytes.length > CAD_MAX_FILE_BYTES) return NextResponse.json({ error: 'Files must be under 9 MB.' }, { status: 413 })
+    if (bytes.length > CAD_MAX_FILE_BYTES) return NextResponse.json({ error: 'Files must be under 9 MB.', code: 'exam_files_max_9mb' }, { status: 413 })
     // STEP is a text format with a fixed header; native CAD formats vary by
     // vendor, so they rely on the extension allowlist + virus scan.
     if (kind === 'step' && !isStepFile(bytes)) {
-      return NextResponse.json({ error: 'This is not a valid STEP file. Export it again as .step / .stp (ISO 10303-21).' }, { status: 400 })
+      return NextResponse.json({ error: 'This is not a valid STEP file. Export it again as .step / .stp (ISO 10303-21).', code: 'exam_cad_step_invalid' }, { status: 400 })
     }
     const scan = await scanFile(bytes, name)
     if (scan === 'infected') {
-      return NextResponse.json({ error: 'The security scanner rejected this file. Export it again and retry.' }, { status: 400 })
+      return NextResponse.json({ error: 'The security scanner rejected this file. Export it again and retry.', code: 'scanner_rejected_export' }, { status: 400 })
     }
 
     await ensureExamIndexes(db)
@@ -127,6 +127,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: true, file: meta }, { status: 201 })
   } catch (e) {
     console.error('[cad-submission/files] POST:', e)
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Upload failed', code: 'upload_failed' }, { status: 500 })
   }
 }

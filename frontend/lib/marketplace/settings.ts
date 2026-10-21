@@ -6,7 +6,8 @@ import type { ItemKind, MarketplaceSettings } from './contract'
 
 /** User-facing error with an HTTP status (seller/admin part). */
 export class MktError extends Error {
-  constructor(public status: number, message: string) {
+  /** `code` / `params`: stable error code for the UI's translation (lib/api-errors); inferred from the message when omitted. */
+  constructor(public status: number, message: string, public code?: string, public params?: Record<string, string | number>) {
     super(message)
   }
 }

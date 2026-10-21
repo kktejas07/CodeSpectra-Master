@@ -5,12 +5,13 @@ import { requireAuth, requireSuperAdmin, type APIUser } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 import { StudyPlanError } from './service'
+import { apiErrorBody } from '@/lib/api-errors'
 
 export const NO_STORE = { 'Cache-Control': 'private, no-store' }
 export const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: NO_STORE })
 
 export function errorResponse(e: unknown, where: string) {
-  if (e instanceof StudyPlanError) return json({ error: e.message }, e.status)
+  if (e instanceof StudyPlanError) return json(apiErrorBody(e.message), e.status)
   console.error(`[study-plan] ${where} failed:`, (e as Error)?.message)
   return json({ error: 'Something went wrong. Please try again.' }, 500)
 }

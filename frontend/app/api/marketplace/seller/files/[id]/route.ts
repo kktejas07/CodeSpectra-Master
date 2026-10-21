@@ -6,11 +6,11 @@ export async function DELETE(req: NextRequest, { params }: IdRouteContext) {
   const g = await sellerGate(req, { write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'File not found' }, 404)
+  if (!idOk(id)) return json({ error: 'File not found', code: 'file_not_found' }, 404)
   try {
     const { deleteSellerFiles } = await import('@/lib/marketplace/seller-files')
     const n = await deleteSellerFiles(g.seller.id, [id])
-    if (!n) return json({ error: 'This file is used by a listed product (or was already deleted).' }, 409)
+    if (!n) return json({ error: 'This file is used by a listed product (or was already deleted).', code: 'mkt_file_in_use' }, 409)
     return json({ ok: true })
   } catch (e) {
     return errorResponse(e, 'file delete')

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (limited) return limited
   const { id } = await params
   let body: unknown
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
   try {
     const iv = await submitScorecard(actor, id, body)
     const mine = iv.scorecards.find((c) => c.interviewer_id === actor.userId) || null

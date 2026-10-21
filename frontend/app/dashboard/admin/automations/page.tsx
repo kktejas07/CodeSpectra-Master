@@ -20,6 +20,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { eventTypeDef } from '@/lib/automation/event-types'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface AutomationRow {
   id: string
@@ -96,6 +97,7 @@ const NUM_FIELDS: { key: string; label: string; help: string }[] = [
 ]
 
 export default function AutomationsPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const confirm = useConfirm()
   const [data, setData] = useState<Data | null>(null)
@@ -119,6 +121,7 @@ export default function AutomationsPage() {
       wa_template_payment: String(c.wa_template_payment ?? ''),
       wa_template_event: String(c.wa_template_event ?? ''),
       wa_template_language: String(c.wa_template_language ?? 'en'),
+      wa_template_locales: Array.isArray(c.wa_template_locales) ? (c.wa_template_locales as string[]).join(', ') : '',
       wa_template_notification: String(c.wa_template_notification ?? ''),
       wa_template_hiring: String(c.wa_template_hiring ?? ''),
       wa_template_newsletter: String(c.wa_template_newsletter ?? ''),
@@ -281,6 +284,16 @@ export default function AutomationsPage() {
                   <Input id="wa-event" value={cfg.wa_template_event || ''} onChange={(e) => setCfg({ ...cfg, wa_template_event: e.target.value })} placeholder="event_reminder" />
                   <p className="text-xs text-muted-foreground">2 values (event name, time left). Only people who agreed to WhatsApp get it.</p>
                 </div>
+                <div className="space-y-1">
+                  <label htmlFor="wa-lang" className="text-xs font-medium text-muted-foreground">{tx('automations.waBaseLanguage')}</label>
+                  <Input id="wa-lang" value={cfg.wa_template_language || ''} onChange={(e) => setCfg({ ...cfg, wa_template_language: e.target.value })} placeholder="en" />
+                  <p className="text-xs text-muted-foreground">{tx('automations.waBaseLanguageHelp')}</p>
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor="wa-locales" className="text-xs font-medium text-muted-foreground">{tx('automations.waLocales')}</label>
+                  <Input id="wa-locales" value={cfg.wa_template_locales || ''} onChange={(e) => setCfg({ ...cfg, wa_template_locales: e.target.value })} placeholder="hi, te" />
+                  <p className="text-xs text-muted-foreground">{tx('automations.waLocalesHelp')}</p>
+                </div>
                 {([
                   ['wa_template_notification', 'WhatsApp template: notifications', 'notification_update', 'Results, hackathon updates, test reminders. 3 values (title, message, link).'],
                   ['wa_template_hiring', 'WhatsApp template: hiring updates', 'hiring_update', 'Background checks, HR forms, interviews. 3 values (title, message, link). Empty = notifications template.'],
@@ -303,7 +316,7 @@ export default function AutomationsPage() {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button disabled={!!busy} onClick={() => post({ action: 'config', config: { ...Object.fromEntries(NUM_FIELDS.map((f) => [f.key, cfg[f.key]])), alert_emails: cfg.alert_emails, wa_template_payment: cfg.wa_template_payment, wa_template_event: cfg.wa_template_event, wa_template_language: cfg.wa_template_language || 'en', wa_template_notification: cfg.wa_template_notification, wa_template_hiring: cfg.wa_template_hiring, wa_template_newsletter: cfg.wa_template_newsletter, whatsapp_unofficial_enabled: cfg.whatsapp_unofficial_enabled === '1', ...(webhook.trim() ? { alert_webhook_url: webhook.trim() } : {}) } }, 'cfg', 'Settings saved.').then(() => setWebhook(''))}>
+                <Button disabled={!!busy} onClick={() => post({ action: 'config', config: { ...Object.fromEntries(NUM_FIELDS.map((f) => [f.key, cfg[f.key]])), alert_emails: cfg.alert_emails, wa_template_payment: cfg.wa_template_payment, wa_template_event: cfg.wa_template_event, wa_template_language: cfg.wa_template_language || 'en', wa_template_locales: cfg.wa_template_locales || '', wa_template_notification: cfg.wa_template_notification, wa_template_hiring: cfg.wa_template_hiring, wa_template_newsletter: cfg.wa_template_newsletter, whatsapp_unofficial_enabled: cfg.whatsapp_unofficial_enabled === '1', ...(webhook.trim() ? { alert_webhook_url: webhook.trim() } : {}) } }, 'cfg', 'Settings saved.').then(() => setWebhook(''))}>
                   {busy === 'cfg' && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />} Save settings
                 </Button>
                 <Button variant="outline" disabled={!!busy} onClick={() => post({ action: 'test-alert' }, 'alert', 'Test alert sent.')}><BellRing className="h-4 w-4" aria-hidden /> Send a test alert</Button>

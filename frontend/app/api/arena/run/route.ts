@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const source = typeof body.source_code === 'string' ? body.source_code : ''
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'source_code and language are required' }, { status: 400 })
   }
   if (source.length > MAX_SOURCE) {
-    return NextResponse.json({ error: 'source_code too large (50KB max)' }, { status: 400 })
+    return NextResponse.json({ error: 'source_code too large (50KB max)', code: 'sub_source_too_large' }, { status: 400 })
   }
 
   // 100-day sprint problems are graded on the server's own examples; client tests are ignored.

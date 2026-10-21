@@ -29,7 +29,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const rl = rateLimitSlidingWindow(`course-quiz:${user.id}`, 20, 60_000)
   if (!rl.ok) {
@@ -51,7 +51,7 @@ export async function POST(
 
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id: courseId })
-    if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
 
     const failed = await db
       .collection('quiz_results')
@@ -127,6 +127,6 @@ export async function POST(
     })
   } catch (e) {
     console.error('[quiz-submit] error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

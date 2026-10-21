@@ -10,9 +10,11 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { formatMinor } from '@/lib/marketplace/pricing'
 import type { BuyerOrderSummary } from '@/lib/marketplace/orders'
 import { STATUS_TEXT, STATUS_TONE } from '@/components/marketplace/order-status'
+import { useT } from '@/lib/i18n/client'
 
 
 export default function OrdersPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const [orders, setOrders] = useState<BuyerOrderSummary[] | null>(null)
   const [more, setMore] = useState(false)
@@ -38,14 +40,14 @@ export default function OrdersPage() {
   if (!gate.ready) return null
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <PageHeader title="My orders" description="Purchases from the marketplace — downloads, bookings, deliveries, invoices and refunds." icon={<ShoppingBag />}
-        actions={<Button asChild variant="outline" className="rounded-full"><Link href="/marketplace"><Store className="mr-1.5 h-4 w-4" />Marketplace</Link></Button>} />
+      <PageHeader title={t('market.myOrders')} description={t('market.purchasesFromTheMarketplaceDownloadsBook2d6')} icon={<ShoppingBag />}
+        actions={<Button asChild variant="outline" className="rounded-full"><Link href="/marketplace"><Store className="mr-1.5 h-4 w-4" />{t('market.marketplace')}</Link></Button>} />
       {error ? (
-        <EmptyState illustration="error" title="We could not load your orders" description="Check your connection and try again." actionLabel="Try again" onAction={() => { setError(false); setOrders(null); void load() }} />
+        <EmptyState illustration="error" title={t('market.weCouldNotLoadYourOrders')} description={t('market.checkYourConnectionAndTryAgain')} actionLabel={t('common.tryAgain')} onAction={() => { setError(false); setOrders(null); void load() }} />
       ) : orders === null ? (
         <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />)}</div>
       ) : orders.length === 0 ? (
-        <EmptyState illustration="billing" title="No orders yet" description="When you buy a book, course or session from the marketplace, it shows up here." actionLabel="Browse the marketplace" actionHref="/marketplace" />
+        <EmptyState illustration="billing" title={t('market.noOrdersYet')} description={t('market.whenYouBuyABookCourse93e')} actionLabel={t('market.browseTheMarketplace')} actionHref="/marketplace" />
       ) : (
         <div className="space-y-3">
           {orders.map((o) => (
@@ -56,7 +58,7 @@ export default function OrdersPage() {
                   {o.image ? <img src={o.image} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-muted-foreground"><ShoppingBag className="h-5 w-5" /></div>}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-foreground">{o.first_title}{o.items > 1 ? ` + ${o.items - 1} more` : ''}</p>
+                  <p className="truncate font-semibold text-foreground">{o.first_title}{o.items > 1 ? t('market.valueMore', { value: o.items - 1 }) : ''}</p>
                   <p className="text-sm text-muted-foreground"><span className="font-mono">{o.number}</span> · {new Date(o.created_at).toLocaleDateString()}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
@@ -66,7 +68,7 @@ export default function OrdersPage() {
               </Panel>
             </Link>
           ))}
-          {more && <div className="pt-2 text-center"><Button variant="outline" className="rounded-full" disabled={loadingMore} onClick={() => load(orders[orders.length - 1]?.created_at)}>{loadingMore ? 'Loading…' : 'Show older orders'}</Button></div>}
+          {more && <div className="pt-2 text-center"><Button variant="outline" className="rounded-full" disabled={loadingMore} onClick={() => load(orders[orders.length - 1]?.created_at)}>{loadingMore ? t('common.loading') : t('market.showOlderOrders')}</Button></div>}
         </div>
       )}
     </div>

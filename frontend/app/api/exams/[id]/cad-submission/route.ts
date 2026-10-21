@@ -45,14 +45,14 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ staged })
   } catch (e) {
     console.error('[cad-submission] GET:', e)
-    return NextResponse.json({ error: 'Failed to load your files' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load your files', code: 'exam_files_load_failed' }, { status: 500 })
   }
 }
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   }
   const { id: userId, email } = gate.user
   const { id: examId } = await ctx.params
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const rl = rateLimitSlidingWindow(`cad-submit:${userId}:${examId}`, 5, 60 * 60_000)
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many submission attempts. Please try again later.' },
+      { error: 'Too many submission attempts. Please try again later.', code: 'exam_submit_rate' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }
@@ -79,10 +79,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const facePhoto = photo(body.facePhoto)
 
   if (rationale.length > CAD_RATIONALE_MAX_CHARS) {
-    return NextResponse.json({ error: `Design rationale is too long (max ${CAD_RATIONALE_MAX_CHARS} characters).` }, { status: 400 })
+    return NextResponse.json({ error: `Design rationale is too long (max ${CAD_RATIONALE_MAX_CHARS} characters).`, code: 'exam_cad_rationale_long', params: { max: CAD_RATIONALE_MAX_CHARS } }, { status: 400 })
   }
   if (!autoSubmitted && rationale.length < CAD_RATIONALE_MIN_CHARS) {
-    return NextResponse.json({ error: `Write at least ${CAD_RATIONALE_MIN_CHARS} characters of design rationale.` }, { status: 400 })
+    return NextResponse.json({ error: `Write at least ${CAD_RATIONALE_MIN_CHARS} characters of design rationale.`, code: 'exam_cad_rationale_short', params: { min: CAD_RATIONALE_MIN_CHARS } }, { status: 400 })
   }
 
   try {
@@ -92,15 +92,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (clientIp) {
       const blocked = await db.collection('ip_blocklist').find({ active: { $ne: false } }).toArray()
       if (blocked.some((entry) => isIpInCidr(clientIp, String(entry.ip)))) {
-        return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
+        return NextResponse.json({ error: 'This IP address has been blocked.', code: 'exam_ip_blocked' }, { status: 403 })
       }
     }
 
     const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     // A CAD submission on an ordinary test would burn one of its attempts.
-    if (!isCadExam(exam as Record<string, unknown>)) return NextResponse.json({ error: 'This assessment is not a CAD task.' }, { status: 400 })
+    if (!isCadExam(exam as Record<string, unknown>)) return NextResponse.json({ error: 'This assessment is not a CAD task.', code: 'exam_not_cad' }, { status: 400 })
 
     // ignoreWindowClose: the attempt deadline (capped at ends_at) is the limit.
     const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken }, { ignoreWindowClose: true })
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     )
     const serverStartedAt = draft?.cad_started_attempt === access.attemptNo && typeof draft.cad_started_at === 'string'
       ? draft.cad_started_at : null
-    if (!serverStartedAt) return NextResponse.json({ error: 'Start the test before submitting.' }, { status: 409 })
+    if (!serverStartedAt) return NextResponse.json({ error: 'Start the test before submitting.', code: 'exam_start_before_submit' }, { status: 409 })
 
     // Identity check for this attempt (also required by ./start).
     const identity = await checkIdentityForAttempt(db, exam as Record<string, unknown>, userId, access.attemptNo)
@@ -136,7 +136,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const hasStep = files.some((f) => f.kind === 'step')
     // A timed-out auto-submit takes whatever was uploaded; a manual submit needs both files.
     if (!autoSubmitted && !late && (!hasNative || !hasStep)) {
-      return NextResponse.json({ error: 'Upload both your native CAD file and the STEP export before submitting.' }, { status: 400 })
+      return NextResponse.json({ error: 'Upload both your native CAD file and the STEP export before submitting.', code: 'exam_cad_files_required' }, { status: 400 })
     }
 
     const startedAt = serverStartedAt
@@ -194,7 +194,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     }
 
     const stored = await recordExamAttempt(db, access.current, submission, access.attemptNo)
-    if (!stored.ok) return NextResponse.json({ error: 'This attempt was already submitted.' }, { status: 409 })
+    if (!stored.ok) return NextResponse.json({ error: 'This attempt was already submitted.', code: 'exam_already_submitted' }, { status: 409 })
 
     await db.collection('exam_submission_files').updateMany(
       { exam_id: examId, user_id: userId, status: 'staged', id: { $in: files.map((f) => f.id) } },
@@ -218,6 +218,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
   } catch (e) {
     console.error('[cad-submission] POST:', e)
-    return NextResponse.json({ error: 'Submit failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Submit failed', code: 'exam_submit_failed' }, { status: 500 })
   }
 }

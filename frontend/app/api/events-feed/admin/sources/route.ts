@@ -52,6 +52,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, report })
     }
     default:
-      return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+      return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
   }
 }

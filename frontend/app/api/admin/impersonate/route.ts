@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     const userCol = await getUsersCollection()
     const target = await userCol.findOne({ $or: [{ _id: userId }, { id: userId }] } as any)
     if (!target) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
     }
 
     // Privilege guard: never impersonate a fellow superadmin.

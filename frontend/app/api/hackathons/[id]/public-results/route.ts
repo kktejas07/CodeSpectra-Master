@@ -34,7 +34,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   )
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many requests' },
+      { error: 'Too many requests', code: 'too_many_requests' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }

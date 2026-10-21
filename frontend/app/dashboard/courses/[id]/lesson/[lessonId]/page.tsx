@@ -20,6 +20,7 @@ import remarkGfm from 'remark-gfm'
 import { QuizComponent, type QuizQuestion, type QuizGradeResult } from '@/components/courses/QuizComponent'
 import { quizLessonId, parseQuizLessonId } from '@/lib/courses/module-quiz'
 import { stripEmbeddedQuizzes, stripQuizSlides } from '@/lib/courses/strip-embedded-quizzes'
+import { useT } from '@/lib/i18n/client'
 
 interface Resource {
   title?: string
@@ -76,6 +77,7 @@ function formatDuration(seconds: number): string {
 // Queries the admin jobs endpoint scoped by ?courseId (readable by any
 // authenticated user); degrades to a generic pending note when unreadable.
 function LessonVideoStatus({ courseId, onRetryHint }: { courseId: string; onRetryHint?: string }) {
+  const { t } = useT()
   const [state, setState] = useState<{ loading: boolean; jobs: any[]; unreadable: boolean }>({
     loading: true, jobs: [], unreadable: false,
   })
@@ -99,48 +101,48 @@ function LessonVideoStatus({ courseId, onRetryHint }: { courseId: string; onRetr
     </div>
   )
   if (state.loading) {
-    return box(<p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking video status…</p>)
+    return box(<p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />{' '}{t('learning.checkingVideoStatus')}</p>)
   }
   if (state.unreadable) {
-    return box(<p className="text-sm">MP4 not generated yet — the video may still be rendering. Check back soon.</p>)
+    return box(<p className="text-sm">{t('learning.mp4NotGeneratedYetTheVideo353')}</p>)
   }
   const job = state.jobs[0]
   if (!job) {
-    return box(<p className="text-sm">MP4 not generated yet. Ask an admin to generate videos from Course Generator.</p>)
+    return box(<p className="text-sm">{t('learning.mp4NotGeneratedYetAskAn484')}</p>)
   }
   const done = Number(job.completedItems || 0)
   const total = Number(job.totalItems || 0)
   const status = String(job.status || '')
   if (status === 'failed' || Number(job.failedItems || 0) > 0) {
     return box(<>
-      <p className="text-sm text-red-400 font-medium">Video generation failed{(job.error || '') ? `: ${String(job.error).slice(0, 160)}` : total ? ` — ${done}/${total} lessons rendered` : ''}</p>
-      <p className="text-xs opacity-70">Ask an admin to retry from Course Generator{onRetryHint ? ` (${onRetryHint})` : ''}.</p>
+      <p className="text-sm text-red-400 font-medium">{t('learning.videoGenerationFailed')}{(job.error || '') ? `: ${String(job.error).slice(0, 160)}` : total ? t('learning.doneTotalLessonsRendered', { done, total }) : ''}</p>
+      <p className="text-xs opacity-70">{t('learning.askAnAdminToRetryFrom425')}{onRetryHint ? ` (${onRetryHint})` : ''}.</p>
     </>)
   }
   if (status === 'completed') {
     return box(<>
-      <p className="text-sm">Render finished but this lesson has no video — it may have failed individually.</p>
-      <p className="text-xs opacity-70">Ask an admin to retry from Course Generator.</p>
+      <p className="text-sm">{t('learning.renderFinishedButThisLessonHasa48')}</p>
+      <p className="text-xs opacity-70">{t('learning.askAnAdminToRetryFrom677')}</p>
     </>)
   }
   // pending | running
   const queuedMs = Date.now() - Date.parse(String(job.startedAt || '') || String(Date.now()))
   if (status === 'pending' && Number.isFinite(queuedMs) && queuedMs > 10 * 60 * 1000) {
     return box(<>
-      <p className="text-sm text-amber-400 font-medium">Worker may be offline — job queued {Math.round(queuedMs / 60000)} min ago with no progress.</p>
-      <p className="text-xs opacity-70">Ask an admin to check the course worker, then retry from Course Generator.</p>
+      <p className="text-sm text-amber-400 font-medium">{t('learning.workerMayBeOfflineJobQueued4dd', { n: Math.round(queuedMs / 60000) })}</p>
+      <p className="text-xs opacity-70">{t('learning.askAnAdminToCheckThe8e8')}</p>
     </>)
   }
   if (status === 'running' && total > 0) {
     return box(<>
-      <p className="text-sm">Video {Math.min(done + 1, total)} of {total} rendered…</p>
+      <p className="text-sm">{t('learning.videoValueOfTotalRendered', { value: Math.min(done + 1, total), total })}</p>
       <div className="w-48 h-1.5 rounded-full bg-white/10 overflow-hidden">
         <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, Math.round((done / total) * 100))}%` }} />
       </div>
       <p className="text-xs opacity-70">{done}/{total} lessons done — check back soon.</p>
     </>)
   }
-  return box(<p className="text-sm">Video queued — waiting for the course worker… check back soon.</p>)
+  return box(<p className="text-sm">{t('learning.videoQueuedWaitingForTheCoursed67')}</p>)
 }
 
 function resolveMediaUrl(url?: string | null): string | undefined {
@@ -166,6 +168,7 @@ let lessonShellCache: {
 } | null = null
 
 export default function LessonPlayerPage({ params }: { params: Promise<{ id: string, lessonId: string }> }) {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const router = useRouter()
@@ -328,8 +331,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background gap-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Course not found</h2>
-        <Button onClick={() => router.push('/dashboard/courses')}>Back to courses</Button>
+        <h2 className="text-xl font-semibold">{tr('learning.courseNotFound')}</h2>
+        <Button onClick={() => router.push('/dashboard/courses')}>{tr('learning.backToCourses')}</Button>
       </div>
     )
   }
@@ -369,7 +372,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       const sec = sections[sIdx]
       const lastId = sec.lessons[sec.lessons.length - 1]?.id
       if (activeLesson?.id === lastId) {
-        nextLesson = { id: quizLessonId(sIdx), title: "Let's test your understanding!", slug: quizLessonId(sIdx) } as Lesson
+        nextLesson = { id: quizLessonId(sIdx), title: tr('learning.letsTestYourUnderstanding'), slug: quizLessonId(sIdx) } as Lesson
       }
     }
   }
@@ -378,8 +381,8 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background gap-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Lesson not found</h2>
-        <Button onClick={() => router.push(`/dashboard/courses/${courseId}`)}>Back to course</Button>
+        <h2 className="text-xl font-semibold">{tr('learning.lessonNotFound')}</h2>
+        <Button onClick={() => router.push(`/dashboard/courses/${courseId}`)}>{tr('learning.backToCourse')}</Button>
       </div>
     )
   }
@@ -408,7 +411,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       if (lessonShellCache?.courseId === courseId) {
         lessonShellCache = { ...lessonShellCache, completions: [...new Set([...lessonShellCache.completions, id])] }
       }
-      addToast({ title: 'Lesson complete', type: 'success' })
+      addToast({ title: tr('learning.lessonComplete'), type: 'success' })
       return true
     } catch {
       return false
@@ -426,7 +429,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       body: JSON.stringify({ sectionIndex: quizSectionIndex, answers }),
     })
     const j = await res.json().catch(() => null)
-    if (!res.ok || !j?.success) throw new Error(j?.error || 'Could not check your answers. Try again.')
+    if (!res.ok || !j?.success) throw new Error(j?.error || tr('learning.couldNotCheckYourAnswersTry223'))
     return { score: j.score, total: j.total, passed: j.passed, results: j.results }
   }
 
@@ -466,13 +469,13 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       {/* ── Top Navigation Bar ── */}
       <header className="h-14 flex items-center justify-between px-4 border-b border-border/40 bg-card shrink-0 shadow-sm z-20 relative">
         <div className="flex items-center gap-4">
-          <Link href={`/dashboard/courses/${courseId}`} aria-label="Back to course" className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+          <Link href={`/dashboard/courses/${courseId}`} aria-label={tr('learning.backToCourse')} className="flex items-center justify-center w-8 h-8 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-5 w-5" aria-hidden />
           </Link>
           <div className="hidden sm:block">
             <h1 className="font-semibold text-sm line-clamp-1">{course.title}</h1>
             <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-              <span>{isQuizMode ? (quizSection?.title || "Module quiz") : activeLesson?.title}</span>
+              <span>{isQuizMode ? (quizSection?.title || tr('learning.moduleQuiz')) : activeLesson?.title}</span>
             </p>
           </div>
         </div>
@@ -481,16 +484,13 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           {/* Progress / Mark Complete */}
           {isDone ? (
             <div className="hidden sm:flex items-center gap-2 text-green-700 dark:text-green-400 font-medium text-sm px-3 py-1.5 bg-green-500/10 rounded-full">
-              <CheckCircle className="h-4 w-4" /> Completed
-            </div>
+              <CheckCircle className="h-4 w-4" />{' '}{tr('learning.completed')}</div>
           ) : !isQuizMode ? (
-            <p className="hidden sm:block text-xs text-muted-foreground">
-              Watch to the end or read to the end to complete
-            </p>
+            <p className="hidden sm:block text-xs text-muted-foreground">{tr('learning.watchToTheEndOrReadc10')}</p>
           ) : null}
 
           {/* Toggle Sidebar on Mobile/Desktop */}
-          <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label="Toggle lesson list" aria-expanded={sidebarOpen}>
+          <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)} aria-label={tr('learning.toggleLessonList')} aria-expanded={sidebarOpen}>
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
@@ -505,7 +505,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
               {/* Content Header & Toggle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-bold">{isQuizMode ? "Let's test your understanding!" : activeLesson?.title}</h2>
+                  <h2 className="text-2xl font-bold">{isQuizMode ? tr('learning.letsTestYourUnderstanding') : activeLesson?.title}</h2>
                 </div>
                 
                 {(!isQuizMode && activeLesson && (activeLesson?.textContent || activeLesson?.script?.length)) && (
@@ -519,8 +519,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <BookOpen className="w-4 h-4" /> Text lesson
-                    </button>
+                      <BookOpen className="w-4 h-4" />{' '}{tr('learning.textLesson')}</button>
                     <button
                       onClick={() => setViewMode('video')}
                       className={cn(
@@ -530,8 +529,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
                     >
-                      <Play className="w-4 h-4" /> Video lesson
-                    </button>
+                      <Play className="w-4 h-4" />{' '}{tr('learning.videoLesson')}</button>
                   </div>
                 )}
               </div>
@@ -540,17 +538,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
               {isQuizMode ? (
                 <div className="mt-6 rounded-2xl border border-border/40 bg-card p-6 shadow-sm">
                   <div className="mb-4">
-                    <p className="text-xs font-semibold text-primary">Module quiz</p>
-                    <h2 className="text-2xl font-bold mt-1">Let&apos;s test your understanding!</h2>
+                    <p className="text-xs font-semibold text-primary">{tr('learning.moduleQuiz')}</p>
+                    <h2 className="text-2xl font-bold mt-1">{tr('learning.letsTestYourUnderstanding')}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {quizSection?.title || 'This module'} — answer to unlock the next module.
-                    </p>
+                      {quizSection?.title || tr('learning.thisModule')}{' '}{tr('learning.answerToUnlockTheNextModule')}</p>
                     {quizSectionIndex != null && quizScores[quizSectionIndex] != null && (
-                      <p className="text-sm tabular-nums text-green-700 dark:text-green-400 mt-2">Best score: {quizScores[quizSectionIndex]}%</p>
+                      <p className="text-sm tabular-nums text-green-700 dark:text-green-400 mt-2">{tr('learning.bestScoreValue', { value: quizScores[quizSectionIndex] })}</p>
                     )}
                   </div>
                   {quizQuestions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Quiz questions are not ready yet.</p>
+                    <p className="text-sm text-muted-foreground">{tr('learning.quizQuestionsAreNotReadyYet')}</p>
                   ) : (
                     <QuizComponent
                       questions={quizQuestions}
@@ -576,19 +573,17 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         if (quizSectionIndex == null) return
                         setQuizScores(prev => ({ ...prev, [quizSectionIndex]: Math.max(prev[quizSectionIndex] ?? 0, pct) }))
                         if (pct >= 80) {
-                          addToast({ title: `Passed with ${pct}%. Next module unlocked`, type: 'success' })
+                          addToast({ title: tr('learning.passedWithPctNextModuleUnlocked', { pct }), type: 'success' })
                           if (quizNextHref) setTimeout(() => router.push(quizNextHref), 800)
                         } else {
-                          addToast({ title: `${pct}%: you need 80% to pass. Review and try again.`, type: 'error' })
+                          addToast({ title: tr('learning.pctYouNeed80ToPassa8d', { pct }), type: 'error' })
                         }
                       }}
                     />
                   )}
                   <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
-                    <Button variant="outline" disabled={!quizPrevHref} onClick={() => quizPrevHref && router.push(quizPrevHref)}>Previous</Button>
-                    <Button disabled={!quizNextHref || (quizSectionIndex != null && !sectionPassed(quizSectionIndex))} onClick={() => quizNextHref && router.push(quizNextHref)}>
-                      Next module
-                    </Button>
+                    <Button variant="outline" disabled={!quizPrevHref} onClick={() => quizPrevHref && router.push(quizPrevHref)}>{tr('common.previous')}</Button>
+                    <Button disabled={!quizNextHref || (quizSectionIndex != null && !sectionPassed(quizSectionIndex))} onClick={() => quizNextHref && router.push(quizNextHref)}>{tr('learning.nextModule')}</Button>
                   </div>
                 </div>
               ) : (
@@ -652,7 +647,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                 <div className="mt-6 grid gap-4 lg:grid-cols-2">
                   {(activeLesson.chapters?.length || 0) > 0 && (
                     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
-                      <h3 className="text-sm font-semibold mb-3">Chapters</h3>
+                      <h3 className="text-sm font-semibold mb-3">{tr('learning.chapters')}</h3>
                       <ul className="space-y-1">
                         {(activeLesson.chapters || []).map((ch, i) => {
                           const sec = Number(ch?.startSec)
@@ -683,7 +678,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   )}
                   {(activeLesson.takeaways?.length || 0) > 0 && (
                     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
-                      <h3 className="text-sm font-semibold mb-3">Key takeaways</h3>
+                      <h3 className="text-sm font-semibold mb-3">{tr('learning.keyTakeaways')}</h3>
                       <ul className="space-y-2 text-sm text-muted-foreground">
                         {(activeLesson.takeaways || []).filter(Boolean).map((t, i) => (
                           <li key={i} className="flex gap-2"><CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-primary" aria-hidden /><span>{String(t).slice(0, 500)}</span></li>
@@ -694,16 +689,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   {!!activeLesson.quickCheck && (
                     !!((activeLesson.quickCheck.recall || '') || (activeLesson.quickCheck.apply || '') || (activeLesson.quickCheck.stretch || ''))) && (
                     <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm lg:col-span-2">
-                      <h3 className="text-sm font-semibold mb-3">Quick check</h3>
+                      <h3 className="text-sm font-semibold mb-3">{tr('learning.quickCheck')}</h3>
                       <div className="grid gap-3 sm:grid-cols-3 text-sm">
                         {(activeLesson.quickCheck.recall || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">Recall</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.recall).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">{tr('learning.recall')}</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.recall).slice(0, 500)}</p></div>
                         )}
                         {(activeLesson.quickCheck.apply || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">Apply</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.apply).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">{tr('learning.apply')}</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.apply).slice(0, 500)}</p></div>
                         )}
                         {(activeLesson.quickCheck.stretch || '') && (
-                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">Stretch</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.stretch).slice(0, 500)}</p></div>
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-semibold text-primary mb-1">{tr('learning.stretch')}</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.stretch).slice(0, 500)}</p></div>
                         )}
                       </div>
                     </div>
@@ -713,11 +708,10 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                       <div className="flex items-start gap-3">
                         <Play className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
                         <div className="flex-1">
-                          <h3 className="text-sm font-semibold mb-1">Up next{nextLesson?.title ? `: ${nextLesson.title}` : ''}</h3>
+                          <h3 className="text-sm font-semibold mb-1">{tr('learning.upNext')}{nextLesson?.title ? `: ${nextLesson.title}` : ''}</h3>
                           <p className="text-sm text-muted-foreground">{String(activeLesson.nextTeaser).slice(0, 500)}</p>
                           {nextLessonUrl && (
-                            <Link href={nextLessonUrl} className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-primary hover:underline">
-                              Continue to next lesson <span aria-hidden="true">→</span>
+                            <Link href={nextLessonUrl} className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-primary hover:underline">{tr('learning.continueToNextLesson')}{' '}<span aria-hidden="true">→</span>
                             </Link>
                           )}
                         </div>
@@ -748,15 +742,11 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                       variant="outline" 
                       disabled={!prevLesson}
                       onClick={() => router.push(`/dashboard/courses/${courseId}/lesson/${prevLesson?.id}`)}
-                    >
-                      Previous
-                    </Button>
+                    >{tr('common.previous')}</Button>
                     <Button 
                       disabled={!nextLesson}
                       onClick={() => router.push(`/dashboard/courses/${courseId}/lesson/${nextLesson?.id}`)}
-                    >
-                      Next lesson
-                    </Button>
+                    >{tr('learning.nextLesson')}</Button>
                   </div>
                 </div>
               </div>
@@ -771,7 +761,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}>
           <div className="px-5 py-4 border-b border-border/40 shrink-0 bg-muted/20 flex items-center justify-between">
-            <h3 className="text-base font-semibold">Course content</h3>
+            <h3 className="text-base font-semibold">{tr('learning.courseContent')}</h3>
             <span className="text-xs text-muted-foreground font-medium bg-background px-2 py-1 rounded-md border border-border/50">
               {completedLessons.size} / {allLessons.length}
             </span>
@@ -787,12 +777,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                     className="w-full flex items-center justify-between px-5 py-3.5 bg-card hover:bg-muted/30 transition-colors text-left"
                   >
                     <div>
-                      <p className="font-medium text-sm text-foreground/90 leading-tight">
-                        Section {sIdx + 1}: {section.title}
+                      <p className="font-medium text-sm text-foreground/90 leading-tight">{tr('learning.section')}{' '}{sIdx + 1}: {section.title}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {section.lessons.length} lessons
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{tr('learning.countLessons', { count: section.lessons.length })}</p>
                     </div>
                     {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
                   </button>
@@ -837,7 +824,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                               <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground font-medium">
                                 <span className="flex items-center gap-1">
                                   {lesson.type === 'video' || lesson.videoType ? <Play className="h-3 w-3" /> : <BookOpen className="h-3 w-3" />}
-                                  {lesson.videoType === 'ai' ? 'AI Video' : lesson.type === 'video' ? 'Video' : 'Article'}
+                                  {lesson.videoType === 'ai' ? tr('learning.aiVideo') : lesson.type === 'video' ? tr('learning.video') : tr('learning.article')}
                                 </span>
                                 {lesson.duration && (
                                   <>
@@ -867,11 +854,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           {sectionPassed(sIdx) ? <CheckCircle className="h-3 w-3" /> : <Puzzle className="h-2.5 w-2.5" />}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={cn("text-sm leading-snug", isQuizMode && quizSectionIndex === sIdx ? "font-semibold text-primary" : "text-foreground/80 font-medium")}>
-                            Let&apos;s test your understanding!
-                          </p>
+                          <p className={cn("text-sm leading-snug", isQuizMode && quizSectionIndex === sIdx ? "font-semibold text-primary" : "text-foreground/80 font-medium")}>{tr('learning.letsTestYourUnderstanding')}</p>
                           <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground font-medium">
-                            <span>Quiz · ~1 min</span>
+                            <span>{tr('learning.quiz1Min')}</span>
                             {quizScores[sIdx] != null && <span>· {quizScores[sIdx]}%</span>}
                           </div>
                         </div>

@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getUserById } from '@/lib/db/admin'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForEmail } from '@/lib/i18n/recipient'
 import { getMongoDb } from '@/lib/mongodb'
 import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link'
 import { auditAdmin } from '@/lib/admin-audit'
@@ -26,7 +27,7 @@ export async function POST(
   const { userId } = await params
   const user = await getUserById(userId)
   if (!user || !user.email) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
   }
 
   let body: { sendPassword?: boolean } = {}
@@ -52,7 +53,7 @@ export async function POST(
       const setupUrl = await issuePasswordSetupLink(user._id, hours)
       await sendEmail(user.email, accountSetupEmail({ name, orgName, role: roleName, setupUrl, validHours: hours }))
     } else {
-      await sendEmail(user.email, emailTemplates.accountCredentials({ name, email: user.email, role: roleName, orgName }))
+      await sendEmail(user.email, emailTemplatesFor(await localeForEmail(user.email)).accountCredentials({ name, email: user.email, role: roleName, orgName }))
     }
   } catch (e) {
     console.error(`[ResendCredentials] email to ${user.email} failed:`, e)

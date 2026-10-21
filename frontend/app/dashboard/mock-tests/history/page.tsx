@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { formatDuration, resumeHref } from './_format'
+import { useT } from '@/lib/i18n/client'
 
 interface HistoryRow {
   id: string
@@ -43,6 +44,8 @@ const selectCls =
 
 /** Small score trend line (0–100 %), theme tokens only, with a text alternative. */
 function ScoreTrend({ points }: { points: HistoryResponse['trend'] }) {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const W = 600
   const H = 160
   const PAD = { l: 32, r: 12, t: 12, b: 20 }
@@ -62,10 +65,8 @@ function ScoreTrend({ points }: { points: HistoryResponse['trend'] }) {
   return (
     <figure className="space-y-2">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
-        <span className="text-sm font-semibold text-foreground">Score trend</span>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          Last {points.length} · average {avg}%
-        </span>
+        <span className="text-sm font-semibold text-foreground">{t('practice.scoreTrend')}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">{t('practice.lastCountAverageAvg', { count: points.length, avg })}</span>
       </figcaption>
       <svg viewBox={`0 0 ${W} ${H}`} className="h-40 w-full" role="img" aria-label={summary} preserveAspectRatio="none">
         <g className="text-border" stroke="currentColor" strokeWidth={1}>
@@ -94,6 +95,8 @@ function ScoreTrend({ points }: { points: HistoryResponse['trend'] }) {
 }
 
 export default function MockTestHistoryPage() {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const [company, setCompany] = useState('')
   const [role, setRole] = useState('')
@@ -133,13 +136,12 @@ export default function MockTestHistoryPage() {
   return (
     <div className="flex-1 space-y-6">
       <Link href="/dashboard/mock-tests" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" aria-hidden /> Back to mock tests
-      </Link>
+        <ArrowLeft className="h-4 w-4" aria-hidden />{' '}{t('practice.backToMockTests')}</Link>
       <PageHeader
         className="mb-0"
         icon={<History aria-hidden />}
-        title="Mock test history"
-        description="Every test you've started or finished. Open a finished one to see the right answers."
+        title={t('practice.mockTestHistory')}
+        description={t('practice.everyTestYouveStartedOrFinished625')}
       />
 
       {data && data.trend.length >= 2 && (
@@ -148,59 +150,59 @@ export default function MockTestHistoryPage() {
         </Panel>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="group" aria-label="Filter and sort attempts">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" role="group" aria-label={t('practice.filterAndSortAttempts')}>
         <div className="space-y-1">
-          <label htmlFor="mh-company" className="text-xs font-medium text-muted-foreground">Company</label>
+          <label htmlFor="mh-company" className="text-xs font-medium text-muted-foreground">{t('practice.company')}</label>
           <select id="mh-company" className={selectCls} value={company} onChange={(e) => resetTo1(setCompany)(e.target.value)}>
-            <option value="">All companies</option>
+            <option value="">{t('practice.allCompanies')}</option>
             {data?.facets.companies.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div className="space-y-1">
-          <label htmlFor="mh-role" className="text-xs font-medium text-muted-foreground">Role</label>
+          <label htmlFor="mh-role" className="text-xs font-medium text-muted-foreground">{t('practice.role')}</label>
           <select id="mh-role" className={selectCls} value={role} onChange={(e) => resetTo1(setRole)(e.target.value)}>
-            <option value="">All roles</option>
+            <option value="">{t('practice.allRoles')}</option>
             {data?.facets.roles.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
         <div className="space-y-1">
-          <label htmlFor="mh-status" className="text-xs font-medium text-muted-foreground">Status</label>
+          <label htmlFor="mh-status" className="text-xs font-medium text-muted-foreground">{t('practice.status')}</label>
           <select id="mh-status" className={selectCls} value={status} onChange={(e) => resetTo1(setStatus)(e.target.value as typeof status)}>
-            <option value="all">All</option>
-            <option value="submitted">Submitted</option>
-            <option value="in_progress">In progress</option>
+            <option value="all">{t('practice.all')}</option>
+            <option value="submitted">{t('practice.submitted')}</option>
+            <option value="in_progress">{t('practice.inProgress')}</option>
           </select>
         </div>
         <div className="space-y-1">
-          <label htmlFor="mh-sort" className="text-xs font-medium text-muted-foreground">Sort by</label>
+          <label htmlFor="mh-sort" className="text-xs font-medium text-muted-foreground">{t('practice.sortBy')}</label>
           <select id="mh-sort" className={selectCls} value={sort} onChange={(e) => resetTo1(setSort)(e.target.value as SortKey)}>
-            <option value="date-desc">Newest first</option>
-            <option value="date-asc">Oldest first</option>
-            <option value="score-desc">Highest score</option>
-            <option value="score-asc">Lowest score</option>
+            <option value="date-desc">{t('practice.newestFirst')}</option>
+            <option value="date-asc">{t('practice.oldestFirst')}</option>
+            <option value="score-desc">{t('practice.highestScore')}</option>
+            <option value="score-asc">{t('practice.lowestScore')}</option>
           </select>
         </div>
       </div>
 
       {error ? (
-        <p className="text-sm text-destructive" role="alert">Couldn&apos;t load your attempts. Refresh to try again.</p>
+        <p className="text-sm text-destructive" role="alert">{t('practice.couldntLoadYourAttemptsRefreshTo2bc')}</p>
       ) : !data ? (
-        <p className="text-sm text-muted-foreground" aria-live="polite">Loading your attempts…</p>
+        <p className="text-sm text-muted-foreground" aria-live="polite">{t('practice.loadingYourAttempts')}</p>
       ) : data.items.length === 0 ? (
         filtered ? (
           <EmptyState
             illustration="mock-test"
-            title="No attempts match these filters"
-            description="Try another company, role or status."
-            actionLabel="Clear filters"
+            title={t('practice.noAttemptsMatchTheseFilters')}
+            description={t('practice.tryAnotherCompanyRoleOrStatus')}
+            actionLabel={t('practice.clearFilters')}
             onAction={() => { setCompany(''); setRole(''); setStatus('all'); setPage(1) }}
           />
         ) : (
           <EmptyState
             illustration="mock-test"
-            title="No attempts yet"
-            description="Start a mock test and it will show up here, with your score once you submit."
-            actionLabel="Browse mock tests"
+            title={t('practice.noAttemptsYet')}
+            description={t('practice.startAMockTestAndIte70')}
+            actionLabel={t('practice.browseMockTests')}
             actionHref="/dashboard/mock-tests"
           />
         )
@@ -208,15 +210,15 @@ export default function MockTestHistoryPage() {
         <Panel className="overflow-hidden p-0" aria-busy={loading}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <caption className="sr-only">Your mock test attempts, page {data.page} of {data.total_pages}</caption>
+              <caption className="sr-only">{t('practice.yourMockTestAttemptsPagePagef2f', { page: data.page, total_pages: data.total_pages })}</caption>
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30 text-left text-muted-foreground">
-                  <th scope="col" className="p-3 font-medium">Test</th>
-                  <th scope="col" className="p-3 font-medium">Date</th>
-                  <th scope="col" className="p-3 font-medium text-right">Score</th>
-                  <th scope="col" className="p-3 font-medium text-right">Time taken</th>
-                  <th scope="col" className="p-3 font-medium">Status</th>
-                  <th scope="col" className="p-3 font-medium"><span className="sr-only">Actions</span></th>
+                  <th scope="col" className="p-3 font-medium">{t('practice.test')}</th>
+                  <th scope="col" className="p-3 font-medium">{t('practice.date')}</th>
+                  <th scope="col" className="p-3 font-medium text-right">{t('practice.score')}</th>
+                  <th scope="col" className="p-3 font-medium text-right">{t('practice.timeTaken')}</th>
+                  <th scope="col" className="p-3 font-medium">{t('practice.status')}</th>
+                  <th scope="col" className="p-3 font-medium"><span className="sr-only">{t('practice.actions')}</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -234,17 +236,15 @@ export default function MockTestHistoryPage() {
                     <td className="p-3 text-right whitespace-nowrap tabular-nums text-muted-foreground">{formatDuration(a.time_taken_sec)}</td>
                     <td className="p-3">
                       {a.status === 'submitted'
-                        ? <Badge variant="secondary">Submitted</Badge>
-                        : <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">In progress</Badge>}
+                        ? <Badge variant="secondary">{t('practice.submitted')}</Badge>
+                        : <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-300">{t('practice.inProgress')}</Badge>}
                     </td>
                     <td className="p-3 text-right whitespace-nowrap">
                       {a.status === 'submitted' ? (
-                        <Link href={`/dashboard/mock-tests/history/${encodeURIComponent(a.id)}`} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
-                          Review<span className="sr-only"> {a.company} {a.role}</span>
+                        <Link href={`/dashboard/mock-tests/history/${encodeURIComponent(a.id)}`} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{t('practice.review')}<span className="sr-only"> {a.company} {a.role}</span>
                         </Link>
                       ) : (
-                        <Link href={resumeHref(a)} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
-                          Resume<span className="sr-only"> {a.company} {a.role}</span>
+                        <Link href={resumeHref(a)} className="font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">{t('practice.resume')}<span className="sr-only"> {a.company} {a.role}</span>
                         </Link>
                       )}
                     </td>
@@ -254,16 +254,12 @@ export default function MockTestHistoryPage() {
             </table>
           </div>
           {data.total_pages > 1 && (
-            <nav className="flex items-center justify-between gap-3 border-t border-border/60 p-3" aria-label="Pagination">
-              <p className="text-xs text-muted-foreground tabular-nums">
-                Page {data.page} of {data.total_pages} · {data.total} attempts
-              </p>
+            <nav className="flex items-center justify-between gap-3 border-t border-border/60 p-3" aria-label={t('practice.pagination')}>
+              <p className="text-xs text-muted-foreground tabular-nums">{t('practice.pagePageOfTotalPagesTotal200', { page: data.page, total_pages: data.total_pages, total: data.total })}</p>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                  <ChevronLeft className="h-4 w-4" aria-hidden /> Previous
-                </Button>
-                <Button variant="outline" size="sm" disabled={page >= data.total_pages || loading} onClick={() => setPage((p) => p + 1)}>
-                  Next <ChevronRight className="h-4 w-4" aria-hidden />
+                  <ChevronLeft className="h-4 w-4" aria-hidden />{' '}{t('common.previous')}</Button>
+                <Button variant="outline" size="sm" disabled={page >= data.total_pages || loading} onClick={() => setPage((p) => p + 1)}>{t('common.next')}{' '}<ChevronRight className="h-4 w-4" aria-hidden />
                 </Button>
               </div>
             </nav>

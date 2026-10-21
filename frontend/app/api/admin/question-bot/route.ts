@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest) {
   const g = await botAdmin()
   if ('res' in g) return g.res
   const body = await readBody(req)
-  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   const v = cleanBotSettingsPatch(body)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
   try {

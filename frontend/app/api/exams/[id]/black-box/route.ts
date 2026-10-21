@@ -33,7 +33,7 @@ const OUTPUT_MAX = 4000
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   const user = gate.user
   const { id: examId } = await ctx.params
   const parsed = Body.safeParse(await req.json().catch(() => null))
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
     const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: user.id, email: user.email }, { inviteToken: body.inviteToken ?? null, linkToken: body.linkToken ?? null })
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
     const draft = await getExamDraft(db, examId, user.id)
@@ -66,10 +66,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       const out = String(r.run.stdout || '')
       return NextResponse.json({ ok: true, output: out.slice(0, OUTPUT_MAX), truncated: out.length > OUTPUT_MAX })
     } catch {
-      return NextResponse.json({ error: 'The code runner is busy. Try again in a moment.' }, { status: 503 })
+      return NextResponse.json({ error: 'The code runner is busy. Try again in a moment.', code: 'exam_runner_busy' }, { status: 503 })
     }
   } catch (e) {
     console.error('[black-box] POST:', e instanceof Error ? e.message : 'error')
-    return NextResponse.json({ error: 'Run failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Run failed', code: 'exam_run_failed' }, { status: 500 })
   }
 }

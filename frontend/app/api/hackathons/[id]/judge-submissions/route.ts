@@ -12,17 +12,17 @@ export async function GET(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id } = await ctx.params
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
-  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!hk) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   const isAdmin = isHackathonStaff(user, hk)
   const isJudge = isHackathonJudge(user, hk)
   if (!isAdmin && !isJudge) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const subsCol = await hackathonSubmissions()

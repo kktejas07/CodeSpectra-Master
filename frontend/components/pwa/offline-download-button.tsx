@@ -10,8 +10,10 @@ import Link from 'next/link'
 import { CheckCircle2, CloudDownload, Loader2 } from 'lucide-react'
 import { offlineSupported, listPacks, downloadDailyChallenge } from '@/lib/pwa/offline-store'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 export function OfflineDownloadButton({ day, className }: { day: string; className?: string }) {
+  const { t } = useT()
   const [state, setState] = useState<'hidden' | 'idle' | 'saving' | 'saved' | 'error'>('hidden')
   const [error, setError] = useState('')
 
@@ -30,8 +32,7 @@ export function OfflineDownloadButton({ day, className }: { day: string; classNa
         href="/offline"
         className={cn('inline-flex min-h-10 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring', className)}
       >
-        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden /> Saved for offline
-      </Link>
+        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" aria-hidden />{' '}{t('dash.savedForOffline')}</Link>
     )
   }
 
@@ -41,7 +42,7 @@ export function OfflineDownloadButton({ day, className }: { day: string; classNa
       await downloadDailyChallenge()
       setState('saved')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save')
+      setError(e instanceof Error ? e.message : t('dash.couldNotSave'))
       setState('error')
     }
   }
@@ -56,9 +57,7 @@ export function OfflineDownloadButton({ day, className }: { day: string; classNa
       >
         {state === 'saving'
           ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden />
-          : <CloudDownload className="h-3.5 w-3.5" aria-hidden />}
-        Save for offline
-      </button>
+          : <CloudDownload className="h-3.5 w-3.5" aria-hidden />}{t('dash.saveForOffline')}</button>
       {state === 'error' && <span role="alert" className="text-xs text-destructive">{error}</span>}
     </span>
   )

@@ -16,7 +16,7 @@ const TTL_MS = 15 * 60 * 1000
  */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if (!user.email) {
     return NextResponse.json({ error: 'Add a login email before verifying phone' }, { status: 400 })
   }
@@ -26,15 +26,15 @@ export async function POST(req: NextRequest) {
   const countryCode = String(body.countryCode || '+91').trim()
   // SEC-014: validated before it is stored or echoed into the email HTML.
   if (!/^\+\d{1,4}$/.test(countryCode)) {
-    return NextResponse.json({ error: 'Choose a valid country code' }, { status: 400 })
+    return NextResponse.json({ error: 'Choose a valid country code', code: 'country_code_invalid' }, { status: 400 })
   }
   if (phone.length < 6 || phone.length > 15) {
-    return NextResponse.json({ error: 'Enter a valid mobile number' }, { status: 400 })
+    return NextResponse.json({ error: 'Enter a valid mobile number', code: 'phone_invalid' }, { status: 400 })
   }
   const { rateLimitRedis } = await import('@/lib/upstash-rate-limit')
   const limit = await rateLimitRedis(`phone-verify:${user.id}`, 5, 3600_000)
   if (!limit.ok) {
-    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.` }, { status: 429 })
+    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.`, code: 'rate_limited_minutes', params: { minutes: Math.ceil(limit.retryAfterSec / 60) } }, { status: 429 })
   }
 
   const code = String(randomInt(100000, 999999))

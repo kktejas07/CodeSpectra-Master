@@ -175,7 +175,7 @@ export async function runStreakSaver(now = new Date()): Promise<{ nudged: number
     const lh = localHour(now, tz.get(uid) || 'UTC')
     if (!(lh >= 20 || utcHour >= 21)) continue
     if (!(await claimOnce(`streak:${uid}:${today}`))) continue
-    await notify({ user_id: uid, type: 'streak.saver', title: 'Keep your streak alive', message: 'Solve one problem before midnight UTC to keep your streak going.', link: '/dashboard/arena', icon: 'flame' })
+    await notify({ user_id: uid, type: 'streak.saver', title: 'Keep your streak alive', message: 'Solve one problem before midnight UTC to keep your streak going.', title_i18n: { key: 'streak.title' }, message_i18n: { key: 'streak.message' }, link: '/dashboard/arena', icon: 'flame' })
     nudged++
   }
   return { nudged }
@@ -213,7 +213,7 @@ export async function runCertificateExpiry(now = new Date()): Promise<{ reminded
   for (const c of rows) {
     if (!(await claimOnce(`cert-exp:${String(c.id)}:${String(c.expires_at)}`))) continue
     const title = String((c.cert_snapshot as Doc | undefined)?.title || 'Your certificate')
-    await notify({ user_id: String(c.user_id), type: 'certification.expiring', title: `${title} expires soon`, message: `It expires on ${new Date(String(c.expires_at)).toUTCString().slice(0, 16)}. Retake it to keep it current.`, link: '/dashboard/certifications', icon: 'clock' })
+    await notify({ user_id: String(c.user_id), type: 'certification.expiring', title: `${title} expires soon`, message: `It expires on ${new Date(String(c.expires_at)).toUTCString().slice(0, 16)}. Retake it to keep it current.`, title_i18n: { key: 'certExpiring.title', params: { title } }, message_i18n: { key: 'certExpiring.message', params: { date: new Date(String(c.expires_at)).toUTCString().slice(0, 16) } }, link: '/dashboard/certifications', icon: 'clock' })
     reminded++
   }
   return { reminded }

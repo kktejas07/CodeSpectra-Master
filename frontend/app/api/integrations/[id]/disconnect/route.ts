@@ -18,6 +18,6 @@ export async function POST(_req: NextRequest, { params }: IdRouteContext) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[CodeSpectra] Integration disconnect error:', error)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

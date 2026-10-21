@@ -13,17 +13,20 @@ import { atsGet, atsSend } from '@/components/hiring/lib/api'
 import { PROVIDER_LABELS } from '@/components/hiring/lib/labels'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { fromZonedDatetimeString, toZonedDatetimeString } from '@/lib/datetime-local'
 import { cn } from '@/lib/utils'
 import type { MeetingProvider } from '@/lib/ats/contract'
 import { REC_LABELS, type InterviewDetail, type IntegrationsInfo, type Scorecard } from './types'
+import { useT } from '@/lib/i18n/client'
 
 const PROVIDERS: MeetingProvider[] = ['livekit', 'zoom', 'google_meet', 'teams', 'manual']
 
 // ─── Scheduling ──────────────────────────────────────────────────────────────
 
 export function SchedulePanel({ d, onChanged }: { d: InterviewDetail; onChanged: () => void }) {
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const iv = d.interview
   const addToast = useToast()
   const confirm = useConfirm()
@@ -73,7 +76,7 @@ export function SchedulePanel({ d, onChanged }: { d: InterviewDetail; onChanged:
   }
 
   function submit() {
-    if (!when) { setErr('Pick a date and time.'); return }
+    if (!when) { setErr(t('hiring.pickADateAndTime')); return }
     const body: Record<string, unknown> = { scheduled_at: fromZonedDatetimeString(when, tz), duration_min: Number(duration) || iv.duration_min }
     if (iv.mode === 'virtual') {
       body.provider = provider
@@ -86,32 +89,30 @@ export function SchedulePanel({ d, onChanged }: { d: InterviewDetail; onChanged:
 
   async function copyLink() {
     if (!d.self_schedule_link) return
-    try { await navigator.clipboard.writeText(d.self_schedule_link); addToast({ type: 'success', title: 'Link copied' }) } catch { /* ignore */ }
+    try { await navigator.clipboard.writeText(d.self_schedule_link); addToast({ type: 'success', title: t('hiring.linkCopied') }) } catch { /* ignore */ }
   }
 
   if (!open) return null
   return (
     <Panel className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">{scheduled ? 'Reschedule' : 'Book a time'}</h2>
-        <p className="text-sm text-muted-foreground">Times are in {tz}. Everyone gets an email with a calendar invite.</p>
+        <h2 className="text-lg font-semibold text-foreground">{scheduled ? t('hiring.reschedule') : t('hiring.bookATime')}</h2>
+        <p className="text-sm text-muted-foreground">{t('hiring.timesAreInTzEveryoneGetsa88', { tz })}</p>
       </div>
 
       {iv.requested_slot && !scheduled && (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
-          The candidate asked for {formatDateTime(iv.requested_slot, tz)}. It&apos;s filled in below — check the meeting type and book it.
-        </p>
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">{t('hiring.theCandidateAskedForDateIts6fb', { date: formatDateTime(iv.requested_slot, tz) })}</p>
       )}
       {d.self_schedule_link && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          <span>The candidate can pick a time themselves.</span>
-          <Button size="sm" variant="outline" onClick={() => void copyLink()} className="h-8"><Copy className="h-3.5 w-3.5" aria-hidden /> Copy their link</Button>
+          <span>{t('hiring.theCandidateCanPickATimeffe')}</span>
+          <Button size="sm" variant="outline" onClick={() => void copyLink()} className="h-8"><Copy className="h-3.5 w-3.5" aria-hidden />{' '}{t('hiring.copyTheirLink')}</Button>
         </div>
       )}
 
       {slots && slots.length > 0 && (
         <div>
-          <p className="mb-2 text-sm font-medium text-foreground">Panel is free at</p>
+          <p className="mb-2 text-sm font-medium text-foreground">{t('hiring.panelIsFreeAt')}</p>
           <div className="flex flex-wrap gap-2">
             {slots.map((s) => {
               const v = toZonedDatetimeString(new Date(s.start), tz)
@@ -128,35 +129,35 @@ export function SchedulePanel({ d, onChanged }: { d: InterviewDetail; onChanged:
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Date and time" htmlFor="iv-when">
+        <Field label={t('hiring.dateAndTime')} htmlFor="iv-when">
           <Input id="iv-when" type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />
         </Field>
-        <Field label="Length (minutes)" htmlFor="iv-dur">
+        <Field label={t('hiring.lengthMinutes')} htmlFor="iv-dur">
           <Input id="iv-dur" type="number" min={10} max={480} step={5} value={duration} onChange={(e) => setDuration(e.target.value)} />
         </Field>
       </div>
 
       {iv.mode === 'virtual' ? (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Meeting type" htmlFor="iv-provider" hint={status(provider) === 'not connected' || status(provider) === 'needs reconnecting' ? 'An admin can connect it in Hiring settings → Integrations.' : undefined}>
+          <Field label={t('hiring.meetingType')} htmlFor="iv-provider" hint={status(provider) === 'not connected' || status(provider) === 'needs reconnecting' ? t('hiring.anAdminCanConnectItIn9dd') : undefined}>
             <NativeSelect id="iv-provider" value={provider} onChange={(v) => setProvider(v as MeetingProvider)}
               options={PROVIDERS.map((p) => ({ value: p, label: `${PROVIDER_LABELS[p]}${status(p) === 'ready' || status(p) === 'connected' ? '' : ` (${status(p)})`}` }))} />
           </Field>
           {provider === 'manual' && (
-            <Field label="Meeting link" htmlFor="iv-url">
+            <Field label={t('hiring.meetingLink')} htmlFor="iv-url">
               <Input id="iv-url" type="url" inputMode="url" placeholder="https://…" value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} />
             </Field>
           )}
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Address" htmlFor="iv-addr" className="sm:col-span-2">
-            <Input id="iv-addr" value={loc.address} onChange={(e) => setLoc({ ...loc, address: e.target.value })} placeholder="Building, street, city" />
+          <Field label={t('hiring.address')} htmlFor="iv-addr" className="sm:col-span-2">
+            <Input id="iv-addr" value={loc.address} onChange={(e) => setLoc({ ...loc, address: e.target.value })} placeholder={t('hiring.buildingStreetCity')} />
           </Field>
-          <Field label="Room" htmlFor="iv-room"><Input id="iv-room" value={loc.room} onChange={(e) => setLoc({ ...loc, room: e.target.value })} /></Field>
-          <Field label="Map link" htmlFor="iv-map"><Input id="iv-map" type="url" placeholder="https://maps…" value={loc.map_url} onChange={(e) => setLoc({ ...loc, map_url: e.target.value })} /></Field>
-          <Field label="Instructions for the candidate" htmlFor="iv-instr" className="sm:col-span-2">
-            <Textarea id="iv-instr" rows={2} value={loc.instructions} onChange={(e) => setLoc({ ...loc, instructions: e.target.value })} placeholder="Bring a photo ID, ask for … at reception" />
+          <Field label={t('hiring.room')} htmlFor="iv-room"><Input id="iv-room" value={loc.room} onChange={(e) => setLoc({ ...loc, room: e.target.value })} /></Field>
+          <Field label={t('hiring.mapLink')} htmlFor="iv-map"><Input id="iv-map" type="url" placeholder="https://maps…" value={loc.map_url} onChange={(e) => setLoc({ ...loc, map_url: e.target.value })} /></Field>
+          <Field label={t('hiring.instructionsForTheCandidate')} htmlFor="iv-instr" className="sm:col-span-2">
+            <Textarea id="iv-instr" rows={2} value={loc.instructions} onChange={(e) => setLoc({ ...loc, instructions: e.target.value })} placeholder={t('hiring.bringAPhotoIdAskFore26')} />
           </Field>
         </div>
       )}
@@ -165,22 +166,20 @@ export function SchedulePanel({ d, onChanged }: { d: InterviewDetail; onChanged:
       <div className="flex flex-wrap gap-2">
         <Button className="min-h-11 rounded-full px-5" disabled={!!busy} onClick={submit}>
           {busy === 'schedule' || busy === 'reschedule' ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : null}
-          {scheduled ? 'Move interview' : 'Book interview'}
+          {scheduled ? t('hiring.moveInterview') : t('hiring.bookInterview')}
         </Button>
         {scheduled && (
           <>
-            <Button variant="outline" className="min-h-11" disabled={!!busy} onClick={() => void run('complete', {}, 'Marked as completed')}>Mark completed</Button>
-            <Button variant="outline" className="min-h-11" disabled={!!busy} onClick={() => void run('no_show', {}, 'Marked as no-show')}>Candidate didn&apos;t show</Button>
+            <Button variant="outline" className="min-h-11" disabled={!!busy} onClick={() => void run('complete', {}, 'Marked as completed')}>{t('hiring.markCompleted')}</Button>
+            <Button variant="outline" className="min-h-11" disabled={!!busy} onClick={() => void run('no_show', {}, 'Marked as no-show')}>{t('hiring.candidateDidntShow')}</Button>
           </>
         )}
         {(scheduled || iv.status === 'awaiting_schedule') && (
           <Button variant="ghost" className="min-h-11 text-destructive hover:text-destructive" disabled={!!busy}
             onClick={async () => {
-              const ok = await confirm({ title: 'Cancel this interview?', description: scheduled ? 'The candidate and panel will be told, and the meeting is removed.' : 'It will no longer be offered to the candidate.', confirmText: 'Cancel interview', cancelText: 'Keep it', destructive: true })
+              const ok = await confirm({ title: t('hiring.cancelThisInterview'), description: scheduled ? t('hiring.theCandidateAndPanelWillBe88b') : t('hiring.itWillNoLongerBeOffered867'), confirmText: t('hiring.cancelInterview'), cancelText: 'Keep it', destructive: true })
               if (ok) void run('cancel', {}, 'Interview cancelled')
-            }}>
-            Cancel interview
-          </Button>
+            }}>{t('hiring.cancelInterview')}</Button>
         )}
       </div>
     </Panel>
@@ -190,6 +189,7 @@ export function SchedulePanel({ d, onChanged }: { d: InterviewDetail; onChanged:
 // ─── Panel members ───────────────────────────────────────────────────────────
 
 export function PanelEditor({ d, onChanged }: { d: InterviewDetail; onChanged: () => void }) {
+  const { t } = useT()
   const iv = d.interview
   const addToast = useToast()
   const [members, setMembers] = useState<{ user_id: string | null; email: string; name?: string; role: string; status: string }[] | null>(null)
@@ -216,7 +216,7 @@ export function PanelEditor({ d, onChanged }: { d: InterviewDetail; onChanged: (
     setBusy(true); setErr(null)
     try {
       await atsSend(`/api/ats/interviews/${encodeURIComponent(iv.id)}`, 'PATCH', { action: 'panel', user_ids: picked })
-      addToast({ type: 'success', title: 'Panel updated' })
+      addToast({ type: 'success', title: t('hiring.panelUpdated') })
       onChanged()
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e))
@@ -229,11 +229,11 @@ export function PanelEditor({ d, onChanged }: { d: InterviewDetail; onChanged: (
   return (
     <Panel className="space-y-3">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Interview panel</h2>
-        <p className="text-sm text-muted-foreground">Only people on the panel can submit a scorecard. New members get the invite.</p>
+        <h2 className="text-lg font-semibold text-foreground">{t('hiring.interviewPanel')}</h2>
+        <p className="text-sm text-muted-foreground">{t('hiring.onlyPeopleOnThePanelCan651')}</p>
       </div>
-      {members === null ? <p className="text-sm text-muted-foreground">Loading the team…</p> : !options.length ? (
-        <p className="text-sm text-muted-foreground">No active team members yet. <Link className="text-primary hover:underline" href="/dashboard/hiring/team">Invite interviewers</Link>.</p>
+      {members === null ? <p className="text-sm text-muted-foreground">{t('hiring.loadingTheTeam')}</p> : !options.length ? (
+        <p className="text-sm text-muted-foreground">{t('hiring.noActiveTeamMembersYet')}{' '}<Link className="text-primary hover:underline" href="/dashboard/hiring/team">{t('hiring.inviteInterviewers')}</Link>.</p>
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2">
           {options.map((m) => (
@@ -251,8 +251,7 @@ export function PanelEditor({ d, onChanged }: { d: InterviewDetail; onChanged: (
       )}
       <InlineError message={err} />
       <Button variant="outline" className="min-h-11" disabled={!changed || !picked.length || busy} onClick={() => void save()}>
-        {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />} Save panel
-      </Button>
+        {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}{' '}{t('hiring.savePanel')}</Button>
     </Panel>
   )
 }
@@ -262,6 +261,7 @@ export function PanelEditor({ d, onChanged }: { d: InterviewDetail; onChanged: (
 const RECS: Scorecard['recommendation'][] = ['strong_yes', 'yes', 'no', 'strong_no']
 
 export function ScorecardForm({ d, onChanged }: { d: InterviewDetail; onChanged: () => void }) {
+  const { t } = useT()
   const iv = d.interview
   const addToast = useToast()
   const mine = iv.scorecards.find((c) => c.interviewer_id === d.me.user_id)
@@ -277,7 +277,7 @@ export function ScorecardForm({ d, onChanged }: { d: InterviewDetail; onChanged:
     setBusy(true); setErr(null)
     try {
       await atsSend(`/api/ats/interviews/${encodeURIComponent(iv.id)}/scorecard`, 'POST', { ratings, recommendation: rec, notes })
-      addToast({ type: 'success', title: mine ? 'Scorecard updated' : 'Scorecard submitted' })
+      addToast({ type: 'success', title: mine ? t('hiring.scorecardUpdated') : t('hiring.scorecardSubmitted') })
       onChanged()
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e))
@@ -289,11 +289,11 @@ export function ScorecardForm({ d, onChanged }: { d: InterviewDetail; onChanged:
   return (
     <Panel className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">{mine ? 'Your scorecard' : 'Submit your scorecard'}</h2>
+        <h2 className="text-lg font-semibold text-foreground">{mine ? t('hiring.yourScorecard') : t('hiring.submitYourScorecard')}</h2>
         <p className="text-sm text-muted-foreground">
-          {iv.result_recorded ? 'The panel decision is recorded; scorecards are closed.'
-            : !open ? 'You can fill this in once the interview has started.'
-            : 'Rate each area from 1 (weak) to 5 (excellent). Other interviewers’ scores show after you submit.'}
+          {iv.result_recorded ? t('hiring.thePanelDecisionIsRecordedScorecards902')
+            : !open ? t('hiring.youCanFillThisInOnce383')
+            : t('hiring.rateEachAreaFrom1Weak1c0')}
         </p>
       </div>
       <fieldset disabled={!open || busy} className="space-y-4">
@@ -303,7 +303,7 @@ export function ScorecardForm({ d, onChanged }: { d: InterviewDetail; onChanged:
             {c.description && <p className="text-xs text-muted-foreground">{c.description}</p>}
             <div className="mt-2 flex gap-2">
               {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} type="button" role="radio" aria-checked={ratings[c.id] === n} aria-label={`${n} of 5`}
+                <button key={n} type="button" role="radio" aria-checked={ratings[c.id] === n} aria-label={t('hiring.nOf5', { n })}
                   onClick={() => setRatings((r) => ({ ...r, [c.id]: n }))}
                   className={cn('h-11 w-11 rounded-xl border text-sm font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50',
                     ratings[c.id] === n ? 'border-primary bg-primary text-primary-foreground' : 'border-border text-foreground hover:border-primary/50')}>
@@ -313,8 +313,8 @@ export function ScorecardForm({ d, onChanged }: { d: InterviewDetail; onChanged:
             </div>
           </div>
         ))}
-        <div role="radiogroup" aria-label="Recommendation">
-          <p className="text-sm font-medium text-foreground">Recommendation</p>
+        <div role="radiogroup" aria-label={t('hiring.recommendation')}>
+          <p className="text-sm font-medium text-foreground">{t('hiring.recommendation')}</p>
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {RECS.map((r) => (
               <button key={r} type="button" role="radio" aria-checked={rec === r} onClick={() => setRec(r)}
@@ -327,14 +327,14 @@ export function ScorecardForm({ d, onChanged }: { d: InterviewDetail; onChanged:
             ))}
           </div>
         </div>
-        <Field label="Notes" htmlFor="sc-notes" hint="Evidence for your ratings. The candidate never sees this.">
+        <Field label={t('hiring.notes')} htmlFor="sc-notes" hint={t('hiring.evidenceForYourRatingsTheCandidate704')}>
           <Textarea id="sc-notes" rows={4} maxLength={5000} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
       </fieldset>
       <InlineError message={err} />
       {open && (
         <Button className="min-h-11 rounded-full px-6" disabled={busy || !rec || iv.scorecard_template.criteria.some((c) => !ratings[c.id])} onClick={() => void submit()}>
-          {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />} {mine ? 'Update scorecard' : 'Submit scorecard'}
+          {busy && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />} {mine ? t('hiring.updateScorecard') : t('hiring.submitScorecard')}
         </Button>
       )}
     </Panel>
@@ -342,37 +342,38 @@ export function ScorecardForm({ d, onChanged }: { d: InterviewDetail; onChanged:
 }
 
 export function ScorecardList({ d }: { d: InterviewDetail }) {
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const iv = d.interview
   const label = (id: string) => iv.scorecard_template.criteria.find((c) => c.id === id)?.label || id
   const others = d.me.sees_all_scorecards ? iv.scorecards : []
   const waiting = iv.panel.filter((p) => !iv.scorecards.some((c) => c.interviewer_id === p.user_id))
   if (!d.me.sees_all_scorecards) {
     return d.me.on_panel ? null : (
-      <Panel><p className="text-sm text-muted-foreground">Scorecards are visible to the hiring team.</p></Panel>
+      <Panel><p className="text-sm text-muted-foreground">{t('hiring.scorecardsAreVisibleToTheHiringf43')}</p></Panel>
     )
   }
   return (
     <Panel className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Panel feedback</h2>
-        <p className="text-sm text-muted-foreground">
-          Decision rule: {iv.pass_rule === 'all_yes' ? 'everyone says yes' : iv.pass_rule === 'majority_yes' ? 'most say yes' : `average rating of at least ${iv.pass_score ?? 3.5}`}.
-          {waiting.length > 0 && !iv.result_recorded && ` Waiting for ${waiting.map((p) => p.name || p.email).join(', ')}.`}
-          {iv.result_recorded && ' The result has been recorded on the application.'}
+        <h2 className="text-lg font-semibold text-foreground">{t('hiring.panelFeedback')}</h2>
+        <p className="text-sm text-muted-foreground">{t('hiring.decisionRule')}{' '}{iv.pass_rule === 'all_yes' ? t('hiring.everyoneSaysYes') : iv.pass_rule === 'majority_yes' ? t('hiring.mostSayYes') : t('hiring.averageRatingOfAtLeastValue', { value: iv.pass_score ?? 3.5 })}.
+          {waiting.length > 0 && !iv.result_recorded && t('hiring.waitingForValue', { value: waiting.map((p) => p.name || p.email).join(', ') })}
+          {iv.result_recorded && t('hiring.theResultHasBeenRecordedOnf21')}
         </p>
       </div>
       {iv.ai_summary && (
         <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
-          <p className="mb-1 flex items-center gap-1.5 font-medium text-foreground"><Sparkles className="h-4 w-4 text-primary" aria-hidden /> Summary of notes (AI)</p>
+          <p className="mb-1 flex items-center gap-1.5 font-medium text-foreground"><Sparkles className="h-4 w-4 text-primary" aria-hidden />{' '}{t('hiring.summaryOfNotesAi')}</p>
           <p className="text-muted-foreground">{iv.ai_summary}</p>
         </div>
       )}
-      {!others.length ? <p className="text-sm text-muted-foreground">No scorecards yet.</p> : (
+      {!others.length ? <p className="text-sm text-muted-foreground">{t('hiring.noScorecardsYet')}</p> : (
         <ul className="space-y-3">
           {others.map((c) => (
             <li key={c.interviewer_id} className="rounded-2xl border border-border p-4">
               <p className="flex flex-wrap items-center justify-between gap-2 font-medium text-foreground">
-                <span>{c.interviewer_name || 'Interviewer'}</span>
+                <span>{c.interviewer_name || t('hiring.interviewer')}</span>
                 <span className={c.recommendation.includes('yes') ? 'text-sm text-green-700 dark:text-green-400' : 'text-sm text-red-700 dark:text-red-400'}>{REC_LABELS[c.recommendation]}</span>
               </p>
               <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
@@ -381,7 +382,7 @@ export function ScorecardList({ d }: { d: InterviewDetail }) {
                 ))}
               </dl>
               {c.notes && <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{c.notes}</p>}
-              <p className="mt-2 text-xs text-muted-foreground">Submitted {formatDateTime(c.submitted_at)}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{t('hiring.submittedDate', { date: formatDateTime(c.submitted_at) })}</p>
             </li>
           ))}
         </ul>

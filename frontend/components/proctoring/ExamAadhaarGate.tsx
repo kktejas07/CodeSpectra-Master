@@ -7,6 +7,7 @@ import { X, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { AnonAadhaarVerify } from '@/components/kyc/AnonAadhaarVerify'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
+import { useT } from '@/lib/i18n/client'
 
 type ExamMode = 'anon_aadhaar' | 'ocr_face' | 'off'
 
@@ -29,6 +30,7 @@ export function ExamAadhaarGate({
   examId?: string
   examTitle?: string
 }) {
+  const { t } = useT()
   const [mode, setMode] = useState<ExamMode | null>(null)
   // The ocr_face branch renders IdentityVerification, which traps focus itself.
   const panelRef = useFocusTrap<HTMLDivElement>(!(mode === 'ocr_face' && !!examId), onCancel)
@@ -59,9 +61,8 @@ export function ExamAadhaarGate({
   if (!mode) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-        <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Loading ID check" className="flex items-center gap-2 rounded-2xl border border-border bg-card p-6 text-sm text-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading ID check…
-        </div>
+        <div ref={panelRef} role="dialog" aria-modal="true" aria-label={t('exam.loadingIdCheck')} className="flex items-center gap-2 rounded-2xl border border-border bg-card p-6 text-sm text-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />{' '}{t('exam.loadingIdCheck2')}</div>
       </div>
     )
   }
@@ -86,13 +87,11 @@ export function ExamAadhaarGate({
         <div ref={panelRef} className="relative w-full max-w-md space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" aria-hidden />
-            <h2 id="exam-id-none-title" className="text-base font-bold text-foreground">No extra ID check needed</h2>
+            <h2 id="exam-id-none-title" className="text-base font-bold text-foreground">{t('exam.noExtraIdCheckNeeded')}</h2>
           </div>
-          <p className="text-sm text-muted-foreground">
-            This test doesn&apos;t ask for an extra ID check during the test. Nothing was checked or uploaded.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('exam.thisTestDoesntAskForAn89d')}</p>
           <div className="flex justify-end">
-            <Button type="button" variant="outline" onClick={onCancel}>Close</Button>
+            <Button type="button" variant="outline" onClick={onCancel}>{t('common.close')}</Button>
           </div>
         </div>
       </div>
@@ -104,17 +103,15 @@ export function ExamAadhaarGate({
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="exam-aadhaar-title" className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto space-y-4 rounded-3xl border border-border bg-card p-6 shadow-xl dark:shadow-none">
         <button
           type="button"
-          aria-label="Close"
+          aria-label={t('common.close')}
           className="absolute right-3 top-3 rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onCancel}
         >
           <X className="h-4 w-4" />
         </button>
         <div>
-          <h2 id="exam-aadhaar-title" className="text-base font-bold text-foreground">Exam identity (Anon Aadhaar)</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Privacy-preserving Aadhaar proof. Does not replace full KYC on Identity Verify.
-          </p>
+          <h2 id="exam-aadhaar-title" className="text-base font-bold text-foreground">{t('exam.examIdentityAnonAadhaar')}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">{t('exam.privacyPreservingAadhaarProofDoesNotf0a')}</p>
         </div>
         <AnonAadhaarVerify
           purpose="exam"
@@ -122,9 +119,7 @@ export function ExamAadhaarGate({
           useTestAadhaar={testMode}
           onVerified={() => onVerified()}
         />
-        <Button type="button" variant="outline" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>{t('common.cancel')}</Button>
       </div>
     </div>
   )

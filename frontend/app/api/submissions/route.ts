@@ -47,7 +47,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     ])
     return NextResponse.json({ submissions: rows, total, limit, offset })
   } catch {
-    return NextResponse.json({ error: 'Failed to load submissions' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load submissions', code: 'sub_load_failed' }, { status: 500 })
   }
 }
 
@@ -97,7 +97,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json(claim.body, { status: claim.status, headers: { 'Idempotent-Replayed': 'true' } })
   }
   if (claim.kind === 'in_progress') {
-    return NextResponse.json({ error: 'This answer is already being graded.' }, { status: 425, headers: { 'Retry-After': '30' } })
+    return NextResponse.json({ error: 'This answer is already being graded.', code: 'sub_already_grading' }, { status: 425, headers: { 'Retry-After': '30' } })
   }
   let res: NextResponse
   try {
@@ -125,7 +125,7 @@ async function gradeSubmission(request: NextRequest): Promise<NextResponse> {
   try {
     body = (await request.json()) as SubmitBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const slug = body.problem_slug?.trim()
@@ -135,19 +135,19 @@ async function gradeSubmission(request: NextRequest): Promise<NextResponse> {
 
   if (!slug || !lang || typeof source !== 'string') {
     return NextResponse.json(
-      { error: 'problem_slug, language, and source_code are required' },
+      { error: 'problem_slug, language, and source_code are required', code: 'sub_fields_required' },
       { status: 400 },
     )
   }
   if (source.length > 50_000) {
-    return NextResponse.json({ error: 'source_code too large (50KB max)' }, { status: 400 })
+    return NextResponse.json({ error: 'source_code too large (50KB max)', code: 'sub_source_too_large' }, { status: 400 })
   }
 
   const pCol = await problems()
   const problem = await pCol.findOne({ slug })
   // Practice submit only for published, non-hackathon problems (hackathon problems use their own route).
   if (!problem || problem.is_published === false || problem.hackathon_id || problem.visibility === 'hackathon_only') {
-    return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
   }
 
   // Problem packs: run and submit both need access (purchase or included plan).
@@ -157,7 +157,7 @@ async function gradeSubmission(request: NextRequest): Promise<NextResponse> {
     access = await checkProblemAccess(gate.user, problem, isOwner)
   } catch (e) {
     console.error('[submissions] pack access check failed:', e)
-    return NextResponse.json({ error: 'Could not check access to this problem. Please try again.' }, { status: 503 })
+    return NextResponse.json({ error: 'Could not check access to this problem. Please try again.', code: 'sub_access_check_failed' }, { status: 503 })
   }
   if (access.locked) return NextResponse.json(packLockedError(access), { status: 402 })
 
@@ -178,7 +178,7 @@ async function gradeSubmission(request: NextRequest): Promise<NextResponse> {
   // Pick tests: `run` mode uses only samples, `submit` uses all.
   const tests = (problem.test_cases || []).filter((t) => (mode === 'run' ? t.is_sample : true))
   if (tests.length === 0) {
-    return NextResponse.json({ error: 'No test cases configured' }, { status: 400 })
+    return NextResponse.json({ error: 'No test cases configured', code: 'sub_no_tests' }, { status: 400 })
   }
 
   const results: TestRunResult[] = []
@@ -266,7 +266,7 @@ async function gradeSubmission(request: NextRequest): Promise<NextResponse> {
       await sCol.insertOne(doc)
     } catch (e) {
       console.error('[CodeSpectra] submission insert failed:', e)
-      return NextResponse.json({ error: 'Submission failed to save. Please retry.' }, { status: 500 })
+      return NextResponse.json({ error: 'Submission failed to save. Please retry.', code: 'sub_save_failed' }, { status: 500 })
     }
 
     // XP award is best-effort — failures are logged but don't fail the response.

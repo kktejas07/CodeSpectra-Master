@@ -172,5 +172,5 @@ export async function GET(req: NextRequest) {
       has_more: page * limit < data.length,
       truncated: submissions.length >= MAX_DOCS || invites.length >= MAX_DOCS,
     })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

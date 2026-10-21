@@ -10,7 +10,7 @@ import { getMongoDb } from '@/lib/mongodb'
 export async function GET(_request: NextRequest) {
   const user = await getAPIUser()
   if (!user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    return NextResponse.json({ error: 'Not authenticated', code: 'not_authenticated' }, { status: 401 })
   }
 
   try {

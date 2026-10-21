@@ -207,12 +207,12 @@ export async function POST(request: NextRequest) {
     const rawIp = ipKey.replace(/^(ip:|u:)/, '')
     const limit = await rateLimitRedis(`oauth-session:ip:${ipKey}`, 60, 60_000)
     if (!limit.ok) {
-      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: limit.retryAfterSec } }, { status: 429 })
     }
 
     const token = await verifyFirebaseIdToken(idToken)
     if (!token) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid token', code: 'auth_invalid_token' }, { status: 401 })
     }
 
     const { getGeneralSettingsCached } = await import('@/lib/platform-general-settings-server')
@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
     }
     if (await isIpBlocked(rawIp) || await isIpOutsideWhitelist(rawIp)) {
       await recordSecurityEvent({ type: 'auth.blocked_ip', severity: 'critical', ip: rawIp, user_id: uid, email, detail: 'Blocked IP attempted OAuth sign-in' })
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied', code: 'access_denied' }, { status: 403 })
     }
 
     const role = normalizeUserRole(doc.role as string | undefined)
@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, user: { id: uid, email, role, name: (doc.fullName || doc.name || null) as string | null } })
   } catch (error) {
     console.error('[Session] Error creating session:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }
 

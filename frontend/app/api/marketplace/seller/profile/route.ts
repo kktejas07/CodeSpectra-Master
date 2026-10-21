@@ -6,7 +6,7 @@ export async function PATCH(req: NextRequest) {
   const g = await sellerGate(req, { write: true })
   if ('res' in g) return g.res
   try {
-    if (g.seller.status === 'suspended') return json({ error: 'Your seller account is suspended.' }, 403)
+    if (g.seller.status === 'suspended') return json({ error: 'Your seller account is suspended.', code: 'mkt_seller_suspended' }, 403)
     const { updateSellerProfile, publicSeller } = await import('@/lib/marketplace/sellers')
     return json({ seller: publicSeller(await updateSellerProfile(g.seller, await bodyOf(req))) })
   } catch (e) {

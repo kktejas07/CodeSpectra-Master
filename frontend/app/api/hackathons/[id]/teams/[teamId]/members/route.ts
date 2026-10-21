@@ -16,7 +16,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
@@ -93,7 +93,7 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
 
   const { searchParams } = new URL(req.url)
@@ -114,7 +114,7 @@ export async function DELETE(
   const isSelf = user.id === removeUserId
 
   if (!isHackathonStaff(user, hk) && !isCaptain && !isSelf) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const updatedMembers = team.members.filter(m => m.user_id !== removeUserId)

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (limited) return limited
   const { id } = await ctx.params
   const wf = await loadWorkflow(g, id)
-  if (!wf) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!wf) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   const body = (await req.json().catch(() => ({}))) as { dry_run?: unknown; payload?: unknown }
   const dryRun = body.dry_run === true
   if (!dryRun && !wf.is_active) return NextResponse.json({ error: 'Switch the workflow on first, or use a test run.' }, { status: 400 })

@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(request: Request) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(request.url)
   const mode = searchParams.get('mode') === 'light' ? 'light' : 'dark'

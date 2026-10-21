@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
   try {
     body = (await req.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const name = String(body.name ?? '').trim()
   const tpl = typeof body.template_id === 'string' ? templateById(body.template_id) : undefined

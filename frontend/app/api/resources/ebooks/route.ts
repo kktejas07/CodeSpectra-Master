@@ -61,7 +61,7 @@ function publicShape(e: EbookDoc) {
 /** GET — published ebooks for all users; ?all=1 for superadmin drafts too */
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const col = await ebooksCol()
   const hasAny = await col.findOne({}, { projection: { _id: 1 } })

@@ -36,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const raw = await req.json()
     body = raw && typeof raw === 'object' ? raw : {}
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   try {

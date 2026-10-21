@@ -26,6 +26,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Clock, FileText } from 'lucide-react'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type Draft = {
   id: string
@@ -56,6 +57,7 @@ type Feed = {
 type Usage = { day: string | null; day_count: number; month: string | null; month_cost_usd: number } | null
 
 export default function AdminSignalsPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const [items, setItems] = useState<Draft[]>([])
@@ -80,7 +82,7 @@ export default function AdminSignalsPage() {
       setUsage(data.usage || null)
       setBudget(data.budget || null)
     } catch {
-      addToast({ type: 'error', title: 'Failed to load drafts' })
+      addToast({ type: 'error', title: tx('signals.failedToLoadDrafts') })
     } finally {
       setLoading(false)
     }
@@ -101,7 +103,7 @@ export default function AdminSignalsPage() {
       addToast({ type: 'success', title: ok })
       await load()
     } catch {
-      addToast({ type: 'error', title: 'Request failed' })
+      addToast({ type: 'error', title: tx('signals.requestFailed') })
     } finally {
       setBusy(null)
     }
@@ -127,17 +129,17 @@ export default function AdminSignalsPage() {
           message: data.blocked || undefined,
         })
       } else if (action === 'approve') {
-        addToast({ type: 'success', title: 'Published to News' })
+        addToast({ type: 'success', title: tx('signals.publishedToNews') })
       } else if (action === 'unpublish') {
-        addToast({ type: 'success', title: 'Unpublished' })
+        addToast({ type: 'success', title: tx('signals.unpublished') })
       } else if (action === 'delete') {
-        addToast({ type: 'success', title: 'Deleted' })
+        addToast({ type: 'success', title: tx('signals.deleted') })
       } else {
-        addToast({ type: 'success', title: 'Rejected' })
+        addToast({ type: 'success', title: tx('signals.rejected') })
       }
       await load()
     } catch {
-      addToast({ type: 'error', title: 'Request failed' })
+      addToast({ type: 'error', title: tx('signals.requestFailed') })
     } finally {
       setBusy(null)
     }
@@ -149,13 +151,13 @@ export default function AdminSignalsPage() {
     <div className="space-y-6">
       <PageHeader
         illustration="inbox"
-        title="Signals"
+        title={tx('signals.signals')}
         description={
           <>
             Tech news written from public RSS feeds and checked against their sources. Items from trusted feeds (official vendor,
             language and advisory blogs) go live on{' '}
             <Link href="/news" className="font-medium text-primary hover:underline" target="_blank">
-              News
+              {tx('signals.news')}
             </Link>{' '}
             automatically; the rest wait for you. Writing uses your platform AI keys within the caps below. Unstop is never scraped.
           </>
@@ -171,17 +173,17 @@ export default function AdminSignalsPage() {
             ) : (
               <RefreshCw className="mr-1 h-4 w-4" />
             )}
-            Run ingest
+            {tx('signals.runIngest')}
           </Button>
         }
       />
 
       {!loading && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Waiting for review" value={pending.length} icon={<Clock />} />
-          <StatCard label="Auto-published" value={items.filter((i) => i.auto_published && i.status === 'published').length} hint="Latest 100 items" icon={<Sparkles />} />
-          <StatCard label="AI rewrites today" value={usage && usage.day === new Date().toISOString().slice(0, 10) ? usage.day_count : 0} hint={settings ? `Cap ${settings.daily_ai_cap} a day` : undefined} icon={<Gauge />} />
-          <StatCard label="AI spend this month" value={`$${(usage && usage.month === new Date().toISOString().slice(0, 7) ? usage.month_cost_usd : 0).toFixed(2)}`} hint={settings ? `Cap $${settings.monthly_cost_cap_usd.toFixed(2)}` : undefined} icon={<FileText />} />
+          <StatCard label={tx('signals.waitingForReview')} value={pending.length} icon={<Clock />} />
+          <StatCard label={tx('signals.autoPublished')} value={items.filter((i) => i.auto_published && i.status === 'published').length} hint={tx('signals.latest100Items')} icon={<Sparkles />} />
+          <StatCard label={tx('signals.aiRewritesToday')} value={usage && usage.day === new Date().toISOString().slice(0, 10) ? usage.day_count : 0} hint={settings ? `Cap ${settings.daily_ai_cap} a day` : undefined} icon={<Gauge />} />
+          <StatCard label={tx('signals.aiSpendThisMonth')} value={`$${(usage && usage.month === new Date().toISOString().slice(0, 7) ? usage.month_cost_usd : 0).toFixed(2)}`} hint={settings ? `Cap $${settings.monthly_cost_cap_usd.toFixed(2)}` : undefined} icon={<FileText />} />
         </div>
       )}
       {budget?.blocked && (
@@ -192,9 +194,9 @@ export default function AdminSignalsPage() {
 
       <Tabs defaultValue="queue" className="space-y-4">
         <TabsList className="flex h-auto flex-wrap justify-start">
-          <TabsTrigger value="queue">Queue</TabsTrigger>
-          <TabsTrigger value="feeds">Feeds</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="queue">{tx('signals.queue')}</TabsTrigger>
+          <TabsTrigger value="feeds">{tx('signals.feeds')}</TabsTrigger>
+          <TabsTrigger value="settings">{tx('signals.settings')}</TabsTrigger>
         </TabsList>
         <TabsContent value="feeds"><FeedsTab feeds={feeds} busy={busy} post={post} /></TabsContent>
         <TabsContent value="settings">{settings ? <SettingsTab settings={settings} busy={busy} post={post} /> : <SkeletonList count={2} />}</TabsContent>
@@ -204,7 +206,7 @@ export default function AdminSignalsPage() {
         <SkeletonList count={3} />
       ) : items.length === 0 ? (
         <Panel className="p-10 text-center text-sm text-muted-foreground">
-          No news items yet. Click <strong className="text-foreground">Run ingest</strong> to pull the latest public feeds.
+          No news items yet. Click <strong className="text-foreground">{tx('signals.runIngest')}</strong> to pull the latest public feeds.
         </Panel>
       ) : (
         <div className="space-y-3">
@@ -225,10 +227,10 @@ export default function AdminSignalsPage() {
                     <Badge variant="secondary">{d.category}</Badge>
                     <Badge variant={d.status === 'pending' ? 'default' : 'outline'} className="capitalize">{d.status}</Badge>
                     {d.topic && <Badge variant="outline">{newsTopicLabel(d.topic)}</Badge>}
-                    {d.auto_published && d.status === 'published' && <Badge className="gap-1 bg-primary text-primary-foreground"><Sparkles className="h-3 w-3" aria-hidden /> Auto-published</Badge>}
-                    {d.trusted && <Badge variant="outline" className="gap-1"><ShieldCheck className="h-3 w-3" aria-hidden /> Trusted feed</Badge>}
-                    {d.ai_rewritten === false && <Badge variant="outline">No AI pass</Badge>}
-                    {d.flags && d.flags.length > 0 && <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400" title={d.flags.join(', ')}><AlertTriangle className="h-3 w-3" aria-hidden /> Source text flagged</Badge>}
+                    {d.auto_published && d.status === 'published' && <Badge className="gap-1 bg-primary text-primary-foreground"><Sparkles className="h-3 w-3" aria-hidden /> {tx('signals.autoPublished')}</Badge>}
+                    {d.trusted && <Badge variant="outline" className="gap-1"><ShieldCheck className="h-3 w-3" aria-hidden /> {tx('signals.trustedFeed')}</Badge>}
+                    {d.ai_rewritten === false && <Badge variant="outline">{tx('signals.noAiPass')}</Badge>}
+                    {d.flags && d.flags.length > 0 && <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-700 dark:text-amber-400" title={d.flags.join(', ')}><AlertTriangle className="h-3 w-3" aria-hidden /> {tx('signals.sourceTextFlagged')}</Badge>}
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.excerpt}</p>
                   {d.angle ? (
@@ -353,7 +355,7 @@ export default function AdminSignalsPage() {
                 dangerouslySetInnerHTML={{ __html: sanitizeArticleHtml(previewDraft.body) }}
               />
             ) : (
-              <p className="text-muted-foreground italic">No body content generated.</p>
+              <p className="text-muted-foreground italic">{tx('signals.noBodyContentGenerated')}</p>
             )}
           </div>
         </DialogContent>
@@ -361,7 +363,7 @@ export default function AdminSignalsPage() {
 
       <ConfirmDialog
         open={!!confirmAction}
-        title="Are you sure?"
+        title={tx('signals.areYouSure')}
         message={confirmAction?.message || ''}
         confirmLabel="Confirm"
         onConfirm={() => {
@@ -378,12 +380,13 @@ export default function AdminSignalsPage() {
 type PostFn = (key: string, payload: Record<string, unknown>, ok: string) => Promise<void>
 
 function FeedsTab({ feeds, busy, post }: { feeds: Feed[]; busy: string | null; post: PostFn }) {
-  if (!feeds.length) return <Panel className="p-10 text-center text-sm text-muted-foreground">No feeds configured.</Panel>
+  const { t: tx } = useAdminT()
+  if (!feeds.length) return <Panel className="p-10 text-center text-sm text-muted-foreground">{tx('signals.noFeedsConfigured')}</Panel>
   return (
     <Panel className="overflow-x-auto p-0">
       <table className="w-full min-w-[720px] text-sm">
         <thead className="border-b border-border text-left text-xs text-muted-foreground">
-          <tr><th className="p-4 font-medium">Feed</th><th className="p-4 font-medium">Topic</th><th className="p-4 font-medium">Last run</th><th className="p-4 font-medium">Trusted (auto-publish)</th><th className="p-4 font-medium">On</th></tr>
+          <tr><th className="p-4 font-medium">{tx('signals.feed')}</th><th className="p-4 font-medium">{tx('signals.topic')}</th><th className="p-4 font-medium">{tx('signals.lastRun')}</th><th className="p-4 font-medium">{tx('signals.trustedAutoPublish')}</th><th className="p-4 font-medium">{tx('signals.on')}</th></tr>
         </thead>
         <tbody>
           {feeds.map((f) => (
@@ -417,6 +420,7 @@ function FeedsTab({ feeds, busy, post }: { feeds: Feed[]; busy: string | null; p
 }
 
 function SettingsTab({ settings, busy, post }: { settings: SignalSettings; busy: string | null; post: PostFn }) {
+  const { t: tx } = useAdminT()
   const [s, setS] = useState(settings)
   useEffect(() => setS(settings), [settings])
   const num = (k: keyof SignalSettings, label: string, hint: string, step = 1) => (
@@ -429,8 +433,8 @@ function SettingsTab({ settings, busy, post }: { settings: SignalSettings; busy:
   return (
     <Panel className="space-y-6">
       <label className="flex items-start gap-3">
-        <Switch checked={s.auto_publish_trusted} onCheckedChange={(v) => setS({ ...s, auto_publish_trusted: v })} aria-label="Auto-publish trusted feeds" />
-        <span className="text-sm"><span className="font-medium text-foreground">Auto-publish trusted feeds</span><br /><span className="text-muted-foreground">Items whose AI pass failed or whose source text was flagged always wait for review.</span></span>
+        <Switch checked={s.auto_publish_trusted} onCheckedChange={(v) => setS({ ...s, auto_publish_trusted: v })} aria-label={tx('signals.autoPublishTrustedFeeds')} />
+        <span className="text-sm"><span className="font-medium text-foreground">{tx('signals.autoPublishTrustedFeeds')}</span><br /><span className="text-muted-foreground">{tx('signals.itemsWhoseAiPassFailed')}</span></span>
       </label>
       <div className="grid gap-5 sm:grid-cols-3">
         {num('daily_ai_cap', 'AI rewrites a day', 'Each item uses three model calls. 0 stops ingest.')}
@@ -439,18 +443,18 @@ function SettingsTab({ settings, busy, post }: { settings: SignalSettings; busy:
       </div>
       <div className="space-y-4 border-t border-border pt-5">
         <label className="flex items-start gap-3">
-          <Switch checked={s.digest_enabled} onCheckedChange={(v) => setS({ ...s, digest_enabled: v })} aria-label="Daily news digest" />
-          <span className="text-sm"><span className="font-medium text-foreground">Daily news digest</span><br /><span className="text-muted-foreground">Email and WhatsApp to people who opted in to tech news. Skipped on days with no new items.</span></span>
+          <Switch checked={s.digest_enabled} onCheckedChange={(v) => setS({ ...s, digest_enabled: v })} aria-label={tx('signals.dailyNewsDigest')} />
+          <span className="text-sm"><span className="font-medium text-foreground">{tx('signals.dailyNewsDigest')}</span><br /><span className="text-muted-foreground">{tx('signals.emailAndWhatsappToPeople')}</span></span>
         </label>
         <div className="grid gap-5 sm:grid-cols-3">
           {num('digest_hour', 'Send at (hour, 0–23)', 'Local time in the zone below.')}
           <div className="space-y-1">
-            <Label htmlFor="sig-tz">Time zone</Label>
+            <Label htmlFor="sig-tz">{tx('signals.timeZone')}</Label>
             <Input id="sig-tz" value={s.digest_timezone} onChange={(e) => setS({ ...s, digest_timezone: e.target.value })} className="h-10" />
-            <p className="text-xs text-muted-foreground">IANA name, e.g. Asia/Kolkata.</p>
+            <p className="text-xs text-muted-foreground">{tx('signals.ianaNameEGAsia')}</p>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="sig-tpl">WhatsApp template</Label>
+            <Label htmlFor="sig-tpl">{tx('signals.whatsappTemplate')}</Label>
             <Input id="sig-tpl" value={s.whatsapp_template_digest} onChange={(e) => setS({ ...s, whatsapp_template_digest: e.target.value })} className="h-10" placeholder="daily_news" />
             <p className="text-xs text-muted-foreground">Approved Meta template ({'{{1}}'} headlines, {'{{2}}'} link) for people outside the 24-hour window.</p>
           </div>

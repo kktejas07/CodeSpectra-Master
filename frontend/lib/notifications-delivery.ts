@@ -16,6 +16,8 @@ import type { Db, Document, Filter } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ids'
 import type { PushPayload } from '@/lib/push-notifications'
+import { outboundT } from '@/lib/i18n/outbound'
+import { toLocale } from '@/lib/i18n/config'
 
 /** Email digest defaults when a user has never saved a `digest` preference. */
 export const DIGEST_DEFAULTS = { daily: false, weekly: true } as const
@@ -42,6 +44,8 @@ export interface DeliveryPayload {
     category?: string
     headers?: Record<string, string>
     fromName?: string
+    /** Recipient language for the footer (lib/i18n); English when absent (older deferred rows). */
+    locale?: string
     /** Already rendered by the automation mailer (footer, headers and unsubscribe checks done). */
     managed?: boolean
   }
@@ -51,7 +55,7 @@ export interface DeliveryPayload {
    * (consent, opt-outs, approved Meta template; the unofficial gateway only
    * when a superadmin enabled it). `phone` on older deferred rows is ignored.
    */
-  whatsapp?: { text: string; title?: string; link?: string; phone?: string }
+  whatsapp?: { text: string; title?: string; link?: string; phone?: string; locale?: string }
 }
 
 export function isValidTimeZone(tz: unknown): tz is string {
@@ -131,7 +135,7 @@ export async function deliverNow(userId: string, payload: DeliveryPayload): Prom
         if (await isUnsubscribed(e.to, category)) html = ''
         else {
           headers = headers ?? listUnsubscribeHeaders(e.to, category)
-          html = appendUnsubscribeFooter(html, unsubscribeUrl(e.to, category === 'billing' || category === 'security' ? 'engagement' : category))
+          html = appendUnsubscribeFooter(html, unsubscribeUrl(e.to, category === 'billing' || category === 'security' ? 'engagement' : category), e.locale)
         }
       }
       if (html) {
@@ -147,15 +151,17 @@ async function deliverWhatsApp(userId: string, payload: DeliveryPayload): Promis
   if (!payload.whatsapp) return
   try {
     const { sendWhatsAppToUser } = await import('@/lib/whatsapp-send')
-    await sendWhatsAppToUser(userId, { kind: 'notification', title: payload.whatsapp.title || '', text: payload.whatsapp.text, link: payload.whatsapp.link || '', urgent: true })
+    const { toLocale } = await import('@/lib/i18n/config')
+    await sendWhatsAppToUser(userId, { kind: 'notification', title: payload.whatsapp.title || '', text: payload.whatsapp.text, link: payload.whatsapp.link || '', urgent: true, locale: toLocale(payload.whatsapp.locale) ?? undefined })
   } catch (e) { console.error('[notifications] whatsapp failed:', e) }
 }
 
 /** Pure: add a small unsubscribe / preferences footer before </body> (or at the end). */
-export function appendUnsubscribeFooter(html: string, unsubscribeLink: string | null): string {
+export function appendUnsubscribeFooter(html: string, unsubscribeLink: string | null, locale?: string): string {
   const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const manage = `${base}/dashboard/notifications/preferences`
-  const footer = `<p style="color:#9ca3af;font-size:12px;margin:24px 0 0;font-family:sans-serif"><a href="${escapeHtml(manage)}" style="color:#6b7280">Email preferences</a>${unsubscribeLink ? ` · <a href="${escapeHtml(unsubscribeLink)}" style="color:#6b7280">Unsubscribe</a>` : ''}</p>`
+  const t = outboundT('notify', toLocale(locale) ?? 'en')
+  const footer = `<p style="color:#9ca3af;font-size:12px;margin:24px 0 0;font-family:sans-serif"><a href="${escapeHtml(manage)}" style="color:#6b7280">${escapeHtml(t('email.preferences'))}</a>${unsubscribeLink ? ` · <a href="${escapeHtml(unsubscribeLink)}" style="color:#6b7280">${escapeHtml(t('email.unsubscribe'))}</a>` : ''}</p>`
   return /<\/body>/i.test(html) ? html.replace(/<\/body>/i, `${footer}</body>`) : html + footer
 }
 

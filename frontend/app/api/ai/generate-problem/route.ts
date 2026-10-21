@@ -17,7 +17,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     body = (await req.json()) as GenReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   // Generator + provider fallback + save: lib/services/problems (shared with the admin agent).

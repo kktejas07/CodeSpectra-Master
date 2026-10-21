@@ -18,7 +18,7 @@ import { issueFaceEmailCode, trustCurrentDevice, verifyFaceEmailCode } from '@/l
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const EXPIRED = { error: 'Your sign-in took too long. Start again.', expired: true }
+const EXPIRED = { error: 'Your sign-in took too long. Start again.', code: 'auth_signin_timeout', expired: true }
 
 /**
  * POST /api/auth/face-email-code — second step of face sign-in on a new
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
     const rawIp = ipKey.replace(/^(ip:|u:)/, '')
     const limit = await rateLimitRedis(`face-email-code:verify:${pending.uid}`, 10, 10 * 60_000)
     if (!limit.ok) {
-      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: limit.retryAfterSec } }, { status: 429 })
     }
 
     const body = (await request.json().catch(() => ({}))) as { code?: unknown; resend?: unknown }
@@ -55,8 +55,8 @@ export async function POST(request: Request) {
       const issued = await issueFaceEmailCode(pending.uid, pending.email)
       if (!issued.ok) {
         return issued.reason === 'rate_limited'
-          ? NextResponse.json({ error: `We’ve sent several codes already. Try again in ${issued.retryAfterSec ?? 600}s.` }, { status: 429 })
-          : NextResponse.json({ error: 'We couldn’t send a new code. Try again in a minute.' }, { status: 503 })
+          ? NextResponse.json({ error: `We’ve sent several codes already. Try again in ${issued.retryAfterSec ?? 600}s.`, code: 'auth_codes_limit', params: { seconds: issued.retryAfterSec ?? 600 } }, { status: 429 })
+          : NextResponse.json({ error: 'We couldn’t send a new code. Try again in a minute.', code: 'auth_code_resend_failed' }, { status: 503 })
       }
       await setPendingFaceEmailCookie({ ...pending, challengeId: issued.challengeId })
       return NextResponse.json({ sent: true })
@@ -66,12 +66,12 @@ export async function POST(request: Request) {
     if (!result.ok) {
       await writeAuditLog({ action: 'auth.biometric_login', outcome: 'denied', actor: pending.email, actorIp: rawIp, resource: 'user/' + pending.uid, resourceType: 'auth', severity: 'warning', user_id: pending.uid, detail: `email code ${result.reason}` }).catch(() => {})
       if (result.reason === 'invalid') {
-        return NextResponse.json({ error: 'That code is incorrect. Check the email and try again.' }, { status: 401 })
+        return NextResponse.json({ error: 'That code is incorrect. Check the email and try again.', code: 'auth_code_incorrect_email' }, { status: 401 })
       }
       if (result.reason === 'too_many_attempts') {
-        return NextResponse.json({ error: 'Too many wrong codes. Send a new code, or use your password.', resendable: true }, { status: 429 })
+        return NextResponse.json({ error: 'Too many wrong codes. Send a new code, or use your password.', code: 'auth_too_many_wrong_codes', resendable: true }, { status: 429 })
       }
-      return NextResponse.json({ error: 'That code has expired. Send a new code to try again.', resendable: true }, { status: 401 })
+      return NextResponse.json({ error: 'That code has expired. Send a new code to try again.', code: 'auth_code_expired', resendable: true }, { status: 401 })
     }
 
     await clearPendingFaceEmailCookie()
@@ -92,6 +92,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ user: { id: pending.uid, email: pending.email, role: pending.role, name: user.name || null } })
   } catch (error) {
     console.error('[auth/face-email-code] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

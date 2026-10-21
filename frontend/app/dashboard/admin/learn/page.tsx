@@ -27,6 +27,7 @@ import {
 } from '@/lib/learn/types'
 import { SHARE_LABELS } from '@/lib/learn/share'
 import { PostEditor, scoreVariant } from './post-editor'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type QueueItem = Omit<LearnPostDoc, 'body'>
 type TopicRow = LearnTopicDoc & { post: { status: string; slug: string } | null }
@@ -41,6 +42,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 // ─── Queue ──────────────────────────────────────────────────────────────────
 
 function QueueTab() {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [status, setStatus] = useState<string>('draft')
   const [q, setQ] = useState('')
@@ -86,14 +88,14 @@ function QueueTab() {
     <div className="space-y-5">
       <Panel className="flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <p className="font-semibold text-foreground">Generate now</p>
+          <p className="font-semibold text-foreground">{tx('learn.generateNow')}</p>
           <p className="text-sm text-muted-foreground">
             The bot writes the next topics in the plan as drafts. {next.length ? <>Next up: {next.slice(0, 3).map((n) => n.title).join(' · ')}</> : null}
           </p>
         </div>
         <div className="flex items-end gap-2">
           <div>
-            <Label htmlFor="gen-count" className="text-xs">Posts</Label>
+            <Label htmlFor="gen-count" className="text-xs">{tx('learn.posts')}</Label>
             <Select value={count} onValueChange={setCount}>
               <SelectTrigger id="gen-count" className="w-20"><SelectValue /></SelectTrigger>
               <SelectContent>{['1', '2', '3'].map((n) => <SelectItem key={n} value={n}>{n}</SelectItem>)}</SelectContent>
@@ -119,7 +121,7 @@ function QueueTab() {
             {s !== 'all' && data?.counts[s] ? <span className="tabular-nums opacity-80">{data.counts[s]}</span> : null}
           </button>
         ))}
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search titles" className="ml-auto h-9 w-full sm:w-56" aria-label="Search titles" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx('learn.searchTitles')} className="ml-auto h-9 w-full sm:w-56" aria-label={tx('learn.searchTitles')} />
       </div>
 
       {!data ? (
@@ -137,7 +139,7 @@ function QueueTab() {
               <button type="button" onClick={() => setOpenId(p.id)} className="w-full rounded-2xl border border-border/70 bg-card p-4 text-left transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                 <div className="flex flex-wrap items-center gap-2 text-xs">
                   <Badge variant="outline" className="capitalize">{p.status}</Badge>
-                  <Badge variant={scoreVariant(p.quality.score)}>Quality <span className="tabular-nums">{p.quality.score}</span></Badge>
+                  <Badge variant={scoreVariant(p.quality.score)}>{tx('learn.quality')} <span className="tabular-nums">{p.quality.score}</span></Badge>
                   <span className="text-primary">{categoryLabel(p.category)}</span>
                   <span className="capitalize text-muted-foreground">{p.level}</span>
                   {p.quality.flags.length ? <span className="text-amber-700 dark:text-amber-400">{p.quality.flags.length} to check</span> : null}
@@ -159,6 +161,7 @@ function QueueTab() {
 // ─── Topics ─────────────────────────────────────────────────────────────────
 
 function TopicsTab() {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [topics, setTopics] = useState<TopicRow[] | null>(null)
   const [series, setSeries] = useState<string[]>([])
@@ -184,7 +187,7 @@ function TopicsTab() {
     setSaving(true)
     try {
       await api('/api/learn/admin/topics', { method: 'POST', body: JSON.stringify(form) })
-      addToast({ type: 'success', title: 'Topic added' })
+      addToast({ type: 'success', title: tx('learn.topicAdded') })
       setForm((f) => ({ ...f, title: '', tags: '', refs: '', series_order: '' }))
       await load()
     } catch (err) {
@@ -208,7 +211,7 @@ function TopicsTab() {
     try {
       const d = await api<{ results: Array<{ ok: boolean; error?: string }> }>('/api/learn/admin/generate', { method: 'POST', body: JSON.stringify({ topic_id: t.id }) })
       const r = d.results[0]
-      addToast(r?.ok ? { type: 'success', title: 'Draft ready in the review queue' } : { type: 'error', title: r?.error || 'Generation failed' })
+      addToast(r?.ok ? { type: 'success', title: tx('learn.draftReadyInTheReview') } : { type: 'error', title: r?.error || 'Generation failed' })
       await load()
     } catch (err) {
       addToast({ type: 'error', title: (err as Error).message })
@@ -222,53 +225,53 @@ function TopicsTab() {
       <Panel className="p-5">
         <form onSubmit={add} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div className="sm:col-span-2">
-            <Label htmlFor="t-title">New topic</Label>
-            <Input id="t-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Kadane's algorithm" maxLength={140} required />
+            <Label htmlFor="t-title">{tx('learn.newTopic')}</Label>
+            <Input id="t-title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={tx('learn.eGKadaneSAlgorithm')} maxLength={140} required />
           </div>
           <div>
-            <Label htmlFor="t-cat">Category</Label>
+            <Label htmlFor="t-cat">{tx('learn.category')}</Label>
             <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
               <SelectTrigger id="t-cat"><SelectValue /></SelectTrigger>
               <SelectContent>{LEARN_CATEGORIES.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
-            <Label htmlFor="t-level">Level</Label>
+            <Label htmlFor="t-level">{tx('learn.level')}</Label>
             <Select value={form.level} onValueChange={(v) => setForm({ ...form, level: v })}>
               <SelectTrigger id="t-level"><SelectValue /></SelectTrigger>
               <SelectContent>{LEARN_LEVELS.map((l) => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>
-            <Label htmlFor="t-tags">Practice tags</Label>
+            <Label htmlFor="t-tags">{tx('learn.practiceTags')}</Label>
             <Input id="t-tags" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="arrays, dynamic programming" />
           </div>
           <div>
-            <Label htmlFor="t-series">Series (optional)</Label>
-            <Input id="t-series" list="learn-series" value={form.series} onChange={(e) => setForm({ ...form, series: e.target.value })} placeholder="e.g. Graph algorithms" />
+            <Label htmlFor="t-series">{tx('learn.seriesOptional')}</Label>
+            <Input id="t-series" list="learn-series" value={form.series} onChange={(e) => setForm({ ...form, series: e.target.value })} placeholder={tx('learn.eGGraphAlgorithms')} />
             <datalist id="learn-series">{series.map((s) => <option key={s} value={s} />)}</datalist>
           </div>
           <div>
-            <Label htmlFor="t-order">Part number</Label>
+            <Label htmlFor="t-order">{tx('learn.partNumber')}</Label>
             <Input id="t-order" type="number" min={1} value={form.series_order} onChange={(e) => setForm({ ...form, series_order: e.target.value })} />
           </div>
           <div>
-            <Label htmlFor="t-refs">Reference URLs (allowlisted)</Label>
+            <Label htmlFor="t-refs">{tx('learn.referenceUrlsAllowlisted')}</Label>
             <Input id="t-refs" value={form.refs} onChange={(e) => setForm({ ...form, refs: e.target.value })} placeholder="https://en.wikipedia.org/wiki/…" />
           </div>
           <div className="flex items-end sm:col-span-2 lg:col-span-4">
-            <Button type="submit" disabled={saving || !form.title.trim()}><Plus className="mr-1.5 h-4 w-4" aria-hidden />Add topic</Button>
-            <p className="ml-3 text-xs text-muted-foreground">Near-duplicate titles in the same category are refused.</p>
+            <Button type="submit" disabled={saving || !form.title.trim()}><Plus className="mr-1.5 h-4 w-4" aria-hidden />{tx('learn.addTopic')}</Button>
+            <p className="ml-3 text-xs text-muted-foreground">{tx('learn.nearDuplicateTitlesInThe')}</p>
           </div>
         </form>
       </Panel>
 
       <div className="flex items-center gap-2">
-        <Label htmlFor="t-filter" className="text-sm">Show</Label>
+        <Label htmlFor="t-filter" className="text-sm">{tx('learn.show')}</Label>
         <Select value={cat} onValueChange={setCat}>
           <SelectTrigger id="t-filter" className="w-64"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
+            <SelectItem value="all">{tx('learn.allCategories')}</SelectItem>
             {LEARN_CATEGORIES.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -276,12 +279,12 @@ function TopicsTab() {
       </div>
 
       {!topics ? <SkeletonList /> : topics.length === 0 ? (
-        <EmptyState illustration="courses" title="No topics here" description="Add a topic above and the bot will plan it in." compact />
+        <EmptyState illustration="courses" title={tx('learn.noTopicsHere')} description={tx('learn.addATopicAboveAnd')} compact />
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-border">
           <table className="min-w-full text-sm">
             <thead className="bg-muted/50 text-left text-xs text-muted-foreground">
-              <tr><th className="px-3 py-2 font-medium">Topic</th><th className="px-3 py-2 font-medium">Level</th><th className="px-3 py-2 font-medium">Series</th><th className="px-3 py-2 font-medium">Post</th><th className="px-3 py-2 font-medium">Priority</th><th className="px-3 py-2 font-medium">On</th><th className="px-3 py-2" /></tr>
+              <tr><th className="px-3 py-2 font-medium">{tx('learn.topic')}</th><th className="px-3 py-2 font-medium">{tx('learn.level')}</th><th className="px-3 py-2 font-medium">{tx('learn.series')}</th><th className="px-3 py-2 font-medium">{tx('learn.post')}</th><th className="px-3 py-2 font-medium">{tx('learn.priority')}</th><th className="px-3 py-2 font-medium">{tx('learn.on')}</th><th className="px-3 py-2" /></tr>
             </thead>
             <tbody>
               {topics.map((t) => (
@@ -289,14 +292,14 @@ function TopicsTab() {
                   <td className="px-3 py-2"><p className="font-medium text-foreground">{t.title}</p><p className="text-xs text-muted-foreground">{categoryLabel(t.category)}{t.tags.length ? ` · ${t.tags.join(', ')}` : ''}</p></td>
                   <td className="px-3 py-2 capitalize">{t.level}</td>
                   <td className="px-3 py-2 text-muted-foreground">{t.series ? `${t.series}${t.series_order ? ` #${t.series_order}` : ''}` : '—'}</td>
-                  <td className="px-3 py-2">{t.post ? (t.post.status === 'published' ? <Link className="text-primary hover:underline" href={`/learn/${t.post.slug}`}>published</Link> : <span className="capitalize">{t.post.status}</span>) : <span className="text-muted-foreground">not written</span>}</td>
+                  <td className="px-3 py-2">{t.post ? (t.post.status === 'published' ? <Link className="text-primary hover:underline" href={`/learn/${t.post.slug}`}>published</Link> : <span className="capitalize">{t.post.status}</span>) : <span className="text-muted-foreground">{tx('learn.notWritten')}</span>}</td>
                   <td className="px-3 py-2">
                     <Input type="number" min={-10} max={10} defaultValue={t.priority} aria-label={`Priority for ${t.title}`} className="h-8 w-16 tabular-nums" onBlur={(e) => { const v = Number(e.target.value); if (v !== t.priority) void patch(t.id, { priority: v }) }} />
                   </td>
                   <td className="px-3 py-2"><Switch checked={t.enabled} onCheckedChange={(v) => patch(t.id, { enabled: v })} aria-label={`Plan ${t.title}`} /></td>
                   <td className="px-3 py-2 text-right">
                     <Button size="sm" variant="outline" onClick={() => writeNow(t)} disabled={!!busyId || (!!t.post && t.post.status !== 'rejected')}>
-                      {busyId === t.id ? <Loader2 className="h-4 w-4 animate-spin" aria-label="Writing" /> : 'Write now'}
+                      {busyId === t.id ? <Loader2 className="h-4 w-4 animate-spin" aria-label={tx('learn.writing')} /> : 'Write now'}
                     </Button>
                   </td>
                 </tr>
@@ -312,6 +315,7 @@ function TopicsTab() {
 // ─── Sources ────────────────────────────────────────────────────────────────
 
 function SourcesTab() {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [sources, setSources] = useState<LearnSourceDoc[] | null>(null)
   const [domain, setDomain] = useState('')
@@ -353,13 +357,13 @@ function SourcesTab() {
       </p>
       <Panel className="p-5">
         <form onSubmit={add} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="flex-1"><Label htmlFor="s-domain">Domain</Label><Input id="s-domain" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="docs.python.org" required /></div>
-          <div className="flex-1"><Label htmlFor="s-label">Name</Label><Input id="s-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Python docs" /></div>
-          <Button type="submit" disabled={!domain.trim()}><Plus className="mr-1.5 h-4 w-4" aria-hidden />Add source</Button>
+          <div className="flex-1"><Label htmlFor="s-domain">{tx('learn.domain')}</Label><Input id="s-domain" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="docs.python.org" required /></div>
+          <div className="flex-1"><Label htmlFor="s-label">{tx('common.name')}</Label><Input id="s-label" value={label} onChange={(e) => setLabel(e.target.value)} placeholder={tx('learn.pythonDocs')} /></div>
+          <Button type="submit" disabled={!domain.trim()}><Plus className="mr-1.5 h-4 w-4" aria-hidden />{tx('learn.addSource')}</Button>
         </form>
       </Panel>
       {!sources ? <SkeletonList /> : sources.length === 0 ? (
-        <EmptyState illustration="search" title="No sources yet" description="Add official documentation sites the bot may learn from." compact />
+        <EmptyState illustration="search" title={tx('learn.noSourcesYet')} description={tx('learn.addOfficialDocumentationSitesThe')} compact />
       ) : (
         <ul className="divide-y divide-border rounded-2xl border border-border">
           {sources.map((s) => (
@@ -378,6 +382,7 @@ function SourcesTab() {
 // ─── Settings ───────────────────────────────────────────────────────────────
 
 function SettingsTab() {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [s, setS] = useState<LearnSettings | null>(null)
   const [saving, setSaving] = useState(false)
@@ -395,7 +400,7 @@ function SettingsTab() {
         body: JSON.stringify({ enabled: s.enabled, posts_per_day: s.posts_per_day, run_hour_utc: s.run_hour_utc, languages: s.languages, research_enabled: s.research_enabled, auto_approve: s.auto_approve, auto_approve_min_score: s.auto_approve_min_score, translate_daily_cap: s.translate_daily_cap ?? 10, translate_monthly_cap: s.translate_monthly_cap ?? 100 }),
       })
       setS(d.settings)
-      addToast({ type: 'success', title: 'Settings saved' })
+      addToast({ type: 'success', title: tx('learn.settingsSaved') })
     } catch (e) {
       addToast({ type: 'error', title: (e as Error).message })
     } finally {
@@ -407,16 +412,16 @@ function SettingsTab() {
   return (
     <Panel className="max-w-2xl space-y-6 p-6">
       <div className="flex items-center justify-between gap-4">
-        <div><Label htmlFor="st-enabled">Daily writing</Label><p className="text-sm text-muted-foreground">The bot writes drafts every day from the hour below (UTC).</p></div>
+        <div><Label htmlFor="st-enabled">{tx('learn.dailyWriting')}</Label><p className="text-sm text-muted-foreground">{tx('learn.theBotWritesDraftsEvery')}</p></div>
         <Switch id="st-enabled" checked={s.enabled} onCheckedChange={(v) => setS({ ...s, enabled: v })} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <div><Label htmlFor="st-ppd">Posts per day</Label><Input id="st-ppd" type="number" min={0} max={10} value={s.posts_per_day} onChange={(e) => setS({ ...s, posts_per_day: Number(e.target.value) })} /></div>
-        <div><Label htmlFor="st-hour">Start hour (UTC)</Label><Input id="st-hour" type="number" min={0} max={23} value={s.run_hour_utc} onChange={(e) => setS({ ...s, run_hour_utc: Number(e.target.value) })} /></div>
+        <div><Label htmlFor="st-ppd">{tx('learn.postsPerDay')}</Label><Input id="st-ppd" type="number" min={0} max={10} value={s.posts_per_day} onChange={(e) => setS({ ...s, posts_per_day: Number(e.target.value) })} /></div>
+        <div><Label htmlFor="st-hour">{tx('learn.startHourUtc')}</Label><Input id="st-hour" type="number" min={0} max={23} value={s.run_hour_utc} onChange={(e) => setS({ ...s, run_hour_utc: Number(e.target.value) })} /></div>
       </div>
       <fieldset>
-        <legend className="text-sm font-medium text-foreground">Code example languages</legend>
-        <p className="text-sm text-muted-foreground">Pick two to four. Algorithm posts include one example per language.</p>
+        <legend className="text-sm font-medium text-foreground">{tx('learn.codeExampleLanguages')}</legend>
+        <p className="text-sm text-muted-foreground">{tx('learn.pickTwoToFourAlgorithm')}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {LEARN_LANGUAGES.map((l) => (
             <button key={l.id} type="button" aria-pressed={s.languages.includes(l.id)} onClick={() => toggleLang(l.id)} className={`min-h-9 rounded-full border px-3.5 text-sm transition-colors ${s.languages.includes(l.id) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-foreground hover:border-primary/40'}`}>{l.label}</button>
@@ -424,24 +429,24 @@ function SettingsTab() {
         </div>
       </fieldset>
       <div className="flex items-center justify-between gap-4">
-        <div><Label htmlFor="st-research">Research step</Label><p className="text-sm text-muted-foreground">Read allowlisted reference pages to check facts and pick citations.</p></div>
+        <div><Label htmlFor="st-research">{tx('learn.researchStep')}</Label><p className="text-sm text-muted-foreground">{tx('learn.readAllowlistedReferencePagesTo')}</p></div>
         <Switch id="st-research" checked={s.research_enabled} onCheckedChange={(v) => setS({ ...s, research_enabled: v })} />
       </div>
       <div className="space-y-3 rounded-2xl border border-border p-4">
         <div className="flex items-center justify-between gap-4">
-          <div><Label htmlFor="st-auto">Auto-approve</Label><p className="text-sm text-muted-foreground">Off by default: every post waits for an admin. When on, only high-scoring posts with no copy flags publish by themselves.</p></div>
+          <div><Label htmlFor="st-auto">{tx('learn.autoApprove')}</Label><p className="text-sm text-muted-foreground">{tx('learn.offByDefaultEveryPost')}</p></div>
           <Switch id="st-auto" checked={s.auto_approve} onCheckedChange={(v) => setS({ ...s, auto_approve: v })} />
         </div>
         {s.auto_approve && (
-          <div className="max-w-40"><Label htmlFor="st-min">Minimum quality score</Label><Input id="st-min" type="number" min={50} max={100} value={s.auto_approve_min_score} onChange={(e) => setS({ ...s, auto_approve_min_score: Number(e.target.value) })} /></div>
+          <div className="max-w-40"><Label htmlFor="st-min">{tx('learn.minimumQualityScore')}</Label><Input id="st-min" type="number" min={50} max={100} value={s.auto_approve_min_score} onChange={(e) => setS({ ...s, auto_approve_min_score: Number(e.target.value) })} /></div>
         )}
       </div>
       <fieldset className="space-y-2 rounded-2xl border border-border p-4">
-        <legend className="px-1 text-sm font-medium text-foreground">Hindi and Telugu translations</legend>
+        <legend className="px-1 text-sm font-medium text-foreground">{tx('learn.hindiAndTeluguTranslations')}</legend>
         <p className="text-sm text-muted-foreground">Translation drafts use the platform model. These limits cap AI spend; 0 turns translations off.</p>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div><Label htmlFor="st-tday">Per day</Label><Input id="st-tday" type="number" min={0} max={50} value={s.translate_daily_cap ?? 10} onChange={(e) => setS({ ...s, translate_daily_cap: Number(e.target.value) })} /></div>
-          <div><Label htmlFor="st-tmonth">Per month</Label><Input id="st-tmonth" type="number" min={0} max={1000} value={s.translate_monthly_cap ?? 100} onChange={(e) => setS({ ...s, translate_monthly_cap: Number(e.target.value) })} /></div>
+          <div><Label htmlFor="st-tday">{tx('learn.perDay')}</Label><Input id="st-tday" type="number" min={0} max={50} value={s.translate_daily_cap ?? 10} onChange={(e) => setS({ ...s, translate_daily_cap: Number(e.target.value) })} /></div>
+          <div><Label htmlFor="st-tmonth">{tx('learn.perMonth')}</Label><Input id="st-tmonth" type="number" min={0} max={1000} value={s.translate_monthly_cap ?? 100} onChange={(e) => setS({ ...s, translate_monthly_cap: Number(e.target.value) })} /></div>
         </div>
       </fieldset>
       <Button onClick={save} disabled={saving}>{saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}Save settings</Button>
@@ -454,6 +459,7 @@ function SettingsTab() {
 type Stats = { posts: number; views: number; shares: number; byChannel: Record<string, number>; top: Array<{ slug: string; title: string; stats?: { views?: number; share_total?: number } }> }
 
 function StatsTab() {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [s, setS] = useState<Stats | null>(null)
   useEffect(() => {
@@ -463,12 +469,12 @@ function StatsTab() {
   return (
     <div className="space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard label="Published posts" value={s.posts} icon={<BookOpenText />} />
-        <StatCard label="Views" value={s.views.toLocaleString()} icon={<Eye />} />
-        <StatCard label="Shares" value={s.shares.toLocaleString()} icon={<Share2 />} />
+        <StatCard label={tx('learn.publishedPosts')} value={s.posts} icon={<BookOpenText />} />
+        <StatCard label={tx('learn.views')} value={s.views.toLocaleString()} icon={<Eye />} />
+        <StatCard label={tx('learn.shares')} value={s.shares.toLocaleString()} icon={<Share2 />} />
       </div>
       <Panel className="p-5">
-        <h3 className="font-semibold text-foreground">Shares by network</h3>
+        <h3 className="font-semibold text-foreground">{tx('learn.sharesByNetwork')}</h3>
         <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {SHARE_CHANNELS.map((c) => (
             <div key={c} className="rounded-xl border border-border p-3"><dt className="text-xs text-muted-foreground">{SHARE_LABELS[c]}</dt><dd className="text-lg font-semibold tabular-nums text-foreground">{s.byChannel[c] ?? 0}</dd></div>
@@ -476,8 +482,8 @@ function StatsTab() {
         </dl>
       </Panel>
       <Panel className="p-5">
-        <h3 className="font-semibold text-foreground">Most read</h3>
-        {s.top.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">Nothing published yet.</p> : (
+        <h3 className="font-semibold text-foreground">{tx('learn.mostRead')}</h3>
+        {s.top.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">{tx('learn.nothingPublishedYet')}</p> : (
           <ol className="mt-3 space-y-2">
             {s.top.map((t) => (
               <li key={t.slug} className="flex items-center gap-3 text-sm">
@@ -494,23 +500,24 @@ function StatsTab() {
 }
 
 export default function AdminLearnPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   if (!gate.ready) return null
   return (
     <div className="mx-auto w-full max-w-6xl">
       <PageHeader
-        title="Learn hub"
-        description="The bot writes original explainers on coding topics; nothing goes live until you approve it."
+        title={tx('learn.learnHub')}
+        description={tx('learn.theBotWritesOriginalExplainers')}
         icon={<BookOpenText />}
-        actions={<Link href="/learn" target="_blank" className="text-sm font-medium text-primary hover:underline">Open the public hub</Link>}
+        actions={<Link href="/learn" target="_blank" className="text-sm font-medium text-primary hover:underline">{tx('learn.openThePublicHub')}</Link>}
       />
       <Tabs defaultValue="queue">
         <TabsList className="mb-5 flex-wrap">
-          <TabsTrigger value="queue">Review queue</TabsTrigger>
-          <TabsTrigger value="topics">Topics</TabsTrigger>
-          <TabsTrigger value="sources">Sources</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="stats"><BarChart3 className="mr-1 h-4 w-4" aria-hidden />Stats</TabsTrigger>
+          <TabsTrigger value="queue">{tx('learn.reviewQueue')}</TabsTrigger>
+          <TabsTrigger value="topics">{tx('learn.topics')}</TabsTrigger>
+          <TabsTrigger value="sources">{tx('learn.sources')}</TabsTrigger>
+          <TabsTrigger value="settings">{tx('learn.settings')}</TabsTrigger>
+          <TabsTrigger value="stats"><BarChart3 className="mr-1 h-4 w-4" aria-hidden />{tx('learn.stats')}</TabsTrigger>
         </TabsList>
         <TabsContent value="queue"><QueueTab /></TabsContent>
         <TabsContent value="topics"><TopicsTab /></TabsContent>

@@ -19,8 +19,8 @@ const ENUM_KEYS: Record<string, string[]> = {
 // GET: Get KYC settings
 export async function GET(): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   try {
     const db = await getMongoDb()
@@ -35,8 +35,8 @@ export async function GET(): Promise<NextResponse> {
 // POST: Save KYC settings
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   try {
     const raw = (await request.json().catch(() => ({}))) as Record<string, unknown>

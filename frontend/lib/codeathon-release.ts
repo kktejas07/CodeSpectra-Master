@@ -197,11 +197,17 @@ export async function finalizeCodeathonRelease(
           ? `${who} ranked #${st.rank}${st.tied ? ' (tied)' : ''} of ${results.ranked_count} with ${st.total_score} points.`
           : 'Thanks for taking part.'
         const certLine = cert ? ' Your certificate is ready to view and share.' : ''
+        // Same sentences, translatable (lib/i18n/messages/*/notify.json).
+        const placingKey = st.rank === null
+          ? { key: 'results.thanks' }
+          : { key: `results.ranked${st.kind === 'team' ? 'Team' : 'You'}${st.tied ? 'Tied' : ''}Points`, params: { name: st.name, rank: st.rank, total: results.ranked_count, points: st.total_score } }
         const n = await notify({
           user_id: uid,
           type: 'hackathon.results',
           title: `Results released: ${title}`,
           message: `${placing}${certLine}`,
+          title_i18n: { key: 'results.title', params: { title } },
+          message_i18n: cert ? [placingKey, { key: 'results.certReady' }] : [placingKey],
           link: `/codeathons/${id}/results`,
           icon: 'trophy',
           metadata: {

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CheckCircle2, XCircle, HelpCircle, RotateCcw, BookOpen, Lightbulb, Bookmark } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 export interface QuizQuestion {
   id: string
@@ -63,6 +64,7 @@ export function QuizComponent({
   bookmark,
   grade,
 }: QuizComponentProps) {
+  const { t } = useT()
   const graded = !!grade
   const [grading, setGrading] = useState(false)
   const [gradeError, setGradeError] = useState<string | null>(null)
@@ -187,7 +189,7 @@ export function QuizComponent({
       const correctCount = r.results.filter((x) => x.isCorrect).length
       onComplete?.(correctCount, r.total || questions.length)
     } catch (e) {
-      setGradeError(e instanceof Error ? e.message : 'Could not submit your answers. Try again.')
+      setGradeError(e instanceof Error ? e.message : t('learning.couldNotSubmitYourAnswersTrybcb'))
     } finally {
       setGrading(false)
     }
@@ -228,7 +230,7 @@ export function QuizComponent({
   }
 
   if (!questions.length) {
-    return <p className="text-sm text-muted-foreground p-4">No quiz questions yet.</p>
+    return <p className="text-sm text-muted-foreground p-4">{t('learning.noQuizQuestionsYet')}</p>
   }
 
   if (completed) {
@@ -252,31 +254,29 @@ export function QuizComponent({
           <div
             className={`text-4xl font-bold ${passed ? 'text-green-600 dark:text-green-400' : percentage >= 50 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}
           >
-            {passed ? 'Passed' : 'Not yet'}
+            {passed ? t('learning.passed2') : t('learning.notYet')}
           </div>
           <h3 className="text-2xl font-bold">
             {finalScore} / {questions.length} · {percentage}%
           </h3>
           <p className="text-muted-foreground text-sm">
             {passed
-              ? 'Nice work — you can continue to the next module.'
-              : `You need ${passPercent}% to pass. Review the questions you missed, then retry. Answers are shown once you pass.`}
+              ? t('learning.niceWorkYouCanContinueTod0e')
+              : t('learning.youNeedPasspercentToPassReview6aa', { passPercent })}
           </p>
         </div>
 
         {missed.length > 0 && (
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 text-left">
             <div className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
-              <Lightbulb className="h-4 w-4" />
-              Concepts to review
-            </div>
+              <Lightbulb className="h-4 w-4" />{t('learning.conceptsToReview')}</div>
             {missed.map(({ q, i, picked, key }) => (
               <div key={q.id || i} className="text-sm border-t border-border/40 pt-3 first:border-0 first:pt-0">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-medium text-foreground">{q.question}</p>
                   {bookmark && graded && typeof key.correct === 'number' ? (
                     <Button
-                      aria-label={bookmarkedIds.has(q.id) ? 'Remove bookmark' : 'Bookmark question'}
+                      aria-label={bookmarkedIds.has(q.id) ? t('learning.removeBookmark') : t('learning.bookmarkQuestion')}
                       type="button"
                       size="sm"
                       variant="ghost"
@@ -288,13 +288,9 @@ export function QuizComponent({
                     </Button>
                   ) : null}
                 </div>
-                <p className="text-red-600 dark:text-red-400 mt-1">
-                  Your answer: {typeof picked === 'number' ? q.options[picked] : '—'}
-                </p>
+                <p className="text-red-600 dark:text-red-400 mt-1">{t('learning.yourAnswerValue', { value: typeof picked === 'number' ? q.options[picked] : '—' })}</p>
                 {typeof key.correct === 'number' ? (
-                  <p className="text-green-700 dark:text-green-400 mt-0.5">
-                    Correct: {q.options[key.correct]}
-                  </p>
+                  <p className="text-green-700 dark:text-green-400 mt-0.5">{t('learning.correctValue', { value: q.options[key.correct] })}</p>
                 ) : null}
                 {key.explanation ? <p className="text-muted-foreground mt-1">{key.explanation}</p> : null}
               </div>
@@ -312,9 +308,7 @@ export function QuizComponent({
 
         <div className="flex gap-2 justify-center flex-wrap">
           <Button variant="outline" onClick={handleRetryAll}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Retry quiz
-          </Button>
+            <RotateCcw className="h-4 w-4 mr-2" />{t('learning.retryQuiz')}</Button>
         </div>
       </div>
     )
@@ -327,19 +321,17 @@ export function QuizComponent({
   return (
     <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <Badge variant="outline">
-          Question {currentQ + 1} of {questions.length}
-        </Badge>
+        <Badge variant="outline">{t('learning.question')}{' '}{currentQ + 1}{' '}{t('learning.ofCount', { count: questions.length })}</Badge>
         <div className="flex items-center gap-2">
           {bookmark && !graded ? (
             <Button
-              aria-label={bookmarkedIds.has(question.id) ? 'Remove bookmark' : 'Bookmark question'}
+              aria-label={bookmarkedIds.has(question.id) ? t('learning.removeBookmark') : t('learning.bookmarkQuestion')}
               type="button"
               size="sm"
               variant="ghost"
               className="h-8 px-2"
               disabled={bookmarkBusy || readOnly}
-              title={bookmarkedIds.has(question.id) ? 'Remove bookmark' : 'Bookmark question'}
+              title={bookmarkedIds.has(question.id) ? t('learning.removeBookmark') : t('learning.bookmarkQuestion')}
               onClick={() => void toggleBookmark(question)}
             >
               <Bookmark
@@ -370,15 +362,15 @@ export function QuizComponent({
 
       <p className="text-xs text-muted-foreground">
         {graded ? (
-          <>Choose an answer for each question. Your answers are checked when you press <span className="font-medium text-foreground">Submit answers</span>.</>
+          <>{t('learning.chooseAnAnswerForEachQuestion283')}{' '}<span className="font-medium text-foreground">{t('learning.submitAnswers')}</span>.</>
         ) : (
-          <>Choose an answer, then press <span className="font-medium text-foreground">Check answer</span>.</>
+          <>{t('learning.chooseAnAnswerThenPress')}{' '}<span className="font-medium text-foreground">{t('learning.checkAnswer')}</span>.</>
         )}
       </p>
 
       <div className="text-lg font-medium leading-snug">{question.question}</div>
 
-      <div className="space-y-2" role="radiogroup" aria-label="Answer choices">
+      <div className="space-y-2" role="radiogroup" aria-label={t('learning.answerChoices')}>
         {question.options.map((option, i) => {
           const isSelected = selected === i
           const isCorrectOption = i === question.correct
@@ -430,11 +422,10 @@ export function QuizComponent({
             )}
             <div className="space-y-1">
               <div className={`font-semibold ${isCorrect ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
-                {isCorrect ? 'Correct!' : 'Incorrect'}
+                {isCorrect ? t('learning.correct') : t('learning.incorrect')}
               </div>
               {!isCorrect && (
-                <p className="text-sm">
-                  Correct answer: <span className="font-medium text-foreground">{correctLabel}</span>
+                <p className="text-sm">{t('learning.correctAnswer')}{' '}<span className="font-medium text-foreground">{correctLabel}</span>
                 </p>
               )}
             </div>
@@ -444,7 +435,7 @@ export function QuizComponent({
             <HelpCircle className={`h-4 w-4 shrink-0 mt-0.5 ${isCorrect ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`} />
             <div>
               <p className="text-sm font-medium text-foreground mb-0.5">
-                {isCorrect ? 'Why this is right' : 'Why this matters — learn it again'}
+                {isCorrect ? t('learning.whyThisIsRight') : t('learning.whyThisMattersLearnItAgain')}
               </p>
               <p className="text-sm text-muted-foreground leading-relaxed">{question.explanation}</p>
             </div>
@@ -478,27 +469,21 @@ export function QuizComponent({
                   setCurrentQ(currentQ - 1)
                   setSelected(all[currentQ - 1] ?? null)
                 }}
-              >
-                Previous question
-              </Button>
+              >{t('learning.previousQuestion')}</Button>
             )}
             <Button onClick={handleGradedNext} disabled={selected === null || readOnly || grading}>
-              {currentQ < questions.length - 1 ? 'Next question' : grading ? 'Checking…' : 'Submit answers'}
+              {currentQ < questions.length - 1 ? t('learning.nextQuestion') : grading ? t('learning.checking') : t('learning.submitAnswers')}
             </Button>
           </>
         ) : !showAnswer ? (
-          <Button onClick={handleSubmit} disabled={selected === null || readOnly}>
-            Check answer
-          </Button>
+          <Button onClick={handleSubmit} disabled={selected === null || readOnly}>{t('learning.checkAnswer')}</Button>
         ) : (
           <>
             {!isCorrect && (
-              <Button variant="outline" onClick={handleTryAgain}>
-                Try this question again
-              </Button>
+              <Button variant="outline" onClick={handleTryAgain}>{t('learning.tryThisQuestionAgain')}</Button>
             )}
             <Button onClick={handleNext}>
-              {currentQ < questions.length - 1 ? 'Next question' : 'See results'}
+              {currentQ < questions.length - 1 ? t('learning.nextQuestion') : t('learning.seeResults')}
             </Button>
           </>
         )}

@@ -8,19 +8,20 @@ import { useAts } from './lib/api'
 import type { ApplicationDetail } from './lib/types'
 import { ApplicationDetailView } from './application-detail'
 import { ErrorState, LoadingRows } from './ui'
+import { useT } from '@/lib/i18n/client'
 
 export function ApplicationDrawer({ appId, onClose, onChanged }: { appId: string | null; onClose: () => void; onChanged: () => void }) {
+  const { t } = useT()
   const q = useAts<ApplicationDetail>(appId ? `/api/ats/applications/${encodeURIComponent(appId)}` : null)
   const d = q.data && q.data.application?.id === appId ? q.data : null
   return (
     <Sheet open={!!appId} onOpenChange={(o) => { if (!o) onClose() }}>
       <SheetContent side="right" className="w-full overflow-y-auto p-5 sm:max-w-xl lg:max-w-2xl">
         <SheetHeader className="p-0">
-          <SheetTitle className="sr-only">{d?.candidate?.name ?? 'Candidate'}</SheetTitle>
-          <SheetDescription className="sr-only">Application details and actions</SheetDescription>
+          <SheetTitle className="sr-only">{d?.candidate?.name ?? t('hiring.candidate')}</SheetTitle>
+          <SheetDescription className="sr-only">{t('hiring.applicationDetailsAndActions')}</SheetDescription>
           {d && (
-            <Link href={`/dashboard/hiring/candidates/${d.application.candidate_id}?app=${d.application.id}`} className="inline-flex items-center gap-1 self-start text-xs font-medium text-primary hover:underline">
-              Open full page <ExternalLink className="h-3 w-3" aria-hidden />
+            <Link href={`/dashboard/hiring/candidates/${d.application.candidate_id}?app=${d.application.id}`} className="inline-flex items-center gap-1 self-start text-xs font-medium text-primary hover:underline">{t('hiring.openFullPage')}{' '}<ExternalLink className="h-3 w-3" aria-hidden />
             </Link>
           )}
         </SheetHeader>

@@ -43,10 +43,10 @@ export async function GET(
   const { id } = await ctx.params
   const by = (new URL(req.url).searchParams.get('by') === 'slug' ? 'slug' : 'id') as 'id' | 'slug'
   const doc = await resolve(id, by)
-  if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!doc) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   const staff = isHackathonStaff(user, doc)
   if (doc.status === 'draft' && !staff) {
-    return NextResponse.json({ error: 'not found' }, { status: 404 })
+    return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   }
   // ponytail: auto-compute status only for auto-transitions (open→live when time hits,
   // live→closed when ended). Don't override manually set statuses from PATCH.
@@ -77,7 +77,7 @@ export async function PATCH(
   try {
     body = (await req.json()) as Partial<HackathonDoc>
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   // Validation, transitions, problem / judge rules: lib/services/hackathons (shared with the admin agent).
@@ -95,9 +95,9 @@ export async function DELETE(
   const { id } = await ctx.params
   const col = await hackathons()
   const doc = await col.findOne({ id }, { projection: { _id: 0 } })
-  if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!doc) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   if (!isHackathonStaff(gate.user, doc)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const teams = await (await hackathonTeams()).countDocuments({ hackathon_id: id })
   if (teams > 0 && doc.status !== 'closed') {

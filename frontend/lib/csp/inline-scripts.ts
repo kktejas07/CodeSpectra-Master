@@ -17,7 +17,17 @@ export const THEME_INIT_SCRIPT =
 export const GLOBAL_ERROR_THEME_SCRIPT =
   "(function(){try{var t=localStorage.getItem('theme')||'dark';if(t==='light'||t==='dark'){document.body.classList.add('ge-'+t)}}catch(e){}})();"
 
+/**
+ * app/[lang]/layout.tsx: `<html lang>` for /hi/… and /te/… pages. The root
+ * layout is shared and cached (it can't read the URL), so the Hindi / Telugu
+ * segment sets the attribute before first paint; HtmlLangSync keeps it right
+ * on client navigation. The subtree also carries lang on the server.
+ */
+export const LANG_INIT_SCRIPT =
+  "(function(){var m=/^\\/(hi|te)(?=\\/|$)/.exec(location.pathname);if(m)document.documentElement.lang=m[1]})();"
+
 export const INLINE_SCRIPT_HASHES: readonly string[] = [
   "'sha256-CHINYoDEMKGOK7HaP2zBaTSHgufBUMgiLxcgpvywlbY='",
   "'sha256-4kXcqaEQK04P18sgXf6t4d6E6m5PdOzIx7PyAIGhBg0='",
+  "'sha256-qO8NblM7a9tfPb9rOhyqW5sKOGftaDtjz0N3UluxbBw='",
 ]

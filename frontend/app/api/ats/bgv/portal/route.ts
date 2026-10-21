@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json(await portalView(r.case), { headers: NO_STORE })
       }
       default:
-        return NextResponse.json({ error: 'Unknown action' }, { status: 400, headers: NO_STORE })
+        return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400, headers: NO_STORE })
     }
   } catch (e) {
     return errorResponse(e, 'bgv portal post')

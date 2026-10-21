@@ -60,7 +60,7 @@ const clean = (s: unknown, max: number) =>
 
 export async function POST(request: Request) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const burst = await rateLimitAIRedis(request, user.id)
   const hourly = burst.ok ? await rateLimitRedis(`resume-ai:${user.id}`, 20, 60 * 60_000) : burst
@@ -76,11 +76,11 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
   const data = sanitizeBuilderData(body.data)
   const target = body.target === 'bullets' ? 'bullets' : body.target === 'summary' ? 'summary' : null
-  if (!data || !target) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!data || !target) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
 
   const exp = target === 'bullets'
     ? data.experience.find((e) => e.id === String(body.experienceId || ''))

@@ -146,6 +146,8 @@ async function notifyNewJudges(c: ContestDoc, ids: string[]): Promise<void> {
   await notifyMany(ids, {
     type: 'hackathon.team_invite', title: `You're judging ${c.title}`,
     message: 'You were added as a judge. Open the contest to score submissions.',
+    title_i18n: { key: 'contest.judge.title', params: { title: c.title } },
+    message_i18n: { key: 'contest.judge.message' },
     link: `/contests/${c.slug}/judge`, icon: 'gavel', send_email: true,
   }).catch((e) => logger.error('[contests] judge notify failed', (e as Error).message))
 }
@@ -334,6 +336,11 @@ export async function releaseContestResults(user: ServiceUser, idOrSlug: string,
         const n = await notify({
           user_id: m.user_id, type: 'hackathon.results', title: `Results released: ${c.title}`,
           message: `${placing}${cert ? ' Your certificate is ready to view and share.' : ''}`,
+          title_i18n: { key: 'results.title', params: { title: c.title } },
+          message_i18n: [
+            st.rank === null ? { key: 'results.thanks' } : { key: `results.ranked${st.kind === 'team' ? 'Team' : 'You'}${st.tied ? 'Tied' : ''}`, params: { name: st.name, rank: st.rank, total: ranked } },
+            ...(cert ? [{ key: 'results.certReady' }] : []),
+          ],
           link: `/contests/${c.slug}`, icon: 'trophy',
           metadata: { contest_id: c.id, rank: st.rank, ...(cert ? { certificate_url: `/cert/verify/${cert.token}` } : {}) },
           send_email: true,

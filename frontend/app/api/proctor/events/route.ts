@@ -19,12 +19,12 @@ interface EventReq {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   let body: EventReq
   try {
     body = (await req.json()) as EventReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   if (!body || typeof body.session_id !== 'string' || typeof body.event_type !== 'string' || !body.session_id || !body.event_type) {
     return NextResponse.json({ error: 'session_id + event_type required' }, { status: 400 })
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const sessionId = req.nextUrl.searchParams.get('session_id') || ''
     const col = await proctorEvents()

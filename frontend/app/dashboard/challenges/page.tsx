@@ -13,6 +13,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Challenge {
   id: string
@@ -28,6 +29,7 @@ interface Challenge {
 }
 
 export default function ChallengesPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
 
   const [challenges, setChallenges] = useState<Challenge[]>([])
@@ -43,14 +45,14 @@ export default function ChallengesPage() {
       const challengesTour: TourStep[] = [
         {
           target: '[data-tour="challenges-header"]',
-          title: 'Interview challenge practice hub',
-          description: 'Practice coding, system design, and behavioral challenges to prepare for technical interviews.',
+          title: tr('practice.interviewChallengePracticeHub'),
+          description: tr('practice.practiceCodingSystemDesignAndBehavioral414'),
           position: 'bottom',
         },
         {
           target: '[data-tour="challenges-content"]',
-          title: 'Filter cards track progress',
-          description: 'Pro tip: filter by type and level, watch Completed counts, then Start or Retry unlocked cards.',
+          title: tr('practice.filterCardsTrackProgress'),
+          description: tr('practice.proTipFilterByTypeAndf30'),
           position: 'bottom',
         },
       ]
@@ -86,8 +88,8 @@ export default function ChallengesPage() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             illustration="coding"
-            title="Challenges"
-            description="Practise coding, system design and behavioural interview questions."
+            title={tr('practice.challenges')}
+            description={tr('practice.practiseCodingSystemDesignAndBehavioural4eb')}
             icon={<Trophy />}
             className="mb-0"
           />
@@ -104,36 +106,36 @@ export default function ChallengesPage() {
         <Panel className="p-4">
           <EmptyState
             illustration="error"
-            title="Couldn't load challenges"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={tr('practice.couldntLoadChallenges')}
+            description={tr('practice.checkYourConnectionAndTryAgain')}
+            actionLabel={tr('common.tryAgain')}
             onAction={() => setReloadKey(k => k + 1)}
           />
         </Panel>
       ) : challenges.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="coding"
-            title="No challenges yet"
-            description="New interview challenges will appear here. Meanwhile, try the coding problems."
-            actionLabel="Go to problems"
+            title={tr('practice.noChallengesYet')}
+            description={tr('practice.newInterviewChallengesWillAppearHered0b')}
+            actionLabel={tr('practice.goToProblems')}
             actionHref="/dashboard/problems"
           />
         </Panel>
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard label="Completed" value={`${completedCount}/${challenges.length}`} icon={<CheckCircle />} />
-            <StatCard label="Available" value={challenges.filter(c => !c.locked).length} icon={<Zap />} />
-            <StatCard label="Locked" value={challenges.filter(c => c.locked).length} icon={<Lock />} />
+            <StatCard label={tr('practice.completed')} value={`${completedCount}/${challenges.length}`} icon={<CheckCircle />} />
+            <StatCard label={tr('practice.available')} value={challenges.filter(c => !c.locked).length} icon={<Zap />} />
+            <StatCard label={tr('practice.locked')} value={challenges.filter(c => c.locked).length} icon={<Lock />} />
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant={!selectedType ? 'default' : 'outline'} size="sm" onClick={() => setSelectedType(null)}>All</Button>
+            <Button variant={!selectedType ? 'default' : 'outline'} size="sm" onClick={() => setSelectedType(null)}>{tr('practice.all')}</Button>
             {types.map(t => (
               <Button key={t} variant={selectedType === t ? 'default' : 'outline'} size="sm" onClick={() => setSelectedType(t)}>{t}</Button>
             ))}
             <span aria-hidden className="mx-2 border-l border-border" />
-            <Button variant={!selectedDifficulty ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(null)}>All levels</Button>
+            <Button variant={!selectedDifficulty ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(null)}>{tr('practice.allLevels')}</Button>
             {difficulties.map(d => (
               <Button key={d} variant={selectedDifficulty === d ? 'default' : 'outline'} size="sm" onClick={() => setSelectedDifficulty(d)}>{d}</Button>
             ))}
@@ -148,9 +150,9 @@ export default function ChallengesPage() {
                     <span className="text-xs font-medium text-muted-foreground capitalize">{c.type.replace('-', ' ')}</span>
                   </div>
                   {c.completed ? (
-                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" aria-label="Completed" />
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" aria-label={tr('practice.completed')} />
                   ) : c.locked ? (
-                    <Lock className="h-4 w-4 text-muted-foreground" aria-label="Locked" />
+                    <Lock className="h-4 w-4 text-muted-foreground" aria-label={tr('practice.locked')} />
                   ) : null}
                 </div>
                 <h3 className="text-base mb-1 font-semibold text-foreground">{c.title}</h3>
@@ -160,22 +162,18 @@ export default function ChallengesPage() {
                     {c.difficulty}
                   </Badge>
                   <span className="text-muted-foreground tabular-nums">{c.duration} min</span>
-                  <span className="text-muted-foreground tabular-nums">{c.successRate}% success</span>
+                  <span className="text-muted-foreground tabular-nums">{tr('practice.successrateSuccess', { successRate: c.successRate })}</span>
                 </div>
                 {!!c.prerequisites?.length && (
-                  <p className="mb-3 text-[11px] text-muted-foreground">
-                    Requires: {c.prerequisites.join(', ')}
-                  </p>
+                  <p className="mb-3 text-[11px] text-muted-foreground">{tr('practice.requiresValue', { value: c.prerequisites.join(', ') })}</p>
                 )}
                 {c.locked ? (
-                  <Button variant="outline" size="sm" className="mt-auto w-full gap-2" disabled>
-                    Locked
-                    <ArrowRight className="h-3.5 w-3.5" />
+                  <Button variant="outline" size="sm" className="mt-auto w-full gap-2" disabled>{tr('practice.locked')}<ArrowRight className="h-3.5 w-3.5" />
                   </Button>
                 ) : (
                   <Button variant="outline" size="sm" className="mt-auto w-full gap-2" asChild>
                     <Link href={`/dashboard/challenges/${c.id}`}>
-                      {c.completed ? 'Retry' : 'Start'}
+                      {c.completed ? tr('common.retry') : tr('practice.start')}
                       <ArrowRight className="h-3.5 w-3.5" />
                     </Link>
                   </Button>

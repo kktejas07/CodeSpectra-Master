@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import { DEFAULT_TIMEZONE, formatDate, formatDateTime, formatTime, setDefaultTimezone, toZonedDateInput } from './format-datetime'
+import { LOCALE_META, useLocale } from './i18n/client'
 
 let cached: string | null = null
 
@@ -29,14 +30,19 @@ export function primePlatformTimezone(tz: string | null | undefined): void {
  */
 export function useDateFormat() {
   const tz = usePlatformTimezone()
-  return useMemo(() => ({
+  const locale = useLocale()
+  return useMemo(() => {
+    // Month / weekday names in the interface language (English keeps en-GB).
+    const intl = locale === 'en' ? undefined : LOCALE_META[locale].intl
+    return {
     tz,
-    dateTime: (v: string | number | Date | null | undefined, o?: Intl.DateTimeFormatOptions) => formatDateTime(v, tz, o),
-    date: (v: string | number | Date | null | undefined, o?: Intl.DateTimeFormatOptions) => formatDate(v, tz, o),
-    time: (v: string | number | Date | null | undefined, o?: Intl.DateTimeFormatOptions) => formatTime(v, tz, o),
+    dateTime: (v: string | number | Date | null | undefined, o?: Intl.DateTimeFormatOptions) => formatDateTime(v, tz, o, intl),
+    date: (v: string | number | Date | null | undefined, o?: Intl.DateTimeFormatOptions) => formatDate(v, tz, o, intl),
+    time: (v: string | number | Date | null | undefined, o?: Intl.DateTimeFormatOptions) => formatTime(v, tz, o, intl),
     /** `YYYY-MM-DD` in the platform tz (date inputs / filters). */
     dateInput: (v: string | number | Date | null | undefined) => toZonedDateInput(v, tz),
     /** Today's `YYYY-MM-DD` in the platform tz. */
     today: () => toZonedDateInput(new Date(), tz),
-  }), [tz])
+    }
+  }, [tz, locale])
 }

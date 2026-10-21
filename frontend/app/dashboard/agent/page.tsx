@@ -11,6 +11,7 @@ import { useLockedFeatures } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.DiffEditor), { ssr: false })
@@ -58,6 +59,7 @@ const SUGGESTED_PROMPTS = [
  *   RIGHT : live Monaco editor showing the code as the agent edits it + Diff + Runner
  */
 export default function AgentPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -105,7 +107,7 @@ export default function AgentPage() {
         body: JSON.stringify({ language, source: code }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Execution failed')
+      if (!res.ok) throw new Error(data.error || tr('tools.executionFailed'))
       setConsoleOutput({
         stdout: data.result?.run?.stdout || (data.passed ? 'Code executed successfully (no stdout).' : ''),
         stderr: data.result?.run?.stderr || '',
@@ -127,20 +129,20 @@ export default function AgentPage() {
       const agentTour: TourStep[] = [
         {
           target: '[data-tour="agent-header"]',
-          title: 'Agent workspace overview',
-          description: 'This workspace lets developers run an autonomous coding agent to plan and rewrite code.',
+          title: tr('tools.agentWorkspaceOverview'),
+          description: tr('tools.thisWorkspaceLetsDevelopersRunAn702'),
           position: 'bottom',
         },
         {
           target: '[data-tour="agent-composer"]',
-          title: 'Describe your goal',
-          description: 'Type a refactoring or testing goal here and run the agent.',
+          title: tr('tools.describeYourGoal'),
+          description: tr('tools.typeARefactoringOrTestingGoale40'),
           position: 'top',
         },
         {
           target: '[data-tour="agent-workspace"]',
-          title: 'Review live code',
-          description: 'Watch the editor update, toggle diffs, and run the result in the sandbox.',
+          title: tr('tools.reviewLiveCode'),
+          description: tr('tools.watchTheEditorUpdateToggleDiffs577'),
           position: 'left',
         },
       ]
@@ -164,7 +166,7 @@ export default function AgentPage() {
         body: JSON.stringify({ goal, code, language, max_steps: maxSteps }),
       })
       const j = (await res.json()) as AgentRunResult & { error?: string }
-      if (!res.ok) throw new Error(j.error || (res.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${res.status}). Please try again.`))
+      if (!res.ok) throw new Error(j.error || (res.status === 429 ? tr('tools.tooManyRequestsWaitAMoment928') : tr('tools.somethingWentWrongStatusPleaseTryb1e', { status: res.status })))
       setCode(j.final_code || code)
       const agentTurn: AgentTurn = {
         id: `a-${Date.now()}`,
@@ -194,15 +196,15 @@ export default function AgentPage() {
             <Bot className="h-5 w-5" aria-hidden />
           </span>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">AI agent workspace</h1>
-            <p className="text-sm text-muted-foreground">Give the agent a goal — it plans the steps and rewrites the code in the editor.</p>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">{tr('tools.aiAgentWorkspace')}</h1>
+            <p className="text-sm text-muted-foreground">{tr('tools.giveTheAgentAGoalIt20d')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            aria-label="Language"
+            aria-label={tr('common.language')}
             className="h-9 cursor-pointer rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-primary"
             data-testid="agent-lang"
           >
@@ -213,12 +215,12 @@ export default function AgentPage() {
           <select
             value={maxSteps}
             onChange={(e) => setMaxSteps(Number(e.target.value))}
-            aria-label="Maximum steps"
+            aria-label={tr('tools.maximumSteps')}
             className="h-9 cursor-pointer rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-foreground transition-colors duration-200 hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-primary"
             data-testid="agent-steps"
           >
             {STEP_OPTIONS.map((s) => (
-              <option key={s} value={s} className="bg-popover text-popover-foreground">{s} {s === 1 ? 'step' : 'steps'}</option>
+              <option key={s} value={s} className="bg-popover text-popover-foreground">{s} {s === 1 ? tr('tools.step') : tr('tools.steps')}</option>
             ))}
           </select>
           <ModelSelector feature="chat_model" />
@@ -232,12 +234,8 @@ export default function AgentPage() {
             {turns.length === 0 && (
               <div className="space-y-3 rounded-2xl border border-border/70 bg-card p-5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Sparkles className="h-4 w-4 text-primary" aria-hidden />
-                  What would you like the agent to do?
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Describe a goal or pick a suggestion below. The agent reads your code, plans the steps and rewrites it in the editor on the right.
-                </p>
+                  <Sparkles className="h-4 w-4 text-primary" aria-hidden />{tr('tools.whatWouldYouLikeTheAgent711')}</div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{tr('tools.describeAGoalOrPickA011')}</p>
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {SUGGESTED_PROMPTS.map((p) => (
                     <button
@@ -258,9 +256,7 @@ export default function AgentPage() {
             ))}
             {busy && (
               <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-medium text-primary" role="status">
-                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
-                Working through up to {maxSteps} steps…
-              </div>
+                <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />{tr('tools.workingThroughUpToMaxstepsSteps', { maxSteps })}</div>
             )}
           </div>
 
@@ -284,8 +280,8 @@ export default function AgentPage() {
                   }
                 }}
                 rows={2}
-                placeholder="Describe your goal — e.g. 'Refactor to O(n) iterative and add comprehensive test suite'"
-                aria-label="Goal for the agent"
+                placeholder={tr('tools.describeYourGoalEGRefactor749')}
+                aria-label={tr('tools.goalForTheAgent')}
                 className="flex-1 resize-none bg-transparent text-sm text-foreground focus:outline-none placeholder:text-muted-foreground"
                 data-testid="agent-input"
                 disabled={busy}
@@ -294,7 +290,7 @@ export default function AgentPage() {
                 type="submit"
                 size="icon"
                 disabled={busy || !input.trim()}
-                aria-label="Run agent"
+                aria-label={tr('tools.runAgent')}
                 className="h-9 w-9 rounded-xl bg-primary text-primary-foreground shadow-sm"
                 data-testid="agent-run"
               >
@@ -302,10 +298,9 @@ export default function AgentPage() {
               </Button>
             </div>
             <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-2 px-1">
-              <span>Press <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">⌘ + Enter</kbd> to run</span>
+              <span>{tr('tools.press')}{' '}<kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[10px]">⌘ + Enter</kbd>{' '}{tr('tools.toRun')}</span>
               <span className="flex items-center gap-1 font-medium tabular-nums text-muted-foreground">
-                <Cpu className="h-3.5 w-3.5 text-primary" aria-hidden /> Up to {maxSteps} {maxSteps === 1 ? 'step' : 'steps'}
-              </span>
+                <Cpu className="h-3.5 w-3.5 text-primary" aria-hidden />{' '}{tr('tools.upToCountSteps', { count: maxSteps })}</span>
             </div>
           </form>
         </section>
@@ -325,7 +320,7 @@ export default function AgentPage() {
               active={activeTab === 'log'}
               onClick={() => setActiveTab('log')}
               icon={<Terminal className="h-3.5 w-3.5" />}
-              label="Steps"
+              label={tr('tools.steps2')}
               testid="tab-log"
             />
             )}
@@ -343,28 +338,28 @@ export default function AgentPage() {
                     ? 'bg-primary/10 text-primary border-primary/40'
                     : 'text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 border-border/50'
                 )}
-                title="Compare with the original code"
+                title={tr('tools.compareWithTheOriginalCode')}
                 aria-pressed={diffView}
-                aria-label="Toggle diff view"
+                aria-label={tr('tools.toggleDiffView')}
               >
                 <GitCompare className="h-3 w-3" />
-                <span className="hidden md:inline">Diff</span>
+                <span className="hidden md:inline">{tr('tools.diff')}</span>
               </button>
               <button
                 type="button"
                 onClick={handleCopy}
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 rounded-lg border border-border/50 transition-colors"
-                title="Copy code"
+                title={tr('tools.copyCode')}
               >
                 {copied ? (
                   <>
                     <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                    <span className="text-green-700 dark:text-green-400">Copied</span>
+                    <span className="text-green-700 dark:text-green-400">{tr('tools.copied')}</span>
                   </>
                 ) : (
                   <>
                     <Copy className="h-3 w-3" />
-                    <span>Copy</span>
+                    <span>{tr('tools.copy')}</span>
                   </>
                 )}
               </button>
@@ -372,8 +367,8 @@ export default function AgentPage() {
                 type="button"
                 onClick={handleReset}
                 className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-muted/70 rounded-lg border border-border/50 transition-colors"
-                title="Reset starter template"
-                aria-label="Reset starter template"
+                title={tr('tools.resetStarterTemplate')}
+                aria-label={tr('tools.resetStarterTemplate')}
               >
                 <RotateCcw className="h-3 w-3" />
               </button>
@@ -383,10 +378,10 @@ export default function AgentPage() {
                 onClick={handleRunCode}
                 disabled={runningCode}
                 className="h-8 gap-1.5 px-3 text-xs font-semibold"
-                title="Run code in sandbox"
+                title={tr('tools.runCodeInSandbox')}
               >
                 {runningCode ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 fill-current" />}
-                <span>Run</span>
+                <span>{tr('tools.run')}</span>
               </Button>
             </div>
           </div>
@@ -434,14 +429,14 @@ export default function AgentPage() {
                   <div className="flex items-center justify-between border-b border-slate-800 px-3 py-1.5">
                     <div className="flex items-center gap-2 font-sans text-[11px] font-semibold text-slate-400">
                       <SquareTerminal className="h-3.5 w-3.5 text-blue-400" aria-hidden />
-                      <span>Console</span>
+                      <span>{tr('tools.console')}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowConsole(false)}
                       className="rounded p-0.5 text-slate-400 hover:text-white focus-visible:outline-2 focus-visible:outline-blue-400"
-                      title="Close console"
-                      aria-label="Close console"
+                      title={tr('tools.closeConsole')}
+                      aria-label={tr('tools.closeConsole')}
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
@@ -450,7 +445,7 @@ export default function AgentPage() {
                     {runningCode && (
                       <div className="flex items-center gap-2 text-slate-400">
                         <Loader2 className="h-3 w-3 animate-spin text-blue-400 motion-reduce:animate-none" />
-                        <span>Running in the sandbox…</span>
+                        <span>{tr('tools.runningInTheSandbox')}</span>
                       </div>
                     )}
                     {consoleOutput?.stdout && (
@@ -463,7 +458,7 @@ export default function AgentPage() {
                       <pre className="text-red-400 whitespace-pre-wrap">{consoleOutput.error}</pre>
                     )}
                     {!runningCode && !consoleOutput?.stdout && !consoleOutput?.stderr && !consoleOutput?.error && (
-                      <span className="text-slate-400">Finished with no output.</span>
+                      <span className="text-slate-400">{tr('tools.finishedWithNoOutput')}</span>
                     )}
                   </div>
                 </div>
@@ -472,9 +467,7 @@ export default function AgentPage() {
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3 bg-muted/20">
               {turns.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  The agent's steps will appear here once you run it.
-                </p>
+                <p className="text-sm text-muted-foreground">{tr('tools.theAgentsStepsWillAppearHere6fb')}</p>
               ) : (
                 turns
                   .filter((t) => t.role === 'agent' && t.steps?.length)
@@ -487,8 +480,7 @@ export default function AgentPage() {
                           data-testid={`step-${s.step}`}
                         >
                           <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-primary">
-                            <CheckCircle2 className="h-3 w-3" /> Step {s.step}
-                          </div>
+                            <CheckCircle2 className="h-3 w-3" />{' '}{tr('tools.stepStep', { step: s.step })}</div>
                           <div className="text-foreground/90 font-mono whitespace-pre-wrap">
                             {s.thought}
                           </div>
@@ -542,6 +534,7 @@ function TabButton({
 }
 
 function AgentBubble({ turn }: { turn: AgentTurn }) {
+  const { t } = useT()
   const isUser = turn.role === 'user'
   return (
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
@@ -556,15 +549,12 @@ function AgentBubble({ turn }: { turn: AgentTurn }) {
       >
         {!isUser && (
           <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-primary">
-            <Bot className="h-3 w-3" /> Agent
-          </div>
+            <Bot className="h-3 w-3" />{' '}{t('tools.agent')}</div>
         )}
         {turn.content}
         {turn.steps && turn.steps.length > 0 && (
           <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-            <Play className="h-3 w-3" /> {turn.steps.length} step(s) executed — switch to the
-            Steps tab on the right to inspect.
-          </div>
+            <Play className="h-3 w-3" />{' '}{t('tools.countStepSExecutedSwitchTo0fa', { count: turn.steps.length })}</div>
         )}
       </div>
     </div>

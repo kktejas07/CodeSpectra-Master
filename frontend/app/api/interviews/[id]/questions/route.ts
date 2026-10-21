@@ -13,9 +13,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const col = await interviewSessions()
   const session = await col.findOne({ id })
-  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!session) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   if (!interviewRole(gate.user, session as unknown as Record<string, unknown>)) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const body = await req.json().catch(() => ({})) as {
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const col = await interviewSessions()
   const session = await col.findOne({ id })
-  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!session) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   const body = await req.json().catch(() => ({})) as {
     question_id?: string; answer?: string; time_spent_seconds?: number
@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   // Same participant / own-tenant staff check as POST (this used to have none).
   if (!interviewRole(gate.user, session as unknown as Record<string, unknown>)) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   if (!body.question_id) return NextResponse.json({ error: 'question_id required' }, { status: 400 })

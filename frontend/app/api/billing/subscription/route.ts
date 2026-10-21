@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const subs = await billingSubscriptions()
     const active = await subs.findOne({ user_id: user.id, status: 'active' }, { projection: { _id: 0 }, sort: { ends_at: -1 } })
@@ -49,14 +49,14 @@ export async function GET() {
     })
   } catch (error) {
     console.error('[billing/subscription] GET:', error)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 export async function PUT(req: NextRequest) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const rateCheck = await rateLimitAIRedis(req, user.id)
     if (!rateCheck.ok) {
@@ -82,6 +82,6 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: true, plan_id, access_until: res?.ends_at ?? null })
   } catch (error) {
     console.error('[billing/subscription] PUT:', error)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

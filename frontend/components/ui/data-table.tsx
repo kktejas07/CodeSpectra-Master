@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useT } from '@/lib/i18n/client'
 
 export interface DataTableColumn<T> {
   key: string
@@ -89,6 +90,7 @@ export function DataTable<T extends { id: string }>({
   emptyState,
   searchLabel,
 }: DataTableProps<T>) {
+  const { t } = useT()
   const [search, setSearch] = useState('')
   const [filterValues, setFilterValues] = useState<Record<string, string>>(() => {
     if (!filters) return {}
@@ -189,20 +191,20 @@ export function DataTable<T extends { id: string }>({
                 <SelectValue placeholder={f.label} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">{f.label}: All</SelectItem>
+                <SelectItem value="all">{t('dash.labelAll', { label: f.label })}</SelectItem>
                 {f.options.map(o => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           ))}
-          <p className="text-xs text-muted-foreground ml-auto">{filtered.length} record{filtered.length !== 1 ? 's' : ''}</p>
+          <p className="text-xs text-muted-foreground ml-auto">{t('dash.countRecords', { count: filtered.length })}</p>
         </div>
       ) : null}
 
       {someSelected && bulkActions?.length ? (
         <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
-          <span className="text-sm font-medium">{selected.size} selected</span>
+          <span className="text-sm font-medium">{t('dash.sizeSelected', { size: selected.size })}</span>
           <div className="flex-1" />
           {bulkActions.map((action, i) => (
             <Button
@@ -231,7 +233,7 @@ export function DataTable<T extends { id: string }>({
                     <button
                       type="button"
                       onClick={toggleSelectAll}
-                      aria-label={allSelected ? 'Deselect all rows on this page' : 'Select all rows on this page'}
+                      aria-label={allSelected ? t('dash.deselectAllRowsOnThisPage') : t('dash.selectAllRowsOnThisPage')}
                       aria-pressed={allSelected}
                       className="text-muted-foreground hover:text-foreground"
                     >
@@ -245,7 +247,7 @@ export function DataTable<T extends { id: string }>({
                       <button
                         type="button"
                         onClick={() => handleSort(col.key)}
-                        aria-label={`Sort by ${col.header}${sortConfig?.key === col.key ? (sortConfig.direction === 'asc' ? ', sorted ascending' : ', sorted descending') : ''}`}
+                        aria-label={t('dash.sortByHeaderValue', { header: col.header, value: sortConfig?.key === col.key ? (sortConfig.direction === 'asc' ? t('dash.sortedAscendingSuffix') : t('dash.sortedDescendingSuffix')) : '' })}
                         className="flex items-center gap-1 hover:text-foreground transition-colors group"
                       >
                         {col.header}
@@ -265,9 +267,7 @@ export function DataTable<T extends { id: string }>({
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">
-                    Loading…
-                  </td>
+                  <td colSpan={columns.length + (bulkActions?.length ? 1 : 0)} className="py-12 text-center text-muted-foreground text-sm">{t('common.loading')}</td>
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
@@ -295,7 +295,7 @@ export function DataTable<T extends { id: string }>({
                         <button
                           type="button"
                           onClick={() => toggleRow(row.id)}
-                          aria-label={selected.has(row.id) ? 'Deselect row' : 'Select row'}
+                          aria-label={selected.has(row.id) ? t('dash.deselectRow') : t('dash.selectRow')}
                           aria-pressed={selected.has(row.id)}
                           className="text-muted-foreground hover:text-foreground"
                         >
@@ -318,15 +318,11 @@ export function DataTable<T extends { id: string }>({
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Page {safePage} of {totalPages}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('dash.pageSafepageOfTotalpages', { safePage, totalPages })}</p>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage <= 1} onClick={() => setPage(p => p - 1)}>
-              <ChevronLeft className="h-3 w-3 mr-1" />Prev
-            </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>
-              Next<ChevronRight className="h-3 w-3 ml-1" />
+              <ChevronLeft className="h-3 w-3 mr-1" />{t('dash.prev')}</Button>
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage >= totalPages} onClick={() => setPage(p => p + 1)}>{t('common.next')}<ChevronRight className="h-3 w-3 ml-1" />
             </Button>
           </div>
         </div>

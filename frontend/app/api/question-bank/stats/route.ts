@@ -53,6 +53,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (e) {
     console.error('[question-bank/stats] error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

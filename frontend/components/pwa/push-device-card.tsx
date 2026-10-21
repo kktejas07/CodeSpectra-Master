@@ -16,8 +16,10 @@ import {
   currentSubscription, fetchPushStatus, isIos, isStandalone, pushSupported, sendTestPush, setPushChannel,
   subscribeThisDevice, unsubscribeThisDevice, type PushStatus,
 } from '@/lib/pwa/push-client'
+import { useT } from '@/lib/i18n/client'
 
 export function PushDeviceCard() {
+  const { t } = useT()
   const addToast = useToast()
   const [status, setStatus] = useState<PushStatus | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -33,7 +35,7 @@ export function PushDeviceCard() {
       setStatus(s)
       setThisDevice(!!(await currentSubscription().catch(() => null)))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not load push settings')
+      setError(e instanceof Error ? e.message : t('dash.couldNotLoadPushSettings'))
     }
   }, [])
 
@@ -50,7 +52,7 @@ export function PushDeviceCard() {
       if (ok) addToast({ type: 'success', title: ok })
       await load()
     } catch (e) {
-      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Something went wrong' })
+      addToast({ type: 'error', title: e instanceof Error ? e.message : t('dash.somethingWentWrong') })
     } finally {
       setBusy(false)
     }
@@ -77,23 +79,22 @@ export function PushDeviceCard() {
           <BellRing className="h-5 w-5 text-primary" aria-hidden />
         </div>
         <div className="min-w-0">
-          <h3 className="text-lg font-semibold text-foreground">App notifications</h3>
-          <p className="text-sm text-muted-foreground">Push alerts on your phone or computer. Quiet hours below apply here too.</p>
+          <h3 className="text-lg font-semibold text-foreground">{t('dash.appNotifications')}</h3>
+          <p className="text-sm text-muted-foreground">{t('dash.pushAlertsOnYourPhoneOr22d')}</p>
         </div>
       </div>
 
       {error ? (
         <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-4 text-sm">
           <p className="text-destructive">{error}</p>
-          <Button variant="outline" size="sm" className="rounded-lg" onClick={() => void load()}>Try again</Button>
+          <Button variant="outline" size="sm" className="rounded-lg" onClick={() => void load()}>{t('common.tryAgain')}</Button>
         </div>
       ) : (
         <>
           <div className="flex items-center justify-between gap-4 border-b border-border/60 px-6 py-4">
             <div className="min-w-0 space-y-0.5">
               <Label htmlFor="push-this-device" className="flex items-center gap-2 font-medium text-foreground">
-                <Smartphone className="h-4 w-4 text-muted-foreground" aria-hidden /> This device
-              </Label>
+                <Smartphone className="h-4 w-4 text-muted-foreground" aria-hidden />{' '}{t('dash.thisDevice')}</Label>
               <p className="text-sm text-muted-foreground">{deviceHint}</p>
             </div>
             <Switch
@@ -105,10 +106,9 @@ export function PushDeviceCard() {
           </div>
           <div className="flex items-center justify-between gap-4 border-b border-border/60 px-6 py-4">
             <div className="min-w-0 space-y-0.5">
-              <Label htmlFor="push-all-devices" className="font-medium text-foreground">Push on all devices</Label>
+              <Label htmlFor="push-all-devices" className="font-medium text-foreground">{t('dash.pushOnAllDevices')}</Label>
               <p className="text-sm text-muted-foreground">
-                {status ? `${status.devices.length} device${status.devices.length === 1 ? '' : 's'} signed up.` : 'Loading…'} Turn off to pause push everywhere.
-              </p>
+                {status ? t('dash.countDevicesSignedUp', { count: status.devices.length }) : t('common.loading')}{' '}{t('dash.turnOffToPausePushEverywhere')}</p>
             </div>
             <Switch
               id="push-all-devices"
@@ -123,10 +123,8 @@ export function PushDeviceCard() {
               variant="outline"
               className="rounded-lg"
               disabled={busy || !thisDevice}
-              onClick={() => void run(async () => { if (!(await sendTestPush())) throw new Error('No device received it. Try turning this device off and on again.') }, 'Test notification sent')}
-            >
-              Send a test notification
-            </Button>
+              onClick={() => void run(async () => { if (!(await sendTestPush())) throw new Error(t('dash.noDeviceReceivedItTryTurning0b5')) }, 'Test notification sent')}
+            >{t('dash.sendATestNotification')}</Button>
           </div>
         </>
       )}

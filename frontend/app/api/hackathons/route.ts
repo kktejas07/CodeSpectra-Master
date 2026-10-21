@@ -63,20 +63,20 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   // A tenant admin without a tenant would create an unowned (global) event.
   if (user.role === 'tenant_admin' && !user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   let body: Partial<HackathonDoc> = {}
   try {
     body = (await req.json()) as Partial<HackathonDoc>
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   // Validation, problem checks and the new doc: lib/services/hackathons (shared with the admin agent).

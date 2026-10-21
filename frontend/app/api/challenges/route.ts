@@ -69,7 +69,7 @@ export async function GET() {
       : {}
     const data = await db.collection('challenges').find(filter).toArray()
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function POST(request: NextRequest) {
@@ -102,6 +102,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {
     console.error('[challenges]', error)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

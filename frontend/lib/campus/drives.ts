@@ -119,6 +119,8 @@ async function notifyDriveOpen(drive: DriveDoc, college: CollegeDoc): Promise<vo
     type: 'campus.drive_open',
     title: `New placement drive: ${drive.company.name}`,
     message: `${drive.role_title} — apply by ${new Date(drive.schedule.apply_by).toUTCString().slice(0, 16)}.`,
+    title_i18n: { key: 'campus.drive.title', params: { company: drive.company.name } },
+    message_i18n: { key: 'campus.drive.message', params: { role: drive.role_title, date: new Date(drive.schedule.apply_by).toUTCString().slice(0, 16) } },
     link: '/dashboard/campus',
     icon: 'briefcase',
     metadata: { drive_id: drive.id },
@@ -207,7 +209,10 @@ export async function createOffer(ctx: StaffContext, raw: unknown): Promise<Offe
   if (student.user_id) {
     void import('@/lib/notifications').then(({ notify }) => notify({
       user_id: student.user_id!, type: 'campus.offer', title: `Offer recorded: ${i.company_name}`,
-      message: `${i.role_title}. Check the details on your campus page.`, link: '/dashboard/campus', icon: 'award', send_email: true, send_whatsapp: true,
+      message: `${i.role_title}. Check the details on your campus page.`,
+      title_i18n: { key: 'campus.offer.title', params: { company: i.company_name } },
+      message_i18n: { key: 'campus.offer.message', params: { role: i.role_title } },
+      link: '/dashboard/campus', icon: 'award', send_email: true, send_whatsapp: true,
     })).catch(() => {})
   }
   return clean(doc)!

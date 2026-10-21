@@ -3,8 +3,8 @@ import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { candidateInvites, newId, nowIso } from '@/lib/db/admin'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
-import { formatDate } from '@/lib/format-datetime'
+import { emailLongDate, emailTemplatesFor } from '@/lib/email-templates'
+import { localeForEmail } from '@/lib/i18n/recipient'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -103,11 +103,12 @@ export async function POST(
         advanced++
 
         // Tell the candidate (same email as a manual invite) and record the outcome.
-        const template = emailTemplates.assessmentInvite({
+        const locale = await localeForEmail(email)
+        const template = emailTemplatesFor(locale).assessmentInvite({
           candidateName: fullName || email,
           examTitle: targetTitle,
           inviteUrl: `${appUrl}/assessment/invite/${inviteToken}`,
-          expiresIn: formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
+          expiresIn: emailLongDate(expiresAt, locale),
         })
         const sent = await sendEmail(email, template).catch(() => ({ success: false, postalMessageId: null }))
         await invitesCol.updateOne(

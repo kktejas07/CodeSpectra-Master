@@ -9,6 +9,7 @@ import remarkGfm from 'remark-gfm'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface ProblemData {
   id: string
@@ -36,6 +37,7 @@ interface ChallengeData {
 }
 
 export default function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
 
   const { id: challengeId } = use(params)
@@ -86,13 +88,13 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
       <div className="mx-auto max-w-xl py-10">
         <EmptyState
           illustration="error"
-          title="Couldn't load this challenge"
-          description="It may have been removed, or your connection dropped. Try again or go back to the challenge list."
-          actionLabel="Try again"
+          title={tr('practice.couldntLoadThisChallenge')}
+          description={tr('practice.itMayHaveBeenRemovedOrc49')}
+          actionLabel={tr('common.tryAgain')}
           onAction={() => setReloadKey((k) => k + 1)}
         />
         <p className="mt-4 text-center text-sm">
-          <Link href="/dashboard/challenges" className="text-primary hover:underline">Back to challenges</Link>
+          <Link href="/dashboard/challenges" className="text-primary hover:underline">{tr('practice.backToChallenges')}</Link>
         </p>
       </div>
     )

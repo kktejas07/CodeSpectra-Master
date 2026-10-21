@@ -13,11 +13,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
 
   const col = await interviewSessions()
   const session = await col.findOne({ id })
-  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!session) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   // Participants, superadmin, or a tenant_admin of this session's tenant only.
   if (!interviewRole(gate.user, session as unknown as Record<string, unknown>)) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   return NextResponse.json(session)
@@ -30,10 +30,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   const col = await interviewSessions()
   const session = await col.findOne({ id })
-  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!session) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   const role = interviewRole(gate.user, session as unknown as Record<string, unknown>)
-  if (!role) return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  if (!role) return NextResponse.json({ error: 'forbidden', code: 'forbidden' }, { status: 403 })
 
   // Feedback, scores and questions are the interviewer's (or tenant staff's);
   // the candidate can only start the session. Every value is type-checked.
@@ -60,15 +60,15 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await ctx.params
   const col = await interviewSessions()
   const session = await col.findOne({ id })
-  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!session) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   // tenant_admin can only delete interviews in their own tenant
   if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || session.tenant_id !== gate.user.tenantId)) {
-    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'forbidden', code: 'forbidden' }, { status: 403 })
   }
   await (await interviewSessions()).deleteOne({ id })
   if (session.status === 'scheduled' || session.status === 'in_progress') {

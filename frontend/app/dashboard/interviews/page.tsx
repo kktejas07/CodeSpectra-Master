@@ -1,5 +1,5 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -13,6 +13,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -22,6 +23,8 @@ interface Interview {
 }
 
 export default function InterviewsPage() {
+  const { formatDateTime } = useLocaleDates()
+  const { td, t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -58,20 +61,20 @@ export default function InterviewsPage() {
       const interviewsTour: TourStep[] = [
         {
           target: '[data-tour="interviews-header"]',
-          title: 'Your interviews',
-          description: 'View all your scheduled and past interviews. Schedule new ones to practice.',
+          title: t('career.yourInterviews'),
+          description: t('career.viewAllYourScheduledAndPast371'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interviews-schedule-btn"]',
-          title: 'Schedule an interview',
-          description: 'Click here to schedule a new interview.',
+          title: t('career.scheduleAnInterview'),
+          description: t('career.clickHereToScheduleANewa66'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interviews-list"]',
-          title: 'Interview list',
-          description: 'Browse your interviews. Click any card to view details and start the interview.',
+          title: t('career.interviewList'),
+          description: t('career.browseYourInterviewsClickAnyCardbcc'),
           position: 'bottom',
         },
       ]
@@ -94,13 +97,12 @@ export default function InterviewsPage() {
           illustration="interview"
           className="mb-0"
           icon={<Video aria-hidden />}
-          title="Interviews"
-          description="Your scheduled and past interviews, plus AI mock interviews for practice."
+          title={t('career.interviews')}
+          description={t('career.yourScheduledAndPastInterviewsPlus6c3')}
           actions={
             <Button asChild>
               <Link href="/dashboard/interviews/schedule" data-tour="interviews-schedule-btn">
-                <Video className="mr-1 h-4 w-4" /> Schedule interview
-              </Link>
+                <Video className="mr-1 h-4 w-4" />{' '}{t('career.scheduleInterview')}</Link>
             </Button>
           }
         />
@@ -112,8 +114,8 @@ export default function InterviewsPage() {
             <Brain className="h-5 w-5 text-primary transition-colors group-hover:text-primary-foreground" aria-hidden />
           </div>
           <div className="flex-1">
-            <h3 className="text-base font-semibold text-foreground">Start an AI mock interview</h3>
-            <p className="text-sm text-muted-foreground">Practice with AI-generated questions tailored to your resume</p>
+            <h3 className="text-base font-semibold text-foreground">{t('career.startAnAiMockInterview')}</h3>
+            <p className="text-sm text-muted-foreground">{t('career.practiceWithAiGeneratedQuestionsTailored742')}</p>
           </div>
           <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
         </Panel>
@@ -121,18 +123,18 @@ export default function InterviewsPage() {
 
       {practice.length > 0 && (
         <section aria-labelledby="practice-history" className="space-y-3">
-          <h2 id="practice-history" className="text-lg font-semibold text-foreground">Your practice interviews</h2>
+          <h2 id="practice-history" className="text-lg font-semibold text-foreground">{t('career.yourPracticeInterviews')}</h2>
           <div className="grid gap-3 md:grid-cols-2">
             {practice.slice(0, 10).map((p) => (
               <Link key={p.id} href={`/dashboard/interviews/ai-mock?session=${encodeURIComponent(p.id)}`} className="block rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
                 <Panel interactive className="flex items-center justify-between gap-3 rounded-2xl p-4">
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-foreground">{p.role || 'Practice interview'}</p>
+                    <p className="truncate font-medium text-foreground">{p.role || t('career.practiceInterview')}</p>
                     <p className="text-xs text-muted-foreground tabular-nums">{p.difficulty}{p.started_at ? ` · ${formatDateTime(p.started_at)}` : ''}</p>
                   </div>
                   {p.status === 'completed' && p.overall_score !== null
                     ? <span className="shrink-0 text-lg font-semibold tabular-nums text-foreground">{Math.round(p.overall_score)}<span className="text-xs text-muted-foreground">/100</span></span>
-                    : <Badge variant="outline">{p.status === 'completed' ? 'Report' : 'Not finished'}</Badge>}
+                    : <Badge variant="outline">{p.status === 'completed' ? t('career.report') : t('career.notFinished')}</Badge>}
                 </Panel>
               </Link>
             ))}
@@ -147,17 +149,17 @@ export default function InterviewsPage() {
       ) : loadError ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load interviews"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('career.couldntLoadInterviews')}
+          description={t('career.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
           onAction={() => void load()}
         />
       ) : interviews.length === 0 ? (
         <EmptyState illustration="interview"
           variant="sessions"
-          title="No interviews yet"
-          description="Schedule one above, or start an AI mock interview to practise."
-          actionLabel="Start an AI mock interview"
+          title={t('career.noInterviewsYet')}
+          description={t('career.scheduleOneAboveOrStartAn053')}
+          actionLabel={t('career.startAnAiMockInterview')}
           actionHref="/dashboard/interviews/ai-mock/setup"
         />
       ) : (
@@ -180,7 +182,7 @@ export default function InterviewsPage() {
                       const dl = toDifficultyLevel(iv.type)
                       return dl ? (
                         <Badge variant="outline" className={`text-[10px] ${DIFFICULTY_COLORS[dl]}`}>
-                          {DIFFICULTY_LABELS[dl]}
+                          {td(`career.difficultyLabels:${dl}`, DIFFICULTY_LABELS[dl])}
                         </Badge>
                       ) : null
                     })()}
@@ -200,14 +202,13 @@ export default function InterviewsPage() {
                   </div>
                 )}
                 {iv.questions?.length > 0 && (
-                  <p className="text-xs text-muted-foreground tabular-nums">{iv.questions.length} {iv.questions.length === 1 ? 'question' : 'questions'}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{iv.questions.length} {iv.questions.length === 1 ? t('career.question') : t('career.questions')}</p>
                 )}
                 {iv.status === 'completed' && (
                   <Link
                     href={`/dashboard/interviews/feedback?id=${iv.id}`}
                     className="relative z-10 inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1 rounded focus-visible:outline-2 focus-visible:outline-primary"
-                  >
-                    View feedback <ArrowRight className="h-3 w-3" aria-hidden />
+                  >{t('career.viewFeedback')}{' '}<ArrowRight className="h-3 w-3" aria-hidden />
                   </Link>
                 )}
             </Panel>

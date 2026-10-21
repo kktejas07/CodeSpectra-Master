@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { AlertCircle } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface QualityRating {
   security: 'A' | 'B' | 'C' | 'D' | 'E'
@@ -16,11 +17,12 @@ interface QualityRatingsProps {
 }
 
 export function QualityRatings({ ratings }: QualityRatingsProps) {
+  const { t } = useT()
   if (!ratings) {
     return (
       <Card className="rounded-3xl p-8 text-center border border-dashed">
         <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-        <p className="text-muted-foreground">No ratings available yet</p>
+        <p className="text-muted-foreground">{t('tools.noRatingsAvailableYet')}</p>
       </Card>
     )
   }
@@ -45,14 +47,14 @@ export function QualityRatings({ ratings }: QualityRatingsProps) {
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {/* Overall Score */}
       <Card className="rounded-3xl p-6 text-center bg-linear-to-br from-primary/20 to-primary/5 border border-primary/30">
-        <p className="text-sm text-muted-foreground mb-3">Overall quality</p>
+        <p className="text-sm text-muted-foreground mb-3">{t('tools.overallQuality')}</p>
         <div className="text-5xl font-bold text-primary mb-2">{ratings.overallScore}</div>
         <p className="text-xs text-muted-foreground">/100</p>
       </Card>
 
       {/* Security Rating */}
       <Card className="rounded-3xl p-6 text-center">
-        <p className="text-sm text-muted-foreground mb-3">Security</p>
+        <p className="text-sm text-muted-foreground mb-3">{t('tools.security')}</p>
         <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full text-3xl font-bold mb-2 ${getRatingColor(ratings.security)}`}>
           {ratings.security}
         </div>
@@ -61,7 +63,7 @@ export function QualityRatings({ ratings }: QualityRatingsProps) {
 
       {/* Reliability Rating */}
       <Card className="rounded-3xl p-6 text-center">
-        <p className="text-sm text-muted-foreground mb-3">Reliability</p>
+        <p className="text-sm text-muted-foreground mb-3">{t('tools.reliability')}</p>
         <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full text-3xl font-bold mb-2 ${getRatingColor(ratings.reliability)}`}>
           {ratings.reliability}
         </div>
@@ -70,7 +72,7 @@ export function QualityRatings({ ratings }: QualityRatingsProps) {
 
       {/* Maintainability Rating */}
       <Card className="rounded-3xl p-6 text-center">
-        <p className="text-sm text-muted-foreground mb-3">Maintainability</p>
+        <p className="text-sm text-muted-foreground mb-3">{t('tools.maintainability')}</p>
         <div className={`inline-flex items-center justify-center w-14 h-14 rounded-full text-3xl font-bold mb-2 ${getRatingColor(ratings.maintainability)}`}>
           {ratings.maintainability}
         </div>

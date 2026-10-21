@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id } = await ctx.params
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const canSubmit = (hk.status === 'live' && withinTime) || (hk.status === 'closed' && hk.allow_late_submissions && now <= ends + gracePeriod)
   
   if (!canSubmit || hk.results_released) {
-    return NextResponse.json({ error: 'submissions are closed' }, { status: 409 })
+    return NextResponse.json({ error: 'submissions are closed', code: 'contest_closed' }, { status: 409 })
   }
 
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id } = await ctx.params
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
@@ -168,7 +168,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
 
   if (!isStaff && !team) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const queryTeamId = req.nextUrl.searchParams.get('team_id')

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { Illustration } from '@/components/illustrations/spot'
+import { useT } from '@/lib/i18n/client'
 
 interface ActivityItem {
   ts: string
@@ -64,6 +65,7 @@ export function ActivityTimeline({
   title = 'Recent activity',
   subtitle = 'Your latest contributions and actions',
 }: ActivityTimelineProps) {
+  const { t } = useT()
   const displayActivities = limit ? activities.slice(0, limit) : activities
 
   return (
@@ -75,8 +77,7 @@ export function ActivityTimeline({
         </div>
         {showViewAll && (
           <Link href="/dashboard/profile">
-            <Badge variant="outline" className="text-xs font-normal gap-1 cursor-pointer">
-              View all <ArrowRight className="h-3 w-3" />
+            <Badge variant="outline" className="text-xs font-normal gap-1 cursor-pointer">{t('dash.viewAll')}{' '}<ArrowRight className="h-3 w-3" />
             </Badge>
           </Link>
         )}
@@ -85,8 +86,8 @@ export function ActivityTimeline({
       {displayActivities.length === 0 ? (
         <div className="flex flex-col items-center py-2 text-center" role="status">
           <Illustration name="calendar" className="mb-1 w-28" />
-          <p className="text-sm font-semibold text-foreground">No recent activity</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Solve a problem or run a scan to see it here.</p>
+          <p className="text-sm font-semibold text-foreground">{t('dash.noRecentActivity')}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{t('dash.solveAProblemOrRunAff0')}</p>
         </div>
       ) : (
         <div className="relative space-y-0 border-l border-border pl-5">
@@ -118,8 +119,7 @@ export function ActivityTimeline({
       {showViewAll && activities.length > (limit || 0) && (
         <div className="mt-4 pt-4 border-t border-border/60">
           <Link href="/dashboard/profile">
-            <Badge variant="outline" className="w-full justify-center gap-2 cursor-pointer">
-              View all {activities.length} activities <ArrowRight className="h-3 w-3" />
+            <Badge variant="outline" className="w-full justify-center gap-2 cursor-pointer">{t('dash.viewAllCountActivities', { count: activities.length })}{' '}<ArrowRight className="h-3 w-3" />
             </Badge>
           </Link>
         </div>

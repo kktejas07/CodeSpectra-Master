@@ -69,6 +69,8 @@ export async function awardXpWithLevelUp(args: AwardXpArgs): Promise<AwardXpResu
       type: 'xp.awarded',
       title: `You gained ${amount} XP!`,
       message: `Keep up the great work — ${amount} XP added to your profile.`,
+      title_i18n: { key: 'xp.gained.title', params: { amount } },
+      message_i18n: { key: 'xp.gained.message', params: { amount } },
       link: '/dashboard/leaderboard',
       icon: 'star',
       metadata: { xp: String(amount), level: String(level), reason },
@@ -96,7 +98,7 @@ export async function issueLevelUpCertificate(
     const db = await getMongoDb()
     const user = await db.collection('user').findOne(
       { $or: [{ id: userId }, { _id: userId }] } as Filter<Document>,
-      { projection: { name: 1, fullName: 1, email: 1 } },
+      { projection: { name: 1, fullName: 1, email: 1, ui_locale: 1 } },
     )
     const name = String(user?.fullName || user?.name || 'CodeSpectra User')
     const email = String(user?.email || '')
@@ -129,6 +131,8 @@ export async function issueLevelUpCertificate(
       type: 'xp.level_up',
       title: `Congratulations! You reached Level ${newLevel}`,
       message: `You leveled up! View and download your Level ${newLevel} certificate.`,
+      title_i18n: { key: 'xp.levelUp.title', params: { level: newLevel } },
+      message_i18n: { key: 'xp.levelUp.message', params: { level: newLevel } },
       link,
       icon: 'trophy',
       metadata: { xp: String(totalXp), newLevel: String(newLevel), verify_token: verifyToken },
@@ -139,6 +143,8 @@ export async function issueLevelUpCertificate(
       type: 'certificate.issued',
       title: `Level ${newLevel} Certificate Issued`,
       message: 'Your level-up certificate is ready to view and download.',
+      title_i18n: { key: 'xp.levelCert.title', params: { level: newLevel } },
+      message_i18n: { key: 'xp.levelCert.message' },
       link,
       icon: 'award',
       metadata: { verify_token: verifyToken },
@@ -148,8 +154,9 @@ export async function issueLevelUpCertificate(
     if (email) {
       try {
         const { sendEmail } = await import('@/lib/send-email')
-        const { emailTemplates } = await import('@/lib/email-templates')
-        const tpl = emailTemplates.levelUp({ name, newLevel, totalXp, certUrl: link })
+        const { emailTemplatesFor } = await import('@/lib/email-templates')
+        const { recipientLocaleFrom } = await import('@/lib/i18n/recipient')
+        const tpl = emailTemplatesFor(recipientLocaleFrom(user as { ui_locale?: unknown } | null)).levelUp({ name, newLevel, totalXp, certUrl: link })
         await sendEmail(email, tpl)
       } catch { /* email is optional */ }
     }

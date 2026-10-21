@@ -8,12 +8,12 @@ import { sanitizeExamQuestionList } from '@/lib/grading'
 import { candidateExamView, isExamStaff, questionAnswerKey, pickFields, normalizeRetakeFields, normalizeCertificateFields, normalizeProctoringFields, normalizeIdentityFields, normalizeSectionFields, attemptSummary, examAttemptPolicy, checkExamEntry, attemptTimeState, getExamDraft, EXAM_EDITABLE_FIELDS } from '@/lib/exam-access'
 
 export async function GET(request: Request, { params }: IdRouteContext) {
-  const gate = await requireAuth().catch(() => ({ error: 'Unauthorized' }))
+  const gate = await requireAuth().catch(() => ({ error: 'Unauthorized', code: 'unauthorized' }))
   const { id } = await params
   try {
     const col = await exams()
     const doc = (await col.findOne({ id })) as Record<string, unknown> | null
-    if (!doc) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!doc) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     const user = gate && !('error' in gate) ? gate.user : null
 
@@ -21,7 +21,7 @@ export async function GET(request: Request, { params }: IdRouteContext) {
     if (user && isExamStaff(user, doc)) return NextResponse.json(doc)
 
     // Drafts are invisible to everyone else.
-    if (!doc.published) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!doc.published) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     // Candidates never get the answer key, hidden tests or grader fields, and
     // never get the questions from here: POST ./start hands them out once the
@@ -111,15 +111,15 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
   }
   const user = gate.user
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await params
   try {
     const col = await exams()
     const exam = await col.findOne({ id })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
     if (!isExamStaff(user, exam as unknown as Record<string, unknown>)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     // Allow-list: never id/_id/tenant_id/created_by or stats from the body.
     const data = pickFields(await request.json().catch(() => ({})), EXAM_EDITABLE_FIELDS)

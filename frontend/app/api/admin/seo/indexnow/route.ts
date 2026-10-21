@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const body = (await req.json().catch(() => ({}))) as { action?: string; urls?: unknown }
   if (body.action === 'generate') return NextResponse.json({ key: generateIndexNowKey() })
-  if (body.action !== 'submit') return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+  if (body.action !== 'submit') return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
   const site = await getSiteOrigin()
   const urls = Array.isArray(body.urls) && body.urls.length
     ? body.urls.filter((u): u is string => typeof u === 'string').slice(0, 1000)

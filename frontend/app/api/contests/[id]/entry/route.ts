@@ -46,7 +46,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (limited) return limited
   const { id } = await ctx.params
   const parsed = bodySchema.safeParse(await readJson(req))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   return guarded('register', async () => {
     const c = await loadVisible(id, user)
     if (!c) return notFound()

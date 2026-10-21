@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
-  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   const parsed = parsePlan(body)
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
   const doc: Record<string, unknown> & { plan: string } = { ...parsed.doc, plan: String(parsed.doc.plan), updatedAt: new Date().toISOString() }
@@ -129,7 +129,7 @@ export async function DELETE(request: Request) {
     const live = await (await billingSubscriptions()).countDocuments({ plan_id: plan, status: 'active', ends_at: { $gt: new Date().toISOString() } })
     if (live > 0) return NextResponse.json({ error: `${live} active subscription(s) use this plan. Wait for them to end first.` }, { status: 409 })
     const res = await (await getMongoDb()).collection('plans').deleteOne({ plan })
-    if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     invalidatePlanCache()
     await revalidateContent('pricing')
     await auditAdmin(gate.user, 'admin.plan.delete', 'plan', `plan/${plan}`, undefined, 'warning')

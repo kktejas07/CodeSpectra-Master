@@ -88,7 +88,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id } = await ctx.params
   const hk = await resolveHackathon(id)
   if (!hk) return NextResponse.json({ error: 'hackathon not found' }, { status: 404 })

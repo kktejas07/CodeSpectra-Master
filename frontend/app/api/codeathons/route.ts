@@ -18,18 +18,18 @@ export async function GET(request: Request) {
     // Participants never get hidden test cases (they are the grading key).
     const data = docs.map((d) => (isTenantStaff(gate.user, d) ? d : publicCodeathonView(d)))
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   // A company admin without an organization would create an unowned (platform) event.
   if (gate.user.role === 'tenant_admin' && !gate.user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const body = await request.json()
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const r = await createCodeathon(gate.user, body)
     if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status })
     return NextResponse.json(r.data, { status: 201 })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function DELETE(request: Request) {
@@ -46,13 +46,13 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
     const db = await getMongoDb()
     const existing = await db.collection('codeathons').findOne({ id })
-    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    if (!isTenantStaff(gate.user, existing)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!existing) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
+    if (!isTenantStaff(gate.user, existing)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     await db.collection('codeathons').deleteOne({ id })
     knowledgeOnEventChange('codeathon', id)
     return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

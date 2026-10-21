@@ -20,11 +20,11 @@ export async function POST(req: NextRequest) {
   const ok =
     verifyVapiSecret(req.headers, cfg.voice.vapi_webhook_secret) ||
     (!!cfg.voice.voice_agent_webhook_secret && verifyVapiSecret({ get: (n) => (n === 'x-vapi-secret' ? req.headers.get('x-voice-agent-secret') : req.headers.get(n)) }, cfg.voice.voice_agent_webhook_secret))
-  if (!ok) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!ok) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const raw = await req.text()
   if (raw.length > 5_000_000) return NextResponse.json({ error: 'Too large' }, { status: 413 })
   let body: unknown
-  try { body = JSON.parse(raw) } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = JSON.parse(raw) } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
 
   const report = parseVapiReport(body)
   if (report.kind === 'other' || (!report.ref && !report.screeningCallId)) return NextResponse.json({ ok: true })

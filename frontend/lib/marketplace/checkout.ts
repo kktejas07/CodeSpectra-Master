@@ -119,13 +119,13 @@ export async function createCheckout(user: { id: string; email: string }, input:
   if (physical.length) {
     if (!input.address) throw new CartError(400, 'Add a delivery address for the physical items.', 'address')
     const blocked = physical.find((r) => !shipsTo(r.product.shipping?.regions, input.address!.country))
-    if (blocked) throw new CartError(400, `${blocked.product.title} does not ship to that country.`, 'address')
+    if (blocked) throw new CartError(400, `${blocked.product.title} does not ship to that country.`, 'address', { title: blocked.product.title })
   }
 
   const pay = chargeable(quote.grand_total, currency)
   if (pay === 'too_small') throw new CartError(400, 'The order total is below the minimum card payment.')
   const gateway = pay === 'free' ? (currency === 'INR' ? 'phonepe' : 'stripe') : await pickGateway(currency)
-  if (!gateway) throw new CartError(503, `Payments in ${currency} are not available right now. Please try again later.`)
+  if (!gateway) throw new CartError(503, `Payments in ${currency} are not available right now. Please try again later.`, 'checkout_gateway_unavailable', { currency })
 
   const now = nowIso()
   const orderId = newId()

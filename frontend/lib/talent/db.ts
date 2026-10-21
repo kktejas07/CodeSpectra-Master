@@ -26,7 +26,8 @@ import {
 } from './core'
 
 export class TalentError extends Error {
-  constructor(message: string, public status: number, public retryAfterSec?: number) { super(message) }
+  /** `code` / `params`: error code for the UI's translation (lib/api-errors); inferred from the message when omitted. */
+  constructor(message: string, public status: number, public retryAfterSec?: number, public code?: string, public params?: Record<string, string | number>) { super(message) }
 }
 
 export interface TalentInviteDoc {
@@ -205,7 +206,7 @@ async function reserveQuota(tenantId: string, limit: number): Promise<string> {
     if ((e as { code?: number })?.code !== 11000) throw e
   }
   const r = await q.updateOne({ _id: key, used: { $lt: limit } }, { $inc: { used: 1 } })
-  if (r.matchedCount !== 1) throw new TalentError(`Your organisation has used all ${limit} talent invites for this month.`, 402)
+  if (r.matchedCount !== 1) throw new TalentError(`Your organisation has used all ${limit} talent invites for this month.`, 402, undefined, 'talent_invite_quota', { limit })
   return key
 }
 async function releaseQuota(key: string) {
@@ -278,6 +279,8 @@ export async function sendTalentInvite(actor: AtsActor, input: SendInviteInput, 
     type: 'talent.invite',
     title: `${doc.tenant_name} invited you`,
     message: `${INVITE_TARGET_LABELS[doc.target_type]}: ${doc.target_title}. Your contact details stay private unless you accept.`,
+    title_i18n: { key: 'talent.invite.title', params: { org: doc.tenant_name } },
+    message_i18n: { key: 'talent.invite.message', params: { target: { t: `talent.target.${doc.target_type}` }, title: doc.target_title } },
     link: '/dashboard/passport#invites',
     icon: 'briefcase',
     send_email: true,
@@ -391,6 +394,8 @@ export async function respondToInvite(userId: string, id: string, action: 'accep
     message: status === 'accepted'
       ? `A learner accepted your invite (${inv.target_title}). Their contact details are now in Talent search → Sent invites.`
       : `A learner declined your invite (${inv.target_title}).`,
+    title_i18n: { key: status === 'accepted' ? 'talent.accepted.title' : 'talent.declined.title' },
+    message_i18n: { key: status === 'accepted' ? 'talent.accepted.message' : 'talent.declined.message', params: { title: inv.target_title } },
     link: '/dashboard/hiring/talent?tab=invites',
     icon: status === 'accepted' ? 'check' : 'x',
   })).catch(() => {})

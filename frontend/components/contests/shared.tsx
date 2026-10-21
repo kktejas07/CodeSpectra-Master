@@ -23,13 +23,13 @@ export function FormatIcon({ format, className }: { format: ContestFormat; class
   return <Icon className={className} aria-hidden />
 }
 
-export function PhaseBadge({ phase }: { phase: ContestPhase }) {
+export function PhaseBadge({ phase, label }: { phase: ContestPhase; /** Translated label (public pages); defaults to English. */ label?: string }) {
   const tone =
     phase === 'live' ? 'border-green-500/30 bg-green-500/15 text-green-700 dark:text-green-400'
       : phase === 'registration' ? 'border-primary/30 bg-primary/10 text-primary'
         : phase === 'draft' ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400'
           : 'text-muted-foreground'
-  return <Badge variant="outline" className={cn('rounded-full', tone)}>{PHASE_LABELS[phase]}</Badge>
+  return <Badge variant="outline" className={cn('rounded-full', tone)}>{label ?? PHASE_LABELS[phase]}</Badge>
 }
 
 /** "21 Oct 2026, 18:30 IST" in the contest's zone. */

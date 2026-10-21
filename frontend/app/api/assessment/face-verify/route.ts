@@ -24,7 +24,7 @@ function cosineSimilarity(A: number[], B: number[]) {
 export async function POST(request: Request) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const { descriptor, examId } = await request.json()
 
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const dbUser = await getUserById(user.id) as Record<string, unknown> | null
 
     if (!dbUser) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 401 })
     }
 
     // Strict enforcement: if the user hasn't enrolled yet, they cannot take the exam.
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         )
       } catch (enrollErr) {
         console.error('[AssessmentFaceVerify] auto-enroll failed:', enrollErr)
-        return NextResponse.json({ error: 'Could not enroll face biometrics. Please enroll from Profile Settings.' }, { status: 500 })
+        return NextResponse.json({ error: 'Could not enroll face biometrics. Please enroll from Profile Settings.', code: 'face_enroll_failed' }, { status: 500 })
       }
       const rawIp = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
       await writeAuditLog({
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     // Compare face embeddings
     const template = await openFaceTemplate(dbUser.facial_biometric_template)
     if (!template) {
-      return NextResponse.json({ error: 'Your saved face scan could not be read. Re-enroll your face from your profile, then try again.' }, { status: 409 })
+      return NextResponse.json({ error: 'Your saved face scan could not be read. Re-enroll your face from your profile, then try again.', code: 'face_template_unreadable' }, { status: 409 })
     }
     const similarityScore = cosineSimilarity(descriptor, template);
     
@@ -89,13 +89,13 @@ export async function POST(request: Request) {
         user_id: user.id, 
         detail: `Pre-assessment biometric verification failed. Score: ${similarityScore.toFixed(3)}` 
       })
-      return NextResponse.json({ error: 'Face does not match the enrolled template. Verification failed.' }, { status: 403 })
+      return NextResponse.json({ error: 'Face does not match the enrolled template. Verification failed.', code: 'face_mismatch' }, { status: 403 })
     }
 
     return NextResponse.json({ ok: true, matched: true, score: similarityScore })
 
   } catch (error) {
     console.error('[AssessmentFaceVerify] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

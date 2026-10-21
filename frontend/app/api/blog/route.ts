@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items, categories: BLOG_CATEGORIES, total: items.length })
   } catch (e) {
     console.error('[blog] GET list:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -123,6 +123,8 @@ export async function POST(req: NextRequest) {
         type: 'content.post_published',
         title: 'Blog Post Published',
         message: `A new blog post "${doc.title}" has been published.`,
+        title_i18n: { key: 'admin.blog.title' },
+        message_i18n: { key: 'admin.blog.message', params: { title: String(doc.title) } },
         link: `/blog/${doc.slug}`,
       })
     }
@@ -130,6 +132,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ post: doc }, { status: 201 })
   } catch (e) {
     console.error('[blog] POST:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

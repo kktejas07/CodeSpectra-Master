@@ -18,7 +18,8 @@ import { deriveServerKey, isTenantActive } from '@/lib/session'
 import { writeAuditLog } from '@/lib/db/misc'
 import { newId, nowIso } from '@/lib/db/ids'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForEmail } from '@/lib/i18n/recipient'
 import { getAppOrigin } from '@/lib/app-origin'
 import { escapeHtml } from '@/lib/org-invitations-core'
 import type { AtsActor, AtsMember, AtsRole } from '@/lib/ats/contract'
@@ -316,7 +317,7 @@ export async function sendAtsInvite(member: AtsMemberDoc, invitedBy: { name?: st
   try {
     const r = await sendEmail(
       member.email,
-      emailTemplates.atsTeamInvite({
+      emailTemplatesFor(await localeForEmail(member.email)).atsTeamInvite({
         orgName: escapeHtml(String(tenant?.name || 'an organization')),
         invitedByName: escapeHtml(invitedBy.name || invitedBy.email || 'A recruiter'),
         roleLabel: escapeHtml(ROLE_LABELS[member.role]),

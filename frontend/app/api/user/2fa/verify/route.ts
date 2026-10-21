@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const rateCheck = await rateLimitRedis(`2fa:verify:${gate.user.id}`, 5, 60_000)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
 
     const step = totpMatchStep(token, secret)
     if (step === null) {
-      return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid code', code: 'auth_invalid_code' }, { status: 400 })
     }
 
     await db.collection('user').updateOne(

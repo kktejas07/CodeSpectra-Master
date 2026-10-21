@@ -22,7 +22,7 @@ async function gate() {
   const g = await requireSuperAdmin()
   if ('error' in g) return { response: NextResponse.json({ error: g.error }, { status: g.status }) }
   const caller = callerFromUser(g.user)
-  if (!caller || caller.role !== 'superadmin') return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  if (!caller || caller.role !== 'superadmin') return { response: NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 }) }
   return { caller }
 }
 

@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: IdRouteContext) {
   const { id } = await params
   const order = await getBuyerOrder(gate.user.id, id)
   if (!order || order.status === 'pending_payment' || order.payment.status === 'pending' || order.payment.status === 'failed') {
-    return NextResponse.json({ error: 'Invoice not available' }, { status: 404 })
+    return NextResponse.json({ error: 'Invoice not available', code: 'mkt_invoice_unavailable' }, { status: 404 })
   }
   const ids = [...new Set(order.lines.map((l) => l.seller_id))]
   const rows = await (await sellersCol()).find({ id: { $in: ids } }, { projection: { _id: 0, id: 1, display_name: 1, kyc: 1, kyc_secret: 1 } }).toArray()

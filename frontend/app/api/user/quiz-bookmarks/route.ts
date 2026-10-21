@@ -9,7 +9,7 @@ const COL = 'quiz_bookmarks'
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const db = await getMongoDb()
   const rows = await db
     .collection(COL)
@@ -40,7 +40,7 @@ export async function GET() {
  */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const body = await req.json().catch(() => ({}))
   const courseId = String(body.courseId || '').trim()
   const lessonId = String(body.lessonId || '').trim()

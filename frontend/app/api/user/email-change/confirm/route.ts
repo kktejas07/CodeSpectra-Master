@@ -13,7 +13,7 @@ const COL = 'email_change_otps'
 /** POST — confirm OTP and update the user's login email. */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
   const email = String(body.email || '').trim().toLowerCase()
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const db = await getMongoDb()
   const row = await db.collection(COL).findOne({ userId: user.id, email })
   if (!row) {
-    return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid verification code', code: 'auth_invalid_verification_code' }, { status: 400 })
   }
   // 5 tries per code, then it's burned (a 6-digit code is otherwise guessable).
   if ((Number(row.attempts) || 0) >= 5) {
@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
   }
   if (String(row.code) !== code) {
     await db.collection(COL).updateOne({ userId: user.id }, { $inc: { attempts: 1 } })
-    return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid verification code', code: 'auth_invalid_verification_code' }, { status: 400 })
   }
   if (row.expiresAt && new Date(row.expiresAt).getTime() < Date.now()) {
-    return NextResponse.json({ error: 'Code expired — request a new one' }, { status: 400 })
+    return NextResponse.json({ error: 'Code expired — request a new one', code: 'auth_code_expired_request' }, { status: 400 })
   }
 
   const taken = await db.collection('user').findOne({ email })

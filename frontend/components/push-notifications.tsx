@@ -8,8 +8,10 @@
 import { useEffect, useRef } from 'react'
 import { useToast } from '@/lib/toast-context'
 import { registerPushToken, onPushMessage } from '@/lib/firebase-messaging'
+import { useT } from '@/lib/i18n/client'
 
 export function PushNotifications({ userId }: { userId?: string }) {
+  const { t } = useT()
   const addToast = useToast()
   const seen = useRef<Set<string>>(new Set())
 
@@ -37,16 +39,16 @@ export function PushNotifications({ userId }: { userId?: string }) {
         if (type === 'xp.level_up' && newLevel) {
           addToast({
             type: 'success',
-            title: `Congratulations — you reached Level ${newLevel}! 🎉`,
-            message: xp ? `You earned +${xp} XP. A level-up certificate is on its way.` : 'A level-up certificate is on its way.',
+            title: t('dash.congratulationsYouReachedLevelNewlevel', { newLevel }),
+            message: xp ? t('dash.youEarnedXpXpALevelad3', { xp }) : t('dash.aLevelUpCertificateIsOne21'),
             duration: 7000,
           })
           window.dispatchEvent(new CustomEvent('codespectra:celebrate', { detail: { type: 'level_up' } }))
         } else if (type === 'xp.awarded') {
           addToast({
             type: 'success',
-            title: xp ? `You gained ${xp} XP!` : 'You gained XP!',
-            message: 'Keep it up — you are doing great!',
+            title: xp ? t('dash.youGainedXpXp', { xp }) : t('dash.youGainedXp'),
+            message: t('dash.keepItUpYouAreDoingfea'),
             duration: 4500,
           })
           window.dispatchEvent(new CustomEvent('codespectra:celebrate', { detail: { type: 'xp.awarded' } }))

@@ -22,6 +22,8 @@ import type { BgvFullView, BgvSummaryView, BgvView } from '@/lib/ats/bgv/access'
 import type { BgvCheckStatus } from '@/lib/ats/bgv/types'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 interface Resp {
   case: BgvView | null
@@ -32,25 +34,25 @@ interface Resp {
 }
 
 type Variant = 'outline' | 'info' | 'success' | 'warning' | 'danger' | 'secondary'
-const CHECK_STATUS: Record<BgvCheckStatus, { label: string; variant: Variant }> = {
-  not_started: { label: 'Not started', variant: 'outline' },
-  submitted: { label: 'Submitted', variant: 'info' },
-  in_progress: { label: 'In progress', variant: 'info' },
-  verified: { label: 'Verified', variant: 'success' },
-  discrepancy: { label: 'Discrepancy', variant: 'danger' },
-  unable_to_verify: { label: 'Unable to verify', variant: 'warning' },
-  waived: { label: 'Waived', variant: 'secondary' },
-}
-const CASE_STATUS: Record<string, { label: string; variant: Variant }> = {
-  invited: { label: 'Invited', variant: 'outline' },
-  in_progress: { label: 'Candidate filling in', variant: 'info' },
-  submitted: { label: 'Submitted', variant: 'info' },
-  verifying: { label: 'Verifying', variant: 'info' },
-  clear: { label: 'Clear', variant: 'success' },
-  consider: { label: 'Consider', variant: 'warning' },
-  failed: { label: 'Failed', variant: 'danger' },
-  cancelled: { label: 'Cancelled', variant: 'secondary' },
-}
+const CHECK_STATUS = (t: Translator): Record<BgvCheckStatus, { label: string; variant: Variant }> => ({
+  not_started: { label: t('hiring.notStarted'), variant: 'outline' },
+  submitted: { label: t('hiring.submitted'), variant: 'info' },
+  in_progress: { label: t('hiring.inProgress'), variant: 'info' },
+  verified: { label: t('hiring.verified'), variant: 'success' },
+  discrepancy: { label: t('hiring.discrepancy'), variant: 'danger' },
+  unable_to_verify: { label: t('hiring.unableToVerify'), variant: 'warning' },
+  waived: { label: t('hiring.waived'), variant: 'secondary' },
+})
+const CASE_STATUS = (t: Translator): Record<string, { label: string; variant: Variant }> => ({
+  invited: { label: t('hiring.invited'), variant: 'outline' },
+  in_progress: { label: t('hiring.candidateFillingIn'), variant: 'info' },
+  submitted: { label: t('hiring.submitted'), variant: 'info' },
+  verifying: { label: t('hiring.verifying'), variant: 'info' },
+  clear: { label: t('hiring.clear'), variant: 'success' },
+  consider: { label: t('hiring.consider'), variant: 'warning' },
+  failed: { label: t('hiring.failed'), variant: 'danger' },
+  cancelled: { label: t('hiring.cancelled'), variant: 'secondary' },
+})
 
 const enc = encodeURIComponent
 const when = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—')
@@ -80,14 +82,15 @@ function KeyValues({ fields, data }: { fields: FieldDef[]; data: Record<string, 
 }
 
 function SummaryPanel({ c }: { c: BgvSummaryView }) {
-  const s = CASE_STATUS[c.status] || CASE_STATUS.invited
+  const { td, t } = useT()
+  const s = CASE_STATUS(t)[c.status] || CASE_STATUS(t).invited
   return (
     <div className="mt-3 space-y-2">
-      <p className="flex flex-wrap items-center gap-2 text-sm"><Badge variant={s.variant}>{s.label}</Badge><span className="text-muted-foreground">{REGION_LABELS[c.region]}</span></p>
+      <p className="flex flex-wrap items-center gap-2 text-sm"><Badge variant={s.variant}>{s.label}</Badge><span className="text-muted-foreground">{td(`hiring.regionLabels:${c.region}`, REGION_LABELS[c.region])}</span></p>
       <ul className="divide-y divide-border rounded-2xl border border-border">
         {c.checks.map((k) => (
           <li key={k.type} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-            <span>{k.label}</span><Badge variant={CHECK_STATUS[k.status].variant}>{CHECK_STATUS[k.status].label}</Badge>
+            <span>{k.label}</span><Badge variant={CHECK_STATUS(t)[k.status].variant}>{CHECK_STATUS(t)[k.status].label}</Badge>
           </li>
         ))}
       </ul>
@@ -96,6 +99,7 @@ function SummaryPanel({ c }: { c: BgvSummaryView }) {
 }
 
 function CheckBlock({ c, k, canVerify, canReveal, onCase }: { c: BgvFullView; k: BgvFullView['checks'][number]; canVerify: boolean; canReveal: boolean; onCase: (v: BgvView) => void }) {
+  const { t } = useT()
   const addToast = useToast()
   const def = checkDef(c.region, k.type)
   const [mode, setMode] = useState<null | 'mark' | 'info'>(null)
@@ -104,7 +108,7 @@ function CheckBlock({ c, k, canVerify, canReveal, onCase }: { c: BgvFullView; k:
   const [busy, setBusy] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [revealed, setRevealed] = useState<Record<string, string> | null>(null)
-  const st = CHECK_STATUS[k.status]
+  const st = CHECK_STATUS(t)[k.status]
   const closed = ['clear', 'failed', 'cancelled'].includes(c.status) || !!c.purged_at
   const groupItems = def?.group && Array.isArray(k.data[def.group.key]) ? (k.data[def.group.key] as Record<string, unknown>[]) : []
 
@@ -161,14 +165,14 @@ function CheckBlock({ c, k, canVerify, canReveal, onCase }: { c: BgvFullView; k:
   return (
     <details className="group rounded-2xl border border-border open:bg-muted/20">
       <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl">
-        <span className="text-sm font-medium text-foreground">{k.label}{c.critical_checks.includes(k.type) && <span className="ml-1.5 text-xs font-normal text-muted-foreground">critical</span>}</span>
+        <span className="text-sm font-medium text-foreground">{k.label}{c.critical_checks.includes(k.type) && <span className="ml-1.5 text-xs font-normal text-muted-foreground">{t('hiring.critical')}</span>}</span>
         <span className="flex items-center gap-2">
-          {k.info_request && <Badge variant="warning">Info requested</Badge>}
+          {k.info_request && <Badge variant="warning">{t('hiring.infoRequested')}</Badge>}
           <Badge variant={st.variant}>{st.label}</Badge>
         </span>
       </summary>
       <div className="space-y-3 border-t border-border px-3 py-3">
-        {!def?.candidate_input && <p className="text-sm text-muted-foreground">{def?.description || 'Performed by the vendor.'}</p>}
+        {!def?.candidate_input && <p className="text-sm text-muted-foreground">{def?.description || t('hiring.performedByTheVendor')}</p>}
         {def && <KeyValues fields={def.fields} data={k.data} />}
         {docList(null)}
         {def?.group && groupItems.map((it, i) => (
@@ -179,42 +183,40 @@ function CheckBlock({ c, k, canVerify, canReveal, onCase }: { c: BgvFullView; k:
           </div>
         ))}
         {revealed && (
-          <p className="rounded-xl bg-amber-500/10 px-3 py-2 font-mono text-sm text-foreground">{Object.entries(revealed).map(([key, v]) => `${key.toUpperCase()}: ${v}`).join(' · ') || 'Nothing stored'}</p>
+          <p className="rounded-xl bg-amber-500/10 px-3 py-2 font-mono text-sm text-foreground">{Object.entries(revealed).map(([key, v]) => `${key.toUpperCase()}: ${v}`).join(' · ') || t('hiring.nothingStored')}</p>
         )}
         {k.notes && <p className="whitespace-pre-wrap rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">{k.notes}</p>}
-        {k.verified_at && <p className="text-xs text-muted-foreground">Decided {when(k.verified_at)}{k.verified_by?.startsWith('vendor:') ? ` by ${k.verified_by.slice(7)}` : ''}</p>}
+        {k.verified_at && <p className="text-xs text-muted-foreground">{t('hiring.decidedValue', { value: when(k.verified_at) })}{k.verified_by?.startsWith('vendor:') ? t('hiring.byValue', { value: k.verified_by.slice(7) }) : ''}</p>}
         <InlineError message={err} />
         {canVerify && !closed && (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant={mode === 'mark' ? 'default' : 'outline'} className="min-h-9" onClick={() => setMode(mode === 'mark' ? null : 'mark')}>Record result</Button>
-            {def?.candidate_input && c.submitted_at && <Button size="sm" variant={mode === 'info' ? 'default' : 'outline'} className="min-h-9" onClick={() => setMode(mode === 'info' ? null : 'info')}>Ask for more info</Button>}
+            <Button size="sm" variant={mode === 'mark' ? 'default' : 'outline'} className="min-h-9" onClick={() => setMode(mode === 'mark' ? null : 'mark')}>{t('hiring.recordResult')}</Button>
+            {def?.candidate_input && c.submitted_at && <Button size="sm" variant={mode === 'info' ? 'default' : 'outline'} className="min-h-9" onClick={() => setMode(mode === 'info' ? null : 'info')}>{t('hiring.askForMoreInfo')}</Button>}
             {canReveal && def?.fields.some((f) => f.sensitive) && !revealed && (
-              <Button size="sm" variant="ghost" className="min-h-9" disabled={busy === 'reveal'} onClick={() => void reveal()}><Eye className="h-4 w-4" aria-hidden /> Reveal full number</Button>
+              <Button size="sm" variant="ghost" className="min-h-9" disabled={busy === 'reveal'} onClick={() => void reveal()}><Eye className="h-4 w-4" aria-hidden />{' '}{t('hiring.revealFullNumber')}</Button>
             )}
           </div>
         )}
         {mode === 'mark' && (
           <div className="space-y-2 rounded-xl border border-border p-3">
-            <label htmlFor={`st-${k.type}`} className="text-sm font-medium">Result</label>
+            <label htmlFor={`st-${k.type}`} className="text-sm font-medium">{t('hiring.result')}</label>
             <NativeSelect id={`st-${k.type}`} value={status} onChange={(v) => setStatus(v as BgvCheckStatus)} options={[
-              { value: 'verified', label: 'Verified' }, { value: 'discrepancy', label: 'Discrepancy' }, { value: 'unable_to_verify', label: 'Unable to verify' },
-              { value: 'waived', label: 'Waive (not required)' }, { value: 'in_progress', label: 'In progress' },
+              { value: 'verified', label: t('hiring.verified') }, { value: 'discrepancy', label: t('hiring.discrepancy') }, { value: 'unable_to_verify', label: t('hiring.unableToVerify') },
+              { value: 'waived', label: t('hiring.waiveNotRequired') }, { value: 'in_progress', label: t('hiring.inProgress') },
             ]} />
-            <label htmlFor={`nt-${k.type}`} className="text-sm font-medium">Notes {status === 'verified' || status === 'in_progress' ? '(optional)' : '(required)'}</label>
-            <Textarea id={`nt-${k.type}`} value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={2} placeholder="Who you spoke to, what you checked, what didn't match…" />
+            <label htmlFor={`nt-${k.type}`} className="text-sm font-medium">{t('hiring.notesValue', { value: status === 'verified' || status === 'in_progress' ? t('common.optionalParen') : t('hiring.required') })}</label>
+            <Textarea id={`nt-${k.type}`} value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={2} placeholder={t('hiring.whoYouSpokeToWhatYou2b2')} />
             <Button size="sm" className="min-h-9" disabled={!!busy} onClick={() => void act({ action: 'mark', status, notes: text }, 'Result saved')}>
-              {busy === 'mark' && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />} Save result
-            </Button>
+              {busy === 'mark' && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}{' '}{t('hiring.saveResult')}</Button>
           </div>
         )}
         {mode === 'info' && (
           <div className="space-y-2 rounded-xl border border-border p-3">
-            <label htmlFor={`ri-${k.type}`} className="text-sm font-medium">Message to the candidate</label>
-            <Textarea id={`ri-${k.type}`} value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} rows={3} placeholder="e.g. Please upload your relieving letter from Acme." />
-            <p className="text-xs text-muted-foreground">This check opens again for the candidate and they get an email with your message.</p>
+            <label htmlFor={`ri-${k.type}`} className="text-sm font-medium">{t('hiring.messageToTheCandidate')}</label>
+            <Textarea id={`ri-${k.type}`} value={text} onChange={(e) => setText(e.target.value)} maxLength={1000} rows={3} placeholder={t('hiring.eGPleaseUploadYourRelieving1c8')} />
+            <p className="text-xs text-muted-foreground">{t('hiring.thisCheckOpensAgainForThe89f')}</p>
             <Button size="sm" className="min-h-9" disabled={!!busy || text.trim().length < 5} onClick={() => void act({ action: 'request_info', message: text }, 'Request sent to the candidate')}>
-              {busy === 'request_info' && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />} Send request
-            </Button>
+              {busy === 'request_info' && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}{' '}{t('hiring.sendRequest')}</Button>
           </div>
         )}
       </div>
@@ -223,6 +225,7 @@ function CheckBlock({ c, k, canVerify, canReveal, onCase }: { c: BgvFullView; k:
 }
 
 function FullPanel({ data, onCase, reload }: { data: Resp & { case: BgvFullView }; onCase: (v: BgvView) => void; reload: () => void }) {
+  const { td, t } = useT()
   const c = data.case
   const addToast = useToast()
   const confirm = useConfirm()
@@ -231,7 +234,7 @@ function FullPanel({ data, onCase, reload }: { data: Resp & { case: BgvFullView 
   const [err, setErr] = useState<string | null>(null)
   const [vendor, setVendor] = useState(c.vendor)
   const [note, setNote] = useState('')
-  const s = CASE_STATUS[c.status] || CASE_STATUS.invited
+  const s = CASE_STATUS(t)[c.status] || CASE_STATUS(t).invited
   const a = c.adverse_action
   const adverseOpen = !!a?.pre_adverse_sent_at && !a.final_sent_at && !a.withdrawn_at
   const waitOver = adverseOpen && !!a?.earliest_final_at && Date.now() >= Date.parse(a.earliest_final_at)
@@ -242,7 +245,7 @@ function FullPanel({ data, onCase, reload }: { data: Resp & { case: BgvFullView 
     try {
       const r = await atsSend<{ case: BgvView; adverse_started?: boolean }>(url, 'POST', body)
       onCase(r.case)
-      addToast({ type: 'success', title: r.adverse_started ? 'Pre-adverse notice sent' : okText })
+      addToast({ type: 'success', title: r.adverse_started ? t('hiring.preAdverseNoticeSent') : okText })
       setNote('')
     } catch (e) {
       setErr(errorMessage(e))
@@ -253,17 +256,17 @@ function FullPanel({ data, onCase, reload }: { data: Resp & { case: BgvFullView 
   async function fail() {
     const us = c.region === 'US'
     const ok = await confirm({
-      title: us ? 'Start the adverse action?' : 'Fail the background check?',
+      title: us ? t('hiring.startTheAdverseAction') : t('hiring.failTheBackgroundCheck'),
       description: us
-        ? `The candidate gets a pre-adverse notice with a copy of the results and a summary of rights. After the waiting period you can send the final notice — only then does the stage fail.`
-        : 'The stage result becomes "fail" and the pipeline applies the stage’s on-fail rule.',
-      confirmText: us ? 'Send pre-adverse notice' : 'Fail check',
+        ? t('hiring.theCandidateGetsAPreAdversebf6')
+        : t('hiring.theStageResultBecomesFailAnde24'),
+      confirmText: us ? t('hiring.sendPreAdverseNotice') : t('hiring.failCheck'),
       destructive: true,
     })
     if (ok) await run('fail', `/api/ats/bgv/${enc(c.id)}/decision`, { decision: 'fail', note }, 'Background check failed')
   }
   async function erase() {
-    const ok = await confirm({ title: 'Delete this candidate’s BGV data?', description: 'All uploaded documents and form answers are deleted now. Only the outcome summary stays. This can’t be undone.', confirmText: 'Delete data', destructive: true })
+    const ok = await confirm({ title: t('hiring.deleteThisCandidatesBgvData'), description: t('hiring.allUploadedDocumentsAndFormAnswers573'), confirmText: t('hiring.deleteData'), destructive: true })
     if (ok) await run('erase', `/api/ats/bgv/${enc(c.id)}/erase`, { confirm: 'DELETE' }, 'Background check data deleted')
   }
 
@@ -271,34 +274,34 @@ function FullPanel({ data, onCase, reload }: { data: Resp & { case: BgvFullView 
     <div className="mt-3 space-y-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Badge variant={s.variant}>{s.label}</Badge>
-        <span className="text-muted-foreground">{REGION_LABELS[c.region]} · {data.vendors?.find((v) => v.id === c.vendor)?.label || c.vendor}</span>
-        {c.submitted_at ? <span className="text-muted-foreground">· submitted {when(c.submitted_at)}</span> : c.deadline ? <span className="text-muted-foreground">· due {when(c.deadline)}</span> : null}
+        <span className="text-muted-foreground">{td(`hiring.regionLabels:${c.region}`, REGION_LABELS[c.region])} · {data.vendors?.find((v) => v.id === c.vendor)?.label || c.vendor}</span>
+        {c.submitted_at ? <span className="text-muted-foreground">{t('hiring.submittedValue', { value: when(c.submitted_at) })}</span> : c.deadline ? <span className="text-muted-foreground">{t('hiring.dueValue', { value: when(c.deadline) })}</span> : null}
       </div>
       {c.consent ? (
-        <p className="text-xs text-muted-foreground">Consent signed by {c.consent.name || 'the candidate'} on {when(c.consent.signed_at)} (version {c.consent.version}{c.consent.disclosure_version ? `, disclosure ${c.consent.disclosure_version}` : ''}{c.consent.ip ? `, IP ${c.consent.ip}` : ''}).</p>
-      ) : !closed && <p className="text-xs text-muted-foreground">Waiting for the candidate&apos;s consent.</p>}
-      {c.purged_at && <p className="rounded-xl bg-muted/50 px-3 py-2 text-sm text-muted-foreground">Documents and answers were deleted on {when(c.purged_at)} ({c.purge_reason === 'candidate_request' ? 'candidate request' : 'retention period'}). The outcome is kept.</p>}
+        <p className="text-xs text-muted-foreground">{t('hiring.consentSignedBy')}{' '}{c.consent.name || t('hiring.theCandidate')}{' '}{t('hiring.onValueVersionVersion', { value: when(c.consent.signed_at), version: c.consent.version })}{c.consent.disclosure_version ? t('hiring.disclosureDisclosureVersion', { disclosure_version: c.consent.disclosure_version }) : ''}{c.consent.ip ? t('hiring.ipIp', { ip: c.consent.ip }) : ''}).</p>
+      ) : !closed && <p className="text-xs text-muted-foreground">{t('hiring.waitingForTheCandidatesConsent')}</p>}
+      {c.purged_at && <p className="rounded-xl bg-muted/50 px-3 py-2 text-sm text-muted-foreground">{t('hiring.documentsAndAnswersWereDeletedOnfc9', { value: when(c.purged_at), value2: c.purge_reason === 'candidate_request' ? t('hiring.candidateRequest') : t('hiring.retentionPeriod') })}</p>}
       {data.fair_chance_hint && <p className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-foreground"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />{data.fair_chance_hint}</p>}
-      {c.vendor_invitation_url && <p className="text-xs text-muted-foreground">Vendor invitation: <a className="text-primary underline" href={c.vendor_invitation_url} target="_blank" rel="noreferrer">open</a></p>}
+      {c.vendor_invitation_url && <p className="text-xs text-muted-foreground">{t('hiring.vendorInvitation')}{' '}<a className="text-primary underline" href={c.vendor_invitation_url} target="_blank" rel="noreferrer">{t('hiring.open2')}</a></p>}
 
       {c.status === 'consider' && can.verify && (
         <div className="space-y-2 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3">
-          <p className="text-sm font-medium text-foreground">Decision needed</p>
+          <p className="text-sm font-medium text-foreground">{t('hiring.decisionNeeded')}</p>
           {adverseOpen ? (
             <>
-              <p className="text-sm text-muted-foreground">Pre-adverse notice sent {when(a!.pre_adverse_sent_at)}. {waitOver ? 'The waiting period is over.' : `You can send the final notice from ${when(a!.earliest_final_at)} (${a!.waiting_days} business days).`}</p>
+              <p className="text-sm text-muted-foreground">{t('hiring.preAdverseNoticeSentValue', { value: when(a!.pre_adverse_sent_at) })}{' '}{waitOver ? t('hiring.theWaitingPeriodIsOver') : t('hiring.youCanSendTheFinalNoticed5e', { value: when(a!.earliest_final_at), waiting_days: a!.waiting_days })}</p>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="destructive" className="min-h-9" disabled={!waitOver || !!busy} onClick={() => void run('final', `/api/ats/bgv/${enc(c.id)}/decision`, { action: 'final_adverse' }, 'Final adverse notice sent')}>Send final adverse notice</Button>
-                <Button size="sm" variant="outline" className="min-h-9" disabled={!!busy} onClick={() => void run('withdraw', `/api/ats/bgv/${enc(c.id)}/decision`, { action: 'withdraw_adverse' }, 'Adverse action withdrawn')}>Withdraw</Button>
+                <Button size="sm" variant="destructive" className="min-h-9" disabled={!waitOver || !!busy} onClick={() => void run('final', `/api/ats/bgv/${enc(c.id)}/decision`, { action: 'final_adverse' }, 'Final adverse notice sent')}>{t('hiring.sendFinalAdverseNotice')}</Button>
+                <Button size="sm" variant="outline" className="min-h-9" disabled={!!busy} onClick={() => void run('withdraw', `/api/ats/bgv/${enc(c.id)}/decision`, { action: 'withdraw_adverse' }, 'Adverse action withdrawn')}>{t('hiring.withdraw')}</Button>
               </div>
             </>
           ) : (
             <>
-              <label htmlFor={`dec-${c.id}`} className="sr-only">Decision note</label>
-              <Textarea id={`dec-${c.id}`} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} placeholder="Why — e.g. the discrepancy was explained by the candidate" />
+              <label htmlFor={`dec-${c.id}`} className="sr-only">{t('hiring.decisionNote')}</label>
+              <Textarea id={`dec-${c.id}`} value={note} onChange={(e) => setNote(e.target.value)} rows={2} maxLength={1000} placeholder={t('hiring.whyEGTheDiscrepancyWas453')} />
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" className="min-h-9" disabled={!!busy} onClick={() => void run('pass', `/api/ats/bgv/${enc(c.id)}/decision`, { decision: 'pass', note }, 'Marked clear')}>Pass</Button>
-                <Button size="sm" variant="destructive" className="min-h-9" disabled={!!busy} onClick={() => void fail()}>{c.region === 'US' ? 'Fail (start adverse action)' : 'Fail'}</Button>
+                <Button size="sm" className="min-h-9" disabled={!!busy} onClick={() => void run('pass', `/api/ats/bgv/${enc(c.id)}/decision`, { decision: 'pass', note }, 'Marked clear')}>{t('hiring.pass')}</Button>
+                <Button size="sm" variant="destructive" className="min-h-9" disabled={!!busy} onClick={() => void fail()}>{c.region === 'US' ? t('hiring.failStartAdverseAction') : t('hiring.fail')}</Button>
               </div>
             </>
           )}
@@ -312,20 +315,20 @@ function FullPanel({ data, onCase, reload }: { data: Resp & { case: BgvFullView 
       {can.verify && !closed && (
         <div className="flex flex-wrap items-end gap-2 border-t border-border pt-3">
           <div className="space-y-1">
-            <label htmlFor={`vendor-${c.id}`} className="text-xs font-medium text-muted-foreground">Vendor</label>
+            <label htmlFor={`vendor-${c.id}`} className="text-xs font-medium text-muted-foreground">{t('hiring.vendor')}</label>
             <NativeSelect id={`vendor-${c.id}`} value={vendor} onChange={setVendor} options={(data.vendors || []).map((v) => ({ value: v.id, label: v.label, disabled: !v.ready }))} className="h-9 w-56" />
           </div>
-          <Button size="sm" variant="outline" className="min-h-9" disabled={!!busy || vendor === c.vendor} onClick={() => void run('vendor', `/api/ats/bgv/${enc(c.id)}/vendor`, { vendor }, 'Vendor assigned')}>Assign</Button>
+          <Button size="sm" variant="outline" className="min-h-9" disabled={!!busy || vendor === c.vendor} onClick={() => void run('vendor', `/api/ats/bgv/${enc(c.id)}/vendor`, { vendor }, 'Vendor assigned')}>{t('hiring.assign')}</Button>
           {c.candidate_email && (!c.submitted_at || c.checks.some((k) => k.info_request)) && (
-            <Button size="sm" variant="outline" className="min-h-9" disabled={!!busy} onClick={() => void run('resend', `/api/ats/bgv/${enc(c.id)}/resend`, undefined, 'New link sent')}><Mail className="h-4 w-4" aria-hidden /> Resend link</Button>
+            <Button size="sm" variant="outline" className="min-h-9" disabled={!!busy} onClick={() => void run('resend', `/api/ats/bgv/${enc(c.id)}/resend`, undefined, 'New link sent')}><Mail className="h-4 w-4" aria-hidden />{' '}{t('hiring.resendLink')}</Button>
           )}
-          <Button size="sm" variant="ghost" className="min-h-9" onClick={reload}>Refresh</Button>
+          <Button size="sm" variant="ghost" className="min-h-9" onClick={reload}>{t('hiring.refresh')}</Button>
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-        <Link href="/dashboard/hiring/settings/bgv" className="text-primary hover:underline">Background check settings</Link>
+        <Link href="/dashboard/hiring/settings/bgv" className="text-primary hover:underline">{t('hiring.backgroundCheckSettings')}</Link>
         {can.reveal && !c.purged_at && (
-          <button type="button" onClick={() => void erase()} disabled={!!busy} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-red-700 hover:bg-red-500/10 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" aria-hidden /> Delete data on request</button>
+          <button type="button" onClick={() => void erase()} disabled={!!busy} className="inline-flex min-h-9 items-center gap-1 rounded-lg px-2 text-red-700 hover:bg-red-500/10 dark:text-red-400"><Trash2 className="h-3.5 w-3.5" aria-hidden />{' '}{t('hiring.deleteDataOnRequest')}</button>
         )}
       </div>
     </div>
@@ -333,6 +336,7 @@ function FullPanel({ data, onCase, reload }: { data: Resp & { case: BgvFullView 
 }
 
 export function BgvPanel({ applicationId }: { applicationId: string }) {
+  const { t } = useT()
   const q = useAts<Resp>(`/api/ats/bgv?application_id=${enc(applicationId)}`)
   const addToast = useToast()
   const [region, setRegion] = useState('auto')
@@ -349,19 +353,19 @@ export function BgvPanel({ applicationId }: { applicationId: string }) {
     const canStart = d.in_bgv_stage && d.can?.verify
     return (
       <div className="mt-3 space-y-3">
-        {d.case?.view === 'full' && <p className="text-sm text-muted-foreground">The last background check was cancelled.</p>}
-        {!d.case && <EmptyState compact illustration="security" title="No background check yet" description={canStart ? 'Start one to send the candidate a secure link for their details and documents.' : 'It starts when the candidate reaches this stage.'} />}
+        {d.case?.view === 'full' && <p className="text-sm text-muted-foreground">{t('hiring.theLastBackgroundCheckWasCancelled')}</p>}
+        {!d.case && <EmptyState compact illustration="security" title={t('hiring.noBackgroundCheckYet')} description={canStart ? t('hiring.startOneToSendTheCandidate74e') : t('hiring.itStartsWhenTheCandidateReaches801')} />}
         {canStart && (
           <div className="flex flex-wrap items-end gap-2">
             <div className="space-y-1">
-              <label htmlFor={`bgv-region-${applicationId}`} className="text-xs font-medium text-muted-foreground">Region</label>
-              <NativeSelect id={`bgv-region-${applicationId}`} value={region} onChange={setRegion} className="h-9 w-48" options={[{ value: 'auto', label: 'From the stage / candidate' }, { value: 'IN', label: 'India' }, { value: 'US', label: 'United States' }]} />
+              <label htmlFor={`bgv-region-${applicationId}`} className="text-xs font-medium text-muted-foreground">{t('hiring.region')}</label>
+              <NativeSelect id={`bgv-region-${applicationId}`} value={region} onChange={setRegion} className="h-9 w-48" options={[{ value: 'auto', label: t('hiring.fromTheStageCandidate') }, { value: 'IN', label: t('hiring.india') }, { value: 'US', label: t('hiring.unitedStates') }]} />
             </div>
             <Button size="sm" className="min-h-9" disabled={busy} onClick={async () => {
               setBusy(true); setErr(null)
               try {
                 await atsSend('/api/ats/bgv', 'POST', { application_id: applicationId, ...(region !== 'auto' ? { region } : {}) })
-                addToast({ type: 'success', title: 'Background check started' })
+                addToast({ type: 'success', title: t('hiring.backgroundCheckStarted') })
                 q.reload()
               } catch (e) {
                 setErr(errorMessage(e))
@@ -369,7 +373,7 @@ export function BgvPanel({ applicationId }: { applicationId: string }) {
                 setBusy(false)
               }
             }}>
-              {busy ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <ShieldCheck className="h-4 w-4" aria-hidden />} {d.case ? 'Restart background check' : 'Start background check'}
+              {busy ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <ShieldCheck className="h-4 w-4" aria-hidden />} {d.case ? t('hiring.restartBackgroundCheck') : t('hiring.startBackgroundCheck')}
             </Button>
           </div>
         )}
@@ -378,7 +382,7 @@ export function BgvPanel({ applicationId }: { applicationId: string }) {
     )
   }
   if (d.case.view === 'summary') return <SummaryPanel c={d.case} />
-  if (d.case.view === 'client') return <p className="mt-2 text-sm text-muted-foreground">Background check: {d.case.result}</p>
+  if (d.case.view === 'client') return <p className="mt-2 text-sm text-muted-foreground">{t('hiring.backgroundCheckResult', { result: d.case.result })}</p>
   return <FullPanel data={d as Resp & { case: BgvFullView }} onCase={onCase} reload={q.reload} />
 }
 

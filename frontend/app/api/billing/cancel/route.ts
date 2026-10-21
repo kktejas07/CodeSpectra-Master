@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const res = await cancelAtPeriodEnd(user.id)
     if (!res) return NextResponse.json({ error: 'You have no active paid plan to cancel.' }, { status: 404 })
@@ -26,7 +26,7 @@ export async function POST() {
 /** DELETE /api/billing/cancel — "Keep my plan": undo a pending cancel (at Stripe too) before the period ends. */
 export async function DELETE() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const ok = await resumeSubscription(user.id)
     if (!ok) return NextResponse.json({ error: 'There is no pending cancellation to undo.' }, { status: 404 })

@@ -15,7 +15,7 @@ function userFilter(userId: string) {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const cfg = await getKycPurposeConfig()
   const body = (await req.json().catch(() => ({}))) as Body
@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const db = await getMongoDb()
   const doc =

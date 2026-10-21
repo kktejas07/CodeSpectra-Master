@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const sp = req.nextUrl.searchParams
     const before = sp.get('before')
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
     const doc = {

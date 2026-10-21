@@ -11,7 +11,7 @@ const MAX = 50
 /** GET — recent items for the logged-in user. */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const db = await getMongoDb()
   const items = await db
     .collection(COL)
@@ -33,7 +33,7 @@ export async function GET() {
 /** POST { type, id, title, href } — record a view. */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const body = await req.json().catch(() => ({}))
   const type = String(body.type || '').trim()
   const id = String(body.id || '').trim()
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 /** DELETE — clear history (?type=&id= removes one entry, no params clears all). */
 export async function DELETE(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const type = req.nextUrl.searchParams.get('type')?.trim()
   const id = req.nextUrl.searchParams.get('id')?.trim()
   const db = await getMongoDb()

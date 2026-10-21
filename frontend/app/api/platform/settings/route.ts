@@ -38,6 +38,6 @@ export async function GET() {
     })
   } catch (e) {
     console.error('[platform/settings]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

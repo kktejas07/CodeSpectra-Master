@@ -24,6 +24,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { FaceSignInSection } from '@/components/dashboard/settings/face-sign-in-section'
 import { LanguageSelect } from '@/components/i18n/language-switcher'
 import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 const LS = {
   emailNotif: 'codespectra:user:emailNotif',
@@ -31,11 +32,11 @@ const LS = {
 } as const
 
 /** Matches `next-themes` / root `ThemeProvider` (`storageKey="codespectra-theme"`). */
-const themes = [
-  { id: 'light', label: 'Light', icon: Sun },
-  { id: 'dark', label: 'Dark', icon: Moon },
-  { id: 'system', label: 'System', icon: Palette },
-] as const
+const themes = (t: Translator) => ([
+  { id: 'light', label: t('account.light'), icon: Sun },
+  { id: 'dark', label: t('account.dark'), icon: Moon },
+  { id: 'system', label: t('account.system'), icon: Palette },
+] as const)
 
 
 export default function SettingsPage() {
@@ -94,32 +95,32 @@ export default function SettingsPage() {
       const settingsTour: TourStep[] = [
         {
           target: '[data-tour="settings-header"]',
-          title: 'Account settings hub',
-          description: 'Manage theme, language, notifications, and security for your account.',
+          title: t('account.accountSettingsHub'),
+          description: t('account.manageThemeLanguageNotificationsAndSecur85c'),
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-appearance"]',
-          title: 'Set theme language',
-          description: 'Pick Light, Dark, or System theme and language, then save appearance.',
+          title: t('account.setThemeLanguage'),
+          description: t('account.pickLightDarkOrSystemTheme935'),
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-notifications"]',
-          title: 'Toggle email push',
-          description: 'Toggle Email and Push alerts, then save; fine-tune channels in preferences.',
+          title: t('account.toggleEmailPush'),
+          description: t('account.toggleEmailAndPushAlertsThen2a4'),
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-security"]',
-          title: 'Secure sign-in methods',
-          description: 'Review 2FA status, enroll face biometrics, or change your password.',
+          title: t('account.secureSignInMethods'),
+          description: t('account.review2faStatusEnrollFaceBiometrics3ec'),
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-danger"]',
-          title: 'Export before deleting',
-          description: 'Tip: export your data first; deletion needs password confirmation and cannot be undone.',
+          title: t('account.exportBeforeDeleting'),
+          description: t('account.tipExportYourDataFirstDeletion6bf'),
           position: 'bottom',
         },
       ]
@@ -138,10 +139,10 @@ export default function SettingsPage() {
     try {
       const res = await csrfFetch('/api/auth/verify-email', { method: 'POST' })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) { addToast({ type: 'error', title: 'Couldn’t send email', message: json.error || 'Try again later.' }); return }
-      if (json.alreadyVerified) { setEmailVerified(true); addToast({ type: 'success', title: 'Email already verified' }); return }
-      addToast({ type: 'success', title: 'Verification email sent', message: 'Open the link in it within 24 hours.' })
-    } catch { addToast({ type: 'error', title: 'Network error', message: 'Could not reach server.' }) }
+      if (!res.ok) { addToast({ type: 'error', title: t('account.couldntSendEmail'), message: json.error || t('account.tryAgainLater') }); return }
+      if (json.alreadyVerified) { setEmailVerified(true); addToast({ type: 'success', title: t('account.emailAlreadyVerified') }); return }
+      addToast({ type: 'success', title: t('account.verificationEmailSent'), message: t('account.openTheLinkInItWithinc89') })
+    } catch { addToast({ type: 'error', title: t('account.networkError'), message: t('account.couldNotReachServer') }) }
     finally { setResendingVerify(false) }
   }
 
@@ -163,7 +164,7 @@ export default function SettingsPage() {
         message: t('dashboard.appearanceSavedBody'),
       })
     } catch {
-      addToast({ type: 'error', title: 'Could not save', message: 'Local storage may be disabled.' })
+      addToast({ type: 'error', title: t('account.couldNotSave'), message: t('account.localStorageMayBeDisabled') })
     } finally {
       setSavingKey(null)
     }
@@ -171,8 +172,8 @@ export default function SettingsPage() {
 
 
   const handleChangePassword = async () => {
-    if (!pwCurrent || !pwNew) { setPwError('Both fields are required'); return }
-    if (pwNew.length < 8) { setPwError('New password must be at least 8 characters'); return }
+    if (!pwCurrent || !pwNew) { setPwError(t('account.bothFieldsAreRequired')); return }
+    if (pwNew.length < 8) { setPwError(t('account.newPasswordMustBeAtLeast2ad')); return }
     setPwSaving(true); setPwError('')
     try {
       const res = await csrfFetch('/api/user/change-password', {
@@ -181,27 +182,27 @@ export default function SettingsPage() {
         body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
       })
       const json = await res.json()
-      if (!res.ok) { setPwError(json.error || 'Failed to change password'); return }
-      addToast({ type: 'success', title: 'Password changed', message: 'Use your new password next time you sign in.' })
+      if (!res.ok) { setPwError(json.error || t('account.failedToChangePassword')); return }
+      addToast({ type: 'success', title: t('account.passwordChanged'), message: t('account.useYourNewPasswordNextTimee2d') })
       setPwDialogOpen(false); setPwCurrent(''); setPwNew('')
-    } catch { setPwError('Network error') }
+    } catch { setPwError(t('account.networkError')) }
     setPwSaving(false)
   }
 
   const handleExportData = async () => {
     try {
       const res = await fetch('/api/user/export')
-      if (!res.ok) { addToast({ type: 'error', title: 'Export failed', message: 'Could not export your data.' }); return }
+      if (!res.ok) { addToast({ type: 'error', title: t('account.exportFailed'), message: t('account.couldNotExportYourData') }); return }
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a'); a.href = url; a.download = 'codespectra-export.json'; a.click()
       URL.revokeObjectURL(url)
-      addToast({ type: 'success', title: 'Data exported', message: 'Your data has been downloaded.' })
-    } catch { addToast({ type: 'error', title: 'Export failed', message: 'Network error.' }) }
+      addToast({ type: 'success', title: t('account.dataExported'), message: t('account.yourDataHasBeenDownloaded') })
+    } catch { addToast({ type: 'error', title: t('account.exportFailed'), message: t('account.networkError2') }) }
   }
 
   const handleDeleteAccount = async () => {
-    if (!await confirmDialog({ title: 'Confirmation', description: 'Are you sure you want to delete your account? This action is irreversible.' })) return
+    if (!await confirmDialog({ title: t('account.confirmation'), description: t('account.areYouSureYouWantToc5c') })) return
     setDeletePassword('')
     setDeleteModalOpen(true)
   }
@@ -217,13 +218,13 @@ export default function SettingsPage() {
       })
       const json = await res.json()
 
-      if (!res.ok) { addToast({ type: 'error', title: 'Delete failed', message: json.error || 'Failed' }); setDeletingAccount(false); return }
-      addToast({ type: 'success', title: 'Account deleted', message: 'We are sorry to see you go.' })
+      if (!res.ok) { addToast({ type: 'error', title: t('account.deleteFailed'), message: json.error || t('account.failed') }); setDeletingAccount(false); return }
+      addToast({ type: 'success', title: t('account.accountDeleted'), message: t('account.weAreSorryToSeeYou474') })
       // /auth/logout isn't a page; clear the session, then leave the dashboard.
       await signOut().catch(() => {})
       window.location.href = '/'
     } catch { 
-      addToast({ type: 'error', title: 'Network error', message: 'Could not reach server.' }) 
+      addToast({ type: 'error', title: t('account.networkError'), message: t('account.couldNotReachServer') }) 
       setDeletingAccount(false)
     }
   }
@@ -258,16 +259,12 @@ export default function SettingsPage() {
           illustration="settings"
           className="mb-0"
           icon={<Settings aria-hidden />}
-          title="Settings"
+          title={t('account.settings')}
           description={
-            <>
-              Theme, language, notifications and account security. Fine-tune each notification channel in{' '}
-              <Link
+            <>{t('account.themeLanguageNotificationsAndAccountSecu914')}{' '}<Link
                 href="/dashboard/notifications/preferences"
                 className="font-medium text-primary underline-offset-4 hover:underline"
-              >
-                notification preferences
-              </Link>
+              >{t('account.notificationPreferences')}</Link>
               .
             </>
           }
@@ -280,16 +277,16 @@ export default function SettingsPage() {
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Palette className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Appearance</h2>
+                <h2 className="text-lg font-semibold">{t('account.appearance')}</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 {t('dashboard.appearanceHint')}
               </p>
             </div>
             <div className="px-6 py-5">
-            <Label className="text-sm font-medium text-foreground">Theme</Label>
+            <Label className="text-sm font-medium text-foreground">{t('account.theme')}</Label>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {themes.map((th) => {
+              {themes(t).map((th) => {
                 const Icon = th.icon
                 const active = (nextTheme ?? 'light') === th.id
                 return (
@@ -325,9 +322,7 @@ export default function SettingsPage() {
                 onClick={() => void saveAppearance()}
                 disabled={savingKey !== null}
               >
-                {savingKey === 'appearance' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save appearance
-              </Button>
+                {savingKey === 'appearance' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t('account.saveAppearance')}</Button>
             </div>
           </Card>
 
@@ -335,17 +330,13 @@ export default function SettingsPage() {
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Bell className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Notifications</h2>
+                <h2 className="text-lg font-semibold">{t('account.notifications')}</h2>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Choose which emails and in-app alerts you get, per channel and topic.
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('account.chooseWhichEmailsAndInApp06d')}</p>
             </div>
             <div className="px-6 py-4">
               <Button variant="outline" className="w-full justify-between rounded-lg sm:w-auto" asChild>
-                <Link href="/dashboard/notifications/preferences">
-                  Notification preferences
-                  <ChevronRight className="h-4 w-4" />
+                <Link href="/dashboard/notifications/preferences">{t('account.notificationPreferences2')}<ChevronRight className="h-4 w-4" />
                 </Link>
               </Button>
             </div>
@@ -355,36 +346,32 @@ export default function SettingsPage() {
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Shield className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold">Security</h2>
+                <h2 className="text-lg font-semibold">{t('account.security')}</h2>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Manage your password, two-factor authentication, face sign-in and trusted devices.
-              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{t('account.manageYourPasswordTwoFactorAuthenticatio125')}</p>
             </div>
             {emailVerified === false && (
               <>
                 <div className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0 space-y-0.5">
-                    <p className="font-medium text-foreground">Email not verified</p>
-                    <p className="text-sm text-muted-foreground">Confirm your email so you can recover your account.</p>
+                    <p className="font-medium text-foreground">{t('account.emailNotVerified')}</p>
+                    <p className="text-sm text-muted-foreground">{t('account.confirmYourEmailSoYouCand1d')}</p>
                   </div>
                   <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => void resendVerification()} disabled={resendingVerify}>
-                    {resendingVerify ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    Resend verification email
-                  </Button>
+                    {resendingVerify ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t('account.resendVerificationEmail')}</Button>
                 </div>
                 <Separator className="mx-6 w-auto" />
               </>
             )}
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">
-                <p className="font-medium text-foreground">Two-factor authentication</p>
+                <p className="font-medium text-foreground">{t('account.twoFactorAuthentication')}</p>
                 <p className="text-sm text-muted-foreground">
                   {twoFactorEnabled === null
-                    ? 'Loading status…'
+                    ? t('account.loadingStatus')
                     : twoFactorEnabled
-                      ? 'Enabled — extra verification at sign-in'
-                      : 'Not enabled — set up from your profile page'}
+                      ? t('account.enabledExtraVerificationAtSignIn')
+                      : t('account.notEnabledSetUpFromYour804')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -401,20 +388,18 @@ export default function SettingsPage() {
               <div className="px-6 pb-4">
                 <Button variant="outline" size="sm" asChild className="gap-2">
                   <Link href="/dashboard/profile">
-                    <Shield className="h-4 w-4" />
-                    Set up 2FA on profile page
-                  </Link>
+                    <Shield className="h-4 w-4" />{t('account.setUp2faOnProfilePage')}</Link>
                 </Button>
               </div>
             )}
             <Separator className="mx-6 w-auto" />
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">
-                <p className="font-medium text-foreground">Face biometrics</p>
+                <p className="font-medium text-foreground">{t('account.faceBiometrics')}</p>
                 <p className="text-sm text-muted-foreground">
                   {user?.has_enrolled_face 
-                    ? 'Enrolled — used for proctored assessments and face sign-in'
-                    : 'Not enrolled — required for proctored assessments and face sign-in'}
+                    ? t('account.enrolledUsedForProctoredAssessmentsAndc73')
+                    : t('account.notEnrolledRequiredForProctoredAssessmen4d3')}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -429,7 +414,7 @@ export default function SettingsPage() {
               <Button variant="outline" size="sm" asChild className="gap-2 shrink-0">
                 <Link href="/auth/enroll-face?redirect=/dashboard/settings">
                   <Camera className="h-4 w-4" />
-                  {user?.has_enrolled_face ? 'Update face biometrics' : 'Enroll face biometrics'}
+                  {user?.has_enrolled_face ? t('account.updateFaceBiometrics') : t('account.enrollFaceBiometrics')}
                 </Link>
               </Button>
             </div>
@@ -438,45 +423,31 @@ export default function SettingsPage() {
             <Separator className="mx-6 w-auto" />
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">
-                <p className="font-medium text-foreground">Password</p>
-                <p className="text-sm text-muted-foreground">Change your account password</p>
+                <p className="font-medium text-foreground">{t('account.password')}</p>
+                <p className="text-sm text-muted-foreground">{t('account.changeYourAccountPassword')}</p>
               </div>
               <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => { setPwDialogOpen(true); setPwError(''); setPwCurrent(''); setPwNew('') }}>
-                <Key className="h-4 w-4" />
-                Change password
-              </Button>
+                <Key className="h-4 w-4" />{t('account.changePassword')}</Button>
             </div>
           </Card>
 
           <Card className="rounded-3xl border border-destructive/30 bg-destructive/5 p-6" data-tour="settings-danger">
-            <h2 className="text-lg font-semibold text-destructive">Danger zone</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Download a copy of your data, or permanently delete your account. Deleting cannot be undone.
-            </p>
+            <h2 className="text-lg font-semibold text-destructive">{t('account.dangerZone')}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{t('account.downloadACopyOfYourData567')}</p>
             <Separator className="my-5 bg-destructive/20" />
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button variant="outline" className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 gap-2" onClick={handleExportData}>
-                <Download className="h-4 w-4" />
-                Export my data
-              </Button>
+                <Download className="h-4 w-4" />{t('account.exportMyData')}</Button>
               <Button variant="outline" className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 gap-2" onClick={handleDeleteAccount}>
-                <Trash2 className="h-4 w-4" />
-                Delete account
-              </Button>
+                <Trash2 className="h-4 w-4" />{t('account.deleteAccount')}</Button>
             </div>
           </Card>
         </div>
 
         <aside className="lg:col-span-1">
           <Card className="sticky top-4 rounded-3xl border-border/70 p-5">
-            <p className="text-sm font-medium text-foreground">Account</p>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              Billing, invoices, and plan limits are under{' '}
-              <Link href="/dashboard/billing" className="font-medium text-primary underline-offset-4 hover:underline">
-                Billing
-              </Link>
-              . Organization tools for admins live under the Admin section in the sidebar.
-            </p>
+            <p className="text-sm font-medium text-foreground">{t('account.account')}</p>
+            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{t('account.billingInvoicesAndPlanLimitsAreeec')}{' '}<Link href="/dashboard/billing" className="font-medium text-primary underline-offset-4 hover:underline">{t('account.billing')}</Link>{t('account.organizationToolsForAdminsLiveUnderb30')}</p>
           </Card>
         </aside>
       </div>
@@ -484,19 +455,19 @@ export default function SettingsPage() {
       <Dialog open={pwDialogOpen} onOpenChange={setPwDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Change password</DialogTitle>
+            <DialogTitle>{t('account.changePassword')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
-            <Label htmlFor="pw-current">Current password</Label>
-            <PasswordInput id="pw-current" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} placeholder="Enter current password" />
-            <Label htmlFor="pw-new">New password</Label>
-            <PasswordInput id="pw-new" value={pwNew} onChange={e => setPwNew(e.target.value)} placeholder="At least 8 characters" />
+            <Label htmlFor="pw-current">{t('account.currentPassword')}</Label>
+            <PasswordInput id="pw-current" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} placeholder={t('account.enterCurrentPassword')} />
+            <Label htmlFor="pw-new">{t('account.newPassword')}</Label>
+            <PasswordInput id="pw-new" value={pwNew} onChange={e => setPwNew(e.target.value)} placeholder={t('account.atLeast8Characters')} />
             {pwError ? <p className="text-xs text-destructive">{pwError}</p> : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPwDialogOpen(false)} disabled={pwSaving}>Cancel</Button>
+            <Button variant="outline" onClick={() => setPwDialogOpen(false)} disabled={pwSaving}>{t('common.cancel')}</Button>
             <Button onClick={handleChangePassword} disabled={pwSaving}>
-              {pwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Change password'}
+              {pwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : t('account.changePassword')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -504,29 +475,26 @@ export default function SettingsPage() {
       <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm account deletion</DialogTitle>
-            <DialogDescription>
-              This permanently deletes your account and signs you out everywhere. Enter your password, or a code from your authenticator app if you sign in with Google or GitHub.
-            </DialogDescription>
+            <DialogTitle>{t('account.confirmAccountDeletion')}</DialogTitle>
+            <DialogDescription>{t('account.thisPermanentlyDeletesYourAccountAndd58')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="delete-password">Password or authenticator code</Label>
+              <Label htmlFor="delete-password">{t('account.passwordOrAuthenticatorCode')}</Label>
               <Input 
                 id="delete-password"
                 type="password"
                 value={deletePassword} 
                 onChange={e => setDeletePassword(e.target.value)} 
-                placeholder="Password or 6-digit code"
+                placeholder={t('account.passwordOr6DigitCode')}
                 autoFocus
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={deletingAccount}>Cancel</Button>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={deletingAccount}>{t('common.cancel')}</Button>
             <Button variant="destructive" onClick={confirmDeleteAccount} disabled={deletingAccount}>
-              {deletingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />} Delete account
-            </Button>
+              {deletingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}{' '}{t('account.deleteAccount')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

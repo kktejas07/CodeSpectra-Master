@@ -1,11 +1,12 @@
 'use client'
-import { formatTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Users, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface CollabEditorProps {
   sessionId: string
@@ -20,6 +21,8 @@ interface Presence {
 }
 
 export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOnly = false }: CollabEditorProps) {
+  const { formatTime } = useLocaleDates()
+  const { t } = useT()
   const editorRef = useRef<HTMLTextAreaElement>(null)
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState(initialLanguage)
@@ -132,8 +135,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading editor…
-      </div>
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" />{' '}{t('career.loadingEditor')}</div>
     )
   }
 
@@ -145,7 +147,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
           <select
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            aria-label="Language"
+            aria-label={t('common.language')}
             className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             {languages.map((l) => (
@@ -153,14 +155,13 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
             ))}
           </select>
           {lastSave && (
-            <span className="text-[11px] tabular-nums text-muted-foreground">Saved {lastSave}</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">{t('career.savedLastsave', { lastSave })}</span>
           )}
         </div>
         <div className="flex items-center gap-2">
           {presences.length > 0 && (
             <Badge variant="outline" className="text-[10px] gap-1">
-              <Users className="h-3 w-3" /> {presences.length} online
-            </Badge>
+              <Users className="h-3 w-3" />{' '}{t('career.countOnline', { count: presences.length })}</Badge>
           )}
           <Button size="sm" variant="ghost" className="h-6 text-xs"
             onClick={async () => {
@@ -174,8 +175,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
                 }
               }
             }}>
-            <RotateCcw className="h-3 w-3 mr-1" /> Reset
-          </Button>
+            <RotateCcw className="h-3 w-3 mr-1" />{' '}{t('career.reset')}</Button>
         </div>
       </div>
 
@@ -185,7 +185,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
         value={code}
         onChange={(e) => handleChange(e.target.value)}
         readOnly={readOnly}
-        aria-label="Shared code editor"
+        aria-label={t('career.sharedCodeEditor')}
         className="w-full min-h-[400px] bg-zinc-950 p-4 text-sm font-mono text-zinc-100 caret-zinc-100 outline-none resize-y leading-relaxed placeholder:text-zinc-500"
         spellCheck={false}
         placeholder="// Start coding…"

@@ -14,6 +14,7 @@ import { Field, InlineError } from '@/components/hiring/ui'
 import { atsSend, errorMessage, useAts } from '@/components/hiring/lib/api'
 import { initials } from '@/components/hiring/lib/labels'
 import type { AtsClient } from '@/components/hiring/lib/types'
+import { useT } from '@/lib/i18n/client'
 
 type Contact = { name: string; email: string; phone?: string }
 type Draft = { id?: string; name: string; logo_url: string; contacts: Contact[] }
@@ -21,6 +22,7 @@ type Draft = { id?: string; name: string; logo_url: string; contacts: Contact[] 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export default function HiringClientsPage() {
+  const { t } = useT()
   const addToast = useToast()
   const confirm = useConfirm()
   const q = useAts<AtsClient[]>('/api/ats/clients', 'clients')
@@ -36,29 +38,29 @@ export default function HiringClientsPage() {
   const save = async () => {
     if (!draft) return
     setError(null)
-    if (!draft.name.trim()) return setError('Add the client’s name.')
+    if (!draft.name.trim()) return setError(t('hiring.addTheClientsName'))
     const contacts = draft.contacts.filter((c) => c.name.trim() || c.email.trim())
-    if (contacts.some((c) => !EMAIL.test(c.email.trim()))) return setError('Every contact needs a valid email.')
-    if (draft.logo_url && !/^https:\/\//i.test(draft.logo_url)) return setError('The logo link must start with https://')
+    if (contacts.some((c) => !EMAIL.test(c.email.trim()))) return setError(t('hiring.everyContactNeedsAValidEmail'))
+    if (draft.logo_url && !/^https:\/\//i.test(draft.logo_url)) return setError(t('hiring.theLogoLinkMustStartWithc22'))
     setSaving(true)
     const body = { name: draft.name.trim(), logo_url: draft.logo_url.trim() || null, contacts: contacts.map((c) => ({ name: c.name.trim(), email: c.email.trim().toLowerCase(), phone: c.phone?.trim() || undefined })) }
     try {
       if (draft.id) await atsSend(`/api/ats/clients/${encodeURIComponent(draft.id)}`, 'PATCH', body)
       else await atsSend('/api/ats/clients', 'POST', body)
-      addToast({ type: 'success', title: draft.id ? 'Client saved' : 'Client added' })
+      addToast({ type: 'success', title: draft.id ? t('hiring.clientSaved') : t('hiring.clientAdded') })
       setDraft(null)
       q.reload()
     } catch (e) { setError(errorMessage(e)) } finally { setSaving(false) }
   }
 
   const remove = async (c: AtsClient) => {
-    if (!(await confirm({ title: `Delete ${c.name}?`, description: 'You can delete a client once no jobs or team members are linked to it.', confirmText: 'Delete', destructive: true }))) return
+    if (!(await confirm({ title: t('hiring.deleteName', { name: c.name }), description: t('hiring.youCanDeleteAClientOnce46c'), confirmText: t('common.delete'), destructive: true }))) return
     try {
       await atsSend(`/api/ats/clients/${encodeURIComponent(c.id)}`, 'DELETE')
-      addToast({ type: 'success', title: 'Client deleted' })
+      addToast({ type: 'success', title: t('hiring.clientDeleted') })
       q.setData((d) => (d ? d.filter((x) => x.id !== c.id) : d))
     } catch (e) {
-      addToast({ type: 'error', title: 'Could not delete', message: errorMessage(e) })
+      addToast({ type: 'error', title: t('hiring.couldNotDelete'), message: errorMessage(e) })
     }
   }
 
@@ -66,15 +68,15 @@ export default function HiringClientsPage() {
 
   return (
     <HiringShell
-      title="Clients"
-      description="Companies you hire for. Link jobs to a client and invite their contacts to review candidates."
+      title={t('hiring.clients')}
+      description={t('hiring.companiesYouHireForLinkJobsb69')}
       icon={<Building2 />}
-      actions={<Button className="rounded-full" onClick={() => open()}><Plus aria-hidden /> New client</Button>}
+      actions={<Button className="rounded-full" onClick={() => open()}><Plus aria-hidden />{' '}{t('hiring.newClient')}</Button>}
     >
       <QueryGate loading={q.loading} error={q.error} hasData={!!q.data} onRetry={q.reload} />
       {q.data && (
         q.data.length === 0 ? (
-          <EmptyState illustration="team" title="No clients yet" description="Hiring only for your own company? You can skip this. Staffing teams add each client here." actionLabel="New client" onAction={() => open()} />
+          <EmptyState illustration="team" title={t('hiring.noClientsYet')} description={t('hiring.hiringOnlyForYourOwnCompany795')} actionLabel={t('hiring.newClient')} onAction={() => open()} />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {q.data.map((c) => (
@@ -88,10 +90,10 @@ export default function HiringClientsPage() {
                   )}
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-foreground">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">{(c.contacts?.length ?? 0) === 1 ? '1 contact' : `${c.contacts?.length ?? 0} contacts`}</p>
+                    <p className="text-xs text-muted-foreground">{(c.contacts?.length ?? 0) === 1 ? t('hiring.n1Contact') : t('hiring.valueContacts', { value: c.contacts?.length ?? 0 })}</p>
                   </div>
-                  <Button variant="ghost" size="icon-sm" onClick={() => open(c)} aria-label={`Edit ${c.name}`}><Pencil aria-hidden /></Button>
-                  <Button variant="ghost" size="icon-sm" onClick={() => remove(c)} aria-label={`Delete ${c.name}`}><Trash2 aria-hidden /></Button>
+                  <Button variant="ghost" size="icon-sm" onClick={() => open(c)} aria-label={t('hiring.editName', { name: c.name })}><Pencil aria-hidden /></Button>
+                  <Button variant="ghost" size="icon-sm" onClick={() => remove(c)} aria-label={t('hiring.deleteName2', { name: c.name })}><Trash2 aria-hidden /></Button>
                 </div>
                 {(c.contacts?.length ?? 0) > 0 && (
                   <ul className="mt-3 space-y-1 text-sm">
@@ -109,31 +111,31 @@ export default function HiringClientsPage() {
       <Dialog open={!!draft} onOpenChange={(o) => { if (!o && !saving) setDraft(null) }}>
         <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{draft?.id ? 'Edit client' : 'New client'}</DialogTitle>
-            <DialogDescription>Contacts are who you&apos;ll invite to review candidates. Invite them from the Team page.</DialogDescription>
+            <DialogTitle>{draft?.id ? t('hiring.editClient') : t('hiring.newClient')}</DialogTitle>
+            <DialogDescription>{t('hiring.contactsAreWhoYoullInviteTo221')}</DialogDescription>
           </DialogHeader>
           {draft && (
             <div className="space-y-4">
-              <Field label="Client name" htmlFor="cl-name"><Input id="cl-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={120} /></Field>
-              <Field label="Logo link (optional)" htmlFor="cl-logo"><Input id="cl-logo" type="url" value={draft.logo_url} onChange={(e) => setDraft({ ...draft, logo_url: e.target.value })} placeholder="https://" /></Field>
+              <Field label={t('hiring.clientName')} htmlFor="cl-name"><Input id="cl-name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} maxLength={120} /></Field>
+              <Field label={t('hiring.logoLinkOptional')} htmlFor="cl-logo"><Input id="cl-logo" type="url" value={draft.logo_url} onChange={(e) => setDraft({ ...draft, logo_url: e.target.value })} placeholder="https://" /></Field>
               <div className="space-y-2">
-                <p className="text-sm font-medium text-foreground">Contacts</p>
+                <p className="text-sm font-medium text-foreground">{t('hiring.contacts')}</p>
                 {draft.contacts.map((c, i) => (
                   <div key={i} className="grid gap-2 rounded-xl border border-border p-2 sm:grid-cols-[1fr_1fr_auto]">
-                    <Input aria-label={`Contact ${i + 1} name`} placeholder="Name" value={c.name} onChange={(e) => setContact(i, { name: e.target.value })} />
-                    <Input aria-label={`Contact ${i + 1} email`} placeholder="Email" type="email" value={c.email} onChange={(e) => setContact(i, { email: e.target.value })} />
-                    <Button variant="ghost" size="icon" onClick={() => setDraft({ ...draft, contacts: draft.contacts.filter((_, j) => j !== i) })} aria-label={`Remove contact ${i + 1}`}><X aria-hidden /></Button>
-                    <Input aria-label={`Contact ${i + 1} phone`} placeholder="Phone (optional)" type="tel" value={c.phone ?? ''} onChange={(e) => setContact(i, { phone: e.target.value })} className="sm:col-span-2" />
+                    <Input aria-label={t('hiring.contactValueName', { value: i + 1 })} placeholder={t('hiring.name')} value={c.name} onChange={(e) => setContact(i, { name: e.target.value })} />
+                    <Input aria-label={t('hiring.contactValueEmail', { value: i + 1 })} placeholder="Email" type="email" value={c.email} onChange={(e) => setContact(i, { email: e.target.value })} />
+                    <Button variant="ghost" size="icon" onClick={() => setDraft({ ...draft, contacts: draft.contacts.filter((_, j) => j !== i) })} aria-label={t('hiring.removeContactValue', { value: i + 1 })}><X aria-hidden /></Button>
+                    <Input aria-label={t('hiring.contactValuePhone', { value: i + 1 })} placeholder={t('hiring.phoneOptional')} type="tel" value={c.phone ?? ''} onChange={(e) => setContact(i, { phone: e.target.value })} className="sm:col-span-2" />
                   </div>
                 ))}
-                <Button variant="outline" size="sm" className="rounded-full" onClick={() => setDraft({ ...draft, contacts: [...draft.contacts, { name: '', email: '' }] })}><Plus aria-hidden /> Add contact</Button>
+                <Button variant="outline" size="sm" className="rounded-full" onClick={() => setDraft({ ...draft, contacts: [...draft.contacts, { name: '', email: '' }] })}><Plus aria-hidden />{' '}{t('hiring.addContact')}</Button>
               </div>
               <InlineError message={error} />
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setDraft(null)} disabled={saving}>Cancel</Button>
-            <Button onClick={save} disabled={saving}>{saving && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />} Save</Button>
+            <Button variant="ghost" onClick={() => setDraft(null)} disabled={saving}>{t('common.cancel')}</Button>
+            <Button onClick={save} disabled={saving}>{saving && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}{' '}{t('common.save')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

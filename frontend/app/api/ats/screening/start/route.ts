@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!appId) return NextResponse.json({ error: 'application_id is required' }, { status: 400 })
   try {
     const hit = await loadVisibleApp(actor, appId)
-    if (!hit) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!hit) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     const stage = hit.job.pipeline.find((s) => s.id === hit.app.stage_id)
     if (!stage || stage.type !== 'bot_screen' || hit.app.status !== 'active') {
       return NextResponse.json({ error: 'The application is not in an active bot screening stage' }, { status: 409 })

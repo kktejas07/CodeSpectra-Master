@@ -10,7 +10,8 @@ import { existingAccountInviteAction, passwordProblem } from '@/lib/auth-account
 import { revokeAllUserSessions } from '@/lib/session'
 import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForEmail } from '@/lib/i18n/recipient'
 
 /** Existing accounts join only by accepting an invitation (D30/D31). */
 async function inviteExisting(caller: APIUser, tenantId: string, email: string, role: 'user' | 'tenant_admin') {
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const email = parseEmail(body.email)
@@ -199,7 +200,7 @@ export async function POST(request: NextRequest) {
     let emailSent = false
     try {
       if (password) {
-        const r = await sendEmail(email, emailTemplates.accountCredentials({ name: fullName, email, orgName, role: roleName }))
+        const r = await sendEmail(email, emailTemplatesFor(await localeForEmail(email)).accountCredentials({ name: fullName, email, orgName, role: roleName }))
         emailSent = !!r?.success
       } else {
         const hours = 72

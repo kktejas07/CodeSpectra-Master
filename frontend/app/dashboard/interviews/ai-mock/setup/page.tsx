@@ -1,6 +1,6 @@
 'use client'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -16,13 +16,15 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { PageHeader } from '@/components/app/page-kit'
 import { ROLE_OPTIONS, DIFFICULTY_LEVELS } from '@/lib/interviews/ai-mock-types'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-const DIFFICULTY_LABELS: Record<string, string> = {
-  beginner: 'Beginner',
-  intermediate: 'Intermediate',
-  advanced: 'Advanced',
-  expert: 'Expert',
-}
+const DIFFICULTY_LABELS = (t: Translator): Record<string, string> => ({
+  beginner: t('career.beginner'),
+  intermediate: t('career.intermediate'),
+  advanced: t('career.advanced'),
+  expert: t('career.expert'),
+})
 
 const DURATION_OPTIONS = [15, 20, 30, 45]
 
@@ -85,6 +87,8 @@ async function extractTextFromPdf(file: File): Promise<string> {
 }
 
 export default function AiMockSetupPage() {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
 
@@ -165,26 +169,26 @@ export default function AiMockSetupPage() {
       const aiMockSetupTour: TourStep[] = [
         {
           target: '[data-tour="ai-mock-setup-header"]',
-          title: 'AI Practice For Candidates',
-          description: 'This page configures an AI-led mock interview for practicing candidates.',
+          title: t('career.aiPracticeForCandidates'),
+          description: t('career.thisPageConfiguresAnAiLed1a1'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-mock-resume-source"]',
-          title: 'Resume source',
-          description: 'Select a resume to get personalized interview questions. Upload a PDF or pick one from your profile.',
+          title: t('career.resumeSource'),
+          description: t('career.selectAResumeToGetPersonalized611'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-mock-setup-start"]',
-          title: 'Start AI Interview',
-          description: 'Click Start Interview to generate questions and enter your mock session.',
+          title: t('career.startAiInterview'),
+          description: t('career.clickStartInterviewToGenerateQuestionsd9b'),
           position: 'top',
         },
         {
           target: '[data-tour="ai-mock-setup-options"]',
-          title: 'Match settings to your goal',
-          description: 'Pro tip: match difficulty to your target role for the best practice.',
+          title: t('career.matchSettingsToYourGoal'),
+          description: t('career.proTipMatchDifficultyToYour0b7'),
           position: 'top',
         },
       ]
@@ -198,11 +202,11 @@ export default function AiMockSetupPage() {
 
   const handleFileUpload = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setExtractError('Only PDF files are supported.')
+      setExtractError(t('career.onlyPdfFilesAreSupported'))
       return
     }
     if (file.size > 5 * 1024 * 1024) {
-      setExtractError('File must be under 5 MB.')
+      setExtractError(t('career.fileMustBeUnder5Mb'))
       return
     }
     setExtracting(true)
@@ -210,14 +214,14 @@ export default function AiMockSetupPage() {
     try {
       const text = await extractTextFromPdf(file)
       if (!text.trim()) {
-        setExtractError('Could not extract text from this PDF. It may be image-based.')
+        setExtractError(t('career.couldNotExtractTextFromThisae3'))
         setExtracting(false)
         return
       }
       setResumeText(text)
       setSelectedResumeId(null)
     } catch {
-      setExtractError('Failed to read PDF. Please try another file.')
+      setExtractError(t('career.failedToReadPdfPleaseTry8ce'))
     }
     setExtracting(false)
   }
@@ -242,7 +246,7 @@ export default function AiMockSetupPage() {
       setExtractError('')
     } else {
       setResumeText('')
-      setExtractError('This resume doesn\'t have extracted text. Upload the PDF below to use it.')
+      setExtractError(t('career.thisResumeDoesntHaveExtractedText3b4'))
     }
   }
 
@@ -256,7 +260,7 @@ export default function AiMockSetupPage() {
 
   const handleStart = async () => {
     if (!effectiveRole) {
-      setError('Please select or enter a role.')
+      setError(t('career.pleaseSelectOrEnterARole'))
       return
     }
     // Saved résumés go by id; the server loads (and owner-checks) the text.
@@ -266,7 +270,7 @@ export default function AiMockSetupPage() {
     let resumeRef: { kind: 'draft' | 'uploaded'; id: string } | undefined
     if (resumeSource === 'draft') {
       if (!selectedDraftId) {
-        setError('Pick a draft, or choose None to start without a resume.')
+        setError(t('career.pickADraftOrChooseNone5b7'))
         return
       }
       resumeRef = { kind: 'draft', id: selectedDraftId }
@@ -291,7 +295,7 @@ export default function AiMockSetupPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to start interview.')
+        setError(data.error || t('career.failedToStartInterview'))
         setStarting(false)
         return
       }
@@ -308,36 +312,35 @@ export default function AiMockSetupPage() {
 
       router.push(`/dashboard/interviews/ai-mock?session=${data.sessionId}`)
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('career.networkErrorPleaseTryAgain'))
       setStarting(false)
     }
   }
 
   const resumeSourceOptions: { value: ResumeSource; label: string; icon: React.ReactNode }[] = [
-    { value: 'none', label: 'None', icon: <FileText className="h-4 w-4" aria-hidden /> },
-    { value: 'draft', label: 'Builder draft', icon: <PenLine className="h-4 w-4" aria-hidden /> },
-    { value: 'profile', label: 'My uploads', icon: <User className="h-4 w-4" aria-hidden /> },
-    { value: 'upload', label: 'Upload PDF', icon: <Upload className="h-4 w-4" aria-hidden /> },
+    { value: 'none', label: t('career.none'), icon: <FileText className="h-4 w-4" aria-hidden /> },
+    { value: 'draft', label: t('career.builderDraft'), icon: <PenLine className="h-4 w-4" aria-hidden /> },
+    { value: 'profile', label: t('career.myUploads'), icon: <User className="h-4 w-4" aria-hidden /> },
+    { value: 'upload', label: t('career.uploadPdf'), icon: <Upload className="h-4 w-4" aria-hidden /> },
   ]
 
   return (
     <div className="space-y-6">
       <div className="space-y-4" data-tour="ai-mock-setup-header">
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to interviews
-        </Link>
+          <ArrowLeft className="h-4 w-4" />{' '}{t('career.backToInterviews')}</Link>
         <PageHeader
           className="mb-0"
           icon={<Brain aria-hidden />}
-          title="AI mock interview"
-          description="Pick a role, difficulty and length. Add your resume if you want questions tailored to your experience."
+          title={t('career.aiMockInterview')}
+          description={t('career.pickARoleDifficultyAndLengtha4d')}
         />
       </div>
 
       <Card className="max-w-3xl rounded-3xl border-border/70 p-6 space-y-5" data-tour="ai-mock-setup-options">
         {/* Role */}
         <div className="space-y-2">
-          <label htmlFor="mock-role" className="text-sm font-medium text-foreground">Target role</label>
+          <label htmlFor="mock-role" className="text-sm font-medium text-foreground">{t('career.targetRole')}</label>
           <select
             id="mock-role"
             value={role}
@@ -352,8 +355,8 @@ export default function AiMockSetupPage() {
             <input
               value={customRole}
               onChange={(e) => setCustomRole(e.target.value)}
-              placeholder="Enter your target role…"
-              aria-label="Custom target role"
+              placeholder={t('career.enterYourTargetRole')}
+              aria-label={t('career.customTargetRole')}
               className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           )}
@@ -361,8 +364,8 @@ export default function AiMockSetupPage() {
 
         {/* Difficulty */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">Difficulty</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label="Difficulty">
+          <p className="text-sm font-medium text-foreground">{t('career.difficulty')}</p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-label={t('career.difficulty')}>
             {DIFFICULTY_LEVELS.map((d) => (
               <button
                 key={d}
@@ -375,7 +378,7 @@ export default function AiMockSetupPage() {
                     : 'bg-background border-border text-muted-foreground hover:border-primary/40'
                 }`}
               >
-                {DIFFICULTY_LABELS[d]}
+                {DIFFICULTY_LABELS(t)[d]}
               </button>
             ))}
           </div>
@@ -383,8 +386,8 @@ export default function AiMockSetupPage() {
 
         {/* Duration */}
         <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">Duration</p>
-          <div className="flex gap-2" role="group" aria-label="Duration">
+          <p className="text-sm font-medium text-foreground">{t('career.duration')}</p>
+          <div className="flex gap-2" role="group" aria-label={t('career.duration')}>
             {DURATION_OPTIONS.map((d) => (
               <button
                 key={d}
@@ -406,11 +409,10 @@ export default function AiMockSetupPage() {
         {/* Resume Source Selector */}
         <div className="space-y-3" data-tour="ai-mock-resume-source">
           <p className="text-sm font-medium text-foreground flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" aria-hidden /> Resume (optional)
-          </p>
+            <FileText className="h-4 w-4 text-primary" aria-hidden />{' '}{t('career.resumeOptional')}</p>
 
           {/* Segmented Control */}
-          <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-border bg-muted/50 p-0.5 sm:grid-cols-4" role="group" aria-label="Resume source">
+          <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-border bg-muted/50 p-0.5 sm:grid-cols-4" role="group" aria-label={t('career.resumeSource')}>
             {resumeSourceOptions.map((opt) => (
               <button
                 key={opt.value}
@@ -435,24 +437,18 @@ export default function AiMockSetupPage() {
               {draftsState === 'loading' || draftsState === 'idle' ? (
                 <div className="flex items-center justify-center gap-2 rounded-2xl border border-border p-6">
                   <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
-                  <span className="text-sm text-muted-foreground">Loading your drafts…</span>
+                  <span className="text-sm text-muted-foreground">{t('career.loadingYourDrafts')}</span>
                 </div>
               ) : draftsState === 'error' ? (
-                <p className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive" role="alert">
-                  Couldn&apos;t load your drafts. Try again, or pick another source.
-                </p>
+                <p className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive" role="alert">{t('career.couldntLoadYourDraftsTryAgain3e8')}</p>
               ) : drafts.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 rounded-2xl border border-border p-6 text-center">
                   <PenLine className="h-8 w-8 text-muted-foreground" aria-hidden />
-                  <p className="text-sm font-medium text-foreground">No saved drafts yet</p>
-                  <p className="text-xs text-muted-foreground">
-                    Build one in the{' '}
-                    <Link href="/dashboard/resumes/builder" className="text-primary underline">resume builder</Link>
-                    , or upload a PDF instead.
-                  </p>
+                  <p className="text-sm font-medium text-foreground">{t('career.noSavedDraftsYet')}</p>
+                  <p className="text-xs text-muted-foreground">{t('career.buildOneInThe')}{' '}<Link href="/dashboard/resumes/builder" className="text-primary underline">{t('career.resumeBuilder')}</Link>{t('career.orUploadAPdfInstead')}</p>
                 </div>
               ) : (
-                <div className="max-h-48 space-y-2 overflow-y-auto" role="radiogroup" aria-label="Saved drafts">
+                <div className="max-h-48 space-y-2 overflow-y-auto" role="radiogroup" aria-label={t('career.savedDrafts')}>
                   {drafts.map((d) => (
                     <button
                       key={d.id}
@@ -467,14 +463,14 @@ export default function AiMockSetupPage() {
                       <PenLine className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-foreground">{d.name}</p>
-                        <p className="text-xs text-muted-foreground">Updated {formatDate(d.updated_at)}</p>
+                        <p className="text-xs text-muted-foreground">{t('career.updatedDate', { date: formatDate(d.updated_at) })}</p>
                       </div>
                       {selectedDraftId === d.id && <CheckCircle className="h-4 w-4 shrink-0 text-primary" aria-hidden />}
                     </button>
                   ))}
                 </div>
               )}
-              <p className="text-xs text-muted-foreground">Questions are tailored to the draft as it is saved now.</p>
+              <p className="text-xs text-muted-foreground">{t('career.questionsAreTailoredToTheDraft155')}</p>
             </div>
           )}
 
@@ -506,14 +502,14 @@ export default function AiMockSetupPage() {
                 ) : resumeText ? (
                   <>
                     <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" aria-hidden />
-                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Resume extracted</p>
-                    <p className="text-xs text-muted-foreground">Click or drop to replace</p>
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">{t('career.resumeExtracted')}</p>
+                    <p className="text-xs text-muted-foreground">{t('career.clickOrDropToReplace')}</p>
                   </>
                 ) : (
                   <>
                     <Upload className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-sm font-medium text-foreground">Drop your PDF here</p>
-                    <p className="text-xs text-muted-foreground">or click to browse (PDF, max 5 MB)</p>
+                    <p className="text-sm font-medium text-foreground">{t('career.dropYourPdfHere')}</p>
+                    <p className="text-xs text-muted-foreground">{t('career.orClickToBrowsePdfMaxe1b')}</p>
                   </>
                 )}
               </div>
@@ -531,15 +527,15 @@ export default function AiMockSetupPage() {
                   <div className="w-full border-t border-border" />
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className="bg-card px-2 text-muted-foreground">or paste text</span>
+                  <span className="bg-card px-2 text-muted-foreground">{t('career.orPasteText')}</span>
                 </div>
               </div>
               <textarea
                 ref={textareaRef}
                 value={resumeText}
                 onChange={(e) => setResumeText(e.target.value)}
-                placeholder="Paste your resume content here…"
-                aria-label="Resume text"
+                placeholder={t('career.pasteYourResumeContentHere')}
+                aria-label={t('career.resumeText')}
                 className="w-full h-24 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
@@ -551,20 +547,14 @@ export default function AiMockSetupPage() {
               {loadingResumes ? (
                 <div className="flex items-center justify-center gap-2 rounded-2xl border border-border p-6">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm text-muted-foreground">Loading your resumes…</span>
+                  <span className="text-sm text-muted-foreground">{t('career.loadingYourResumes')}</span>
                 </div>
               ) : profileResumes.length === 0 ? (
                 <div className="flex flex-col items-center gap-3 rounded-2xl border border-border p-6">
                   <FileText className="h-8 w-8 text-muted-foreground" />
                   <div className="text-center">
-                    <p className="text-sm font-medium text-foreground">No resumes found</p>
-                    <p className="text-xs text-muted-foreground">
-                      Upload a resume in{' '}
-                      <Link href="/dashboard/resumes" className="text-primary underline">
-                        My resumes
-                      </Link>{' '}
-                      first, or upload a PDF above.
-                    </p>
+                    <p className="text-sm font-medium text-foreground">{t('career.noResumesFound')}</p>
+                    <p className="text-xs text-muted-foreground">{t('career.uploadAResumeIn')}{' '}<Link href="/dashboard/resumes" className="text-primary underline">{t('career.myResumes')}</Link>{' '}{t('career.firstOrUploadAPdfAbove')}</p>
                   </div>
                 </div>
               ) : (
@@ -584,7 +574,7 @@ export default function AiMockSetupPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{resume.file_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {resume.text_content ? 'Text ready' : 'Upload PDF to use'}
+                          {resume.text_content ? t('career.textReady') : t('career.uploadPdfToUse')}
                           {' · '}
                           {formatDate(resume.uploaded_at)}
                         </p>
@@ -621,9 +611,7 @@ export default function AiMockSetupPage() {
                     ) : (
                       <>
                         <Upload className="h-6 w-6 text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground">
-                          Drop the PDF for this resume, or click to browse
-                        </p>
+                        <p className="text-xs text-muted-foreground">{t('career.dropThePdfForThisResume1f8')}</p>
                       </>
                     )}
                   </div>
@@ -637,16 +625,12 @@ export default function AiMockSetupPage() {
             <div className="rounded-xl bg-muted/50 p-3">
               <div className="flex items-center justify-between mb-1">
                 <p className="text-xs font-medium text-muted-foreground">
-                  <ClipboardPaste className="inline h-3 w-3 mr-1" />
-                  Resume text loaded (<span className="tabular-nums">{resumeText.length.toLocaleString()}</span> characters)
-                </p>
+                  <ClipboardPaste className="inline h-3 w-3 mr-1" />{t('career.resumeTextLoaded')}<span className="tabular-nums">{resumeText.length.toLocaleString()}</span>{' '}{t('career.characters')}</p>
                 <button
                   type="button"
                   onClick={() => { setResumeText(''); setSelectedResumeId(null) }}
                   className="text-xs text-muted-foreground hover:text-foreground"
-                >
-                  Clear
-                </button>
+                >{t('career.clear')}</button>
               </div>
               <p className="text-xs text-muted-foreground line-clamp-3">
                 {resumeText.slice(0, 300)}{resumeText.length > 300 ? '…' : ''}
@@ -667,9 +651,9 @@ export default function AiMockSetupPage() {
           data-tour="ai-mock-setup-start"
         >
           {starting ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing…</>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{' '}{t('career.preparing')}</>
           ) : (
-            <><Sparkles className="mr-2 h-4 w-4" /> Start interview</>
+            <><Sparkles className="mr-2 h-4 w-4" />{' '}{t('career.startInterview')}</>
           )}
         </Button>
       </Card>

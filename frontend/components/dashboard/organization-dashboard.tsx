@@ -20,6 +20,7 @@ import {
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Illustration } from '@/components/illustrations/spot'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface OrgOverview {
   org: { id: string; name: string; slug: string; plan: string } | null
@@ -41,6 +42,7 @@ interface OrgOverview {
 }
 
 export function OrganizationDashboard() {
+  const { t } = useT()
   const [data, setData] = useState<OrgOverview | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -54,7 +56,7 @@ export function OrganizationDashboard() {
         if (json.error) setError(json.error)
         setData(json)
       })
-      .catch(() => { if (!cancelled) setError('Failed to load organization data') })
+      .catch(() => { if (!cancelled) setError(t('dash.failedToLoadOrganizationData')) })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])
@@ -72,10 +74,10 @@ export function OrganizationDashboard() {
       <Panel className="mx-auto mt-8 max-w-lg p-8">
         <div className="flex flex-col items-center gap-3 text-center">
           <Illustration name="error" className="w-36" />
-          <h2 className="text-lg font-semibold text-foreground">Organization not linked</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('dash.organizationNotLinked')}</h2>
           <p className="text-sm text-muted-foreground">{error}</p>
           <Button variant="outline" size="sm" className="mt-2" asChild>
-            <Link href="/dashboard/support">Contact support</Link>
+            <Link href="/dashboard/support">{t('dash.contactSupport')}</Link>
           </Button>
         </div>
       </Panel>
@@ -83,10 +85,10 @@ export function OrganizationDashboard() {
   }
 
   const stats = [
-    { label: 'Assessments', value: data?.assessments.total ?? 0, icon: FileText, href: '/dashboard/admin/assessments' },
-    { label: 'Candidates', value: data?.candidates.total ?? 0, icon: UserPlus, href: '/dashboard/admin/assessments' },
-    { label: 'Team members', value: data?.members.total ?? 0, icon: Users, href: '/dashboard/admin/team' },
-    { label: 'Average score', value: data?.assessments.avgScore ?? 0, suffix: '%', icon: TrendingUp, href: '/dashboard/recruiter-analytics' },
+    { label: t('dash.assessments'), value: data?.assessments.total ?? 0, icon: FileText, href: '/dashboard/admin/assessments' },
+    { label: t('dash.candidates'), value: data?.candidates.total ?? 0, icon: UserPlus, href: '/dashboard/admin/assessments' },
+    { label: t('dash.teamMembers'), value: data?.members.total ?? 0, icon: Users, href: '/dashboard/admin/team' },
+    { label: t('dash.averageScore'), value: data?.assessments.avgScore ?? 0, suffix: '%', icon: TrendingUp, href: '/dashboard/recruiter-analytics' },
   ]
 
   return (
@@ -95,17 +97,13 @@ export function OrganizationDashboard() {
         illustration="team"
         className="mb-0"
         icon={<Building2 />}
-        title={data?.org?.name || 'Organization'}
+        title={data?.org?.name || t('dash.organization')}
         description={
           <span className="inline-flex items-center gap-1.5">
-            <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
-            Your organization at a glance — assessments, candidates and team.
-          </span>
+            <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />{t('dash.yourOrganizationAtAGlanceAssessmentsa7b')}</span>
         }
         actions={data?.org?.plan ? (
-          <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1.5 capitalize">
-            {data.org.plan} plan
-          </Badge>
+          <Badge variant="outline" className="gap-1.5 rounded-full px-3 py-1.5 capitalize">{t('dash.planPlan', { plan: data.org.plan })}</Badge>
         ) : undefined}
       />
 
@@ -136,19 +134,17 @@ export function OrganizationDashboard() {
           <Card className="rounded-3xl border-border/70 p-6">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                <ClipboardList className="h-5 w-5 text-primary" aria-hidden /> Recent assessments
-              </h2>
+                <ClipboardList className="h-5 w-5 text-primary" aria-hidden />{' '}{t('dash.recentAssessments')}</h2>
               <Button variant="ghost" size="sm" className="gap-1 text-sm" asChild>
-                <Link href="/dashboard/admin/assessments">
-                  Manage all <ArrowRight className="h-3 w-3" />
+                <Link href="/dashboard/admin/assessments">{t('dash.manageAll')}{' '}<ArrowRight className="h-3 w-3" />
                 </Link>
               </Button>
             </div>
             {(data?.recent?.length ?? 0) === 0 ? (
               <EmptyState illustration="assessment"
-                title="No assessments yet"
-                description="Create your first one to start screening candidates."
-                actionLabel="Add assessment"
+                title={t('dash.noAssessmentsYet')}
+                description={t('dash.createYourFirstOneToStart2b1')}
+                actionLabel={t('dash.addAssessment')}
                 actionHref="/dashboard/admin/assessments"
                 className="py-10 md:py-10"
               />
@@ -164,9 +160,9 @@ export function OrganizationDashboard() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        <span className="text-xs tabular-nums text-muted-foreground">{e.attempts} attempts</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">{t('dash.attemptsAttempts', { attempts: e.attempts })}</span>
                         <Badge variant={e.published ? 'default' : 'secondary'} className="text-[10px]">
-                          {e.published ? 'Published' : 'Draft'}
+                          {e.published ? t('dash.published') : t('dash.draft')}
                         </Badge>
                       </div>
                     </div>
@@ -181,26 +177,24 @@ export function OrganizationDashboard() {
           <Card className="space-y-3 rounded-3xl border-border/70 p-6">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-primary" aria-hidden />
-              <h2 className="text-sm font-semibold text-foreground">Team</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t('dash.team')}</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Manage your organization&apos;s members and roles.</p>
+            <p className="text-sm text-muted-foreground">{t('dash.manageYourOrganizationsMembersAndRoles')}</p>
             <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
               <Link href="/dashboard/admin/team">
-                <Users className="h-3.5 w-3.5" /> Manage team
-              </Link>
+                <Users className="h-3.5 w-3.5" />{' '}{t('dash.manageTeam')}</Link>
             </Button>
           </Card>
 
           <Card className="space-y-3 rounded-3xl border-border/70 p-6">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
-              <h2 className="text-sm font-semibold text-foreground">Hiring insights</h2>
+              <h2 className="text-sm font-semibold text-foreground">{t('dash.hiringInsights')}</h2>
             </div>
-            <p className="text-sm text-muted-foreground">Track candidate performance and screening effectiveness.</p>
+            <p className="text-sm text-muted-foreground">{t('dash.trackCandidatePerformanceAndScreeningEff')}</p>
             <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
               <Link href="/dashboard/recruiter-analytics">
-                <TrendingUp className="h-3.5 w-3.5" /> Recruiter analytics
-              </Link>
+                <TrendingUp className="h-3.5 w-3.5" />{' '}{t('dash.recruiterAnalytics')}</Link>
             </Button>
           </Card>
         </div>

@@ -1,5 +1,5 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { useToast } from '@/lib/toast-context'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Download, Loader2 } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface ReportData {
   /** null = not measured (never shown as a made-up default). */
@@ -37,6 +38,8 @@ interface ReportGeneratorProps {
 type ReportFormat = 'pdf' | 'json' | 'csv'
 
 export function ReportGenerator({ data }: ReportGeneratorProps) {
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const addToast = useToast()
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(!data)
@@ -55,7 +58,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
     fetch('/api/reports/generate?format=json', { credentials: 'include' })
       .then(async (r) => {
         const json = await r.json().catch(() => null)
-        if (!r.ok) throw new Error('load failed')
+        if (!r.ok) throw new Error(t('tools.loadFailed'))
         if (json?.data) setReportData(json.data)
       })
       .catch(() => setLoadError(true))
@@ -67,7 +70,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
     try {
       if (format === 'csv') {
         const res = await fetch('/api/reports/generate?format=csv', { credentials: 'include' })
-        if (!res.ok) throw new Error(`CSV export failed (${res.status})`)
+        if (!res.ok) throw new Error(t('tools.csvExportFailedStatus', { status: res.status }))
         {
           const blob = await res.blob()
           const url = URL.createObjectURL(blob)
@@ -81,7 +84,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
       }
 
       const res = await fetch('/api/reports/generate?format=json', { credentials: 'include' })
-      if (!res.ok) throw new Error(`JSON export failed (${res.status})`)
+      if (!res.ok) throw new Error(t('tools.jsonExportFailedStatus', { status: res.status }))
       const json = await res.json()
       const blob = new Blob([JSON.stringify(json.data || json, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
@@ -92,7 +95,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
       setTimeout(() => URL.revokeObjectURL(url), 1000)
     } catch (e) {
       console.error('[CodeSpectra] Export failed:', e)
-      addToast({ type: 'error', title: 'Export failed', message: 'Try again in a moment.' })
+      addToast({ type: 'error', title: t('tools.exportFailed'), message: t('tools.tryAgainInAMoment') })
     } finally {
       setIsExporting(false)
     }
@@ -103,9 +106,9 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
       <EmptyState
         compact
         illustration="error"
-        title="Couldn't load your report"
-        description="Check your connection and try again."
-        actionLabel="Try again"
+        title={t('tools.couldntLoadYourReport')}
+        description={t('tools.checkYourConnectionAndTryAgain')}
+        actionLabel={t('common.tryAgain')}
         onAction={() => setReloadKey((k) => k + 1)}
       />
     )
@@ -114,9 +117,9 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
   if (!loading && !reportData) {
     return (
       <EmptyState illustration="scanner"
-        title="No report yet"
-        description="Run a scan first. Your report will use the results from your scans."
-        actionLabel="Run a scan"
+        title={t('tools.noReportYet')}
+        description={t('tools.runAScanFirstYourReport426')}
+        actionLabel={t('tools.runAScan')}
         actionHref="/dashboard/scanner"
       />
     )
@@ -140,7 +143,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading report data…</span>
+        <span className="ml-2 text-sm text-muted-foreground">{t('tools.loadingReportData')}</span>
       </div>
     )
   }
@@ -149,40 +152,36 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
     <div className="space-y-6">
       <div className="space-y-2">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
-          <FileText className="w-5 h-5" />
-          Generate report
-        </h3>
-        <p className="text-sm text-muted-foreground">
-          Export comprehensive code quality reports in multiple formats
-        </p>
+          <FileText className="w-5 h-5" />{t('tools.generateReport')}</h3>
+        <p className="text-sm text-muted-foreground">{t('tools.exportComprehensiveCodeQualityReportsIn035')}</p>
       </div>
 
       <Card className={`border ${qualityColor.border} ${qualityColor.bg} p-6`}>
         <div className="space-y-4">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Overall quality</p>
+              <p className="text-sm text-muted-foreground mb-1">{t('tools.overallQuality')}</p>
               <div className="flex items-baseline gap-2">
                 <span className={`text-5xl font-bold tabular-nums ${qualityColor.text}`}>{q ?? '—'}</span>
                 <span className="text-lg text-muted-foreground">/100</span>
               </div>
             </div>
             <Badge className={`${qualityColor.bg} ${qualityColor.text} border ${qualityColor.border}`}>
-              {q == null ? 'Not measured' : q >= 80 ? 'Excellent' : q >= 60 ? 'Good' : 'Needs improvement'}
+              {q == null ? t('tools.notMeasured') : q >= 80 ? t('tools.excellent') : q >= 60 ? t('tools.good') : t('tools.needsImprovement')}
             </Badge>
           </div>
 
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-foreground/10">
             <div>
-              <p className="text-xs text-muted-foreground">Repository</p>
+              <p className="text-xs text-muted-foreground">{t('tools.repository')}</p>
               <p className="text-sm font-medium text-foreground">{defaultData.repository || '—'}</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">Branch</p>
+              <p className="text-xs text-muted-foreground">{t('tools.branch')}</p>
               <p className="text-sm font-medium text-foreground">{defaultData.branch || '—'}</p>
             </div>
             <div className="col-span-2">
-              <p className="text-xs text-muted-foreground">Generated</p>
+              <p className="text-xs text-muted-foreground">{t('tools.generated')}</p>
               <p className="text-sm font-medium text-foreground">
                 {formatDateTime(defaultData.generatedAt || defaultData.timestamp || new Date().toISOString())}
               </p>
@@ -193,33 +192,33 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground mb-1">Bugs</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('tools.bugs')}</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.bugs}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground mb-1">Vulnerabilities</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('tools.vulnerabilities')}</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.vulnerabilities}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground mb-1">Code smells</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('tools.codeSmells3')}</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.codeSmells}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground mb-1">Test coverage</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('tools.testCoverage3')}</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.testCoverage != null ? `${defaultData.testCoverage}%` : '—'}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground mb-1">Complexity</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('tools.complexity')}</p>
           <p className="text-2xl font-bold text-foreground">{defaultData.complexity ?? '—'}</p>
         </Card>
         <Card className="p-4">
-          <p className="text-xs text-muted-foreground mb-1">Fixes applied</p>
+          <p className="text-xs text-muted-foreground mb-1">{t('tools.fixesApplied')}</p>
           <p className="text-2xl font-bold text-green-500">{defaultData.appliedFixes ?? 0}</p>
         </Card>
       </div>
 
       <div className="space-y-4">
-        <h4 className="font-semibold text-foreground text-sm">Export format</h4>
+        <h4 className="font-semibold text-foreground text-sm">{t('tools.exportFormat')}</h4>
 
         <div className="grid grid-cols-3 gap-3">
           {(['json', 'csv'] as const).map((format) => (
@@ -234,7 +233,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
             >
               <div className="text-sm font-medium text-foreground uppercase">{format}</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {format === 'json' ? 'JSON format' : 'Spreadsheet'}
+                {format === 'json' ? t('tools.jsonFormat') : t('tools.spreadsheet')}
               </div>
             </button>
           ))}
@@ -247,7 +246,7 @@ export function ReportGenerator({ data }: ReportGeneratorProps) {
         className="gap-2 w-full sm:w-auto"
       >
         {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="w-4 h-4" />}
-        {isExporting ? 'Exporting…' : `Export as ${selectedFormat.toUpperCase()}`}
+        {isExporting ? t('tools.exporting') : t('tools.exportAsValue', { value: selectedFormat.toUpperCase() })}
       </Button>
     </div>
   )

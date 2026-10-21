@@ -33,7 +33,7 @@ interface ChatPostBody {
 export async function POST(req: NextRequest): Promise<Response> {
   const user = await getAPIUser()
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   const rateCheck = await rateLimitAIRedis(req, user.id)
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   try {
     body = sanitizeMongoInput(await req.json()) as ChatPostBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const message = (body.message || '').trim()
   if (!message) {
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest): Promise<Response> {
   } else {
     const existing = await sessionsCol.findOne({ id: sessionId, user_id: user.id })
     if (!existing) {
-      return NextResponse.json({ error: 'session not found' }, { status: 404 })
+      return NextResponse.json({ error: 'session not found', code: 'session_not_found' }, { status: 404 })
     }
   }
 
@@ -260,7 +260,7 @@ async function buildRagContext(userId: string): Promise<string> {
 /** GET /api/ai/chat?session_id=... — fetch chat history. */
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const sessionId = req.nextUrl.searchParams.get('session_id') || ''
   const sessionsCol = await aiChatSessions()
@@ -268,7 +268,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 
   if (sessionId) {
     const session = await sessionsCol.findOne({ id: sessionId, user_id: user.id })
-    if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+    if (!session) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
     const msgs = await msgsCol
       .find({ session_id: sessionId })
       .sort({ created_at: 1 })

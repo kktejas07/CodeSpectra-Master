@@ -11,6 +11,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface ArenaChallenge {
   id: string
@@ -70,6 +71,7 @@ const GridSkeleton = () => (
 )
 
 export default function ArenaPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
 
   const [challenges, setChallenges] = useState<ArenaChallenge[]>([])
@@ -96,26 +98,26 @@ export default function ArenaPage() {
       const arenaTour: TourStep[] = [
         {
           target: '[data-tour="arena-overview"]',
-          title: 'Coding arena',
-          description: 'Browse and solve coding challenges to earn points and improve your skills.',
+          title: t('practice.codingArena'),
+          description: t('practice.browseAndSolveCodingChallengesToc0c'),
           position: 'bottom',
         },
         {
           target: '[data-tour="stats-panel"]',
-          title: 'Your stats',
-          description: 'Track your progress with total challenges, solved count, and points earned.',
+          title: t('practice.yourStats'),
+          description: t('practice.trackYourProgressWithTotalChallenges497'),
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-filters"]',
-          title: 'Filter challenges',
-          description: 'Filter challenges by difficulty and category to find the right problem for you.',
+          title: t('practice.filterChallenges'),
+          description: t('practice.filterChallengesByDifficultyAndCategory6f9'),
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-grid"]',
-          title: 'Challenge list',
-          description: 'Click any challenge to start solving and earn points.',
+          title: t('practice.challengeList'),
+          description: t('practice.clickAnyChallengeToStartSolving6fe'),
           position: 'bottom',
         },
       ]
@@ -140,8 +142,8 @@ export default function ArenaPage() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             illustration="coding"
-            title="Coding arena"
-            description="Solve timed challenges to earn points and climb the leaderboard."
+            title={t('practice.codingArena')}
+            description={t('practice.solveTimedChallengesToEarnPointsd51')}
             icon={<Trophy />}
             className="mb-0"
           />
@@ -157,50 +159,50 @@ export default function ArenaPage() {
       ) : loadError ? (
         <Panel className="p-4">
           <EmptyState illustration="error"
-            title="Couldn't load arena challenges"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={t('practice.couldntLoadArenaChallenges')}
+            description={t('practice.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
             onAction={() => setReloadKey((k) => k + 1)}
           />
         </Panel>
       ) : challenges.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="coding"
-            title="No arena challenges yet"
-            description="Check back soon. In the meantime, warm up with the coding problems."
-            actionLabel="Go to problems"
+            title={t('practice.noArenaChallengesYet')}
+            description={t('practice.checkBackSoonInTheMeantime1a3')}
+            actionLabel={t('practice.goToProblems')}
             actionHref="/dashboard/problems"
           />
         </Panel>
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <StatCard label="Challenges" value={challenges.length} icon={<Code />} />
-            <StatCard label="Solved" value={challenges.filter(c => c.solved > 0).length} icon={<Trophy />} />
-            <StatCard label="Total points" value={challenges.reduce((s, c) => s + c.points, 0)} />
+            <StatCard label={t('practice.challenges')} value={challenges.length} icon={<Code />} />
+            <StatCard label={t('practice.solved')} value={challenges.filter(c => c.solved > 0).length} icon={<Trophy />} />
+            <StatCard label={t('practice.totalPoints')} value={challenges.reduce((s, c) => s + c.points, 0)} />
           </div>
 
           <div className="flex flex-wrap gap-4" data-tour="arena-filters">
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">Difficulty</label>
+              <label className="text-sm font-medium text-foreground mb-2 block">{t('practice.difficulty')}</label>
               <select
-                aria-label="Difficulty"
+                aria-label={t('practice.difficulty')}
                 value={difficulty}
                 onChange={e => setDifficulty(e.target.value)}
                 className="px-4 py-2 rounded-xl bg-card border border-border text-foreground capitalize focus-visible:outline-2 focus-visible:outline-primary"
               >
-                {difficulties.map(d => <option key={d} value={d}>{d === 'all' ? 'All' : d}</option>)}
+                {difficulties.map(d => <option key={d} value={d}>{d === 'all' ? t('practice.all') : d}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">Category</label>
+              <label className="text-sm font-medium text-foreground mb-2 block">{t('practice.category')}</label>
               <select
-                aria-label="Category"
+                aria-label={t('practice.category')}
                 value={category}
                 onChange={e => setCategory(e.target.value)}
                 className="px-4 py-2 rounded-xl bg-card border border-border text-foreground capitalize focus-visible:outline-2 focus-visible:outline-primary"
               >
-                {categories.map(c => <option key={c} value={c}>{c === 'all' ? 'All' : c}</option>)}
+                {categories.map(c => <option key={c} value={c}>{c === 'all' ? t('practice.all') : c}</option>)}
               </select>
             </div>
           </div>
@@ -218,8 +220,8 @@ export default function ArenaPage() {
                   </div>
                   <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">{c.shortDescription || c.description}</p>
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span className="tabular-nums">{c.points} pts</span>
-                    <span className="tabular-nums">{c.solved} solved</span>
+                    <span className="tabular-nums">{t('practice.pointsPts', { points: c.points })}</span>
+                    <span className="tabular-nums">{t('practice.solvedSolved', { solved: c.solved })}</span>
                   </div>
                 </Panel>
               </Link>

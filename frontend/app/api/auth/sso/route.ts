@@ -24,18 +24,18 @@ export async function POST(req: NextRequest) {
     const ipCheck = await rateLimitRedis(`sso:ip:${ipKey}`, 10, 60_000)
     if (!ipCheck.ok) {
       return NextResponse.json(
-        { error: `Too many requests. Try again in ${ipCheck.retryAfterSec}s.` },
+        { error: `Too many requests. Try again in ${ipCheck.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: ipCheck.retryAfterSec } },
         { status: 429 },
       )
     }
 
     const { email: rawEmail, redirect } = (await req.json().catch(() => ({}))) as { email?: unknown; redirect?: unknown }
     const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : ''
-    if (!email) return NextResponse.json({ error: 'Enter your work email.' }, { status: 400 })
+    if (!email) return NextResponse.json({ error: 'Enter your work email.', code: 'auth_work_email' }, { status: 400 })
 
     const provider = await findProviderForEmail(email)
     if (!provider) {
-      return NextResponse.json({ error: 'No SSO provider configured for this email domain' }, { status: 404 })
+      return NextResponse.json({ error: 'No SSO provider configured for this email domain', code: 'auth_sso_not_configured' }, { status: 404 })
     }
 
     // For OIDC, construct the authorization URL
@@ -79,6 +79,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ provider: { name: provider.name, type: provider.provider_type }, redirect_url })
   } catch (e) {
     console.error('[sso] initiate error:', e)
-    return NextResponse.json({ error: 'Couldn’t start single sign-on. Try again, or sign in with email.' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn’t start single sign-on. Try again, or sign in with email.', code: 'auth_sso_start_failed' }, { status: 500 })
   }
 }

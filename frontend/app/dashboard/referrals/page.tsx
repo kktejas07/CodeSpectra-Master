@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { Illustration } from '@/components/illustrations/spot'
+import { useT } from '@/lib/i18n/client'
 
 interface ReferralStats {
   code: string | null
@@ -27,6 +28,8 @@ interface ReferralStats {
 }
 
 export default function ReferralsPage() {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const [stats, setStats] = useState<ReferralStats | null>(null)
@@ -55,14 +58,14 @@ export default function ReferralsPage() {
       const referralsTour: TourStep[] = [
         {
           target: '[data-tour="referrals-header"]',
-          title: 'Invite friends, earn rewards',
-          description: 'This page lets users invite friends and earn XP when they join.',
+          title: t('account.inviteFriendsEarnRewards'),
+          description: t('account.thisPageLetsUsersInviteFriendsaa5'),
           position: 'bottom',
         },
         {
           target: '[data-tour="referrals-action"]',
-          title: 'Generate code, track rewards',
-          description: 'Generate your referral code, copy the link to share, then track referrals and rewards below; check statuses here.',
+          title: t('account.generateCodeTrackRewards'),
+          description: t('account.generateYourReferralCodeCopyThe8c4'),
           position: 'top',
         },
       ]
@@ -74,11 +77,11 @@ export default function ReferralsPage() {
     try {
       const res = await csrfFetch('/api/referral/generate', { method: 'POST' })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok || !json.code) throw new Error(json.error || 'Couldn’t create your code.')
+      if (!res.ok || !json.code) throw new Error(json.error || t('account.couldntCreateYourCode'))
       setStats((prev) => prev ? { ...prev, code: json.code, url: json.url } : { code: json.code, url: json.url, total_referrals: 0, completed_referrals: 0, pending_referrals: 0, total_xp_earned: 0, total_commission_earned: 0, referrals: [] })
-      addToast({ type: 'success', title: 'Your referral code is ready' })
+      addToast({ type: 'success', title: t('account.yourReferralCodeIsReady') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Couldn’t create your referral code', message: e instanceof Error ? e.message : 'Please try again.' })
+      addToast({ type: 'error', title: t('account.couldntCreateYourReferralCode'), message: e instanceof Error ? e.message : t('account.pleaseTryAgain') })
     }
     setGenerating(false)
   }
@@ -89,7 +92,7 @@ export default function ReferralsPage() {
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       },
-      () => addToast({ type: 'error', title: 'Couldn’t copy', message: 'Select the link and copy it manually.' }),
+      () => addToast({ type: 'error', title: t('account.couldntCopy'), message: t('account.selectTheLinkAndCopyIt05e') }),
     )
   }
 
@@ -118,8 +121,8 @@ export default function ReferralsPage() {
           illustration="team"
           className="mb-0"
           icon={<Users aria-hidden />}
-          title="Referrals"
-          description="Invite friends and earn XP when they verify their email and complete their first graded challenge."
+          title={t('account.referrals')}
+          description={t('account.inviteFriendsAndEarnXpWhencae')}
         />
       </div>
 
@@ -127,26 +130,24 @@ export default function ReferralsPage() {
       {loadError ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load your referrals"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('account.couldntLoadYourReferrals')}
+          description={t('account.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
           onAction={() => setReloadKey((k) => k + 1)}
         />
       ) : !stats?.code ? (
         <Panel className="p-10 text-center">
           <Illustration name="team" className="mx-auto w-36" />
-          <p className="mt-4 text-muted-foreground">Generate your referral code to start inviting friends.</p>
+          <p className="mt-4 text-muted-foreground">{t('account.generateYourReferralCodeToStartbc3')}</p>
           <Button onClick={handleGenerate} disabled={generating} className="mt-4">
-            {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-            Generate referral code
-          </Button>
+            {generating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}{t('account.generateReferralCode')}</Button>
         </Panel>
       ) : (
         <>
           <Panel>
             <div className="flex items-center gap-2 mb-4">
               <Link2 className="h-4 w-4 text-primary" aria-hidden />
-              <h2 className="text-lg font-semibold text-foreground">Your referral code</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t('account.yourReferralCode')}</h2>
             </div>
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 rounded-xl border border-border/70 bg-muted/40 px-4 py-3 font-mono text-lg tracking-wider text-foreground">
@@ -154,21 +155,21 @@ export default function ReferralsPage() {
               </div>
               <Button variant="outline" onClick={() => copyToClipboard(stats.url || stats.code || '')} className="shrink-0">
                 {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                {copied ? 'Copied' : 'Copy link'}
+                {copied ? t('account.copied') : t('account.copyLink')}
               </Button>
             </div>
           </Panel>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <StatCard icon={<Users aria-hidden />} label="Total referrals" value={stats.total_referrals} />
-            <StatCard icon={<Check aria-hidden />} label="Completed" value={stats.completed_referrals} />
-            <StatCard icon={<Star aria-hidden />} label="XP earned" value={stats.total_xp_earned} />
+            <StatCard icon={<Users aria-hidden />} label={t('account.totalReferrals')} value={stats.total_referrals} />
+            <StatCard icon={<Check aria-hidden />} label={t('account.completed')} value={stats.completed_referrals} />
+            <StatCard icon={<Star aria-hidden />} label={t('account.xpEarned')} value={stats.total_xp_earned} />
           </div>
 
           {stats.referrals.length > 0 && (
             <Card className="overflow-hidden rounded-3xl border-border/70">
               <div className="p-6 border-b border-border">
-                <h2 className="text-lg font-semibold text-foreground">Referred users</h2>
+                <h2 className="text-lg font-semibold text-foreground">{t('account.referredUsers')}</h2>
               </div>
               <div className="divide-y divide-border">
                 {stats.referrals.map((r, i) => (

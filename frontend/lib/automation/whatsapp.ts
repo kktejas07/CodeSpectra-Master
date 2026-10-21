@@ -55,6 +55,13 @@ export async function whatsappRecipientForCandidate(candidateId: string, tenantI
   return null
 }
 
+/** Template language for a platform user: their interface language when approved (Admin → Automations), else the base. */
+export async function templateLanguageForUser(userId: string | null | undefined, cfg: { wa_template_language?: string | null; wa_template_locales?: unknown }): Promise<{ language: string; fallbackLanguage: string | null }> {
+  const [{ localeForUser }, { whatsappTemplateLanguage }] = await Promise.all([import('@/lib/i18n/recipient'), import('@/lib/i18n/whatsapp-language')])
+  const r = whatsappTemplateLanguage(await localeForUser(userId), { base: cfg.wa_template_language, approved: cfg.wa_template_locales })
+  return { language: r.language, fallbackLanguage: r.fallback }
+}
+
 export type WhatsAppOutcome = { ok: true; id: string | null } | { ok: false; skipped: 'no_consent' | 'not_configured' | 'invalid' | 'quiet_hours'; error?: string } | { ok: false; error: string }
 
 /**
@@ -62,7 +69,7 @@ export type WhatsAppOutcome = { ok: true; id: string | null } | { ok: false; ski
  * Pass `opts.userId` to respect that user's quiet hours (the message is skipped, not queued:
  * a WhatsApp reminder is only useful on time; email copies are deferred instead).
  */
-export async function sendWhatsAppTemplate(rcpt: WhatsAppRecipient | null, template: { name: string; language?: string; params?: string[] }, opts: { userId?: string | null; now?: Date } = {}): Promise<WhatsAppOutcome> {
+export async function sendWhatsAppTemplate(rcpt: WhatsAppRecipient | null, template: { name: string; language?: string; params?: string[]; fallbackLanguage?: string | null }, opts: { userId?: string | null; now?: Date } = {}): Promise<WhatsAppOutcome> {
   if (!rcpt) return { ok: false, skipped: 'no_consent' }
   if (opts.userId) {
     const { getQuietHours, quietWindowEnd } = await import('@/lib/notifications-delivery')
@@ -78,6 +85,12 @@ export async function sendWhatsAppTemplate(rcpt: WhatsAppRecipient | null, templ
   const t = metaTransport(cfg, cfg.whatsapp.phone_number_id)
   const lang = /^[a-z]{2}(_[A-Z]{2})?$/.test(template.language || '') ? template.language! : cfg.whatsapp.template_language || 'en'
   const params = (template.params || []).map((p) => String(p ?? '').slice(0, 200)).slice(0, 10)
-  const r = await t.sendTemplate(rcpt.phone, { name, language: lang, bodyParams: params }, params.join(' '))
+  let r = await t.sendTemplate(rcpt.phone, { name, language: lang, bodyParams: params }, params.join(' '))
+  // Recipient's language not approved for this template (yet) → once more in the base language.
+  const fb = template.fallbackLanguage
+  if (!r.ok && fb && fb !== lang && /^[a-z]{2}(_[A-Z]{2})?$/.test(fb)) {
+    const { isMissingTranslationError } = await import('@/lib/i18n/whatsapp-language')
+    if (isMissingTranslationError(r.error)) r = await t.sendTemplate(rcpt.phone, { name, language: fb, bodyParams: params }, params.join(' '))
+  }
   return r.ok ? { ok: true, id: r.id ?? null } : { ok: false, error: r.error || 'WhatsApp send failed' }
 }

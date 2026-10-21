@@ -59,6 +59,6 @@ export async function GET(
     return NextResponse.json({ data: enriched, count: enriched.length })
   } catch (error) {
     console.error('[CodeSpectra] GET codeathon submissions error:', error)
-    return NextResponse.json({ error: 'Failed to load submissions' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to load submissions', code: 'sub_load_failed' }, { status: 500 })
   }
 }

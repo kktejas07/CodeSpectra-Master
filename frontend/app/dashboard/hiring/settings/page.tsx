@@ -12,35 +12,38 @@ import { ChevronRight, MessageSquareText, PlugZap, Settings, ShieldCheck } from 
 import { Panel } from '@/components/app/page-kit'
 import { HiringShell } from '@/components/hiring/shell'
 import { LoadingRows } from '@/components/hiring/ui'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-const SETTINGS = [
+const SETTINGS = (t: Translator) => ([
   {
     href: '/dashboard/hiring/settings/screening',
-    title: 'Bot screening',
-    description: 'Providers, regional numbers, messages and timing for automated candidate screening.',
+    title: t('hiring.botScreening'),
+    description: t('hiring.providersRegionalNumbersMessagesAndTimin575'),
     icon: MessageSquareText,
   },
   {
     href: '/dashboard/hiring/settings/bgv',
-    title: 'Background checks',
-    description: 'Region checklists, consent texts, vendors and retention for background verification.',
+    title: t('hiring.backgroundChecks'),
+    description: t('hiring.regionChecklistsConsentTextsVendorsAnd6df'),
     icon: ShieldCheck,
   },
   {
     href: '/dashboard/hiring/settings/integrations',
-    title: 'Integrations',
-    description: 'Connect the meeting apps your team interviews on.',
+    title: t('hiring.integrations'),
+    description: t('hiring.connectTheMeetingAppsYourTeamaac'),
     icon: PlugZap,
   },
-] as const
+] as const)
 
 function Cards() {
+  const { t } = useT()
   // Keep the superadmin ?tenant= scope when moving into a settings screen.
   const tenant = useSearchParams().get('tenant')
   const suffix = tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {SETTINGS.map(({ href, title, description, icon: Icon }) => (
+      {SETTINGS(t).map(({ href, title, description, icon: Icon }) => (
         <li key={href} className="min-w-0">
           <Link
             href={`${href}${suffix}`}
@@ -66,8 +69,9 @@ function Cards() {
 }
 
 export default function HiringSettingsPage() {
+  const { t } = useT()
   return (
-    <HiringShell title="Hiring settings" description="Choose what to set up for your hiring team." icon={<Settings />}>
+    <HiringShell title={t('hiring.hiringSettings')} description={t('hiring.chooseWhatToSetUpForf16')} icon={<Settings />}>
       <Suspense fallback={<LoadingRows rows={3} />}>
         <Cards />
       </Suspense>

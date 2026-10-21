@@ -6,7 +6,7 @@ export async function GET(req: NextRequest, { params }: IdRouteContext) {
   const g = await sellerGate(req)
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Product not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Product not found', code: 'mkt_product_not_found' }, 404)
   try {
     const { getSellerProduct } = await import('@/lib/marketplace/listings')
     return json({ product: await getSellerProduct(g.seller.id, id) })
@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest, { params }: IdRouteContext) {
   const g = await sellerGate(req, { approved: true, write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Product not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Product not found', code: 'mkt_product_not_found' }, 404)
   try {
     const { updateProduct } = await import('@/lib/marketplace/listings')
     return json({ product: await updateProduct(g.seller, id, await bodyOf(req)) })
@@ -33,13 +33,13 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
   const g = await sellerGate(req, { approved: true, write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Product not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Product not found', code: 'mkt_product_not_found' }, 404)
   try {
     const { submitProduct, restoreProduct } = await import('@/lib/marketplace/listings')
     const action = (await bodyOf(req)).action
     if (action === 'submit') return json({ product: await submitProduct(g.seller, id) })
     if (action === 'restore') return json({ product: await restoreProduct(g.seller, id) })
-    return json({ error: 'Unknown action' }, 400)
+    return json({ error: 'Unknown action', code: 'unknown_action' }, 400)
   } catch (e) {
     return errorResponse(e, 'product action')
   }
@@ -49,7 +49,7 @@ export async function DELETE(req: NextRequest, { params }: IdRouteContext) {
   const g = await sellerGate(req, { write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Product not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Product not found', code: 'mkt_product_not_found' }, 404)
   try {
     const { removeProduct } = await import('@/lib/marketplace/listings')
     return json({ result: await removeProduct(g.seller, id) })

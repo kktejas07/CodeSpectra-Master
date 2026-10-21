@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-hr-form-post', null, 10, 60_000)
   if (limited) return limited
   const body = await req.json().catch(() => null)
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   try {
     const r = await submitHrForm((body as Record<string, unknown>).token, body)
     if (!r.ok) return NextResponse.json({ error: r.errors[0], errors: r.errors }, { status: r.status, headers: NO_STORE })

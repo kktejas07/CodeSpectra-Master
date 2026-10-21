@@ -19,6 +19,7 @@ import { VideoOff } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { acquireRecordingStream } from '@/lib/proctoring/recording-stream'
 import { retryDelayMs, isRetryableStatus, MAX_UPLOAD_TRIES, MAX_QUEUED_CHUNKS } from '@/lib/proctoring/recording-upload'
+import { useT } from '@/lib/i18n/client'
 
 interface SessionRecorderProps {
   sessionId: string
@@ -44,6 +45,7 @@ function pickMime(withAudio: boolean): string {
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionRecorderProps) {
+  const { t: tr } = useT()
   const [recording, setRecording] = useState(false)
   const [hasAudio, setHasAudio] = useState(true)
   const activeRef = useRef(false)
@@ -210,12 +212,12 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
             <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
           </span>
-          <span className="text-red-600 dark:text-red-400">Recording{hasAudio ? '' : ' (no audio)'}</span>
+          <span className="text-red-600 dark:text-red-400">{tr('exam.recordingValue', { value: hasAudio ? '' : tr('exam.noAudio2') })}</span>
         </>
       ) : (
         <>
           <VideoOff className="h-3.5 w-3.5 text-muted-foreground" />
-          <span className="text-muted-foreground">Recording off</span>
+          <span className="text-muted-foreground">{tr('exam.recordingOff')}</span>
         </>
       )}
     </div>

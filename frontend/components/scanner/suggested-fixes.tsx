@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Check, Copy, AlertCircle, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { useT } from '@/lib/i18n/client'
 
 interface Issue {
   type: 'bug' | 'vulnerability' | 'code_smell' | 'security_hotspot' | 'duplicate'
@@ -59,6 +60,7 @@ const getIssueIcon = (type: string) => {
 }
 
 export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
+  const { t } = useT()
   const [expandedIssues, setExpandedIssues] = useState<Set<number>>(new Set())
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
 
@@ -84,8 +86,8 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
         <div className="flex flex-col items-center gap-3">
           <Check className="w-8 h-8 text-green-500" />
           <div>
-            <p className="font-semibold text-foreground">No issues found</p>
-            <p className="text-sm text-muted-foreground">Nothing to fix in this scan.</p>
+            <p className="font-semibold text-foreground">{t('tools.noIssuesFound')}</p>
+            <p className="text-sm text-muted-foreground">{t('tools.nothingToFixInThisScan')}</p>
           </div>
         </div>
       </Card>
@@ -95,10 +97,8 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-foreground">Issues & Suggested Fixes</h3>
-        <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">
-          {issues.length} issue{issues.length !== 1 ? 's' : ''}
-        </span>
+        <h3 className="font-semibold text-foreground">{t('tools.issuesSuggestedFixes')}</h3>
+        <span className="text-xs bg-primary/20 text-primary px-2 py-1 rounded">{t('tools.countIssues', { count: issues.length })}</span>
       </div>
 
       <div className="space-y-2">
@@ -126,7 +126,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                     </div>
                     <p className="text-sm text-foreground/70">{issue.message}</p>
                     {issue.line && (
-                      <p className="text-xs text-muted-foreground mt-1">Line {issue.line}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{t('tools.lineLine2', { line: issue.line })}</p>
                     )}
                   </div>
                 </div>
@@ -143,7 +143,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                   <div className="grid md:grid-cols-2 gap-3">
                     {/* Original Code */}
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-foreground/70">Current code</p>
+                      <p className="text-xs font-medium text-foreground/70">{t('tools.currentCode')}</p>
                       <div className="bg-background/50 border border-border rounded p-3">
                         <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
                           {issue.message.slice(0, 120)}
@@ -156,14 +156,10 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                         >
                           {copiedIndex === index * 2 ? (
                             <>
-                              <Check className="w-3 h-3 mr-1" />
-                              Copied
-                            </>
+                              <Check className="w-3 h-3 mr-1" />{t('tools.copied')}</>
                           ) : (
                             <>
-                              <Copy className="w-3 h-3 mr-1" />
-                              Copy
-                            </>
+                              <Copy className="w-3 h-3 mr-1" />{t('tools.copy')}</>
                           )}
                         </Button>
                       </div>
@@ -171,7 +167,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
 
                     {/* Suggested Code */}
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-foreground/70">Suggested fix</p>
+                      <p className="text-xs font-medium text-foreground/70">{t('tools.suggestedFix')}</p>
                       <div className="bg-green-500/5 border border-green-500/20 rounded p-3">
                         <pre className="text-xs text-muted-foreground overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
                           {issue.type === 'bug'
@@ -199,14 +195,10 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                         >
                           {copiedIndex === index * 2 + 1 ? (
                             <>
-                              <Check className="w-3 h-3 mr-1" />
-                              Copied
-                            </>
+                              <Check className="w-3 h-3 mr-1" />{t('tools.copied')}</>
                           ) : (
                             <>
-                              <Copy className="w-3 h-3 mr-1" />
-                              Copy & Apply
-                            </>
+                              <Copy className="w-3 h-3 mr-1" />{t('tools.copyApply')}</>
                           )}
                         </Button>
                       </div>
@@ -216,12 +208,8 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                   {/* Fix Details */}
                   {issue.effortMinutes && (
                     <div className="bg-card/50 border border-border rounded p-3">
-                      <p className="text-xs font-medium text-foreground mb-2">
-                        Why: {issue.message.slice(0, 80)}{issue.message.length > 80 ? '...' : ''}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Estimated fix effort: ~{issue.effortMinutes} minute{issue.effortMinutes !== 1 ? 's' : ''}
-                      </p>
+                      <p className="text-xs font-medium text-foreground mb-2">{t('tools.whyValueValue2', { value: issue.message.slice(0, 80), value2: issue.message.length > 80 ? '...' : '' })}</p>
+                      <p className="text-xs text-muted-foreground">{t('tools.estimatedFixEffortCountMinutes', { count: issue.effortMinutes })}</p>
                     </div>
                   )}
                 </div>

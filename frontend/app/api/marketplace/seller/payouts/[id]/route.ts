@@ -7,7 +7,7 @@ export async function DELETE(req: NextRequest, { params }: IdRouteContext) {
   const g = await sellerGate(req, { write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Payout not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Payout not found', code: 'mkt_payout_not_found' }, 404)
   try {
     const { cancelPayout } = await import('@/lib/marketplace/payouts')
     await cancelPayout(g.seller, id)

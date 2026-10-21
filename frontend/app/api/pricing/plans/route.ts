@@ -9,7 +9,7 @@ import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
  */
 export async function GET(req: NextRequest) {
   const rl = await rateLimitRedis(`pricing:${clientLimiterKeyFromRequest(req, null)}`, 60, 60_000).catch(() => ({ ok: true as const }))
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429 })
   try {
     return NextResponse.json(await getClientPlans())
   } catch (e) {

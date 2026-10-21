@@ -23,6 +23,7 @@ import { ADDABLE_STAGE_TYPES, FIXED_TYPES, PIPELINE_TEMPLATES, movableRange, typ
 import { STAGE_TYPE_HINTS, STAGE_TYPE_LABELS } from '../lib/labels'
 import { Field, NativeSelect } from '../ui'
 import { StageConfigForm, type StageConfigDeps } from './stage-config'
+import { useT } from '@/lib/i18n/client'
 
 export function PipelineBuilder({
   stages,
@@ -35,6 +36,7 @@ export function PipelineBuilder({
   deps: StageConfigDeps
   onTemplate: (build: () => PipelineStage[]) => void
 }) {
+  const { t: tr } = useT()
   const [open, setOpen] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
   const [overIdx, setOverIdx] = useState<number | null>(null)
@@ -54,7 +56,7 @@ export function PipelineBuilder({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-muted-foreground">Start from a template:</span>
+        <span className="text-sm text-muted-foreground">{tr('hiring.startFromATemplate')}</span>
         {PIPELINE_TEMPLATES.map((t) => (
           <Button key={t.id} type="button" variant="outline" size="sm" className="rounded-full" title={t.description} onClick={() => onTemplate(t.build)}>
             {t.name}
@@ -63,7 +65,7 @@ export function PipelineBuilder({
       </div>
 
       <p className="sr-only" aria-live="assertive">{announce}</p>
-      <ol className="space-y-2" aria-label="Pipeline stages">
+      <ol className="space-y-2" aria-label={tr('hiring.pipelineStages')}>
         {stages.map((s, i) => {
           const fixed = FIXED_TYPES.has(s.type)
           const expanded = open === s.id
@@ -89,9 +91,9 @@ export function PipelineBuilder({
             >
               <div className="flex items-center gap-2 p-3">
                 {fixed ? (
-                  <span className="flex h-8 w-8 items-center justify-center text-muted-foreground" title="This stage stays in place">
+                  <span className="flex h-8 w-8 items-center justify-center text-muted-foreground" title={tr('hiring.thisStageStaysInPlace')}>
                     <Lock className="h-4 w-4" aria-hidden />
-                    <span className="sr-only">Fixed stage</span>
+                    <span className="sr-only">{tr('hiring.fixedStage')}</span>
                   </span>
                 ) : (
                   <button
@@ -105,7 +107,7 @@ export function PipelineBuilder({
                       if (e.key === 'ArrowDown') { e.preventDefault(); shift(s, 1) }
                     }}
                     className="flex h-8 w-8 cursor-grab items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing"
-                    aria-label={`Reorder ${s.name}. Use the up and down arrow keys.`}
+                    aria-label={tr('hiring.reorderNameUseTheUpAnd951', { name: s.name })}
                   >
                     <GripVertical className="h-4 w-4" aria-hidden />
                   </button>
@@ -119,22 +121,22 @@ export function PipelineBuilder({
                   className="flex min-w-0 flex-1 items-center gap-2 rounded-lg py-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-foreground">{s.name || 'Untitled stage'}</span>
+                    <span className="block truncate font-medium text-foreground">{s.name || tr('hiring.untitledStage')}</span>
                     <span className="block truncate text-xs text-muted-foreground">{STAGE_TYPE_LABELS[s.type]}</span>
                   </span>
                   {!fixed && s.type !== 'applied' && (
                     <Badge variant={s.advance === 'auto' ? 'secondary' : 'outline'} className="hidden sm:inline-flex">
-                      {s.advance === 'auto' ? 'Moves automatically' : 'Needs approval'}
+                      {s.advance === 'auto' ? tr('hiring.movesAutomatically') : tr('hiring.needsApproval')}
                     </Badge>
                   )}
-                  {s.client_visible && <Badge variant="outline" className="hidden md:inline-flex">Client sees</Badge>}
+                  {s.client_visible && <Badge variant="outline" className="hidden md:inline-flex">{tr('hiring.clientSees')}</Badge>}
                   <ChevronDown className={cn('h-4 w-4 shrink-0 text-muted-foreground transition-transform', expanded && 'rotate-180')} aria-hidden />
                 </button>
                 {!fixed && (
                   <div className="flex shrink-0 items-center">
-                    <Button type="button" variant="ghost" size="icon-sm" className="hidden sm:inline-flex" onClick={() => shift(s, -1)} disabled={i <= lo} aria-label={`Move ${s.name} up`}><ArrowUp aria-hidden /></Button>
-                    <Button type="button" variant="ghost" size="icon-sm" className="hidden sm:inline-flex" onClick={() => shift(s, 1)} disabled={i >= hi} aria-label={`Move ${s.name} down`}><ArrowDown aria-hidden /></Button>
-                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => dispatch({ type: 'remove', id: s.id })} aria-label={`Remove ${s.name}`}><Trash2 aria-hidden /></Button>
+                    <Button type="button" variant="ghost" size="icon-sm" className="hidden sm:inline-flex" onClick={() => shift(s, -1)} disabled={i <= lo} aria-label={tr('hiring.moveNameUp', { name: s.name })}><ArrowUp aria-hidden /></Button>
+                    <Button type="button" variant="ghost" size="icon-sm" className="hidden sm:inline-flex" onClick={() => shift(s, 1)} disabled={i >= hi} aria-label={tr('hiring.moveNameDown', { name: s.name })}><ArrowDown aria-hidden /></Button>
+                    <Button type="button" variant="ghost" size="icon-sm" onClick={() => dispatch({ type: 'remove', id: s.id })} aria-label={tr('hiring.removeName', { name: s.name })}><Trash2 aria-hidden /></Button>
                   </div>
                 )}
               </div>
@@ -143,28 +145,28 @@ export function PipelineBuilder({
                 <div id={`stage-panel-${s.id}`} className="space-y-5 border-t border-border/70 p-4">
                   <p className="text-xs text-muted-foreground">{STAGE_TYPE_HINTS[s.type]}</p>
                   <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <Field label="Stage name" htmlFor={`sn-${s.id}`} className="sm:col-span-2">
+                    <Field label={tr('hiring.stageName')} htmlFor={`sn-${s.id}`} className="sm:col-span-2">
                       <Input id={`sn-${s.id}`} value={s.name} maxLength={60} onChange={(e) => dispatch({ type: 'update', id: s.id, patch: { name: e.target.value } })} />
                     </Field>
                     {s.type !== 'hired' && s.type !== 'rejected' && (
                       <>
-                        <Field label="When they pass" htmlFor={`adv-${s.id}`}>
+                        <Field label={tr('hiring.whenTheyPass')} htmlFor={`adv-${s.id}`}>
                           <NativeSelect
                             id={`adv-${s.id}`}
                             value={s.advance}
                             onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { advance: v as PipelineStage['advance'] } })}
-                            options={[{ value: 'auto', label: 'Move on automatically' }, { value: 'approval', label: 'Wait for my approval' }]}
+                            options={[{ value: 'auto', label: tr('hiring.moveOnAutomatically') }, { value: 'approval', label: tr('hiring.waitForMyApproval') }]}
                           />
                         </Field>
-                        <Field label="When they fail" htmlFor={`fail-${s.id}`}>
+                        <Field label={tr('hiring.whenTheyFail')} htmlFor={`fail-${s.id}`}>
                           <NativeSelect
                             id={`fail-${s.id}`}
                             value={s.on_fail}
                             onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { on_fail: v as PipelineStage['on_fail'] } })}
-                            options={[{ value: 'reject', label: 'Reject' }, { value: 'hold', label: 'Put on hold' }, { value: 'review', label: 'Ask me to review' }]}
+                            options={[{ value: 'reject', label: tr('hiring.reject') }, { value: 'hold', label: tr('hiring.putOnHold') }, { value: 'review', label: tr('hiring.askMeToReview') }]}
                           />
                         </Field>
-                        <Field label="Time limit (days)" htmlFor={`sla-${s.id}`} hint="Flag candidates stuck longer. Empty = no limit.">
+                        <Field label={tr('hiring.timeLimitDays')} htmlFor={`sla-${s.id}`} hint={tr('hiring.flagCandidatesStuckLongerEmptyNo6af')}>
                           <Input
                             id={`sla-${s.id}`}
                             type="number"
@@ -178,10 +180,10 @@ export function PipelineBuilder({
                     )}
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    <Toggle label="Client can see" checked={!!s.client_visible} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { client_visible: v } })} />
-                    <Toggle label="Email the candidate" checked={!!s.notify?.email} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { notify: { ...s.notify, email: v } } })} />
-                    <Toggle label="WhatsApp the candidate" checked={!!s.notify?.whatsapp} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { notify: { ...s.notify, whatsapp: v } } })} />
-                    <Toggle label="Tell the client" checked={!!s.notify?.client} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { notify: { ...s.notify, client: v } } })} />
+                    <Toggle label={tr('hiring.clientCanSee')} checked={!!s.client_visible} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { client_visible: v } })} />
+                    <Toggle label={tr('hiring.emailTheCandidate')} checked={!!s.notify?.email} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { notify: { ...s.notify, email: v } } })} />
+                    <Toggle label={tr('hiring.whatsappTheCandidate')} checked={!!s.notify?.whatsapp} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { notify: { ...s.notify, whatsapp: v } } })} />
+                    <Toggle label={tr('hiring.tellTheClient')} checked={!!s.notify?.client} onChange={(v) => dispatch({ type: 'update', id: s.id, patch: { notify: { ...s.notify, client: v } } })} />
                   </div>
                   <StageConfigForm stage={s} deps={deps} onConfig={(patch) => dispatch({ type: 'config', id: s.id, patch })} />
                 </div>
@@ -193,7 +195,7 @@ export function PipelineBuilder({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" className="rounded-full"><Plus aria-hidden /> Add stage</Button>
+          <Button type="button" variant="outline" className="rounded-full"><Plus aria-hidden />{' '}{tr('hiring.addStage')}</Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-72 max-w-[calc(100vw-2rem)]">
           {ADDABLE_STAGE_TYPES.map((t) => (

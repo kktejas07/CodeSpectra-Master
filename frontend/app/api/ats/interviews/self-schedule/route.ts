@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-self-schedule-post', null, 8, 60_000)
   if (limited) return limited
   let body: { token?: unknown; start?: unknown }
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
   if (typeof body.start !== 'string' || body.start.length > 40) return NextResponse.json({ error: 'Pick a time.' }, { status: 400 })
   try {
     const iv = await interviewFromToken(body.token, 'sched')

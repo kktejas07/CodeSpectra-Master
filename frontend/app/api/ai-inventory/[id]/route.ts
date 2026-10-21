@@ -24,8 +24,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const { id } = await params
   for (const cat of CATEGORY_ORDER) {
@@ -35,7 +35,7 @@ export async function GET(
       return NextResponse.json({ ok: true, item: found })
     }
   }
-  return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+  return NextResponse.json({ error: 'Item not found', code: 'cart_item_not_found' }, { status: 404 })
 }
 
 export async function PATCH(
@@ -43,8 +43,8 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   try {
     const body = await req.json()
@@ -84,7 +84,7 @@ export async function PATCH(
 
     return NextResponse.json({ ok: true, id: itemId, category, ...updateFields })
   } catch (err) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }
 
@@ -93,8 +93,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   try {
     const db = await getMongoDb()
@@ -103,6 +103,6 @@ export async function DELETE(
     await db.collection('custom_ai_components').deleteOne({ id: itemId })
     return NextResponse.json({ ok: true })
   } catch (err) {
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

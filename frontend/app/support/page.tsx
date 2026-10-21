@@ -7,60 +7,25 @@ import { Scene } from '@/components/illustrations/scenes'
 import { BentoBody, BentoCard, BentoIcon, BentoShell, BentoTitle } from '@/components/landing/bento-grid'
 import { useState } from 'react'
 import { PublicPageWrapper } from '@/app/public-layout'
+import { useT } from '@/lib/i18n/client'
+import type { MessageKey } from '@/lib/i18n/catalog'
+
+// Copy: publicPages.supportFaq<N>Q / <N>A, grouped by category.
+const FAQ_GROUPS = [
+  { category: 'publicPages.supportCatBilling', ids: [1, 2, 3] },
+  { category: 'publicPages.supportCatTechnical', ids: [4, 5, 6] },
+  { category: 'publicPages.supportCatFeatures', ids: [7, 8] },
+] as const
 
 export default function SupportPortalPage() {
+  const { t } = useT()
   const [searchQuery, setSearchQuery] = useState('')
   const [openFaq, setOpenFaq] = useState<number | null>(null)
 
-  const faqs = [
-    {
-      category: 'Billing',
-      questions: [
-        {
-          q: 'How do I upgrade my plan?',
-          a: 'You can upgrade your plan at any time from the Billing settings in your dashboard.',
-        },
-        {
-          q: 'Can I cancel my subscription anytime?',
-          a: 'Yes, you can cancel from the Billing settings at any time. The Terms of Service explain what happens to fees.',
-        },
-        {
-          q: 'Do you offer refunds?',
-          a: 'Fees are non-refundable except where required by law. See the Terms of Service for details.',
-        },
-      ],
-    },
-    {
-      category: 'Technical',
-      questions: [
-        {
-          q: 'What are the system requirements?',
-          a: 'CodeSpectra runs in current versions of Chrome, Firefox, Safari and Edge. Proctored assessments also need a webcam.',
-        },
-        {
-          q: 'Is my data secure?',
-          a: 'Data is encrypted in transit and at rest. The Security page explains how accounts and assessment data are protected.',
-        },
-        {
-          q: 'How long is my data kept?',
-          a: 'Retention periods for each kind of data are listed in the Privacy Policy. For anything specific to your organization, contact us.',
-        },
-      ],
-    },
-    {
-      category: 'Features',
-      questions: [
-        {
-          q: 'Can I use CodeSpectra for personal projects?',
-          a: 'Yes. Candidates can practise for free, and the Pricing page lists the paid plans.',
-        },
-        {
-          q: 'How many team members can I invite?',
-          a: 'It depends on your plan. The Pricing page shows the current limits for each one.',
-        },
-      ],
-    },
-  ]
+  const faqs = FAQ_GROUPS.map((g) => ({
+    category: t(g.category),
+    questions: g.ids.map((n) => ({ q: t(`publicPages.supportFaq${n}Q` as MessageKey), a: t(`publicPages.supportFaq${n}A` as MessageKey) })),
+  }))
 
   const allQuestions = faqs.flatMap((section) =>
     section.questions.map((q, i) => ({
@@ -81,12 +46,12 @@ export default function SupportPortalPage() {
   return (
     <PublicPageWrapper>
       <PageHero
-        title="How can we help?"
-        lead="Find answers to common questions, check whether everything is running, or open a ticket with our team."
+        title={t('publicPages.supportTitle')}
+        lead={t('publicPages.supportLead')}
         actions={
           <>
-            <Link href="/dashboard/support" className={btnPrimary}>Create a ticket</Link>
-            <Link href="/status" className={btnSecondary}>System status</Link>
+            <Link href="/dashboard/support" className={btnPrimary}>{t('publicPages.supportCreateTicket')}</Link>
+            <Link href="/status" className={btnSecondary}>{t('public.systemStatus')}</Link>
           </>
         }
         art={<Scene name="interview-call" className="w-full max-w-[420px]" />}
@@ -99,24 +64,24 @@ export default function SupportPortalPage() {
             {[
               {
                 icon: MessageSquare,
-                title: 'Create a ticket',
-                desc: 'Sign in and send our support team the details. You can follow the reply in your dashboard.',
+                title: t('publicPages.supportCreateTicket'),
+                desc: t('publicPages.supportTicketBody'),
                 href: '/dashboard/support',
-                cta: 'Submit ticket',
+                cta: t('publicPages.supportTicketCta'),
               },
               {
                 icon: Activity,
-                title: 'System status',
-                desc: 'See whether every part of CodeSpectra is up right now.',
+                title: t('public.systemStatus'),
+                desc: t('publicPages.supportStatusBody'),
                 href: '/status',
-                cta: 'View status',
+                cta: t('publicPages.supportStatusCta'),
               },
               {
                 icon: ShieldCheck,
-                title: 'Security',
-                desc: 'How accounts and assessment data are protected, and how to report a vulnerability.',
+                title: t('public.footSecurity'),
+                desc: t('publicPages.supportSecurityBody'),
                 href: '/security',
-                cta: 'Read security',
+                cta: t('publicPages.supportSecurityCta'),
               },
             ].map((item) => {
               const Icon = item.icon
@@ -136,15 +101,15 @@ export default function SupportPortalPage() {
       {/* FAQs */}
       <section className="border-b border-cs-grid" aria-labelledby="support-faq">
         <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6 lg:py-20">
-          <h2 id="support-faq" className="cs-heading mb-8 text-4xl sm:text-5xl">Frequently asked questions</h2>
+          <h2 id="support-faq" className="cs-heading mb-8 text-4xl sm:text-5xl">{t('publicPages.faqTitle')}</h2>
 
           <div className="mb-6">
             <label className="relative block">
-              <span className="sr-only">Search FAQs</span>
+              <span className="sr-only">{t('publicPages.supportSearch')}</span>
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cs-ink-soft" aria-hidden />
               <input
                 type="search"
-                placeholder="Search FAQs..."
+                placeholder={t('publicPages.supportSearchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-12 w-full rounded-2xl border border-cs-grid bg-cs-sheet pl-12 pr-4 text-cs-ink transition-colors placeholder:text-cs-ink-soft/70 hover:border-cs-accent/40 focus:border-cs-accent focus:outline-none focus:ring-2 focus:ring-cs-accent/20"
@@ -154,7 +119,7 @@ export default function SupportPortalPage() {
 
           {filteredQuestions.length === 0 ? (
             <div className="rounded-2xl border border-cs-grid bg-cs-sheet p-8 text-center text-cs-ink-soft">
-              No questions match that search. Try a shorter word, or create a ticket.
+              {t('publicPages.supportNoMatch')}
             </div>
           ) : (
             <div className="space-y-3">
@@ -200,36 +165,34 @@ export default function SupportPortalPage() {
       <section className="border-b border-cs-grid">
         <div className="mx-auto max-w-[1200px] px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="mb-10 grid gap-4 lg:grid-cols-[1fr_1.2fr] lg:items-end lg:gap-16">
-            <h2 className="cs-heading text-4xl sm:text-5xl">Other ways to reach us</h2>
-            <p className="max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">
-              Email works for anything that doesn&apos;t fit a ticket.
-            </p>
+            <h2 className="cs-heading text-4xl sm:text-5xl">{t('publicPages.supportOtherWays')}</h2>
+            <p className="max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">{t('publicPages.supportOtherWaysBody')}</p>
           </div>
           <BentoShell className="auto-rows-auto">
             <BentoCard className="sm:col-span-2">
               <BentoIcon><Mail className="h-5 w-5" aria-hidden /></BentoIcon>
-              <BentoTitle>Email</BentoTitle>
+              <BentoTitle>{t('publicPages.email')}</BentoTitle>
               <BentoBody>
                 <a href="mailto:support@codespectra.ai" className="font-medium text-cs-accent-text hover:underline">support@codespectra.ai</a>
               </BentoBody>
             </BentoCard>
             <BentoCard className="sm:col-span-2">
               <BentoIcon><Building className="h-5 w-5" aria-hidden /></BentoIcon>
-              <BentoTitle>Offices</BentoTitle>
-              <BentoBody>Hyderabad, India · Princeton, New Jersey</BentoBody>
+              <BentoTitle>{t('publicPages.officesTitle')}</BentoTitle>
+              <BentoBody>{t('publicPages.offices')}</BentoBody>
             </BentoCard>
           </BentoShell>
 
           <div className="mt-10 flex flex-col items-start gap-4 rounded-3xl bg-cs-accent p-8 text-cs-accent-ink sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-2xl font-bold">Still need help?</h3>
-              <p className="mt-1 text-cs-accent-ink/90">Open a ticket and our support team will get back to you.</p>
+              <h3 className="text-2xl font-bold">{t('publicPages.supportStillNeed')}</h3>
+              <p className="mt-1 text-cs-accent-ink/90">{t('publicPages.supportStillNeedBody')}</p>
             </div>
             <Link
               href="/dashboard/support"
               className="inline-flex h-12 items-center justify-center rounded-full bg-white px-7 text-[15px] font-semibold text-[#1e40af] transition-[filter] hover:brightness-95"
             >
-              Contact support
+              {t('publicPages.supportContact')}
             </Link>
           </div>
         </div>

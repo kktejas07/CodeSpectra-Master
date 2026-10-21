@@ -19,10 +19,10 @@ import { EVENT_KINDS, EVENT_MODES, type EventKind, type EventMode } from '@/lib/
 import { NEWS_TOPICS } from '@/lib/signals/feeds'
 import { cn } from '@/lib/utils'
 import { TurnstileWidget } from '@/components/auth/turnstile-widget'
-
-const CONSENT = 'I agree to receive CodeSpectra updates on WhatsApp for the topics I picked. I can reply STOP at any time to stop.'
+import { useT } from '@/lib/i18n/client'
 
 export function NotifyBox({ topic = 'events', className, compact = false }: { topic?: 'events' | 'blog' | 'news'; className?: string; compact?: boolean }) {
+  const { t, td, rich } = useT()
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [useEmail, setUseEmail] = useState(true)
@@ -46,8 +46,8 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
     e.preventDefault()
     setError(null)
     const channels = [useEmail && 'email', useWa && 'whatsapp'].filter(Boolean)
-    if (!channels.length) return setError('Pick email, WhatsApp or both.')
-    if (useWa && !consent) return setError('Tick the box to agree to WhatsApp messages.')
+    if (!channels.length) return setError(t('public.notifyErrChannel'))
+    if (useWa && !consent) return setError(t('public.notifyErrConsent'))
     setBusy(true)
     try {
       const res = await csrfFetch('/api/subscriptions/subscribe', {
@@ -66,7 +66,7 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Couldn’t subscribe. Try again.')
+      if (!res.ok) throw new Error(data.error || t('public.notifyErrGeneric'))
       setDone({ email: data.email, whatsapp: data.whatsapp, link: data.whatsapp_start_link })
     } catch (err) {
       setError((err as Error).message)
@@ -84,13 +84,13 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><MailCheck className="h-5 w-5" /></span>
           <div className="space-y-2 text-sm">
-            <p className="font-semibold text-foreground">Almost done</p>
-            {done.email === 'confirmation_sent' && <p className="text-muted-foreground">Check your inbox and click the confirmation link. It works for 72 hours.</p>}
-            {done.email === 'active' || done.email === 'unchanged' ? <p className="text-muted-foreground">Email updates are on.</p> : null}
+            <p className="font-semibold text-foreground">{t('public.notifyAlmost')}</p>
+            {done.email === 'confirmation_sent' && <p className="text-muted-foreground">{t('public.notifyCheckInbox')}</p>}
+            {done.email === 'active' || done.email === 'unchanged' ? <p className="text-muted-foreground">{t('public.notifyEmailOn')}</p> : null}
             {done.whatsapp === 'confirmation_sent' && (
               <p className="text-muted-foreground">
-                To turn on WhatsApp, reply <strong className="text-foreground">YES</strong> to our message
-                {done.link ? <> or <a className="font-semibold text-primary underline-offset-2 hover:underline" href={done.link} target="_blank" rel="noopener noreferrer">message START to us</a></> : null}.
+                {rich('public.notifyWaYes', { yes: <strong className="text-foreground">YES</strong> })}
+                {done.link ? <> {rich('public.notifyWaOr', { link: <a className="font-semibold text-primary underline-offset-2 hover:underline" href={done.link} target="_blank" rel="noopener noreferrer">{t('public.notifyWaStart')}</a> })}</> : null}
               </p>
             )}
           </div>
@@ -104,34 +104,34 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bell className="h-5 w-5" /></span>
         <div>
-          <h2 id="notify-title" className="text-lg font-semibold text-foreground">{topic === 'events' ? 'Notify me' : topic === 'news' ? 'Daily tech news' : 'Subscribe to new posts'}</h2>
-          <p className="text-sm text-muted-foreground">{topic === 'events' ? 'Get new hackathons and coding events by email (weekly) or WhatsApp (as they’re announced, or once a week).' : topic === 'news' ? 'One short digest a day by email or WhatsApp, only on days with news. Opt in, stop any time.' : 'One email a week with the new explainers on Learn. No spam.'}</p>
+          <h2 id="notify-title" className="text-lg font-semibold text-foreground">{topic === 'events' ? t('public.notifyMe') : topic === 'news' ? t('public.notifyNewsTitle') : t('public.notifyBlogTitle')}</h2>
+          <p className="text-sm text-muted-foreground">{topic === 'events' ? t('public.notifyEventsBody') : topic === 'news' ? t('public.notifyNewsBody') : t('public.notifyBlogBody')}</p>
         </div>
       </div>
 
       <div className="mt-5 space-y-4">
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Checkbox checked={useEmail} onCheckedChange={(v) => setUseEmail(v === true)} aria-label="Email updates" /> Email
+            <Checkbox checked={useEmail} onCheckedChange={(v) => setUseEmail(v === true)} aria-label={t('public.notifyEmailUpdates')} /> {t('publicPages.email')}
           </label>
-          {useEmail && <Input type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-label="Email address" />}
+          {useEmail && <Input type="email" required autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-label={t('public.emailLabel')} />}
         </div>
         {waOffered && <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Checkbox checked={useWa} onCheckedChange={(v) => setUseWa(v === true)} aria-label="WhatsApp updates" /> <MessageCircle className="h-4 w-4 text-muted-foreground" /> WhatsApp
+            <Checkbox checked={useWa} onCheckedChange={(v) => setUseWa(v === true)} aria-label={t('public.notifyWaUpdates')} /> <MessageCircle className="h-4 w-4 text-muted-foreground" /> WhatsApp
           </label>
           {useWa && (
             <>
-              <Input type="tel" required autoComplete="tel" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label="WhatsApp number with country code" />
+              <Input type="tel" required autoComplete="tel" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} aria-label={t('public.notifyWaNumber')} />
               <label className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-                <Checkbox className="mt-0.5" checked={consent} onCheckedChange={(v) => setConsent(v === true)} aria-label="Agree to WhatsApp messages" />
-                <span>{CONSENT}</span>
+                <Checkbox className="mt-0.5" checked={consent} onCheckedChange={(v) => setConsent(v === true)} aria-label={t('public.notifyWaAgree')} />
+                <span>{t('public.notifyConsent')}</span>
               </label>
               {topic === 'events' && (
                 <fieldset className="space-y-1.5">
-                  <legend className="text-xs font-medium text-foreground">How often on WhatsApp</legend>
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="radio" name="notify-freq" checked={!weekly} onChange={() => setWeekly(false)} className="accent-[var(--primary)]" /> As events are announced</label>
-                  <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="radio" name="notify-freq" checked={weekly} onChange={() => setWeekly(true)} className="accent-[var(--primary)]" /> Once a week: hackathons this week</label>
+                  <legend className="text-xs font-medium text-foreground">{t('public.notifyHowOften')}</legend>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="radio" name="notify-freq" checked={!weekly} onChange={() => setWeekly(false)} className="accent-[var(--primary)]" /> {t('public.notifyInstant')}</label>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground"><input type="radio" name="notify-freq" checked={weekly} onChange={() => setWeekly(true)} className="accent-[var(--primary)]" /> {t('public.notifyWeekly')}</label>
                 </fieldset>
               )}
             </>
@@ -140,12 +140,12 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
 
         {topic === 'news' && !compact && (
           <fieldset className="space-y-2">
-            <legend className="text-sm font-medium text-foreground">Topics (optional, none = all)</legend>
+            <legend className="text-sm font-medium text-foreground">{t('public.notifyTopics')}</legend>
             <div className="flex flex-wrap gap-2">
-              {NEWS_TOPICS.map((t) => (
-                <button key={t.id} type="button" onClick={() => setNewsTopics(toggle(newsTopics, t.id))} aria-pressed={newsTopics.includes(t.id)}
-                  className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors', newsTopics.includes(t.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}>
-                  {t.label}
+              {NEWS_TOPICS.map((x) => (
+                <button key={x.id} type="button" onClick={() => setNewsTopics(toggle(newsTopics, x.id))} aria-pressed={newsTopics.includes(x.id)}
+                  className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors', newsTopics.includes(x.id) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}>
+                  {td(`public.newsTopic:${x.id}`, x.label)}
                 </button>
               ))}
             </div>
@@ -154,12 +154,12 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
 
         {topic === 'events' && !compact && (
           <fieldset className="space-y-3">
-            <legend className="text-sm font-medium text-foreground">Only tell me about (optional)</legend>
+            <legend className="text-sm font-medium text-foreground">{t('public.notifyOnly')}</legend>
             <div className="flex flex-wrap gap-2">
               {EVENT_KINDS.map((k) => (
                 <button key={k} type="button" onClick={() => setKinds(toggle(kinds, k))} aria-pressed={kinds.includes(k)}
                   className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors', kinds.includes(k) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}>
-                  {KIND_LABELS[k]}
+                  {td(`public.kind:${k}`, KIND_LABELS[k])}
                 </button>
               ))}
             </div>
@@ -167,12 +167,12 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
               {EVENT_MODES.map((m) => (
                 <button key={m} type="button" onClick={() => setModes(toggle(modes, m))} aria-pressed={modes.includes(m)}
                   className={cn('rounded-full border px-3 py-1.5 text-xs font-medium transition-colors', modes.includes(m) ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}>
-                  {MODE_LABELS[m]}
+                  {td(`public.mode:${m}`, MODE_LABELS[m])}
                 </button>
               ))}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="notify-country" className="text-xs text-muted-foreground">In-person events in (country code, e.g. IN, US)</Label>
+              <Label htmlFor="notify-country" className="text-xs text-muted-foreground">{t('public.notifyCountry')}</Label>
               <Input id="notify-country" maxLength={2} value={country} onChange={(e) => setCountry(e.target.value.toUpperCase().replace(/[^A-Z]/g, ''))} className="w-24 uppercase" />
             </div>
           </fieldset>
@@ -181,9 +181,9 @@ export function NotifyBox({ topic = 'events', className, compact = false }: { to
         <TurnstileWidget onVerify={setCaptchaToken} resetKey={captchaReset} />
         {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
         <Button type="submit" disabled={busy} className="h-11 w-full rounded-xl">
-          {busy ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Bell className="h-4 w-4" />} {topic === 'events' ? 'Notify me' : 'Subscribe'}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Bell className="h-4 w-4" aria-hidden />} {topic === 'events' ? t('public.notifyMe') : t('public.subscribe')}
         </Button>
-        <p className="text-xs text-muted-foreground">{waOffered ? 'We’ll ask you to confirm first. Every message has an unsubscribe link; on WhatsApp reply STOP.' : 'We’ll ask you to confirm first. Every email has an unsubscribe link.'}</p>
+        <p className="text-xs text-muted-foreground">{waOffered ? t('public.notifyFinePrintWa') : t('public.notifyFinePrint')}</p>
       </div>
     </form>
   )

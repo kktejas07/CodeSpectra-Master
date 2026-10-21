@@ -15,7 +15,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; problemId: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id: codeathonId, problemId } = await params
 
   const rl = rateLimitSlidingWindow(`codeathon-run:${user.id}`, 20, 60_000)
@@ -32,7 +32,7 @@ export async function POST(
   const codeathon = await db.collection('codeathons').findOne({ id: codeathonId })
   if (!codeathon) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
   if (!((codeathon.problems as Array<{ id?: string }>) || []).some((p) => p?.id === problemId)) {
-    return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
   }
   const staff = isTenantStaff(user, codeathon as unknown as Record<string, unknown>)
   if (!staff) {

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import {
   Trophy, Target, Zap, Swords, Terminal, Braces, Coffee, Database, Atom, Cpu, Flame,
 } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface SkillBadge {
   id: string
@@ -29,6 +30,7 @@ function formatEarnedDate(dateStr: string | null): string {
 }
 
 export function SkillBadges() {
+  const { t } = useT()
   const [badges, setBadges] = useState<SkillBadge[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -59,7 +61,7 @@ export function SkillBadges() {
 
   return (
     <Card className="rounded-3xl border-border/70 p-6">
-      <h2 className="text-lg font-semibold text-foreground mb-4">Skill badges</h2>
+      <h2 className="text-lg font-semibold text-foreground mb-4">{t('dash.skillBadges')}</h2>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {badges.map(badge => {
           const Icon = ICON_MAP[badge.icon] || Trophy

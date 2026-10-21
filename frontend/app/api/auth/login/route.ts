@@ -9,7 +9,8 @@ import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { notify } from '@/lib/notifications'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForUser } from '@/lib/i18n/recipient'
 import { updateUserLastLogin } from '@/lib/db/admin'
 import { createUserSession } from '@/lib/db/sessions'
 import { accountBlockReason } from '@/lib/auth-account'
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
     const ipCheck = await rateLimitRedis(`login:ip:${ipKey}`, 10, 60_000)
     if (!ipCheck.ok) {
       return NextResponse.json(
-        { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.` },
+        { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: ipCheck.retryAfterSec } },
         { status: 429 },
       )
     }
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
         detail: 'Blocked IP attempted to sign in',
         metadata: { userAgent: request.headers.get('user-agent') },
       })
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied', code: 'access_denied' }, { status: 403 })
     }
 
     // IP Whitelist enforcement (when enabled by superadmin)
@@ -55,12 +56,12 @@ export async function POST(request: Request) {
         detail: 'Login blocked — IP outside configured whitelist',
         metadata: { userAgent: request.headers.get('user-agent') },
       })
-      return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied from this location', code: 'auth_location_denied' }, { status: 403 })
     }
 
     const { email, password, totpToken, visitorId, turnstileToken } = await request.json()
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Email and password are required', code: 'auth_email_password_required' }, { status: 400 })
     }
 
     const ident = String(email).toLowerCase().trim()
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
           detail: `Turnstile verification failed (${captcha.error || 'unknown'})`,
           metadata: { userAgent: request.headers.get('user-agent') },
         })
-        return NextResponse.json({ error: 'Bot check failed. Please retry.' }, { status: 403 })
+        return NextResponse.json({ error: 'Bot check failed. Please retry.', code: 'auth_bot_check_failed' }, { status: 403 })
       }
       await writeAuditLog({
         action: 'auth.captcha', outcome: 'success', actor: ident, actorIp,
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
     const throttle = await checkAuthThrottle('login', ident, rawIp)
     if (!throttle.ok) {
       return NextResponse.json(
-        { error: `Too many failed attempts. Try again in ${throttle.retryAfterSec}s, or reset your password.` },
+        { error: `Too many failed attempts. Try again in ${throttle.retryAfterSec}s, or reset your password.`, code: 'auth_too_many_failed_reset', params: { seconds: throttle.retryAfterSec } },
         { status: 429 },
       )
     }
@@ -115,13 +116,13 @@ export async function POST(request: Request) {
     if (!user) {
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'warning', detail: 'user not found', user_id: normalizedEmail })
       await recordAuthFailure('login', ident, rawIp)
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid email or password', code: 'auth_invalid_credentials' }, { status: 401 })
     }
 
     if (!user.passwordHash) {
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'warning', detail: 'no password set (OAuth account)', user_id: normalizedEmail })
       return NextResponse.json(
-        { error: 'This account does not have a password set. Sign in with Google/GitHub or reset your password.' },
+        { error: 'This account does not have a password set. Sign in with Google/GitHub or reset your password.', code: 'auth_no_password' },
         { status: 400 },
       )
     }
@@ -137,7 +138,7 @@ export async function POST(request: Request) {
       if (!emailCheck.ok) {
         await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'warning', detail: 'rate limited', user_id: normalizedEmail })
         return NextResponse.json(
-          { error: `Too many attempts. Try again in ${emailCheck.retryAfterSec}s.` },
+          { error: `Too many attempts. Try again in ${emailCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: emailCheck.retryAfterSec } },
           { status: 429 },
         )
       }
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
           })
         }
       }
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid email or password', code: 'auth_invalid_credentials' }, { status: 401 })
     }
 
     const uid = String(user.id || user._id)
@@ -173,7 +174,7 @@ export async function POST(request: Request) {
     // Deactivated accounts can't sign in (told only after a correct password).
     if (accountBlockReason(user)) {
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'account deactivated', user_id: uid })
-      return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.' }, { status: 403 })
+      return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.', code: 'account_disabled' }, { status: 403 })
     }
 
     // Maintenance mode / required email verification (A-025, A-052).
@@ -197,7 +198,7 @@ export async function POST(request: Request) {
       if (!isValid) {
         await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: uid })
         await recordAuthFailure('login', ident, rawIp)
-        return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })
+        return NextResponse.json({ error: 'Invalid two-factor code', code: 'auth_invalid_2fa' }, { status: 401 })
       }
     }
 
@@ -208,7 +209,7 @@ export async function POST(request: Request) {
     await updateUserLastLogin(uid, 'email').catch((e) => console.error('[Login] updateUserLastLogin failed:', e))
 
     await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid }).catch(() => {})
-    notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, icon: 'log-in' }).catch(() => {})
+    notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, title_i18n: { key: 'login.title' }, message_i18n: { key: 'login.message', params: { email: String(user.email) } }, icon: 'log-in' }).catch(() => {})
 
     // Fire-and-forget side effects — any failure here must NOT 500 the login
     Promise.allSettled([
@@ -285,7 +286,7 @@ export async function POST(request: Request) {
         const location = actorIp || 'Unknown location'
         const time = formatDateTime(new Date(), undefined, { dateStyle: 'medium', timeStyle: 'short' })
         const displayName = (user.name || normalizedEmail.split('@')[0])
-        const template = emailTemplates.loginNotification(displayName, deviceInfo, location, time)
+        const template = emailTemplatesFor(await localeForUser(uid)).loginNotification(displayName, deviceInfo, location, time)
         await sendEmail(normalizedEmail, template).catch((e) => console.error('[Login] Notification email failed:', e))
       })(),
     ]).catch(() => {})
@@ -293,6 +294,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ user: { id: uid, email: user.email, role, name: user.name || null } })
   } catch (error) {
     console.error('[Login] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

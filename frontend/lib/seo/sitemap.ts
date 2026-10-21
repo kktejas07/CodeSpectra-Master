@@ -11,6 +11,7 @@
  */
 import { escapeHtml } from '@/lib/safe-html'
 import { PUBLIC_ROUTES } from './public-routes'
+import { PREFIXED_LOCALES, isLocalizedPath, localizedPath, sitemapAlternates } from '@/lib/i18n/public-paths'
 
 export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
 export type SitemapType = (typeof SITEMAP_TYPES)[number]
@@ -40,16 +41,32 @@ const enc = (path: string) => path.split('/').map((seg) => (seg ? encodeURICompo
 export function buildUrlsetXml(entries: SitemapEntry[], site: string): string {
   const seen = new Set<string>()
   const rows: string[] = []
+  let xhtml = false
   for (const e of entries.slice(0, MAX_URLS)) {
     const loc = `${site}${enc(e.path)}`
     if (seen.has(loc)) continue
     seen.add(loc)
     const lastmod = isoDate(e.lastmod)
+    // Pages with Hindi / Telugu copies list every language (Google's sitemap hreflang form).
+    const alts = sitemapAlternates(e.path, site)
+    if (alts.length) xhtml = true
+    const altXml = alts.map((a) => `<xhtml:link rel="alternate" hreflang="${a.hreflang}" href="${escapeHtml(`${site}${enc(a.href.slice(site.length))}`)}"/>`).join('')
     rows.push(
-      `  <url><loc>${escapeHtml(loc)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}${e.changefreq ? `<changefreq>${e.changefreq}</changefreq>` : ''}${e.priority != null ? `<priority>${e.priority.toFixed(1)}</priority>` : ''}</url>`,
+      `  <url><loc>${escapeHtml(loc)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}${e.changefreq ? `<changefreq>${e.changefreq}</changefreq>` : ''}${e.priority != null ? `<priority>${e.priority.toFixed(1)}</priority>` : ''}${altXml}</url>`,
     )
   }
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${rows.join('\n')}\n</urlset>\n`
+  const ns = xhtml ? ' xmlns:xhtml="http://www.w3.org/1999/xhtml"' : ''
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>\n${rows.join('\n')}\n</urlset>\n`
+}
+
+/** Adds the /hi/… and /te/… copy after every page that has translations (same lastmod / priority). */
+export function withLocalizedEntries(entries: SitemapEntry[]): SitemapEntry[] {
+  const out: SitemapEntry[] = []
+  for (const e of entries) {
+    out.push(e)
+    if (isLocalizedPath(e.path)) for (const l of PREFIXED_LOCALES) out.push({ ...e, path: localizedPath(e.path, l) })
+  }
+  return out
 }
 
 export function buildSitemapIndexXml(items: { type: SitemapType; lastmod?: string | null }[], site: string): string {
@@ -96,7 +113,7 @@ export async function loadSitemapEntries(type: SitemapType): Promise<SitemapEntr
   switch (type) {
     case 'pages':
     case 'legal':
-      return staticEntries(type)
+      return withLocalizedEntries(staticEntries(type))
     case 'learn':
       return safe(async () => {
         const { latestPublished } = await import('@/lib/learn/queries')
@@ -166,7 +183,7 @@ export async function loadSitemapEntries(type: SitemapType): Promise<SitemapEntr
     case 'companies':
       return safe(async () => {
         const { COMPANY_CATALOG } = await import('@/lib/companies/company-catalog')
-        return COMPANY_CATALOG.map((c) => ({ path: `/companies/${c.slug}`, changefreq: 'monthly', priority: 0.5 }))
+        return withLocalizedEntries(COMPANY_CATALOG.map((c) => ({ path: `/companies/${c.slug}`, changefreq: 'monthly' as const, priority: 0.5 })))
       })
     case 'compare':
       return safe(async () => {

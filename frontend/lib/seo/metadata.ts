@@ -10,6 +10,8 @@
 import type { Metadata } from 'next'
 import { SITE_NAME } from './site'
 import { signOg } from './og-sign'
+import { LOCALE_META, type Locale } from '@/lib/i18n/config'
+import { hreflangAlternates, localizedPath } from '@/lib/i18n/public-paths'
 
 export const TITLE_MAX = 60
 export const DESCRIPTION_MAX = 160
@@ -67,6 +69,13 @@ export interface PageMetaInput {
   noIndex?: boolean | 'follow'
   /** Canonical to another URL (duplicates, e.g. an internal hackathon's /events page). */
   canonical?: string
+  /**
+   * Language of this copy (default English). `path` / `canonical` stay the
+   * unprefixed English URL; a Hindi / Telugu page gets /hi/… or /te/… as its
+   * canonical. Pages with translations (lib/i18n/public-paths.ts) get
+   * hreflang alternates for en, hi, te and x-default automatically.
+   */
+  locale?: Locale
 }
 
 export function canonicalPath(path: string): string {
@@ -78,7 +87,10 @@ export function canonicalPath(path: string): string {
 export function buildMetadata(input: PageMetaInput): Metadata {
   const title = pageTitle(input.title)
   const description = clampText(input.description, DESCRIPTION_MAX)
-  const canonical = canonicalPath(input.canonical || input.path)
+  const locale = input.locale ?? 'en'
+  const canonical = localizedPath(canonicalPath(input.canonical || input.path), locale)
+  // hreflang only on the page itself, not on filter variants with their own canonical.
+  const languages = !input.canonical || canonicalPath(input.canonical) === canonicalPath(input.path) ? hreflangAlternates(input.path) : null
   const image = input.image || ogImagePath({ title: input.title, kind: input.kind ?? 'page', subtitle: input.ogSubtitle })
   const images = [{ url: image, width: 1200, height: 630, alt: input.imageAlt || input.title }]
   const robots: Metadata['robots'] = input.noIndex
@@ -88,12 +100,13 @@ export function buildMetadata(input: PageMetaInput): Metadata {
     title: { absolute: title },
     description,
     ...(input.keywords?.length ? { keywords: input.keywords.slice(0, 15) } : {}),
-    alternates: { canonical },
+    alternates: languages ? { canonical, languages } : { canonical },
     robots,
     openGraph: {
       type: input.type ?? 'website',
       siteName: SITE_NAME,
-      locale: 'en_US',
+      locale: LOCALE_META[locale].og,
+      ...(languages ? { alternateLocale: (Object.keys(LOCALE_META) as Locale[]).filter((l) => l !== locale).map((l) => LOCALE_META[l].og) } : {}),
       title: clampText(input.title, 90),
       description,
       url: canonical,

@@ -12,6 +12,7 @@ import {
   generateAIFixes,
   unapplySuggestedFix,
 } from '@/lib/github-service'
+import { useT } from '@/lib/i18n/client'
 
 const SCAN_ROW_UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -36,6 +37,7 @@ interface AIFixesPanelProps {
 }
 
 export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixesPanelProps) {
+  const { t } = useT()
   const confirmDialog = useConfirm()
   const [aiFixBusy, setAiFixBusy] = useState(false)
   const [batchBusy, setBatchBusy] = useState(false)
@@ -77,7 +79,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
       setAiGeneratedFixes(Array.isArray(fixes) ? (fixes as Array<Record<string, unknown>>) : null)
       setAiFixDegraded(Boolean(res.degraded))
     } catch (e) {
-      setAiFixError(e instanceof Error ? e.message : 'Could not generate fixes')
+      setAiFixError(e instanceof Error ? e.message : t('tools.couldNotGenerateFixes'))
       setAiGeneratedFixes(null)
     } finally {
       setAiFixBusy(false)
@@ -89,17 +91,17 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
     try {
       const res = await applySuggestedFix(fixId)
       if (!res?.success) {
-        setAiFixError(typeof res?.error === 'string' ? res.error : 'Could not apply fix')
+        setAiFixError(typeof res?.error === 'string' ? res.error : t('tools.couldNotApplyFix'))
         return
       }
       setAppliedDbFixIds((prev) => new Set(prev).add(fixId))
     } catch (e) {
-      setAiFixError(e instanceof Error ? e.message : 'Could not apply fix')
+      setAiFixError(e instanceof Error ? e.message : t('tools.couldNotApplyFix'))
     }
   }, [])
 
   const handleRestoreOnGitHub = useCallback(async (fixId: string) => {
-    if (!await confirmDialog({ title: 'Confirmation', description: 'Overwrite this file on GitHub with the original code from this fix?' })) return
+    if (!await confirmDialog({ title: t('tools.confirmation'), description: t('tools.overwriteThisFileOnGithubWithd35') })) return
     setAiFixError(null)
     try {
       const res = await csrfFetch('/api/github/restore-file', {
@@ -110,11 +112,11 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
       })
       const json = (await res.json()) as { success?: boolean; error?: string; commit_sha?: string }
       if (!res.ok || !json.success) {
-        setAiFixError(typeof json.error === 'string' ? json.error : 'Restore failed')
+        setAiFixError(typeof json.error === 'string' ? json.error : t('tools.restoreFailed'))
         return
       }
     } catch (e) {
-      setAiFixError(e instanceof Error ? e.message : 'Restore failed')
+      setAiFixError(e instanceof Error ? e.message : t('tools.restoreFailed'))
     }
   }, [])
 
@@ -123,7 +125,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
     try {
       const res = await unapplySuggestedFix(fixId)
       if (!res?.success) {
-        setAiFixError(typeof res?.error === 'string' ? res.error : 'Could not undo apply')
+        setAiFixError(typeof res?.error === 'string' ? res.error : t('tools.couldNotUndoApply'))
         return
       }
       setAppliedDbFixIds((prev) => {
@@ -132,7 +134,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
         return next
       })
     } catch (e) {
-      setAiFixError(e instanceof Error ? e.message : 'Could not undo apply')
+      setAiFixError(e instanceof Error ? e.message : t('tools.couldNotUndoApply'))
     }
   }, [])
 
@@ -147,7 +149,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
     try {
       const res = await applySuggestedFixBatch(ids)
       if (!res.success) {
-        setAiFixError(typeof res.error === 'string' ? res.error : 'Batch apply failed')
+        setAiFixError(typeof res.error === 'string' ? res.error : t('tools.batchApplyFailed'))
         return
       }
       const applied = Array.isArray(res.applied_ids) ? (res.applied_ids as string[]) : ids
@@ -157,7 +159,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
         return next
       })
     } catch (e) {
-      setAiFixError(e instanceof Error ? e.message : 'Batch apply failed')
+      setAiFixError(e instanceof Error ? e.message : t('tools.batchApplyFailed'))
     } finally {
       setBatchBusy(false)
     }
@@ -181,45 +183,32 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
       >
         {aiFixBusy ? (
           <>
-            <Loader className="mr-2 h-4 w-4 animate-spin" />
-            Generating…
-          </>
+            <Loader className="mr-2 h-4 w-4 animate-spin" />{t('tools.generating')}</>
         ) : (
           <>
-            <Sparkles className="mr-2 h-4 w-4" />
-            Generate AI fixes
-          </>
+            <Sparkles className="mr-2 h-4 w-4" />{t('tools.generateAiFixes')}</>
         )}
       </Button>
       {SCAN_ROW_UUID.test(analysis.id) ? (
-        <p className="text-xs text-muted-foreground">
-          Fixes are saved to this scan so you can mark them applied from the dashboard.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('tools.fixesAreSavedToThisScan831')}</p>
       ) : (
-        <p className="text-xs text-muted-foreground">
-          Sign in and run a saved scan to persist fixes; otherwise suggestions stay in the browser only.
-        </p>
+        <p className="text-xs text-muted-foreground">{t('tools.signInAndRunASavedbf7')}</p>
       )}
       {aiFixError && <p className="text-xs text-destructive">{aiFixError}</p>}
       {aiFixDegraded && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
-          AI was unavailable — sample suggestions. Set <code className="rounded bg-muted px-1">OPENAI_API_KEY</code>{' '}
-          for live fixes.
-        </p>
+        <p className="text-xs text-amber-600 dark:text-amber-400">{t('tools.aiWasUnavailableSampleSuggestionsSet')}{' '}<code className="rounded bg-muted px-1">OPENAI_API_KEY</code>{' '}{t('tools.forLiveFixes')}</p>
       )}
       {aiGeneratedFixes && aiGeneratedFixes.length > 0 && (
         <Card className="mt-2 p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h4 className="text-sm font-semibold text-foreground">AI-generated patches</h4>
+            <h4 className="text-sm font-semibold text-foreground">{t('tools.aiGeneratedPatches')}</h4>
             {pendingDbIds.length > 1 && hasUnapplied ? (
               <Button type="button" size="sm" variant="outline" disabled={batchBusy} onClick={() => void handleApplyAll()}>
                 {batchBusy ? (
                   <>
-                    <Loader className="mr-2 h-3 w-3 animate-spin" />
-                    Applying…
-                  </>
+                    <Loader className="mr-2 h-3 w-3 animate-spin" />{t('tools.applying')}</>
                 ) : (
-                  'Mark all applied'
+                  t('tools.markAllApplied')
                 )}
               </Button>
             ) : null}
@@ -248,7 +237,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
                         disabled={!!applied}
                         onClick={() => void handleApplyDbFix(dbFixId)}
                       >
-                        {applied ? 'Marked applied' : 'Mark applied in DB'}
+                        {applied ? t('tools.markedApplied') : t('tools.markAppliedInDb')}
                       </Button>
                       {applied ? (
                         <>
@@ -257,17 +246,13 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
                             size="sm"
                             variant="secondary"
                             onClick={() => void handleUnapplyDbFix(dbFixId)}
-                          >
-                            Undo apply
-                          </Button>
+                          >{t('tools.undoApply')}</Button>
                           <Button
                             type="button"
                             size="sm"
                             variant="outline"
                             onClick={() => void handleRestoreOnGitHub(dbFixId)}
-                          >
-                            Restore on GitHub
-                          </Button>
+                          >{t('tools.restoreOnGithub')}</Button>
                         </>
                       ) : null}
                     </div>

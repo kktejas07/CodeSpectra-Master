@@ -37,7 +37,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   const { id } = await ctx.params
   if (!SESSION_ID_RE.test(id)) return NextResponse.json({ error: 'Interview not found.' }, { status: 404 })
   const parsed = patchSchema.safeParse(await readJson(req))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   try {
     const { getOwnSession, newShareToken, sessions } = await import('@/lib/interview-sim/store')
     const s = await getOwnSession(id, g.user.id)

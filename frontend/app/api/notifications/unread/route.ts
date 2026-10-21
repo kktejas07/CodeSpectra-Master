@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const { getUnreadCount } = await import('@/lib/notifications')
     const count = await getUnreadCount(user.id)

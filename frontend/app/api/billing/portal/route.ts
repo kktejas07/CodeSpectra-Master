@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const limited = await limitRequest(req, 'billing-portal', user.id, 10, 60_000)
   if (limited) return limited
   try {

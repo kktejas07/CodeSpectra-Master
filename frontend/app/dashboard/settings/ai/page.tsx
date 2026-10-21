@@ -6,8 +6,10 @@ import { ModelSelector } from '@/components/ai/model-selector'
 import { Sparkles, Bot, FileText, GraduationCap, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
 
 export default function AISettingsPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -17,20 +19,20 @@ export default function AISettingsPage() {
       const aiSettingsTour: TourStep[] = [
         {
           target: '[data-tour="ai-settings-header"]',
-          title: 'Choose AI models here',
-          description: 'This page lets every user assign which AI model powers each platform feature.',
+          title: t('account.chooseAiModelsHere'),
+          description: t('account.thisPageLetsEveryUserAssign4de'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-settings-chat"]',
-          title: 'Set chat model first',
-          description: 'Select the model powering chat, codebase chat, and the agent workspace.',
+          title: t('account.setChatModelFirst'),
+          description: t('account.selectTheModelPoweringChatCodebase247'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-settings-models"]',
-          title: 'Tip: Keep Flash default',
-          description: 'Tip: changes apply instantly — keep free Gemini Flash unless your admin added API keys.',
+          title: t('account.tipKeepFlashDefault'),
+          description: t('account.tipChangesApplyInstantlyKeepFreec91'),
           position: 'top',
         },
       ]
@@ -45,8 +47,8 @@ export default function AISettingsPage() {
         <PageHeader
           className="mb-0"
           icon={<Sparkles aria-hidden />}
-          title="AI model preferences"
-          description="Choose which AI model the platform uses for each feature. Changes take effect immediately. Gemini Flash is free; other models need an API key added by your admin."
+          title={t('account.aiModelPreferences')}
+          description={t('account.chooseWhichAiModelThePlatform193')}
         />
       </div>
 
@@ -55,8 +57,8 @@ export default function AISettingsPage() {
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Bot className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium text-foreground">AI chat and agent</p>
-              <p className="text-xs text-muted-foreground">Used by the chat assistant, codebase chat, and agent workspace</p>
+              <p className="font-medium text-foreground">{t('account.aiChatAndAgent')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedByTheChatAssistantCodebasea7f')}</p>
             </div>
           </div>
           <ModelSelector feature="chat_model" />
@@ -66,8 +68,8 @@ export default function AISettingsPage() {
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><FileText className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium text-foreground">Code review and analysis</p>
-              <p className="text-xs text-muted-foreground">Used by automated code reviews, static analysis, and PR reviews</p>
+              <p className="font-medium text-foreground">{t('account.codeReviewAndAnalysis')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedByAutomatedCodeReviewsStaticc1d')}</p>
             </div>
           </div>
           <ModelSelector feature="review_model" />
@@ -77,8 +79,8 @@ export default function AISettingsPage() {
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium text-foreground">Hints and tutoring</p>
-              <p className="text-xs text-muted-foreground">Used by smart hints, problem generation, and tutoring features</p>
+              <p className="font-medium text-foreground">{t('account.hintsAndTutoring')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedBySmartHintsProblemGenerationc59')}</p>
             </div>
           </div>
           <ModelSelector feature="hints_model" />
@@ -88,8 +90,8 @@ export default function AISettingsPage() {
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><GraduationCap className="h-5 w-5" aria-hidden /></span>
             <div>
-              <p className="font-medium text-foreground">Auto-grading</p>
-              <p className="text-xs text-muted-foreground">Used by submission grading and assessment evaluation</p>
+              <p className="font-medium text-foreground">{t('account.autoGrading')}</p>
+              <p className="text-xs text-muted-foreground">{t('account.usedBySubmissionGradingAndAssessment666')}</p>
             </div>
           </div>
           <ModelSelector feature="grade_model" />

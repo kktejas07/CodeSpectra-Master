@@ -25,6 +25,7 @@ import { canonicalType, metaFor } from '@/lib/question-types'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { BlackBoxRunner, ExtendedAnswerInput, type ExamContext, type ExtendedQuestion } from '@/components/assessment/ExtendedAnswerInput'
 import { EXTENDED_INPUT_TYPES } from '@/lib/question-extensions'
+import { useT } from '@/lib/i18n/client'
 
 export interface AnswerQuestion {
   id: string
@@ -77,13 +78,15 @@ function parsePairs(value: string | string[] | undefined): Record<string, string
 }
 
 function SavedBadge({ show }: { show?: boolean }) {
+  const { t } = useT()
   if (!show) return null
-  return <span className="text-xs px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">Saved locally</span>
+  return <span className="text-xs px-2 py-0.5 rounded-full border bg-primary/10 text-primary border-primary/20">{t('exam.savedLocally')}</span>
 }
 
 const inputCls = 'w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm'
 
 export function QuestionAnswerInput({ question, value, onChange, shuffledOptions, readOnly, showSavedBadge, examContext }: QuestionAnswerInputProps) {
+  const { t } = useT()
   const type = canonicalType(question.type)
   const meta = metaFor(type)
   const kind = meta.kind
@@ -104,12 +107,12 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Click the correct region:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.clickTheCorrectRegion')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="relative inline-block max-w-full rounded-lg border overflow-hidden bg-muted/30">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={question.image_url || ''} alt="Hotspot" className="block max-w-full select-none" draggable={false} />
+          <img src={question.image_url || ''} alt={t('exam.hotspot')} className="block max-w-full select-none" draggable={false} />
           {(question.regions || []).map((r) => (
             <button
               key={r.id}
@@ -122,7 +125,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
             />
           ))}
         </div>
-        {selected && <p className="text-xs text-muted-foreground">Selected: {(question.regions || []).find((r) => r.id === selected)?.label || selected}</p>}
+        {selected && <p className="text-xs text-muted-foreground">{t('exam.selected')}{' '}{(question.regions || []).find((r) => r.id === selected)?.label || selected}</p>}
       </div>
     )
   }
@@ -176,12 +179,12 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-muted-foreground">Fill in {blankCount} blank(s):</label>
+            <label className="text-sm font-medium text-muted-foreground">{t('exam.fillInBlankcountBlankS', { blankCount })}</label>
             <SavedBadge show={showSavedBadge} />
           </div>
           {Array.from({ length: blankCount }, (_, idx) => (
             <div key={idx} className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Blank {idx + 1}</label>
+              <label className="text-xs text-muted-foreground font-medium">{t('exam.blank')}{' '}{idx + 1}</label>
               <input
                 type="text"
                 value={arr[idx] || ''}
@@ -191,8 +194,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                   next[idx] = e.target.value
                   onChange(next.map((s) => (s || '').trim()).join(', '))
                 }}
-                placeholder={`Answer for blank ${idx + 1}…`}
-                aria-label={`Blank ${idx + 1}`}
+                placeholder={t('exam.answerForBlankValue', { value: idx + 1 })}
+                aria-label={t('exam.blankValue', { value: idx + 1 })}
                 className={inputCls}
                 autoComplete="off"
               />
@@ -204,10 +207,10 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Your answer</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.yourAnswer')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
-        <input type="text" aria-label="Your answer" value={current} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder="Type your answer…" className={inputCls} autoComplete="off" />
+        <input type="text" aria-label={t('exam.yourAnswer')} value={current} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={t('exam.typeYourAnswer')} className={inputCls} autoComplete="off" />
       </div>
     )
   }
@@ -217,7 +220,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">{kind === 'numeric' ? 'Your numeric answer:' : 'Your answer:'}</label>
+          <label className="text-sm font-medium text-muted-foreground">{kind === 'numeric' ? t('exam.yourNumericAnswer') : t('exam.yourAnswer2')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <input
@@ -226,8 +229,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
           value={typeof value === 'string' ? value : ''}
           disabled={readOnly}
           onChange={(e) => onChange(e.target.value)}
-          placeholder={kind === 'numeric' ? 'e.g. 42' : 'Type your answer…'}
-          aria-label={kind === 'numeric' ? 'Your numeric answer' : 'Your answer'}
+          placeholder={kind === 'numeric' ? 'e.g. 42' : t('exam.typeYourAnswer')}
+          aria-label={kind === 'numeric' ? t('exam.yourNumericAnswer2') : t('exam.yourAnswer')}
           className={inputCls}
           autoComplete="off"
         />
@@ -251,7 +254,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">{type === 'ranking' ? 'Rank these (top = highest):' : 'Put these in the correct order:'}</label>
+          <label className="text-sm font-medium text-muted-foreground">{type === 'ranking' ? t('exam.rankTheseTopHighest') : t('exam.putTheseInTheCorrectOrder')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="space-y-2">
@@ -259,10 +262,10 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
             <div key={`${item}-${i}`} className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card">
               <span className="text-xs font-medium tabular-nums text-muted-foreground w-6">{i + 1}.</span>
               <span className="flex-1 text-sm font-medium">{item}</span>
-              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label="Move up">
+              <button type="button" disabled={readOnly || i === 0} onClick={() => move(i, -1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveUp')}>
                 <ChevronUp className="h-4 w-4" />
               </button>
-              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label="Move down">
+              <button type="button" disabled={readOnly || i === order.length - 1} onClick={() => move(i, 1)} className="p-1.5 rounded-lg border border-border disabled:opacity-30 hover:bg-muted" aria-label={t('exam.moveDown')}>
                 <ChevronDown className="h-4 w-4" />
               </button>
             </div>
@@ -280,7 +283,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Match each item to its correct pair:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.matchEachItemToItsCorrecta0d')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="space-y-2">
@@ -292,10 +295,10 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                 value={map[p.left] || ''}
                 disabled={readOnly}
                 onChange={(e) => onChange(JSON.stringify({ ...map, [p.left]: e.target.value }))}
-                aria-label={`Match for ${p.left}`}
+                aria-label={t('exam.matchForLeft', { left: p.left })}
                 className="w-36 sm:w-48 px-3 py-2 rounded-lg border border-border bg-card text-sm"
               >
-                <option value="">— select —</option>
+                <option value="">{t('exam.select')}</option>
                 {rights.map((r) => (
                   <option key={r} value={r}>{r}</option>
                 ))}
@@ -315,7 +318,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Select one option per row:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.selectOneOptionPerRow')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="rounded-lg border overflow-hidden">
@@ -357,7 +360,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">Fill in each row:</label>
+          <label className="text-sm font-medium text-muted-foreground">{t('exam.fillInEachRow')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="space-y-2">
@@ -373,8 +376,8 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
                   next[ri] = e.target.value
                   onChange(next.map((s) => (s || '').trim()).join(', '))
                 }}
-                placeholder="Answer…"
-                aria-label={`Answer for ${row}`}
+                placeholder={t('exam.answer2')}
+                aria-label={t('exam.answerForRow', { row })}
                 className="w-36 sm:w-56 px-3 py-2 rounded-lg border border-border bg-card text-sm"
               />
             </div>
@@ -394,7 +397,7 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
     return (
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-muted-foreground">{type === 'rating' ? 'Rate:' : 'Select a level:'}</label>
+          <label className="text-sm font-medium text-muted-foreground">{type === 'rating' ? t('exam.rate') : t('exam.selectALevel')}</label>
           <SavedBadge show={showSavedBadge} />
         </div>
         <div className="flex flex-wrap gap-2 items-center">
@@ -465,15 +468,15 @@ export function QuestionAnswerInput({ question, value, onChange, shuffledOptions
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-muted-foreground">Your answer</label>
+        <label className="text-sm font-medium text-muted-foreground">{t('exam.yourAnswer')}</label>
         <SavedBadge show={showSavedBadge} />
       </div>
       <textarea
         value={typeof value === 'string' ? value : ''}
         disabled={readOnly}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Write your response here…"
-        aria-label="Your answer"
+        placeholder={t('exam.writeYourResponseHere')}
+        aria-label={t('exam.yourAnswer')}
         className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
         spellCheck={false}
       />

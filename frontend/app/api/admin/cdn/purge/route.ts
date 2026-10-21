@@ -8,7 +8,7 @@ export const runtime = 'nodejs'
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   let paths: string[] = []
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     paths = Array.isArray(body.paths) ? body.paths : (body.purge_all ? [] : ['/'])
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
 
   const secrets = await readServerSecrets()

@@ -47,7 +47,7 @@ function authorize(req: NextRequest): boolean {
 
 async function handle(req: NextRequest) {
   if (!authorize(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   const report = await runDueWorkflows(new Date())
   // Shared runner (same function the in-process loop calls; never throws):

@@ -20,7 +20,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   const parsed = Body.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Choose English, Hindi or Telugu.' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Choose English, Hindi or Telugu.', code: 'locale_invalid' }, { status: 400 })
   const { locale } = parsed.data
   const user = await getAPIUser()
   if (user) {
@@ -34,7 +34,7 @@ export async function PUT(request: Request) {
       invalidateAuthProfile(user.id)
     } catch (e) {
       console.error('[user/locale] save failed:', (e as Error).message)
-      return NextResponse.json({ error: 'Your language couldn’t be saved. Try again.' }, { status: 500 })
+      return NextResponse.json({ error: 'Your language couldn’t be saved. Try again.', code: 'locale_save_failed' }, { status: 500 })
     }
   }
   const res = NextResponse.json({ ok: true, locale, saved: !!user })

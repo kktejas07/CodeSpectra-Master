@@ -11,7 +11,8 @@ import { auditAdmin } from '@/lib/admin-audit'
 import { normalizeUserRole } from '@/lib/rbac'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForRecipient } from '@/lib/i18n/recipient'
 import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
 
 export async function GET(
@@ -25,7 +26,7 @@ export async function GET(
   const { userId } = await params
   const user = await getUserById(userId)
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
   }
   // Deny-list every secret (TOTP, reset/verification hashes, biometric template).
   return NextResponse.json(stripUserSecrets(user as unknown as Record<string, unknown>))
@@ -46,12 +47,12 @@ export async function PATCH(
   try {
     body = sanitizeMongoInput(await request.json())
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const target = await getUserById(userId)
   if (!target) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
   }
   const targetId = String(target.id || target._id)
   const isSelf = targetId === gate.user.id
@@ -180,13 +181,13 @@ export async function POST(
   const { userId } = await params
   const user = await getUserById(userId)
   if (!user) {
-    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+    return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
   }
 
   // Same page and token rules as forgot-password (/auth/reset-password?code=);
   // also re-arms reset_token_used, which made a second admin reset link fail.
   const resetUrl = await issuePasswordSetupLink(user._id, 1)
-  const template = emailTemplates.passwordReset(resetUrl)
+  const template = emailTemplatesFor(await localeForRecipient({ userId, email: user.email })).passwordReset(resetUrl)
   try {
     await sendEmail(user.email!, template)
   } catch (e) {

@@ -28,9 +28,9 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 export async function PATCH(request: Request, { params }: IdRouteContext) {
   const { id } = await params
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const data = (await request.json()) as Record<string, unknown>
@@ -39,7 +39,7 @@ export async function PATCH(request: Request, { params }: IdRouteContext) {
     if (!existing) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
     // tenant_admin can only edit jobs in their own tenant
     if (user.role === 'tenant_admin' && (!user.tenantId || existing.tenant_id !== user.tenantId)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     const allowed = ['title', 'company', 'location', 'job_type', 'experience_level',
       'description', 'requirements', 'benefits', 'skills', 'salary', 'is_active']
@@ -60,9 +60,9 @@ export async function PATCH(request: Request, { params }: IdRouteContext) {
 export async function DELETE(_request: Request, { params }: IdRouteContext) {
   const { id } = await params
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const col = await jobs()
@@ -70,7 +70,7 @@ export async function DELETE(_request: Request, { params }: IdRouteContext) {
     if (!existing) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
     // tenant_admin can only delete jobs in their own tenant
     if (user.role === 'tenant_admin' && (!user.tenantId || existing.tenant_id !== user.tenantId)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     await col.deleteOne({ id })
     return NextResponse.json({ success: true, deletedId: id })

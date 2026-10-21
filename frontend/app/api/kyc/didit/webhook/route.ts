@@ -47,7 +47,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     parsed = JSON.parse(raw)
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const canonical = JSON.stringify(sortKeys(shortenFloats(parsed)))
 

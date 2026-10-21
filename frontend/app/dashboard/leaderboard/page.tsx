@@ -17,24 +17,27 @@ import { UserAvatar } from '@/components/ui/user-avatar'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 type Category = 'global' | 'practice' | 'arena' | 'hackathon' | 'exams'
 type Period = 'all' | 'month'
 
 // Each category maps to the XP sources counted by /api/leaderboard.
-const categories: { id: Category; label: string; icon: any }[] = [
-  { id: 'global', label: 'Global', icon: Globe },
-  { id: 'practice', label: 'Practice', icon: Puzzle },
-  { id: 'arena', label: 'Arena', icon: Swords },
-  { id: 'hackathon', label: 'Hackathons', icon: Tent },
-  { id: 'exams', label: 'Exams and certifications', icon: GraduationCap },
-]
-const periods: { id: Period; label: string }[] = [
-  { id: 'all', label: 'All time' },
-  { id: 'month', label: 'This month' },
-]
+const categories = (t: Translator): { id: Category; label: string; icon: any }[] => ([
+  { id: 'global', label: t('compete.global'), icon: Globe },
+  { id: 'practice', label: t('compete.practice'), icon: Puzzle },
+  { id: 'arena', label: t('compete.arena'), icon: Swords },
+  { id: 'hackathon', label: t('compete.hackathons'), icon: Tent },
+  { id: 'exams', label: t('compete.examsAndCertifications'), icon: GraduationCap },
+])
+const periods = (t: Translator): { id: Period; label: string }[] => ([
+  { id: 'all', label: t('compete.allTime') },
+  { id: 'month', label: t('compete.thisMonth') },
+])
 
 export default function LeaderboardPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { user } = useAuth()
   const { startTour, setTourSeen } = useTour()
@@ -55,14 +58,14 @@ export default function LeaderboardPage() {
       const res = await fetch(`/api/leaderboard?category=${activeCategory}&period=${activeTab}&limit=80`, { credentials: 'include' })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(json.error || `Request failed (${res.status})`)
+        throw new Error(json.error || t('compete.requestFailedStatus', { status: res.status }))
       }
       setEntries(Array.isArray(json.entries) ? json.entries : [])
       setMyPoints(Number(json.currentUser?.points) || 0)
       setMyRank(typeof json.currentUser?.rank === 'number' ? json.currentUser.rank : null)
     } catch (e) {
       setEntries([])
-      setError(e instanceof Error ? e.message : 'Failed to load leaderboard')
+      setError(e instanceof Error ? e.message : t('compete.failedToLoadLeaderboard'))
     } finally {
       setLoading(false)
     }
@@ -78,38 +81,38 @@ export default function LeaderboardPage() {
       const leaderboardTour: TourStep[] = [
         {
           target: '[data-tour="leaderboard-header"]',
-          title: 'Leaderboard',
-          description: 'See where you rank against other developers. Compete for the top spot!',
+          title: t('compete.leaderboard'),
+          description: t('compete.seeWhereYouRankAgainstOtherd8a'),
           position: 'bottom',
         },
         {
           target: '[data-tour="leaderboard-tabs"]',
-          title: 'All time or this month',
-          description: 'Switch between all-time points and points earned this month.',
+          title: t('compete.allTimeOrThisMonth'),
+          description: t('compete.switchBetweenAllTimePointsAnd207'),
           position: 'bottom',
         },
         {
           target: '[data-tour="leaderboard-categories"]',
-          title: 'Categories',
-          description: 'Rank by all points, or only points from practice, hackathons, or exams and certifications.',
+          title: t('compete.categories'),
+          description: t('compete.rankByAllPointsOrOnly758'),
           position: 'right',
         },
         {
           target: '[data-tour="leaderboard-podium"]',
-          title: 'Top performers',
-          description: 'The top 3 performers are highlighted here. Can you reach the podium?',
+          title: t('compete.topPerformers'),
+          description: t('compete.theTop3PerformersAreHighlighted554'),
           position: 'bottom',
         },
         {
           target: '[data-tour="leaderboard-my-rank"]',
-          title: 'Your rank',
-          description: 'See your rank and points in the view you picked. Keep climbing!',
+          title: t('compete.yourRank'),
+          description: t('compete.seeYourRankAndPointsInf2d'),
           position: 'bottom',
         },
         {
           target: '[data-tour="leaderboard-table"]',
-          title: 'Full rankings',
-          description: 'Browse all developers ranked by points. Search to find specific users.',
+          title: t('compete.fullRankings'),
+          description: t('compete.browseAllDevelopersRankedByPoints432'),
           position: 'top',
         },
       ]
@@ -137,7 +140,7 @@ export default function LeaderboardPage() {
       {/* Left Sidebar */}
       <div className="w-full md:w-64 shrink-0 space-y-6">
         <div className="flex border-b border-border" data-tour="leaderboard-tabs">
-          {periods.map((p) => (
+          {periods(t).map((p) => (
             <button
               key={p.id}
               type="button"
@@ -151,7 +154,7 @@ export default function LeaderboardPage() {
         </div>
 
         <div className="flex flex-col gap-1 p-2 bg-muted/40 rounded-2xl" data-tour="leaderboard-categories">
-          {categories.map((cat) => (
+          {categories(t).map((cat) => (
             <button
               key={cat.id}
               type="button"
@@ -175,23 +178,23 @@ export default function LeaderboardPage() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             illustration="leaderboard"
-            title="Leaderboard"
-            description={`${categories.find((c) => c.id === activeCategory)?.label ?? 'Global'} rankings, ${activeTab === 'month' ? 'points earned this month' : 'all-time points'}.`}
+            title={t('compete.leaderboard')}
+            description={t('compete.valueRankingsValue2', { value: categories(t).find((c) => c.id === activeCategory)?.label ?? 'Global', value2: activeTab === 'month' ? 'points earned this month' : 'all-time points' })}
             icon={<BarChart3 />}
             className="mb-0"
-            actions={<Button asChild size="sm" variant="outline"><Link href="/dashboard/leagues">Team and college leagues</Link></Button>}
+            actions={<Button asChild size="sm" variant="outline"><Link href="/dashboard/leagues">{t('compete.teamAndCollegeLeagues')}</Link></Button>}
           />
         </div>
 
         {error && (
           <Card role="alert" className="flex flex-col gap-3 rounded-2xl border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive sm:flex-row sm:items-center sm:justify-between">
             <span>{error}</span>
-            <Button size="sm" variant="outline" onClick={() => void load()}>Try again</Button>
+            <Button size="sm" variant="outline" onClick={() => void load()}>{t('common.tryAgain')}</Button>
           </Card>
         )}
 
         {loading && entries.length === 0 ? (
-          <div className="space-y-6" aria-busy="true" aria-label="Loading leaderboard">
+          <div className="space-y-6" aria-busy="true" aria-label={t('compete.loadingLeaderboard')}>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:items-end pt-8">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Card key={i} className="rounded-3xl border-border/70 p-8 flex flex-col items-center gap-4 animate-pulse">
@@ -210,9 +213,9 @@ export default function LeaderboardPage() {
           </div>
         ) : entries.length === 0 ? (
           <EmptyState illustration="leaderboard"
-            title="Nobody's on this leaderboard yet"
-            description="Solve a problem to earn points and be the first name here."
-            actionLabel="Practise problems"
+            title={t('compete.nobodysOnThisLeaderboardYet')}
+            description={t('compete.solveAProblemToEarnPoints0c9')}
+            actionLabel={t('compete.practiseProblems')}
             actionHref="/dashboard/problems"
           />
         ) : (
@@ -257,15 +260,13 @@ export default function LeaderboardPage() {
                       </div>
 
                       <div className="pt-2">
-                        <p className="text-xl font-extrabold text-foreground">{ranker.name || 'Anonymous'}</p>
+                        <p className="text-xl font-extrabold text-foreground">{ranker.name || t('compete.anonymous')}</p>
                         <p className="mt-1 text-xs font-medium text-muted-foreground h-8 overflow-hidden">{ranker.title || ''}</p>
                       </div>
                     </div>
 
                     <div className={cn("py-3 text-center font-bold tabular-nums flex items-center justify-center gap-2", bottomBar)}>
-                      <div className="bg-white/25 p-1 rounded-full">{rankIcon}</div>
-                      {(ranker.xp || 0).toLocaleString()} points
-                    </div>
+                      <div className="bg-white/25 p-1 rounded-full">{rankIcon}</div>{t('compete.nPoints', { n: (ranker.xp || 0).toLocaleString() })}</div>
                   </Card>
                 )
               })}
@@ -278,38 +279,35 @@ export default function LeaderboardPage() {
               
               <div className="relative z-10 flex items-center gap-4">
                 <div className="relative">
-                  <Badge className="absolute -top-3 -left-3 rotate-[-15deg] bg-white text-[#2448c9] shadow-md z-20">You</Badge>
+                  <Badge className="absolute -top-3 -left-3 rotate-[-15deg] bg-white text-[#2448c9] shadow-md z-20">{t('compete.you')}</Badge>
                   <UserAvatar src={user?.photoURL} seed={user?.email} name={user?.displayName} className="w-16 h-16 border-2 border-white/60 shadow-md bg-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold">{user?.displayName || "You"}</h3>
+                  <h3 className="text-xl font-bold">{user?.displayName || t('compete.you')}</h3>
                   {user?.email && <p className="text-sm text-white/75">{user.email}</p>}
                   <div className="flex items-center gap-4 mt-2">
                      <Badge variant="secondary" className="border border-white/30 bg-white/15 text-white font-semibold tabular-nums">
-                        <BarChart3 className="w-3 h-3 mr-1" />
-                        {myPoints.toLocaleString()} points
-                     </Badge>
+                        <BarChart3 className="w-3 h-3 mr-1" />{t('compete.nPoints', { n: myPoints.toLocaleString() })}</Badge>
                   </div>
                 </div>
               </div>
 
               <div className="relative z-10 flex flex-col items-end">
                   <div className="flex items-center gap-2 font-bold text-lg tabular-nums border border-white/30 bg-white/15 px-4 py-2 rounded-xl">
-                     <Trophy className="w-5 h-5 text-amber-300" aria-hidden />
-                     Your rank: {myRank ? `#${myRank}` : '—'}
+                     <Trophy className="w-5 h-5 text-amber-300" aria-hidden />{t('compete.yourRank2')}{' '}{myRank ? `#${myRank}` : '—'}
                   </div>
               </div>
             </div>
 
             <div className="space-y-4 pt-4" data-tour="leaderboard-table">
-              <h2 className="text-lg font-semibold text-foreground">Rankings</h2>
+              <h2 className="text-lg font-semibold text-foreground">{t('compete.rankings')}</h2>
               <Card className="overflow-hidden rounded-3xl border-border/70">
                 <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
                   <div className="relative w-full">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
-                      placeholder="Find a person…"
-                      aria-label="Find a person"
+                      placeholder={t('compete.findAPerson')}
+                      aria-label={t('compete.findAPerson2')}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="pl-9 bg-background/50 border-border/60"
@@ -320,17 +318,15 @@ export default function LeaderboardPage() {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b border-border bg-muted/40 text-sm font-semibold text-muted-foreground">
-                        <th className="px-6 py-4">Name</th>
-                        <th className="px-6 py-4 text-center">Rank</th>
-                        <th className="px-6 py-4 text-right">Points</th>
+                        <th className="px-6 py-4">{t('compete.name')}</th>
+                        <th className="px-6 py-4 text-center">{t('compete.rank')}</th>
+                        <th className="px-6 py-4 text-right">{t('compete.points2')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/60 bg-background">
                       {filtered.length === 0 ? (
                         <tr>
-                          <td colSpan={3} className="px-6 py-16 text-center text-sm text-muted-foreground">
-                            Nobody's on this leaderboard yet. Solve a problem to be the first.
-                          </td>
+                          <td colSpan={3} className="px-6 py-16 text-center text-sm text-muted-foreground">{t('compete.nobodysOnThisLeaderboardYetSolveaaf')}</td>
                         </tr>
                       ) : (
                         filtered.map((u, i) => (

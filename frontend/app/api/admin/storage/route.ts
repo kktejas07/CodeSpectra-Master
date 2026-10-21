@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const parsed = body.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   try {
     if (parsed.data.action === 'sweep') {
       const r = await sweepUploads()

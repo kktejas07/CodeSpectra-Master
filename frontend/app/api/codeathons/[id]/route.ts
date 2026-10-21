@@ -42,7 +42,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await params
   try {
@@ -55,7 +55,7 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     const existing = await col.findOne({ id })
     if (!existing) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     if (!isTenantStaff(gate.user, existing as unknown as Record<string, unknown>)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     // Released results are final: the format, dates and problems can't change underneath them.
     if ((existing as unknown as Record<string, unknown>).results_released === true) {
@@ -83,7 +83,7 @@ export async function DELETE(_request: Request, { params }: IdRouteContext) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id } = await params
   try {
@@ -92,7 +92,7 @@ export async function DELETE(_request: Request, { params }: IdRouteContext) {
     const existing = await col.findOne({ id })
     if (!existing) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
     if (!isTenantStaff(gate.user, existing as unknown as Record<string, unknown>)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     const res = await col.deleteOne({ id })
     knowledgeOnEventChange('codeathon', id)

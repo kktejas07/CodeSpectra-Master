@@ -75,6 +75,8 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
       message: result.downgraded
         ? 'Your payment was refunded and your account is now on the Free plan.'
         : 'Your payment was refunded.',
+      title_i18n: { key: 'billing.refunded.title' },
+      message_i18n: { key: result.downgraded ? 'billing.refundedDowngraded.message' : 'billing.refunded.message' },
       icon: 'credit-card',
       link: '/dashboard/billing',
     }).catch(() => {})

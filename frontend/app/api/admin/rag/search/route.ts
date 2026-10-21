@@ -14,14 +14,14 @@ export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const caller = callerFromUser(gate.user)
-  if (!caller) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!caller) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   let query = ''
   try {
     const body = await request.json()
     query = String(body.query || '').trim().slice(0, 500)
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
   if (!query) return NextResponse.json({ error: 'Query is required' }, { status: 400 })
 

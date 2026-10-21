@@ -22,6 +22,7 @@ import { atsSend, errorMessage, useAts } from '@/components/hiring/lib/api'
 import { boardTotals, filterBoard, moveOnBoard } from '@/components/hiring/lib/board'
 import { JOB_STATUS_LABELS, JOB_STATUS_VARIANT, WORK_MODE_LABELS } from '@/components/hiring/lib/labels'
 import type { AnalyticsResponse, BoardResponse } from '@/components/hiring/lib/types'
+import { useT } from '@/lib/i18n/client'
 
 type Tab = 'board' | 'list' | 'intake' | 'analytics'
 const TABS: Tab[] = ['board', 'list', 'intake', 'analytics']
@@ -36,6 +37,7 @@ export default function HiringJobPage({ params }: { params: Promise<{ id: string
 }
 
 function JobBoard({ id }: { id: string }) {
+  const { t: tr } = useT()
   const router = useRouter()
   const pathname = usePathname()
   const search = useSearchParams()
@@ -66,10 +68,10 @@ function JobBoard({ id }: { id: string }) {
   const approve = async (appId: string, accept: boolean) => {
     try {
       await approveMove(appId, accept)
-      addToast({ type: 'success', title: accept ? 'Move approved' : 'Move declined' })
+      addToast({ type: 'success', title: accept ? tr('hiring.moveApproved') : tr('hiring.moveDeclined') })
       board.reload()
     } catch (e) {
-      addToast({ type: 'error', title: 'That didn’t work', message: errorMessage(e) })
+      addToast({ type: 'error', title: tr('hiring.thatDidntWork'), message: errorMessage(e) })
     }
   }
 
@@ -77,10 +79,10 @@ function JobBoard({ id }: { id: string }) {
     setRescreening(true)
     try {
       await atsSend(`/api/ats/jobs/${encodeURIComponent(id)}/rescreen`, 'POST', { application_ids: ids })
-      addToast({ type: 'success', title: `Rescreening ${ids.length} candidate${ids.length === 1 ? '' : 's'}` })
+      addToast({ type: 'success', title: tr('hiring.rescreeningCountCandidates', { count: ids.length }) })
       board.reload()
     } catch (e) {
-      addToast({ type: 'error', title: 'Could not rescreen', message: errorMessage(e) })
+      addToast({ type: 'error', title: tr('hiring.couldNotRescreen'), message: errorMessage(e) })
     } finally {
       setRescreening(false)
     }
@@ -88,14 +90,14 @@ function JobBoard({ id }: { id: string }) {
 
   return (
     <HiringShell
-      title={job?.title ?? 'Job'}
+      title={job?.title ?? tr('hiring.job')}
       description={
         job ? (
           <span className="flex flex-wrap items-center gap-2">
             <Badge variant={JOB_STATUS_VARIANT[job.status]}>{JOB_STATUS_LABELS[job.status]}</Badge>
             <span>{[job.location, job.work_mode && WORK_MODE_LABELS[job.work_mode], `${job.openings} opening${job.openings === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span>
-            <span className="tabular-nums">· {totals.total} candidate{totals.total === 1 ? '' : 's'}</span>
-            {totals.pending > 0 && <span className="tabular-nums text-primary">· {totals.pending} waiting for approval</span>}
+            <span className="tabular-nums">{tr('hiring.countCandidates', { count: totals.total })}</span>
+            {totals.pending > 0 && <span className="tabular-nums text-primary">{tr('hiring.pendingWaitingForApproval', { pending: totals.pending })}</span>}
           </span>
         ) : undefined
       }
@@ -103,8 +105,8 @@ function JobBoard({ id }: { id: string }) {
       actions={
         job && (
           <>
-            <Button variant="outline" className="rounded-full" onClick={() => setTab('intake')}><UserPlus aria-hidden /> Add candidates</Button>
-            <Button variant="outline" asChild className="rounded-full"><Link href={`/dashboard/hiring/jobs/${id}/edit`}><Pencil aria-hidden /> Edit job</Link></Button>
+            <Button variant="outline" className="rounded-full" onClick={() => setTab('intake')}><UserPlus aria-hidden />{' '}{tr('hiring.addCandidates')}</Button>
+            <Button variant="outline" asChild className="rounded-full"><Link href={`/dashboard/hiring/jobs/${id}/edit`}><Pencil aria-hidden />{' '}{tr('hiring.editJob')}</Link></Button>
           </>
         )
       }
@@ -113,14 +115,14 @@ function JobBoard({ id }: { id: string }) {
       {board.data && job && (
         <div className="space-y-5">
           <Segmented<Tab>
-            label="Job views"
+            label={tr('hiring.jobViews')}
             value={tab}
             onChange={setTab}
             options={[
-              { value: 'board', label: 'Board' },
-              { value: 'list', label: 'List', count: totals.total },
-              { value: 'intake', label: 'Add candidates' },
-              { value: 'analytics', label: 'Analytics' },
+              { value: 'board', label: tr('hiring.board') },
+              { value: 'list', label: tr('hiring.list'), count: totals.total },
+              { value: 'intake', label: tr('hiring.addCandidates') },
+              { value: 'analytics', label: tr('hiring.analytics') },
             ]}
           />
 
@@ -129,30 +131,28 @@ function JobBoard({ id }: { id: string }) {
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative sm:w-64">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-                  <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Name, email, skill or tag" aria-label="Search candidates" className="pl-9" />
+                  <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('hiring.nameEmailSkillOrTag')} aria-label={tr('hiring.searchCandidates')} className="pl-9" />
                 </div>
                 <NativeSelect
-                  aria-label="Minimum match score"
+                  aria-label={tr('hiring.minimumMatchScore')}
                   value={minScore}
                   onChange={setMinScore}
                   className="sm:w-44"
-                  placeholder="Any match score"
-                  options={[{ value: '50', label: 'Score 50+' }, { value: '70', label: 'Score 70+' }, { value: '85', label: 'Score 85+' }]}
+                  placeholder={tr('hiring.anyMatchScore')}
+                  options={[{ value: '50', label: tr('hiring.score50') }, { value: '70', label: tr('hiring.score70') }, { value: '85', label: tr('hiring.score85') }]}
                 />
                 <label className="flex items-center gap-2 text-sm text-foreground">
-                  <Switch checked={pendingOnly} onCheckedChange={setPendingOnly} aria-label="Only waiting for approval" /> Waiting for approval
-                </label>
+                  <Switch checked={pendingOnly} onCheckedChange={setPendingOnly} aria-label={tr('hiring.onlyWaitingForApproval')} />{' '}{tr('hiring.waitingForApproval')}</label>
                 <label className="flex items-center gap-2 text-sm text-foreground">
-                  <Switch checked={showClosed} onCheckedChange={setShowClosed} aria-label="Show rejected" /> Show rejected
-                </label>
+                  <Switch checked={showClosed} onCheckedChange={setShowClosed} aria-label={tr('hiring.showRejected')} />{' '}{tr('hiring.showRejected')}</label>
               </div>
 
               {totals.total === 0 ? (
                 <EmptyState
                   illustration="resume"
-                  title="No candidates yet"
-                  description="Share the apply link, drop in résumés or pick people from your talent pool."
-                  actionLabel="Add candidates"
+                  title={tr('hiring.noCandidatesYet')}
+                  description={tr('hiring.shareTheApplyLinkDropIn276')}
+                  actionLabel={tr('hiring.addCandidates')}
                   onAction={() => setTab('intake')}
                 />
               ) : tab === 'board' ? (
@@ -195,8 +195,8 @@ function JobBoard({ id }: { id: string }) {
           if (kind === 'move' && to) board.setData((d) => (d ? { ...d, stages: ids.reduce((cols, appId) => moveOnBoard(cols, appId, to), d.stages) } : d))
           addToast({
             type: failed ? 'warning' : 'success',
-            title: kind === 'move' ? 'Moved' : kind === 'reject' ? 'Rejected' : 'On hold',
-            message: failed ? `${failed} could not be changed. Reload to see the latest.` : undefined,
+            title: kind === 'move' ? tr('hiring.moved') : kind === 'reject' ? tr('hiring.rejected') : tr('hiring.onHold'),
+            message: failed ? tr('hiring.failedCouldNotBeChangedReloadb45', { failed }) : undefined,
           })
           board.reload()
         }}

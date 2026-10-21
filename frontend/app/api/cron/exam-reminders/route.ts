@@ -12,14 +12,14 @@ function authorize(req: NextRequest): boolean {
 
 async function postImpl(req: NextRequest) {
   if (!authorize(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
     const db = await getMongoDb()
     const { sendEmail } = await import('@/lib/send-email')
-    const { emailTemplates } = await import('@/lib/email-templates')
-    const { formatDate } = await import('@/lib/format-datetime')
+    const { emailLongDate, emailTemplatesFor } = await import('@/lib/email-templates')
+    const { localeForRecipient } = await import('@/lib/i18n/recipient')
     const { examIdFromTargetUrl } = await import('@/lib/exam-access')
 
     // Invites that close within the next 24 h, still unused, not yet reminded.
@@ -57,11 +57,12 @@ async function postImpl(req: NextRequest) {
 
       let ok = false
       try {
-        const result = await sendEmail(String(invite.email), emailTemplates.assessmentReminder({
+        const locale = await localeForRecipient({ userId: typeof invite.user_id === 'string' ? invite.user_id : null, email: String(invite.email) })
+        const result = await sendEmail(String(invite.email), emailTemplatesFor(locale).assessmentReminder({
           candidateName: invite.full_name || invite.email,
           examTitle: (exam?.title as string) || 'Technical Assessment',
           inviteUrl: `${appUrl}/assessment/invite/${invite.token}`,
-          expiresIn: formatDate(new Date(String(invite.expires_at)), undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
+          expiresIn: emailLongDate(new Date(String(invite.expires_at)), locale),
         }))
         ok = result.success
       } catch (e) {

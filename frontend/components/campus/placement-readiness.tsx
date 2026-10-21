@@ -10,12 +10,14 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { batchName, deptName, useConsole } from './console-context'
 import { fieldClass } from './shared'
+import { useT } from '@/lib/i18n/client'
 
 interface ReadinessResponse { overall: GroupReadiness; groups: GroupReadiness[]; truncated: boolean }
 
 const pct = (v: number | null) => (v === null ? '—' : `${v}%`)
 
 export function PlacementReadiness() {
+  const { t: tr } = useT()
   const { url, college } = useConsole()
   const [dept, setDept] = useState('')
   const [batch, setBatch] = useState('')
@@ -42,56 +44,54 @@ export function PlacementReadiness() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="grid gap-3 sm:grid-cols-2">
-          <select aria-label="Department" className={fieldClass} value={dept} onChange={(e) => setDept(e.target.value)}>
-            <option value="">All departments</option>
+          <select aria-label={tr('career.department')} className={fieldClass} value={dept} onChange={(e) => setDept(e.target.value)}>
+            <option value="">{tr('career.allDepartments')}</option>
             {college.departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
-          <select aria-label="Batch" className={fieldClass} value={batch} onChange={(e) => setBatch(e.target.value)}>
-            <option value="">All batches</option>
+          <select aria-label={tr('career.batch')} className={fieldClass} value={batch} onChange={(e) => setBatch(e.target.value)}>
+            <option value="">{tr('career.allBatches')}</option>
             {college.batches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </div>
-        <Button asChild variant="outline" className="min-h-11"><a href={csvHref} download><Download className="mr-2 h-4 w-4" aria-hidden />Export CSV</a></Button>
+        <Button asChild variant="outline" className="min-h-11"><a href={csvHref} download><Download className="mr-2 h-4 w-4" aria-hidden />{tr('career.exportCsv')}</a></Button>
       </div>
-      <p className="text-sm text-muted-foreground">
-        Readiness blends each student&apos;s recent company-test practice (45%), adaptive tests (30%), contest placements (15%) and shared skill-passport level (10%), using only what the student has done.
-      </p>
-      {error ? <EmptyState compact illustration="error" title="We couldn't load readiness" description="Try again in a moment." /> : !data ? <SkeletonList count={4} /> : data.overall.students === 0 ? (
-        <EmptyState compact illustration="analytics" title="No students in this selection" description="Invite students and put them in departments and batches to see readiness." />
+      <p className="text-sm text-muted-foreground">{tr('career.readinessBlendsEachStudentsRecentCompany067')}</p>
+      {error ? <EmptyState compact illustration="error" title={tr('career.weCouldntLoadReadiness')} description={tr('career.tryAgainInAMoment')} /> : !data ? <SkeletonList count={4} /> : data.overall.students === 0 ? (
+        <EmptyState compact illustration="analytics" title={tr('career.noStudentsInThisSelection')} description={tr('career.inviteStudentsAndPutThemIn687')} />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Students" value={data.overall.students} hint={`${data.overall.active} with practice data`} icon={<Users aria-hidden />} />
-            <StatCard label="Average readiness" value={data.overall.readiness_avg ?? '—'} hint="Out of 100" icon={<Target aria-hidden />} />
-            <StatCard label="Company tests" value={pct(data.overall.company_avg)} hint={`Pass rate ${pct(data.overall.company_pass_rate)}`} icon={<Trophy aria-hidden />} />
-            <StatCard label="Adaptive tests" value={pct(data.overall.adaptive_avg)} hint={`${data.overall.contest_entries} contest entries`} icon={<Target aria-hidden />} />
+            <StatCard label={tr('career.students')} value={data.overall.students} hint={tr('career.activeWithPracticeData', { active: data.overall.active })} icon={<Users aria-hidden />} />
+            <StatCard label={tr('career.averageReadiness')} value={data.overall.readiness_avg ?? '—'} hint={tr('career.outOf1002')} icon={<Target aria-hidden />} />
+            <StatCard label={tr('career.companyTests')} value={pct(data.overall.company_avg)} hint={tr('career.passRatePercent', { percent: pct(data.overall.company_pass_rate) })} icon={<Trophy aria-hidden />} />
+            <StatCard label={tr('career.adaptiveTests')} value={pct(data.overall.adaptive_avg)} hint={tr('career.contestEntriesContestEntries', { contest_entries: data.overall.contest_entries })} icon={<Target aria-hidden />} />
           </div>
-          {data.truncated && <p className="text-sm text-amber-700 dark:text-amber-300">Showing the first 3,000 students — filter by department or batch for the rest.</p>}
-          <Section title="By department and batch">
+          {data.truncated && <p className="text-sm text-amber-700 dark:text-amber-300">{tr('career.showingTheFirst3000Studentsb97')}</p>}
+          <Section title={tr('career.byDepartmentAndBatch')}>
             <div className="grid gap-4 lg:grid-cols-2">
               {data.groups.map((g) => (
                 <Panel key={`${g.department_id}|${g.batch_id}`} className="space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold text-foreground">{deptName(college, g.department_id)}</h3>
-                      <p className="text-sm text-muted-foreground">{batchName(college, g.batch_id)} · {g.students} students · {g.active} active</p>
+                      <p className="text-sm text-muted-foreground">{tr('career.valueStudentsStudentsActiveActive', { value: batchName(college, g.batch_id), students: g.students, active: g.active })}</p>
                     </div>
-                    <p className="text-2xl font-bold tabular-nums text-foreground" aria-label="Average readiness">{g.readiness_avg ?? '—'}</p>
+                    <p className="text-2xl font-bold tabular-nums text-foreground" aria-label={tr('career.averageReadiness')}>{g.readiness_avg ?? '—'}</p>
                   </div>
                   <dl className="grid grid-cols-3 gap-3 text-sm">
-                    <div><dt className="text-muted-foreground">Company tests</dt><dd className="tabular-nums text-foreground">{pct(g.company_avg)}</dd></div>
-                    <div><dt className="text-muted-foreground">Adaptive</dt><dd className="tabular-nums text-foreground">{pct(g.adaptive_avg)}</dd></div>
-                    <div><dt className="text-muted-foreground">Contests</dt><dd className="tabular-nums text-foreground">{g.contest_entries}</dd></div>
+                    <div><dt className="text-muted-foreground">{tr('career.companyTests')}</dt><dd className="tabular-nums text-foreground">{pct(g.company_avg)}</dd></div>
+                    <div><dt className="text-muted-foreground">{tr('career.adaptive')}</dt><dd className="tabular-nums text-foreground">{pct(g.adaptive_avg)}</dd></div>
+                    <div><dt className="text-muted-foreground">{tr('career.contests')}</dt><dd className="tabular-nums text-foreground">{g.contest_entries}</dd></div>
                   </dl>
                   {g.weak_areas.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-foreground">Weak areas</p>
+                      <p className="text-sm font-medium text-foreground">{tr('career.weakAreas')}</p>
                       <ul className="mt-1 flex flex-wrap gap-2">{g.weak_areas.map((w) => <li key={w.area} className="rounded-full bg-amber-500/10 px-2.5 py-0.5 text-xs text-amber-800 dark:text-amber-200">{w.area} · {w.avg}%</li>)}</ul>
                     </div>
                   )}
                   {g.top.length > 0 && (
                     <div>
-                      <p className="text-sm font-medium text-foreground">Top performers</p>
+                      <p className="text-sm font-medium text-foreground">{tr('career.topPerformers')}</p>
                       <ol className="mt-1 space-y-1 text-sm">{g.top.map((t, i) => <li key={t.student_id} className="flex justify-between gap-2"><span className="text-foreground">{i + 1}. {t.name}</span><span className="tabular-nums text-muted-foreground">{t.readiness}</span></li>)}</ol>
                     </div>
                   )}

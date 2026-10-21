@@ -13,24 +13,24 @@ interface CompleteBody {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: CompleteBody
   try {
     body = (await req.json()) as CompleteBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const { sessionId } = body
   if (!sessionId) {
-    return NextResponse.json({ error: 'sessionId required' }, { status: 400 })
+    return NextResponse.json({ error: 'sessionId required', code: 'assess_session_id_required' }, { status: 400 })
   }
 
   const db = await getMongoDb()
   const doc = await db.collection('ai_mock_sessions').findOne({ id: sessionId, userId: user.id })
   if (!doc) {
-    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Session not found', code: 'session_not_found' }, { status: 404 })
   }
 
   // Return cached report if already generated

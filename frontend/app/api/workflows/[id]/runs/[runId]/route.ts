@@ -21,7 +21,7 @@ async function load(ctx: Ctx) {
   if ('error' in g) return { res: NextResponse.json({ error: g.error }, { status: g.status }) }
   const { id, runId } = await ctx.params
   const wf = await loadWorkflow(g, id)
-  if (!wf) return { res: NextResponse.json({ error: 'not found' }, { status: 404 }) }
+  if (!wf) return { res: NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 }) }
   const run = await (await col('workflow_runs')).findOne({ id: runId, workflow_id: wf.id }, { projection: { _id: 0 } })
   if (!run) return { res: NextResponse.json({ error: 'run not found' }, { status: 404 }) }
   return { g, wf, run }
@@ -51,5 +51,5 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     await auditAdmin(r.g.user, 'workflow.cancel_run', 'workflow', r.wf.id, `run ${String(r.run.id)}`)
     return NextResponse.json({ ok: true })
   }
-  return NextResponse.json({ error: 'unknown action' }, { status: 400 })
+  return NextResponse.json({ error: 'unknown action', code: 'unknown_action' }, { status: 400 })
 }

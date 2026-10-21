@@ -12,7 +12,7 @@ function nowIso() { return new Date().toISOString() }
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const db = await getMongoDb()
   const filter = user.role === 'superadmin' ? {} : { user_id: user.id }
@@ -28,7 +28,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const ipKey = clientLimiterKeyFromRequest(req, user.id)
   const ipCheck = await rateLimitRedis(`support:ticket:${ipKey}`, 3, 60_000)
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     message = String(body.message || '').trim()
     category = String(body.category || 'general').trim()
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
 
   if (!subject || !message) {

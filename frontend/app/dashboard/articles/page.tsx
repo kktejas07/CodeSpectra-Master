@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
+import { useT } from '@/lib/i18n/client'
 
 type Post = {
   slug: string
@@ -24,6 +25,8 @@ type Post = {
 }
 
 export default function ArticlesNewsroomPage() {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,20 +63,20 @@ export default function ArticlesNewsroomPage() {
       const articlesTour: TourStep[] = [
         {
           target: '[data-tour="articles-header"]',
-          title: 'Articles & newsroom',
-          description: 'Read expert insights, product updates, and career signals from CodeSpectra.',
+          title: t('learning.articlesNewsroom'),
+          description: t('learning.readExpertInsightsProductUpdatesAnd9ff'),
           position: 'bottom',
         },
         {
           target: '[data-tour="open-public-newsroom"]',
-          title: 'Open in Learn',
-          description: 'Team posts are public in Learn, under From the team.',
+          title: t('learning.openInLearn'),
+          description: t('learning.teamPostsArePublicInLearnd2d'),
           position: 'bottom',
         },
         {
           target: '[data-tour="articles-grid"]',
-          title: 'Article list',
-          description: 'Browse through the latest articles and click to read full content.',
+          title: t('learning.articleList'),
+          description: t('learning.browseThroughTheLatestArticlesAnd5be'),
           position: 'bottom',
         },
       ]
@@ -95,13 +98,11 @@ export default function ArticlesNewsroomPage() {
         illustration="courses"
         className="mb-0"
         icon={<Newspaper aria-hidden />}
-        title={<span data-tour="articles-header">Articles</span>}
-        description="Insights, product updates and career advice from the CodeSpectra team."
+        title={<span data-tour="articles-header">{t('learning.articles')}</span>}
+        description={t('learning.insightsProductUpdatesAndCareerAdvice878')}
         actions={
           <Button asChild variant="outline" size="sm" data-tour="open-public-newsroom">
-            <Link href="/learn?source=team" target="_blank">
-              Open in Learn
-            </Link>
+            <Link href="/learn?source=team" target="_blank">{t('learning.openInLearn')}</Link>
           </Button>
         }
       />
@@ -109,17 +110,17 @@ export default function ArticlesNewsroomPage() {
       {loadError ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load articles"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('learning.couldntLoadArticles')}
+          description={t('learning.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
           onAction={() => setReloadKey((k) => k + 1)}
         />
       ) : posts.length === 0 ? (
         <EmptyState illustration="courses"
           variant="default"
-          title="No published articles yet"
-          description="New articles will show up here as soon as they are published. Check back soon."
-          actionLabel="Open Learn"
+          title={t('learning.noPublishedArticlesYet')}
+          description={t('learning.newArticlesWillShowUpHere920')}
+          actionLabel={t('learning.openLearn')}
           actionHref="/learn"
         />
       ) : (

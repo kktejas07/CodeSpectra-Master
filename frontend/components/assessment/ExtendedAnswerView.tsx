@@ -15,6 +15,7 @@ import { parseCodingAnswer } from '@/lib/coding-answer'
 import { canonicalType } from '@/lib/question-types'
 import { EXTENDED_INPUT_TYPES, parseJsonAnswer, sanitizeSubQuestions } from '@/lib/question-extensions'
 import { gradeCaseStudy, traitScores, typingStats } from '@/lib/grading-extended'
+import { useT } from '@/lib/i18n/client'
 
 export interface AnswerFileMeta { id: string; question_id: string; name: string; size: number; type: string; scan_status?: string; duration_s?: number }
 
@@ -42,6 +43,7 @@ export function useAnswerFiles(examId: string, userId: string | null | undefined
 }
 
 function FileLink({ examId, file, video }: { examId: string; file: AnswerFileMeta; video?: boolean }) {
+  const { t } = useT()
   const [url, setUrl] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const href = `/api/exams/${encodeURIComponent(examId)}/cad-submission/files/${encodeURIComponent(file.id)}`
@@ -69,15 +71,14 @@ function FileLink({ examId, file, video }: { examId: string; file: AnswerFileMet
         <a href={href} download className="inline-flex items-center gap-1 rounded text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <Download className="h-3.5 w-3.5" aria-hidden /> {file.name}
         </a>
-        <span className="tabular-nums text-muted-foreground">{file.size >= 1048576 ? `${(file.size / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`}{file.duration_s ? ` · ${file.duration_s} s` : ''}</span>
-        {file.scan_status === 'unscanned' && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-400">Not virus-scanned</Badge>}
+        <span className="tabular-nums text-muted-foreground">{file.size >= 1048576 ? t('exam.nMb', { n: (file.size / 1048576).toFixed(1) }) : t('exam.valueKb', { value: Math.max(1, Math.round(file.size / 1024)) })}{file.duration_s ? ` · ${file.duration_s} s` : ''}</span>
+        {file.scan_status === 'unscanned' && <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-700 dark:text-amber-400">{t('exam.notVirusScanned')}</Badge>}
         {video && !url && (
           <Button type="button" variant="outline" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => void play()} disabled={busy}>
-            {busy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Play className="h-3 w-3" aria-hidden />} Play here
-          </Button>
+            {busy ? <Loader2 className="h-3 w-3 animate-spin" aria-hidden /> : <Play className="h-3 w-3" aria-hidden />}{' '}{t('exam.playHere')}</Button>
         )}
       </div>
-      {url && <video src={url} controls playsInline className="aspect-video w-full max-w-xl rounded-xl border border-border bg-black" aria-label="Candidate recording" />}
+      {url && <video src={url} controls playsInline className="aspect-video w-full max-w-xl rounded-xl border border-border bg-black" aria-label={t('exam.candidateRecording')} />}
     </div>
   )
 }
@@ -93,12 +94,13 @@ export function ExtendedAnswerView({
   examId: string
   files: AnswerFileMeta[]
 }) {
+  const { t: tr } = useT()
   const t = canonicalType(question.type)
   if (t === 'theory_to_code' || t === 'reverse_coding') {
     const p = parseCodingAnswer(answer)
     return (
       <div className="space-y-1.5">
-        <Badge variant="outline" className="font-mono text-[10px]">{p.language || 'code'}</Badge>
+        <Badge variant="outline" className="font-mono text-[10px]">{p.language || tr('exam.code')}</Badge>
         <pre className={preCls}>{p.code || '(empty code)'}</pre>
       </div>
     )
@@ -110,7 +112,7 @@ export function ExtendedAnswerView({
     return (
       <div className="space-y-2">
         <pre className={preCls}>{text || '(empty)'}</pre>
-        {diagram && (<><span className="block text-xs font-medium text-muted-foreground">Diagram (text / Mermaid)</span><pre className={preCls}>{diagram}</pre></>)}
+        {diagram && (<><span className="block text-xs font-medium text-muted-foreground">{tr('exam.diagramTextMermaid')}</span><pre className={preCls}>{diagram}</pre></>)}
       </div>
     )
   }
@@ -121,8 +123,8 @@ export function ExtendedAnswerView({
     return (
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">
-          <span className="font-mono tabular-nums text-foreground">{s.wpm}</span> WPM (gross <span className="tabular-nums">{s.grossWpm}</span>) · <span className="font-mono tabular-nums text-foreground">{s.accuracy}%</span> accuracy · <span className="tabular-nums">{Math.round(s.minutes * 60)}</span> s
-          {cfg?.min_wpm ? <> · target <span className="tabular-nums">{cfg.min_wpm}</span> WPM / <span className="tabular-nums">{cfg.min_accuracy}%</span></> : null}
+          <span className="font-mono tabular-nums text-foreground">{s.wpm}</span>{' '}{tr('exam.wpmGross')}{' '}<span className="tabular-nums">{s.grossWpm}</span>) · <span className="font-mono tabular-nums text-foreground">{s.accuracy}%</span>{' '}{tr('exam.accuracy')}{' '}<span className="tabular-nums">{Math.round(s.minutes * 60)}</span> s
+          {cfg?.min_wpm ? <>{' '}{tr('exam.target')}{' '}<span className="tabular-nums">{cfg.min_wpm}</span>{' '}{tr('exam.wpm')}{' '}<span className="tabular-nums">{cfg.min_accuracy}%</span></> : null}
         </p>
         <pre className={preCls}>{typed || '(nothing typed)'}</pre>
       </div>
@@ -141,8 +143,8 @@ export function ExtendedAnswerView({
           return (
             <li key={s.id} className="rounded-lg border border-border p-2 text-xs">
               <p className="font-medium">{String.fromCharCode(97 + i)}) {s.prompt}</p>
-              <p className="mt-1"><span className="text-muted-foreground">Answer:</span> {given || <em className="text-muted-foreground">none</em>}</p>
-              <p><span className="text-muted-foreground">Key:</span> {s.answer || '—'} · <span className={`tabular-nums ${full ? 'text-green-700 dark:text-green-400' : 'text-destructive'}`}>{part?.awarded ?? 0}/{s.points}</span></p>
+              <p className="mt-1"><span className="text-muted-foreground">{tr('exam.answer')}</span> {given || <em className="text-muted-foreground">{tr('exam.none')}</em>}</p>
+              <p><span className="text-muted-foreground">{tr('exam.key')}</span> {s.answer || '—'} · <span className={`tabular-nums ${full ? 'text-green-700 dark:text-green-400' : 'text-destructive'}`}>{part?.awarded ?? 0}/{s.points}</span></p>
             </li>
           )
         })}
@@ -152,10 +154,10 @@ export function ExtendedAnswerView({
   if (t === 'file_upload' || t === 'video_response') {
     const mine = files.find((f) => f.id === a.file_id && f.question_id === question.id)
     if (t === 'video_response' && typeof a.text_alternative === 'string' && !a.file_id) {
-      return (<div className="space-y-1"><Badge variant="outline" className="text-[10px]">Typed instead of video</Badge><pre className={preCls}>{a.text_alternative || '(empty)'}</pre></div>)
+      return (<div className="space-y-1"><Badge variant="outline" className="text-[10px]">{tr('exam.typedInsteadOfVideo')}</Badge><pre className={preCls}>{a.text_alternative || '(empty)'}</pre></div>)
     }
-    if (!a.file_id) return <span className="text-xs italic text-muted-foreground">No file uploaded</span>
-    if (!mine) return <span className="text-xs text-amber-700 dark:text-amber-400">The answer points to a file this candidate didn’t upload. Treat it as missing.</span>
+    if (!a.file_id) return <span className="text-xs italic text-muted-foreground">{tr('exam.noFileUploaded')}</span>
+    if (!mine) return <span className="text-xs text-amber-700 dark:text-amber-400">{tr('exam.theAnswerPointsToAFile3f1')}</span>
     return <FileLink examId={examId} file={mine} video={t === 'video_response'} />
   }
   return <pre className={preCls}>{answer}</pre>
@@ -163,18 +165,19 @@ export function ExtendedAnswerView({
 
 /** Per-trait psychometric scores (Likert items with a trait key). Hidden when the test has none. */
 export function TraitScoresPanel({ questions, answers }: { questions: Array<Record<string, unknown>>; answers: Record<string, string> }) {
+  const { t } = useT()
   const scores = traitScores(questions as never, answers)
   if (!scores.length) return null
   return (
     <div className="space-y-2 rounded-lg border border-border p-3">
-      <p className="text-sm font-semibold">Personality traits</p>
-      <p className="text-xs text-muted-foreground">From the Likert items (reverse-keyed items flipped). Not part of the score or pass mark.</p>
+      <p className="text-sm font-semibold">{t('exam.personalityTraits')}</p>
+      <p className="text-xs text-muted-foreground">{t('exam.fromTheLikertItemsReverseKeyed765')}</p>
       <ul className="space-y-2">
         {scores.map((s) => (
           <li key={s.trait} className="space-y-1">
             <div className="flex items-center justify-between text-xs">
               <span className="font-medium">{s.trait}</span>
-              <span className="tabular-nums text-muted-foreground">{s.percent}% · mean {s.mean} · {s.items} item{s.items === 1 ? '' : 's'}</span>
+              <span className="tabular-nums text-muted-foreground">{t('exam.percentMeanMeanCountItems', { count: s.items, percent: s.percent, mean: s.mean })}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-muted" role="img" aria-label={`${s.trait}: ${s.percent}%`}>
               <div className="h-full rounded-full bg-primary" style={{ width: `${s.percent}%` }} />

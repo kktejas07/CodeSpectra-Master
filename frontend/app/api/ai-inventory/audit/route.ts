@@ -359,9 +359,9 @@ async function auditNpmReal(): Promise<{ findings: Finding[]; ok: boolean; stder
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const useReal = shouldUseRealAudit()

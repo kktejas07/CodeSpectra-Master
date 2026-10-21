@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   if ('res' in g) return g.res
   const { actor } = g
   try {
-    if (actor.role === 'interviewer') return json({ error: 'Not found' }, 404)
+    if (actor.role === 'interviewer') return json({ error: 'Not found', code: 'not_found' }, 404)
     const { app, job } = await loadApplication(actor, new URL(req.url).searchParams.get('application_id') || '')
     const c = await latestCaseForApplication(actor.tenantId, app.id)
     const view = c ? bgvViewFor(actor.role, c) : null

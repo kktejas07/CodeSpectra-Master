@@ -82,10 +82,12 @@ export async function runDunning(now = new Date(), onlySub?: string): Promise<{ 
       })
     }
     const { notify } = await import('@/lib/notifications')
-    await notify({ user_id: user.id, type: 'billing.payment_failed', title: step.final ? 'Last reminder: update your card' : 'Payment failed — update your card', message: `Access continues until ${fmtDate(graceEnd)}.`, link: '/dashboard/billing', icon: 'alert-circle', skip_push: !step.final })
+    await notify({ user_id: user.id, type: 'billing.payment_failed', title: step.final ? 'Last reminder: update your card' : 'Payment failed — update your card', message: `Access continues until ${fmtDate(graceEnd)}.`, title_i18n: { key: step.final ? 'billing.dunningFinal.title' : 'billing.dunning.title' }, message_i18n: { key: 'billing.dunning.message', params: { date: fmtDate(graceEnd) } }, link: '/dashboard/billing', icon: 'alert-circle', skip_push: !step.final })
     if (step.channels.includes('whatsapp') && settings.config.wa_template_payment) {
-      const { whatsappRecipientForUser, sendWhatsAppTemplate } = await import('../whatsapp')
-      await sendWhatsAppTemplate(await whatsappRecipientForUser(user.id), { name: settings.config.wa_template_payment, language: configValue(settings.config, 'wa_template_language'), params: [user.name || 'there', fmtDate(graceEnd)] }, { userId: user.id }).catch(() => null)
+      const { whatsappRecipientForUser, sendWhatsAppTemplate, templateLanguageForUser } = await import('../whatsapp')
+      // Recipient's language when its translation is approved in Meta (lib/i18n/whatsapp-language), else the base.
+      const lang = await templateLanguageForUser(user.id, { wa_template_language: configValue(settings.config, 'wa_template_language'), wa_template_locales: settings.config.wa_template_locales })
+      await sendWhatsAppTemplate(await whatsappRecipientForUser(user.id), { name: settings.config.wa_template_payment, ...lang, params: [user.name || 'there', fmtDate(graceEnd)] }, { userId: user.id }).catch(() => null)
     }
     if (step.day === 0 && Number(d.amount_minor) >= HIGH_VALUE_MINOR) {
       const { sendAdminAlert } = await import('../alerts')
@@ -164,10 +166,11 @@ export async function runExpiryReminders(now = new Date()): Promise<{ reminded: 
       })
     }
     const { notify } = await import('@/lib/notifications')
-    await notify({ user_id: user.id, type: 'billing.plan_expiring', title: `Your plan ends in ${day} day${day === 1 ? '' : 's'}`, message: `Renew before ${fmtDate(String(s.ends_at))} to keep access.`, link: renewUrl, icon: 'credit-card', skip_push: day !== 1 })
+    await notify({ user_id: user.id, type: 'billing.plan_expiring', title: `Your plan ends in ${day} day${day === 1 ? '' : 's'}`, message: `Renew before ${fmtDate(String(s.ends_at))} to keep access.`, title_i18n: { key: 'billing.expiring.title', params: { count: day } }, message_i18n: { key: 'billing.expiring.message', params: { date: fmtDate(String(s.ends_at)) } }, link: renewUrl, icon: 'credit-card', skip_push: day !== 1 })
     if (day === 1 && settings.config.wa_template_payment) {
-      const { whatsappRecipientForUser, sendWhatsAppTemplate } = await import('../whatsapp')
-      await sendWhatsAppTemplate(await whatsappRecipientForUser(user.id), { name: settings.config.wa_template_payment, language: configValue(settings.config, 'wa_template_language'), params: [user.name || 'there', fmtDate(String(s.ends_at))] }, { userId: user.id }).catch(() => null)
+      const { whatsappRecipientForUser, sendWhatsAppTemplate, templateLanguageForUser } = await import('../whatsapp')
+      const lang = await templateLanguageForUser(user.id, { wa_template_language: configValue(settings.config, 'wa_template_language'), wa_template_locales: settings.config.wa_template_locales })
+      await sendWhatsAppTemplate(await whatsappRecipientForUser(user.id), { name: settings.config.wa_template_payment, ...lang, params: [user.name || 'there', fmtDate(String(s.ends_at))] }, { userId: user.id }).catch(() => null)
     }
     reminded++
   }
@@ -205,7 +208,7 @@ async function razorpaySettle(order: Doc): Promise<ProviderState> {
   const row = await payments.findOne({ razorpay_payment_id: pid }, { projection: { id: 1 } })
   await activatePaidOrder({ ...(order as Record<string, unknown>), status: 'paid' } as never, row?.id)
   const { notify } = await import('@/lib/notifications')
-  await notify({ user_id: String(order.user_id), type: 'billing.payment_success', title: 'Payment confirmed', message: 'We confirmed your payment and your plan is active.', link: '/dashboard/billing', icon: 'credit-card' })
+  await notify({ user_id: String(order.user_id), type: 'billing.payment_success', title: 'Payment confirmed', message: 'We confirmed your payment and your plan is active.', title_i18n: { key: 'billing.confirmed.title' }, message_i18n: { key: 'billing.confirmed.message' }, link: '/dashboard/billing', icon: 'credit-card' })
   return 'paid'
 }
 

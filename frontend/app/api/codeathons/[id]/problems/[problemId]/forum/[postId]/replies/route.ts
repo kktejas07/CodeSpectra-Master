@@ -10,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string; problemId: string; postId: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { postId } = await params
 
@@ -47,7 +47,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; problemId: string; postId: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: codeathonId, problemId, postId } = await params
   const body = await request.json() as { content: string }

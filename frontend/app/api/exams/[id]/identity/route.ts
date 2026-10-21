@@ -84,7 +84,7 @@ async function scanFile(bytes: Buffer, filename: string): Promise<'clean' | 'uns
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   }
   const { id: userId, email } = gate.user
   const { id: examId } = await ctx.params
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const rl = rateLimitSlidingWindow(`exam-identity:${userId}:${examId}`, 20, 10 * 60_000)
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many tries. Wait a few minutes and try again.' },
+      { error: 'Too many tries. Wait a few minutes and try again.', code: 'exam_tries_wait' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (isMultipart) form = await req.formData()
     else body = (await req.json().catch(() => ({}))) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'The upload could not be read. Use an image under 5 MB.' }, { status: 400 })
+    return NextResponse.json({ error: 'The upload could not be read. Use an image under 5 MB.', code: 'exam_photo_unreadable' }, { status: 400 })
   }
   const field = (k: string): string | null => {
     const v = form ? form.get(k) : body[k]
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const db = await getMongoDb()
     const exam = (await db.collection('exams').findOne({ id: examId })) as Record<string, unknown> | null
-    if (!exam || !exam.published) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam || !exam.published) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     // Same entry checks as start. Re-checking identity on an attempt that is
     // already running (resume after the window closed) is allowed.
@@ -150,20 +150,20 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (isMultipart && form) {
       // ─── No camera: uploaded ID photo ───────────────────────────────────
       if (identityRequirement(policy, false).kind !== 'upload_id') {
-        return NextResponse.json({ error: 'This test needs a working camera. Connect one or allow camera access, then try again.' }, { status: 403 })
+        return NextResponse.json({ error: 'This test needs a working camera. Connect one or allow camera access, then try again.', code: 'exam_camera_required' }, { status: 403 })
       }
       const file = form.get('file')
-      if (!(file instanceof File)) return NextResponse.json({ error: 'Choose a photo of your ID.' }, { status: 400 })
-      if (!UPLOAD_TYPES[file.type]) return NextResponse.json({ error: 'Use a JPG, PNG or WebP image.' }, { status: 400 })
-      if (file.size <= 0) return NextResponse.json({ error: 'This file is empty.' }, { status: 400 })
-      if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: 'The photo must be under 5 MB.' }, { status: 413 })
+      if (!(file instanceof File)) return NextResponse.json({ error: 'Choose a photo of your ID.', code: 'exam_id_photo_required' }, { status: 400 })
+      if (!UPLOAD_TYPES[file.type]) return NextResponse.json({ error: 'Use a JPG, PNG or WebP image.', code: 'exam_photo_type' }, { status: 400 })
+      if (file.size <= 0) return NextResponse.json({ error: 'This file is empty.', code: 'file_empty' }, { status: 400 })
+      if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: 'The photo must be under 5 MB.', code: 'exam_photo_max_5mb' }, { status: 413 })
       const bytes = Buffer.from(await file.arrayBuffer())
-      if (bytes.length > MAX_UPLOAD_BYTES) return NextResponse.json({ error: 'The photo must be under 5 MB.' }, { status: 413 })
+      if (bytes.length > MAX_UPLOAD_BYTES) return NextResponse.json({ error: 'The photo must be under 5 MB.', code: 'exam_photo_max_5mb' }, { status: 413 })
       const kind = sniffImage(bytes)
-      if (!kind) return NextResponse.json({ error: 'This file isn’t a JPG, PNG or WebP image.' }, { status: 400 })
+      if (!kind) return NextResponse.json({ error: 'This file isn’t a JPG, PNG or WebP image.', code: 'exam_photo_not_image' }, { status: 400 })
       const scan = await scanFile(bytes, `id-photo.${kind === 'jpeg' ? 'jpg' : kind}`)
       if (scan === 'infected') {
-        return NextResponse.json({ error: 'The security scanner rejected this file. Take a new photo of your ID and try again.' }, { status: 400 })
+        return NextResponse.json({ error: 'The security scanner rejected this file. Take a new photo of your ID and try again.', code: 'scanner_rejected_id' }, { status: 400 })
       }
       const reasonRaw = field('reason')
       const reason = (NO_CAMERA_REASONS as readonly string[]).includes(reasonRaw || '') ? reasonRaw : 'no_device'
@@ -232,6 +232,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
   } catch (e) {
     console.error('[exams/identity] POST:', e)
-    return NextResponse.json({ error: 'Could not save your identity check. Try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not save your identity check. Try again.', code: 'exam_identity_save_failed' }, { status: 500 })
   }
 }

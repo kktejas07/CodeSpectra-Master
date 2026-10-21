@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   const type = sp.get('type')
   const id = (sp.get('id') || '').trim()
   if ((type !== 'hackathon' && type !== 'codeathon') || !id || id.length > 120) {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   }
   const kind = type as FeedSource
   try {
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
           { projection: { _id: 0, id: 1, title: 1, description: 1, startDate: 1, endDate: 1, status: 1 } },
         )
     const ev = doc ? eventForExport(kind, doc, getAppOrigin()) : null
-    if (!ev) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!ev) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     const slug = String(ev.title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || kind
     return new NextResponse(buildIcs([ev], ev.title), {
       status: 200,
@@ -49,6 +49,6 @@ export async function GET(req: Request) {
     })
   } catch (e) {
     console.error('[calendar/ics]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

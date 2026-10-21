@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const l = await rateLimitRedis(`subs:unsub-ip:${clientLimiterKeyFromRequest(req, null)}`, 30, 10 * 60_000)
-  if (!l.ok) return NextResponse.json({ error: `Too many requests. Try again in ${l.retryAfterSec}s.` }, { status: 429 })
+  if (!l.ok) return NextResponse.json({ error: `Too many requests. Try again in ${l.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: l.retryAfterSec } }, { status: 429 })
   const b = (await req.json().catch(() => ({}))) as { s?: unknown; t?: unknown; scope?: unknown }
   const scope = isLinkScope(b.scope) && b.scope !== 'manage' ? b.scope : 'all'
   const r = await unsubscribe(b.s, b.t, scope)

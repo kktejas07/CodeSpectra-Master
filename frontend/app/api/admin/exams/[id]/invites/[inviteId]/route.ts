@@ -37,7 +37,7 @@ export async function DELETE(
       if (sub) {
         return NextResponse.json({ error: 'This candidate has no invite to withdraw. Their submitted results are kept.' }, { status: 409 })
       }
-      return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Invite not found', code: 'talent_invite_not_found' }, { status: 404 })
     }
 
     const email = String(invite.email || '').toLowerCase()

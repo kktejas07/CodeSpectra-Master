@@ -6,6 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from 'recharts'
+import { useT } from '@/lib/i18n/client'
 
 export interface ChartRow {
   score: number | null
@@ -38,6 +39,7 @@ const tooltipStyle = {
 
 /** Score distribution across submitted candidates (10 buckets). */
 export function ScoreHistogram({ rows }: { rows: ChartRow[] }) {
+  const { t } = useT()
   const data = useMemo(() => {
     const buckets = new Array(10).fill(0)
     for (const r of rows) {
@@ -51,8 +53,8 @@ export function ScoreHistogram({ rows }: { rows: ChartRow[] }) {
   if (total === 0) return null
   return (
     <Card className="rounded-2xl p-5">
-      <p className="text-sm font-semibold mb-1">Score distribution</p>
-      <p className="text-xs text-muted-foreground mb-3">{total} submitted · % score</p>
+      <p className="text-sm font-semibold mb-1">{t('exam.scoreDistribution')}</p>
+      <p className="text-xs text-muted-foreground mb-3">{t('exam.totalSubmittedScore', { total })}</p>
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
@@ -70,6 +72,7 @@ export function ScoreHistogram({ rows }: { rows: ChartRow[] }) {
 
 /** Funnel: where every invited candidate stands right now. */
 export function StatusDonut({ rows }: { rows: ChartRow[] }) {
+  const { t } = useT()
   const data = useMemo(() => {
     let gradedReleased = 0
     let gradedPending = 0
@@ -91,8 +94,8 @@ export function StatusDonut({ rows }: { rows: ChartRow[] }) {
   if (data.length === 0) return null
   return (
     <Card className="rounded-2xl p-5">
-      <p className="text-sm font-semibold mb-1">Candidate funnel</p>
-      <p className="text-xs text-muted-foreground mb-3">{rows.length} total invited</p>
+      <p className="text-sm font-semibold mb-1">{t('exam.candidateFunnel')}</p>
+      <p className="text-xs text-muted-foreground mb-3">{t('exam.countTotalInvited', { count: rows.length })}</p>
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -112,6 +115,7 @@ export function StatusDonut({ rows }: { rows: ChartRow[] }) {
 
 /** Per-question average (graded answers only) — spots too-hard/too-easy outliers. */
 export function QuestionBars({ stats }: { stats: QuestionStat[] }) {
+  const { t } = useT()
   const data = useMemo(
     () =>
       stats.map((s, i) => ({
@@ -125,8 +129,8 @@ export function QuestionBars({ stats }: { stats: QuestionStat[] }) {
   if (data.length === 0 || data.every((d) => d.avg == null)) return null
   return (
     <Card className="rounded-2xl p-5 md:col-span-2">
-      <p className="text-sm font-semibold mb-1">Question difficulty</p>
-      <p className="text-xs text-muted-foreground mb-3">Average score per question (graded answers only · hover for title)</p>
+      <p className="text-sm font-semibold mb-1">{t('exam.questionDifficulty')}</p>
+      <p className="text-xs text-muted-foreground mb-3">{t('exam.averageScorePerQuestionGradedAnswersfc0')}</p>
       <div className="h-52">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 0 }}>

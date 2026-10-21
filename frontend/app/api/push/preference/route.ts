@@ -19,7 +19,7 @@ export async function PUT(req: Request) {
   const limited = await limitRequest(req, 'push-preference', gate.user.id, 20, 60_000)
   if (limited) return limited
   const parsed = preferenceSchema.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   try {
     const now = nowIso()
     await (await getMongoDb()).collection('notification_preferences').updateOne(

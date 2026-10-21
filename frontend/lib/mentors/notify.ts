@@ -61,7 +61,7 @@ export async function onSessionsBooked(order: OrderDoc, lines: OrderLineDoc[]): 
     const tz = mentor.availability.timezone
     const link = `${getAppOrigin()}/dashboard/mentor?tab=sessions`
     await sendWithIcs(to, `New session booked: ${l.title}`, sessionEmail('A learner booked a session', `<p><strong>${escapeHtml(l.title)}</strong><br>${escapeHtml(when(b.start, tz))}</p><p>${b.join_url ? 'Join from your mentor studio when the session starts.' : 'Share the meeting link with the learner from your seller dashboard.'}</p><p><a href="${escapeHtml(link)}" style="color:${BLUE}">Open your sessions</a></p><p>A calendar invite (.ics) is attached.</p>`), bookingIcs(order, l))
-    await notify({ user_id: mentor.user_id, type: 'mentor.session_booked', title: 'New mentoring session', message: `${l.title.slice(0, 80)} — ${when(b.start, tz)}`, link: '/dashboard/mentor?tab=sessions', icon: 'calendar' }).catch(() => null)
+    await notify({ user_id: mentor.user_id, type: 'mentor.session_booked', title: 'New mentoring session', message: `${l.title.slice(0, 80)} — ${when(b.start, tz)}`, title_i18n: { key: 'mentor.booked.title' }, message_i18n: { key: 'mentor.booked.message', params: { title: l.title.slice(0, 80), when: when(b.start, tz) } }, link: '/dashboard/mentor?tab=sessions', icon: 'calendar' }).catch(() => null)
   }
 }
 
@@ -76,5 +76,5 @@ export async function onSessionRescheduled(order: OrderDoc, line: OrderLineDoc, 
   const seller = await getSellerById(line.seller_id)
   const tz = mentor.availability.timezone
   await sendWithIcs(seller?.contact_email || (await userEmail(mentor.user_id)), `Rescheduled: ${line.title}`, sessionEmail('A learner moved their session', `<p><strong>${escapeHtml(line.title)}</strong><br>New time: ${escapeHtml(when(b.start, tz))}<br><span style="color:#475569">Was: ${escapeHtml(when(fromIso, tz))}</span></p><p>An updated calendar invite is attached.</p>`), ics)
-  await notify({ user_id: mentor.user_id, type: 'mentor.session_rescheduled', title: 'Session rescheduled', message: `${line.title.slice(0, 80)} — now ${when(b.start, tz)}`, link: '/dashboard/mentor?tab=sessions', icon: 'calendar' }).catch(() => null)
+  await notify({ user_id: mentor.user_id, type: 'mentor.session_rescheduled', title: 'Session rescheduled', message: `${line.title.slice(0, 80)} — now ${when(b.start, tz)}`, title_i18n: { key: 'mentor.rescheduled.title' }, message_i18n: { key: 'mentor.rescheduled.message', params: { title: line.title.slice(0, 80), when: when(b.start, tz) } }, link: '/dashboard/mentor?tab=sessions', icon: 'calendar' }).catch(() => null)
 }

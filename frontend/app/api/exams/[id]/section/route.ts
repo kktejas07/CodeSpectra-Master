@@ -28,12 +28,12 @@ const MAX_TOTAL_ANSWER_CHARS = 1_000_000
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   const userId = gate.user.id
   const { id: examId } = await ctx.params
 
   const rl = rateLimitSlidingWindow(`exam-section:${userId}:${examId}`, 120, 10 * 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
 
   const body = (await req.json().catch(() => ({}))) as { section_id?: unknown; answers?: unknown }
   const sectionId = typeof body.section_id === 'string' && body.section_id ? body.section_id.slice(0, 64) : null
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const db = await getMongoDb()
     const exam = (await db.collection('exams').findOne({ id: examId })) as Record<string, unknown> | null
-    if (!exam || !exam.published) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam || !exam.published) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     // Same shape and caps as save-draft; unknown question ids dropped.
     let incoming: Record<string, string | string[]> | null = null
@@ -54,16 +54,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
         if (!ids.has(k)) continue
         const val = Array.isArray(v) ? v.slice(0, 100).map((x) => String(x ?? '').slice(0, 2000)) : String(v ?? '')
         const len = Array.isArray(val) ? val.join('').length : val.length
-        if (len > MAX_ANSWER_CHARS) return NextResponse.json({ error: 'Answer too large' }, { status: 400 })
+        if (len > MAX_ANSWER_CHARS) return NextResponse.json({ error: 'Answer too large', code: 'exam_answer_too_large' }, { status: 400 })
         total += len
         incoming[k] = val
       }
-      if (total > MAX_TOTAL_ANSWER_CHARS) return NextResponse.json({ error: 'Draft too large' }, { status: 400 })
+      if (total > MAX_TOTAL_ANSWER_CHARS) return NextResponse.json({ error: 'Draft too large', code: 'exam_draft_too_large' }, { status: 400 })
     }
 
     const draft = await getExamDraft(db, examId, userId)
     const attemptNo = Number(draft?.attempt_no) || 0
-    if (!attemptNo) return NextResponse.json({ error: 'No attempt in progress.' }, { status: 409 })
+    if (!attemptNo) return NextResponse.json({ error: 'No attempt in progress.', code: 'exam_no_attempt' }, { status: 409 })
 
     const op = sectionId ? { kind: 'enter' as const, sectionId } : { kind: 'sync' as const }
     const r = await applySectionUpdate(db, exam, userId, attemptNo, op, incoming)
@@ -89,6 +89,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
   } catch (e) {
     console.error('[exams/section] POST:', e)
-    return NextResponse.json({ error: 'Could not change section' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not change section', code: 'exam_section_change_failed' }, { status: 500 })
   }
 }

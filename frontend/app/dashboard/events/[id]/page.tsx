@@ -1,5 +1,5 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { use, useCallback, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
@@ -37,6 +37,8 @@ import { normalizeSubmissionStatus, canTransition } from '@/lib/hackathons/submi
 import { buildProjectReport } from '@/lib/hackathons/reporting'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -82,16 +84,16 @@ interface Submission {
   rejection_reason?: string; feedback?: string
 }
 
-const STATUS_CONFIG: Record<string, { color: string; label: string }> = {
-  submitted: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Submitted' },
-  under_review: { color: 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400', label: 'Under review' },
-  pending: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Submitted' },
-  scored: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Scored' },
-  review_completed: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Scored' },
-  accepted: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: 'Scored' },
-  rejected: { color: 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400', label: 'Not selected' },
-  released: { color: 'bg-primary/10 text-primary border-primary/30', label: 'Score released' },
-}
+const STATUS_CONFIG = (t: Translator): Record<string, { color: string; label: string }> => ({
+  submitted: { color: 'bg-primary/10 text-primary border-primary/30', label: t('compete.submitted') },
+  under_review: { color: 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400', label: t('compete.underReview') },
+  pending: { color: 'bg-primary/10 text-primary border-primary/30', label: t('compete.submitted') },
+  scored: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: t('compete.scored') },
+  review_completed: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: t('compete.scored') },
+  accepted: { color: 'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400', label: t('compete.scored') },
+  rejected: { color: 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400', label: t('compete.notSelected') },
+  released: { color: 'bg-primary/10 text-primary border-primary/30', label: t('compete.scoreReleased') },
+})
 
 interface LeaderboardEntry {
   rank: number | null; tied?: boolean; team_id: string; team_name: string
@@ -102,6 +104,8 @@ interface LeaderboardEntry {
 type JudgeSubTab = 'evaluate' | 'board' | 'compare' | 'reports'
 
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { formatDateTime } = useLocaleDates()
+  const { td, t: tr } = useT()
   const { id } = use(params)
   const router = useRouter()
   const { user: authUser } = useAuth()
@@ -161,7 +165,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         fetch(`/api/hackathons/${id}`, { cache: 'no-store', credentials: 'include' }),
         fetch(`/api/hackathons/${id}/teams`, { cache: 'no-store', credentials: 'include' }),
       ])
-      if (!eRes.ok) throw new Error('Event not found')
+      if (!eRes.ok) throw new Error(tr('compete.eventNotFound'))
       const eData = await eRes.json() as Hackathon
       setEvent(eData)
 
@@ -237,7 +241,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     try {
       const res = await csrfFetch(`/api/hackathons/${event.id}/submissions/${submissionId}/audit`, { method: 'POST' })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || data.error || 'Audit failed')
+      if (!res.ok) throw new Error(data.message || data.error || tr('compete.auditFailed'))
       setAudits((prev) => ({ ...prev, [submissionId]: data }))
       setRowErrors((prev) => {
         if (!prev[submissionId]) return prev
@@ -245,7 +249,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         delete next[submissionId]
         return next
       })
-      addToast({ type: 'success', title: 'Repo audit complete' })
+      addToast({ type: 'success', title: tr('compete.repoAuditComplete') })
     } catch (e: any) {
       const msg = (e && typeof e.message === 'string' && e.message) || 'Audit failed'
       setRowErrors((prev) => ({ ...prev, [submissionId]: msg }))
@@ -274,7 +278,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ submissionId }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || data.error || 'Screening failed')
+      if (!res.ok) throw new Error(data.message || data.error || tr('compete.screeningFailed'))
       if (data.screening) {
         setAudits((prev) => ({ ...prev, [submissionId]: { ...(prev[submissionId] || {}), screening: data.screening } }))
       }
@@ -285,7 +289,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return next
       })
       void loadScreening()
-      addToast({ type: 'success', title: `AI screening: ${data.screening?.total ?? '?'} / ${data.screening?.maxTotal ?? '?'}` })
+      addToast({ type: 'success', title: tr('compete.aiScreeningValueValue2', { value: data.screening?.total ?? '?', value2: data.screening?.maxTotal ?? '?' }) })
     } catch (e: any) {
       const msg = (e && typeof e.message === 'string' && e.message) || 'Screening failed'
       setRowErrors((prev) => ({ ...prev, [submissionId]: msg }))
@@ -303,7 +307,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ all: true }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || data.error || 'Bulk screening failed')
+      if (!res.ok) throw new Error(data.message || data.error || tr('compete.bulkScreeningFailed'))
       const results = Array.isArray(data.results) ? data.results : []
       setAudits((prev) => {
         const next = { ...prev }
@@ -326,10 +330,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         }
         return next
       })
-      addToast({ type: 'success', title: `Screened ${okCount}${failCount > 0 ? `, ${failCount} failed` : ''}` })
+      addToast({ type: 'success', title: tr('compete.screenedOkcountValue', { okCount, value: failCount > 0 ? `, ${failCount} failed` : '' }) })
       void loadScreening()
     } catch (e: any) {
-      addToast({ type: 'error', title: e.message || 'Bulk screening failed' })
+      addToast({ type: 'error', title: e.message || tr('compete.bulkScreeningFailed') })
     } finally { setScreeningAll(false) }
   }, [event?.id, loadScreening, addToast])
 
@@ -343,7 +347,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ limit: 12 }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.message || data.error || 'Bulk audit failed')
+      if (!res.ok) throw new Error(data.message || data.error || tr('compete.bulkAuditFailed'))
       const items = Array.isArray(data.audited) ? data.audited : []
       const okItems = items.filter((r: any) => r && r.ok && typeof r.submissionId === 'string')
       const failItems = items.filter((r: any) => r && !r.ok)
@@ -358,16 +362,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         return next
       })
       const remaining = typeof data.remaining === 'number' ? data.remaining : 0
-      addToast({ type: 'success', title: `Audited ${okItems.length}, ${failItems.length} failed, ${remaining} remaining` })
+      addToast({ type: 'success', title: tr('compete.auditedCountCount2FailedRemainingRemaini', { count: okItems.length, count2: failItems.length, remaining }) })
       if (data.stoppedOn === 'github-rate-limit') {
-        addToast({ type: 'error', title: 'GitHub rate limit hit — connect GitHub OAuth or retry after the reset window' })
+        addToast({ type: 'error', title: tr('compete.githubRateLimitHitConnectGithub212') })
       }
       // Refresh only the newly audited rows; repeat clicks resume the rest.
       const okIds = new Set(okItems.map((r: any) => String(r.submissionId || '')))
       const refreshSubs = (judgeSubmissions || []).filter((s: any) => s && okIds.has(String(s.id || '')))
       if (refreshSubs.length > 0) await loadAudits(refreshSubs)
     } catch (e: any) {
-      addToast({ type: 'error', title: (e && e.message) || 'Bulk audit failed' })
+      addToast({ type: 'error', title: (e && e.message) || tr('compete.bulkAuditFailed') })
     } finally { setAuditingAll(false) }
   }, [event?.id, judgeSubmissions, loadAudits, addToast])
 
@@ -388,10 +392,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify({ aSubmissionId: cmpA, bSubmissionId: cmpB, criterion: cmpCrit }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Compare failed')
+      if (!res.ok) throw new Error(data.error || tr('compete.compareFailed'))
       setCmpResult({ winner: String(data.winner || 'tie'), reason: String(data.reason || 'no reason given') })
     } catch (e: any) {
-      addToast({ type: 'error', title: e.message || 'Compare failed' })
+      addToast({ type: 'error', title: e.message || tr('compete.compareFailed') })
     } finally { setComparing(false) }
   }, [event?.id, cmpA, cmpB, cmpCrit, addToast])
 
@@ -415,15 +419,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to submit score')
+        throw new Error(data.error || tr('compete.failedToSubmitScore'))
       }
-      addToast({ type: 'success', title: 'Score submitted' })
+      addToast({ type: 'success', title: tr('compete.scoreSubmitted') })
       setSelectedSub(null)
       setScoreForm({ score: 0, feedback: '' })
       setIsEditingScore(false)
       void loadJudgeSubmissions()
     } catch (e: any) {
-      addToast({ type: 'error', title: e.message || 'Failed to submit score' })
+      addToast({ type: 'error', title: e.message || tr('compete.failedToSubmitScore') })
     } finally { setScoring(false) }
   }, [event?.id, selectedSub, scoreForm, event?.features?.judging_rubrics, loadJudgeSubmissions, addToast])
 
@@ -441,12 +445,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       })
       if (!res.ok) {
         const data = await res.json()
-        throw new Error(data.error || 'Failed to update status')
+        throw new Error(data.error || tr('compete.failedToUpdateStatus'))
       }
-      addToast({ type: 'success', title: `Submission ${newStatus}` })
+      addToast({ type: 'success', title: tr('compete.submissionNewstatus', { newStatus }) })
       void loadJudgeSubmissions()
     } catch (e: any) {
-      addToast({ type: 'error', title: e.message || 'Failed to update status' })
+      addToast({ type: 'error', title: e.message || tr('compete.failedToUpdateStatus') })
     }
   }, [event?.id, loadJudgeSubmissions, addToast])
 
@@ -459,7 +463,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   const handleReleaseResults = useCallback(async () => {
     if (!event?.id) return
-    if (!window.confirm('Release the results? Judge scores become public and can no longer change. This cannot be undone.')) return
+    if (!window.confirm(tr('compete.releaseTheResultsJudgeScoresBecomef58'))) return
     setReleasingResults(true)
     try {
       const post = (force: boolean) => csrfFetch(`/api/hackathons/${event.id}/release-results`, {
@@ -468,15 +472,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       let res = await post(false)
       let data = await res.json().catch(() => ({}))
       if (res.status === 409 && data.code === 'confirm_release') {
-        if (!window.confirm(`${data.error || ''} Release anyway?`)) return
+        if (!window.confirm(tr('compete.valueReleaseAnyway', { value: data.error || '' }))) return
         res = await post(true)
         data = await res.json().catch(() => ({}))
       }
-      if (!res.ok) throw new Error(data.error || 'Could not release results')
-      addToast({ type: 'success', title: 'Results released!' })
+      if (!res.ok) throw new Error(data.error || tr('compete.couldNotReleaseResults'))
+      addToast({ type: 'success', title: tr('compete.resultsReleased') })
       window.location.reload()
     } catch (err: any) {
-      addToast({ type: 'error', title: 'Error releasing results', message: err.message })
+      addToast({ type: 'error', title: tr('compete.errorReleasingResults'), message: err.message })
     } finally {
       setReleasingResults(false)
     }
@@ -537,10 +541,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }, [])
 
   const judgeSteps: Array<{ key: string; n: number; label: string; short: string; count: string; done: boolean; tab: JudgeSubTab; anchor: string }> = [
-    { key: 'audit', n: 1, label: 'Audit repos', short: 'Audit', count: `${auditedJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && auditedJudgeCount >= totalJudgeSubs, tab: 'evaluate', anchor: 'judge-evaluate' },
-    { key: 'screen', n: 2, label: 'AI screening', short: 'Screen', count: `${screenedJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && screenedJudgeCount >= totalJudgeSubs, tab: 'reports', anchor: 'judge-reports' },
-    { key: 'score', n: 3, label: 'Judge scores', short: 'Score', count: `${scoredJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && scoredJudgeCount >= totalJudgeSubs, tab: 'evaluate', anchor: 'judge-eval-table' },
-    { key: 'publish', n: 4, label: 'Publish', short: 'Publish', count: event?.results_released ? 'Released' : `Top ${judgingCfg.displayCount}`, done: !!event?.results_released, tab: 'board', anchor: 'judge-publish' },
+    { key: 'audit', n: 1, label: tr('compete.auditRepos'), short: tr('compete.audit'), count: `${auditedJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && auditedJudgeCount >= totalJudgeSubs, tab: 'evaluate', anchor: 'judge-evaluate' },
+    { key: 'screen', n: 2, label: tr('compete.aiScreening'), short: tr('compete.screen'), count: `${screenedJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && screenedJudgeCount >= totalJudgeSubs, tab: 'reports', anchor: 'judge-reports' },
+    { key: 'score', n: 3, label: tr('compete.judgeScores'), short: tr('compete.score'), count: `${scoredJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && scoredJudgeCount >= totalJudgeSubs, tab: 'evaluate', anchor: 'judge-eval-table' },
+    { key: 'publish', n: 4, label: tr('compete.publish'), short: tr('compete.publish'), count: event?.results_released ? 'Released' : `Top ${judgingCfg.displayCount}`, done: !!event?.results_released, tab: 'board', anchor: 'judge-publish' },
   ]
   const currentJudgeStep = judgeSteps.findIndex((s) => !s.done)
 
@@ -602,40 +606,40 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const columns: DataTableColumn<any>[] = useMemo(() => [
     {
       key: 'team_name',
-      header: 'Team',
+      header: tr('compete.team2'),
       sortable: true,
       cell: (row: any) => <span className="font-medium text-sm">{row.team_name}</span>
     },
     {
       key: 'problem_slug',
-      header: 'Problem',
+      header: tr('compete.problem'),
       sortable: true,
       cell: (row: any) => <span className="text-sm">{row.problem_slug}</span>
     },
     {
       key: 'status',
-      header: 'Status',
+      header: tr('compete.status'),
       cell: (row: any) => (
-        <Badge variant="outline" className={`text-[10px] ${(STATUS_CONFIG[row.status] || STATUS_CONFIG.submitted).color}`}>
-          {(STATUS_CONFIG[row.status] || STATUS_CONFIG.submitted).label}
+        <Badge variant="outline" className={`text-[10px] ${(STATUS_CONFIG(tr)[row.status] || STATUS_CONFIG(tr).submitted).color}`}>
+          {(STATUS_CONFIG(tr)[row.status] || STATUS_CONFIG(tr).submitted).label}
         </Badge>
       )
     },
     {
       key: 'score',
-      header: 'Score',
+      header: tr('compete.score'),
       sortable: true,
       cell: (row: any) => row.score !== null ? <span className="font-mono text-sm font-medium tabular-nums">{row.score}/100</span> : <span className="text-sm text-muted-foreground">-</span>
     },
     {
       key: 'submitted_at',
-      header: 'Latest submission',
+      header: tr('compete.latestSubmission'),
       sortable: true,
       cell: (row: any) => <span className="text-xs text-muted-foreground">{formatDateTime(row.submitted_at)}</span>
     },
     {
       key: 'evidence',
-      header: 'Evidence',
+      header: tr('compete.evidence'),
       cell: (row: any) => {
         const a = audits[row.id]
         const secretsTotal = a && a.secrets
@@ -650,60 +654,58 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <p className="text-[11px] leading-snug text-red-600 dark:text-red-400">{rowErrors[row.id]}</p>
             )}
             {!a ? (
-              <span className="text-xs text-muted-foreground">Not audited</span>
+              <span className="text-xs text-muted-foreground">{tr('compete.notAudited')}</span>
             ) : (
               <>
                 <div className="flex flex-wrap gap-1">
                   {pct !== null && (
-                    <Badge variant="outline" className="text-[10px]" title={a.freshness?.reason || ''}>{pct}% in-event</Badge>
+                    <Badge variant="outline" className="text-[10px]" title={a.freshness?.reason || ''}>{tr('compete.pctInEvent', { pct })}</Badge>
                   )}
                   {a.freshness?.likelyPreexisting === true && (
-                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400" title={a.freshness?.reason || 'Commits look pre-existing'}>pre-existing?</Badge>
+                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400" title={a.freshness?.reason || tr('compete.commitsLookPreExisting')}>{tr('compete.preExisting')}</Badge>
                   )}
                   {secretsTotal !== null && (
                     <Badge
                       variant="outline"
                       className={`text-[10px] ${secretsTotal > 0 ? 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400' : ''}`}
-                      title={a.secrets ? `critical ${a.secrets.critical ?? 0} · high ${a.secrets.high ?? 0} · medium ${a.secrets.medium ?? 0}` : 'Secrets scan'}
+                      title={a.secrets ? tr('compete.criticalValueHighValue2MediumValue3', { value: a.secrets.critical ?? 0, value2: a.secrets.high ?? 0, value3: a.secrets.medium ?? 0 }) : tr('compete.secretsScan')}
                     >
                       <Shield className="w-3 h-3 mr-0.5" />{secretsTotal}
                     </Badge>
                   )}
                   {a.docs && (
                     <>
-                      <Badge variant="outline" className="text-[10px]" title={a.docs.tests ? 'Test files detected' : 'No test files detected'}>
-                        {a.docs.tests ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-green-600 dark:text-green-400" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}tests
-                      </Badge>
-                      <Badge variant="outline" className="text-[10px]" title={a.docs.readme ? 'README/docs detected' : 'No README/docs detected'}>
-                        {a.docs.readme ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-green-600 dark:text-green-400" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}docs
-                      </Badge>
+                      <Badge variant="outline" className="text-[10px]" title={a.docs.tests ? tr('compete.testFilesDetected') : tr('compete.noTestFilesDetected')}>
+                        {a.docs.tests ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-green-600 dark:text-green-400" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}{tr('compete.tests')}</Badge>
+                      <Badge variant="outline" className="text-[10px]" title={a.docs.readme ? tr('compete.readmeDocsDetected') : tr('compete.noReadmeDocsDetected')}>
+                        {a.docs.readme ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-green-600 dark:text-green-400" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}{tr('compete.docs')}</Badge>
                     </>
                   )}
                   {a.vulns && typeof a.vulns.count === 'number' && (
-                    <Badge variant="outline" className="text-[10px]" title="Dependency vulnerabilities">{a.vulns.count} vulns</Badge>
+                    <Badge variant="outline" className="text-[10px]" title={tr('compete.dependencyVulnerabilities')}>{tr('compete.countVulns', { count: a.vulns.count })}</Badge>
                   )}
                   {screening && typeof screening.total === 'number' && (
                     <Badge
                       variant="outline"
                       className="text-[10px] bg-primary/10 text-primary border-primary/30"
-                      title={screening.notes || 'AI screening total'}
+                      title={screening.notes || tr('compete.aiScreeningTotal')}
                     >
                       AI {screening.total}/{screening.maxTotal ?? '?'}
                     </Badge>
                   )}
                 </div>
                 <details className="text-xs">
-                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Full evidence</summary>
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{tr('compete.fullEvidence')}</summary>
                   <dl className="mt-1 space-y-1 rounded-lg border border-border/70 bg-muted/30 p-2">
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Repo</dt><dd className="text-right tabular-nums">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Commits</dt><dd className="text-right tabular-nums">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Contributors</dt><dd className="text-right tabular-nums">{a.effort?.contributors ?? 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Files</dt><dd className="text-right tabular-nums">{a.files?.count ?? 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">CI</dt><dd className="text-right tabular-nums">{a.docs ? (a.docs.ci ? `yes (${(a.docs.ciFiles || []).length})` : 'no') : 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">License</dt><dd className="text-right tabular-nums">{a.docs ? (a.docs.license ? 'yes' : 'no') : 'n/a'}</dd></div>
-                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Freshness</dt><dd className="text-right">{a.freshness?.reason || 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{tr('compete.repo')}</dt><dd className="text-right tabular-nums">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{tr('compete.commits')}</dt><dd className="text-right tabular-nums">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{tr('compete.contributors')}</dt><dd className="text-right tabular-nums">{a.effort?.contributors ?? 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{tr('compete.files')}</dt><dd className="text-right tabular-nums">{a.files?.count ?? 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">CI</dt><dd className="text-right tabular-nums">{a.docs ? (a.docs.ci ? tr('compete.yesCount', { count: (a.docs.ciFiles || []).length }) : tr('compete.no')) : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{tr('compete.license')}</dt><dd className="text-right tabular-nums">{a.docs ? (a.docs.license ? tr('compete.yes') : tr('compete.no')) : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">{tr('compete.freshness')}</dt><dd className="text-right">{a.freshness?.reason || 'n/a'}</dd></div>
                     {(a.limitations || []).length > 0 && (
-                      <div><dt className="text-muted-foreground">Gaps</dt>{(a.limitations || []).map((l: string, i: number) => <dd key={i} className="text-muted-foreground">• {l}</dd>)}</div>
+                      <div><dt className="text-muted-foreground">{tr('compete.gaps')}</dt>{(a.limitations || []).map((l: string, i: number) => <dd key={i} className="text-muted-foreground">• {l}</dd>)}</div>
                     )}
                   </dl>
                 </details>
@@ -715,7 +717,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     },
     {
       key: 'actions',
-      header: 'Action',
+      header: tr('compete.action'),
       cell: (row: any) => {
         const a = audits[row.id]
         const hasScreen = !!(a && a.screening) || screenIdSet.has(String(row.id))
@@ -738,30 +740,26 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                 variant="outline"
                 className="h-7 text-xs"
                 disabled={auditingId === row.id || !row.repo_url}
-                title={row.repo_url ? 'Run automated repo audit' : 'No repo URL on this submission'}
+                title={row.repo_url ? tr('compete.runAutomatedRepoAudit') : tr('compete.noRepoUrlOnThisSubmission')}
                 onClick={() => { void runAudit(row.id) }}
               >
-                {auditingId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                Audit repo
-              </Button>
+                {auditingId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}{tr('compete.auditRepo')}</Button>
             ) : !hasScreen ? (
               <Button
                 size="sm"
                 variant="outline"
                 className="h-7 text-xs"
                 disabled={screeningId === row.id}
-                title="Run AI screening on the evidence pack"
+                title={tr('compete.runAiScreeningOnTheEvidencefd9')}
                 onClick={() => { void runScreening(row.id) }}
               >
-                {screeningId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                Run screening
-              </Button>
+                {screeningId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}{tr('compete.runScreening')}</Button>
             ) : !hasHuman ? (
-              <Button size="sm" className="h-7 text-xs" onClick={openEvaluate}>Score</Button>
+              <Button size="sm" className="h-7 text-xs" onClick={openEvaluate}>{tr('compete.score')}</Button>
             ) : (
               <div className="flex items-center gap-1.5">
                 <Badge variant="outline" className="font-mono text-xs tabular-nums bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">{row.score ?? '?'}/100</Badge>
-                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={openEvaluate}>Re-score</Button>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={openEvaluate}>{tr('compete.reScore')}</Button>
               </div>
             )}
             {a && (
@@ -771,22 +769,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   variant="ghost"
                   className="h-6 px-1.5 text-[11px] text-muted-foreground"
                   disabled={auditingId === row.id || !row.repo_url}
-                  title="Re-run the repo audit"
+                  title={tr('compete.reRunTheRepoAudit')}
                   onClick={() => { void runAudit(row.id) }}
-                >
-                  Re-audit
-                </Button>
+                >{tr('compete.reAudit')}</Button>
                 {hasScreen && (
                   <Button
                     size="sm"
                     variant="ghost"
                     className="h-6 px-1.5 text-[11px] text-muted-foreground"
                     disabled={screeningId === row.id}
-                    title="Re-run AI screening"
+                    title={tr('compete.reRunAiScreening')}
                     onClick={() => { void runScreening(row.id) }}
-                  >
-                    Re-screen
-                  </Button>
+                  >{tr('compete.reScreen')}</Button>
                 )}
               </div>
             )}
@@ -827,11 +821,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
   if (!event) {
     return <Panel className="mx-auto max-w-md p-10 text-center">
-      <p className="font-semibold text-foreground">Event not found</p>
-      <p className="mt-1 text-sm text-muted-foreground">It may have been removed, you may not have access to it, or the connection dropped.</p>
+      <p className="font-semibold text-foreground">{tr('compete.eventNotFound')}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{tr('compete.itMayHaveBeenRemovedYou57b')}</p>
       <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); void load() }}>Try again</Button>
-        <Link href="/dashboard/events" className="text-sm font-medium text-primary hover:underline">Back to events</Link>
+        <Button variant="outline" size="sm" onClick={() => { setLoading(true); void load() }}>{tr('common.tryAgain')}</Button>
+        <Link href="/dashboard/events" className="text-sm font-medium text-primary hover:underline">{tr('compete.backToEvents')}</Link>
       </div>
     </Panel>
   }
@@ -859,8 +853,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           className="mb-3 inline-flex items-center gap-2 rounded-lg text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
           onClick={() => router.push('/dashboard/events')}
         >
-          <ArrowLeft className="h-4 w-4" aria-hidden /> Back to events
-        </button>
+          <ArrowLeft className="h-4 w-4" aria-hidden />{' '}{tr('compete.backToEvents')}</button>
         <PageHeader
           className="mb-0"
           icon={<Trophy />}
@@ -869,20 +862,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             <span className="mt-1 flex flex-wrap items-center gap-2">
               <Badge variant="outline" className={statusColor}>{statusLabel}</Badge>
               <Badge variant="secondary" className="tabular-nums"><Clock className="w-3 h-3 mr-1" /> {event.timeout_minutes} min</Badge>
-              <Badge variant="secondary" className="tabular-nums"><Users className="w-3 h-3 mr-1" /> {teams.length} teams</Badge>
-              {event.features?.team_formation && <Badge variant="secondary">Team event</Badge>}
+              <Badge variant="secondary" className="tabular-nums"><Users className="w-3 h-3 mr-1" />{' '}{tr('compete.countTeams', { count: teams.length })}</Badge>
+              {event.features?.team_formation && <Badge variant="secondary">{tr('compete.teamEvent')}</Badge>}
             </span>
           }
           actions={(isLive && !isClosed) || isUpcoming ? (
             <>
               {isLive && !isClosed && (
                 <span className="flex items-center gap-1.5 rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium tabular-nums text-green-700 dark:text-green-400">
-                  <Timer className="w-3.5 h-3.5" aria-hidden /> Ends in <Countdown targetIso={event.ends_at} />
+                  <Timer className="w-3.5 h-3.5" aria-hidden />{' '}{tr('compete.endsIn')}{' '}<Countdown targetIso={event.ends_at} />
                 </span>
               )}
               {isUpcoming && (
                 <span className="flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium tabular-nums text-primary">
-                  <Timer className="w-3.5 h-3.5" aria-hidden /> Starts in <Countdown targetIso={event.starts_at} />
+                  <Timer className="w-3.5 h-3.5" aria-hidden />{' '}{tr('compete.startsIn')}{' '}<Countdown targetIso={event.starts_at} />
                 </span>
               )}
               <AddEventToCalendar
@@ -903,31 +896,31 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex h-auto flex-wrap justify-start">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="problems">Problems ({event.tasks?.length || 0})</TabsTrigger>
-          {myTeam && <TabsTrigger value="submissions">Submissions</TabsTrigger>}
+          <TabsTrigger value="overview">{tr('compete.overview')}</TabsTrigger>
+          <TabsTrigger value="problems">{tr('compete.problems2')}{event.tasks?.length || 0})</TabsTrigger>
+          {myTeam && <TabsTrigger value="submissions">{tr('compete.submissions')}</TabsTrigger>}
           {(event.features?.leaderboard_visibility === 'public' || isAdmin) && (
-            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
+            <TabsTrigger value="leaderboard">{tr('compete.leaderboard')}</TabsTrigger>
           )}
-          {(isAdmin || isJudge) && <TabsTrigger value="judge">Judge</TabsTrigger>}
-          {isClosed && event.results_released && <TabsTrigger value="results">Results</TabsTrigger>}
-          {isAdmin && <TabsTrigger value="settings">Settings</TabsTrigger>}
+          {(isAdmin || isJudge) && <TabsTrigger value="judge">{tr('compete.judge')}</TabsTrigger>}
+          {isClosed && event.results_released && <TabsTrigger value="results">{tr('compete.results')}</TabsTrigger>}
+          {isAdmin && <TabsTrigger value="settings">{tr('compete.settings')}</TabsTrigger>}
         </TabsList>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="mt-4 space-y-4">
           <div className="cs-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard icon={<CalendarDays />} label="Starts" value={<span className="text-base">{formatDateTime(event.starts_at)}</span>} />
-            <StatCard icon={<Clock />} label="Ends" value={<span className="text-base">{formatDateTime(event.ends_at)}</span>} />
+            <StatCard icon={<CalendarDays />} label={tr('compete.starts')} value={<span className="text-base">{formatDateTime(event.starts_at)}</span>} />
+            <StatCard icon={<Clock />} label={tr('compete.ends')} value={<span className="text-base">{formatDateTime(event.ends_at)}</span>} />
             <StatCard icon={<Users />} label="Teams" value={`${teams.length} / ${event.num_teams}`} />
-            <StatCard icon={<ListChecks />} label="Problems" value={event.tasks?.length || 0} />
+            <StatCard icon={<ListChecks />} label={tr('compete.problems3')} value={event.tasks?.length || 0} />
           </div>
           <Panel className="space-y-4">
-            {event.description ? <p className="text-sm text-muted-foreground">{event.description}</p> : <p className="text-sm text-muted-foreground">No description for this event yet.</p>}
+            {event.description ? <p className="text-sm text-muted-foreground">{event.description}</p> : <p className="text-sm text-muted-foreground">{tr('compete.noDescriptionForThisEventYet')}</p>}
 
             {event.rules && event.rules.length > 0 && (
               <div className="space-y-2 pt-4 border-t border-border/70">
-                <h4 className="text-sm font-semibold text-foreground">Rules</h4>
+                <h4 className="text-sm font-semibold text-foreground">{tr('compete.rules')}</h4>
                 {event.rules.map((r, i) => (
                   <div key={i} className="text-sm">
                     <span className="font-medium text-foreground">{r.title}:</span>{' '}
@@ -941,7 +934,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           {/* Team Section */}
           {event.features?.team_formation && (
             <Panel>
-              <h4 className="mb-3 text-sm font-semibold text-foreground">Your team</h4>
+              <h4 className="mb-3 text-sm font-semibold text-foreground">{tr('compete.yourTeam')}</h4>
               {myTeam ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -952,7 +945,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="flex flex-wrap gap-1.5">
                     {myTeam.members.map(m => (
                       <Badge key={m.user_id} variant={m.role === 'captain' ? 'default' : 'secondary'} className="text-xs">
-                        {m.name} {m.role === 'captain' && '(Captain)'}
+                        {m.name} {m.role === 'captain' && tr('compete.captain')}
                       </Badge>
                     ))}
                   </div>
@@ -960,8 +953,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               ) : (
                 <p className="text-xs text-muted-foreground">
                   {event.status === 'open' || event.status === 'live'
-                    ? 'Join this event to form a team or join one.'
-                    : 'Registration is closed'}
+                    ? tr('compete.joinThisEventToFormA49c')
+                    : tr('compete.registrationIsClosed')}
                 </p>
               )}
             </Panel>
@@ -970,16 +963,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           {/* Features */}
           {event.features && (
             <Panel>
-              <h4 className="mb-3 text-sm font-semibold text-foreground">What this event includes</h4>
+              <h4 className="mb-3 text-sm font-semibold text-foreground">{tr('compete.whatThisEventIncludes')}</h4>
               <div className="flex flex-wrap gap-2">
-                {event.features.judging_rubrics && <Badge variant="secondary">Rubric judging</Badge>}
-                {event.features.proctoring && <Badge variant="secondary">Proctored</Badge>}
-                {event.features.forum && <Badge variant="secondary">Forum</Badge>}
-                {event.features.project_showcase && <Badge variant="secondary">Showcase</Badge>}
-                {event.features.certificates && <Badge variant="secondary">Certificates</Badge>}
-                {event.features.demo_video === 'required' && <Badge variant="secondary">Demo required</Badge>}
+                {event.features.judging_rubrics && <Badge variant="secondary">{tr('compete.rubricJudging')}</Badge>}
+                {event.features.proctoring && <Badge variant="secondary">{tr('compete.proctored')}</Badge>}
+                {event.features.forum && <Badge variant="secondary">{tr('compete.forum')}</Badge>}
+                {event.features.project_showcase && <Badge variant="secondary">{tr('compete.showcase')}</Badge>}
+                {event.features.certificates && <Badge variant="secondary">{tr('compete.certificates')}</Badge>}
+                {event.features.demo_video === 'required' && <Badge variant="secondary">{tr('compete.demoRequired')}</Badge>}
                 {event.features.sponsor_tracks?.length > 0 && (
-                  <Badge variant="secondary">{event.features.sponsor_tracks.length} sponsor tracks</Badge>
+                  <Badge variant="secondary">{tr('compete.countSponsorTracks', { count: event.features.sponsor_tracks.length })}</Badge>
                 )}
               </div>
             </Panel>
@@ -989,7 +982,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Problems Tab */}
         <TabsContent value="problems" className="mt-4 space-y-3">
           {(!event.tasks || event.tasks.length === 0) ? (
-            <EmptyState illustration="coding" variant="default" title="No problems yet" description="The organizer hasn’t added problems to this event yet." />
+            <EmptyState illustration="coding" variant="default" title={tr('compete.noProblemsYet')} description={tr('compete.theOrganizerHasntAddedProblemsTod4d')} />
           ) : (
             event.tasks.sort((a, b) => (a.order || 0) - (b.order || 0)).map((task, i) => (
               <Card key={task.problem_slug} className="gap-0 rounded-2xl p-4">
@@ -1005,8 +998,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         task.difficulty === 'medium' ? 'bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-400' :
                         'bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400'
                       }`}>{task.difficulty}</Badge>
-                      <span className="text-xs tabular-nums text-muted-foreground">{task.points} pts</span>
-                      {task.required && <Badge variant="secondary" className="text-[10px]">Required</Badge>}
+                      <span className="text-xs tabular-nums text-muted-foreground">{tr('compete.pointsPts', { points: task.points })}</span>
+                      {task.required && <Badge variant="secondary" className="text-[10px]">{tr('compete.required')}</Badge>}
                     </div>
                   </div>
                 </div>
@@ -1020,13 +1013,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           {!myTeam ? (
             <Card className="items-center gap-2 rounded-3xl p-10 text-center">
               <Send className="h-8 w-8 text-primary/60" aria-hidden />
-              <p className="text-sm text-muted-foreground">Join a team to see your submissions here.</p>
+              <p className="text-sm text-muted-foreground">{tr('compete.joinATeamToSeeYourd38')}</p>
             </Card>
           ) : submissions.length === 0 ? (
-            <EmptyState illustration="upload" variant="sessions" title="No submissions yet" description="Your team’s entries will appear here." />
+            <EmptyState illustration="upload" variant="sessions" title={tr('compete.noSubmissionsYet')} description={tr('compete.yourTeamsEntriesWillAppearHere')} />
           ) : (
             submissions.map(sub => {
-              const statusConfig = STATUS_CONFIG[sub.status] || STATUS_CONFIG.submitted
+              const statusConfig = STATUS_CONFIG(tr)[sub.status] || STATUS_CONFIG(tr).submitted
               return (
                 <Card key={sub.id} className="gap-0 rounded-2xl p-4">
                   <div className="flex items-center justify-between gap-3">
@@ -1038,7 +1031,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                         <span className="text-xs text-muted-foreground">{formatDateTime(sub.submitted_at)}</span>
                       </div>
                       {sub.rejection_reason && (
-                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">Reason: {sub.rejection_reason}</p>
+                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">{tr('compete.reasonRejectionReason', { rejection_reason: sub.rejection_reason })}</p>
                       )}
                     </div>
                   </div>
@@ -1051,7 +1044,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         {/* Leaderboard Tab */}
         <TabsContent value="leaderboard" className="mt-4 space-y-3">
           {leaderboard.length === 0 ? (
-            <EmptyState illustration="leaderboard" variant="default" title="No teams on the leaderboard yet" description="Teams show up here once they start scoring." />
+            <EmptyState illustration="leaderboard" variant="default" title={tr('compete.noTeamsOnTheLeaderboardYet')} description={tr('compete.teamsShowUpHereOnceTheyeb8')} />
           ) : (
             <>
               {/* Top 3 podium — only once results are released (ranks come from judged totals) */}
@@ -1066,7 +1059,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <Card key={entry.team_id} className={`min-w-0 items-center gap-1 rounded-3xl p-3 text-center sm:p-5 ${rank === 0 ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
                         <div className={colors[rank]}>{icons[rank]}</div>
                         <p className="mt-1 w-full truncate text-sm font-semibold text-foreground">{entry.team_name}</p>
-                        <p className="text-xs tabular-nums text-muted-foreground">{entry.total_score ?? 0} points</p>
+                        <p className="text-xs tabular-nums text-muted-foreground">{entry.total_score ?? 0}{' '}{tr('compete.points')}</p>
                       </Card>
                     )
                   })}
@@ -1082,8 +1075,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <span className="text-xs text-muted-foreground">{entry.members.join(', ')}</span>
                     </div>
                     <div className="text-right shrink-0">
-                      <span className="block text-sm font-medium tabular-nums">{entry.total_score !== null ? `${entry.total_score} points` : 'Scores after release'}</span>
-                      <span className="text-xs tabular-nums text-muted-foreground">{entry.submissions} submissions</span>
+                      <span className="block text-sm font-medium tabular-nums">{entry.total_score !== null ? tr('compete.totalScorePoints', { total_score: entry.total_score }) : tr('compete.scoresAfterRelease')}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{tr('compete.submissionsSubmissions', { submissions: entry.submissions })}</span>
                     </div>
                   </div>
                 ))}
@@ -1097,10 +1090,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           {judgeLoading ? (
             <Card className="items-center gap-2 rounded-3xl p-10 text-center">
               <Loader2 className="h-6 w-6 animate-spin text-primary motion-reduce:animate-none" />
-              <p className="text-sm text-muted-foreground">Loading submissions…</p>
+              <p className="text-sm text-muted-foreground">{tr('compete.loadingSubmissions')}</p>
             </Card>
           ) : judgeSubmissions.length === 0 ? (
-            <EmptyState illustration="upload" variant="sessions" title="No submissions to review yet" description="They’ll appear here as teams submit." />
+            <EmptyState illustration="upload" variant="sessions" title={tr('compete.noSubmissionsToReviewYet')} description={tr('compete.theyllAppearHereAsTeamsSubmit')} />
           ) : (
             <div className="space-y-4">
               {/* 4-step judging workflow — counts derived from existing state */}
@@ -1147,51 +1140,43 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'evaluate' && (
                 <div id="judge-evaluate" className="space-y-4 scroll-mt-4">
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">Steps 1–3 — Evaluate submissions</h3>
-                    <p className="text-sm text-muted-foreground">Work each row left to right: audit the repo, run AI screening, then record a human score.</p>
+                    <h3 className="text-base font-semibold text-foreground">{tr('compete.steps13EvaluateSubmissions')}</h3>
+                    <p className="text-sm text-muted-foreground">{tr('compete.workEachRowLeftToRight981')}</p>
                   </div>
                   {(Object.keys(audits || {}).length === 0 && (screenBoard || []).length === 0 && (humanScores || []).length === 0) ? (
                     <Card className="space-y-3 rounded-3xl border-primary/20 bg-primary/5 p-5">
                       <div>
-                        <h3 className="text-sm font-semibold text-foreground">Get judging started</h3>
-                        <p className="text-xs text-muted-foreground">No repo audits, AI scores, or judge scores yet — work the list top to bottom.</p>
+                        <h3 className="text-sm font-semibold text-foreground">{tr('compete.getJudgingStarted')}</h3>
+                        <p className="text-xs text-muted-foreground">{tr('compete.noRepoAuditsAiScoresOr54f')}</p>
                       </div>
                       <ol className="space-y-2 text-sm">
                         <li className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs text-muted-foreground">1.</span>
-                          <span className="flex-1 min-w-[140px]">Audit repos for hard evidence</span>
+                          <span className="flex-1 min-w-[140px]">{tr('compete.auditReposForHardEvidence')}</span>
                           <Button size="sm" variant="outline" onClick={() => { void runAuditAll() }} disabled={auditingAll} className="h-8">
-                            {auditingAll && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                            Audit all pending ({groupedSubmissions.filter((s: any) => s && !((audits || {})[s.id])).length})
-                          </Button>
+                            {auditingAll && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{tr('compete.auditAllPendingCount', { count: groupedSubmissions.filter((s: any) => s && !((audits || {})[s.id])).length })}</Button>
                         </li>
                         <li className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs text-muted-foreground">2.</span>
-                          <span className="flex-1 min-w-[140px]">Run AI screening over the evidence</span>
+                          <span className="flex-1 min-w-[140px]">{tr('compete.runAiScreeningOverTheEvidence')}</span>
                           <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-8">
-                            {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                            Screen all
-                          </Button>
+                            {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}{tr('compete.screenAll')}</Button>
                         </li>
                         <li className="flex flex-wrap items-center gap-2">
                           <span className="font-mono text-xs text-muted-foreground">3.</span>
-                          <span className="flex-1 min-w-[140px]">Record human scores with the Score button on any row below</span>
+                          <span className="flex-1 min-w-[140px]">{tr('compete.recordHumanScoresWithTheScoreabf')}</span>
                         </li>
                       </ol>
                     </Card>
                   ) : (
                     <div id="judge-eval-bulk" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border/70 bg-muted/30 px-4 py-3 scroll-mt-4">
-                      <span className="text-sm font-semibold text-foreground">Bulk actions</span>
-                      <span className="text-xs tabular-nums text-muted-foreground">{totalJudgeSubs} submissions · {auditedJudgeCount} audited · {screenedJudgeCount} screened · {scoredJudgeCount} scored</span>
+                      <span className="text-sm font-semibold text-foreground">{tr('compete.bulkActions')}</span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{tr('compete.totaljudgesubsSubmissionsAuditedjudgecou82f', { totalJudgeSubs, auditedJudgeCount, screenedJudgeCount, scoredJudgeCount })}</span>
                       <span className="ml-auto flex flex-wrap gap-2">
                         <Button size="sm" variant="outline" onClick={() => { void runAuditAll() }} disabled={auditingAll} className="h-8">
-                          {auditingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
-                          Audit all pending ({groupedSubmissions.filter((s: any) => s && !((audits || {})[s.id])).length})
-                        </Button>
+                          {auditingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}{tr('compete.auditAllPendingCount', { count: groupedSubmissions.filter((s: any) => s && !((audits || {})[s.id])).length })}</Button>
                         <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-8">
-                          {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                          Screen all
-                        </Button>
+                          {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}{tr('compete.screenAll')}</Button>
                       </span>
                     </div>
                   )}
@@ -1199,7 +1184,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <DataTable
                       columns={columns}
                       data={groupedSubmissions}
-                      searchPlaceholder="Search by team or problem…"
+                      searchPlaceholder={tr('compete.searchByTeamOrProblem')}
                       searchKeys={['team_name', 'problem_slug']}
                     />
                   </div>
@@ -1209,22 +1194,20 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'board' && (
                 <div id="judge-board" className="space-y-4 scroll-mt-4">
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">Step 4 — Review & publish</h3>
-                    <p className="text-sm text-muted-foreground">Blended AI + human board with calibration — advisory until results are released.</p>
+                    <h3 className="text-base font-semibold text-foreground">{tr('compete.step4ReviewPublish')}</h3>
+                    <p className="text-sm text-muted-foreground">{tr('compete.blendedAiHumanBoardWithCalibration340')}</p>
                   </div>
                   {/* J3/J4 (a): judging config summary — published rubric, read-only */}
                   <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs">
-                    <span className="mr-1 text-sm font-semibold text-foreground">Judging rubric</span>
-                    <Badge variant="secondary">{judgingCfg.criteria.length} criteria</Badge>
-                    <Badge variant="outline">
-                      AI {Math.round(judgingCfg.aiWeight * 100)}% / human {Math.round((1 - judgingCfg.aiWeight) * 100)}%
-                    </Badge>
-                    <Badge variant="outline">Top {judgingCfg.advanceTopN} advance</Badge>
-                    <Badge variant="outline">Top {judgingCfg.displayCount} published</Badge>
-                    {judgingCfg.blindMode && <Badge variant="outline" className="bg-muted">Blind mode</Badge>}
-                    {judgingCfg.dropHighLow && <Badge variant="outline" className="bg-muted">Drop high/low</Badge>}
+                    <span className="mr-1 text-sm font-semibold text-foreground">{tr('compete.judgingRubric')}</span>
+                    <Badge variant="secondary">{tr('compete.countCriteria', { count: judgingCfg.criteria.length })}</Badge>
+                    <Badge variant="outline">{tr('compete.aiNHumanN2', { n: Math.round(judgingCfg.aiWeight * 100), n2: Math.round((1 - judgingCfg.aiWeight) * 100) })}</Badge>
+                    <Badge variant="outline">{tr('compete.topAdvancetopnAdvance', { advanceTopN: judgingCfg.advanceTopN })}</Badge>
+                    <Badge variant="outline">{tr('compete.topDisplaycountPublished', { displayCount: judgingCfg.displayCount })}</Badge>
+                    {judgingCfg.blindMode && <Badge variant="outline" className="bg-muted">{tr('compete.blindMode')}</Badge>}
+                    {judgingCfg.dropHighLow && <Badge variant="outline" className="bg-muted">{tr('compete.dropHighLow')}</Badge>}
                     <details className="text-xs">
-                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Weights</summary>
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{tr('compete.weights')}</summary>
                       <span className="text-muted-foreground">
                         {(judgingCfg.criteria || []).map((c) => `${c.label} ×${c.weight}`).join(' · ')}
                       </span>
@@ -1233,10 +1216,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {/* J3/J4 (b): calibration — per-judge means, |z|>1.5 flagged */}
                   {calibStats.length > 0 && (
                     <details className="rounded-2xl border border-border/70 bg-card px-4 py-3">
-                      <summary className="cursor-pointer text-sm font-semibold text-foreground">
-                        Calibration <span className="font-normal text-muted-foreground">· {calibStats.length} judge{calibStats.length === 1 ? '' : 's'} — outliers flagged</span>
+                      <summary className="cursor-pointer text-sm font-semibold text-foreground">{tr('compete.calibration')}{' '}<span className="font-normal text-muted-foreground">{tr('compete.countJudgesOutliersFlagged', { count: calibStats.length })}</span>
                       </summary>
-                      <p className="mt-1 text-xs text-muted-foreground">Per-judge scoring means. Judges whose mean is more than 1.5σ from the panel are flagged.</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{tr('compete.perJudgeScoringMeansJudgesWhoseea6')}</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         {calibStats.map((st) => (
                           <Badge
@@ -1245,7 +1227,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             title={`z = ${st.z}`}
                             className={`text-[11px] font-mono ${st.outlier ? 'bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-400' : ''}`}
                           >
-                            {(st.judgeId || '').slice(0, 8)} μ={st.mean} σ={st.std} n={st.count}{st.outlier ? ' · outlier' : ''}
+                            {(st.judgeId || '').slice(0, 8)} μ={st.mean} σ={st.std} n={st.count}{st.outlier ? tr('compete.outlier') : ''}
                           </Badge>
                         ))}
                       </div>
@@ -1256,12 +1238,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <Card className="space-y-3 rounded-3xl p-5">
                       <div>
                         <h3 className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-                          <Trophy className="w-4 h-4 text-primary" /> Final board
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                          AI {Math.round(judgingCfg.aiWeight * 100)}% + human blended
-                          {judgingCfg.dropHighLow ? ', high/low dropped' : ''} — advisory until results are released.
-                        </p>
+                          <Trophy className="w-4 h-4 text-primary" />{' '}{tr('compete.finalBoard')}</h3>
+                        <p className="text-xs text-muted-foreground">{tr('compete.aiNHumanBlendedValueAdvisoryf0e', { n: Math.round(judgingCfg.aiWeight * 100), value: judgingCfg.dropHighLow ? tr('compete.highLowDropped') : '' })}</p>
                       </div>
                       <div className="space-y-2">
                         {rankedBoard.map((r, i) => {
@@ -1274,18 +1252,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                 <span className="w-6 text-center font-mono text-xs tabular-nums text-muted-foreground">#{i + 1}</span>
                                 <span className="flex-1 min-w-0 truncate text-sm font-medium text-foreground">{name}</span>
                                 {i < judgingCfg.advanceTopN && (
-                                  <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">Advances</Badge>
+                                  <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">{tr('compete.advances')}</Badge>
                                 )}
                                 {i < judgingCfg.displayCount && (
-                                  <Badge variant="outline" className="text-[10px]">Published</Badge>
+                                  <Badge variant="outline" className="text-[10px]">{tr('compete.published')}</Badge>
                                 )}
                                 <Badge variant="outline" className="font-mono text-xs tabular-nums bg-primary/10 text-primary border-primary/30">
                                   {r.final !== null && r.final !== undefined ? r.final : '?'}
                                 </Badge>
                               </div>
                               <p className="mt-1 font-mono text-[11px] tabular-nums text-muted-foreground">
-                                AI {r.aiTotal ?? '?'}{r.aiMax !== null && r.aiMax !== undefined ? `/${r.aiMax}` : ''} · human {r.humanAvg ?? '?'} ({r.humanCount} judge{r.humanCount === 1 ? '' : 's'})
-                              </p>
+                                AI {r.aiTotal ?? '?'}{r.aiMax !== null && r.aiMax !== undefined ? `/${r.aiMax}` : ''}{' '}{tr('compete.human')}{' '}{r.humanAvg ?? '?'}{' '}{tr('compete.countJudges', { count: r.humanCount })}</p>
                             </div>
                           )
                         })}
@@ -1294,27 +1271,24 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                   <Card id="judge-publish" className="space-y-3 rounded-3xl border-primary/25 bg-primary/5 p-5 scroll-mt-4">
                     <div>
-                      <h3 className="text-sm font-semibold text-primary">Step 4 — Publish results</h3>
+                      <h3 className="text-sm font-semibold text-primary">{tr('compete.step4PublishResults')}</h3>
                       <p className="text-xs text-muted-foreground">
                         {event.results_released
-                          ? `Results released${event.released_at ? ` on ${formatDateTime(event.released_at)}` : ''}.`
-                          : 'Release when judging is complete. Unreviewed submissions score as 0 — this cannot be undone.'}
+                          ? tr('compete.resultsReleasedValue', { value: event.released_at ? ` on ${formatDateTime(event.released_at)}` : '' })
+                          : tr('compete.releaseWhenJudgingIsCompleteUnreviewedd25')}
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="mr-2 text-right">
                         <p className="text-2xl font-bold tabular-nums text-foreground">{groupedSubmissions.length}</p>
-                        <p className="text-xs text-muted-foreground">Submissions</p>
+                        <p className="text-xs text-muted-foreground">{tr('compete.submissions')}</p>
                       </div>
                       {isAdmin && !event?.results_released && (
                         <Button size="sm" variant="default" onClick={handleReleaseResults} disabled={releasingResults} className="h-9">
-                          {releasingResults ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Award className="w-4 h-4 mr-2" />}
-                          Release scores
-                        </Button>
+                          {releasingResults ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Award className="w-4 h-4 mr-2" />}{tr('compete.releaseScores')}</Button>
                       )}
                       <Button size="sm" variant="outline" onClick={exportResults} className="h-9">
-                        <Download className="w-4 h-4 mr-2" /> Export CSV
-                      </Button>
+                        <Download className="w-4 h-4 mr-2" />{' '}{tr('compete.exportCsv')}</Button>
                     </div>
                   </Card>
                 </div>
@@ -1323,39 +1297,39 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'compare' && (
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">Tie-break comparisons</h3>
-                    <p className="text-sm text-muted-foreground">Head-to-head AI comparisons for close calls — ties allowed.</p>
+                    <h3 className="text-base font-semibold text-foreground">{tr('compete.tieBreakComparisons')}</h3>
+                    <p className="text-sm text-muted-foreground">{tr('compete.headToHeadAiComparisonsFor3b5')}</p>
                   </div>
                   {/* J3/J4 (c): head-to-head tie-break */}
                   <Card className="space-y-3 rounded-3xl p-5">
                     <div>
-                      <h3 className="text-sm font-semibold text-foreground">Head-to-head tie-break</h3>
-                      <p className="text-xs text-muted-foreground">One AI comparison on a single criterion, citing evidence. Ties allowed.</p>
+                      <h3 className="text-sm font-semibold text-foreground">{tr('compete.headToHeadTieBreak')}</h3>
+                      <p className="text-xs text-muted-foreground">{tr('compete.oneAiComparisonOnASingle251')}</p>
                     </div>
                     <div className="grid gap-2 sm:grid-cols-2">
                       <select
                         value={cmpA}
                         onChange={(e) => setCmpA(e.target.value)}
-                        aria-label="Submission A"
+                        aria-label={tr('compete.submissionA')}
                         className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                       >
-                        <option value="">Submission A…</option>
+                        <option value="">{tr('compete.submissionA2')}</option>
                         {groupedSubmissions.map((s: any, i: number) => (
                           <option key={String(s.id || i)} value={String(s.id || '')}>
-                            {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
+                            {judgingCfg.blindMode ? tr('compete.entryValue', { value: i + 1 }) : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
                           </option>
                         ))}
                       </select>
                       <select
                         value={cmpB}
                         onChange={(e) => setCmpB(e.target.value)}
-                        aria-label="Submission B"
+                        aria-label={tr('compete.submissionB')}
                         className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                       >
-                        <option value="">Submission B…</option>
+                        <option value="">{tr('compete.submissionB2')}</option>
                         {groupedSubmissions.map((s: any, i: number) => (
                           <option key={String(s.id || i)} value={String(s.id || '')}>
-                            {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
+                            {judgingCfg.blindMode ? tr('compete.entryValue', { value: i + 1 }) : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
                           </option>
                         ))}
                       </select>
@@ -1364,24 +1338,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <select
                         value={cmpCrit}
                         onChange={(e) => setCmpCrit(e.target.value)}
-                        aria-label="Criterion"
+                        aria-label={tr('compete.criterion')}
                         className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                       >
                         {JUDGING_CRITERION_KEYS.map((k) => (
-                          <option key={k} value={k}>{JUDGING_CRITERION_LABELS[k] || k}</option>
+                          <option key={k} value={k}>{td(`compete.judgingCriterionLabels:${k}`, JUDGING_CRITERION_LABELS[k]) || k}</option>
                         ))}
                       </select>
                       <Button size="sm" onClick={() => { void runCompare() }} disabled={comparing || !cmpA || !cmpB || cmpA === cmpB} className="h-9">
-                        {comparing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                        Compare
-                      </Button>
+                        {comparing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{tr('compete.compare')}</Button>
                     </div>
                     {cmpResult && (
                       <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm" role="status">
                         <span className="font-semibold text-foreground">
                           {cmpResult.winner === 'tie'
-                            ? 'Tie'
-                            : `Winner: ${groupedSubmissions.find((s: any) => s && String(s.id) === (cmpResult.winner === 'A' ? cmpA : cmpB))?.team_name || (cmpResult.winner === 'A' ? cmpA : cmpB)} (${cmpResult.winner})`}
+                            ? tr('compete.tie')
+                            : tr('compete.winnerValueWinner', { value: groupedSubmissions.find((s: any) => s && String(s.id) === (cmpResult.winner === 'A' ? cmpA : cmpB))?.team_name || (cmpResult.winner === 'A' ? cmpA : cmpB), winner: cmpResult.winner })}
                         </span>
                         <p className="text-xs text-muted-foreground mt-1">{cmpResult.reason}</p>
                       </div>
@@ -1393,13 +1365,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               {judgeSubTab === 'reports' && (
                 <div id="judge-reports" className="space-y-4 scroll-mt-4">
                   <div>
-                    <h3 className="text-base font-semibold text-foreground">Screening & project reports</h3>
-                    <p className="text-sm text-muted-foreground">AI screening leaderboard and per-project summaries built from stored scores + evidence.</p>
+                    <h3 className="text-base font-semibold text-foreground">{tr('compete.screeningProjectReports')}</h3>
+                    <p className="text-sm text-muted-foreground">{tr('compete.aiScreeningLeaderboardAndPerProject835')}</p>
                   </div>
                   {screenBoard.length === 0 && rankedBoard.length === 0 && (
                     <Card className="items-center gap-2 rounded-3xl p-10 text-center">
                       <Sparkles className="h-8 w-8 text-primary/60" aria-hidden />
-                      <p className="text-sm text-muted-foreground">No screening results or reports yet — run audits and screening in Evaluate.</p>
+                      <p className="text-sm text-muted-foreground">{tr('compete.noScreeningResultsOrReportsYet168')}</p>
                     </Card>
                   )}
                   {screenBoard.length > 0 && (
@@ -1407,13 +1379,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <h3 className="flex items-center gap-1.5 text-sm font-semibold text-primary">
-                            <Sparkles className="w-4 h-4" /> Screening leaderboard
-                          </h3>
-                          <p className="text-xs text-muted-foreground">AI scores over repo evidence — advisory only, human judges decide. {screenedJudgeCount} of {totalJudgeSubs} screened.</p>
+                            <Sparkles className="w-4 h-4" />{' '}{tr('compete.screeningLeaderboard')}</h3>
+                          <p className="text-xs text-muted-foreground">{tr('compete.aiScoresOverRepoEvidenceAdvisory4e6', { screenedJudgeCount, totalJudgeSubs })}</p>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => gotoJudgeStep('evaluate', 'judge-eval-bulk')} className="h-9 shrink-0">
-                          Screen in Evaluate
-                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => gotoJudgeStep('evaluate', 'judge-eval-bulk')} className="h-9 shrink-0">{tr('compete.screenInEvaluate')}</Button>
                       </div>
                       <div className="space-y-2">
                         {screenBoard.map((r: any, i: number) => {
@@ -1430,16 +1399,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                               </div>
                               {crits.length > 0 && (
                                 <details className="mt-2 text-xs">
-                                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                                    Per-criterion citations
-                                  </summary>
+                                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">{tr('compete.perCriterionCitations')}</summary>
                                   <ul className="mt-1 space-y-1">
                                     {crits.map((c: any, j: number) => (
                                       <li key={c?.key || j} className="rounded-lg border border-border/70 bg-muted/30 px-2 py-1">
                                         <span className="font-medium">{c?.key || '?'}</span>
                                         <span className="font-mono"> {c?.score ?? '?'}/5</span>
-                                        <span className="text-muted-foreground"> — {c?.citation || 'no citation'}</span>
-                                        {c?.missing && <span className="text-amber-700 dark:text-amber-400"> (missing: {c.missing})</span>}
+                                        <span className="text-muted-foreground"> — {c?.citation || tr('compete.noCitation')}</span>
+                                        {c?.missing && <span className="text-amber-700 dark:text-amber-400">{' '}{tr('compete.missingMissing', { missing: c.missing })}</span>}
                                       </li>
                                     ))}
                                   </ul>
@@ -1455,8 +1422,8 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {rankedBoard.length > 0 && (
                     <Card className="space-y-3 rounded-3xl p-5">
                       <div>
-                        <h3 className="text-sm font-semibold text-foreground">Project reports</h3>
-                        <p className="text-xs text-muted-foreground">Built from stored scores + evidence — no new AI calls.</p>
+                        <h3 className="text-sm font-semibold text-foreground">{tr('compete.projectReports')}</h3>
+                        <p className="text-xs text-muted-foreground">{tr('compete.builtFromStoredScoresEvidenceNoafb')}</p>
                       </div>
                       <div className="space-y-2">
                         {rankedBoard.map((r, i) => {
@@ -1491,8 +1458,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           })
                           return (
                             <details key={String(r.sub.id || i)} className="rounded-2xl border border-border/70 bg-background p-3 text-xs">
-                              <summary className="cursor-pointer text-sm font-medium text-foreground">
-                                Report — {judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || r.sub.id || 'Unknown')} (#{i + 1})
+                              <summary className="cursor-pointer text-sm font-medium text-foreground">{tr('compete.report')}{' '}{judgingCfg.blindMode ? tr('compete.entryValue', { value: i + 1 }) : String(r.sub.team_name || r.sub.id || 'Unknown')} (#{i + 1})
                                 <span className="ml-2 text-muted-foreground font-normal">strongest: {report.strongestDimension}</span>
                               </summary>
                               <div className="mt-2 space-y-2">
@@ -1504,9 +1470,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                 ))}
                                 {(r.sub.repo_url || r.sub.live_url || r.sub.video_url) && (
                                   <div className="flex flex-wrap gap-2 pt-1">
-                                    {r.sub.repo_url && <a href={String(r.sub.repo_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Repo</a>}
-                                    {r.sub.live_url && <a href={String(r.sub.live_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Live</a>}
-                                    {r.sub.video_url && <a href={String(r.sub.video_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">Video</a>}
+                                    {r.sub.repo_url && <a href={String(r.sub.repo_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{tr('compete.repo')}</a>}
+                                    {r.sub.live_url && <a href={String(r.sub.live_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{tr('compete.live')}</a>}
+                                    {r.sub.video_url && <a href={String(r.sub.video_url)} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">{tr('compete.video')}</a>}
                                   </div>
                                 )}
                               </div>
@@ -1525,7 +1491,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           <Sheet open={isJudgeSheetOpen} onOpenChange={setIsJudgeSheetOpen}>
             <SheetContent side="right" className="w-full sm:max-w-[540px] overflow-y-auto p-0">
               <SheetHeader className="p-6 pb-4 border-b border-border/70">
-                <SheetTitle>Evaluate submission</SheetTitle>
+                <SheetTitle>{tr('compete.evaluateSubmission')}</SheetTitle>
               </SheetHeader>
               {selectedSub && (
                 <div className="p-6 space-y-6">
@@ -1534,7 +1500,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <h3 className="text-sm font-semibold text-foreground">{selectedSub.team_name}</h3>
                       <p className="text-xs text-muted-foreground">{selectedSub.problem_slug}</p>
                     </div>
-                    <Badge variant="outline" className={(STATUS_CONFIG[selectedSub.status] || STATUS_CONFIG.submitted).color}>{(STATUS_CONFIG[selectedSub.status] || { label: selectedSub.status }).label}</Badge>
+                    <Badge variant="outline" className={(STATUS_CONFIG(tr)[selectedSub.status] || STATUS_CONFIG(tr).submitted).color}>{(STATUS_CONFIG(tr)[selectedSub.status] || { label: selectedSub.status }).label}</Badge>
                   </div>
 
                   {/* Status actions — follow lib/hackathons/submission-state. Scoring below moves it to "scored". */}
@@ -1544,13 +1510,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       <div className="flex flex-wrap gap-2">
                         {(st === 'submitted' || st === 'scored' || st === 'rejected') && canTransition(st, 'under_review') && (
                           <Button size="sm" variant="outline" className="flex-1" onClick={() => updateSubmissionStatus(selectedSub.id, 'under_review')}>
-                            <Eye className="w-3.5 h-3.5 mr-1" /> {st === 'submitted' ? 'Start review' : st === 'rejected' ? 'Reinstate for review' : 'Reopen review'}
+                            <Eye className="w-3.5 h-3.5 mr-1" /> {st === 'submitted' ? tr('compete.startReview') : st === 'rejected' ? tr('compete.reinstateForReview') : tr('compete.reopenReview')}
                           </Button>
                         )}
                         {canTransition(st, 'rejected') && (
                           <Button size="sm" variant="outline" className="flex-1 text-red-700 dark:text-red-400" onClick={() => setRejectingSub(selectedSub)}>
-                            <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
-                          </Button>
+                            <XCircle className="w-3.5 h-3.5 mr-1" />{' '}{tr('compete.reject')}</Button>
                         )}
                       </div>
                     )
@@ -1559,12 +1524,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {/* Submission Info */}
                   <div className="grid grid-cols-2 gap-4 rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm">
                     <div>
-                      <span className="text-muted-foreground text-xs font-medium block mb-1">Submitted</span>
+                      <span className="text-muted-foreground text-xs font-medium block mb-1">{tr('compete.submitted')}</span>
                       <span className="font-semibold tabular-nums text-foreground">{formatDateTime(selectedSub.submitted_at)}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground text-xs font-medium block mb-1">Current score</span>
-                      <span className="font-semibold tabular-nums text-primary">{selectedSub.score ?? 'Not scored'}</span>
+                      <span className="text-muted-foreground text-xs font-medium block mb-1">{tr('compete.currentScore')}</span>
+                      <span className="font-semibold tabular-nums text-primary">{selectedSub.score ?? tr('compete.notScored')}</span>
                     </div>
                   </div>
 
@@ -1572,31 +1537,31 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <div className="flex flex-wrap gap-2">
                     {selectedSub.repo_url && (
                       <Button size="sm" variant="outline" className="gap-1.5" asChild>
-                        <a href={selectedSub.repo_url} target="_blank" rel="noopener noreferrer"><Code className="w-3.5 h-3.5" /> GitHub repo</a>
+                        <a href={selectedSub.repo_url} target="_blank" rel="noopener noreferrer"><Code className="w-3.5 h-3.5" />{' '}{tr('compete.githubRepo')}</a>
                       </Button>
                     )}
                     {selectedSub.video_url && (
                       <Button size="sm" variant="outline" className="gap-1.5" asChild>
-                        <a href={selectedSub.video_url} target="_blank" rel="noopener noreferrer"><Eye className="w-3.5 h-3.5" /> Video demo</a>
+                        <a href={selectedSub.video_url} target="_blank" rel="noopener noreferrer"><Eye className="w-3.5 h-3.5" />{' '}{tr('compete.videoDemo')}</a>
                       </Button>
                     )}
                     {selectedSub.live_url && (
                       <Button size="sm" variant="outline" className="gap-1.5" asChild>
-                        <a href={selectedSub.live_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5" /> Live URL</a>
+                        <a href={selectedSub.live_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-3.5 h-3.5" />{' '}{tr('compete.liveUrl')}</a>
                       </Button>
                     )}
                   </div>
 
                   {selectedSub.comment && (
                     <div className="rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm">
-                      <span className="text-muted-foreground text-xs font-medium block mb-2">Team comment</span>
+                      <span className="text-muted-foreground text-xs font-medium block mb-2">{tr('compete.teamComment')}</span>
                       <p className="text-foreground leading-relaxed">{selectedSub.comment}</p>
                     </div>
                   )}
 
                   {selectedSub.code && (
                     <div className="space-y-1">
-                      <Label className="text-xs">Submitted code</Label>
+                      <Label className="text-xs">{tr('compete.submittedCode')}</Label>
                       <pre className="max-h-60 overflow-x-auto overflow-y-auto rounded-xl border border-border/70 bg-muted p-3 font-mono text-xs text-foreground">{selectedSub.code}</pre>
                     </div>
                   )}
@@ -1605,19 +1570,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {selectedSub.score !== null && !isEditingScore ? (
                     <div className="border-t border-border/70 pt-6 space-y-4">
                       <div className="flex items-center justify-between">
-                        <h4 className="text-base font-semibold text-foreground">Score summary</h4>
-                        <Button size="sm" variant="outline" onClick={() => setIsEditingScore(true)}>
-                          Edit score
-                        </Button>
+                        <h4 className="text-base font-semibold text-foreground">{tr('compete.scoreSummary')}</h4>
+                        <Button size="sm" variant="outline" onClick={() => setIsEditingScore(true)}>{tr('compete.editScore')}</Button>
                       </div>
                       <div className="space-y-2 rounded-2xl border border-primary/20 bg-primary/5 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-foreground">Total score</span>
+                          <span className="text-sm font-medium text-foreground">{tr('compete.totalScore')}</span>
                           <span className="text-lg font-bold tabular-nums text-primary">{selectedSub.score} <span className="text-sm text-muted-foreground font-normal">/ {selectedSub.max_score}</span></span>
                         </div>
                         {selectedSub.feedback && (
                           <div className="pt-2 border-t border-primary/10">
-                            <span className="text-xs text-muted-foreground block mb-1">Feedback given</span>
+                            <span className="text-xs text-muted-foreground block mb-1">{tr('compete.feedbackGiven')}</span>
                             <p className="text-sm text-foreground">{selectedSub.feedback}</p>
                           </div>
                         )}
@@ -1625,7 +1588,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     </div>
                   ) : (
                     <div className="border-t border-border/70 pt-6 space-y-5">
-                      <h4 className="text-base font-semibold text-foreground">Score this submission</h4>
+                      <h4 className="text-base font-semibold text-foreground">{tr('compete.scoreThisSubmission')}</h4>
 
                       {event.features?.judging_rubrics ? (
                         /* Rubric-based scoring */
@@ -1658,14 +1621,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             </div>
                           ))}
                           <div className="mt-2 flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 p-4" aria-live="polite">
-                            <span className="text-sm font-medium text-primary">Total score</span>
+                            <span className="text-sm font-medium text-primary">{tr('compete.totalScore')}</span>
                             <span className="font-mono text-xl font-bold tabular-nums text-primary">{scoreForm.rubric_scores?.total_score ?? 0} <span className="text-sm text-muted-foreground font-normal">/ 100</span></span>
                           </div>
                         </div>
                       ) : (
                         /* Simple 0-100 scoring */
                         <div className="space-y-2">
-                          <Label htmlFor="judge-score">Score (0–100)</Label>
+                          <Label htmlFor="judge-score">{tr('compete.score0100')}</Label>
                           <Input
                             id="judge-score"
                             type="number"
@@ -1679,26 +1642,24 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       )}
 
                       <div className="space-y-2">
-                        <Label htmlFor="judge-feedback">Feedback</Label>
+                        <Label htmlFor="judge-feedback">{tr('compete.feedback')}</Label>
                         <Textarea
                           id="judge-feedback"
                           rows={4}
                           value={scoreForm.feedback}
                           onChange={(e) => setScoreForm(f => ({ ...f, feedback: e.target.value }))}
-                          placeholder="Give the team constructive feedback…"
+                          placeholder={tr('compete.giveTheTeamConstructiveFeedback')}
                           className="resize-none"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 pt-2">
-                        <Button variant="outline" className="w-full" onClick={() => { setIsJudgeSheetOpen(false) }}>Cancel</Button>
+                        <Button variant="outline" className="w-full" onClick={() => { setIsJudgeSheetOpen(false) }}>{tr('common.cancel')}</Button>
                         <Button className="w-full" onClick={async () => {
                           await submitScore()
                           setIsJudgeSheetOpen(false)
                         }} disabled={scoring}>
-                          {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                          Submit score
-                        </Button>
+                          {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}{tr('compete.submitScore')}</Button>
                       </div>
                     </div>
                   )}
@@ -1706,9 +1667,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   {/* Revision History */}
                   {selectedSub.history && selectedSub.history.length > 1 && (
                     <div className="border-t border-border/70 pt-6 space-y-4">
-                      <h4 className="flex items-center justify-between text-base font-semibold text-foreground">
-                        Revision history
-                        <Badge variant="secondary" className="font-normal tabular-nums">{selectedSub.history.length} total</Badge>
+                      <h4 className="flex items-center justify-between text-base font-semibold text-foreground">{tr('compete.revisionHistory')}<Badge variant="secondary" className="font-normal tabular-nums">{tr('compete.countTotal', { count: selectedSub.history.length })}</Badge>
                       </h4>
                       <div className="space-y-3">
                         {selectedSub.history.map((rev: any, idx: number) => {
@@ -1735,27 +1694,24 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                             >
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <span className="font-semibold text-foreground block">
-                                    Revision {selectedSub.history.length - idx} {isCurrent && <span className="ml-2 text-xs font-medium text-primary">(viewing)</span>}
+                                  <span className="font-semibold text-foreground block">{tr('compete.revision')}{' '}{selectedSub.history.length - idx} {isCurrent && <span className="ml-2 text-xs font-medium text-primary">{tr('compete.viewing')}</span>}
                                   </span>
                                   <span className="text-muted-foreground text-xs">{formatDateTime(rev.submitted_at)}</span>
                                 </div>
                                 <div className="text-right">
                                   <Badge variant="outline" className="text-[10px]">{rev.status}</Badge>
-                                  {rev.score !== null && <span className="mt-1 block text-xs font-medium tabular-nums text-primary">Score: {rev.score}</span>}
+                                  {rev.score !== null && <span className="mt-1 block text-xs font-medium tabular-nums text-primary">{tr('compete.scoreScore', { score: rev.score })}</span>}
                                 </div>
                               </div>
                               {(rev.repo_url || rev.live_url) && (
                                 <div className="flex flex-wrap gap-2">
                                   {rev.repo_url && (
                                     <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-medium text-primary hover:underline">
-                                      <Code className="w-3 h-3 mr-1" /> Repo
-                                    </a>
+                                      <Code className="w-3 h-3 mr-1" />{' '}{tr('compete.repo')}</a>
                                   )}
                                   {rev.live_url && (
                                     <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-medium text-primary hover:underline">
-                                      <ExternalLink className="w-3 h-3 mr-1" /> Live
-                                    </a>
+                                      <ExternalLink className="w-3 h-3 mr-1" />{' '}{tr('compete.live')}</a>
                                   )}
                                 </div>
                               )}
@@ -1780,7 +1736,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <TabsContent value="results" className="mt-4">
           <Card className="items-center gap-2 rounded-3xl p-10 text-center">
             <Trophy className="h-8 w-8 text-primary/60" aria-hidden />
-            <p className="text-sm text-muted-foreground">Results for this event have been released.</p>
+            <p className="text-sm text-muted-foreground">{tr('compete.resultsForThisEventHaveBeenab8')}</p>
           </Card>
         </TabsContent>
 
@@ -1788,29 +1744,28 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         <TabsContent value="settings" className="mt-4">
           <Card className="space-y-4 rounded-3xl p-6">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h4 className="text-sm font-semibold text-foreground">Event settings</h4>
+              <h4 className="text-sm font-semibold text-foreground">{tr('compete.eventSettings')}</h4>
               <Button size="sm" variant="outline" className="gap-1.5" asChild>
                 <Link href={`/dashboard/admin/hackathons/edit/${event.id}`}>
-                  <Settings className="w-3.5 h-3.5" /> Edit event
-                </Link>
+                  <Settings className="w-3.5 h-3.5" />{' '}{tr('compete.editEvent')}</Link>
               </Button>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-muted-foreground text-xs block">Status</span>
+                <span className="text-muted-foreground text-xs block">{tr('compete.status')}</span>
                 <span className="font-medium capitalize text-foreground">{event.status}</span>
               </div>
               <div>
-                <span className="text-muted-foreground text-xs block">Event type</span>
-                <span className="font-medium capitalize text-foreground">{event.event_type || 'hackathon'}</span>
+                <span className="text-muted-foreground text-xs block">{tr('compete.eventType')}</span>
+                <span className="font-medium capitalize text-foreground">{event.event_type || tr('compete.hackathon')}</span>
               </div>
               <div>
-                <span className="text-muted-foreground text-xs block">Auto-grade</span>
-                <span className="font-medium text-foreground">{event.scoring?.auto_grade ? 'Yes' : 'No'}</span>
+                <span className="text-muted-foreground text-xs block">{tr('compete.autoGrade')}</span>
+                <span className="font-medium text-foreground">{event.scoring?.auto_grade ? tr('compete.yes2') : tr('compete.no2')}</span>
               </div>
               <div>
-                <span className="text-muted-foreground text-xs block">Results released</span>
-                <span className="font-medium text-foreground">{event.results_released ? 'Yes' : 'No'}</span>
+                <span className="text-muted-foreground text-xs block">{tr('compete.resultsReleased2')}</span>
+                <span className="font-medium text-foreground">{event.results_released ? tr('compete.yes2') : tr('compete.no2')}</span>
               </div>
             </div>
           </Card>
@@ -1821,28 +1776,25 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       <Dialog open={!!rejectingSub} onOpenChange={() => setRejectingSub(null)}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Reject submission</DialogTitle>
+            <DialogTitle>{tr('compete.rejectSubmission')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              Rejecting submission for <strong>{rejectingSub?.team_name}</strong> — {rejectingSub?.problem_slug}
+            <p className="text-sm text-muted-foreground">{tr('compete.rejectingSubmissionFor')}{' '}<strong>{rejectingSub?.team_name}</strong> — {rejectingSub?.problem_slug}
             </p>
             <div className="space-y-2">
-              <Label htmlFor="reject-reason">Rejection reason <span className="text-destructive">*</span></Label>
+              <Label htmlFor="reject-reason">{tr('compete.rejectionReason')}{' '}<span className="text-destructive">*</span></Label>
               <Textarea
                 id="reject-reason"
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="Explain why (required)…"
+                placeholder={tr('compete.explainWhyRequired')}
                 rows={3}
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRejectingSub(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmReject} disabled={!rejectionReason.trim()}>
-              Reject submission
-            </Button>
+            <Button variant="outline" onClick={() => setRejectingSub(null)}>{tr('common.cancel')}</Button>
+            <Button variant="destructive" onClick={confirmReject} disabled={!rejectionReason.trim()}>{tr('compete.rejectSubmission')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

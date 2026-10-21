@@ -14,7 +14,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const fixId = typeof body.fix_id === 'string' ? body.fix_id.trim() : ''

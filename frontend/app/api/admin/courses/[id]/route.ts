@@ -7,7 +7,7 @@ import { auditAdmin } from '@/lib/admin-audit'
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   const { id } = await params
@@ -15,19 +15,19 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id })
     if (!course) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
     }
     return NextResponse.json({ data: course })
   } catch (e) {
     console.error('[admin/courses/[id]]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   const { id } = await params
@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     knowledgeOnLibraryChange('course', id)
 
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
     }
 
     const updatedCourse = await db.collection('courses').findOne({ id })
@@ -54,14 +54,14 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     return NextResponse.json({ data: updatedCourse })
   } catch (e) {
     console.error('[admin/courses/[id]]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   const { id } = await params
@@ -80,13 +80,13 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     await db.collection('course_enrollments').deleteMany({ courseId: id })
 
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
     }
     
     await auditAdmin(user, 'admin.course.delete', 'course', `course/${id}`, undefined, 'warning')
     return NextResponse.json({ success: true })
   } catch (e) {
     console.error('[admin/courses/[id]]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

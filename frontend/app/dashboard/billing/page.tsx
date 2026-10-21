@@ -1,6 +1,6 @@
 'use client'
 import { EmptyState } from '@/components/ui/empty-state'
-import { formatDateTime, formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -39,6 +39,7 @@ import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skel
 import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 import { useCurrency } from '@/lib/use-currency'
 import { Illustration } from '@/components/illustrations/spot'
+import { useT } from '@/lib/i18n/client'
 
 type InvoiceRow = {
   id: string
@@ -92,6 +93,8 @@ type PaymentMethod = {
 }
 
 function BillingContent() {
+  const { formatDate, formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const addToast = useToast()
   const searchParams = useSearchParams()
   const [subscription, setSubscription] = useState<Subscription | null>(null)
@@ -137,7 +140,7 @@ function BillingContent() {
     // Don't guess the plan when the server can't tell us — show an error instead.
     if (!subRes.ok) {
       const j = await subRes.json().catch(() => ({}))
-      throw new Error(typeof j.error === 'string' && subRes.status !== 500 ? j.error : `Billing service returned ${subRes.status}`)
+      throw new Error(typeof j.error === 'string' && subRes.status !== 500 ? j.error : t('account.billingServiceReturnedStatus', { status: subRes.status }))
     }
     let planList: Plan[] = []
     if (planRes.ok) { const d = await planRes.json(); planList = Array.isArray(d) ? d : []; setPlans(planList) }
@@ -206,8 +209,8 @@ function BillingContent() {
         if (!cancelled && searchParams.get('session_id')) {
           addToast({
             type: 'success',
-            title: 'Checkout complete',
-            message: 'Stripe is syncing your subscription. This may take a few seconds.',
+            title: t('account.checkoutComplete'),
+            message: t('account.stripeIsSyncingYourSubscriptionThisffa'),
             duration: 8000,
           })
           for (let i = 0; i < 6 && !cancelled; i++) {
@@ -218,33 +221,33 @@ function BillingContent() {
         // PhonePe return: the server already re-checked the status; poll while pending.
         const phonepeStatus = searchParams.get('payment') === 'phonepe' ? searchParams.get('status') : null
         if (!cancelled && phonepeStatus === 'success') {
-          addToast({ type: 'success', title: 'Payment confirmed', message: 'Your plan is updated.' })
+          addToast({ type: 'success', title: t('account.paymentConfirmed'), message: t('account.yourPlanIsUpdated') })
         } else if (!cancelled && phonepeStatus === 'pending') {
-          addToast({ type: 'info', title: 'Payment pending', message: 'PhonePe is still confirming the payment. This page will refresh.', duration: 8000 })
+          addToast({ type: 'info', title: t('account.paymentPending'), message: t('account.phonepeIsStillConfirmingThePayment2d5'), duration: 8000 })
           for (let i = 0; i < 6 && !cancelled; i++) {
             await new Promise((r) => setTimeout(r, 2500))
             await load()
           }
         } else if (!cancelled && phonepeStatus === 'failed') {
-          addToast({ type: 'error', title: 'Payment not completed', message: 'No plan change was made. You can try again.' })
+          addToast({ type: 'error', title: t('account.paymentNotCompleted'), message: t('account.noPlanChangeWasMadeYou85b') })
         }
         if (!cancelled && searchParams.get('canceled') === '1') {
           addToast({
             type: 'info',
-            title: 'Checkout canceled',
-            message: 'No charges were made. You can upgrade again anytime.',
+            title: t('account.checkoutCanceled'),
+            message: t('account.noChargesWereMadeYouCan91f'),
           })
         }
         if (!cancelled && searchParams.get('error')) {
           addToast({
             type: 'error',
-            title: 'Billing',
-            message: 'Something went wrong during checkout. Try again or contact support.',
+            title: t('account.billing'),
+            message: t('account.somethingWentWrongDuringCheckoutTry485'),
           })
         }
       } catch (e) {
         if (!cancelled) {
-          setLoadError(e instanceof Error ? e.message : 'Something went wrong')
+          setLoadError(e instanceof Error ? e.message : t('account.somethingWentWrong'))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -276,13 +279,13 @@ function BillingContent() {
     try {
       const res = await fetch(`/api/billing/invoices/${inv.id}`, { credentials: 'include' })
       const j = await res.json()
-      if (!res.ok) throw new Error(j.error || 'Failed')
+      if (!res.ok) throw new Error(j.error || t('account.failed'))
       setInvoiceDetail(j)
     } catch (e) {
       addToast({
         type: 'error',
-        title: 'Invoice',
-        message: e instanceof Error ? e.message : 'Failed to load',
+        title: t('account.invoice'),
+        message: e instanceof Error ? e.message : t('account.failedToLoad'),
       })
       setInvoiceView(null)
     } finally {
@@ -305,20 +308,20 @@ function BillingContent() {
         window.location.href = CONTACT_SALES_HREF
         return
       }
-      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Checkout failed')
+      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : t('account.checkoutFailed'))
       // Redirect gateways leave the page; Razorpay opens its modal and resolves
       // 'paid' only after /api/billing/verify confirms the payment server-side.
       const outcome = await completeCheckout(j)
       if (outcome.status === 'paid') {
         setUpgradeOpen(false)
-        addToast({ type: 'success', title: 'Payment confirmed', message: 'Your plan is updated.', duration: 6000 })
+        addToast({ type: 'success', title: t('account.paymentConfirmed'), message: t('account.yourPlanIsUpdated'), duration: 6000 })
         await load()
       }
     } catch (e) {
       addToast({
         type: 'error',
-        title: 'Checkout',
-        message: e instanceof Error ? e.message : 'Failed',
+        title: t('account.checkout'),
+        message: e instanceof Error ? e.message : t('account.failed'),
       })
     } finally {
       setBusy(null)
@@ -338,15 +341,15 @@ function BillingContent() {
     try {
       const res = await csrfFetch('/api/billing/cancel', { method: 'POST', credentials: 'include' })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Cancel failed')
+      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : t('account.cancelFailed'))
       setCancelOpen(false)
-      addToast({ type: 'success', title: 'Subscription cancelled', message: 'Access continues until the period end shown below.' })
+      addToast({ type: 'success', title: t('account.subscriptionCancelled'), message: t('account.accessContinuesUntilThePeriodEnd9ec') })
       await load()
     } catch (e) {
       addToast({
         type: 'error',
-        title: 'Cancel failed',
-        message: e instanceof Error ? e.message : 'Failed',
+        title: t('account.cancelFailed'),
+        message: e instanceof Error ? e.message : t('account.failed'),
       })
     } finally {
       setBusy(null)
@@ -358,11 +361,11 @@ function BillingContent() {
     try {
       const res = await csrfFetch('/api/billing/cancel', { method: 'DELETE', credentials: 'include' })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Could not resume')
-      addToast({ type: 'success', title: 'Plan kept', message: 'Your cancellation was undone.' })
+      if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : t('account.couldNotResume'))
+      addToast({ type: 'success', title: t('account.planKept'), message: t('account.yourCancellationWasUndone') })
       await load()
     } catch (e) {
-      addToast({ type: 'error', title: 'Resume failed', message: e instanceof Error ? e.message : 'Failed' })
+      addToast({ type: 'error', title: t('account.resumeFailed'), message: e instanceof Error ? e.message : t('account.failed') })
     } finally {
       setBusy(null)
     }
@@ -374,10 +377,10 @@ function BillingContent() {
     try {
       const res = await csrfFetch('/api/billing/portal', { method: 'POST', credentials: 'include' })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok || typeof j.url !== 'string') throw new Error(typeof j.error === 'string' ? j.error : 'Could not open payment settings')
+      if (!res.ok || typeof j.url !== 'string') throw new Error(typeof j.error === 'string' ? j.error : t('account.couldNotOpenPaymentSettings'))
       window.location.href = j.url
     } catch (e) {
-      addToast({ type: 'error', title: 'Payment method', message: e instanceof Error ? e.message : 'Failed' })
+      addToast({ type: 'error', title: t('account.paymentMethod'), message: e instanceof Error ? e.message : t('account.failed') })
       setBusy(null)
     }
   }
@@ -385,16 +388,14 @@ function BillingContent() {
   if (!loading && (loadError || !subscription)) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Billing" icon={<CreditCard aria-hidden />} />
+        <PageHeader title={t('account.billing')} icon={<CreditCard aria-hidden />} />
         <Card role="alert" className="rounded-3xl border-destructive/30 bg-destructive/5 p-6 text-center space-y-3">
           <Illustration name="error" className="mx-auto w-36" />
-          <h2 className="text-lg font-semibold text-foreground">We couldn&apos;t load your billing details</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t('account.weCouldntLoadYourBillingDetails')}</h2>
           <p className="text-sm text-muted-foreground">
-            {loadError ? `${loadError}. ` : ''}Check your connection and try again. Nothing has been changed on your account.
-          </p>
+            {loadError ? `${loadError}. ` : ''}{t('account.checkYourConnectionAndTryAgain004')}</p>
           <Button onClick={() => setReloadKey((k) => k + 1)} className="gap-2">
-            <RefreshCw className="h-4 w-4" aria-hidden /> Try again
-          </Button>
+            <RefreshCw className="h-4 w-4" aria-hidden />{' '}{t('common.tryAgain')}</Button>
         </Card>
       </div>
     )
@@ -424,8 +425,8 @@ function BillingContent() {
         illustration="billing"
         className="mb-0"
         icon={<CreditCard aria-hidden />}
-        title="Billing & subscriptions"
-        description="Upgrade, change billing cycle, manage payment methods, and download receipts."
+        title={t('account.billingSubscriptions')}
+        description={t('account.upgradeChangeBillingCycleManagePayment5a9')}
         actions={
           <Button
             variant="outline"
@@ -434,9 +435,7 @@ function BillingContent() {
             onClick={() => void load()}
             disabled={Boolean(busy)}
           >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
+            <RefreshCw className="h-4 w-4" />{t('account.refresh')}</Button>
         }
       />
       </div>
@@ -445,21 +444,17 @@ function BillingContent() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold text-foreground">{subscription.planName}</h2>
-            <p className="mt-1 text-muted-foreground">
-              {subscription.billingInterval === 'year' ? 'Annual' : 'Monthly'} billing ·{' '}
-              <span className="font-medium tabular-nums text-foreground">{getCurrencySymbol(currency)}{subscription.currentPrice}</span>
+            <p className="mt-1 text-muted-foreground">{t('account.valueBilling', { value: subscription.billingInterval === 'year' ? t('account.annual') : t('account.monthly') })}{' '}<span className="font-medium tabular-nums text-foreground">{getCurrencySymbol(currency)}{subscription.currentPrice}</span>
               {subscription.billingInterval === 'year' ? '/year' : '/month'}
             </p>
             {subscription.canceledAt ? (
-              <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
-                Cancelled — access until {nextBill}
-              </p>
+              <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">{t('account.cancelledAccessUntilNextbill', { nextBill })}</p>
             ) : subscription.autoRenew && !subscription.pastDue ? (
-              <p className="mt-2 text-sm text-muted-foreground">Renews automatically on {nextBill}</p>
+              <p className="mt-2 text-sm text-muted-foreground">{t('account.renewsAutomaticallyOnNextbill', { nextBill })}</p>
             ) : null}
           </div>
           <Badge className={subscription.pastDue ? 'bg-destructive/15 text-destructive' : isCanceled ? 'bg-muted text-muted-foreground' : 'bg-green-500/15 text-green-800 dark:text-green-400'}>
-            {subscription.pastDue ? 'Past due' : isCanceled ? 'Cancelling' : subscription.status}
+            {subscription.pastDue ? t('account.pastDue') : isCanceled ? t('account.cancelling') : subscription.status}
           </Badge>
         </div>
 
@@ -467,23 +462,19 @@ function BillingContent() {
           <div role="alert" className="mt-6 flex flex-wrap items-start gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden />
             <div className="min-w-0 flex-1">
-              <p className="font-medium text-foreground">Your last renewal payment failed</p>
-              <p className="text-sm text-muted-foreground">
-                Update your payment method by {subscription.graceEndsAt ? formatDate(subscription.graceEndsAt) : nextBill} to keep your plan. We&apos;ll retry the charge automatically.
-              </p>
+              <p className="font-medium text-foreground">{t('account.yourLastRenewalPaymentFailed')}</p>
+              <p className="text-sm text-muted-foreground">{t('account.updateYourPaymentMethodBy')}{' '}{subscription.graceEndsAt ? formatDate(subscription.graceEndsAt) : nextBill}{' '}{t('account.toKeepYourPlanWellRetry84b')}</p>
             </div>
             {subscription.provider === 'stripe' ? (
               <Button size="sm" onClick={() => void openPortal()} disabled={Boolean(busy)} className="gap-2">
-                {busy === 'portal' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Update payment method
-              </Button>
+                {busy === 'portal' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t('account.updatePaymentMethod')}</Button>
             ) : null}
           </div>
         ) : null}
 
         <div className="mt-8 grid gap-8 md:grid-cols-2">
           <div>
-            <h3 className="text-base font-semibold text-foreground mb-3">Included</h3>
+            <h3 className="text-base font-semibold text-foreground mb-3">{t('account.included')}</h3>
             <ul className="space-y-2">
               {subscription.features.map((feature, i) => (
                 <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -495,48 +486,40 @@ function BillingContent() {
           </div>
           <div className="space-y-3 text-sm">
             <div>
-              <p className="text-muted-foreground">{isCanceled || subscription.pastDue ? 'Access until' : subscription.autoRenew ? 'Next renewal' : 'Current period ends'}</p>
+              <p className="text-muted-foreground">{isCanceled || subscription.pastDue ? t('account.accessUntil') : subscription.autoRenew ? t('account.nextRenewal') : t('account.currentPeriodEnds')}</p>
               <p className="font-medium tabular-nums text-foreground">{nextBill}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Receipt email</p>
+              <p className="text-muted-foreground">{t('account.receiptEmail')}</p>
               <p className="font-medium text-foreground">{subscription.userEmail}</p>
             </div>
           </div>
         </div>
 
         <div className="mt-8 flex flex-wrap gap-2" data-tour="billing-actions">
-          <Button onClick={() => setUpgradeOpen(true)} disabled={Boolean(busy)}>
-            Upgrade / change plan
-          </Button>
-          <Button variant="outline" onClick={() => setCycleOpen(true)} disabled={Boolean(busy) || isCanceled || subscription.planId === 'free'}>
-            Change billing cycle
-          </Button>
+          <Button onClick={() => setUpgradeOpen(true)} disabled={Boolean(busy)}>{t('account.upgradeChangePlan')}</Button>
+          <Button variant="outline" onClick={() => setCycleOpen(true)} disabled={Boolean(busy) || isCanceled || subscription.planId === 'free'}>{t('account.changeBillingCycle')}</Button>
           {isCanceled ? (
             <Button variant="outline" onClick={() => void resumeSub()} disabled={Boolean(busy)}>
-              {busy === 'resume' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Keep my plan
-            </Button>
+              {busy === 'resume' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t('account.keepMyPlan')}</Button>
           ) : (
-            <Button variant="outline" onClick={() => setCancelOpen(true)} disabled={Boolean(busy) || subscription.planId === 'free'}>
-              Cancel subscription
-            </Button>
+            <Button variant="outline" onClick={() => setCancelOpen(true)} disabled={Boolean(busy) || subscription.planId === 'free'}>{t('account.cancelSubscription')}</Button>
           )}
         </div>
       </Card>
 
       <div data-tour="billing-invoices">
-        <h3 className="mb-3 text-lg font-semibold tracking-tight text-foreground">Invoice history</h3>
+        <h3 className="mb-3 text-lg font-semibold tracking-tight text-foreground">{t('account.invoiceHistory')}</h3>
         <Card className="overflow-hidden rounded-3xl border-border/70">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3 text-left font-medium">Invoice</th>
-                  <th className="px-4 py-3 text-left font-medium">Date</th>
-                  <th className="px-4 py-3 text-left font-medium">Amount</th>
-                  <th className="px-4 py-3 text-left font-medium">Status</th>
-                  <th className="px-4 py-3 text-right font-medium">Actions</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('account.invoice')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('account.date')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('account.amount')}</th>
+                  <th className="px-4 py-3 text-left font-medium">{t('account.status')}</th>
+                  <th className="px-4 py-3 text-right font-medium">{t('account.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -546,18 +529,16 @@ function BillingContent() {
                       <EmptyState
                         compact
                         illustration="error"
-                        title="Couldn't load invoices"
-                        description="Check your connection and try again."
-                        actionLabel="Try again"
+                        title={t('account.couldntLoadInvoices')}
+                        description={t('account.checkYourConnectionAndTryAgain')}
+                        actionLabel={t('common.tryAgain')}
                         onAction={() => setReloadKey((k) => k + 1)}
                       />
                     </td>
                   </tr>
                 ) : invoices.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
-                      No invoices yet. Complete a plan change to generate a receipt.
-                    </td>
+                    <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">{t('account.noInvoicesYetCompleteAPlan419')}</td>
                   </tr>
                 ) : (
                   invoices.map((inv) => (
@@ -577,14 +558,10 @@ function BillingContent() {
                       </td>
                       <td className="px-4 py-3 text-right space-x-1">
                         <Button variant="ghost" size="sm" className="gap-1" onClick={() => void openInvoice(inv)}>
-                          <Eye className="h-4 w-4" />
-                          View
-                        </Button>
+                          <Eye className="h-4 w-4" />{t('account.view')}</Button>
                         <Button variant="ghost" size="sm" className="gap-1" asChild>
                           <a href={inv.downloadUrl || `/api/billing/invoices/${inv.id}/download`} target="_blank" rel="noreferrer">
-                            <Download className="h-4 w-4" />
-                            Download
-                          </a>
+                            <Download className="h-4 w-4" />{t('account.download')}</a>
                         </Button>
                       </td>
                     </tr>
@@ -599,16 +576,14 @@ function BillingContent() {
       <Card className="rounded-3xl border-border/70 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Payment method</h3>
-            <p className="text-sm text-muted-foreground mt-1">The card used for your subscription renewals.</p>
+            <h3 className="text-lg font-semibold text-foreground">{t('account.paymentMethod')}</h3>
+            <p className="text-sm text-muted-foreground mt-1">{t('account.theCardUsedForYourSubscriptiona53')}</p>
           </div>
           {/* Stripe subscriptions: the card is changed in Stripe's billing portal.
               Other gateways take the card at each checkout. */}
           {subscription.provider === 'stripe' ? (
             <Button variant="outline" className="gap-2" onClick={() => void openPortal()} disabled={Boolean(busy)}>
-              {busy === 'portal' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" aria-hidden />}
-              Manage payment method
-            </Button>
+              {busy === 'portal' ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" aria-hidden />}{t('account.managePaymentMethod')}</Button>
           ) : null}
         </div>
         {defaultPm ? (
@@ -620,14 +595,11 @@ function BillingContent() {
               <p className="font-medium text-foreground">
                 •••• •••• •••• {defaultPm.last4}
               </p>
-              <p className="text-xs text-muted-foreground">
-                Expires {defaultPm.exp_month}/{defaultPm.exp_year}
-                {defaultPm.is_default ? ' · Default' : ''}
-              </p>
+              <p className="text-xs text-muted-foreground">{t('account.expiresExpMonthExpYearValue', { exp_month: defaultPm.exp_month, exp_year: defaultPm.exp_year, value: defaultPm.is_default ? t('account.default') : '' })}</p>
             </div>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-muted-foreground">No card on file. Your card is saved by the payment provider when you pay for a plan.</p>
+          <p className="mt-4 text-sm text-muted-foreground">{t('account.noCardOnFileYourCard708')}</p>
         )}
       </Card>
 
@@ -635,13 +607,13 @@ function BillingContent() {
       <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Change plan</DialogTitle>
-            <DialogDescription>Pick a plan and billing interval. Your plan changes once the payment is confirmed.</DialogDescription>
+            <DialogTitle>{t('account.changePlan')}</DialogTitle>
+            <DialogDescription>{t('account.pickAPlanAndBillingInterval08e')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Plan</Label>
-              <select aria-label="Plan"
+              <Label>{t('account.plan')}</Label>
+              <select aria-label={t('account.plan')}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 value={pickPlan}
                 onChange={(e) => setPickPlan(e.target.value)}
@@ -651,17 +623,17 @@ function BillingContent() {
                   return (
                     <option key={p.id} value={p.id} disabled={mode === 'free'}>
                       {mode === 'contact_sales'
-                        ? `${p.name} — contact sales`
+                        ? t('account.nameContactSales', { name: p.name })
                         : mode === 'free'
-                          ? `${p.name} — free`
-                          : `${p.name} — ${getCurrencySymbol(p.currency || currency)}${p.price}/mo (${getCurrencySymbol(p.currency || currency)}${p.yearlyPrice}/yr)`}
+                          ? t('account.nameFree', { name: p.name })
+                          : t('account.nameAmountPriceMoAmount2Yearlypricef56', { name: p.name, amount: getCurrencySymbol(p.currency || currency), price: p.price, amount2: getCurrencySymbol(p.currency || currency), yearlyPrice: p.yearlyPrice })}
                     </option>
                   )
                 })}
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Billing interval</Label>
+              <Label>{t('account.billingInterval')}</Label>
               <div className="flex gap-2">
                 {(['month', 'year'] as const).map((iv) => (
                   <Button
@@ -671,25 +643,21 @@ function BillingContent() {
                     size="sm"
                     onClick={() => setPickInterval(iv)}
                   >
-                    {iv === 'year' ? 'Annual (save ~15%)' : 'Monthly'}
+                    {iv === 'year' ? t('account.annualSave15') : t('account.monthly')}
                   </Button>
                 ))}
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setUpgradeOpen(false)}>
-              Close
-            </Button>
+            <Button variant="outline" onClick={() => setUpgradeOpen(false)}>{t('common.close')}</Button>
             {pickedMode === 'contact_sales' ? (
               <Button asChild>
-                <a href={CONTACT_SALES_HREF}>Contact sales</a>
+                <a href={CONTACT_SALES_HREF}>{t('account.contactSales')}</a>
               </Button>
             ) : (
               <Button onClick={() => void runCheckout()} disabled={Boolean(busy) || pickedMode !== 'checkout'}>
-                {busy === 'checkout' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Pay & activate
-              </Button>
+                {busy === 'checkout' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t('account.payActivate')}</Button>
             )}
           </DialogFooter>
         </DialogContent>
@@ -699,21 +667,15 @@ function BillingContent() {
       <Dialog open={cycleOpen} onOpenChange={setCycleOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Billing cycle</DialogTitle>
-            <DialogDescription>Switch between monthly and annual renewal.</DialogDescription>
+            <DialogTitle>{t('account.billingCycle')}</DialogTitle>
+            <DialogDescription>{t('account.switchBetweenMonthlyAndAnnualRenewal')}</DialogDescription>
           </DialogHeader>
           <div className="flex flex-wrap gap-2 py-2">
-            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => changeCycle('month')}>
-              Monthly
-            </Button>
-            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => changeCycle('year')}>
-              Annual
-            </Button>
+            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => changeCycle('month')}>{t('account.monthly')}</Button>
+            <Button type="button" variant="outline" disabled={Boolean(busy)} onClick={() => changeCycle('year')}>{t('account.annual')}</Button>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCycleOpen(false)}>
-              Close
-            </Button>
+            <Button variant="outline" onClick={() => setCycleOpen(false)}>{t('common.close')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -730,40 +692,38 @@ function BillingContent() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Invoice</DialogTitle>
-            <DialogDescription>Summary for your records.</DialogDescription>
+            <DialogTitle>{t('account.invoice')}</DialogTitle>
+            <DialogDescription>{t('account.summaryForYourRecords')}</DialogDescription>
           </DialogHeader>
           {invoiceDetail ? (
             <div className="space-y-2 text-sm">
               <p>
-                <span className="text-muted-foreground">Amount:</span>{' '}
+                <span className="text-muted-foreground">{t('account.amount2')}</span>{' '}
                 <strong>
                   {getCurrencySymbol(invoiceDetail.currency || currency)}{invoiceDetail.amount.toFixed(2)} {invoiceDetail.currency}
                 </strong>
               </p>
               <p>
-                <span className="text-muted-foreground">Status:</span>{' '}
+                <span className="text-muted-foreground">{t('account.status2')}</span>{' '}
                 <span className="capitalize">{invoiceDetail.status}</span>
               </p>
               {invoiceDetail.refundedAt ? (
                 <p>
-                  <span className="text-muted-foreground">Refunded on:</span> {formatDateTime(invoiceDetail.refundedAt)}
+                  <span className="text-muted-foreground">{t('account.refundedOn')}</span> {formatDateTime(invoiceDetail.refundedAt)}
                 </p>
               ) : null}
               <p>
-                <span className="text-muted-foreground">Date:</span>{' '}
+                <span className="text-muted-foreground">{t('account.date2')}</span>{' '}
                 {formatDateTime(invoiceDetail.createdAt)}
               </p>
               {invoiceDetail.description ? (
                 <p>
-                  <span className="text-muted-foreground">Description:</span> {invoiceDetail.description}
+                  <span className="text-muted-foreground">{t('account.description')}</span> {invoiceDetail.description}
                 </p>
               ) : null}
               <Button className="mt-4 w-full gap-2" variant="outline" asChild>
                 <a href={invoiceDetail.downloadUrl} target="_blank" rel="noreferrer">
-                  <Download className="h-4 w-4" />
-                  Download receipt
-                </a>
+                  <Download className="h-4 w-4" />{t('account.downloadReceipt')}</a>
               </Button>
             </div>
           ) : (
@@ -777,15 +737,15 @@ function BillingContent() {
       <AlertDialog open={cancelOpen} onOpenChange={setCancelOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+            <AlertDialogTitle>{t('account.cancelSubscription2')}</AlertDialogTitle>
             <AlertDialogDescription>
               {subscription.provider === 'stripe'
-                ? 'Automatic renewal stops. You keep access until the end of the current period and can turn renewal back on until then.'
-                : 'You keep access until the end of the current period. You can resubscribe anytime.'}
+                ? t('account.automaticRenewalStopsYouKeepAccesse03')
+                : t('account.youKeepAccessUntilTheEnd566')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep plan</AlertDialogCancel>
+            <AlertDialogCancel>{t('account.keepPlan')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={(e) => {
@@ -793,9 +753,7 @@ function BillingContent() {
                 void cancelSub()
               }}
             >
-              {busy === 'cancel' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Confirm cancel
-            </AlertDialogAction>
+              {busy === 'cancel' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}{t('account.confirmCancel')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -804,6 +762,7 @@ function BillingContent() {
 }
 
 export default function BillingPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -813,20 +772,20 @@ export default function BillingPage() {
       const billingTour: TourStep[] = [
         {
           target: '[data-tour="billing-header"]',
-          title: 'Billing central hub',
-          description: 'Manage your subscription, payment method, and receipts in one place.',
+          title: t('account.billingCentralHub'),
+          description: t('account.manageYourSubscriptionPaymentMethodAnd020'),
           position: 'bottom',
         },
         {
           target: '[data-tour="billing-actions"]',
-          title: 'Adjust subscription here',
-          description: 'Start plan upgrades, cycle switches, or cancellation while keeping access until period end.',
+          title: t('account.adjustSubscriptionHere'),
+          description: t('account.startPlanUpgradesCycleSwitchesOrda9'),
           position: 'bottom',
         },
         {
           target: '[data-tour="billing-invoices"]',
-          title: 'Download receipts quickly',
-          description: 'Tip: open View for invoice details or use Download to save receipts.',
+          title: t('account.downloadReceiptsQuickly'),
+          description: t('account.tipOpenViewForInvoiceDetailsae3'),
           position: 'top',
         },
       ]

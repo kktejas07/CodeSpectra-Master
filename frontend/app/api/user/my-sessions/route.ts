@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 /** GET — interview / mock sessions for the current user. */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const db = await getMongoDb()
     // Standalone interviews live in `interviews` (lib/db/interviews.ts) — AUTO-030.
@@ -34,6 +34,6 @@ export async function GET() {
     })
   } catch (e) {
     console.error('[user/my-sessions]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

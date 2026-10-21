@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const limit = await rateLimitRedis(`subs:confirm-ip:${clientLimiterKeyFromRequest(req, null)}`, 20, 10 * 60_000)
-  if (!limit.ok) return NextResponse.json({ error: `Too many requests. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+  if (!limit.ok) return NextResponse.json({ error: `Too many requests. Try again in ${limit.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: limit.retryAfterSec } }, { status: 429 })
   const body = (await req.json().catch(() => ({}))) as { token?: unknown }
   try {
     const r = await confirmEmail(body.token)

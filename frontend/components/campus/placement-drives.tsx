@@ -15,8 +15,10 @@ import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { useConsole } from './console-context'
 import { DriveForm } from './drive-form'
 import { StatusPill, ctcRange, errorOf, fmtDate } from './shared'
+import { useT } from '@/lib/i18n/client'
 
 export function PlacementDrives() {
+  const { t } = useT()
   const { url, college, role } = useConsole()
   const addToast = useToast()
   const router = useRouter()
@@ -29,7 +31,7 @@ export function PlacementDrives() {
     fetch(url('/api/campus/drives'), { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
       .then((d) => { if (live) setItems(d.items || []) })
-      .catch(() => { if (live) { setItems([]); addToast({ type: 'error', title: "Couldn't load drives" }) } })
+      .catch(() => { if (live) { setItems([]); addToast({ type: 'error', title: t('career.couldntLoadDrives') }) } })
     return () => { live = false }
   }, [url, addToast])
 
@@ -38,30 +40,30 @@ export function PlacementDrives() {
   return (
     <div className="space-y-6">
       <Section
-        title="Placement drives"
-        actions={!creating ? <Button onClick={() => setCreating(true)} className="min-h-11"><Plus className="mr-2 h-4 w-4" aria-hidden />New drive</Button> : undefined}
+        title={t('career.placementDrives')}
+        actions={!creating ? <Button onClick={() => setCreating(true)} className="min-h-11"><Plus className="mr-2 h-4 w-4" aria-hidden />{t('career.newDrive')}</Button> : undefined}
       >
         {creating && (
           <Panel>
-            <h3 className="mb-4 text-base font-semibold text-foreground">New drive</h3>
+            <h3 className="mb-4 text-base font-semibold text-foreground">{t('career.newDrive')}</h3>
             <DriveForm
-              busy={busy} submitLabel="Save as draft"
+              busy={busy} submitLabel={t('career.saveAsDraft')}
               onSubmit={async (body) => {
                 setBusy(true)
                 try {
                   const r = await csrfFetch(url('/api/campus/drives'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
                   if (!r.ok) { addToast({ type: 'error', title: await errorOf(r) }); return }
                   const d = await r.json()
-                  addToast({ type: 'success', title: 'Drive saved as a draft — open it to students when ready' })
+                  addToast({ type: 'success', title: t('career.driveSavedAsADraftOpen1b4') })
                   router.push(detailHref(d.drive.id))
                 } finally { setBusy(false) }
               }}
             />
-            <Button variant="ghost" className="mt-2" onClick={() => setCreating(false)}>Cancel</Button>
+            <Button variant="ghost" className="mt-2" onClick={() => setCreating(false)}>{t('common.cancel')}</Button>
           </Panel>
         )}
         {items === null ? <SkeletonList count={4} /> : items.length === 0 && !creating ? (
-          <EmptyState compact illustration="jobs" title="No drives yet" description="Create a drive for a visiting company, set who's eligible and open it — eligible students are notified." actionLabel="New drive" onAction={() => setCreating(true)} />
+          <EmptyState compact illustration="jobs" title={t('career.noDrivesYet')} description={t('career.createADriveForAVisiting4d8')} actionLabel={t('career.newDrive')} onAction={() => setCreating(true)} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {items.map((d) => (
@@ -75,8 +77,8 @@ export function PlacementDrives() {
                   <StatusPill status={d.status} />
                 </div>
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" aria-hidden />Apply by {fmtDate(d.schedule.apply_by)}</span>
-                  <span className="inline-flex items-center gap-1.5 tabular-nums"><Users className="h-4 w-4" aria-hidden />{d.applicants} applied</span>
+                  <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" aria-hidden />{t('career.applyByDate', { date: fmtDate(d.schedule.apply_by) })}</span>
+                  <span className="inline-flex items-center gap-1.5 tabular-nums"><Users className="h-4 w-4" aria-hidden />{t('career.applicantsApplied', { applicants: d.applicants })}</span>
                   {ctcRange(d.ctc_minor_min, d.ctc_minor_max, d.currency) && <span className="tabular-nums">{ctcRange(d.ctc_minor_min, d.ctc_minor_max, d.currency)}</span>}
                 </div>
               </Link>

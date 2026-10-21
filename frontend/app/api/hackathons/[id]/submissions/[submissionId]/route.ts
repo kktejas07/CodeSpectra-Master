@@ -20,11 +20,11 @@ export async function GET(
   ctx: { params: Promise<{ id: string; submissionId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, submissionId } = await ctx.params
   const hkCol = await hackathons()
   const hk = await hkCol.findOne({ $or: [{ id }, { slug: id }] })
-  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!hk) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   const subsCol = await hackathonSubmissions()
   const sub = await subsCol.findOne({ id: submissionId, hackathon_id: hk.id })
@@ -49,7 +49,7 @@ export async function GET(
     void code; void repo_url; void commit_sha; void feedback
     return NextResponse.json(safe)
   }
-  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 }
 
 export async function PATCH(
@@ -57,12 +57,12 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string; submissionId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id, submissionId } = await ctx.params
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
-  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!hk) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   const isStaff = isHackathonStaff(user, hk)
   const isJudge = isHackathonJudge(user, hk)
@@ -76,16 +76,16 @@ export async function PATCH(
   const isTeamMember = team?.members?.some((m) => m.user_id === user.id) ?? false
 
   if (!isStaff && !isJudge && !isTeamMember) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   let body: Record<string, any>
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
-  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
 
   const current = normalizeSubmissionStatus(sub.status)
   if (hk.results_released || current === 'released') {
@@ -100,7 +100,7 @@ export async function PATCH(
     const grace = hk.allow_late_submissions ? (hk.grace_period_minutes || 0) * 60000 : 0
     const withinTime = Number.isNaN(ends) || Date.now() <= ends + grace
     const open = (hk.status === 'live' || (hk.status === 'closed' && hk.allow_late_submissions)) && withinTime
-    if (!open) return NextResponse.json({ error: 'submissions are closed' }, { status: 409 })
+    if (!open) return NextResponse.json({ error: 'submissions are closed', code: 'contest_closed' }, { status: 409 })
     if (!teamCanEdit(current)) return NextResponse.json({ error: 'This submission can no longer be edited' }, { status: 409 })
 
     const $set: Record<string, unknown> = { updated_at: now }
@@ -207,7 +207,7 @@ export async function PATCH(
   }
 
   if (!scored && nextStatus === current) {
-    return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+    return NextResponse.json({ error: 'Nothing to update', code: 'nothing_to_update' }, { status: 400 })
   }
 
   const update = nextStatus !== current

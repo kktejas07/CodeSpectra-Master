@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     const raw = await req.json()
     b = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   try {
     switch (b.action) {
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ settings: await tenantInterviewSettings(actor.tenantId) })
       }
       default:
-        return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+        return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
     }
   } catch (e) {
     if (e instanceof ProviderError) return NextResponse.json({ error: e.message, code: e.code }, { status: e.code === 'config' ? 400 : 502 })

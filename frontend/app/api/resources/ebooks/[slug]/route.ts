@@ -12,15 +12,15 @@ type Ctx = { params: Promise<{ slug: string }> }
 
 export async function GET(_req: NextRequest, ctx: Ctx) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { slug } = await ctx.params
   const col = await ebooksCol()
   const doc = await col.findOne({ slug: decodeURIComponent(slug) })
-  if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!doc) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
   if (doc.status !== 'published' && user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   }
 
   return NextResponse.json({
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   // Regenerate AI cover art from the ebook's topic/title.
   if (body.action === 'regenerate-cover') {
     const doc = await col.findOne({ slug: decodeURIComponent(slug) })
-    if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!doc) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     try {
       const art = await generateCoverImage(
         buildEbookCoverPrompt({ topic: doc.topic, title: doc.title }),
@@ -85,7 +85,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     { $set: update },
     { returnDocument: 'after' },
   )
-  if (!res) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!res) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   return NextResponse.json({ ok: true, item: { id: res.id, slug: res.slug, status: res.status } })
 }
 
@@ -97,6 +97,6 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const { slug } = await ctx.params
   const col = await ebooksCol()
   const r = await col.deleteOne({ slug: decodeURIComponent(slug) })
-  if (!r.deletedCount) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!r.deletedCount) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   return NextResponse.json({ ok: true })
 }

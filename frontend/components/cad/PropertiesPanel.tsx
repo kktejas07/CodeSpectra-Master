@@ -15,6 +15,7 @@ import {
   Type,
   PenTool,
 } from 'lucide-react';
+import { useT } from '@/lib/i18n/client'
 
 function FieldGroup({ label, icon: Icon, children }: { label: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
@@ -29,6 +30,7 @@ function FieldGroup({ label, icon: Icon, children }: { label: string; icon: Reac
 }
 
 export function PropertiesPanel() {
+  const { t } = useT()
   const shapes = useCADStore((s) => s.shapes);
   const selectedIds = useCADStore((s) => s.selectedIds);
   const updateShape = useCADStore((s) => s.updateShape);
@@ -43,13 +45,13 @@ export function PropertiesPanel() {
       <div className="flex flex-col items-center justify-center p-6 text-center text-xs text-muted-foreground">
         {selectedIds.length > 1 ? (
           <div className="flex flex-col items-center gap-1">
-            <span className="font-medium">{selectedIds.length} objects selected</span>
-            <span className="text-[10px] opacity-60">Select one to edit properties</span>
+            <span className="font-medium">{t('exam.countObjectsSelected', { count: selectedIds.length })}</span>
+            <span className="text-[10px] opacity-60">{t('exam.selectOneToEditProperties')}</span>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-1">
-            <span>No selection</span>
-            <span className="text-[10px] opacity-60">Click an object to view properties</span>
+            <span>{t('exam.noSelection')}</span>
+            <span className="text-[10px] opacity-60">{t('exam.clickAnObjectToViewProperties')}</span>
           </div>
         )}
       </div>
@@ -59,12 +61,12 @@ export function PropertiesPanel() {
   return (
     <div className="flex flex-col gap-3 p-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-muted-foreground">Properties</span>
+        <span className="text-xs font-semibold text-muted-foreground">{t('exam.properties')}</span>
         <span className="text-[9px] font-mono text-muted-foreground/40">{selected.id.slice(0, 12)}</span>
       </div>
 
       {/* Position */}
-      <FieldGroup label="Position" icon={Move}>
+      <FieldGroup label={t('exam.position')} icon={Move}>
         <div className="grid grid-cols-2 gap-1.5">
           <div>
             <Label className="text-[9px] text-muted-foreground/60">X</Label>
@@ -88,7 +90,7 @@ export function PropertiesPanel() {
       </FieldGroup>
 
       {/* Size */}
-      <FieldGroup label="Size" icon={Maximize2}>
+      <FieldGroup label={t('exam.size')} icon={Maximize2}>
         <div className="grid grid-cols-2 gap-1.5">
           {selected.type === 'rectangle' && (
             <>
@@ -159,7 +161,7 @@ export function PropertiesPanel() {
           {selected.type === 'dimension' && (
             <>
               <div>
-                <Label className="text-[9px] text-muted-foreground/60">Label</Label>
+                <Label className="text-[9px] text-muted-foreground/60">{t('exam.label')}</Label>
                 <Input
                   value={selected.label}
                   onChange={(e) => updateShape(selected.id, { label: e.target.value } as any)}
@@ -167,7 +169,7 @@ export function PropertiesPanel() {
                 />
               </div>
               <div>
-                <Label className="text-[9px] text-muted-foreground/60">Offset</Label>
+                <Label className="text-[9px] text-muted-foreground/60">{t('exam.offset')}</Label>
                 <Input
                   type="number"
                   value={selected.offset}
@@ -180,7 +182,7 @@ export function PropertiesPanel() {
         </div>
         {selected.type === 'polygon' && (
           <div className="mt-1">
-            <Label className="text-[9px] text-muted-foreground/60">Sides</Label>
+            <Label className="text-[9px] text-muted-foreground/60">{t('exam.sides')}</Label>
             <Input
               type="number"
               min={3}
@@ -195,10 +197,10 @@ export function PropertiesPanel() {
 
       {/* Text properties */}
       {selected.type === 'text' && (
-        <FieldGroup label="Text" icon={Type}>
+        <FieldGroup label={t('exam.text')} icon={Type}>
           <div className="flex flex-col gap-1.5">
             <div>
-              <Label className="text-[9px] text-muted-foreground/60">Content</Label>
+              <Label className="text-[9px] text-muted-foreground/60">{t('exam.content')}</Label>
               <Input
                 value={selected.text}
                 onChange={(e) => updateShape(selected.id, { text: e.target.value } as any)}
@@ -207,7 +209,7 @@ export function PropertiesPanel() {
             </div>
             <div className="grid grid-cols-2 gap-1.5">
               <div>
-                <Label className="text-[9px] text-muted-foreground/60">Size</Label>
+                <Label className="text-[9px] text-muted-foreground/60">{t('exam.size')}</Label>
                 <Input
                   type="number"
                   min={6}
@@ -217,7 +219,7 @@ export function PropertiesPanel() {
                 />
               </div>
               <div>
-                <Label className="text-[9px] text-muted-foreground/60">Font</Label>
+                <Label className="text-[9px] text-muted-foreground/60">{t('exam.font')}</Label>
                 <select
                   value={selected.fontFamily}
                   onChange={(e) => updateShape(selected.id, { fontFamily: e.target.value } as any)}
@@ -235,34 +237,34 @@ export function PropertiesPanel() {
 
       {/* Line style (for lines and non-line shapes) */}
       {(selected.type === 'line' || selected.type === 'rectangle' || selected.type === 'circle' || selected.type === 'polygon') && (
-        <FieldGroup label="Stroke Style" icon={PenTool}>
+        <FieldGroup label={t('exam.strokeStyle')} icon={PenTool}>
           <div className="flex flex-col gap-1.5">
             <div className="grid grid-cols-2 gap-1.5">
               <div>
-                <Label className="text-[9px] text-muted-foreground/60">Dash</Label>
+                <Label className="text-[9px] text-muted-foreground/60">{t('exam.dash')}</Label>
                 <select
                   value={selected.lineDash || 'solid'}
                   onChange={(e) => updateShape(selected.id, { lineDash: e.target.value as LineDash })}
                   className="h-6 rounded-md border border-border/40 bg-background px-2 text-xs"
                 >
-                  <option value="solid">Solid</option>
-                  <option value="dashed">Dashed</option>
-                  <option value="dotted">Dotted</option>
-                  <option value="dash-dot">Dash-Dot</option>
+                  <option value="solid">{t('exam.solid')}</option>
+                  <option value="dashed">{t('exam.dashed')}</option>
+                  <option value="dotted">{t('exam.dotted')}</option>
+                  <option value="dash-dot">{t('exam.dashDot')}</option>
                 </select>
               </div>
               {selected.type === 'line' && (
                 <div>
-                  <Label className="text-[9px] text-muted-foreground/60">Arrows</Label>
+                  <Label className="text-[9px] text-muted-foreground/60">{t('exam.arrows')}</Label>
                   <select
                     value={(selected as any).arrowType || 'none'}
                     onChange={(e) => updateShape(selected.id, { arrowType: e.target.value as ArrowType } as any)}
                     className="h-6 rounded-md border border-border/40 bg-background px-2 text-xs"
                   >
-                    <option value="none">None</option>
-                    <option value="end">End</option>
-                    <option value="start">Start</option>
-                    <option value="both">Both</option>
+                    <option value="none">{t('exam.none2')}</option>
+                    <option value="end">{t('exam.end')}</option>
+                    <option value="start">{t('exam.start')}</option>
+                    <option value="both">{t('exam.both')}</option>
                   </select>
                 </div>
               )}
@@ -272,10 +274,10 @@ export function PropertiesPanel() {
       )}
 
       {/* Rotation + Stroke Width */}
-      <FieldGroup label="Style" icon={RotateCw}>
+      <FieldGroup label={t('exam.style')} icon={RotateCw}>
         <div className="grid grid-cols-2 gap-1.5">
           <div>
-            <Label className="text-[9px] text-muted-foreground/60">Angle</Label>
+            <Label className="text-[9px] text-muted-foreground/60">{t('exam.angle')}</Label>
             <Input
               type="number"
               value={Math.round(selected.rotation * 10) / 10}
@@ -284,7 +286,7 @@ export function PropertiesPanel() {
             />
           </div>
           <div>
-            <Label className="text-[9px] text-muted-foreground/60">Stroke W</Label>
+            <Label className="text-[9px] text-muted-foreground/60">{t('exam.strokeW')}</Label>
             <Input
               type="number"
               min={0}
@@ -296,7 +298,7 @@ export function PropertiesPanel() {
           </div>
         </div>
         <div className="mt-1">
-          <Label className="text-[9px] text-muted-foreground/60">Opacity</Label>
+          <Label className="text-[9px] text-muted-foreground/60">{t('exam.opacity')}</Label>
           <div className="flex items-center gap-2">
             <input
               type="range"
@@ -315,7 +317,7 @@ export function PropertiesPanel() {
       </FieldGroup>
 
       {/* Colors */}
-      <FieldGroup label="Colors" icon={Palette}>
+      <FieldGroup label={t('exam.colors')} icon={Palette}>
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-1.5">
             <Input
@@ -347,10 +349,8 @@ export function PropertiesPanel() {
                 type="button"
                 onClick={() => updateShape(selected.id, { fill: 'transparent' })}
                 className="shrink-0 rounded px-1.5 py-0.5 text-[9px] text-muted-foreground hover:bg-muted"
-                title="Set to transparent"
-              >
-                None
-              </button>
+                title={t('exam.setToTransparent')}
+              >{t('exam.none2')}</button>
             </div>
           )}
         </div>
@@ -360,7 +360,7 @@ export function PropertiesPanel() {
       <div className="flex flex-col gap-1 border-t border-border/40 pt-2">
         <div className="flex items-center gap-1.5">
           <Layers className="h-3 w-3 text-muted-foreground/60" />
-          <Label className="text-[11px] font-medium text-muted-foreground">Layer</Label>
+          <Label className="text-[11px] font-medium text-muted-foreground">{t('exam.layer')}</Label>
         </div>
         <select
           value={selected.layerId}
@@ -375,7 +375,7 @@ export function PropertiesPanel() {
 
       {/* Metadata */}
       <div className="flex flex-col gap-0.5 border-t border-border/40 pt-2 text-[9px] text-muted-foreground/50">
-        <span>Type: <span className="capitalize">{selected.type}</span></span>
+        <span>{t('exam.type')}{' '}<span className="capitalize">{selected.type}</span></span>
         <span>ID: <span className="font-mono">{selected.id}</span></span>
       </div>
     </div>

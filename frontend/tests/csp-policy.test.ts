@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto'
 import { describe, it, expect } from 'vitest'
 import { cspHeaders, cspMode, legacyCsp, makeNonce, strictCsp } from '@/lib/csp/policy'
-import { GLOBAL_ERROR_THEME_SCRIPT, INLINE_SCRIPT_HASHES, THEME_INIT_SCRIPT } from '@/lib/csp/inline-scripts'
+import { GLOBAL_ERROR_THEME_SCRIPT, INLINE_SCRIPT_HASHES, LANG_INIT_SCRIPT, THEME_INIT_SCRIPT } from '@/lib/csp/inline-scripts'
 import { formatViolation, parseCspReports, redactPath, redactUrl } from '@/lib/csp/report'
 import { pathsFor } from '@/lib/cache/revalidate'
 import { isCsrfExempt } from '@/lib/csrf-exempt'
@@ -16,7 +16,7 @@ const sha = (s: string) => `'sha256-${createHash('sha256').update(s, 'utf8').dig
 
 describe('inline script hashes', () => {
   it('match the scripts the layouts render', () => {
-    expect(INLINE_SCRIPT_HASHES).toEqual([sha(THEME_INIT_SCRIPT), sha(GLOBAL_ERROR_THEME_SCRIPT)])
+    expect(INLINE_SCRIPT_HASHES).toEqual([sha(THEME_INIT_SCRIPT), sha(GLOBAL_ERROR_THEME_SCRIPT), sha(LANG_INIT_SCRIPT)])
   })
 })
 

@@ -25,7 +25,7 @@ function authorize(req: NextRequest): boolean {
 
 async function postImpl(req: NextRequest) {
   if (!authorize(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   await ensureEbookSeed('system')

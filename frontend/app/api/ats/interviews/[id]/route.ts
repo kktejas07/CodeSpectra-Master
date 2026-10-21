@@ -86,7 +86,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
     const raw = await req.json()
     body = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   try {
     const iv = await getInterview(actor.tenantId, id)
@@ -128,7 +128,7 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
         break
       }
       default:
-        return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+        return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
     }
     await auditAts(actor, `ats.interview.${String(action)}`, 'ats_interview', iv.id, undefined, req).catch(() => {})
     return NextResponse.json({ interview: publicInterview(out, { showHost: true }) })

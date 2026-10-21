@@ -15,7 +15,7 @@ export async function POST() {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const caller = callerFromUser(gate.user)
-  if (!caller) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!caller) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   try {
     const res = await reindexScope(caller, {})
     await auditAdmin({ id: caller.userId }, 'knowledge.reindex', 'knowledge', 'platform', JSON.stringify(res.byType))

@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 async function handle(req: NextRequest) {
-  if (!isCronAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isCronAuthorized(req)) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     return NextResponse.json({ ok: true, ...(await tickScreening(new Date(), 200)) })
   } catch (e) {

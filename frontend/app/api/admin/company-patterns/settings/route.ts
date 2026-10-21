@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, 'company-tests-refresh', gate.user.id, 2, 10 * 60_000)
   if (limited) return limited
   const body = (await req.json().catch(() => ({}))) as { action?: unknown }
-  if (body.action !== 'refresh') return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+  if (body.action !== 'refresh') return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
   const { runLeasedJob, minuteWindow } = await import('@/lib/automation/job-lease')
   const { runCompanyTestsRefresh } = await import('@/lib/company-tests/refresh')
   const r = await runLeasedJob('company-tests-refresh', `manual:${minuteWindow(new Date())}`, () => runCompanyTestsRefresh(), { leaseMs: 30 * 60_000, maxAttempts: 1 })

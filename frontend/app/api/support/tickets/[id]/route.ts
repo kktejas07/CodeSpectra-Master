@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id } = await params
 
   const db = await getMongoDb()
@@ -21,12 +21,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id } = await params
 
   let message = ''
   try { const body = await req.json(); message = String(body.message || '').trim() }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }) }
+  catch { return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 }) }
   if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 })
 
   const db = await getMongoDb()
@@ -51,12 +51,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   const { id } = await params
 
   let status = ''
   try { const body = await req.json(); status = String(body.status || '').trim() }
-  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }) }
+  catch { return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 }) }
   if (!status || !['open', 'closed'].includes(status)) return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
 
   const db = await getMongoDb()

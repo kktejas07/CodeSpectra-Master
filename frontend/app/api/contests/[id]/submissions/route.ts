@@ -37,7 +37,7 @@ export async function POST(req: Request, ctx: Ctx) {
     const type = req.headers.get('content-type') || ''
     if (type.includes('multipart/form-data')) {
       let form: FormData
-      try { form = await req.formData() } catch { return NextResponse.json({ error: 'Upload could not be read. Files must be under 9 MB.' }, { status: 400 }) }
+      try { form = await req.formData() } catch { return NextResponse.json({ error: 'Upload could not be read. Files must be under 9 MB.', code: 'upload_unreadable_9mb' }, { status: 400 }) }
       const files: UploadedFile[] = []
       const direct: DirectFile[] = []
       for (const slot of FORMATS[c.format].files || []) {
@@ -46,16 +46,16 @@ export async function POST(req: Request, ctx: Ctx) {
         const up = form.get(`upload_${slot.role}`)
         if (typeof up === 'string' && /^up_[0-9a-f]{24}$/.test(up) && !(f instanceof File && f.size > 0)) direct.push({ role: slot.role, upload_id: up })
         if (f instanceof File && f.size > 0) {
-          if (f.size > slot.maxBytes) return NextResponse.json({ error: `${slot.label}: files can be up to ${Math.round(slot.maxBytes / 1024 / 1024)} MB.` }, { status: 413 })
+          if (f.size > slot.maxBytes) return NextResponse.json({ error: `${slot.label}: files can be up to ${Math.round(slot.maxBytes / 1024 / 1024)} MB.`, code: 'contest_file_too_large', params: { label: slot.label, mb: Math.round(slot.maxBytes / 1024 / 1024) } }, { status: 413 })
           files.push({ role: slot.role, name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })
         }
       }
       const fields = jsonSchema.safeParse({ task_id: form.get('task_id') ?? undefined, text: form.get('text') ?? undefined })
-      if (!fields.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+      if (!fields.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
       return respond(await submitToContest(user, c, fields.data, files, direct))
     }
     const parsed = jsonSchema.safeParse(await req.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
     return respond(await submitToContest(user, c, parsed.data))
   })
 }

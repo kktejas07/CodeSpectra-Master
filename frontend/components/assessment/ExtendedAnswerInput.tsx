@@ -18,6 +18,7 @@ import {
   type CaseSubQuestion, type TypingConfig, type UploadConfig, type VideoConfig,
 } from '@/lib/question-extensions'
 import { typingStats } from '@/lib/grading-extended'
+import { useT } from '@/lib/i18n/client'
 
 export interface ExamContext {
   examId: string
@@ -93,6 +94,7 @@ async function uploadAnswerFile(ctx: ExamContext, questionId: string, file: Blob
 // ─── System design ───────────────────────────────────────────────────────────
 
 function SystemDesignInput({ question, value, onChange, readOnly }: Omit<Props, 'SubInput' | 'examContext'>) {
+  const { t: tr } = useT()
   const a = parseJsonAnswer(str(value))
   const legacyText = !Object.keys(a).length ? str(value) : ''
   const text = typeof a.text === 'string' ? a.text : legacyText
@@ -101,25 +103,25 @@ function SystemDesignInput({ question, value, onChange, readOnly }: Omit<Props, 
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
-        <label htmlFor={`sd-text-${question.id}`} className="text-sm font-medium text-muted-foreground">Your design</label>
+        <label htmlFor={`sd-text-${question.id}`} className="text-sm font-medium text-muted-foreground">{tr('exam.yourDesign')}</label>
         <textarea
           id={`sd-text-${question.id}`}
           value={text}
           disabled={readOnly}
           onChange={(e) => write(e.target.value, diagram)}
-          placeholder="Requirements, APIs, data model, components, scaling, trade-offs…"
+          placeholder={tr('exam.requirementsApisDataModelComponentsScali7ba')}
           className={`${areaCls} h-72 resize-y`}
         />
       </div>
       {question.allow_diagram && (
         <div className="space-y-1.5">
-          <label htmlFor={`sd-diagram-${question.id}`} className="text-sm font-medium text-muted-foreground">Diagram (optional — plain text or Mermaid)</label>
+          <label htmlFor={`sd-diagram-${question.id}`} className="text-sm font-medium text-muted-foreground">{tr('exam.diagramOptionalPlainTextOrMermaid')}</label>
           <textarea
             id={`sd-diagram-${question.id}`}
             value={diagram}
             disabled={readOnly}
             onChange={(e) => write(text, e.target.value)}
-            placeholder={'graph LR\n  Client --> LB[Load balancer]\n  LB --> API\n  API --> DB[(Database)]'}
+            placeholder={tr('exam.graphLrClientLbLoadBalancerb8d')}
             spellCheck={false}
             className={`${areaCls} h-48 resize-y font-mono text-xs`}
           />
@@ -132,11 +134,12 @@ function SystemDesignInput({ question, value, onChange, readOnly }: Omit<Props, 
 // ─── Case study ──────────────────────────────────────────────────────────────
 
 function CaseStudyInput({ question, value, onChange, readOnly, SubInput }: Omit<Props, 'examContext'>) {
+  const { t } = useT()
   const subs = question.sub_questions || []
   const map = parseJsonAnswer(str(value)) as Record<string, string | string[]>
   if (!subs.length) {
     return (
-      <textarea aria-label="Your answer" value={str(value)} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder="Write your response here…" className={`${areaCls} h-72 resize-y`} />
+      <textarea aria-label={t('exam.yourAnswer')} value={str(value)} disabled={readOnly} onChange={(e) => onChange(e.target.value)} placeholder={t('exam.writeYourResponseHere')} className={`${areaCls} h-72 resize-y`} />
     )
   }
   return (
@@ -145,7 +148,7 @@ function CaseStudyInput({ question, value, onChange, readOnly, SubInput }: Omit<
         <li key={s.id} className="space-y-3 rounded-2xl border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-3">
             <p className="text-sm font-medium text-foreground"><span className="tabular-nums text-muted-foreground">{String.fromCharCode(97 + i)}) </span>{s.prompt}</p>
-            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{s.points} pt{s.points === 1 ? '' : 's'}</span>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{t('exam.countPts', { count: s.points })}</span>
           </div>
           <SubInput
             question={{ id: `${question.id}__${s.id}`, type: s.type, prompt: s.prompt, options: s.options }}
@@ -162,6 +165,7 @@ function CaseStudyInput({ question, value, onChange, readOnly, SubInput }: Omit<
 // ─── Typing test ─────────────────────────────────────────────────────────────
 
 function TypingTestInput({ question, value, onChange, readOnly }: Omit<Props, 'SubInput' | 'examContext'>) {
+  const { t: tr } = useT()
   const cfg = question.typing
   const a = parseJsonAnswer(str(value))
   const typed = typeof a.typed === 'string' ? a.typed : ''
@@ -179,26 +183,25 @@ function TypingTestInput({ question, value, onChange, readOnly }: Omit<Props, 'S
     return () => clearInterval(t)
   }, [start, timeUp, done])
 
-  if (!cfg?.passage) return <p className={noteCls}>This typing test has no passage yet.</p>
+  if (!cfg?.passage) return <p className={noteCls}>{tr('exam.thisTypingTestHasNoPassage535')}</p>
   const stats = typingStats(cfg.passage, typed, Math.max(storedElapsed, elapsed))
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Type the passage exactly. The timer starts with your first key. Target: <span className="tabular-nums">{cfg.min_wpm}</span> words per minute at <span className="tabular-nums">{cfg.min_accuracy}%</span> accuracy.
-        {limitMs > 0 && <> Time limit: <span className="tabular-nums">{cfg.time_limit_seconds}</span> seconds.</>}
+      <p className="text-sm text-muted-foreground">{tr('exam.typeThePassageExactlyTheTimer81e')}{' '}<span className="tabular-nums">{cfg.min_wpm}</span>{' '}{tr('exam.wordsPerMinuteAt')}{' '}<span className="tabular-nums">{cfg.min_accuracy}%</span> accuracy.
+        {limitMs > 0 && <>{' '}{tr('exam.timeLimit')}{' '}<span className="tabular-nums">{cfg.time_limit_seconds}</span> seconds.</>}
       </p>
       <div
         className="select-none whitespace-pre-wrap rounded-xl border border-border bg-muted/40 p-4 text-[15px] leading-relaxed"
         onCopy={(e) => e.preventDefault()}
-        aria-label="Passage to type"
+        aria-label={tr('exam.passageToType')}
       >
         {cfg.passage.split('').map((ch, i) => (
           <span key={i} className={i < typed.length ? (typed[i] === ch ? 'text-green-700 dark:text-green-400' : 'bg-destructive/15 text-destructive') : i === typed.length ? 'border-b-2 border-primary' : 'text-foreground'}>{ch}</span>
         ))}
       </div>
       <textarea
-        aria-label="Type the passage here"
+        aria-label={tr('exam.typeThePassageHere')}
         value={typed}
         disabled={readOnly || timeUp}
         spellCheck={false}
@@ -226,7 +229,7 @@ function TypingTestInput({ question, value, onChange, readOnly }: Omit<Props, 'S
           </div>
         ))}
       </dl>
-      {(timeUp || done) && <p className="text-sm text-muted-foreground">{timeUp ? 'Time is up for this passage.' : 'Passage complete.'} Your result is saved with your answers.</p>}
+      {(timeUp || done) && <p className="text-sm text-muted-foreground">{tr('exam.valueYourResultIsSavedWithbe4', { value: timeUp ? tr('exam.timeIsUpForThisPassage') : tr('exam.passageComplete') })}</p>}
     </div>
   )
 }
@@ -234,6 +237,7 @@ function TypingTestInput({ question, value, onChange, readOnly }: Omit<Props, 'S
 // ─── File upload ─────────────────────────────────────────────────────────────
 
 function FileUploadInput({ question, value, onChange, readOnly, examContext }: Omit<Props, 'SubInput'>) {
+  const { t } = useT()
   const cfg: UploadConfig = question.upload || { allowed: ['pdf'], max_mb: 5 }
   const a = parseJsonAnswer(str(value))
   const [busy, setBusy] = useState(false)
@@ -245,13 +249,13 @@ function FileUploadInput({ question, value, onChange, readOnly, examContext }: O
   const pick = async (file: File | undefined) => {
     if (!file || !examContext) return
     setError(null)
-    if (file.size > maxMb * 1048576) { setError(`Files must be under ${maxMb} MB.`); return }
+    if (file.size > maxMb * 1048576) { setError(t('exam.filesMustBeUnderMaxmbMb', { maxMb })); return }
     setBusy(true)
     try {
       const f = await uploadAnswerFile(examContext, question.id, file, file.name)
       onChange(JSON.stringify({ file_id: f.id, name: f.name, size: f.size, type: f.type }))
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed. Try again.')
+      setError(e instanceof Error ? e.message : t('exam.uploadFailedTryAgain'))
     } finally {
       setBusy(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -260,7 +264,7 @@ function FileUploadInput({ question, value, onChange, readOnly, examContext }: O
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">Allowed: {labels || 'PDF'} · up to <span className="tabular-nums">{maxMb}</span> MB.</p>
+      <p className="text-sm text-muted-foreground">{t('exam.allowed')}{' '}{labels || 'PDF'}{' '}{t('exam.upTo')}{' '}<span className="tabular-nums">{maxMb}</span> MB.</p>
       {a.file_id ? (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm">
           <CheckCircle2 className="h-4 w-4 text-green-700 dark:text-green-400" aria-hidden />
@@ -268,16 +272,16 @@ function FileUploadInput({ question, value, onChange, readOnly, examContext }: O
           <span className="tabular-nums text-muted-foreground">{fmtSize(Number(a.size) || 0)}</span>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">No file uploaded yet.</p>
+        <p className="text-sm text-muted-foreground">{t('exam.noFileUploadedYet')}</p>
       )}
       {!examContext ? (
-        <p className={noteCls}>Uploads work when the candidate takes the live test.</p>
+        <p className={noteCls}>{t('exam.uploadsWorkWhenTheCandidateTakesf65')}</p>
       ) : !readOnly && (
         <>
           <input ref={inputRef} type="file" accept={acceptForKinds(cfg.allowed)} className="sr-only" id={`file-${question.id}`} onChange={(e) => void pick(e.target.files?.[0])} />
           <Button type="button" variant="outline" className="min-h-11 gap-2" disabled={busy} onClick={() => inputRef.current?.click()}>
             {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <FileUp className="h-4 w-4" aria-hidden />}
-            {busy ? 'Uploading…' : a.file_id ? 'Replace file' : 'Choose file'}
+            {busy ? t('exam.uploading') : a.file_id ? t('exam.replaceFile') : t('exam.chooseFile')}
           </Button>
         </>
       )}
@@ -299,6 +303,7 @@ function pickMime(): string {
 }
 
 function VideoResponseInput({ question, value, onChange, readOnly, examContext }: Omit<Props, 'SubInput'>) {
+  const { t: tr } = useT()
   const cfg: VideoConfig = question.video || { max_seconds: 120, retakes: 1, allow_text_alternative: true }
   const maxSeconds = Math.min(VIDEO_MAX_SECONDS, cfg.max_seconds)
   const a = parseJsonAnswer(str(value))
@@ -350,12 +355,12 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
     } catch (e) {
       const name = e instanceof DOMException ? e.name : ''
       setError(name === 'NotAllowedError' || name === 'SecurityError'
-        ? 'Camera or microphone access is blocked. Allow both for this site in your browser settings, then try again.'
+        ? tr('exam.cameraOrMicrophoneAccessIsBlockede4d')
         : name === 'NotFoundError' || name === 'OverconstrainedError'
-          ? 'No camera or microphone was found. Connect one and try again.'
+          ? tr('exam.noCameraOrMicrophoneWasFound2e4')
           : name === 'NotReadableError'
-            ? 'Your camera is in use by another app. Close it and try again.'
-            : 'The camera could not start. Try again, or use another browser.')
+            ? tr('exam.yourCameraIsInUseBy14c')
+            : tr('exam.theCameraCouldNotStartTry3b4'))
       setPhase('idle')
     }
   }
@@ -397,7 +402,7 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
       onChange(JSON.stringify({ file_id: f.id, name: f.name, size: f.size, duration_s: blob.duration, takes }))
       setPhase('idle')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Upload failed. Try again.')
+      setError(e instanceof Error ? e.message : tr('exam.uploadFailedTryAgain'))
       setPhase('recorded')
     }
   }
@@ -406,31 +411,30 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Record up to <span className="tabular-nums">{maxSeconds}</span> seconds. {cfg.retakes > 0 ? <>You can retake <span className="tabular-nums">{cfg.retakes}</span> time{cfg.retakes === 1 ? '' : 's'}.</> : 'One take only.'}
+      <p className="text-sm text-muted-foreground">{tr('exam.recordUpTo')}{' '}<span className="tabular-nums">{maxSeconds}</span> seconds. {cfg.retakes > 0 ? <>{tr('exam.youCanRetake')}{' '}<span className="tabular-nums">{cfg.retakes}</span>{' '}{tr('exam.times', { count: cfg.retakes })}</> : tr('exam.oneTakeOnly')}
       </p>
       {!!a.file_id && phase === 'idle' && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 p-3 text-sm">
           <CheckCircle2 className="h-4 w-4 text-green-700 dark:text-green-400" aria-hidden />
-          <span className="flex-1">Recording saved (<span className="tabular-nums">{Math.round(Number(a.duration_s) || 0)}</span> s).</span>
+          <span className="flex-1">{tr('exam.recordingSaved')}<span className="tabular-nums">{Math.round(Number(a.duration_s) || 0)}</span> s).</span>
         </div>
       )}
 
       {!examContext ? (
-        <p className={noteCls}>Recording works when the candidate takes the live test.</p>
+        <p className={noteCls}>{tr('exam.recordingWorksWhenTheCandidateTakesfe3')}</p>
       ) : textMode ? (
         <div className="space-y-2">
-          <label htmlFor={`va-text-${question.id}`} className="text-sm font-medium text-muted-foreground">Your answer in writing</label>
+          <label htmlFor={`va-text-${question.id}`} className="text-sm font-medium text-muted-foreground">{tr('exam.yourAnswerInWriting')}</label>
           <textarea id={`va-text-${question.id}`} value={textAlt} disabled={readOnly} onChange={(e) => onChange(JSON.stringify({ text_alternative: e.target.value }))} className={`${areaCls} h-48 resize-y`} />
-          {supported && !readOnly && <Button type="button" variant="ghost" size="sm" onClick={() => setTextMode(false)}>Record a video instead</Button>}
+          {supported && !readOnly && <Button type="button" variant="ghost" size="sm" onClick={() => setTextMode(false)}>{tr('exam.recordAVideoInstead')}</Button>}
         </div>
       ) : !supported ? (
-        <p className={noteCls}>This browser can’t record video.{cfg.allow_text_alternative ? ' You can type your answer instead.' : ' Try a recent Chrome, Edge, Firefox or Safari.'}</p>
+        <p className={noteCls}>{tr('exam.thisBrowserCantRecordVideoValue', { value: cfg.allow_text_alternative ? tr('exam.youCanTypeYourAnswerInstead') : tr('exam.tryARecentChromeEdgeFirefox222') })}</p>
       ) : !readOnly && (
         <div className="space-y-3">
           {(phase === 'ready' || phase === 'recording') && (
             <div className="relative overflow-hidden rounded-2xl border border-border bg-black">
-              <video ref={liveRef} muted playsInline className="aspect-video w-full object-cover" aria-label="Camera preview" />
+              <video ref={liveRef} muted playsInline className="aspect-video w-full object-cover" aria-label={tr('exam.cameraPreview')} />
               {phase === 'recording' && (
                 <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1 font-mono text-xs tabular-nums text-white">
                   <span className="h-2 w-2 rounded-full bg-red-500 motion-safe:animate-pulse" aria-hidden /> {seconds}s / {maxSeconds}s
@@ -439,30 +443,30 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
             </div>
           )}
           {(phase === 'recorded' || phase === 'uploading') && blob && (
-            <video src={blob.url} controls playsInline className="aspect-video w-full rounded-2xl border border-border bg-black" aria-label="Your recording" />
+            <video src={blob.url} controls playsInline className="aspect-video w-full rounded-2xl border border-border bg-black" aria-label={tr('exam.yourRecording')} />
           )}
           <div className="flex flex-wrap gap-2">
             {(phase === 'idle' || phase === 'asking') && retakesLeft > 0 && (
               <Button type="button" className="min-h-11 gap-2" onClick={() => void openCamera()} disabled={phase === 'asking'}>
                 {phase === 'asking' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Camera className="h-4 w-4" aria-hidden />}
-                {a.file_id ? 'Retake' : 'Turn on camera'}
+                {a.file_id ? tr('exam.retake') : tr('exam.turnOnCamera')}
               </Button>
             )}
-            {phase === 'ready' && <Button type="button" className="min-h-11 gap-2" onClick={start}><Play className="h-4 w-4" aria-hidden /> Start recording</Button>}
-            {phase === 'recording' && <Button type="button" variant="destructive" className="min-h-11 gap-2" onClick={() => recRef.current?.stop()}><Square className="h-4 w-4" aria-hidden /> Stop</Button>}
+            {phase === 'ready' && <Button type="button" className="min-h-11 gap-2" onClick={start}><Play className="h-4 w-4" aria-hidden />{' '}{tr('exam.startRecording')}</Button>}
+            {phase === 'recording' && <Button type="button" variant="destructive" className="min-h-11 gap-2" onClick={() => recRef.current?.stop()}><Square className="h-4 w-4" aria-hidden />{' '}{tr('common.stop')}</Button>}
             {phase === 'recorded' && (
               <>
-                <Button type="button" className="min-h-11 gap-2" onClick={() => void upload()}><Upload className="h-4 w-4" aria-hidden /> Use this recording</Button>
-                {retakesLeft > 0 && <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={() => { setBlob(null); void openCamera() }}><RotateCcw className="h-4 w-4" aria-hidden /> Record again</Button>}
+                <Button type="button" className="min-h-11 gap-2" onClick={() => void upload()}><Upload className="h-4 w-4" aria-hidden />{' '}{tr('exam.useThisRecording')}</Button>
+                {retakesLeft > 0 && <Button type="button" variant="outline" className="min-h-11 gap-2" onClick={() => { setBlob(null); void openCamera() }}><RotateCcw className="h-4 w-4" aria-hidden />{' '}{tr('exam.recordAgain')}</Button>}
               </>
             )}
-            {phase === 'uploading' && <Button type="button" disabled className="min-h-11 gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden /> Uploading…</Button>}
-            {phase === 'idle' && retakesLeft === 0 && <p className="text-sm text-muted-foreground">You’ve used all your takes.</p>}
+            {phase === 'uploading' && <Button type="button" disabled className="min-h-11 gap-2"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />{' '}{tr('exam.uploading')}</Button>}
+            {phase === 'idle' && retakesLeft === 0 && <p className="text-sm text-muted-foreground">{tr('exam.youveUsedAllYourTakes')}</p>}
           </div>
         </div>
       )}
       {examContext && !textMode && cfg.allow_text_alternative && !readOnly && phase === 'idle' && (
-        <Button type="button" variant="ghost" size="sm" onClick={() => setTextMode(true)}>Can’t record? Type your answer instead</Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => setTextMode(true)}>{tr('exam.cantRecordTypeYourAnswerInstead')}</Button>
       )}
       {error && <p role="alert" className={errCls}><AlertTriangle className="mr-1 inline h-4 w-4" aria-hidden />{error}</p>}
     </div>
@@ -472,11 +476,12 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
 // ─── Reverse coding: black-box runner ────────────────────────────────────────
 
 export function BlackBoxRunner({ questionId, runs, examContext }: { questionId: string; runs: number; examContext?: ExamContext }) {
+  const { t } = useT()
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [left, setLeft] = useState(runs)
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null)
-  if (!examContext) return <p className={noteCls}>The black-box runner works when the candidate takes the live test.</p>
+  if (!examContext) return <p className={noteCls}>{t('exam.theBlackBoxRunnerWorksWhenc79')}</p>
   const run = async () => {
     setBusy(true)
     setResult(null)
@@ -488,10 +493,10 @@ export function BlackBoxRunner({ questionId, runs, examContext }: { questionId: 
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; output?: string; message?: string; error?: string; truncated?: boolean }
       if (res.status === 429) setLeft(0)
       else if (res.ok) setLeft((n) => Math.max(0, n - 1))
-      if (!res.ok) setResult({ ok: false, text: j.error || 'Run failed.' })
-      else setResult({ ok: !!j.ok, text: j.ok ? `${j.output ?? ''}${j.truncated ? '\n… (output cut)' : ''}` : j.message || 'No output.' })
+      if (!res.ok) setResult({ ok: false, text: j.error || t('exam.runFailed') })
+      else setResult({ ok: !!j.ok, text: j.ok ? `${j.output ?? ''}${j.truncated ? '\n… (output cut)' : ''}` : j.message || t('exam.noOutput') })
     } catch {
-      setResult({ ok: false, text: 'Network error. Try again.' })
+      setResult({ ok: false, text: t('exam.networkErrorTryAgain') })
     } finally {
       setBusy(false)
     }
@@ -499,15 +504,14 @@ export function BlackBoxRunner({ questionId, runs, examContext }: { questionId: 
   return (
     <div className="space-y-2 rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium">Try the black box</p>
-        <span className="text-xs text-muted-foreground"><span className="tabular-nums">{left}</span> run{left === 1 ? '' : 's'} left this hour</span>
+        <p className="text-sm font-medium">{t('exam.tryTheBlackBox')}</p>
+        <span className="text-xs text-muted-foreground"><span className="tabular-nums">{left}</span>{' '}{t('exam.runsLeftThisHour', { count: left })}</span>
       </div>
-      <p className="text-xs text-muted-foreground">Type an input (stdin) and see what the hidden program prints. Its code is never shown.</p>
-      <label htmlFor={`bb-in-${questionId}`} className="sr-only">Black-box input</label>
+      <p className="text-xs text-muted-foreground">{t('exam.typeAnInputStdinAndSee7e2')}</p>
+      <label htmlFor={`bb-in-${questionId}`} className="sr-only">{t('exam.blackBoxInput')}</label>
       <textarea id={`bb-in-${questionId}`} value={input} maxLength={BLACK_BOX_INPUT_MAX} onChange={(e) => setInput(e.target.value)} spellCheck={false} className={`${areaCls} h-24 resize-y font-mono text-xs`} placeholder="e.g. 3 5" />
       <Button type="button" variant="outline" size="sm" className="min-h-11 gap-2" disabled={busy || left <= 0} onClick={() => void run()}>
-        {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />} Run black box
-      </Button>
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}{' '}{t('exam.runBlackBox')}</Button>
       {result && (
         <pre aria-live="polite" className={`max-h-48 overflow-auto whitespace-pre-wrap rounded-lg border p-3 font-mono text-xs ${result.ok ? 'border-border bg-muted/40' : 'border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300'}`}>{result.text || '(no output)'}</pre>
       )}

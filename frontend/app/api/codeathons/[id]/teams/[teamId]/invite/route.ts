@@ -11,13 +11,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string; teamId: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: codeathonId, teamId } = await params
   const body = sanitizeMongoInput(await request.json()) as { email: string }
 
   if (!body.email?.trim()) {
-    return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Email is required', code: 'auth_email_required' }, { status: 400 })
   }
 
   try {
@@ -45,7 +45,7 @@ export async function POST(
     // Find user by email
     const invitee = await db.collection('user').findOne({ email: body.email.trim().toLowerCase() })
     if (!invitee) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
     }
 
     // Check if already in a team
@@ -91,6 +91,8 @@ export async function POST(
         type: 'team_invitation',
         title: 'Team Invitation',
         message: `${user.fullName || user.email} invited you to join "${invite.team_name}" for a codeathon`,
+        title_i18n: { key: 'type.team.invite' },
+        message_i18n: { key: 'codeathon.teamInvite.message', params: { inviter: String(user.fullName || user.email), team: String(invite.team_name) } },
         link: `/dashboard/codeathons/${codeathonId}`,
         icon: 'users',
       })

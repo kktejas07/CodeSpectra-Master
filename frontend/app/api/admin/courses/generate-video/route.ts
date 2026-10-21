@@ -13,7 +13,7 @@ export const maxDuration = 300
 export async function POST(request: NextRequest) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
@@ -80,6 +80,6 @@ export async function POST(request: NextRequest) {
 
   } catch (e) {
     console.error('[generate-video] error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

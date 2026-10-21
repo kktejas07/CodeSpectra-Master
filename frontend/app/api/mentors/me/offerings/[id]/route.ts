@@ -10,7 +10,7 @@ export async function PATCH(req: NextRequest, { params }: IdRouteContext) {
   const g = await userGate(req, { write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Session type not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Session type not found', code: 'mentor_session_type_not_found' }, 404)
   try {
     const { updateOffering } = await import('@/lib/mentors/service')
     const p = await updateOffering(g.user.id, id, await bodyOf(req))
@@ -24,7 +24,7 @@ export async function DELETE(req: NextRequest, { params }: IdRouteContext) {
   const g = await userGate(req, { write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Session type not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Session type not found', code: 'mentor_session_type_not_found' }, 404)
   try {
     const { archiveOffering } = await import('@/lib/mentors/service')
     return json({ result: await archiveOffering(g.user.id, id) })

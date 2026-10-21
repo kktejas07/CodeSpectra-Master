@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   if ('error' in g) return NextResponse.json({ error: g.error }, { status: g.status })
   const { id } = await ctx.params
   const wf = await loadWorkflow(g, id)
-  if (!wf) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!wf) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   return NextResponse.json({ ...publicWorkflow(wf), hook_url: `${getAppOrigin()}/api/workflows/hooks/${wf.id}` })
 }
 
@@ -31,12 +31,12 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
   if ('error' in g) return NextResponse.json({ error: g.error }, { status: g.status })
   const { id } = await ctx.params
   const wf = await loadWorkflow(g, id)
-  if (!wf) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!wf) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   let body: Record<string, unknown>
   try {
     body = (await req.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'invalid body' }, { status: 400 })
   const { set, errors } = prepareWorkflowUpdate(wf, body, { platform: g.platform && !wf.tenant_id })
@@ -62,7 +62,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if ('error' in g) return NextResponse.json({ error: g.error }, { status: g.status })
   const { id } = await ctx.params
   const wf = await loadWorkflow(g, id)
-  if (!wf) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!wf) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   await (await col('workflows')).deleteOne({ id: wf.id })
   await (await col('workflow_runs')).updateMany({ workflow_id: wf.id, status: { $in: ['waiting', 'running'] } }, { $set: { status: 'cancelled', finished_at: nowIso(), error: 'Workflow was deleted' } })
   await auditAdmin(g.user, 'workflow.delete', 'workflow', wf.id, wf.name, 'warning')

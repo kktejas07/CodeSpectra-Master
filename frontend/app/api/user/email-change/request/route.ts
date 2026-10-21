@@ -20,7 +20,7 @@ const TTL_MS = 15 * 60 * 1000
  */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
   const email = String(body.email || '').trim().toLowerCase()
@@ -30,11 +30,11 @@ export async function POST(req: NextRequest) {
 
   const limit = await rateLimitRedis(`email-change:${user.id}`, 5, 3600_000)
   if (!limit.ok) {
-    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.` }, { status: 429 })
+    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.`, code: 'rate_limited_minutes', params: { minutes: Math.ceil(limit.retryAfterSec / 60) } }, { status: 429 })
   }
 
   const full = await getUserById(user.id)
-  if (!full) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!full) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const reauth = await verifyReauth(full as never, { password: body.password, code: body.code })
   if (!reauth.ok) return NextResponse.json({ error: reauth.error, needs: reauth.needs }, { status: reauth.status })
 

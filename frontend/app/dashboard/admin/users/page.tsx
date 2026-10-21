@@ -33,6 +33,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type TableUser = {
   id: string
@@ -47,7 +49,7 @@ type TableUser = {
   tenantName: string | null
 }
 
-function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
+function mapRowToTableUser(row: AdminUserListRow, tick: number, never = 'Never'): TableUser {
   void tick
   return {
     id: row.id,
@@ -56,7 +58,7 @@ function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
     role: row.role,
     status: row.status,
     joinedAt: row.joinedAt,
-    lastActive: row.lastActiveAt ? formatRelativeTime(row.lastActiveAt) : 'Never',
+    lastActive: row.lastActiveAt ? formatRelativeTime(row.lastActiveAt) : never,
     plan: (row as any).plan || 'free',
     tenantId: (row as any).tenant_id ?? null,
     tenantName: (row as any).tenant_name ?? null,
@@ -65,6 +67,8 @@ function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
 
 export default function UsersManagement() {
   const gate = usePageGuard('superadmin')
+  const { t, rich } = useAdminT()
+  const apiError = useApiError()
 
   const addToast = useToast()
   const [rows, setRows] = useState<AdminUserListRow[]>([])
@@ -88,10 +92,10 @@ export default function UsersManagement() {
     const res = await fetch('/api/admin/users', { credentials: 'include' })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) {
-      throw new Error(json.error || `Failed to load users (${res.status})`)
+      throw new Error(apiError(json, `Failed to load users (${res.status})`))
     }
     setRows(json.users as AdminUserListRow[])
-  }, [])
+  }, [apiError])
 
   useEffect(() => {
     let cancelled = false
@@ -119,7 +123,7 @@ export default function UsersManagement() {
         const msg = e instanceof Error ? e.message : 'Failed to load users'
         if (!cancelled) {
           setLoadError(true)
-          addToast({ type: 'error', title: 'Could not load users', message: msg })
+          addToast({ type: 'error', title: t('users.loadFailedToast'), message: msg })
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -128,7 +132,7 @@ export default function UsersManagement() {
     return () => {
       cancelled = true
     }
-  }, [loadUsers, addToast, reloadKey])
+  }, [loadUsers, addToast, reloadKey, t])
 
   /** Recompute relative “last active” labels on an interval without refetching everything. */
   useEffect(() => {
@@ -162,8 +166,8 @@ export default function UsersManagement() {
   // }, [loadUsers])
 
   const displayUsers = useMemo(
-    () => rows.map((r) => mapRowToTableUser(r, tick)),
-    [rows, tick]
+    () => rows.map((r) => mapRowToTableUser(r, tick, t('users.never'))),
+    [rows, tick, t]
   )
 
   const handleEdit = (user: TableUser) => {
@@ -200,13 +204,13 @@ export default function UsersManagement() {
         body: JSON.stringify({ password: resetPwValue }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Failed')
-      addToast({ type: 'success', title: 'Password reset successfully' })
+      if (!res.ok) throw new Error(apiError(json))
+      addToast({ type: 'success', title: t('users.pwResetOk') })
       setResetPwUserId(null)
       setResetPwValue('')
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed'
-      addToast({ type: 'error', title: 'Password reset failed', message: msg })
+      addToast({ type: 'error', title: t('users.pwResetFailed'), message: msg })
     } finally {
       setResetPwLoading(false)
     }
@@ -220,11 +224,11 @@ export default function UsersManagement() {
         credentials: 'include',
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Failed')
-      addToast({ type: 'success', title: 'Password reset email sent' })
+      if (!res.ok) throw new Error(apiError(json))
+      addToast({ type: 'success', title: t('users.resetEmailSent') })
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed'
-      addToast({ type: 'error', title: 'Failed to send reset email', message: msg })
+      addToast({ type: 'error', title: t('users.resetEmailFailed'), message: msg })
     } finally {
       setSendingResetEmail(null)
     }
@@ -232,7 +236,7 @@ export default function UsersManagement() {
 
   const handleBulkDelete = async (userIds: string[]) => {
     setDeleteId('__bulk__')
-    setDeleteName(`${userIds.length} users`)
+    setDeleteName(t('users.bulkCount', { count: userIds.length }))
     // Store bulk IDs for confirm
     ;(window as any).__bulkDeleteIds = userIds
   }
@@ -247,14 +251,14 @@ export default function UsersManagement() {
         if (!res.ok) failed++
       }
       if (failed > 0) {
-        addToast({ type: 'error', title: 'Partial failure', message: `${ids.length - failed} deleted, ${failed} failed` })
+        addToast({ type: 'error', title: t('users.partialFailure'), message: t('users.deletedFailed', { ok: ids.length - failed, failed }) })
       } else {
-        addToast({ type: 'success', title: `${ids.length} user${ids.length !== 1 ? 's' : ''} deleted` })
+        addToast({ type: 'success', title: t('users.deleted', { count: ids.length }) })
       }
       setRows(prev => prev.filter(r => !ids.includes(r.id)))
       try { await loadUsers() } catch { /* ignore */ }
     } catch (e) {
-      addToast({ type: 'error', title: 'Delete failed', message: e instanceof Error ? e.message : 'Unknown error' })
+      addToast({ type: 'error', title: t('users.deleteFailed'), message: e instanceof Error ? e.message : 'Unknown error' })
     } finally {
       setDeleteId(null)
       delete (window as any).__bulkDeleteIds
@@ -277,9 +281,9 @@ export default function UsersManagement() {
       } catch { failed++ }
     }
     if (failed > 0) {
-      addToast({ type: 'error', title: 'Partial failure', message: `${userIds.length - failed} updated, ${failed} failed` })
+      addToast({ type: 'error', title: t('users.partialFailure'), message: t('users.updatedFailed', { ok: userIds.length - failed, failed }) })
     } else {
-      addToast({ type: 'success', title: `${userIds.length} user${userIds.length !== 1 ? 's' : ''} role updated` })
+      addToast({ type: 'success', title: t('users.roleUpdated', { count: userIds.length }) })
     }
     try { await loadUsers() } catch { /* ignore */ }
   }
@@ -302,15 +306,15 @@ export default function UsersManagement() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        throw new Error(json.error || 'Update failed')
+        throw new Error(apiError(json, 'Update failed'))
       }
       const parts: string[] = []
-      if (body.full_name !== undefined) parts.push('Name')
-      if (body.role !== undefined) parts.push('Role')
-      if (body.status !== undefined) parts.push('Status')
-      if (body.plan !== undefined) parts.push('Plan')
-      if (body.tenantId !== undefined) parts.push('Organization')
-      addToast({ type: 'success', title: `${parts.join(', ')} updated` })
+      if (body.full_name !== undefined) parts.push(t('users.field.name'))
+      if (body.role !== undefined) parts.push(t('users.field.role'))
+      if (body.status !== undefined) parts.push(t('users.field.status'))
+      if (body.plan !== undefined) parts.push(t('users.field.plan'))
+      if (body.tenantId !== undefined) parts.push(t('users.field.organization'))
+      addToast({ type: 'success', title: t('users.fieldsUpdated', { fields: parts.join(', ') }) })
       try {
         await loadUsers()
       } catch {
@@ -320,7 +324,7 @@ export default function UsersManagement() {
       const msg = e instanceof Error ? e.message : 'Update failed'
       addToast({
         type: 'error',
-        title: body.full_name !== undefined ? 'Could not update name' : 'Could not update role',
+        title: body.full_name !== undefined ? t('users.updateNameFailed') : t('users.updateRoleFailed'),
         message: msg,
       })
       throw e
@@ -348,12 +352,12 @@ export default function UsersManagement() {
     })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) {
-      throw new Error(json.error || 'Could not create user')
+      throw new Error(apiError(json, t('users.createFailed')))
     }
     addToast({
       type: 'success',
-      title: 'User created',
-      message: `Account created for ${payload.email.trim()}.`,
+      title: t('users.created'),
+      message: t('users.createdFor', { email: payload.email.trim() }),
     })
     try {
       await loadUsers()
@@ -373,24 +377,24 @@ export default function UsersManagement() {
           icon={<Users />}
           title={
             <span className="inline-flex items-center gap-1.5">
-              Users
+              {t('users.title')}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" aria-label="About user management" />
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" aria-label={t('users.aboutAria')} />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs max-w-62.5">Use Edit for display names and Change role for access level, or remove accounts. New users without a manual password follow Platform settings &rarr; Admin user invitations. Last active combines recent sign-in and in-app activity.</p>
+                    <p className="text-xs max-w-62.5">{t('users.help')}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </span>
           }
-          description="Add people, change their role or plan, reset passwords and remove accounts."
+          description={t('users.description')}
           actions={
             <Button className="gap-2 shrink-0" onClick={() => setAddOpen(true)} disabled={loading}>
               <Plus className="w-4 h-4" />
-              Add user
+              {t('users.add')}
             </Button>
           }
           className="mb-0"
@@ -402,9 +406,9 @@ export default function UsersManagement() {
       ) : loadError && rows.length === 0 ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load users"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('users.loadFailed')}
+          description={t('common.checkConnection')}
+          actionLabel={t('common.tryAgain')}
           onAction={() => setReloadKey((k) => k + 1)}
         />
       ) : (
@@ -439,13 +443,13 @@ export default function UsersManagement() {
       <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete user?</AlertDialogTitle>
+            <AlertDialogTitle>{t('users.deleteTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This permanently removes <strong>{deleteName}</strong> and their account data. This cannot be undone.
+              {rich('users.deleteBody', { name: <strong>{deleteName}</strong> })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={(e) => {
@@ -453,7 +457,7 @@ export default function UsersManagement() {
                 void confirmDelete()
               }}
             >
-              Delete
+              {t('common.delete')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -462,20 +466,20 @@ export default function UsersManagement() {
       <AlertDialog open={Boolean(resetPwUserId)} onOpenChange={(o) => !o && setResetPwUserId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reset password</AlertDialogTitle>
+            <AlertDialogTitle>{t('users.resetTitle')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Enter a new password for this user (min 8 characters).
+              {t('users.resetBody')}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <Input aria-label="New password"
+          <Input aria-label={t('users.newPassword')}
             type="password"
-            placeholder="New password"
+            placeholder={t('users.newPassword')}
             value={resetPwValue}
             onChange={(e) => setResetPwValue(e.target.value)}
             className="my-2"
           />
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
             <AlertDialogAction
               disabled={resetPwValue.length < 8 || resetPwLoading}
               onClick={(e) => {
@@ -484,7 +488,7 @@ export default function UsersManagement() {
               }}
             >
               {resetPwLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <KeyRound className="h-4 w-4 mr-1" />}
-              Reset
+              {t('users.reset')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Interface language (lib/i18n): profile → cookie → Accept-Language.
   return (
-    <LocaleRoot>
+    <LocaleRoot areas={['dash']}>
       <DashboardShell>{children}</DashboardShell>
     </LocaleRoot>
   )

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AdminOrders, AdminPayouts, AdminProducts, AdminRefunds, AdminSellers } from '@/components/marketplace/admin/operations'
 import { AdminReports, AdminSettings } from '@/components/marketplace/admin/settings-reports'
+import { useAdminT } from '@/lib/i18n/admin'
 
 const TABS = [
   ['sellers', 'Sellers'], ['products', 'Product review'], ['orders', 'Orders'], ['refunds', 'Refunds and disputes'],
@@ -18,6 +19,7 @@ const TABS = [
 
 function MarketplaceAdmin() {
   const gate = usePageGuard('superadmin')
+  const { t: tr } = useAdminT()
   const sp = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -26,14 +28,14 @@ function MarketplaceAdmin() {
   return (
     <div className="mx-auto max-w-7xl">
       <PageHeader
-        title="Marketplace"
+        title={tr('market.title')}
         icon={<Store />}
-        description="Approve sellers and products, handle refunds, pay sellers and track sales."
-        actions={<Button asChild variant="outline"><Link href="/dashboard/seller?as=platform">Manage CodeSpectra store</Link></Button>}
+        description={tr('market.description')}
+        actions={<Button asChild variant="outline"><Link href="/dashboard/seller?as=platform">{tr('market.manageStore')}</Link></Button>}
       />
       <Tabs value={tab} onValueChange={(t) => router.replace(`${pathname}?tab=${t}`, { scroll: false })} className="gap-5">
         <div className="-mx-1 overflow-x-auto px-1 pb-1">
-          <TabsList className="w-max">{TABS.map(([t, l]) => <TabsTrigger key={t} value={t}>{l}</TabsTrigger>)}</TabsList>
+          <TabsList className="w-max">{TABS.map(([t]) => <TabsTrigger key={t} value={t}>{tr(`market.tab.${t}` as 'market.tab.sellers')}</TabsTrigger>)}</TabsList>
         </div>
         <TabsContent value="sellers"><AdminSellers /></TabsContent>
         <TabsContent value="products"><AdminProducts /></TabsContent>

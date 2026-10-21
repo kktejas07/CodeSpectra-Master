@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "incremental": false },
+  "include": [
+    "next-env.d.ts",
+    "app/[[]lang]/**/*.ts", "app/[[]lang]/**/*.tsx",
+    "app/landing-view.tsx", "app/page.tsx", "app/not-found.tsx", "app/public-layout.tsx",
+    "app/features/*.tsx", "app/about/*.tsx", "app/faq/*.tsx", "app/pricing/*.tsx", "app/contact/*.tsx", "app/support/*.tsx",
+    "app/privacy/*.tsx", "app/terms/*.tsx", "app/cookies/*.tsx", "app/companies/**/*.tsx", "app/learn/page.tsx", "app/learn/learn-view.tsx",
+    "app/news/page.tsx", "app/news/news-view.tsx", "app/events/page.tsx", "app/events/events-view.tsx", "app/contests/*.tsx",
+    "app/leagues/page.tsx", "app/leagues/leagues-view.tsx", "app/mentors/page.tsx", "app/mentors/mentors-view.tsx",
+    "app/marketplace/page.tsx", "app/marketplace/marketplace-view.tsx",
+    "components/i18n/*.tsx", "components/public/*.tsx", "components/landing/*.tsx", "components/contests/*.tsx",
+    "lib/i18n/*.ts", "lib/seo/*.ts", "lib/csp/*.ts", "proxy.ts", "tests/csp-policy.test.ts", "tests/seo.test.ts"
+  ]
+}

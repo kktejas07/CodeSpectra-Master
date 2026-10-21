@@ -69,18 +69,18 @@ async function openAICompatOCR(dataUrl: string, key: string, base: string, model
 export async function POST(req: Request) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     // Each call spends vision-model credits: cap per user.
     const limited = await limitRequest(req, 'id-ocr', user.id, 10, 60_000)
     if (limited) return limited
 
     const { imageBase64 } = await req.json()
-    if (!imageBase64) return NextResponse.json({ error: 'Missing image' }, { status: 400 })
+    if (!imageBase64) return NextResponse.json({ error: 'Missing image', code: 'image_missing' }, { status: 400 })
 
     // Real JPEG/PNG/WebP bytes only, at most 6 MB (magic-byte check, lib/upload-sniff).
     const image = decodeBase64Image(imageBase64, 6 * 1024 * 1024)
-    if (!image) return NextResponse.json({ error: 'Upload a JPEG, PNG or WebP photo under 6 MB.' }, { status: 400 })
+    if (!image) return NextResponse.json({ error: 'Upload a JPEG, PNG or WebP photo under 6 MB.', code: 'photo_invalid' }, { status: 400 })
     const dataUrl = `data:${image.mime};base64,${image.bytes.toString('base64')}`
     const userName = user.name || ''
 
@@ -197,10 +197,10 @@ export async function POST(req: Request) {
         uncertain: true,
       }, { status: 422 })
     }
-    return NextResponse.json({ error: 'ID verification service could not read the ID. Please try again.' }, { status: 422 })
+    return NextResponse.json({ error: 'ID verification service could not read the ID. Please try again.', code: 'id_unreadable' }, { status: 422 })
 
   } catch (error: any) {
     console.error('ID OCR Error:', error)
-    return NextResponse.json({ error: 'Internal server error during ID verification' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error during ID verification', code: 'id_verify_error' }, { status: 500 })
   }
 }

@@ -14,6 +14,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftGlow } from '@/components/visuals/stage'
 import type { EbookPage } from '@/lib/db/ebooks'
+import { useT } from '@/lib/i18n/client'
 
 type EbookDetail = {
   slug: string
@@ -28,6 +29,7 @@ type EbookDetail = {
 }
 
 export default function EbookReaderPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const params = useParams()
@@ -47,11 +49,11 @@ export default function EbookReaderPage() {
     setLoading(true)
     fetch(`/api/resources/ebooks/${encodeURIComponent(slug)}`, { credentials: 'include' })
       .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Not found')
+        if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || t('learning.notFound'))
         return r.json()
       })
       .then((d) => setEbook(d.item))
-      .catch((e) => setError(e.message || 'Failed to load'))
+      .catch((e) => setError(e.message || t('learning.failedToLoad')))
       .finally(() => setLoading(false))
   }, [gate.ready, slug])
 
@@ -173,20 +175,20 @@ export default function EbookReaderPage() {
       const resourceReaderTour: TourStep[] = [
         {
           target: '[data-tour="resource-reader-header"]',
-          title: 'Guide reader overview',
-          description: 'This page opens one saved resource guide for learners, showing its title, topic, and estimated read time.',
+          title: t('learning.guideReaderOverview'),
+          description: t('learning.thisPageOpensOneSavedResourcea38'),
           position: 'bottom',
         },
         {
           target: '[data-tour="resource-reader-actions"]',
-          title: 'Return to library',
-          description: 'Click Resources to return to the full library and pick another guide.',
+          title: t('learning.returnToLibrary'),
+          description: t('learning.clickResourcesToReturnToThe8f9'),
           position: 'bottom',
         },
         {
           target: '[data-tour="resource-reader-viewer"]',
-          title: 'Read then export',
-          description: 'Tip: flip through every page first, then export the full guide as PDF for offline review.',
+          title: t('learning.readThenExport'),
+          description: t('learning.tipFlipThroughEveryPageFirst825'),
           position: 'top',
         },
       ]
@@ -207,9 +209,9 @@ export default function EbookReaderPage() {
       <div className="w-full py-8">
         <EmptyState illustration="error"
           variant="search"
-          title="We couldn't open this guide"
-          description={error && error !== 'Not found' ? error : 'It may have been moved or removed. Pick another guide from the resource library.'}
-          actionLabel="Back to resources"
+          title={t('learning.weCouldntOpenThisGuide')}
+          description={error && error !== 'Not found' ? error : t('learning.itMayHaveBeenMovedOr7ce')}
+          actionLabel={t('learning.backToResources')}
           actionHref="/dashboard/resources"
         />
       </div>
@@ -221,8 +223,7 @@ export default function EbookReaderPage() {
       <div data-tour="resource-reader-header">
         <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2" data-tour="resource-reader-actions">
           <Link href="/dashboard/resources">
-            <ArrowLeft className="mr-1 h-4 w-4" /> Resources
-          </Link>
+            <ArrowLeft className="mr-1 h-4 w-4" />{' '}{t('learning.resources')}</Link>
         </Button>
 
         {ebook.coverImageUrl ? (
@@ -236,7 +237,7 @@ export default function EbookReaderPage() {
             <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
               <p className="text-xs font-semibold text-white/85">
-                {ebook.topic || 'Guide'}
+                {ebook.topic || t('learning.guide')}
               </p>
               <h1 className="mt-1 text-2xl font-bold tracking-tight drop-shadow-sm sm:text-3xl">
                 {ebook.title}
@@ -245,7 +246,7 @@ export default function EbookReaderPage() {
                 <p className="mt-1 max-w-3xl text-sm text-white/85">{ebook.subtitle}</p>
               ) : null}
               <p className="mt-2 text-xs text-white/70">
-                {ebook.readMinutes ? `${ebook.readMinutes} min read` : ''}
+                {ebook.readMinutes ? t('learning.readminutesMinRead', { readMinutes: ebook.readMinutes }) : ''}
               </p>
             </div>
           </div>
@@ -260,8 +261,8 @@ export default function EbookReaderPage() {
                 <>
                   {ebook.subtitle ? <span className="block">{ebook.subtitle}</span> : null}
                   <span className="mt-1 block text-xs">
-                    {ebook.topic || 'Guide'}
-                    {ebook.readMinutes ? ` · ${ebook.readMinutes} min read` : ''}
+                    {ebook.topic || t('learning.guide')}
+                    {ebook.readMinutes ? t('learning.readminutesMinRead2', { readMinutes: ebook.readMinutes }) : ''}
                   </span>
                 </>
               }
@@ -278,10 +279,8 @@ export default function EbookReaderPage() {
       {quizQuestions.length > 0 && !showQuiz && (
         <div className="text-center py-6">
           <Button onClick={() => setShowQuiz(true)} size="lg" className="gap-2">
-            <HelpCircle aria-hidden className="h-5 w-5" />
-            Take the quiz (<span className="tabular-nums">{quizQuestions.length}</span> questions)
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">Test your understanding of this ebook</p>
+            <HelpCircle aria-hidden className="h-5 w-5" />{t('learning.takeTheQuiz')}<span className="tabular-nums">{quizQuestions.length}</span>{' '}{t('learning.questions')}</Button>
+          <p className="text-xs text-muted-foreground mt-2">{t('learning.testYourUnderstandingOfThisEbook')}</p>
         </div>
       )}
 

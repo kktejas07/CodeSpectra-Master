@@ -12,8 +12,10 @@ import { SOURCE_LABELS, initials, timeAgo } from '@/components/hiring/lib/labels
 import type { CandidateListItem } from '@/components/hiring/lib/types'
 import type { CandidateSource } from '@/lib/ats/contract'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 export default function HiringCandidatesPage() {
+  const { t: tr } = useT()
   const [q, setQ] = useState('')
   const [debounced, setDebounced] = useState('')
   const [source, setSource] = useState('')
@@ -36,15 +38,15 @@ export default function HiringCandidatesPage() {
   const filtered = !!(debounced || source || tag)
 
   return (
-    <HiringShell title="Candidates" description="Everyone in your organisation's talent pool, across all jobs." icon={<Users />}>
+    <HiringShell title={tr('hiring.candidates')} description={tr('hiring.everyoneInYourOrganisationsTalentPool475')} icon={<Users />}>
       <div className="mb-5 flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1 sm:max-w-sm">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, phone or skill" aria-label="Search candidates" className="pl-9" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('hiring.searchNameEmailPhoneOrSkill')} aria-label={tr('hiring.searchCandidates')} className="pl-9" />
         </div>
-        <NativeSelect aria-label="Filter by source" value={source} onChange={setSource} placeholder="Any source" className="sm:w-44" options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))} />
+        <NativeSelect aria-label={tr('hiring.filterBySource')} value={source} onChange={setSource} placeholder={tr('hiring.anySource')} className="sm:w-44" options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))} />
         {allTags.length > 0 && (
-          <NativeSelect aria-label="Filter by tag" value={tag} onChange={setTag} placeholder="Any tag" className="sm:w-44" options={allTags.map((t) => ({ value: t, label: t }))} />
+          <NativeSelect aria-label={tr('hiring.filterByTag')} value={tag} onChange={setTag} placeholder={tr('hiring.anyTag')} className="sm:w-44" options={allTags.map((t) => ({ value: t, label: t }))} />
         )}
       </div>
 
@@ -52,20 +54,20 @@ export default function HiringCandidatesPage() {
       {query.data && (
         list.length === 0 ? (
           filtered ? (
-            <EmptyState variant="search" title="No candidates match" description="Try a different name, skill, tag or source." actionLabel="Clear filters" onAction={() => { setQ(''); setSource(''); setTag('') }} />
+            <EmptyState variant="search" title={tr('hiring.noCandidatesMatch')} description={tr('hiring.tryADifferentNameSkillTagee4')} actionLabel={tr('hiring.clearFilters')} onAction={() => { setQ(''); setSource(''); setTag('') }} />
           ) : (
-            <EmptyState scene="candidate-desk" title="No candidates yet" description="Candidates appear here as they apply or as you upload résumés to a job." actionLabel="Go to jobs" actionHref="/dashboard/hiring/jobs" />
+            <EmptyState scene="candidate-desk" title={tr('hiring.noCandidatesYet')} description={tr('hiring.candidatesAppearHereAsTheyApply03b')} actionLabel={tr('hiring.goToJobs')} actionHref="/dashboard/hiring/jobs" />
           )
         ) : (
           <div className={cn('overflow-x-auto rounded-2xl border border-border/70', query.loading && 'opacity-70')}>
             <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
                 <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">Candidate</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Skills</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Tags</th>
-                  <th scope="col" className="px-4 py-2 font-medium">Source</th>
-                  <th scope="col" className="px-4 py-2 text-right font-medium">Added</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{tr('hiring.candidate')}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{tr('hiring.skills')}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{tr('hiring.tags')}</th>
+                  <th scope="col" className="px-4 py-2 font-medium">{tr('hiring.source')}</th>
+                  <th scope="col" className="px-4 py-2 text-right font-medium">{tr('hiring.added')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -75,7 +77,7 @@ export default function HiringCandidatesPage() {
                       <div className="flex items-center gap-3">
                         <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(c.name)}</span>
                         <div className="min-w-0">
-                          <Link href={`/dashboard/hiring/candidates/${c.id}`} className="block truncate font-medium text-foreground hover:text-primary">{c.name || 'Unnamed candidate'}</Link>
+                          <Link href={`/dashboard/hiring/candidates/${c.id}`} className="block truncate font-medium text-foreground hover:text-primary">{c.name || tr('hiring.unnamedCandidate')}</Link>
                           <p className="truncate text-xs text-muted-foreground">{c.email || c.phone}</p>
                         </div>
                       </div>

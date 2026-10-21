@@ -6,7 +6,9 @@
  * the save.
  */
 import 'server-only'
-import { hackathonEmailTemplates } from '@/lib/email-templates'
+import { hackathonEmailTemplatesFor } from '@/lib/email-templates'
+import { recipientLocaleFrom } from '@/lib/i18n/recipient'
+import { outboundT } from '@/lib/i18n/outbound'
 import { sendEmail } from '@/lib/send-email'
 import { escapeHtml } from '@/lib/safe-html'
 
@@ -27,14 +29,15 @@ export async function emailNewJudges(
   try {
     const { users } = await import('@/lib/db/admin')
     const rows = await (await users())
-      .find({ $or: [{ id: { $in: ids } }, { _id: { $in: ids } }] } as Record<string, unknown>, { projection: { email: 1, name: 1 } })
+      .find({ $or: [{ id: { $in: ids } }, { _id: { $in: ids } }] } as Record<string, unknown>, { projection: { email: 1, name: 1, ui_locale: 1 } })
       .toArray()
     const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const results = await Promise.allSettled(
       rows
         .filter((u) => typeof u.email === 'string' && u.email.includes('@'))
         .map((u) => {
-          const template = hackathonEmailTemplates.judgeAssignment({
+          const locale = recipientLocaleFrom(u as { ui_locale?: unknown })
+          const template = hackathonEmailTemplatesFor(locale).judgeAssignment({
             eventName: escapeHtml(String(event.name || 'Hackathon')),
             judgeName: escapeHtml(String(u.name || u.email).slice(0, 120)),
             teamCount: Number(event.num_teams) || 0,
@@ -42,7 +45,7 @@ export async function emailNewJudges(
             reviewUrl: `${base}/dashboard/judge`,
           })
           // Subject is plain text: use the raw (control-char-free) name there.
-          const subject = `You've been assigned as a judge — ${String(event.name || 'Hackathon').replace(/[\r\n\t]+/g, ' ').slice(0, 150)}`
+          const subject = outboundT('email', locale)('hack.judge.subject', { event: String(event.name || 'Hackathon').replace(/[\r\n\t]+/g, ' ').slice(0, 150) })
           return sendEmail(String(u.email), { ...template, subject })
         }),
     )

@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -16,6 +16,8 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SoftGlow } from '@/components/visuals'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -24,11 +26,13 @@ interface Hackathon {
   judges?: string[]
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: 'Draft', open: 'Registration', live: 'Live', closed: 'Closed',
-}
+const STATUS_LABEL = (t: Translator): Record<string, string> => ({
+  draft: t('compete.draft'), open: t('compete.registration'), live: t('compete.live'), closed: t('compete.closed'),
+})
 
 export default function JudgeDashboardPage() {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   // Per-event judges can be any user (assigned on the event's Judges tab), so
   // the page only needs a session; /api/hackathons?judge=1 returns just the
   // events this user judges (empty list otherwise).
@@ -43,7 +47,7 @@ export default function JudgeDashboardPage() {
     setLoadError(false)
     try {
       const res = await fetch('/api/hackathons?judge=1', { cache: 'no-store' })
-      if (!res.ok) throw new Error(`Failed to load judging events (${res.status})`)
+      if (!res.ok) throw new Error(t('compete.failedToLoadJudgingEventsStatus', { status: res.status }))
       const data = await res.json() as { items: Hackathon[] }
 
       const withCounts = await Promise.all((data.items || []).map(async (h) => {
@@ -73,14 +77,14 @@ export default function JudgeDashboardPage() {
       const judgeDeskTour: TourStep[] = [
         {
           target: '[data-tour="judge-header"]',
-          title: 'Judge desk',
-          description: 'All hackathons assigned to you for submission review appear here.',
+          title: t('compete.judgeDesk'),
+          description: t('compete.allHackathonsAssignedToYouForf77'),
           position: 'bottom',
         },
         {
           target: '[data-tour="judge-list"]',
-          title: 'Review submissions',
-          description: 'Open an event to score the submissions awaiting your review.',
+          title: t('compete.reviewSubmissions'),
+          description: t('compete.openAnEventToScoreThec49'),
           position: 'top',
         },
       ]
@@ -108,8 +112,8 @@ export default function JudgeDashboardPage() {
         <PageHeader
           illustration="hackathon"
           className="mb-0"
-          title="Judge desk"
-          description="Hackathons assigned to you. Open one to score the submissions waiting for review."
+          title={t('compete.judgeDesk')}
+          description={t('compete.hackathonsAssignedToYouOpenOnef00')}
           icon={<Gavel />}
         />
       </div>
@@ -118,15 +122,15 @@ export default function JudgeDashboardPage() {
       {loadError && hackathons.length === 0 ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load your judging events"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('compete.couldntLoadYourJudgingEvents')}
+          description={t('compete.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
           onAction={() => { setLoading(true); void load() }}
         />
       ) : hackathons.length === 0 ? (
         <EmptyState illustration="hackathon"
-          title="No hackathons assigned to you yet"
-          description="An admin adds judges on the event's Judges tab. Events you're assigned to will show up here."
+          title={t('compete.noHackathonsAssignedToYouYet')}
+          description={t('compete.anAdminAddsJudgesOnThe16a')}
         />
       ) : (
         <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">
@@ -137,10 +141,9 @@ export default function JudgeDashboardPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline" className="text-[10px]">
-                      <Trophy className="w-2.5 h-2.5 mr-1" /> Hackathon
-                    </Badge>
-                    {isLive && <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">Live</Badge>}
-                    <Badge variant="secondary" className="text-[10px]">{STATUS_LABEL[h.status] || h.status}</Badge>
+                      <Trophy className="w-2.5 h-2.5 mr-1" />{' '}{t('compete.hackathon2')}</Badge>
+                    {isLive && <Badge variant="outline" className="text-[10px] bg-green-500/10 text-green-700 border-green-500/30 dark:text-green-400">{t('compete.live')}</Badge>}
+                    <Badge variant="secondary" className="text-[10px]">{STATUS_LABEL(t)[h.status] || h.status}</Badge>
                   </div>
                 </div>
                 <h3 className="truncate text-base font-semibold text-foreground">{h.name}</h3>
@@ -152,22 +155,17 @@ export default function JudgeDashboardPage() {
                     <Clock className="w-3 h-3" /> {formatDate(h.starts_at)}
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <Users className="w-3 h-3" /> {h.num_teams} teams
-                  </span>
+                    <Users className="w-3 h-3" />{' '}{t('compete.numTeamsTeams', { num_teams: h.num_teams })}</span>
                 </div>
                 {isLive && (
-                  <div className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-green-700 dark:text-green-400">
-                    Ends in <Countdown targetIso={h.ends_at} />
+                  <div className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-green-700 dark:text-green-400">{t('compete.endsIn')}{' '}<Countdown targetIso={h.ends_at} />
                   </div>
                 )}
                 {h.awaiting > 0 && (
-                  <div className="text-xs font-medium tabular-nums text-amber-700 dark:text-amber-400">
-                    {h.awaiting} submission{h.awaiting === 1 ? '' : 's'} awaiting review
-                  </div>
+                  <div className="text-xs font-medium tabular-nums text-amber-700 dark:text-amber-400">{t('compete.countSubmissionsAwaitingReview', { count: h.awaiting })}</div>
                 )}
                 <Button size="sm" className="w-full gap-1.5 text-xs" variant={h.awaiting > 0 ? 'default' : 'outline'} asChild>
-                  <Link href={`/dashboard/events/${h.id}?tab=judge`}>
-                    Review submissions <ArrowRight className="w-3 h-3" />
+                  <Link href={`/dashboard/events/${h.id}?tab=judge`}>{t('compete.reviewSubmissions')}{' '}<ArrowRight className="w-3 h-3" />
                   </Link>
                 </Button>
               </Card>

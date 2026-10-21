@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const rateCheck = await rateLimitAIRedis(req, user.id)
     if (!rateCheck.ok) {
@@ -47,6 +47,6 @@ export async function POST(req: NextRequest) {
     } })
   } catch (error) {
     console.error('[billing/coupons/validate]', error)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

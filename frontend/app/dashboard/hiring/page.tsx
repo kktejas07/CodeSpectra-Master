@@ -11,9 +11,12 @@ import { BarList, ErrorState, LoadingRows } from '@/components/hiring/ui'
 import { useAts } from '@/components/hiring/lib/api'
 import { JOB_STATUS_LABELS, JOB_STATUS_VARIANT, timeAgo } from '@/components/hiring/lib/labels'
 import type { AnalyticsResponse, ApprovalItem, AtsInterview, JobListItem } from '@/components/hiring/lib/types'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
+import { useT } from '@/lib/i18n/client'
 
 export default function HiringOverviewPage() {
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const jobs = useAts<JobListItem[]>('/api/ats/jobs', 'jobs')
   const approvals = useAts<ApprovalItem[]>('/api/ats/approvals', 'approvals')
   const analytics = useAts<AnalyticsResponse>('/api/ats/analytics')
@@ -34,49 +37,49 @@ export default function HiringOverviewPage() {
 
   return (
     <HiringShell
-      title="Hiring"
-      description="Your open roles, who is moving through each pipeline and what is waiting on you."
+      title={t('hiring.hiring')}
+      description={t('hiring.yourOpenRolesWhoIsMoving3fe')}
       icon={<Briefcase />}
       actions={
         <Button asChild className="rounded-full">
-          <Link href="/dashboard/hiring/jobs/new"><Plus aria-hidden /> New job</Link>
+          <Link href="/dashboard/hiring/jobs/new"><Plus aria-hidden />{' '}{t('hiring.newJob')}</Link>
         </Button>
       }
     >
       {noAccess ? (
         <EmptyState
           illustration="locked"
-          title="This overview is for recruiters"
-          description={jobs.error?.message || 'Your hiring role does not include jobs.'}
-          actionLabel="My interviews"
+          title={t('hiring.thisOverviewIsForRecruiters')}
+          description={jobs.error?.message || t('hiring.yourHiringRoleDoesNotInclude622')}
+          actionLabel={t('hiring.myInterviews')}
           actionHref="/dashboard/hiring/interviews"
         />
       ) : (
         <div className="space-y-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Open jobs" value={dash(jobs, openJobs.length)} icon={<Briefcase />} />
-            <StatCard label="Candidates in pipeline" value={dash(jobs, inPipeline)} icon={<Users />} />
-            <StatCard label="Waiting for approval" value={dash(approvals, pending.length)} icon={<CheckCheck />} />
-            <StatCard label="Interviews this week" value={dash(interviews, thisWeek.length)} icon={<CalendarClock />} />
+            <StatCard label={t('hiring.openJobs')} value={dash(jobs, openJobs.length)} icon={<Briefcase />} />
+            <StatCard label={t('hiring.candidatesInPipeline')} value={dash(jobs, inPipeline)} icon={<Users />} />
+            <StatCard label={t('hiring.waitingForApproval')} value={dash(approvals, pending.length)} icon={<CheckCheck />} />
+            <StatCard label={t('hiring.interviewsThisWeek')} value={dash(interviews, thisWeek.length)} icon={<CalendarClock />} />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-5">
             <Panel className="lg:col-span-3">
               <Section
-                title="Funnel"
-                description="Candidates who reached each stage, across all jobs."
-                actions={<Link href="/dashboard/hiring/analytics" className="text-sm font-medium text-primary hover:underline">Full analytics</Link>}
+                title={t('hiring.funnel')}
+                description={t('hiring.candidatesWhoReachedEachStageAcross08d')}
+                actions={<Link href="/dashboard/hiring/analytics" className="text-sm font-medium text-primary hover:underline">{t('hiring.fullAnalytics')}</Link>}
               >
                 {analytics.loading && !analytics.data ? (
                   <LoadingRows rows={3} />
                 ) : analytics.error ? (
                   <ErrorState compact message={analytics.error.message} onRetry={analytics.reload} />
                 ) : !analytics.data?.total ? (
-                  <EmptyState compact illustration="analytics" title="No candidates yet" description="The funnel fills in as people apply to your jobs." />
+                  <EmptyState compact illustration="analytics" title={t('hiring.noCandidatesYet')} description={t('hiring.theFunnelFillsInAsPeopleacb')} />
                 ) : (
                   <BarList
-                    caption="Candidates per stage"
-                    rows={analytics.data.funnel.filter((f) => f.type !== 'rejected').map((f) => ({ label: f.name, value: f.reached, hint: f.conversion_pct != null ? `${Math.round(f.conversion_pct)}% of the previous stage` : undefined }))}
+                    caption={t('hiring.candidatesPerStage')}
+                    rows={analytics.data.funnel.filter((f) => f.type !== 'rejected').map((f) => ({ label: f.name, value: f.reached, hint: f.conversion_pct != null ? t('hiring.nOfThePreviousStage', { n: Math.round(f.conversion_pct) }) : undefined }))}
                   />
                 )}
               </Section>
@@ -84,15 +87,15 @@ export default function HiringOverviewPage() {
 
             <Panel className="lg:col-span-2">
               <Section
-                title="Waiting for you"
-                actions={pending.length > 0 && <Link href="/dashboard/hiring/approvals" className="text-sm font-medium text-primary hover:underline">See all</Link>}
+                title={t('hiring.waitingForYou')}
+                actions={pending.length > 0 && <Link href="/dashboard/hiring/approvals" className="text-sm font-medium text-primary hover:underline">{t('hiring.seeAll')}</Link>}
               >
                 {approvals.loading && !approvals.data ? (
                   <LoadingRows rows={3} />
                 ) : approvals.error ? (
                   <ErrorState compact message={approvals.error.message} onRetry={approvals.reload} />
                 ) : pending.length === 0 ? (
-                  <EmptyState compact illustration="success" title="Nothing to approve" description="Suggested moves that need your OK show up here." />
+                  <EmptyState compact illustration="success" title={t('hiring.nothingToApprove')} description={t('hiring.suggestedMovesThatNeedYourOkf3c')} />
                 ) : (
                   <ul className="divide-y divide-border">
                     {pending.slice(0, 5).map((a) => (
@@ -101,7 +104,7 @@ export default function HiringOverviewPage() {
                           <Link href={`/dashboard/hiring/candidates/${a.candidate.id}?app=${a.application_id}`} className="block truncate font-medium text-foreground hover:text-primary">
                             {a.candidate.name}
                           </Link>
-                          <p className="truncate text-xs text-muted-foreground">{a.job.title} · move to {a.to?.name ?? 'next stage'}</p>
+                          <p className="truncate text-xs text-muted-foreground">{t('hiring.titleMoveTo', { title: a.job.title })}{' '}{a.to?.name ?? t('hiring.nextStage2')}</p>
                         </div>
                         <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(a.suggested_at)}</span>
                       </li>
@@ -115,15 +118,15 @@ export default function HiringOverviewPage() {
           <div className="grid gap-6 lg:grid-cols-5">
             <Panel className="lg:col-span-3">
               <Section
-                title="Open jobs"
-                actions={<Link href="/dashboard/hiring/jobs" className="text-sm font-medium text-primary hover:underline">All jobs</Link>}
+                title={t('hiring.openJobs')}
+                actions={<Link href="/dashboard/hiring/jobs" className="text-sm font-medium text-primary hover:underline">{t('hiring.allJobs')}</Link>}
               >
                 {jobs.loading && !jobs.data ? (
                   <LoadingRows rows={3} />
                 ) : jobs.error ? (
                   <ErrorState compact message={jobs.error.message} onRetry={jobs.reload} />
                 ) : (jobs.data ?? []).length === 0 ? (
-                  <EmptyState compact illustration="jobs" title="No jobs yet" description="Create a job, set its pipeline and share the apply link." actionLabel="New job" actionHref="/dashboard/hiring/jobs/new" />
+                  <EmptyState compact illustration="jobs" title={t('hiring.noJobsYet')} description={t('hiring.createAJobSetItsPipeline9bc')} actionLabel={t('hiring.newJob')} actionHref="/dashboard/hiring/jobs/new" />
                 ) : (
                   <ul className="divide-y divide-border">
                     {(openJobs.length ? openJobs : jobs.data ?? []).slice(0, 6).map((j) => (
@@ -137,7 +140,7 @@ export default function HiringOverviewPage() {
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
                             <Badge variant={JOB_STATUS_VARIANT[j.status]}>{JOB_STATUS_LABELS[j.status]}</Badge>
-                            <span className="text-sm tabular-nums text-muted-foreground" title="Active candidates">{j.counts?.active ?? 0}</span>
+                            <span className="text-sm tabular-nums text-muted-foreground" title={t('hiring.activeCandidates')}>{j.counts?.active ?? 0}</span>
                             <ArrowRight className="h-4 w-4 text-muted-foreground" aria-hidden />
                           </div>
                         </Link>
@@ -149,13 +152,13 @@ export default function HiringOverviewPage() {
             </Panel>
 
             <Panel className="lg:col-span-2">
-              <Section title="Interviews this week">
+              <Section title={t('hiring.interviewsThisWeek')}>
                 {interviews.loading && !interviews.data ? (
                   <LoadingRows rows={2} />
                 ) : interviews.error ? (
                   <ErrorState compact message={interviews.error.message} onRetry={interviews.reload} />
                 ) : thisWeek.length === 0 ? (
-                  <EmptyState compact illustration="calendar" title="No interviews this week" description="Scheduled interviews for the next seven days show up here." />
+                  <EmptyState compact illustration="calendar" title={t('hiring.noInterviewsThisWeek')} description={t('hiring.scheduledInterviewsForTheNextSevenc13')} />
                 ) : (
                   <ul className="divide-y divide-border">
                     {thisWeek.slice(0, 6).map((i) => (
@@ -164,7 +167,7 @@ export default function HiringOverviewPage() {
                           {formatDateTime(i.scheduled_at!)}
                         </Link>
                         <p className="text-xs text-muted-foreground">
-                          {i.mode === 'f2f' ? 'Face to face' : 'Video'} · {i.duration_min} min · {i.panel.map((p) => p.name || p.email).join(', ') || 'No panel yet'}
+                          {i.mode === 'f2f' ? t('hiring.faceToFace') : t('hiring.video')} · {i.duration_min} min · {i.panel.map((p) => p.name || p.email).join(', ') || t('hiring.noPanelYet')}
                         </p>
                       </li>
                     ))}

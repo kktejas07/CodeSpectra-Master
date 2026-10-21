@@ -20,14 +20,14 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!gate || 'error' in gate) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const user = gate.user
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const rl = rateLimitSlidingWindow(`cert-revoke:${user.id}`, 30, 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests. Try again in a minute.' }, { status: 429 })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests. Try again in a minute.', code: 'rate_limited_minute' }, { status: 429 })
 
   const { id } = await ctx.params
   if (!id || !CERT_ID_RE.test(id)) return NextResponse.json({ error: 'Invalid certificate id' }, { status: 400 })

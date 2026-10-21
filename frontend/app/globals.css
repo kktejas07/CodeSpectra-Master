@@ -932,6 +932,18 @@
 :where([lang='hi'], [lang='te']) :where(button, a, label, th, td, p, li, span) {
   overflow-wrap: anywhere;
 }
+/* Public pages in Hindi / Telugu (app/[lang]): the condensed Latin display leading clips matras,
+   and long Indic compounds must wrap on 360px phones instead of widening the page. */
+:where([lang='hi'], [lang='te']) .cs-display {
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+:where([lang='hi'], [lang='te']) .cs-heading {
+  line-height: 1.25;
+}
+:where([lang='hi'], [lang='te']) :where(h1, h2, h3, dt, dd, legend, summary) {
+  overflow-wrap: anywhere;
+}
 
 .cs-brand {
   --primary: 226 79% 54%;

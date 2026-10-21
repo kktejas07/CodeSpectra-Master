@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const appId = parseId(new URL(req.url).searchParams.get('application_id'))
   if (!appId) return NextResponse.json({ error: 'application_id is required' }, { status: 400 })
   try {
-    if (!(await loadVisibleApp(gate.actor, appId))) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!(await loadVisibleApp(gate.actor, appId))) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     const calls = (await (await callsCol())
       .find({ tenant_id: gate.actor.tenantId, application_id: appId }, { projection: { _id: 0 } })
       .sort({ created_at: -1 }).limit(50).toArray()) as ScreeningCallDoc[]

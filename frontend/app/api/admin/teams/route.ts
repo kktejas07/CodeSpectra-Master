@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const name = typeof body.name === 'string' ? body.name.trim().replace(/\s+/g, ' ') : ''
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   try {
     const db = await getMongoDb()
     const tenant = await db.collection('tenants').findOne({ id: tenantId }, { projection: { id: 1, name: 1, is_active: 1 } })
-    if (!tenant) return NextResponse.json({ error: 'Organisation not found.' }, { status: 404 })
+    if (!tenant) return NextResponse.json({ error: 'Organisation not found.', code: 'talent_org_not_found' }, { status: 404 })
 
     const adminUser = await db.collection('user').findOne(
       { email: adminEmail },
@@ -142,7 +142,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const db = await getMongoDb()
     const team = await manageableTeam(db, id, gate.user)
-    if (!team) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!team) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     const tenantId = String(team.tenant_id ?? team.tenantId)
     const now = nowIso()
 
@@ -156,7 +156,7 @@ export async function PATCH(request: NextRequest) {
     }
     if (typeof body.addMemberEmail === 'string') {
       const email = body.addMemberEmail.trim().toLowerCase()
-      if (!EMAIL_RE.test(email)) return NextResponse.json({ error: 'Enter a valid email.' }, { status: 400 })
+      if (!EMAIL_RE.test(email)) return NextResponse.json({ error: 'Enter a valid email.', code: 'campus_email_invalid' }, { status: 400 })
       const u = await db.collection('user').findOne({ email }, { projection: { id: 1, _id: 1, tenantId: 1, organizationId: 1 } })
       const uTenant = (u?.tenantId as string | null) ?? (u?.organizationId as string | null) ?? null
       if (!u || uTenant !== tenantId) return NextResponse.json({ error: 'No member with that email in this organisation.' }, { status: 400 })
@@ -184,7 +184,7 @@ export async function DELETE(request: NextRequest) {
     const db = await getMongoDb()
     const id = request.nextUrl.searchParams.get('id') || ''
     const team = await manageableTeam(db, id, gate.user)
-    if (!team) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!team) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     await db.collection('teams').deleteOne({ id })
     await auditAdmin(gate.user, 'admin.team.delete', 'team', `team/${id}`, undefined, 'warning')
     return NextResponse.json({ ok: true })

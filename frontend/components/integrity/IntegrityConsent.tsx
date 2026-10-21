@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { ShieldCheck } from 'lucide-react'
 import { SIGNAL_INFO, type CandidateIntegrityConfig, type TargetKind } from '@/lib/integrity/types'
+import { useT } from '@/lib/i18n/client'
 
 export function useIntegrityConfig(kind: TargetKind, id: string | null | undefined, enabled = true) {
   const [config, setConfig] = useState<CandidateIntegrityConfig | null>(null)
@@ -34,13 +35,13 @@ export function IntegrityConsent({ config, checked, onChange, id = 'integrity-co
   onChange: (v: boolean) => void
   id?: string
 }) {
+  const { t } = useT()
   if (!config.enabled) return null
   return (
     <section aria-labelledby={`${id}-title`} className="space-y-3 rounded-2xl border border-border bg-muted/30 p-4 text-sm">
       <h2 id={`${id}-title`} className="flex items-center gap-2 font-semibold text-foreground">
-        <ShieldCheck className="h-4 w-4 text-primary" aria-hidden /> Integrity checks for this test
-      </h2>
-      <p className="text-muted-foreground">The organiser turned on these checks. They only run while you take the test.</p>
+        <ShieldCheck className="h-4 w-4 text-primary" aria-hidden />{' '}{t('exam.integrityChecksForThisTest')}</h2>
+      <p className="text-muted-foreground">{t('exam.theOrganiserTurnedOnTheseChecksbb3')}</p>
       {config.signals.length > 0 ? (
         <ul className="space-y-1.5">
           {config.signals.map((s) => (
@@ -52,13 +53,13 @@ export function IntegrityConsent({ config, checked, onChange, id = 'integrity-co
         </ul>
       ) : null}
       <p className="text-muted-foreground">
-        {config.snapshots ? 'If the camera check sees a problem, one small still photo is saved for the reviewer and deleted later. ' : 'No photos are saved by these checks. '}
-        {config.continuous_video ? 'This test also records your webcam and screen while you take it.' : 'No continuous video is recorded by these checks.'}
+        {config.snapshots ? t('exam.ifTheCameraCheckSeesA636') : t('exam.noPhotosAreSavedByThesee58')}
+        {config.continuous_video ? t('exam.thisTestAlsoRecordsYourWebcam1bc') : t('exam.noContinuousVideoIsRecordedBydb8')}
       </p>
-      <p className="text-muted-foreground">Nothing here fails you automatically. A person reviews anything unusual before any decision.</p>
+      <p className="text-muted-foreground">{t('exam.nothingHereFailsYouAutomaticallyAe68')}</p>
       <label htmlFor={id} className="flex min-h-11 cursor-pointer items-start gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-primary/40 motion-reduce:transition-none">
         <input id={id} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-0.5 h-4 w-4 rounded border-input text-primary focus-visible:ring-2 focus-visible:ring-ring" />
-        <span className="text-foreground">I understand and agree to these checks.</span>
+        <span className="text-foreground">{t('exam.iUnderstandAndAgreeToTheseb72')}</span>
       </label>
     </section>
   )

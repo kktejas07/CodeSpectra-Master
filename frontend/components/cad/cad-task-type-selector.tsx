@@ -1,6 +1,7 @@
 'use client'
 
 import { Layers, CheckCircle2, FileText, Cpu, Wrench, RefreshCw, Calculator, Activity, MessageSquare } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 export interface TaskTypeOption {
   id: string
@@ -102,6 +103,7 @@ interface CADTaskTypeSelectorProps {
 }
 
 export function CADTaskTypeSelector({ selectedTaskCode, onSelectTask }: CADTaskTypeSelectorProps) {
+  const { td } = useT()
   return (
     <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3 lg:grid-cols-3">
       {CAD_TASK_TYPES.map((t) => {
@@ -121,13 +123,13 @@ export function CADTaskTypeSelector({ selectedTaskCode, onSelectTask }: CADTaskT
             <div className="flex w-full items-center justify-between mb-1.5">
               <div className="flex items-center gap-1.5 font-bold text-xs text-foreground">
                 <Icon className="h-3.5 w-3.5 text-primary" />
-                <span>{t.name}</span>
+                <span>{td(`exam.cadTask:${t.id}`, t.name)}</span>
               </div>
               <span className="font-mono text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded">
                 {t.duration}
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{t.description}</p>
+            <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">{td(`exam.cadTaskDesc:${t.id}`, t.description)}</p>
           </button>
         )
       })}

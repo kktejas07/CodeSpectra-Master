@@ -150,6 +150,8 @@ export async function PATCH(req: Request) {
         message: decision === 'approved'
           ? 'Your identity verification was approved.'
           : 'Your identity verification could not be approved. Please verify again.',
+        title_i18n: { key: decision === 'approved' ? 'kyc.approved.title' : 'kyc.rejected.title' },
+        message_i18n: { key: decision === 'approved' ? 'kyc.approved.message' : 'kyc.rejected.message' },
         icon: decision === 'approved' ? 'shield-check' : 'alert-circle',
         link: '/dashboard/identity-verify',
       }).catch(() => {})

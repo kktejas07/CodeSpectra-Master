@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (tenantId) {
     try {
       const t = await (await getMongoDb()).collection('tenants').findOne({ id: tenantId }, { projection: { id: 1 } })
-      if (!t) return NextResponse.json({ error: 'Organisation not found' }, { status: 400 })
+      if (!t) return NextResponse.json({ error: 'Organisation not found', code: 'talent_org_not_found' }, { status: 400 })
     } catch (e) {
       console.error('[CodeSpectra] admin/sso POST tenant lookup:', e)
       return NextResponse.json({ error: 'Failed to create SSO provider' }, { status: 500 })
@@ -90,11 +90,11 @@ export async function PATCH(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const id = req.nextUrl.searchParams.get('id') || ''
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
   const col = await ssoProviders()
   const existing = await col.findOne({ id })
-  if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!existing) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
   const $set: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (typeof body.enabled === 'boolean') $set.enabled = body.enabled
@@ -108,7 +108,7 @@ export async function PATCH(req: NextRequest) {
     $set.default_role = body.default_role
   }
   if (typeof body.client_secret === 'string' && body.client_secret) $set.client_secret = body.client_secret.slice(0, 2000)
-  if (Object.keys($set).length === 1) return NextResponse.json({ error: 'nothing to update' }, { status: 400 })
+  if (Object.keys($set).length === 1) return NextResponse.json({ error: 'nothing to update', code: 'nothing_to_update' }, { status: 400 })
   await col.updateOne({ id }, { $set })
   const { client_secret: _s, ...changed } = $set
   await auditAdmin(gate.user, 'admin.sso.update', 'sso', `sso/${id}`, JSON.stringify({ ...changed, ...(_s ? { client_secret: 'changed' } : {}) }))
@@ -120,9 +120,9 @@ export async function DELETE(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const id = req.nextUrl.searchParams.get('id') || ''
-  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
   const res = await (await ssoProviders()).deleteOne({ id })
-  if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   await auditAdmin(gate.user, 'admin.sso.delete', 'sso', `sso/${id}`, undefined, 'warning')
   return NextResponse.json({ ok: true })
 }

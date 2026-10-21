@@ -22,7 +22,7 @@ export const MAX_QTY = 20
 export interface CartRef { userId: string | null; anonId: string | null }
 
 export class CartError extends Error {
-  constructor(public status: number, message: string, public code?: string) { super(message) }
+  constructor(public status: number, message: string, public code?: string, public params?: Record<string, string | number>) { super(message) }
 }
 
 export const lineKey = (l: Pick<CartLine, 'product_id' | 'variant_id' | 'service_slot'>) => `${l.product_id}:${l.variant_id || ''}:${l.service_slot || ''}`
@@ -172,7 +172,7 @@ function switchOrAdopt(cart: CartDoc, currency: Currency, allowSwitch?: boolean)
   if (d === 'ok') return
   if (d === 'adopt') { cart.currency = currency; return }
   if (!allowSwitch) {
-    throw new CartError(409, `Your cart is in ${cart.currency}. Switch the cart to ${currency}? Items in ${cart.currency} move to "Saved for later".`, 'currency_switch_required')
+    throw new CartError(409, `Your cart is in ${cart.currency}. Switch the cart to ${currency}? Items in ${cart.currency} move to "Saved for later".`, 'currency_switch_required', { cartCurrency: cart.currency, currency })
   }
   cart.saved = cart.saved || []
   for (const l of cart.lines) pushUnique(cart.saved, l)

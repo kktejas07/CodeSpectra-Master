@@ -38,6 +38,17 @@ export function I18nProvider({ locale, messages, children }: { locale: Locale; m
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
 }
 
+/**
+ * Nested provider for one signed-in area's catalogs (components/i18n/area-i18n.tsx):
+ * merges them into the parent's tables. It doesn't publish — toasts get
+ * already-translated text from the caller.
+ */
+export function I18nAreaProvider({ messages, children }: { messages: Messages; children: ReactNode }) {
+  const parent = useI18nValue()
+  const value = useMemo(() => ({ locale: parent.locale, messages: { ...parent.messages, ...messages } }), [parent, messages])
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+}
+
 function useI18nValue(): I18nValue {
   const ctx = useContext(I18nContext)
   const global = useSyncExternalStore(subscribe, () => published, () => ENGLISH)
@@ -46,6 +57,11 @@ function useI18nValue(): I18nValue {
 
 export function useLocale(): Locale {
   return useI18nValue().locale
+}
+
+/** The active locale's raw catalogs (for pure helpers such as lib/i18n/api-error.ts). */
+export function useMessages(): Messages {
+  return useI18nValue().messages
 }
 
 export interface ClientI18n {

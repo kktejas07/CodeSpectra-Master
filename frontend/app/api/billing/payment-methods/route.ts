@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const ps = new PaymentService()
     const methods = await ps.listPaymentMethods(user.id, user.email)
@@ -24,6 +24,6 @@ export async function GET() {
       return NextResponse.json({ methods: [] })
     }
     console.error('[payment-methods]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
