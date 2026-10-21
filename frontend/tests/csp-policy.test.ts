@@ -167,3 +167,62 @@ describe('pathsFor (on-demand revalidation)', () => {
     expect(pathsFor('pricing')).toEqual(['/pricing'])
   })
 })
+
+describe('private-upload bucket origin in the CSP', () => {
+  it('derives exactly the presigned-URL origin (matches @aws-sdk/s3-request-presigner)', async () => {
+    const { storageOrigin } = await import('@/lib/csp/storage-origin')
+    const b = { bucket: 'my-bucket', region: 'ap-south-1', endpoint: '', forcePathStyle: false }
+    expect(storageOrigin(b)).toBe('https://my-bucket.s3.ap-south-1.amazonaws.com')
+    expect(storageOrigin({ ...b, forcePathStyle: true })).toBe('https://s3.ap-south-1.amazonaws.com')
+    expect(storageOrigin({ ...b, region: 'auto', endpoint: 'https://acct123.r2.cloudflarestorage.com' })).toBe('https://my-bucket.acct123.r2.cloudflarestorage.com')
+    expect(storageOrigin({ ...b, endpoint: 'https://minio.example.com:9000', forcePathStyle: true })).toBe('https://minio.example.com:9000')
+    expect(storageOrigin({ ...b, endpoint: 'http://minio.local:9000/', forcePathStyle: true })).toBe('http://minio.local:9000')
+    expect(storageOrigin(null)).toBeNull()
+    expect(storageOrigin({ ...b, bucket: '' })).toBeNull()
+  })
+
+  it('works from the real storage config parser (secrets first, then env)', async () => {
+    const { parseStorageConfig } = await import('@/lib/storage/config')
+    const { storageOrigin } = await import('@/lib/csp/storage-origin')
+    expect(storageOrigin(parseStorageConfig({}, {}))).toBeNull()
+    expect(storageOrigin(parseStorageConfig({}, { UPLOADS_S3_BUCKET: 'cs-uploads', UPLOADS_S3_REGION: 'us-east-1' }))).toBe('https://cs-uploads.s3.us-east-1.amazonaws.com')
+    expect(storageOrigin(parseStorageConfig({ uploads_s3_bucket: 'cs-up', uploads_s3_endpoint: 'https://acct.r2.cloudflarestorage.com' }, { UPLOADS_S3_BUCKET: 'ignored' }))).toBe('https://cs-up.acct.r2.cloudflarestorage.com')
+  })
+
+  it('adds the origin to connect/img/media in both enforced and report-only policies, nothing when unset', () => {
+    const origin = 'https://cs-uploads.s3.us-east-1.amazonaws.com'
+    for (const mode of ['report-only', 'enforce'] as const) {
+      const plan = cspHeaders({ mode, variant: 'nonce', nonce: 'n', storage: origin })
+      for (const p of Object.entries(plan.response).filter(([k]) => k.startsWith('Content-Security-Policy')).map(([, v]) => v)) {
+        for (const d of ['connect-src', 'img-src', 'media-src']) expect(directive(p, d).split(' ')).toContain(origin)
+      }
+    }
+    const none = cspHeaders({ mode: 'report-only', variant: 'static', storage: null })
+    expect(none.response['Content-Security-Policy']).toBe(legacyCsp())
+    expect(none.response['Content-Security-Policy-Report-Only']).toBe(strictCsp({ variant: 'static' }))
+  })
+})
+
+describe('hitOnly data cache (detail pages)', () => {
+  it('caches hits, never misses, and lets DB errors through', async () => {
+    const { hitOnly } = await import('@/lib/cache/public-data')
+    const store = new Map<string, unknown>()
+    // Minimal unstable_cache stand-in: memoises resolved values per args, nothing on throw.
+    const fakeCache = ((fn: (...a: unknown[]) => Promise<unknown>) => async (...a: unknown[]) => {
+      const k = JSON.stringify(a)
+      if (store.has(k)) return store.get(k)
+      const v = await fn(...a)
+      store.set(k, v)
+      return v
+    }) as never
+    let calls = 0
+    const load = hitOnly(async (slug: string) => { calls++; if (slug === 'boom') throw new Error('db down'); return slug === 'real' ? { slug } : null }, 'k', ['t'], 60, fakeCache)
+    expect(await load('real')).toEqual({ slug: 'real' })
+    expect(await load('real')).toEqual({ slug: 'real' })
+    expect(calls).toBe(1)
+    for (let i = 0; i < 50; i++) expect(await load(`random-${i}`)).toBeNull()
+    expect(store.size).toBe(1) // 404s leave no entries
+    await expect(load('boom')).rejects.toThrow('db down')
+    expect(store.size).toBe(1)
+  })
+})

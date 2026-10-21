@@ -140,7 +140,7 @@ export function legacyCsp(tags: TagHosts = NO_TAGS, storage: string | null = nul
     `script-src-elem ${scripts}`,
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
     "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com data:",
-    "img-src 'self' data: blob: https: http:",
+    `img-src 'self' data: blob: https: http:${st}`,
     `connect-src 'self' blob: data: ${CONNECT_HOSTS.join(' ')} ${tags.connect.join(' ')}`.trim() + st,
     `frame-src 'self' blob: data: ${FRAME_HOSTS.join(' ')} ${tags.frame.join(' ')}`.trim(),
     "worker-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",

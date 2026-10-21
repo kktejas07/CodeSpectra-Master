@@ -5,7 +5,8 @@ import { type MergedBillingPlan, mergedPlanToClientJson } from '@/lib/pricing-ca
 import { parsePlanPrice, planCheckoutMode, type PlanCheckoutMode } from '@/lib/billing-plan-mode'
 import { resolveBillingPlan } from '@/lib/billing-plans'
 
-export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
+/** `strict`: rethrow DB errors instead of falling back to the built-in catalogue (cached callers must not cache a fallback). */
+export async function getMergedBillingPlans(opts: { strict?: boolean } = {}): Promise<MergedBillingPlan[]> {
   try {
     const db = await getMongoDb()
     const dbPlans = await db.collection('plans').find({}).toArray()
@@ -35,6 +36,7 @@ export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
       })
     }
   } catch (err) {
+    if (opts.strict) throw err
     console.warn('[CodeSpectra] Could not look up dynamic plans from DB:', err)
   }
 
@@ -72,8 +74,8 @@ export type ClientPlanRow = ReturnType<typeof mergedPlanToClientJson> & {
  * with (amount, interval and currency), so the displayed price is the charged
  * price (D12) and "Contact us" plans never show as Free (D13).
  */
-export async function getClientPlans(): Promise<ClientPlanRow[]> {
-  const merged = await getMergedBillingPlans()
+export async function getClientPlans(opts: { strict?: boolean } = {}): Promise<ClientPlanRow[]> {
+  const merged = await getMergedBillingPlans(opts)
   return Promise.all(
     merged.map(async (p) => {
       const id = String(p.id)

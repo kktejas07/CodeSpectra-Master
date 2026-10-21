@@ -19,19 +19,20 @@ import { SITE_NAME } from '@/lib/seo/site'
 import type { LearnPostCard } from '@/lib/learn/types'
 import type { PublicFeedEvent } from '@/lib/events-feed/types'
 
-// ISR, 10 min (latest Learn posts + upcoming events strip); publishing either purges it.
-export const revalidate = 600
+// Rendered per request, never at build (the build has no DB). Data comes from
+// the tag-purged data cache (lib/cache/public-data.ts), so the first request
+// after a deploy fills it and later ones don't hit Mongo.
+export const dynamic = 'force-dynamic'
 
 const route = publicRoute('/')!
 export const metadata = { ...buildMetadata({ title: `${SITE_NAME}: ${route.title}`, description: route.description, path: '/', kind: 'default' }) }
 
 /** Featured first, then latest (max 3) — same rule the client strip used. */
 async function landingPosts(): Promise<LearnPostCard[]> {
+  // A DB error isn't cached; this request just renders without the strip.
   try {
-    const { listPublished } = await import('@/lib/learn/queries')
-    const [featured, latest] = await Promise.all([listPublished({ featured: true, limit: 3 }), listPublished({ limit: 3 })])
-    const seen = new Set<string>()
-    return [...featured.items, ...latest.items].filter((p) => !seen.has(p.slug) && seen.add(p.slug)).slice(0, 3)
+    const { landingPostsCached } = await import('@/lib/cache/public-data')
+    return await landingPostsCached()
   } catch {
     return []
   }
@@ -39,8 +40,8 @@ async function landingPosts(): Promise<LearnPostCard[]> {
 
 async function landingEvents(): Promise<PublicFeedEvent[]> {
   try {
-    const { listPublishedFeed } = await import('@/lib/events-feed/query')
-    return (await listPublishedFeed()).slice(0, 6)
+    const { eventsFeedCached } = await import('@/lib/cache/public-data')
+    return (await eventsFeedCached()).slice(0, 6)
   } catch {
     return []
   }

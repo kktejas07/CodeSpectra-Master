@@ -16,17 +16,19 @@ import { publicRoute } from '@/lib/seo/public-routes'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { PricingClient, type PublicPlan } from './pricing-client'
 
-// ISR, 15 min; admin plan changes purge it (app/api/admin/plans). Plans fall
-// back to the built-in catalogue when the DB is unreachable (build time).
-export const revalidate = 900
+// Rendered per request, never at build (the build has no DB). Data comes from
+// the tag-purged data cache (lib/cache/public-data.ts), so the first request
+// after a deploy fills it and later ones don't hit Mongo.
+export const dynamic = 'force-dynamic'
+// A DB error → null (client shows its own fallback), never a cached catalogue.
 
 const route = publicRoute('/pricing')!
 export const metadata = buildMetadata({ title: route.title, description: route.description, path: '/pricing' })
 
 async function loadPlans(): Promise<PublicPlan[] | null> {
   try {
-    const { getClientPlans } = await import('@/lib/pricing-catalog-server')
-    return JSON.parse(JSON.stringify(await getClientPlans())) as PublicPlan[]
+    const { pricingPlansCached } = await import('@/lib/cache/public-data')
+    return (await pricingPlansCached()) as PublicPlan[]
   } catch (e) {
     console.error('[pricing] plans failed:', (e as Error)?.message)
     return null

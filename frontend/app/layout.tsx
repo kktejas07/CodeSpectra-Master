@@ -21,8 +21,9 @@ import { expireSoonIfBuilding } from '@/lib/cache/build-phase'
 // in client components); the signed-in app, auth, test-taking and token-link
 // segments opt into per-request rendering in their own layouts (needed for the
 // CSP nonce — lib/csp/policy.ts; tests/csp-dynamic-routes.test.ts guards it).
-// Upper bound for every cached page; listings set shorter windows and publish
-// actions revalidate on demand (lib/cache/revalidate.ts).
+// Upper bound for the prerendered pages (no DB reads: about, faq, legal, docs,
+// companies). DB-backed public pages render per request from the tag-purged
+// data cache (lib/cache/public-data.ts) so the DB-less build never ships them empty.
 export const revalidate = 3600
 
 // Self-hosted JetBrains Mono (variable font, latin subset). Previously
@@ -103,7 +104,7 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   // Pages prerendered during `next build` had no database: expire them on the
-  // first request so admin SEO settings, analytics ids and listings appear.
+  // first request so admin SEO settings (verification, org JSON-LD) and analytics ids appear.
   await expireSoonIfBuilding()
   return (
     <html

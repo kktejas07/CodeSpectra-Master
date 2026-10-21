@@ -6,18 +6,19 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { JsonLd } from '@/components/seo/json-ld'
 import { ContestsList, type ContestCard } from '@/components/contests/contests-list'
 import { contestPhase } from '@/lib/contests/config'
-import { listPublicContests } from '@/lib/contests/participation'
+import { publicContestsCached } from '@/lib/cache/public-data'
 import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { logger } from '@/lib/logger'
 
-// ISR, 5 min; publish / unpublish / close purge it (lib/contests/service.ts).
-// Live phase and registration state load client-side on the detail page.
-export const revalidate = 300
+// Rendered per request, never at build (the build has no DB). Data comes from
+// the tag-purged data cache (lib/cache/public-data.ts), so the first request
+// after a deploy fills it and later ones don't hit Mongo.
+export const dynamic = 'force-dynamic'
 
 async function load(): Promise<ContestCard[] | null> {
   try {
-    const rows = await listPublicContests({ includeEnded: true })
+    const rows = await publicContestsCached()
     return rows.map((c) => ({
       id: c.id, slug: c.slug, title: c.title, summary: c.summary, format: c.format, phase: contestPhase(c),
       starts_at: c.schedule.starts_at, ends_at: c.schedule.ends_at, timezone: c.schedule.timezone,

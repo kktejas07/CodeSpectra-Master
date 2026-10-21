@@ -69,6 +69,13 @@ describe('CSP nonce pages render per request', () => {
     expect(bad).toEqual([])
   })
 
+  it('DB-backed public pages are never prerendered at build (no DB there)', () => {
+    const dbPages = ROUTES.filter((r) => /@\/lib\/cache\/public-data/.test(read(r.file)!))
+    expect(dbPages.map((r) => r.url).sort()).toEqual(expect.arrayContaining(['/', '/contests', '/events', '/events/x', '/learn/x', '/news/x', '/pricing']))
+    const bad = dbPages.filter((r) => !forceDynamic(read(r.file))).map((r) => path.relative(APP, r.file))
+    expect(bad).toEqual([])
+  })
+
   it('the root layout no longer forces the whole app dynamic', () => {
     expect(forceDynamic(read(path.join(APP, 'layout.tsx')))).toBe(false)
   })

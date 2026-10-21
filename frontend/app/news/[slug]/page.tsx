@@ -10,21 +10,19 @@ import { NotifyBox } from '@/components/events-feed/notify-box'
 import { JsonLd } from '@/components/seo/json-ld'
 import { coverForPost } from '@/lib/blog-covers'
 import { newsTopicLabel } from '@/lib/signals/feeds'
-import { getNewsPost, listNews, newsTopicOf } from '@/lib/signals/news'
+import { newsTopicOf } from '@/lib/signals/news'
+import { newsListCached, newsPostCached } from '@/lib/cache/public-data'
 import { buildMetadata, ogImagePath } from '@/lib/seo/metadata'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 
-// ISR: rendered on first visit, cached 15 min, purged on publish / unpublish
-// (lib/cache/revalidate.ts). No build-time paths.
-export const revalidate = 900
-export function generateStaticParams() {
-  return []
-}
+// Rendered per request (never at build: no DB there). Found items come from
+// the data cache (15 min, purged on publish); unknown slugs are not cached
+// (hit-only loaders), so random URLs can't fill the cache. DB errors throw
+// to the error boundary instead of caching a 404.
+export const dynamic = 'force-dynamic'
 
-// DB errors propagate (no catch): a failed regeneration keeps the cached page
-// instead of caching a 404.
-const loadPost = cache((slug: string) => getNewsPost(slug))
+const loadPost = cache((slug: string) => newsPostCached(slug))
 
 type Props = { params: Promise<{ slug: string }> }
 
@@ -49,7 +47,7 @@ export default async function NewsArticlePage({ params }: Props) {
   const topic = newsTopicOf(post.tags)
   const [site, related] = await Promise.all([
     getSiteOrigin(),
-    listNews({ topic, limit: 5 }).then((r) => r.items.filter((n) => n.slug !== post.slug).slice(0, 4)).catch(() => []),
+    newsListCached(topic, 1).then((r) => r.items.filter((n) => n.slug !== post.slug).slice(0, 4)).catch(() => []),
   ])
   const path = `/news/${post.slug}`
   const body = DOMPurify.sanitize(post.body || '')
