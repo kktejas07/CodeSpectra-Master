@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   const rateCheck = await rateLimitRedis(`change-pw:${gate.user.id}`, 3, 60_000)
   if (!rateCheck.ok) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.` },
+      { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: rateCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   try {
     const { currentPassword, newPassword } = await request.json()
     if (!currentPassword || !newPassword) {
-      return NextResponse.json({ error: 'Current password and new password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Current password and new password are required', code: 'auth_passwords_required' }, { status: 400 })
     }
     const pwProblem = passwordProblem(newPassword)
     if (pwProblem) {
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     const valid = await bcrypt.compare(currentPassword, user.passwordHash)
     if (!valid) {
-      return NextResponse.json({ error: 'Current password is incorrect' }, { status: 403 })
+      return NextResponse.json({ error: 'Current password is incorrect', code: 'auth_current_password_incorrect' }, { status: 403 })
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12)
@@ -57,6 +57,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[ChangePassword] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

@@ -23,7 +23,7 @@ export async function GET(req: Request, ctx: Ctx) {
     if (!c) return notFound()
     const staff = isContestStaff(user, c)
     if (new URL(req.url).searchParams.get('view') === 'admin') {
-      if (!staff && !isContestJudge(user, c)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      if (!staff && !isContestJudge(user, c)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
       const secret = staff ? await loadSecret(c.id) : null
       return NextResponse.json({ contest: c, editor_config: staff ? editorConfig(c.format, c.config, secret) : null, staff, phase: contestPhase(c) })
     }
@@ -52,7 +52,7 @@ export async function POST(req: Request, ctx: Ctx) {
       case 'release':
         return respond(await releaseContestResults(user, id, { force: body.force === true }))
       default:
-        return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+        return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
     }
   })
 }

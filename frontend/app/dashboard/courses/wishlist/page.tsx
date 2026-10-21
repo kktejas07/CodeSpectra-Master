@@ -13,6 +13,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 type CourseCard = {
   id: string
@@ -26,6 +27,7 @@ type CourseCard = {
 }
 
 export default function CourseWishlistPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const [loading, setLoading] = useState(true)
@@ -65,20 +67,20 @@ export default function CourseWishlistPage() {
       const wishlistTour: TourStep[] = [
         {
           target: '[data-tour="wishlist-header"]',
-          title: 'Saved courses watchlist',
-          description: 'This page stores courses you hearted so you can enroll later when ready.',
+          title: t('learning.savedCoursesWatchlist'),
+          description: t('learning.thisPageStoresCoursesYouHeartede91'),
           position: 'bottom',
         },
         {
           target: '[data-tour="wishlist-browse"]',
-          title: 'Browse full course catalog',
-          description: 'Browse the course catalog to discover new courses worth saving.',
+          title: t('learning.browseFullCourseCatalog'),
+          description: t('learning.browseTheCourseCatalogToDiscoverf4d'),
           position: 'bottom',
         },
         {
           target: '[data-tour="wishlist-list"]',
-          title: 'Open or remove saved',
-          description: 'Tip: open a saved course to enroll, or tap the heart to remove it.',
+          title: t('learning.openOrRemoveSaved'),
+          description: t('learning.tipOpenASavedCourseToe54'),
           position: 'top',
         },
       ]
@@ -95,9 +97,9 @@ export default function CourseWishlistPage() {
         body: JSON.stringify({ courseId }),
       })
       if (!res.ok) throw new Error(String(res.status))
-      addToast({ type: 'success', title: 'Removed from your wishlist' })
+      addToast({ type: 'success', title: t('learning.removedFromYourWishlist') })
     } catch {
-      addToast({ type: 'error', title: 'Couldn’t remove the course', message: 'Please try again.' })
+      addToast({ type: 'error', title: t('learning.couldntRemoveTheCourse'), message: t('learning.pleaseTryAgain') })
       void load()
     }
   }
@@ -116,13 +118,13 @@ export default function CourseWishlistPage() {
       <div data-tour="wishlist-header">
         <PageHeader
           illustration="bookmarks"
-          title="Wishlist"
-          description={<>Courses you saved for later · <span className="tabular-nums">{ids.length}</span> saved</>}
+          title={t('learning.wishlist')}
+          description={<>{t('learning.coursesYouSavedForLater')}{' '}<span className="tabular-nums">{ids.length}</span>{' '}{t('learning.saved')}</>}
           icon={<Heart />}
           className="mb-0"
           actions={
             <Button variant="outline" asChild data-tour="wishlist-browse">
-              <Link href="/dashboard/courses">Browse courses</Link>
+              <Link href="/dashboard/courses">{t('learning.browseCourses')}</Link>
             </Button>
           }
         />
@@ -133,9 +135,9 @@ export default function CourseWishlistPage() {
         <Panel className="p-4">
           <EmptyState
             illustration="error"
-            title="Couldn't load your wishlist"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={t('learning.couldntLoadYourWishlist')}
+            description={t('learning.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
             onAction={() => void load()}
           />
         </Panel>
@@ -143,9 +145,9 @@ export default function CourseWishlistPage() {
         <Panel className="p-4">
           <EmptyState
             variant="courses"
-            title="Your wishlist is empty"
-            description="Tap the heart on any course to save it here for later."
-            actionLabel="Explore courses"
+            title={t('learning.yourWishlistIsEmpty')}
+            description={t('learning.tapTheHeartOnAnyCourse75d')}
+            actionLabel={t('learning.exploreCourses')}
             actionHref="/dashboard/courses"
           />
         </Panel>
@@ -164,7 +166,7 @@ export default function CourseWishlistPage() {
                 </div>
                 <button
                   type="button"
-                  aria-label="Remove from wishlist"
+                  aria-label={t('learning.removeFromWishlist')}
                   onClick={() => remove(c.id)}
                   className="h-10 w-10 rounded-full border border-red-500/40 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0 transition-colors hover:bg-red-500/10 focus-visible:outline-2 focus-visible:outline-primary"
                 >
@@ -172,9 +174,8 @@ export default function CourseWishlistPage() {
                 </button>
               </div>
               <div className="mt-auto flex items-center justify-between text-xs text-muted-foreground pt-3 border-t border-border/60">
-                <span>{c.sessions != null ? `${c.sessions} sessions` : '—'}</span>
-                <Link href={`/dashboard/courses/${c.id}`} className="text-primary font-medium inline-flex items-center gap-1 hover:underline">
-                  Open <ArrowRight className="h-3.5 w-3.5" />
+                <span>{c.sessions != null ? t('learning.sessionsSessions', { sessions: c.sessions }) : '—'}</span>
+                <Link href={`/dashboard/courses/${c.id}`} className="text-primary font-medium inline-flex items-center gap-1 hover:underline">{t('learning.open')}{' '}<ArrowRight className="h-3.5 w-3.5" />
                 </Link>
               </div>
             </Panel>

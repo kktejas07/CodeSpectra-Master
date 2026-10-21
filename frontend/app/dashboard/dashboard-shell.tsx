@@ -665,18 +665,18 @@ export default function DashboardLayout({
     }
     if (ats.has('client')) addH(`${H}/client`, 'Client portal', Building2)
     if (hiringLeaves.length) {
-      const group: NavEntry = { type: 'group', label: 'Hiring', items: hiringLeaves }
+      const group: NavEntry = { type: 'group', label: t('dash.hiring'), items: hiringLeaves }
       const careerAt = entries.findIndex((e) => e.type === 'group' && e.label === 'Career')
       if (careerAt >= 0) entries.splice(careerAt + 1, 0, group)
       else entries.push(group)
     }
     // Marketplace storefront (public /marketplace) sits right above "My orders".
-    const mktLeaf: NavLeaf = { href: '/marketplace', route: '/marketplace', label: 'Marketplace', icon: Store }
+    const mktLeaf: NavLeaf = { href: '/marketplace', route: '/marketplace', label: t('dash.marketplace'), icon: Store }
     const ordersGroup = entries.find((e) => e.type === 'group' && e.items.some((i) => i.route === '/dashboard/orders'))
     if (ordersGroup && ordersGroup.type === 'group') ordersGroup.items.splice(ordersGroup.items.findIndex((i) => i.route === '/dashboard/orders'), 0, mktLeaf)
     else entries.push({ type: 'link', item: mktLeaf })
     if (isSeller) {
-      const group: NavEntry = { type: 'group', label: 'Seller', items: [{ href: '/dashboard/seller', route: '/dashboard/seller', label: 'Seller dashboard', icon: Store }] }
+      const group: NavEntry = { type: 'group', label: t('dash.seller'), items: [{ href: '/dashboard/seller', route: '/dashboard/seller', label: t('dash.sellerDashboard'), icon: Store }] }
       const at = entries.findIndex((e) => e.type === 'group' && (e.label === 'Hiring' || e.label === 'Career'))
       if (at >= 0) entries.splice(at + 1, 0, group)
       else entries.push(group)

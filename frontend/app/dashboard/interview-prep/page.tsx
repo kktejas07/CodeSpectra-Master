@@ -17,6 +17,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Scene } from '@/components/illustrations/scenes'
+import { useT } from '@/lib/i18n/client'
 
 type Tab = 'browse' | 'quiz'
 
@@ -42,6 +43,7 @@ interface QuizQuestion {
 }
 
 export default function InterviewPrepPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -94,11 +96,11 @@ export default function InterviewPrepPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Failed to generate answer')
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : t('practice.failedToGenerateAnswer'))
       setAnswers((prev) => ({ ...prev, [q.id]: data }))
       setExpandedId(q.id)
     } catch (e) {
-      addToast({ type: 'error', title: 'Answer', message: e instanceof Error ? e.message : 'Failed' })
+      addToast({ type: 'error', title: t('practice.answer'), message: e instanceof Error ? e.message : t('practice.failed') })
     } finally {
       setLoadingAnswer(null)
     }
@@ -134,10 +136,10 @@ export default function InterviewPrepPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Failed to generate quiz')
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : t('practice.failedToGenerateQuiz'))
       setQuizQuestions(data.questions || [])
     } catch (e) {
-      addToast({ type: 'error', title: 'Quiz', message: e instanceof Error ? e.message : 'Failed' })
+      addToast({ type: 'error', title: t('practice.quiz'), message: e instanceof Error ? e.message : t('practice.failed') })
     } finally {
       setQuizLoading(false)
     }
@@ -158,20 +160,20 @@ export default function InterviewPrepPage() {
       const interviewPrepTour: TourStep[] = [
         {
           target: '[data-tour="interview-prep-header"]',
-          title: 'Interview prep home',
-          description: 'This page prepares frontend candidates with 300+ questions and AI quizzes in one place.',
+          title: t('practice.interviewPrepHome'),
+          description: t('practice.thisPagePreparesFrontendCandidatesWith595'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-prep-actions"]',
-          title: 'Browse or quiz',
-          description: 'Switch tabs to browse questions or generate a custom AI quiz.',
+          title: t('practice.browseOrQuiz'),
+          description: t('practice.switchTabsToBrowseQuestionsOr1eb'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-prep-list"]',
-          title: 'Study answers deeply',
-          description: 'Tip: open one question at a time and study its AI answer, key points, and follow-up.',
+          title: t('practice.studyAnswersDeeply'),
+          description: t('practice.tipOpenOneQuestionAtAf19'),
           position: 'top',
         },
       ]
@@ -187,8 +189,8 @@ export default function InterviewPrepPage() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             className="mb-0 min-w-0 flex-1"
-            title="Interview prep"
-            description="Practice for frontend interviews with 300+ questions and AI-generated quizzes."
+            title={t('practice.interviewPrep')}
+            description={t('practice.practiceForFrontendInterviewsWith3003b9')}
             icon={<Brain aria-hidden />}
           />
           <Scene name="interview-call" className="hidden w-full max-w-[260px] shrink-0 lg:block" />
@@ -202,18 +204,14 @@ export default function InterviewPrepPage() {
           size="sm"
           onClick={() => setTab('browse')}
         >
-          <Lightbulb className="mr-1 h-4 w-4" />
-          Browse questions
-        </Button>
+          <Lightbulb className="mr-1 h-4 w-4" />{t('practice.browseQuestions')}</Button>
         {!quizLocked && (
           <Button
             variant={tab === 'quiz' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setTab('quiz')}
           >
-            <Zap className="mr-1 h-4 w-4" />
-            AI quiz
-          </Button>
+            <Zap className="mr-1 h-4 w-4" />{t('practice.aiQuiz')}</Button>
         )}
       </div>
 
@@ -224,7 +222,7 @@ export default function InterviewPrepPage() {
           <Card className="rounded-3xl border-border/70 p-5">
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-foreground">Category</p>
+                <p className="text-xs font-medium text-foreground">{t('practice.category')}</p>
                 <div className="flex flex-wrap gap-1">
                   {CATEGORIES.map((c) => (
                     <Button
@@ -239,7 +237,7 @@ export default function InterviewPrepPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-foreground">Difficulty</p>
+                <p className="text-xs font-medium text-foreground">{t('practice.difficulty')}</p>
                 <div className="flex flex-wrap gap-1">
                   {DIFFICULTIES.map((d) => (
                     <Button
@@ -254,20 +252,20 @@ export default function InterviewPrepPage() {
                 </div>
               </div>
               <div className="flex-1 min-w-50">
-                <Label htmlFor="prep-search" className="text-xs">Search</Label>
+                <Label htmlFor="prep-search" className="text-xs">{t('common.search')}</Label>
                 <Input
                   id="prep-search"
-                  placeholder="Filter questions…"
+                  placeholder={t('practice.filterQuestions')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
             </div>
             <div className="mt-3 flex flex-wrap gap-3 text-xs tabular-nums text-muted-foreground">
-              <span>{stats.total} questions</span>
-              <span className="text-green-700 dark:text-green-400">{stats.easy} easy</span>
-              <span className="text-amber-700 dark:text-amber-400">{stats.medium} medium</span>
-              <span className="text-red-600 dark:text-red-400">{stats.hard} hard</span>
+              <span>{t('practice.totalQuestions', { total: stats.total })}</span>
+              <span className="text-green-700 dark:text-green-400">{t('practice.easyEasy', { easy: stats.easy })}</span>
+              <span className="text-amber-700 dark:text-amber-400">{t('practice.mediumMedium', { medium: stats.medium })}</span>
+              <span className="text-red-600 dark:text-red-400">{t('practice.hardHard', { hard: stats.hard })}</span>
             </div>
           </Card>
 
@@ -319,11 +317,11 @@ export default function InterviewPrepPage() {
                   {isOpen && answer && (
                     <div className="border-t border-border bg-muted/20 p-4 space-y-3 text-sm">
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Answer</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">{t('practice.answer')}</p>
                         <p className="whitespace-pre-wrap leading-relaxed text-foreground">{answer.answer}</p>
                       </div>
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Key points</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">{t('practice.keyPoints')}</p>
                         <ul className="list-disc list-inside space-y-0.5">
                           {answer.keyPoints.map((kp, i) => (
                             <li key={i} className="text-muted-foreground">{kp}</li>
@@ -332,14 +330,14 @@ export default function InterviewPrepPage() {
                       </div>
                       {answer.codeExample && (
                         <div>
-                          <p className="text-xs font-semibold text-muted-foreground mb-1">Code example</p>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1">{t('practice.codeExample')}</p>
                           <pre className="bg-background rounded-xl border border-border p-3 font-mono text-xs text-foreground overflow-x-auto whitespace-pre-wrap">
                             {answer.codeExample}
                           </pre>
                         </div>
                       )}
                       <div>
-                        <p className="text-xs font-semibold text-muted-foreground mb-1">Follow-up question</p>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1">{t('practice.followUpQuestion')}</p>
                         <p className="italic text-muted-foreground">{answer.commonFollowUp}</p>
                       </div>
                       <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
@@ -352,12 +350,10 @@ export default function InterviewPrepPage() {
               )
             })}
             {filtered.length === 0 && (
-              <EmptyState variant="search" title="No questions match" description="Try another category or clear the search." />
+              <EmptyState variant="search" title={t('practice.noQuestionsMatch')} description={t('practice.tryAnotherCategoryOrClearThec07')} />
             )}
             {filtered.length > 50 && (
-              <p className="text-center text-xs text-muted-foreground py-2">
-                Showing 50 of {filtered.length} questions. Adjust filters to narrow down.
-              </p>
+              <p className="text-center text-xs text-muted-foreground py-2">{t('practice.showing50OfCountQuestionsAdjust73b', { count: filtered.length })}</p>
             )}
           </div>
         </div>
@@ -370,14 +366,12 @@ export default function InterviewPrepPage() {
             <Card className="rounded-3xl border-border/70 p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" aria-hidden />
-                <h3 className="text-base font-semibold text-foreground">Generate a custom quiz</h3>
+                <h3 className="text-base font-semibold text-foreground">{t('practice.generateACustomQuiz')}</h3>
               </div>
-              <p className="text-sm text-muted-foreground">
-                AI will generate {quizCount} multiple-choice questions based on your preferences.
-              </p>
+              <p className="text-sm text-muted-foreground">{t('practice.aiWillGenerateQuizcountMultipleChoice328', { quizCount })}</p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-foreground">Category</p>
+                  <p className="text-xs font-medium text-foreground">{t('practice.category')}</p>
                   <div className="flex flex-wrap gap-1">
                     {(['Mixed', 'JavaScript', 'React', 'Next.js'] as const).map((c) => (
                       <Button
@@ -392,7 +386,7 @@ export default function InterviewPrepPage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-medium text-foreground">Difficulty</p>
+                  <p className="text-xs font-medium text-foreground">{t('practice.difficulty')}</p>
                   <div className="flex flex-wrap gap-1">
                     {(['Mixed', 'Easy', 'Medium', 'Hard'] as const).map((d) => (
                       <Button
@@ -407,7 +401,7 @@ export default function InterviewPrepPage() {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="quiz-count" className="text-xs">Questions (1–10)</Label>
+                  <Label htmlFor="quiz-count" className="text-xs">{t('practice.questions110')}</Label>
                   <Input
                     id="quiz-count"
                     type="number"
@@ -419,25 +413,23 @@ export default function InterviewPrepPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="quiz-focus" className="text-xs">Focus topic (optional)</Label>
+                <Label htmlFor="quiz-focus" className="text-xs">{t('practice.focusTopicOptional')}</Label>
                 <Input
                   id="quiz-focus"
-                  placeholder="e.g. closures, hooks, server components"
+                  placeholder={t('practice.eGClosuresHooksServerComponents')}
                   value={quizFocus}
                   onChange={(e) => setQuizFocus(e.target.value)}
                 />
               </div>
               <Button onClick={generateQuiz} disabled={quizLoading}>
-                {quizLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-                Generate quiz
-              </Button>
+                {quizLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}{t('practice.generateQuiz')}</Button>
             </Card>
           )}
 
           {quizLoading && (
             <Card className="rounded-3xl p-8 text-center space-y-3">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" aria-hidden />
-              <p className="text-sm text-muted-foreground">Generating your quiz…</p>
+              <p className="text-sm text-muted-foreground">{t('practice.generatingYourQuiz')}</p>
             </Card>
           )}
 
@@ -446,7 +438,7 @@ export default function InterviewPrepPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" aria-hidden />
-                  <h3 className="text-base font-semibold tabular-nums text-foreground">Question {quizIndex + 1} of {quizQuestions.length}</h3>
+                  <h3 className="text-base font-semibold tabular-nums text-foreground">{t('practice.question')}{' '}{quizIndex + 1}{' '}{t('practice.ofCount', { count: quizQuestions.length })}</h3>
                 </div>
                 <Badge variant="outline">{quizQuestions[quizIndex]?.difficulty}</Badge>
               </div>
@@ -477,25 +469,19 @@ export default function InterviewPrepPage() {
                   size="sm"
                   disabled={quizIndex === 0}
                   onClick={() => setQuizIndex((i) => i - 1)}
-                >
-                  Previous
-                </Button>
+                >{t('common.previous')}</Button>
                 {quizIndex < quizQuestions.length - 1 ? (
                   <Button
                     size="sm"
                     disabled={quizAnswers[quizIndex] === undefined}
                     onClick={() => setQuizIndex((i) => i + 1)}
-                  >
-                    Next
-                  </Button>
+                  >{t('common.next')}</Button>
                 ) : (
                   <Button
                     size="sm"
                     disabled={Object.keys(quizAnswers).length < quizQuestions.length}
                     onClick={() => setQuizSubmitted(true)}
-                  >
-                    Submit quiz
-                  </Button>
+                  >{t('practice.submitQuiz')}</Button>
                 )}
               </div>
             </Card>
@@ -509,13 +495,9 @@ export default function InterviewPrepPage() {
                   {quizScore.correct} / {quizScore.total} correct
                 </p>
                 <div className="flex gap-2 justify-center">
-                  <Button variant="outline" size="sm" onClick={() => { setQuizSubmitted(false); setQuizIndex(0) }}>
-                    Review answers
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => { setQuizSubmitted(false); setQuizIndex(0) }}>{t('practice.reviewAnswers')}</Button>
                   <Button size="sm" onClick={generateQuiz}>
-                    <RotateCcw className="mr-1 h-4 w-4" />
-                    New quiz
-                  </Button>
+                    <RotateCcw className="mr-1 h-4 w-4" />{t('practice.newQuiz')}</Button>
                 </div>
               </Card>
 
@@ -533,13 +515,12 @@ export default function InterviewPrepPage() {
                       <p className="text-sm font-medium text-foreground">{q.question}</p>
                     </div>
                     <div className="ml-6 space-y-1 text-xs text-foreground">
-                      <p>
-                        Your answer: <span className={correct ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                          {q.options[picked] ?? 'No answer'}
+                      <p>{t('practice.yourAnswer2')}{' '}<span className={correct ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {q.options[picked] ?? t('practice.noAnswer')}
                         </span>
                       </p>
                       {!correct && (
-                        <p>Correct: <span className="text-green-700 dark:text-green-400">{q.options[q.correctIndex]}</span></p>
+                        <p>{t('practice.correct2')}{' '}<span className="text-green-700 dark:text-green-400">{q.options[q.correctIndex]}</span></p>
                       )}
                       <p className="text-muted-foreground mt-1">{q.explanation}</p>
                     </div>

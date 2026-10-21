@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { UserRole } from '@/lib/rbac'
 import { Eye, EyeOff } from 'lucide-react'
+import { useAdminT } from '@/lib/i18n/admin'
 
 export interface AddUserDialogProps {
   open: boolean
@@ -31,6 +32,7 @@ export interface AddUserDialogProps {
 }
 
 export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogProps) {
+  const { t } = useAdminT()
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
@@ -85,15 +87,15 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add user</DialogTitle>
+            <DialogTitle>{t('addUser.title')}</DialogTitle>
             <DialogDescription>
-              Creates a new user account with full platform access. Every user can freely join events, interviews, codeathons, and use all features.
+              {t('addUser.description')}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 text-xs">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="add-user-email">Email address</Label>
+                <Label htmlFor="add-user-email">{t('addUser.email')}</Label>
                 <Input
                   id="add-user-email"
                   type="email"
@@ -105,7 +107,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="add-user-name">Full name</Label>
+                <Label htmlFor="add-user-name">{t('addUser.fullName')}</Label>
                 <Input
                   id="add-user-name"
                   value={fullName}
@@ -116,7 +118,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="add-user-password">Password (optional)</Label>
+              <Label htmlFor="add-user-password">{t('addUser.password')}</Label>
               <div className="relative">
                 <Input
                   id="add-user-password"
@@ -124,13 +126,13 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                   autoComplete="new-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Leave blank to auto-generate"
+                  placeholder={t('addUser.passwordPlaceholder')}
                   className="pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? t('addUser.hidePassword') : t('addUser.showPassword')}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -138,31 +140,31 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="add-user-role">Role</Label>
+              <Label htmlFor="add-user-role">{t('common.role')}</Label>
               <select
                 id="add-user-role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as UserRole)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="user">User</option>
-                <option value="judge">Judge</option>
-                <option value="tenant_admin">Organization admin</option>
-                <option value="superadmin">Platform admin</option>
+                <option value="user">{t('addUser.roleUser')}</option>
+                <option value="judge">{t('addUser.roleJudge')}</option>
+                <option value="tenant_admin">{t('addUser.roleOrgAdmin')}</option>
+                <option value="superadmin">{t('addUser.rolePlatformAdmin')}</option>
               </select>
             </div>
             {tenants.length > 0 && (
               <div className="grid gap-2">
-                <Label htmlFor="add-user-tenant">Organization (optional)</Label>
+                <Label htmlFor="add-user-tenant">{t('addUser.org')}</Label>
                 <select
                   id="add-user-tenant"
                   value={tenantId}
                   onChange={(e) => setTenantId(e.target.value)}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <option value="">— No org —</option>
-                  {tenants.map(t => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                  <option value="">{t('addUser.noOrg')}</option>
+                  {tenants.map(tn => (
+                    <option key={tn.id} value={tn.id}>{tn.name}</option>
                   ))}
                 </select>
               </div>
@@ -170,10 +172,10 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button type="button" variant="outline" onClick={() => { reset(); onOpenChange(false) }}>
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button type="submit" disabled={loading || !email.trim()}>
-              {loading ? 'Creating…' : 'Add User'}
+              {loading ? t('addUser.creating') : t('addUser.submit')}
             </Button>
           </DialogFooter>
         </form>

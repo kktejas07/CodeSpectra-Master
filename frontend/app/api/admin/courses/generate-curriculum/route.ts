@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 export async function DELETE(request: NextRequest) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
@@ -34,7 +34,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Course deleted' })
   } catch (e) {
     console.error('[generate-curriculum] DELETE error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -46,7 +46,7 @@ export async function DELETE(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
@@ -94,6 +94,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (e) {
     console.error('[generate-curriculum] error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

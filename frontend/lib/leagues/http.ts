@@ -3,12 +3,13 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { logger } from '@/lib/logger'
 import { LeagueError } from './service'
+import { apiErrorBody } from '@/lib/api-errors'
 
 export async function leagueGuard(name: string, fn: () => Promise<NextResponse>): Promise<NextResponse> {
   try {
     return await fn()
   } catch (e) {
-    if (e instanceof LeagueError) return NextResponse.json({ error: e.message }, { status: e.status })
+    if (e instanceof LeagueError) return NextResponse.json(apiErrorBody(e.message), { status: e.status })
     logger.error(`[leagues] ${name} failed`, (e as Error).message)
     return NextResponse.json({ error: 'Something went wrong. Try again in a moment.' }, { status: 500 })
   }

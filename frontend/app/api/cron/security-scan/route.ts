@@ -30,7 +30,7 @@ interface ScanReport {
 async function postImpl(req: Request) {
   try {
     if (!isCronAuthorized(req, { allowDevWithoutSecret: false })) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     const body = (await req.json().catch(() => ({}))) as Partial<ScanReport>
     if (!Array.isArray(body.images)) {

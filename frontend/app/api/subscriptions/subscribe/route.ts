@@ -16,9 +16,9 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const limit = await rateLimitRedis(`subs:ip:${clientLimiterKeyFromRequest(req, null)}`, 6, 10 * 60_000)
-  if (!limit.ok) return NextResponse.json({ error: `Too many requests. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+  if (!limit.ok) return NextResponse.json({ error: `Too many requests. Try again in ${limit.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: limit.retryAfterSec } }, { status: 429 })
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
-  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   const user = await getAPIUser().catch(() => null)
   // Signed-in people are already past login's bot check; anonymous sign-ups solve Turnstile.
   if (!user) {

@@ -11,6 +11,7 @@ import type { BoardApplication } from '../lib/types'
 import { isOverdue, latestResult, type BoardColumn } from '../lib/board'
 import { APP_STATUS_LABELS, SOURCE_LABELS, daysSince, durationLabel } from '../lib/labels'
 import { MatchScore } from '../ui'
+import { useT } from '@/lib/i18n/client'
 
 export function ApplicationsList({
   columns,
@@ -27,6 +28,7 @@ export function ApplicationsList({
   onBulkRescreen: (ids: string[]) => void
   rescreening?: boolean
 }) {
+  const { t } = useT()
   const rows = useMemo(() => columns.flatMap((c) => c.applications.map((a) => ({ a, stage: c.stage }))), [columns])
   const [sel, setSel] = useState<Set<string>>(new Set())
   const visible = new Set(rows.map((r) => r.a.id))
@@ -39,14 +41,14 @@ export function ApplicationsList({
       <div className="flex min-h-10 flex-wrap items-center gap-2" aria-live="polite">
         {selected.length > 0 ? (
           <>
-            <span className="text-sm font-medium tabular-nums text-foreground">{selected.length} selected</span>
-            <Button size="sm" variant="outline" onClick={() => onBulkMove(selected)}><ArrowRightLeft aria-hidden /> Move</Button>
-            <Button size="sm" variant="outline" onClick={() => onBulkReject(selected)}><Ban aria-hidden /> Reject</Button>
-            <Button size="sm" variant="outline" onClick={() => onBulkRescreen(selected)} disabled={rescreening}><RefreshCcw aria-hidden /> Rescreen</Button>
-            <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>Clear</Button>
+            <span className="text-sm font-medium tabular-nums text-foreground">{t('hiring.countSelected', { count: selected.length })}</span>
+            <Button size="sm" variant="outline" onClick={() => onBulkMove(selected)}><ArrowRightLeft aria-hidden />{' '}{t('hiring.move')}</Button>
+            <Button size="sm" variant="outline" onClick={() => onBulkReject(selected)}><Ban aria-hidden />{' '}{t('hiring.reject')}</Button>
+            <Button size="sm" variant="outline" onClick={() => onBulkRescreen(selected)} disabled={rescreening}><RefreshCcw aria-hidden />{' '}{t('hiring.rescreen')}</Button>
+            <Button size="sm" variant="ghost" onClick={() => setSel(new Set())}>{t('hiring.clear')}</Button>
           </>
         ) : (
-          <span className="text-sm text-muted-foreground">Select candidates to move, reject or rescreen them together.</span>
+          <span className="text-sm text-muted-foreground">{t('hiring.selectCandidatesToMoveRejectOr181')}</span>
         )}
       </div>
       <div className="overflow-x-auto rounded-2xl border border-border/70">
@@ -57,15 +59,15 @@ export function ApplicationsList({
                 <Checkbox
                   checked={allOn ? true : selected.length ? 'indeterminate' : false}
                   onCheckedChange={(v) => setSel(v ? new Set(rows.map((r) => r.a.id)) : new Set())}
-                  aria-label="Select all"
+                  aria-label={t('hiring.selectAll')}
                 />
               </th>
-              <th scope="col" className="px-3 py-2 font-medium">Candidate</th>
-              <th scope="col" className="px-3 py-2 font-medium">Stage</th>
-              <th scope="col" className="px-3 py-2 font-medium">Match</th>
-              <th scope="col" className="px-3 py-2 font-medium">Latest result</th>
-              <th scope="col" className="px-3 py-2 font-medium">In stage</th>
-              <th scope="col" className="px-3 py-2 font-medium">Source</th>
+              <th scope="col" className="px-3 py-2 font-medium">{t('hiring.candidate')}</th>
+              <th scope="col" className="px-3 py-2 font-medium">{t('hiring.stage')}</th>
+              <th scope="col" className="px-3 py-2 font-medium">{t('hiring.match')}</th>
+              <th scope="col" className="px-3 py-2 font-medium">{t('hiring.latestResult')}</th>
+              <th scope="col" className="px-3 py-2 font-medium">{t('hiring.inStage')}</th>
+              <th scope="col" className="px-3 py-2 font-medium">{t('hiring.source')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -80,14 +82,15 @@ export function ApplicationsList({
 }
 
 function Row({ a, stage, checked, onToggle, onOpen }: { a: BoardApplication; stage: PipelineStage; checked: boolean; onToggle: () => void; onOpen: () => void }) {
+  const { t } = useT()
   const r = latestResult(a)
   const overdue = isOverdue(a, stage)
   return (
     <tr className={checked ? 'bg-primary/5' : 'hover:bg-muted/30'}>
-      <td className="px-3 py-2.5"><Checkbox checked={checked} onCheckedChange={onToggle} aria-label={`Select ${a.candidate?.name ?? 'candidate'}`} /></td>
+      <td className="px-3 py-2.5"><Checkbox checked={checked} onCheckedChange={onToggle} aria-label={t('hiring.selectValue', { value: a.candidate?.name ?? 'candidate' })} /></td>
       <td className="px-3 py-2.5">
         <button type="button" onClick={onOpen} className="text-left font-medium text-foreground hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-          {a.candidate?.name || 'Candidate'}
+          {a.candidate?.name || t('hiring.candidate')}
         </button>
         <p className="text-xs text-muted-foreground">{a.candidate?.email || a.candidate?.phone}</p>
       </td>
@@ -95,7 +98,7 @@ function Row({ a, stage, checked, onToggle, onOpen }: { a: BoardApplication; sta
         <span className="text-foreground">{stage.name}</span>
         <div className="mt-0.5 flex gap-1">
           {a.status !== 'active' && <Badge variant="outline">{APP_STATUS_LABELS[a.status]}</Badge>}
-          {a.pending_move && <Badge variant="secondary">Needs approval</Badge>}
+          {a.pending_move && <Badge variant="secondary">{t('hiring.needsApproval')}</Badge>}
         </div>
       </td>
       <td className="px-3 py-2.5"><MatchScore score={a.match?.score} /></td>

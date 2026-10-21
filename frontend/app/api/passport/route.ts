@@ -9,15 +9,16 @@ import { revalidatePassport } from '@/lib/cache/passport'
 import { listLearnerInvites, talentProfileView } from '@/lib/talent/db'
 import { consentCopy, consentRegime } from '@/lib/talent/core'
 import { linkedInCertUrl } from '@/lib/passport/core'
+import { apiErrorBody } from '@/lib/api-errors'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
 /** GET /api/passport — the signed-in learner's passport, share settings, discovery state and invites. */
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const rl = await rateLimitRedis(`passport-get:${user.id}`, 60, 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests. Try again in a minute.' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests. Try again in a minute.', code: 'rate_limited_minute' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
   try {
     const site = await getSiteOrigin()
     const o = await ownerPassport(user.id, site)
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
     }, { headers: NO_STORE })
   } catch (e) {
     console.error('[passport] GET failed:', (e as Error)?.message)
-    return NextResponse.json({ error: 'Your passport couldn’t be loaded. Try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Your passport couldn’t be loaded. Try again.', code: 'passport_load_failed' }, { status: 500 })
   }
 }
 
@@ -66,19 +67,19 @@ const patchSchema = z.object({
 /** PATCH /api/passport — visibility, which evidence to show, handle, reset links. */
 export async function PATCH(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const rl = await rateLimitRedis(`passport-patch:${user.id}`, 30, 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many changes. Try again in a minute.' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many changes. Try again in a minute.', code: 'passport_too_many_changes' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
   const parsed = patchSchema.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid settings' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid settings', code: 'passport_invalid_settings' }, { status: 400 })
   try {
     const { before, after } = await updatePassportSettings(user.id, parsed.data)
     // Going private also hides the learner from talent search (search requires a shared passport).
     await revalidatePassport(before.handle, after.handle)
     return NextResponse.json({ ok: true, handle: after.handle, visibility: after.visibility }, { headers: NO_STORE })
   } catch (e) {
-    if (e instanceof PassportError) return NextResponse.json({ error: e.message }, { status: e.status })
+    if (e instanceof PassportError) return NextResponse.json(apiErrorBody(e.message), { status: e.status })
     console.error('[passport] PATCH failed:', (e as Error)?.message)
-    return NextResponse.json({ error: 'Your settings couldn’t be saved. Try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Your settings couldn’t be saved. Try again.', code: 'passport_settings_save_failed' }, { status: 500 })
   }
 }

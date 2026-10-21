@@ -31,6 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ExamQuestion {
   id: string
@@ -52,6 +54,8 @@ interface ExamDoc {
 }
 
 export default function ExamPage() {
+  const apiError = useApiError()
+  const { t } = useT()
   const params = useParams()
   const router = useRouter()
   const gate = usePageGuard()
@@ -71,20 +75,20 @@ export default function ExamPage() {
       const assessmentDetailTour: TourStep[] = [
         {
           target: '[data-tour="assessment-detail-header"]',
-          title: 'Timed test for candidates',
-          description: 'This page runs a timed assessment for candidates to answer and submit.',
+          title: t('practice.timedTestForCandidates'),
+          description: t('practice.thisPageRunsATimedAssessmentc29'),
           position: 'bottom',
         },
         {
           target: '[data-tour="assessment-detail-nav"]',
-          title: 'Move between questions',
-          description: 'Click Next, Previous, or a number to jump questions and submit last.',
+          title: t('practice.moveBetweenQuestions'),
+          description: t('practice.clickNextPreviousOrANumber230'),
           position: 'top',
         },
         {
           target: '[data-tour="assessment-detail-question"]',
-          title: 'Drafts save automatically',
-          description: 'Pro tip: answers draft to this device, so finish all questions before submitting.',
+          title: t('practice.draftsSaveAutomatically'),
+          description: t('practice.proTipAnswersDraftToThis434'),
           position: 'top',
         },
       ]
@@ -194,7 +198,7 @@ export default function ExamPage() {
         body: JSON.stringify({ answers: serialized, auto_submitted: autoSubmitted }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Submit failed')
+      if (!res.ok) throw new Error(apiError(data, t('practice.submitFailed')))
       setResults(data)
       setSubmitted(true)
       if (typeof window !== 'undefined') {
@@ -231,14 +235,14 @@ export default function ExamPage() {
   if (!exam && loadFailed) {
     return (
       <div className="mx-auto max-w-xl py-10">
-        <EmptyState illustration="error" title="Couldn't load this assessment" description="Check your connection and try again." actionLabel="Try again" onAction={() => setReloadKey((k) => k + 1)} />
+        <EmptyState illustration="error" title={t('practice.couldntLoadThisAssessment')} description={t('practice.checkYourConnectionAndTryAgain')} actionLabel={t('common.tryAgain')} onAction={() => setReloadKey((k) => k + 1)} />
       </div>
     )
   }
   if (!exam) {
     return (
       <div className="mx-auto max-w-xl py-10">
-        <EmptyState illustration="assessment" title="Assessment not found" description="This test may have been removed or the link is wrong. Your finished assessments are listed on the assessments page." actionLabel="Go to assessments" actionHref="/dashboard/assessments" />
+        <EmptyState illustration="assessment" title={t('practice.assessmentNotFound')} description={t('practice.thisTestMayHaveBeenRemovedabc')} actionLabel={t('practice.goToAssessments')} actionHref="/dashboard/assessments" />
       </div>
     )
   }
@@ -256,17 +260,12 @@ export default function ExamPage() {
           <Card className="rounded-3xl border-border/70 p-8 text-center space-y-6">
             <Illustration name="success" className="mx-auto w-40" />
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold tracking-tight">Assessment submitted</h1>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                Thanks for finishing. Your answers have been saved and submitted.
-              </p>
+              <h1 className="text-2xl font-bold tracking-tight">{t('practice.assessmentSubmitted')}</h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">{t('practice.thanksForFinishingYourAnswersHavee53')}</p>
             </div>
-            <div className="border-t border-border/60 pt-4 text-xs text-muted-foreground">
-              Your results are being reviewed. You'll see your score here once the organiser releases it.
-            </div>
+            <div className="border-t border-border/60 pt-4 text-xs text-muted-foreground">{t('practice.yourResultsAreBeingReviewedYoull380')}</div>
             <Button onClick={() => router.push('/dashboard/assessments')} className="w-full gap-2 mt-2">
-              <ArrowLeft className="h-4 w-4" /> Back to assessments
-            </Button>
+              <ArrowLeft className="h-4 w-4" />{' '}{t('practice.backToAssessments')}</Button>
           </Card>
         </div>
       )
@@ -276,22 +275,20 @@ export default function ExamPage() {
     return (
       <div className="p-6 space-y-8">
         <Card className="relative overflow-hidden rounded-3xl border-0 bg-linear-to-br from-[#2f5be7] via-[#2448c9] to-[#17224d] p-8 text-center text-white space-y-4 shadow-[0_18px_40px_-20px_rgba(47,91,231,0.55)]">
-          <h1 className="text-3xl font-bold tracking-tight">Assessment results</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t('practice.assessmentResults')}</h1>
           <div className="flex justify-center items-baseline gap-1">
             <span className="text-6xl font-extrabold tabular-nums">{results.score}</span>
             <span className="text-2xl tabular-nums text-white/75">/ {results.total}</span>
           </div>
           <p className="text-sm font-medium text-white/85">
             {((results as { passed?: boolean | null }).passed ?? (results.score / results.total >= 0.7))
-              ? 'Great work — you passed.'
-              : 'Keep practicing to improve your score!'}
+              ? t('practice.greatWorkYouPassed')
+              : t('practice.keepPracticingToImproveYourScore')}
           </p>
         </Card>
 
         <div className="space-y-4">
-          <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-2">
-            Question-by-question breakdown
-          </h3>
+          <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-2">{t('practice.questionByQuestionBreakdown')}</h3>
           {(results.details || []).map((d, i) => {
             const questionData = exam.questions.find(q => q.id === d.qId)
             const title = questionData?.question || `Question ${i + 1}`
@@ -313,8 +310,7 @@ export default function ExamPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">                  {/* Column 1: Question details */}
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        Question {i + 1}
+                      <span className="text-xs font-semibold text-muted-foreground">{t('practice.question')}{' '}{i + 1}
                       </span>
                       <Badge variant="secondary" className="text-[10px] py-0.5 px-2">
                         {typeLabel}
@@ -348,9 +344,7 @@ export default function ExamPage() {
 
                   {/* Column 2: Your Answer */}
                   <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground block">
-                      Your answer
-                    </span>
+                    <span className="text-xs font-semibold text-muted-foreground block">{t('practice.yourAnswer')}</span>
                     <div className={`p-3 rounded-xl border text-sm font-medium ${
                       d.correct 
                         ? 'bg-green-500/5 border-green-500/20 text-green-600 dark:text-green-400' 
@@ -363,7 +357,7 @@ export default function ExamPage() {
                           <XCircle className="h-4 w-4 text-red-500 shrink-0" />
                         )}
                         <span className="text-xs font-bold">
-                          {d.correct ? 'Correct' : 'Incorrect'}
+                          {d.correct ? t('practice.correct') : t('practice.incorrect')}
                         </span>
                       </div>
                       <div className="font-mono text-xs wrap-break-word whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg">
@@ -374,15 +368,11 @@ export default function ExamPage() {
 
                   {/* Column 3: Correct Answer */}
                   <div className="space-y-1.5">
-                    <span className="text-xs font-semibold text-muted-foreground block">
-                      Correct answer
-                    </span>
+                    <span className="text-xs font-semibold text-muted-foreground block">{t('practice.correctAnswer')}</span>
                     <div className="p-3 rounded-xl border border-green-500/20 bg-green-500/5 text-green-600 dark:text-green-400 text-sm font-medium">
                       <div className="flex items-center gap-2 mb-1">
                         <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                        <span className="text-xs font-bold">
-                          Expected answer
-                        </span>
+                        <span className="text-xs font-bold">{t('practice.expectedAnswer')}</span>
                       </div>
                       <div className="font-mono text-xs wrap-break-word whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg text-green-600 dark:text-green-300 font-semibold">
                         {correctAnswer}
@@ -394,8 +384,7 @@ export default function ExamPage() {
                 {(d as any).remarks ? (
                   <div className="mt-4 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 block mb-1 flex items-center gap-1.5">
-                      <AlertTriangle className="h-3.5 w-3.5" /> Reviewer feedback
-                    </span>
+                      <AlertTriangle className="h-3.5 w-3.5" />{' '}{t('practice.reviewerFeedback')}</span>
                     <div className="text-sm text-foreground whitespace-pre-wrap wrap-break-word">{String((d as any).remarks)}</div>
                   </div>
                 ) : null}
@@ -406,11 +395,9 @@ export default function ExamPage() {
 
         <div className="flex gap-4">
           <Button onClick={() => router.push('/dashboard/assessments')} className="flex-1 gap-2" variant="outline">
-            <ArrowLeft className="h-4 w-4" /> Back to assessments
-          </Button>
+            <ArrowLeft className="h-4 w-4" />{' '}{t('practice.backToAssessments')}</Button>
           {certificateUrl && (
-            <Button onClick={() => router.push(certificateUrl)} className="flex-1 gap-2">
-               View certificate <ChevronRight className="h-4 w-4" />
+            <Button onClick={() => router.push(certificateUrl)} className="flex-1 gap-2">{t('practice.viewCertificate')}{' '}<ChevronRight className="h-4 w-4" />
             </Button>
           )}
         </div>
@@ -437,7 +424,7 @@ export default function ExamPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0" data-tour="assessment-detail-header">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" aria-label="Back to assessments" onClick={() => router.push('/dashboard/assessments')}>
+          <Button variant="ghost" size="sm" aria-label={t('practice.backToAssessments')} onClick={() => router.push('/dashboard/assessments')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-base font-semibold truncate">{exam.title}</h1>
@@ -459,8 +446,8 @@ export default function ExamPage() {
             <Card className="rounded-3xl border-border/70 p-6 space-y-4" data-tour="assessment-detail-question">
               <div className="flex items-center gap-2">
                 <Badge>{question.type}</Badge>
-                <Badge variant="outline">{question.points} pts</Badge>
-                <Badge variant="outline">{question.time_limit_seconds}s limit</Badge>
+                <Badge variant="outline">{t('practice.pointsPts', { points: question.points })}</Badge>
+                <Badge variant="outline">{t('practice.timeLimitSecondsSLimit', { time_limit_seconds: question.time_limit_seconds })}</Badge>
               </div>
               <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg">
                 <h2 className="text-xl font-bold mb-3">{question.question}</h2>
@@ -512,19 +499,14 @@ export default function ExamPage() {
                   variant="outline"
                   disabled={currentQ === 0}
                   onClick={() => setCurrentQ(q => q - 1)}
-                >
-                  Previous
-                </Button>
+                >{t('common.previous')}</Button>
 
                 {currentQ < exam.questions.length - 1 ? (
-                  <Button onClick={() => setCurrentQ(q => q + 1)}>
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  <Button onClick={() => setCurrentQ(q => q + 1)}>{t('common.next')}{' '}<ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 ) : (
                   <Button onClick={() => setShowSubmitConfirm(true)} disabled={submitting}>
-                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    Submit assessment
-                  </Button>
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}{t('practice.submitAssessment')}</Button>
                 )}
               </div>
 
@@ -533,7 +515,7 @@ export default function ExamPage() {
                   <button
                     key={i}
                     onClick={() => setCurrentQ(i)}
-                    aria-label={`Go to question ${i + 1}`}
+                    aria-label={t('practice.goToQuestionValue', { value: i + 1 })}
                     className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
                       i === currentQ ? 'bg-primary text-primary-foreground shadow-sm scale-115' :
                       answers[exam.questions[i].id] ? 'bg-primary/20 text-primary hover:bg-primary/30' :
@@ -553,19 +535,15 @@ export default function ExamPage() {
     <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
-          <AlertDialogDescription>
-            You cannot return to the assessment once submitted. Please verify all your answers before submitting.
-          </AlertDialogDescription>
+          <AlertDialogTitle>{t('practice.areYouSureYouWantTo83a')}</AlertDialogTitle>
+          <AlertDialogDescription>{t('practice.youCannotReturnToTheAssessmentce4')}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction onClick={async () => {
             setShowSubmitConfirm(false)
             await handleSubmit(false)
-          }}>
-            Submit
-          </AlertDialogAction>
+          }}>{t('common.submit')}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

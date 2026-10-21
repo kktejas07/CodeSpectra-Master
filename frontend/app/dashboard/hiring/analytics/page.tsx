@@ -9,27 +9,29 @@ import { NativeSelect } from '@/components/hiring/ui'
 import { useAts } from '@/components/hiring/lib/api'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { AnalyticsResponse, JobListItem } from '@/components/hiring/lib/types'
+import { useT } from '@/lib/i18n/client'
 
 export default function HiringAnalyticsPage() {
+  const { t } = useT()
   const [tab, setTab] = useState('overview')
   const [jobId, setJobId] = useState('')
   const jobs = useAts<JobListItem[]>('/api/ats/jobs', 'jobs')
   const q = useAts<AnalyticsResponse>(tab === 'pipeline' ? `/api/ats/analytics${jobId ? `?job_id=${encodeURIComponent(jobId)}` : ''}` : null)
   return (
     <HiringShell
-      title="Analytics"
-      description="Assessments, candidate and hiring funnels, time to hire and where candidates come from."
+      title={t('hiring.analytics')}
+      description={t('hiring.assessmentsCandidateAndHiringFunnelsTime31a')}
       icon={<BarChart3 />}
       actions={
         tab === 'pipeline' && (jobs.data?.length ?? 0) > 0 && (
-          <NativeSelect aria-label="Job" value={jobId} onChange={setJobId} placeholder="All jobs" className="w-56" options={(jobs.data ?? []).map((j) => ({ value: j.id, label: j.title }))} />
+          <NativeSelect aria-label={t('hiring.job')} value={jobId} onChange={setJobId} placeholder={t('hiring.allJobs')} className="w-56" options={(jobs.data ?? []).map((j) => ({ value: j.id, label: j.title }))} />
         )
       }
     >
       <Tabs value={tab} onValueChange={setTab} className="gap-5">
         <TabsList className="w-max">
-          <TabsTrigger value="overview">Overview & assessments</TabsTrigger>
-          <TabsTrigger value="pipeline">Hiring pipeline</TabsTrigger>
+          <TabsTrigger value="overview">{t('hiring.overviewAssessments')}</TabsTrigger>
+          <TabsTrigger value="pipeline">{t('hiring.hiringPipeline')}</TabsTrigger>
         </TabsList>
         <TabsContent value="overview"><AssessmentAnalytics /></TabsContent>
         <TabsContent value="pipeline">

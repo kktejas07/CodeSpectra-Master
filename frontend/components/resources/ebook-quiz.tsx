@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle, XCircle, RotateCcw, Trophy, Lightbulb } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { EbookPage } from '@/lib/db/ebooks'
+import { useT } from '@/lib/i18n/client'
 
 interface QuizQuestion {
   question: string
@@ -21,6 +22,7 @@ interface EbookQuizProps {
 }
 
 export function EbookQuiz({ questions, onComplete }: EbookQuizProps) {
+  const { t } = useT()
   const [currentQ, setCurrentQ] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
   const [answered, setAnswered] = useState(false)
@@ -67,15 +69,14 @@ export function EbookQuiz({ questions, onComplete }: EbookQuizProps) {
     return (
       <Card className="rounded-3xl border-border/70 p-6 text-center space-y-4">
         <Trophy className="h-12 w-12 mx-auto text-amber-500" aria-hidden />
-        <h3 className="text-xl font-bold text-foreground">Quiz complete</h3>
+        <h3 className="text-xl font-bold text-foreground">{t('learning.quizComplete')}</h3>
         <div className="text-4xl font-bold tabular-nums text-primary">{score}/{questions.length}</div>
-        <p className="tabular-nums text-muted-foreground">{percentage}% correct</p>
+        <p className="tabular-nums text-muted-foreground">{t('learning.percentageCorrect', { percentage })}</p>
         <Badge variant={percentage >= 70 ? 'default' : 'secondary'} className={percentage >= 70 ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}>
-          {percentage >= 70 ? 'Great job!' : 'Keep practicing!'}
+          {percentage >= 70 ? t('learning.greatJob') : t('learning.keepPracticing')}
         </Badge>
         <Button onClick={handleRestart} variant="outline">
-          <RotateCcw className="mr-2 h-4 w-4" /> Try again
-        </Button>
+          <RotateCcw className="mr-2 h-4 w-4" />{' '}{t('common.tryAgain')}</Button>
       </Card>
     )
   }
@@ -83,8 +84,8 @@ export function EbookQuiz({ questions, onComplete }: EbookQuizProps) {
   return (
     <Card className="rounded-3xl border-border/70 p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <Badge variant="outline" className="tabular-nums">Question {currentQ + 1}/{questions.length}</Badge>
-        <Badge variant="secondary" className="tabular-nums">Score: {score}</Badge>
+        <Badge variant="outline" className="tabular-nums">{t('learning.question')}{' '}{currentQ + 1}/{questions.length}</Badge>
+        <Badge variant="secondary" className="tabular-nums">{t('learning.scoreScore', { score })}</Badge>
       </div>
       <h4 className="text-lg font-semibold text-foreground">{question.question}</h4>
       <div className="space-y-2">
@@ -120,7 +121,7 @@ export function EbookQuiz({ questions, onComplete }: EbookQuizProps) {
       )}
       {answered && (
         <Button onClick={handleNext} className="w-full">
-          {currentQ < questions.length - 1 ? 'Next question' : 'See results'}
+          {currentQ < questions.length - 1 ? t('learning.nextQuestion') : t('learning.seeResults')}
         </Button>
       )}
     </Card>

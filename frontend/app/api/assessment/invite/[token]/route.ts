@@ -35,7 +35,7 @@ export async function PATCH(
 ) {
   const { token } = await ctx.params
   if (!token) {
-    return NextResponse.json({ error: 'Token required' }, { status: 400 })
+    return NextResponse.json({ error: 'Token required', code: 'token_required' }, { status: 400 })
   }
 
   try {
@@ -43,26 +43,26 @@ export async function PATCH(
     const invite = await col.findOne({ token })
 
     if (!invite) {
-      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Invitation not found', code: 'invite_not_found' }, { status: 404 })
     }
 
     if (isWithdrawn(invite)) {
-      return NextResponse.json({ error: 'This invitation is no longer valid. Contact the organiser for a new one.' }, { status: 410 })
+      return NextResponse.json({ error: 'This invitation is no longer valid. Contact the organiser for a new one.', code: 'invite_invalid' }, { status: 410 })
     }
 
     const db = await getMongoDb()
     if (invite.status === 'used' && !(await retakeOpen(db, invite))) {
-      return NextResponse.json({ error: 'This invitation has already been used.' }, { status: 409 })
+      return NextResponse.json({ error: 'This invitation has already been used.', code: 'invite_used' }, { status: 409 })
     }
 
     if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
       await col.updateOne({ token, status: { $in: ['pending', 'active'] } }, { $set: { status: 'expired', expired_reason: 'date' } })
-      return NextResponse.json({ error: 'This invitation has expired.' }, { status: 410 })
+      return NextResponse.json({ error: 'This invitation has expired.', code: 'invite_expired' }, { status: 410 })
     }
 
     const body = await req.json().catch(() => ({}))
     if (body.email && body.email.toLowerCase() !== (invite.email || '').toLowerCase()) {
-      return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different candidate.' }, { status: 403 })
+      return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different candidate.', code: 'invite_email_mismatch' }, { status: 403 })
     }
 
     // Never flip a used invite back to active (it would re-open renew and remind).
@@ -82,7 +82,7 @@ export async function GET(
 ) {
   const { token } = await ctx.params
   if (!token) {
-    return NextResponse.json({ error: 'Token required' }, { status: 400 })
+    return NextResponse.json({ error: 'Token required', code: 'token_required' }, { status: 400 })
   }
 
   try {
@@ -91,21 +91,21 @@ export async function GET(
     const invite = await col.findOne({ token })
 
     if (!invite) {
-      return NextResponse.json({ error: 'Candidate invitation link invalid or expired.' }, { status: 404 })
+      return NextResponse.json({ error: 'Candidate invitation link invalid or expired.', code: 'candidate_link_invalid' }, { status: 404 })
     }
 
     if (isWithdrawn(invite)) {
-      return NextResponse.json({ error: 'This invitation is no longer valid. Contact the organiser for a new one.', is_revoked: true }, { status: 410 })
+      return NextResponse.json({ error: 'This invitation is no longer valid. Contact the organiser for a new one.', code: 'invite_invalid', is_revoked: true }, { status: 410 })
     }
 
     if (invite.status === 'used' && !(await retakeOpen(db, invite))) {
-      return NextResponse.json({ error: 'This invitation has already been used.', is_expired: true, is_used: true }, { status: 410 })
+      return NextResponse.json({ error: 'This invitation has already been used.', code: 'invite_used', is_expired: true, is_used: true }, { status: 410 })
     }
 
     if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
       // Date expiry is the only renewable kind (see renew route).
       await col.updateOne({ token, status: { $in: ['pending', 'active'] } }, { $set: { status: 'expired', expired_reason: 'date' } })
-      return NextResponse.json({ error: 'This candidate assessment link has expired.', is_expired: true }, { status: 410 })
+      return NextResponse.json({ error: 'This candidate assessment link has expired.', code: 'candidate_link_expired', is_expired: true }, { status: 410 })
     }
 
     const registeredUser = await db.collection('user').findOne({ email: invite.email })

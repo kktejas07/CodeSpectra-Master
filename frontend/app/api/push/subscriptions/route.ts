@@ -60,7 +60,7 @@ export async function DELETE(req: Request) {
   const limited = await limitRequest(req, 'push-subscribe', gate.user.id, 10, 60_000)
   if (limited) return limited
   const parsed = unsubscribeSchema.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   try {
     const removed = await removeSubscription(gate.user.id, parsed.data.endpoint)
     return NextResponse.json({ ok: true, removed }, { headers: NO_STORE })

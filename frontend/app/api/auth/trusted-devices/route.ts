@@ -10,12 +10,12 @@ export const dynamic = 'force-dynamic'
 /** GET /api/auth/trusted-devices — the signed-in user's trusted devices. */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     return NextResponse.json({ devices: await listTrustedDevices(user.id) })
   } catch (e) {
     console.error('[trusted-devices] list failed:', e)
-    return NextResponse.json({ error: 'Couldn’t load your devices.' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn’t load your devices.', code: 'auth_devices_load_failed' }, { status: 500 })
   }
 }
 
@@ -26,7 +26,7 @@ export async function GET() {
  */
 export async function DELETE(request: Request) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const body = (await request.json().catch(() => ({}))) as { id?: unknown; all?: unknown }
   try {
     if (body.all === true) {
@@ -35,14 +35,14 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ ok: true, removed })
     }
     if (typeof body.id !== 'string' || !body.id || body.id.length > 64) {
-      return NextResponse.json({ error: 'Choose a device to remove.' }, { status: 400 })
+      return NextResponse.json({ error: 'Choose a device to remove.', code: 'auth_choose_device' }, { status: 400 })
     }
     const ok = await removeTrustedDevice(user.id, body.id)
-    if (!ok) return NextResponse.json({ error: 'That device isn’t on your list.' }, { status: 404 })
+    if (!ok) return NextResponse.json({ error: 'That device isn’t on your list.', code: 'auth_device_unknown' }, { status: 404 })
     await writeAuditLog({ action: 'auth.trusted_devices.remove', outcome: 'success', actor: user.email, actorIp: clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, ''), resource: 'user/' + user.id, resourceType: 'auth', severity: 'info', user_id: user.id }).catch(() => {})
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[trusted-devices] remove failed:', e)
-    return NextResponse.json({ error: 'Couldn’t remove the device.' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn’t remove the device.', code: 'auth_device_remove_failed' }, { status: 500 })
   }
 }

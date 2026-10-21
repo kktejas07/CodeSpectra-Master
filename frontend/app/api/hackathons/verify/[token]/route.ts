@@ -18,7 +18,7 @@ export async function GET(
 ) {
   const rl = await rateLimitRedis(`hk-verify:${clientLimiterKeyFromRequest(req, null)}`, 30, 60_000)
   if (!rl.ok) {
-    return NextResponse.json({ valid: false, error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+    return NextResponse.json({ valid: false, error: 'Too many requests', code: 'too_many_requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
   }
   const { token } = await ctx.params
   if (!token || token.length < 16 || token.length > 64) {

@@ -25,6 +25,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { BANK_DIFFICULTIES, BOT_QUESTION_TYPES, type BankDifficulty, type BotQuestionType, type QuestionDomain } from '@/lib/question-bot/domains'
 import type { QuestionBotSettings } from '@/lib/question-bot/settings'
+import { useAdminT } from '@/lib/i18n/admin'
 
 interface Cell { type: BotQuestionType; difficulty: BankDifficulty; target: number; current: number; approved: number }
 type DomainRow = QuestionDomain & { coverage: { target: number; current: number; percent: number }; cells: Cell[] }
@@ -61,6 +62,7 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
 // ─── Settings ───────────────────────────────────────────────────────────────
 
 function SettingsPanel({ settings, onSaved }: { settings: QuestionBotSettings; onSaved: () => void }) {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [form, setForm] = useState(settings)
   const [saving, setSaving] = useState(false)
@@ -71,7 +73,7 @@ function SettingsPanel({ settings, onSaved }: { settings: QuestionBotSettings; o
     setSaving(true)
     try {
       await api('/api/admin/question-bot', { method: 'PATCH', body: JSON.stringify(patch) })
-      addToast({ type: 'success', title: 'Settings saved' })
+      addToast({ type: 'success', title: tx('qbot.settingsSaved') })
       onSaved()
     } catch (e) {
       addToast({ type: 'error', title: (e as Error).message })
@@ -91,8 +93,8 @@ function SettingsPanel({ settings, onSaved }: { settings: QuestionBotSettings; o
     <Panel className="space-y-5 p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="font-semibold text-foreground">Nightly run</p>
-          <p className="text-sm text-muted-foreground">When on, the bot fills the biggest gaps once a night. Run now works either way. Every run stays within the caps.</p>
+          <p className="font-semibold text-foreground">{tx('qbot.nightlyRun')}</p>
+          <p className="text-sm text-muted-foreground">{tx('qbot.whenOnTheBotFills')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Switch id="bot-enabled" checked={form.enabled} disabled={saving} onCheckedChange={(v) => { setForm((f) => ({ ...f, enabled: v })); void save({ enabled: v }) }} />
@@ -111,7 +113,7 @@ function SettingsPanel({ settings, onSaved }: { settings: QuestionBotSettings; o
       <div className="flex justify-end">
         <Button onClick={() => void save({ daily_question_cap: form.daily_question_cap, per_run_cap: form.per_run_cap, per_cell_cap: form.per_cell_cap, monthly_cost_cap_usd: form.monthly_cost_cap_usd, run_hour_utc: form.run_hour_utc })} disabled={saving}>
           {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <Save className="mr-1.5 h-4 w-4" aria-hidden />}
-          Save caps
+          {tx('qbot.saveCaps')}
         </Button>
       </div>
     </Panel>
@@ -121,6 +123,7 @@ function SettingsPanel({ settings, onSaved }: { settings: QuestionBotSettings; o
 // ─── Domains ────────────────────────────────────────────────────────────────
 
 function DomainCard({ d, thinMin, onChanged }: { d: DomainRow; thinMin: number; onChanged: () => void }) {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [targets, setTargets] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -169,20 +172,20 @@ function DomainCard({ d, thinMin, onChanged }: { d: DomainRow; thinMin: number; 
             <h3 className="font-semibold text-foreground">{d.label}</h3>
             <Badge variant="outline" className="capitalize">{d.kind}</Badge>
             {d.language ? <Badge variant="outline">{d.language}</Badge> : null}
-            {!d.active ? <Badge variant="outline" className="text-muted-foreground">Paused</Badge> : null}
+            {!d.active ? <Badge variant="outline" className="text-muted-foreground">{tx('qbot.paused')}</Badge> : null}
           </div>
           <p className="mt-0.5 text-xs text-muted-foreground"><span className="font-mono">{d.id}</span>{d.topics.length ? <> · {d.topics.slice(0, 4).join(', ')}{d.topics.length > 4 ? '…' : ''}</> : null}</p>
         </div>
         <div className="flex items-center gap-2">
           <Switch id={`active-${d.id}`} checked={d.active} disabled={saving} onCheckedChange={(v) => void patch({ active: v }, v ? `${d.label} is back in the plan` : `${d.label} paused`)} />
-          <Label htmlFor={`active-${d.id}`} className="text-sm">Active</Label>
+          <Label htmlFor={`active-${d.id}`} className="text-sm">{tx('qbot.active')}</Label>
           <Button variant="ghost" size="icon" aria-label={`Remove ${d.label}`} onClick={() => setConfirmDelete(true)}><Trash2 className="h-4 w-4" aria-hidden /></Button>
         </div>
       </div>
 
       <div>
         <div className="mb-1 flex items-baseline justify-between text-sm">
-          <span className="text-muted-foreground">Coverage</span>
+          <span className="text-muted-foreground">{tx('qbot.coverage')}</span>
           <span className="tabular-nums text-foreground">{d.coverage.current} / {d.coverage.target} · {d.coverage.percent}%</span>
         </div>
         <Progress value={d.coverage.percent} aria-label={`${d.label} coverage ${d.coverage.percent}%`} />
@@ -198,7 +201,7 @@ function DomainCard({ d, thinMin, onChanged }: { d: DomainRow; thinMin: number; 
           <caption className="sr-only">Targets and current counts for {d.label}</caption>
           <thead>
             <tr className="text-left text-xs text-muted-foreground">
-              <th scope="col" className="py-1 pr-3 font-medium">Type</th>
+              <th scope="col" className="py-1 pr-3 font-medium">{tx('common.type')}</th>
               {BANK_DIFFICULTIES.map((lv) => <th key={lv} scope="col" className="px-2 py-1 font-medium">{lv}</th>)}
             </tr>
           </thead>
@@ -235,7 +238,7 @@ function DomainCard({ d, thinMin, onChanged }: { d: DomainRow; thinMin: number; 
         <div className="flex justify-end">
           <Button size="sm" onClick={saveTargets} disabled={saving}>
             {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <Save className="mr-1.5 h-4 w-4" aria-hidden />}
-            Save targets
+            {tx('qbot.saveTargets')}
           </Button>
         </div>
       ) : null}
@@ -245,6 +248,7 @@ function DomainCard({ d, thinMin, onChanged }: { d: DomainRow; thinMin: number; 
 }
 
 function AddDomain({ onAdded }: { onAdded: () => void }) {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ id: '', label: '', topics: '', language: '', coding: false })
@@ -274,12 +278,12 @@ function AddDomain({ onAdded }: { onAdded: () => void }) {
       setSaving(false)
     }
   }
-  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" aria-hidden />Add domain</Button>
+  if (!open) return <Button variant="outline" onClick={() => setOpen(true)}><Plus className="mr-1.5 h-4 w-4" aria-hidden />{tx('qbot.addDomain')}</Button>
   return (
     <Panel className="w-full p-5">
       <form onSubmit={submit} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <Label htmlFor="nd-label">Name</Label>
+          <Label htmlFor="nd-label">{tx('common.name')}</Label>
           <Input id="nd-label" required value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value, id: f.id || e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40) }))} placeholder="Go" className="mt-1" />
         </div>
         <div>
@@ -287,23 +291,23 @@ function AddDomain({ onAdded }: { onAdded: () => void }) {
           <Input id="nd-id" required pattern="[a-z0-9_]{2,40}" value={form.id} onChange={(e) => setForm((f) => ({ ...f, id: e.target.value.toLowerCase() }))} placeholder="golang" className="mt-1 font-mono" />
         </div>
         <div className="sm:col-span-2">
-          <Label htmlFor="nd-topics">Topics (comma separated)</Label>
+          <Label htmlFor="nd-topics">{tx('qbot.topicsCommaSeparated')}</Label>
           <Input id="nd-topics" value={form.topics} onChange={(e) => setForm((f) => ({ ...f, topics: e.target.value }))} placeholder="Goroutines, Channels, Interfaces" className="mt-1" />
         </div>
         <div className="flex items-center gap-2">
           <Switch id="nd-coding" checked={form.coding} onCheckedChange={(v) => setForm((f) => ({ ...f, coding: v, language: v ? f.language || 'python' : '' }))} />
-          <Label htmlFor="nd-coding">Coding questions too</Label>
+          <Label htmlFor="nd-coding">{tx('qbot.codingQuestionsToo')}</Label>
         </div>
         {form.coding ? (
           <div>
-            <Label htmlFor="nd-lang">Reference solution language</Label>
+            <Label htmlFor="nd-lang">{tx('qbot.referenceSolutionLanguage')}</Label>
             <select id="nd-lang" value={form.language} onChange={(e) => setForm((f) => ({ ...f, language: e.target.value }))} className="mt-1 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               {['python', 'javascript', 'java', 'cpp', 'c'].map((l) => <option key={l} value={l}>{l}</option>)}
             </select>
           </div>
         ) : null}
         <div className="flex justify-end gap-2 sm:col-span-2">
-          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>{tx('common.cancel')}</Button>
           <Button type="submit" disabled={saving}>{saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}Add domain</Button>
         </div>
       </form>
@@ -314,8 +318,9 @@ function AddDomain({ onAdded }: { onAdded: () => void }) {
 // ─── Runs ───────────────────────────────────────────────────────────────────
 
 function RunsList({ runs }: { runs: RunRow[] }) {
+  const { t: tx } = useAdminT()
   const { dateTime } = useDateFormat()
-  if (!runs.length) return <EmptyState compact illustration="ai" title="No runs yet" description="Use Run now, or switch the nightly run on. Each run is listed here with what it wrote." />
+  if (!runs.length) return <EmptyState compact illustration="ai" title={tx('qbot.noRunsYet')} description={tx('qbot.useRunNowOrSwitch')} />
   return (
     <ul className="space-y-3">
       {runs.map((r) => (
@@ -350,6 +355,7 @@ function RunsList({ runs }: { runs: RunRow[] }) {
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function QuestionBotPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const [data, setData] = useState<Overview | null>(null)
@@ -390,12 +396,12 @@ export default function QuestionBotPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Question bot"
-        description="Writes draft questions where the bank is thinnest, checks them, and queues them for review."
+        title={tx('qbot.questionBot')}
+        description={tx('qbot.writesDraftQuestionsWhereThe')}
         icon={<Bot />}
         actions={
           <>
-            <Button variant="outline" size="sm" onClick={() => void load()} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />Refresh</Button>
+            <Button variant="outline" size="sm" onClick={() => void load()} className="gap-1.5"><RefreshCw className="h-3.5 w-3.5" aria-hidden />{tx('common.refresh')}</Button>
             <Button onClick={() => void runNow()} disabled={running || !data || data.running || data.budget.questions === 0} className="gap-1.5">
               {running ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}
               {running ? 'Running… (a few minutes)' : 'Run now'}
@@ -405,23 +411,23 @@ export default function QuestionBotPage() {
       />
 
       {error && !data ? (
-        <EmptyState illustration="error" title="Couldn't load the question bot" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} />
+        <EmptyState illustration="error" title={tx('qbot.couldnTLoadTheQuestion')} description={tx('common.checkConnection')} actionLabel={tx('common.tryAgain')} onAction={() => void load()} />
       ) : !data || !s ? (
         <SkeletonList />
       ) : (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard label="Written today" value={<>{data.usage.writtenToday}<span className="text-base font-medium text-muted-foreground"> / {s.daily_question_cap}</span></>} icon={<CalendarClock />} hint={data.budget.blocked ?? `${data.budget.questions} left for the next run`} />
-            <StatCard label="AI spend this month" value={`$${data.usage.spentThisMonth.toFixed(2)}`} hint={`Cap $${s.monthly_cost_cap_usd.toFixed(2)}`} icon={<CircleDollarSign />} />
-            <StatCard label="Drafts waiting" value={drafts ?? '—'} hint={<Link href="/dashboard/admin/sme-review?tab=drafts" className="text-primary hover:underline">Review drafts</Link>} icon={<ClipboardCheck />} />
-            <StatCard label="Nightly run" value={s.enabled ? 'On' : 'Off'} hint={data.running ? 'A run is in progress' : s.enabled ? `From ${String(s.run_hour_utc).padStart(2, '0')}:00 UTC` : 'Switch on below'} icon={<Bot />} />
+            <StatCard label={tx('qbot.writtenToday')} value={<>{data.usage.writtenToday}<span className="text-base font-medium text-muted-foreground"> / {s.daily_question_cap}</span></>} icon={<CalendarClock />} hint={data.budget.blocked ?? `${data.budget.questions} left for the next run`} />
+            <StatCard label={tx('qbot.aiSpendThisMonth')} value={`$${data.usage.spentThisMonth.toFixed(2)}`} hint={`Cap $${s.monthly_cost_cap_usd.toFixed(2)}`} icon={<CircleDollarSign />} />
+            <StatCard label={tx('qbot.draftsWaiting')} value={drafts ?? '—'} hint={<Link href="/dashboard/admin/sme-review?tab=drafts" className="text-primary hover:underline">{tx('qbot.reviewDrafts')}</Link>} icon={<ClipboardCheck />} />
+            <StatCard label={tx('qbot.nightlyRun')} value={s.enabled ? 'On' : 'Off'} hint={data.running ? 'A run is in progress' : s.enabled ? `From ${String(s.run_hour_utc).padStart(2, '0')}:00 UTC` : 'Switch on below'} icon={<Bot />} />
           </div>
 
           <SettingsPanel settings={s} onSaved={() => void load()} />
 
-          <Section title="Domains and targets" description="Targets count approved questions plus drafts waiting for review. The bot writes for the biggest gaps first." actions={<AddDomain onAdded={() => void load()} />}>
+          <Section title={tx('qbot.domainsAndTargets')} description={tx('qbot.targetsCountApprovedQuestionsPlus')} actions={<AddDomain onAdded={() => void load()} />}>
             {data.domains.length === 0 ? (
-              <EmptyState compact illustration="inbox" title="No domains" description="Add a domain to tell the bot what to write about." />
+              <EmptyState compact illustration="inbox" title={tx('qbot.noDomains')} description={tx('qbot.addADomainToTell')} />
             ) : (
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 {[...data.domains].sort((a, b) => Number(b.active) - Number(a.active) || a.coverage.percent - b.coverage.percent).map((d) => (
@@ -431,7 +437,7 @@ export default function QuestionBotPage() {
             )}
           </Section>
 
-          <Section title="Last runs">
+          <Section title={tx('qbot.lastRuns')}>
             <RunsList runs={data.runs} />
           </Section>
         </>

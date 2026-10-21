@@ -19,6 +19,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { Panel } from '@/components/app/page-kit'
 import { AppBanner, Illustration, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 function FilterAccordion({ title, items, selected, onToggle }: { title: string, items: {id: string, label: string}[], selected: string[], onToggle: (id: string) => void }) {
   const [open, setOpen] = useState(true)
@@ -45,6 +46,7 @@ function FilterAccordion({ title, items, selected, onToggle }: { title: string, 
 }
 
 export default function ProblemsListPage() {
+  const { td, t: tr } = useT()
   const gate = usePageGuard('user')
   const { loading, error, q, setQ, difficulty, setDifficulty, filtered, load } = useProblemsViewModel()
   const router = useRouter()
@@ -89,20 +91,20 @@ export default function ProblemsListPage() {
       const problemsTour: TourStep[] = [
         {
           target: '[data-tour="problems-search"]',
-          title: 'Coding practice library',
-          description: 'Practice library for placements and interviews; type here to filter questions.',
+          title: tr('practice.codingPracticeLibrary'),
+          description: tr('practice.practiceLibraryForPlacementsAndInterview5d0'),
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-stats"]',
-          title: 'Problems by difficulty',
-          description: 'See how many Easy, Medium and Hard problems match your filters.',
+          title: tr('practice.problemsByDifficulty'),
+          description: tr('practice.seeHowManyEasyMediumAnda55'),
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-table"]',
-          title: 'Start solving',
-          description: 'Tip: click Solve on any row to open its coding workspace.',
+          title: tr('practice.startSolving'),
+          description: tr('practice.tipClickSolveOnAnyRowfcb'),
           position: 'bottom',
         },
       ]
@@ -209,17 +211,15 @@ export default function ProblemsListPage() {
     <div className="max-w-[1400px] mx-auto pb-12 space-y-6">
       
       <AppBanner
-        eyebrow="Practice"
-        title="Coding practice for placements and interviews"
-        description="Pick a problem, write your solution in the browser and run it against the tests. One a day keeps your streak going."
+        eyebrow={tr('practice.practice')}
+        title={tr('practice.codingPracticeForPlacementsAndInterviews')}
+        description={tr('practice.pickAProblemWriteYourSolution559')}
         actions={
           <>
-            <Link href="/dashboard/100-days" className={bannerBtnPrimary}>
-              Start the 100-day sprint <ArrowRight className="h-4 w-4" aria-hidden />
+            <Link href="/dashboard/100-days" className={bannerBtnPrimary}>{tr('practice.startThe100DaySprint')}{' '}<ArrowRight className="h-4 w-4" aria-hidden />
             </Link>
             <Link href="/dashboard/leaderboard" className={bannerBtnSecondary}>
-              <Trophy className="h-4 w-4" aria-hidden /> Leaderboard
-            </Link>
+              <Trophy className="h-4 w-4" aria-hidden />{' '}{tr('practice.leaderboard')}</Link>
           </>
         }
         art={
@@ -231,25 +231,23 @@ export default function ProblemsListPage() {
         
         {/* Left Column (Filters) */}
         <div className="hidden lg:block lg:col-span-2 space-y-2">
-           <h2 className="mb-1 text-base font-semibold text-foreground">Filters</h2>
+           <h2 className="mb-1 text-base font-semibold text-foreground">{tr('practice.filters')}</h2>
            <FilterAccordion
-              title="Difficulty"
-              items={DIFFICULTY_LEVELS.map(l => ({ id: l, label: DIFFICULTY_LABELS[l] }))}
+              title={tr('practice.difficulty')}
+              items={DIFFICULTY_LEVELS.map(l => ({ id: l, label: td(`practice.difficultyLabels:${l}`, DIFFICULTY_LABELS[l]) }))}
               selected={difficulty !== 'all' ? [difficulty] : []}
               onToggle={(id) => setDifficulty(prev => prev === id ? 'all' : id)}
             />
            {topicOptions.length > 0 && (
              <FilterAccordion
-               title="Topics"
+               title={tr('practice.topics')}
                items={topicOptions}
                selected={selectedTopics}
                onToggle={(id) => setSelectedTopics(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
              />
            )}
            {selectedTopics.length > 0 && (
-             <Button variant="ghost" size="sm" className="mt-2 px-0 text-primary" onClick={() => setSelectedTopics([])}>
-               Clear topics
-             </Button>
+             <Button variant="ghost" size="sm" className="mt-2 px-0 text-primary" onClick={() => setSelectedTopics([])}>{tr('practice.clearTopics')}</Button>
            )}
         </div>
 
@@ -267,13 +265,13 @@ export default function ProblemsListPage() {
                    </svg>
                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                      <div className="text-2xl font-black tabular-nums text-foreground leading-none">{stats.total}</div>
-                     <div className="text-[11px] text-muted-foreground font-medium mt-1 max-w-[80px]">{stats.total === 1 ? 'Problem' : 'Problems'}</div>
+                     <div className="text-[11px] text-muted-foreground font-medium mt-1 max-w-[80px]">{stats.total === 1 ? tr('practice.problem') : tr('practice.problems')}</div>
                    </div>
                 </div>
                 <div className="flex-1 w-full space-y-4">
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                       <span className="text-foreground">Easy</span>
+                       <span className="text-foreground">{tr('practice.easy')}</span>
                        <span className="text-muted-foreground tabular-nums">{stats.easyTotal}</span>
                      </div>
                      <div className="w-full bg-muted/50 rounded-full h-1.5">
@@ -282,7 +280,7 @@ export default function ProblemsListPage() {
                    </div>
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                       <span className="text-foreground">Medium</span>
+                       <span className="text-foreground">{tr('practice.medium')}</span>
                        <span className="text-muted-foreground tabular-nums">{stats.mediumTotal}</span>
                      </div>
                      <div className="w-full bg-muted/50 rounded-full h-1.5">
@@ -291,7 +289,7 @@ export default function ProblemsListPage() {
                    </div>
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                       <span className="text-foreground">Hard</span>
+                       <span className="text-foreground">{tr('practice.hard')}</span>
                        <span className="text-muted-foreground tabular-nums">{stats.hardTotal}</span>
                      </div>
                      <div className="w-full bg-muted/50 rounded-full h-1.5">
@@ -304,7 +302,7 @@ export default function ProblemsListPage() {
              {/* Heatmap Card */}
              <Card className="rounded-3xl p-5 border-border/70 flex flex-col">
                <div className="flex items-center justify-between mb-4">
-                 <h2 className="text-base font-semibold text-foreground">Last 12 weeks</h2>
+                 <h2 className="text-base font-semibold text-foreground">{tr('practice.last12Weeks')}</h2>
                </div>
 
                <div className="flex-1 overflow-x-auto min-h-25 mb-2 -mx-2 px-2 custom-scrollbar">
@@ -319,7 +317,7 @@ export default function ProblemsListPage() {
                         compactEmpty
                      />
                   ) : heatmapFailed ? (
-                     <div className="flex items-center justify-center h-full text-sm text-muted-foreground">Activity isn&apos;t available right now.</div>
+                     <div className="flex items-center justify-center h-full text-sm text-muted-foreground">{tr('practice.activityIsntAvailableRightNow')}</div>
                   ) : (
                      <div className="flex items-center justify-center h-full">
                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -330,8 +328,8 @@ export default function ProblemsListPage() {
                <div className="flex justify-between items-center gap-3 pt-3 border-t border-border/40 mt-auto text-xs text-muted-foreground">
                  {heatmapData ? (
                    <>
-                     <div>Active days: <span className="font-semibold tabular-nums text-foreground">{heatmapData.totalActiveDays ?? 0}</span></div>
-                     <div>Activity: <span className="font-semibold tabular-nums text-foreground">{heatmapData.totalContributions ?? 0}</span></div>
+                     <div>{tr('practice.activeDays')}{' '}<span className="font-semibold tabular-nums text-foreground">{heatmapData.totalActiveDays ?? 0}</span></div>
+                     <div>{tr('practice.activity')}{' '}<span className="font-semibold tabular-nums text-foreground">{heatmapData.totalContributions ?? 0}</span></div>
                    </>
                  ) : <div>&nbsp;</div>}
                </div>
@@ -343,28 +341,27 @@ export default function ProblemsListPage() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1" data-tour="problems-search">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search problems" aria-label="Search problems" className="pl-9 h-10 rounded-full bg-card" />
+                  <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('practice.searchProblems')} aria-label={tr('practice.searchProblems')} className="pl-9 h-10 rounded-full bg-card" />
                 </div>
                 <Button variant="outline" className="rounded-full h-10 gap-2 border-border/60" onClick={pickRandom} disabled={loading || visible.length === 0}>
-                   <Play className="h-4 w-4" aria-hidden /> Pick random
-                </Button>
+                   <Play className="h-4 w-4" aria-hidden />{' '}{tr('practice.pickRandom')}</Button>
               </div>
 
               <div className="rounded-3xl border border-border/70 bg-card overflow-hidden" data-tour="problems-table">
                <div className="overflow-x-auto">
                 <div className="min-w-[600px] md:min-w-0">
                   <div className="grid grid-cols-12 gap-4 p-4 text-xs font-semibold text-muted-foreground border-b border-border/40 bg-muted/30">
-                    <div className="col-span-8 pl-2">Problem</div>
-                    <div className="col-span-2 text-center">Difficulty</div>
-                    <div className="col-span-2 text-center"><span className="sr-only">Action</span></div>
+                    <div className="col-span-8 pl-2">{tr('practice.problem')}</div>
+                    <div className="col-span-2 text-center">{tr('practice.difficulty')}</div>
+                    <div className="col-span-2 text-center"><span className="sr-only">{tr('practice.action')}</span></div>
                  </div>
 
                  {loading ? (
                     <div className="p-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
                  ) : error ? (
-                    <EmptyState illustration="error" title="Couldn't load problems" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} className="rounded-none border-0 bg-transparent" />
+                    <EmptyState illustration="error" title={tr('practice.couldntLoadProblems')} description={tr('practice.checkYourConnectionAndTryAgain')} actionLabel={tr('common.tryAgain')} onAction={() => void load()} className="rounded-none border-0 bg-transparent" />
                  ) : visible.length === 0 ? (
-                    <EmptyState variant="search" title="No problems match" description="Try a different word or clear the filters." className="rounded-none border-0 bg-transparent" />
+                    <EmptyState variant="search" title={tr('practice.noProblemsMatch')} description={tr('practice.tryADifferentWordOrClear18e')} className="rounded-none border-0 bg-transparent" />
                  ) : (
                     <div className="divide-y divide-border/40">
                        {visible.map((p, i) => (
@@ -377,8 +374,7 @@ export default function ProblemsListPage() {
                                     </Link>
                                     {p.locked ? (
                                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-800 dark:text-amber-300">
-                                        <Lock className="h-3 w-3" aria-hidden /> Locked
-                                      </span>
+                                        <Lock className="h-3 w-3" aria-hidden />{' '}{tr('practice.locked')}</span>
                                     ) : null}
                                   </div>
                                   <div className="text-xs text-muted-foreground mt-1 truncate">
@@ -399,7 +395,7 @@ export default function ProblemsListPage() {
                             </div>
                             <div className="col-span-2 flex justify-center">
                                <Button size="sm" variant="outline" className="h-8 rounded-full font-semibold border-border/80" onClick={() => router.push(`/dashboard/problems/${p.slug}`)}>
-                                 {p.locked ? 'Preview' : 'Solve'}
+                                 {p.locked ? tr('practice.preview') : tr('practice.solve')}
                                </Button>
                             </div>
                          </div>
@@ -419,45 +415,40 @@ export default function ProblemsListPage() {
            <Panel className="p-5">
              <div className="flex items-center gap-3 mb-3">
                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Trophy className="h-5 w-5" aria-hidden /></span>
-               <h2 className="text-base font-semibold text-foreground">Leaderboard</h2>
+               <h2 className="text-base font-semibold text-foreground">{tr('practice.leaderboard')}</h2>
              </div>
-             <p className="text-sm text-muted-foreground mb-4">See how your points compare with other learners.</p>
-             <Button variant="outline" className="w-full rounded-full text-sm font-semibold" onClick={() => router.push('/dashboard/leaderboard')}>
-                View leaderboard
-             </Button>
+             <p className="text-sm text-muted-foreground mb-4">{tr('practice.seeHowYourPointsCompareWith3b3')}</p>
+             <Button variant="outline" className="w-full rounded-full text-sm font-semibold" onClick={() => router.push('/dashboard/leaderboard')}>{tr('practice.viewLeaderboard')}</Button>
            </Panel>
 
            {/* Badges Card */}
            <Panel className="p-5">
              <div className="flex items-center gap-3 mb-3">
                <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Award className="h-5 w-5" aria-hidden /></span>
-               <h2 className="text-base font-semibold text-foreground">Badges</h2>
+               <h2 className="text-base font-semibold text-foreground">{tr('practice.badges')}</h2>
              </div>
-             <p className="text-sm text-muted-foreground mb-4">Solve problems and keep your streak to unlock badges.</p>
-             <Button variant="outline" className="w-full rounded-full text-sm font-semibold" onClick={() => router.push('/dashboard/achievements')}>
-                See your badges
-             </Button>
+             <p className="text-sm text-muted-foreground mb-4">{tr('practice.solveProblemsAndKeepYourStreak403')}</p>
+             <Button variant="outline" className="w-full rounded-full text-sm font-semibold" onClick={() => router.push('/dashboard/achievements')}>{tr('practice.seeYourBadges')}</Button>
            </Panel>
 
            {/* 100 Days Promo */}
            <Card className="rounded-3xl p-6 border-primary/20 bg-linear-to-br from-primary/10 to-card flex flex-col items-center text-center">
-              <h2 className="mb-2 text-lg font-semibold text-foreground">100-day coding sprint</h2>
-              <p className="text-xs text-muted-foreground mb-6">Transform your coding skills with a 100-day marathon</p>
+              <h2 className="mb-2 text-lg font-semibold text-foreground">{tr('practice.n100DayCodingSprint')}</h2>
+              <p className="text-xs text-muted-foreground mb-6">{tr('practice.transformYourCodingSkillsWithAddc')}</p>
               
               {/* Mock visualization of days */}
               <div className="w-full bg-card rounded-xl p-3 border border-border/50 shadow-inner mb-6 space-y-2">
                 <div className="flex items-center justify-between text-[10px] bg-muted/50 p-2 rounded-md">
-                   <div className="flex items-center gap-2"><span className="h-4 w-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1</span> Day 1</div>
-                   <div className="text-muted-foreground font-semibold px-2 py-0.5 rounded border bg-background">Two Pointers</div>
+                   <div className="flex items-center gap-2"><span className="h-4 w-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold">1</span>{' '}{tr('practice.day1')}</div>
+                   <div className="text-muted-foreground font-semibold px-2 py-0.5 rounded border bg-background">{tr('practice.twoPointers')}</div>
                 </div>
                 <div className="flex items-center justify-between text-[10px] bg-muted/50 p-2 rounded-md">
-                   <div className="flex items-center gap-2"><span className="h-4 w-4 rounded-full bg-foreground text-background flex items-center justify-center font-bold">2</span> Day 2</div>
-                   <div className="text-muted-foreground font-semibold px-2 py-0.5 rounded border bg-background opacity-50">Locked</div>
+                   <div className="flex items-center gap-2"><span className="h-4 w-4 rounded-full bg-foreground text-background flex items-center justify-center font-bold">2</span>{' '}{tr('practice.day22')}</div>
+                   <div className="text-muted-foreground font-semibold px-2 py-0.5 rounded border bg-background opacity-50">{tr('practice.locked')}</div>
                 </div>
               </div>
 
-              <Button onClick={() => router.push('/dashboard/100-days')} className="w-full rounded-full font-semibold gap-2">
-                 Start now <ArrowRight className="h-4 w-4" />
+              <Button onClick={() => router.push('/dashboard/100-days')} className="w-full rounded-full font-semibold gap-2">{tr('practice.startNow')}{' '}<ArrowRight className="h-4 w-4" />
               </Button>
            </Card>
 

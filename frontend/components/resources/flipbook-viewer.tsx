@@ -5,15 +5,17 @@ import { ChevronLeft, ChevronRight, Download, Loader2, Code, Lightbulb, AlertTri
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { EbookPage } from '@/lib/db/ebooks'
+import { useT } from '@/lib/i18n/client'
 
 function PageBody({ page }: { page: EbookPage }) {
+  const { t: tr } = useT()
   if (page.type === 'image' || page.imageUrl) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-transparent">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={page.imageUrl!}
-          alt={page.imageAlt || page.title || 'Page image'}
+          alt={page.imageAlt || page.title || tr('learning.pageImage')}
           className="max-h-full max-w-full rounded-md object-contain shadow-sm"
         />
       </div>
@@ -33,7 +35,7 @@ function PageBody({ page }: { page: EbookPage }) {
   if (page.type === 'toc') {
     return (
       <div className="space-y-4 p-4">
-        <h3 className="text-xl font-semibold">{page.title || 'Contents'}</h3>
+        <h3 className="text-xl font-semibold">{page.title || tr('learning.contents')}</h3>
         <ul className="space-y-3">
           {(page.items || []).map((it, i) => (
             <li key={i} className="flex items-start gap-3">
@@ -170,7 +172,7 @@ function PageBody({ page }: { page: EbookPage }) {
           </div>
         )}
         {page.language && (
-          <p className="text-xs text-muted-foreground text-right">Language: {page.language}</p>
+          <p className="text-xs text-muted-foreground text-right">{tr('learning.languageLanguage', { language: page.language })}</p>
         )}
       </div>
     )
@@ -182,7 +184,7 @@ function PageBody({ page }: { page: EbookPage }) {
       <div className="space-y-4 p-4">
         <div className="flex items-center gap-2">
           <HelpCircle className="h-5 w-5 text-primary" aria-hidden />
-          <h3 className="text-xl font-semibold">{page.title || 'Quiz time'}</h3>
+          <h3 className="text-xl font-semibold">{page.title || tr('learning.quizTime')}</h3>
         </div>
         {(page.questions || []).map((q, qi) => (
           <div key={qi} className="space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
@@ -292,6 +294,7 @@ interface FlipbookViewerProps {
 }
 
 export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProps) {
+  const { t } = useT()
   const [current, setCurrent] = useState(0)
   const [exporting, setExporting] = useState(false)
   const viewerRef = useRef<HTMLDivElement>(null)
@@ -320,9 +323,7 @@ export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProp
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm tabular-nums text-muted-foreground">
           {title && <span className="font-medium text-foreground">{title}</span>}
-          {title && ' · '}
-          Page {current + 1} of {pages.length}
-        </p>
+          {title && ' · '}{t('learning.page')}{' '}{current + 1}{' '}{t('learning.ofCount', { count: pages.length })}</p>
         <div className="flex items-center gap-2">
           {onExportPdf && (
             <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={exporting}>
@@ -330,14 +331,12 @@ export function FlipbookViewer({ pages, title, onExportPdf }: FlipbookViewerProp
                 <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
               ) : (
                 <Download className="mr-1 h-3.5 w-3.5" />
-              )}
-              Download PDF
-            </Button>
+              )}{t('learning.downloadPdf')}</Button>
           )}
-          <Button variant="outline" size="sm" onClick={prev} disabled={current === 0} aria-label="Previous page">
+          <Button variant="outline" size="sm" onClick={prev} disabled={current === 0} aria-label={t('learning.previousPage')}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <Button variant="outline" size="sm" onClick={next} disabled={current >= pages.length - 1} aria-label="Next page">
+          <Button variant="outline" size="sm" onClick={next} disabled={current >= pages.length - 1} aria-label={t('learning.nextPage')}>
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>

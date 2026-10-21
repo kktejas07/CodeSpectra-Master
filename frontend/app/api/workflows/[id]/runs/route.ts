@@ -15,7 +15,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if ('error' in g) return NextResponse.json({ error: g.error }, { status: g.status })
   const { id } = await ctx.params
   const wf = await loadWorkflow(g, id)
-  if (!wf) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!wf) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   const sp = req.nextUrl.searchParams
   const q: Record<string, unknown> = { workflow_id: wf.id }
   const status = sp.get('status')

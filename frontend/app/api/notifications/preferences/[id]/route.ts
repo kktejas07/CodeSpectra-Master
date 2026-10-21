@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest, { params }: IdRouteContext) {
   try {
     const user = await getAPIUser()
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     }
     if (!CHANNELS.has(id)) {
       return NextResponse.json({ error: 'Unknown channel' }, { status: 400 })
@@ -31,7 +31,7 @@ export async function PATCH(req: NextRequest, { params }: IdRouteContext) {
       else if (key.startsWith('categories.') && CATEGORIES.has(key.slice('categories.'.length))) set[key] = value
     }
     if (Object.keys(set).length === 0) {
-      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+      return NextResponse.json({ error: 'Nothing to update', code: 'nothing_to_update' }, { status: 400 })
     }
 
     const now = new Date().toISOString()

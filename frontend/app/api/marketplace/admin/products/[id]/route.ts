@@ -7,7 +7,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
   const g = await adminGate(req, { write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Product not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Product not found', code: 'mkt_product_not_found' }, 404)
   try {
     const b = await bodyOf(req)
     const d = (['approve', 'reject', 'unpublish'] as const).find((x) => x === b.decision)

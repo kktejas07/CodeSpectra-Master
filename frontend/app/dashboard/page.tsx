@@ -19,16 +19,18 @@ import { useTour } from '@/components/tour/tour-context'
 import { WELCOME_TOUR_STEPS, autoPlayPageTour, startPageHints, type TourHint } from '@/lib/tour-driver'
 import { BentoGrid, Panel, StatCard } from '@/components/app/page-kit'
 import { AppBanner, BannerChip, bannerBtnPrimary, bannerBtnSecondary } from '@/components/visuals'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 // Quick actions — each tile links to the page it names (Assessments/Arena were swapped before).
-const QUICK_ACTIONS = [
-  { href: '/dashboard/assessments', label: 'Assessments', hint: 'Tests you’re invited to', icon: FileText, tour: 'assessments' },
-  { href: '/dashboard/problems', label: 'Problems', hint: 'Coding practice', icon: Code, tour: undefined },
-  { href: '/dashboard/arena', label: 'Arena', hint: 'Live 1-v-1 matches', icon: Target, tour: 'practice-arena' },
-  { href: '/dashboard/scanner?mode=manual', label: 'Run a scan', hint: 'Check your own code', icon: Activity, tour: 'scanner-tool' },
-  { href: '/dashboard/tracks', label: 'Tracks', hint: 'Structured courses', icon: Layers, tour: undefined },
-  { href: '/dashboard/achievements', label: 'Achievements', hint: 'Badges you’ve earned', icon: Star, tour: undefined },
-] as const
+const QUICK_ACTIONS = (t: Translator) => ([
+  { href: '/dashboard/assessments', label: t('dash.assessments'), hint: t('dash.testsYoureInvitedTo'), icon: FileText, tour: 'assessments' },
+  { href: '/dashboard/problems', label: t('dash.problems'), hint: t('dash.codingPractice'), icon: Code, tour: undefined },
+  { href: '/dashboard/arena', label: t('dash.arena'), hint: t('dash.live1V1Matches'), icon: Target, tour: 'practice-arena' },
+  { href: '/dashboard/scanner?mode=manual', label: t('dash.runAScan'), hint: t('dash.checkYourOwnCode'), icon: Activity, tour: 'scanner-tool' },
+  { href: '/dashboard/tracks', label: t('dash.tracks'), hint: t('dash.structuredCourses'), icon: Layers, tour: undefined },
+  { href: '/dashboard/achievements', label: t('dash.achievements'), hint: t('dash.badgesYouveEarned'), icon: Star, tour: undefined },
+] as const)
 
 function greetingFor(d: Date): string {
   const h = d.getHours()
@@ -44,6 +46,7 @@ interface ActivityItem {
 }
 
 export default function DashboardPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen, isTourSeen } = useTour()
 
@@ -62,15 +65,15 @@ export default function DashboardPage() {
       {
         id: 'daily-challenge',
         target: '[data-hint="daily-challenge"]',
-        title: 'Daily challenge',
-        description: 'A fresh challenge every day. Solve it to keep your streak alive and earn bonus XP.',
+        title: tr('dash.dailyChallenge'),
+        description: tr('dash.aFreshChallengeEveryDaySolve74c'),
         position: 'bottom',
       },
       {
         id: 'contributions',
         target: '[data-hint="contribution-graph"]',
-        title: 'Your activity graph',
-        description: 'Every scan, solution, and fix fills this in. Consistency beats intensity.',
+        title: tr('dash.yourActivityGraph'),
+        description: tr('dash.everyScanSolutionAndFixFills2e2'),
         position: 'top',
       },
     ]
@@ -157,7 +160,7 @@ export default function DashboardPage() {
 
   if (!gate.ready) return null
   // Skeleton dash until the numbers arrive, so a slow load never reads as "0".
-  const statValue = (n: number) => (statsLoaded ? n : <span className="text-muted-foreground" aria-label="Loading">—</span>)
+  const statValue = (n: number) => (statsLoaded ? n : <span className="text-muted-foreground" aria-label={tr('dash.loading')}>—</span>)
 
   const firstName = (fbUser?.displayName || '').trim().split(/\s+/)[0] || ''
 
@@ -169,15 +172,15 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <AppBanner
         eyebrow={greetingFor(new Date())}
-        title={firstName ? `Welcome back, ${firstName}` : 'Welcome back'}
+        title={firstName ? tr('dash.welcomeBackFirstname', { firstName }) : tr('dash.welcomeBack')}
         description={
           statsLoaded && stats.streak > 0
-            ? `You're on a ${stats.streak}-day streak. Solve one problem today to keep it going.`
-            : 'Your practice, assessments and certificates in one place. One problem a day is a good start.'
+            ? tr('dash.youreOnAStreakDayStreak70c', { streak: stats.streak })
+            : tr('dash.yourPracticeAssessmentsAndCertificatesInffa')
         }
         actions={
           <div data-tour="quick-actions" className="flex flex-wrap gap-2.5">
-            {QUICK_ACTIONS.map(({ href, label, icon: Icon, tour }, i) => (
+            {QUICK_ACTIONS(tr).map(({ href, label, icon: Icon, tour }, i) => (
               <Link key={href} href={href} data-tour={tour} className={i === 0 ? bannerBtnPrimary : bannerBtnSecondary}>
                 <Icon className="h-4 w-4" aria-hidden /> {label}
               </Link>
@@ -187,16 +190,16 @@ export default function DashboardPage() {
         art={
           <div className="flex flex-col items-end gap-3">
             {faceEnrolled === true ? (
-              <BannerChip icon={<ScanFace />} label="Face enrolled" sub="Ready for proctored tests" />
+              <BannerChip icon={<ScanFace />} label={tr('dash.faceEnrolled')} sub="Ready for proctored tests" />
             ) : faceEnrolled === false ? (
-              <BannerChip icon={<ScanFace />} label="Face not enrolled" sub="Set it up in settings" />
+              <BannerChip icon={<ScanFace />} label={tr('dash.faceNotEnrolled')} sub="Set it up in settings" />
             ) : (
-              <BannerChip icon={<Code />} label="Practice" sub="Problems and tracks" />
+              <BannerChip icon={<Code />} label={tr('dash.practice')} sub="Problems and tracks" />
             )}
             {statsLoaded && stats.streak > 0 ? (
-              <BannerChip icon={<Flame />} label={`${stats.streak}-day streak`} sub="Keep it going" className="mr-8" delay="0.6s" />
+              <BannerChip icon={<Flame />} label={tr('dash.streakDayStreak', { streak: stats.streak })} sub="Keep it going" className="mr-8" delay="0.6s" />
             ) : (
-              <BannerChip icon={<FileText />} label="Mock tests" sub="Practise before the real one" className="mr-8" delay="0.6s" />
+              <BannerChip icon={<FileText />} label={tr('dash.mockTests')} sub="Practise before the real one" className="mr-8" delay="0.6s" />
             )}
           </div>
         }
@@ -205,14 +208,14 @@ export default function DashboardPage() {
       <div data-tour="dashboard-overview">
       {statsFailed ? (
         <div role="alert" className="mb-4 flex flex-col gap-2 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <span className="text-foreground">Couldn&apos;t load your stats.</span>
-          <Button size="sm" variant="outline" onClick={() => setStatsReloadKey((k) => k + 1)}>Try again</Button>
+          <span className="text-foreground">{tr('dash.couldntLoadYourStats')}</span>
+          <Button size="sm" variant="outline" onClick={() => setStatsReloadKey((k) => k + 1)}>{tr('common.tryAgain')}</Button>
         </div>
       ) : null}
       <BentoGrid className="[&:not(:has(>[data-hint=daily-challenge]>*))]:lg:grid-cols-3">
-        <StatCard label="Code scans" value={statValue(stats.scans)} icon={<Activity />} />
-        <StatCard label="Challenges" value={statValue(stats.challenges)} icon={<Code />} />
-        <StatCard label="Fixes applied" value={statValue(stats.fixes)} icon={<CheckCircle />} />
+        <StatCard label={tr('dash.codeScans')} value={statValue(stats.scans)} icon={<Activity />} />
+        <StatCard label={tr('dash.challenges')} value={statValue(stats.challenges)} icon={<Code />} />
+        <StatCard label={tr('dash.fixesApplied')} value={statValue(stats.fixes)} icon={<CheckCircle />} />
         <div data-hint="daily-challenge" className="min-w-0">
           <DailyChallengeWidget />
         </div>
@@ -236,11 +239,10 @@ export default function DashboardPage() {
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-primary" />
-              <h2 className="text-lg font-semibold text-foreground">My events</h2>
+              <h2 className="text-lg font-semibold text-foreground">{tr('dash.myEvents')}</h2>
             </div>
             <Button variant="ghost" size="sm" className="gap-1 text-sm" asChild>
-              <Link href="/dashboard/hackathons">
-                View all <ArrowRight className="h-3 w-3" />
+              <Link href="/dashboard/hackathons">{tr('dash.viewAll')}{' '}<ArrowRight className="h-3 w-3" />
               </Link>
             </Button>
           </div>
@@ -259,12 +261,12 @@ export default function DashboardPage() {
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-medium text-foreground text-sm truncate">{h.name}</h3>
                       <Badge variant={isActive ? 'default' : isUpcoming ? 'secondary' : 'outline'} className="text-[10px]">
-                        {isActive ? 'Live' : isUpcoming ? 'Upcoming' : 'Ended'}
+                        {isActive ? tr('dash.live') : isUpcoming ? tr('dash.upcoming') : tr('dash.ended')}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <Users className="h-3 w-3" />
-                      <span>{t.members?.length || 0} {t.members?.length === 1 ? 'member' : 'members'}</span>
+                      <span>{t.members?.length || 0} {t.members?.length === 1 ? tr('dash.member') : tr('dash.members')}</span>
                       <span className="text-border">|</span>
                       <span>{t.name}</span>
                     </div>
@@ -282,8 +284,8 @@ export default function DashboardPage() {
             activities={activities}
             limit={5}
             showViewAll={true}
-            title="Recent activity"
-            subtitle="Your latest contributions"
+            title={tr('dash.recentActivity')}
+            subtitle={tr('dash.yourLatestContributions')}
           />
         </div>
 
@@ -291,14 +293,12 @@ export default function DashboardPage() {
           <Panel className="space-y-3">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              <h2 className="text-base font-semibold text-foreground">Learning progress</h2>
+              <h2 className="text-base font-semibold text-foreground">{tr('dash.learningProgress')}</h2>
             </div>
-            <p className="text-xs text-muted-foreground">Track your learning journey across tech stacks.</p>
+            <p className="text-xs text-muted-foreground">{tr('dash.trackYourLearningJourneyAcrossTech3b1')}</p>
             <Button variant="outline" size="sm" className="w-full gap-2 text-xs" asChild>
               <Link href="/dashboard/tracks">
-                <Layers className="h-3.5 w-3.5" />
-                Browse learning tracks
-              </Link>
+                <Layers className="h-3.5 w-3.5" />{tr('dash.browseLearningTracks')}</Link>
             </Button>
           </Panel>
         </div>

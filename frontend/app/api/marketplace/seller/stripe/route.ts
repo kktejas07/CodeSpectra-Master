@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
   const g = await sellerGate(req, { write: true })
   if ('res' in g) return g.res
   try {
-    if (g.seller.is_platform) return json({ error: "The platform store doesn't take payouts." }, 400)
+    if (g.seller.is_platform) return json({ error: "The platform store doesn't take payouts.", code: 'mkt_platform_no_payouts' }, 400)
     const { stripeOnboardingLink } = await import('@/lib/marketplace/sellers')
     return json({ url: await stripeOnboardingLink(g.seller, origin(req)) })
   } catch (e) {

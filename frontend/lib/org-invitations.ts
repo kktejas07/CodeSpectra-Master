@@ -7,7 +7,8 @@ import crypto from 'crypto'
 import type { Filter } from 'mongodb'
 import { orgInvitations, tenants, users, nowIso, type BetterAuthUserDoc, type OrganizationInvitationDoc } from '@/lib/db/admin'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForEmail } from '@/lib/i18n/recipient'
 import { getAppOrigin } from '@/lib/app-origin'
 import { getTenantEntitlements, checkLimit, type PlanGateError } from '@/lib/entitlements'
 import { escapeHtml, INVITE_TTL_DAYS, type InviteRole } from '@/lib/org-invitations-core'
@@ -60,7 +61,7 @@ export async function createOrgInvitation(params: {
   try {
     const r = await sendEmail(
       params.email,
-      emailTemplates.orgInvite({
+      emailTemplatesFor(await localeForEmail(params.email)).orgInvite({
         orgName: escapeHtml(tenant?.name || 'an organization'),
         invitedByName: escapeHtml(params.invitedBy.name || params.invitedBy.email || 'An admin'),
         acceptUrl: `${getAppOrigin()}/dashboard/team/invites/${doc.token}`,

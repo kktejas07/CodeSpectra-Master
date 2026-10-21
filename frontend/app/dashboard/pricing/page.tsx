@@ -39,6 +39,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 interface PlanRow {
   id: string
@@ -54,6 +55,7 @@ interface PlanRow {
 }
 
 function PricingContent() {
+  const { t } = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const addToast = useToast()
@@ -129,7 +131,7 @@ function PricingContent() {
   // 100%-off coupon checkouts redirect back here.
   useEffect(() => {
     if (searchParams.get('payment') === 'free' && searchParams.get('status') === 'success') {
-      addToast({ type: 'success', title: 'Plan activated', message: 'Your coupon covered the full price.' })
+      addToast({ type: 'success', title: t('account.planActivated'), message: t('account.yourCouponCoveredTheFullPrice') })
     }
   }, [searchParams, addToast])
 
@@ -204,16 +206,16 @@ function PricingContent() {
         router.push(CONTACT_SALES_HREF)
         return
       }
-      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Checkout failed')
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : t('account.checkoutFailed'))
       // Opens Razorpay (or redirects) and only reports success after server verification.
       const outcome = await completeCheckout(data, { description: checkoutPlan.name })
       if (outcome.status === 'paid') {
-        addToast({ type: 'success', title: 'Payment confirmed', message: `You are now on the ${checkoutPlan.name} plan.` })
+        addToast({ type: 'success', title: t('account.paymentConfirmed'), message: t('account.youAreNowOnTheNamefac', { name: checkoutPlan.name }) })
         closeCheckout()
         await loadCurrent()
       }
     } catch (e) {
-      addToast({ type: 'error', title: 'Checkout', message: e instanceof Error ? e.message : 'Checkout failed' })
+      addToast({ type: 'error', title: t('account.checkout'), message: e instanceof Error ? e.message : t('account.checkoutFailed') })
     } finally {
       setCheckoutLoading(false)
     }
@@ -229,12 +231,12 @@ function PricingContent() {
         body: JSON.stringify({ plan_id: 'free' }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : 'Could not switch plans')
+      if (!res.ok) throw new Error(typeof data.error === 'string' ? data.error : t('account.couldNotSwitchPlans'))
       setFreeOpen(false)
-      addToast({ type: 'success', title: 'Plan cancelled', message: 'You keep paid features until the end of the current period, then move to Free.' })
+      addToast({ type: 'success', title: t('account.planCancelled'), message: t('account.youKeepPaidFeaturesUntilThe678') })
       await loadCurrent()
     } catch (e) {
-      addToast({ type: 'error', title: 'Plan change', message: e instanceof Error ? e.message : 'Could not switch plans' })
+      addToast({ type: 'error', title: t('account.planChange'), message: e instanceof Error ? e.message : t('account.couldNotSwitchPlans') })
     } finally {
       setSwitchingFree(false)
     }
@@ -257,12 +259,12 @@ function PricingContent() {
   if (loadError || plans.length === 0) {
     return (
       <div className="space-y-6">
-        <PageHeader illustration="billing" icon={<Crown aria-hidden />} title="Choose your plan" />
+        <PageHeader illustration="billing" icon={<Crown aria-hidden />} title={t('account.chooseYourPlan')} />
         <EmptyState
           illustration="error"
-          title={loadError ? "We couldn't load the plans" : 'No plans are available yet'}
-          description={loadError ? 'Check your connection and try again. Nothing has changed on your account.' : 'Check back soon, or contact us to set up a plan.'}
-          actionLabel={loadError ? 'Try again' : 'Contact sales'}
+          title={loadError ? t('account.weCouldntLoadThePlans') : t('account.noPlansAreAvailableYet')}
+          description={loadError ? t('account.checkYourConnectionAndTryAgainf3d') : t('account.checkBackSoonOrContactUscfe')}
+          actionLabel={loadError ? t('common.tryAgain') : t('account.contactSales')}
           onAction={loadError ? () => setReloadKey((k) => k + 1) : undefined}
           actionHref={loadError ? undefined : CONTACT_SALES_HREF}
         />
@@ -279,11 +281,11 @@ function PricingContent() {
           illustration="billing"
           className="mb-0"
           icon={<Crown aria-hidden />}
-          title="Choose your plan"
-          description="Start free and upgrade when you need more."
+          title={t('account.chooseYourPlan')}
+          description={t('account.startFreeAndUpgradeWhenYou76f')}
           actions={
             hasYearly ? (
-              <div className="inline-flex rounded-full border border-border bg-card p-1" role="group" aria-label="Billing interval">
+              <div className="inline-flex rounded-full border border-border bg-card p-1" role="group" aria-label={t('account.billingInterval')}>
                 {(['month', 'year'] as const).map((iv) => (
                   <button
                     key={iv}
@@ -295,7 +297,7 @@ function PricingContent() {
                       interval === iv ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
                     )}
                   >
-                    {iv === 'year' ? 'Annual' : 'Monthly'}
+                    {iv === 'year' ? t('account.annual') : t('account.monthly')}
                   </button>
                 ))}
               </div>
@@ -308,41 +310,37 @@ function PricingContent() {
         preselected ? (
           <Panel className="flex flex-wrap items-center justify-between gap-4 border-primary/30" aria-live="polite">
             <div className="min-w-0">
-              <p className="text-sm text-muted-foreground">You picked</p>
+              <p className="text-sm text-muted-foreground">{t('account.youPicked')}</p>
               <p className="text-lg font-semibold text-foreground">
                 {preselected.name}
                 {preselected.mode === 'checkout' ? (
                   <span className="ml-2 text-base font-normal tabular-nums text-muted-foreground">
-                    {money(priceFor(preselected))}/{interval === 'year' ? 'year' : 'month'}
+                    {money(priceFor(preselected))}/{interval === 'year' ? t('account.year') : t('account.month')}
                   </span>
                 ) : null}
               </p>
               {preselected.id === currentPlanId ? (
-                <p className="mt-1 text-sm text-muted-foreground">This is already your current plan.</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t('account.thisIsAlreadyYourCurrentPlan')}</p>
               ) : preselected.mode === 'free' ? (
-                <p className="mt-1 text-sm text-muted-foreground">The free plan doesn&apos;t need checkout.</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t('account.theFreePlanDoesntNeedCheckout')}</p>
               ) : preselected.mode === 'contact_sales' ? (
-                <p className="mt-1 text-sm text-muted-foreground">This plan is set up with our team.</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t('account.thisPlanIsSetUpWithec7')}</p>
               ) : (
-                <p className="mt-1 text-sm text-muted-foreground">Your plan changes once the payment is confirmed.</p>
+                <p className="mt-1 text-sm text-muted-foreground">{t('account.yourPlanChangesOnceThePaymentb9a')}</p>
               )}
             </div>
             {preselected.id === currentPlanId ? null : preselected.mode === 'checkout' ? (
-              <Button size="lg" className="gap-2" onClick={() => openCheckout(preselected)}>
-                Continue to checkout <ArrowRight className="h-4 w-4" aria-hidden />
+              <Button size="lg" className="gap-2" onClick={() => openCheckout(preselected)}>{t('account.continueToCheckout')}{' '}<ArrowRight className="h-4 w-4" aria-hidden />
               </Button>
             ) : preselected.mode === 'contact_sales' ? (
               <Button size="lg" className="gap-2" asChild>
                 <Link href={CONTACT_SALES_HREF}>
-                  <MessageSquare className="h-4 w-4" aria-hidden /> Contact sales
-                </Link>
+                  <MessageSquare className="h-4 w-4" aria-hidden />{' '}{t('account.contactSales')}</Link>
               </Button>
             ) : null}
           </Panel>
         ) : (
-          <Panel role="status" className="text-sm text-muted-foreground">
-            The plan you picked isn&apos;t available any more. Choose one below.
-          </Panel>
+          <Panel role="status" className="text-sm text-muted-foreground">{t('account.thePlanYouPickedIsntAvailablea22')}</Panel>
         )
       ) : null}
 
@@ -361,24 +359,24 @@ function PricingContent() {
               )}
             >
               {isCurrent ? (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2" variant="secondary">Current plan</Badge>
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2" variant="secondary">{t('account.currentPlan')}</Badge>
               ) : isPicked ? (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">Your pick</Badge>
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">{t('account.yourPick')}</Badge>
               ) : plan.popular ? (
-                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">Recommended</Badge>
+                <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">{t('account.recommended')}</Badge>
               ) : null}
               <div className="mb-6 text-center">
                 <h2 className="text-xl font-bold text-foreground">{plan.name}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{plan.description}</p>
                 <div className="mt-4">
                   {plan.mode === 'contact_sales' ? (
-                    <span className="text-3xl font-bold text-foreground">Custom</span>
+                    <span className="text-3xl font-bold text-foreground">{t('account.custom')}</span>
                   ) : plan.mode === 'free' ? (
                     <span className="text-4xl font-bold text-foreground">Free</span>
                   ) : (
                     <>
                       <span className="text-4xl font-bold tabular-nums text-foreground">{money(amount)}</span>
-                      <span className="text-sm text-muted-foreground">/{interval === 'year' ? 'yr' : 'mo'}</span>
+                      <span className="text-sm text-muted-foreground">/{interval === 'year' ? t('account.yr') : t('account.mo')}</span>
                     </>
                   )}
                 </div>
@@ -394,19 +392,16 @@ function PricingContent() {
               </ul>
 
               {isCurrent ? (
-                <Button className="w-full" variant="outline" disabled>Current plan</Button>
+                <Button className="w-full" variant="outline" disabled>{t('account.currentPlan')}</Button>
               ) : plan.mode === 'contact_sales' ? (
                 <Button className="w-full gap-2" variant="outline" asChild data-tour="pricing-cta">
-                  <Link href={CONTACT_SALES_HREF}><MessageSquare className="h-4 w-4" aria-hidden /> Contact sales</Link>
+                  <Link href={CONTACT_SALES_HREF}><MessageSquare className="h-4 w-4" aria-hidden />{' '}{t('account.contactSales')}</Link>
                 </Button>
               ) : plan.mode === 'free' ? (
-                <Button className="w-full" variant="outline" onClick={() => setFreeOpen(true)}>
-                  Switch to free
-                </Button>
+                <Button className="w-full" variant="outline" onClick={() => setFreeOpen(true)}>{t('account.switchToFree')}</Button>
               ) : (
                 <Button className="w-full gap-2" data-tour="pricing-cta" onClick={() => openCheckout(plan)}>
-                  <Crown className="h-4 w-4" aria-hidden /> Upgrade to {plan.name}
-                </Button>
+                  <Crown className="h-4 w-4" aria-hidden />{' '}{t('account.upgradeToName', { name: plan.name })}</Button>
               )}
             </Card>
           )
@@ -416,39 +411,37 @@ function PricingContent() {
       <Dialog open={!!checkoutPlan} onOpenChange={(v) => { if (!v) closeCheckout() }}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Complete your upgrade</DialogTitle>
-            <DialogDescription>
-              You are upgrading to {checkoutPlan?.name}, billed {interval === 'year' ? 'yearly' : 'monthly'}.
-            </DialogDescription>
+            <DialogTitle>{t('account.completeYourUpgrade')}</DialogTitle>
+            <DialogDescription>{t('account.youAreUpgradingToNameBilled682', { name: checkoutPlan?.name, value: interval === 'year' ? t('account.yearly') : t('account.monthly2') })}</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-muted/20 p-4">
-              <span className="font-medium text-foreground">Price</span>
+              <span className="font-medium text-foreground">{t('account.price')}</span>
               <span className="font-bold tabular-nums">
                 {checkoutPlan ? `${money(priceFor(checkoutPlan))}/${interval === 'year' ? 'year' : 'month'}` : ''}
               </span>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="coupon">Have a coupon code?</Label>
+              <Label htmlFor="coupon">{t('account.haveACouponCode')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="coupon"
-                  placeholder="Enter code"
+                  placeholder={t('account.enterCode')}
                   value={couponCode}
                   onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setDiscountInfo(null) }}
                   className="uppercase"
                   maxLength={64}
                 />
                 <Button variant="secondary" onClick={handleApplyCoupon} disabled={checkingCoupon || !couponCode}>
-                  {checkingCoupon ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : 'Apply'}
+                  {checkingCoupon ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : t('account.apply')}
                 </Button>
               </div>
               {discountInfo && (
                 <p className={cn('text-sm', discountInfo.valid ? 'text-green-600 dark:text-green-400' : 'text-destructive')}>
                   {discountInfo.valid
-                    ? `Coupon applied: ${discountInfo.type === 'flat' ? `${sym}${discountInfo.value} off` : `${discountInfo.value}% off`}`
+                    ? t('account.couponAppliedValue', { value: discountInfo.type === 'flat' ? `${sym}${discountInfo.value} off` : `${discountInfo.value}% off` })
                     : discountInfo.error}
                 </p>
               )}
@@ -456,11 +449,9 @@ function PricingContent() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeCheckout}>Cancel</Button>
+            <Button variant="outline" onClick={closeCheckout}>{t('common.cancel')}</Button>
             <Button onClick={handleCheckout} disabled={checkoutLoading}>
-              {checkoutLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <Zap className="mr-2 h-4 w-4" aria-hidden />}
-              Proceed to payment
-            </Button>
+              {checkoutLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <Zap className="mr-2 h-4 w-4" aria-hidden />}{t('account.proceedToPayment')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -468,21 +459,17 @@ function PricingContent() {
       <AlertDialog open={freeOpen} onOpenChange={setFreeOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Switch to the free plan?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Your paid plan is cancelled at the end of the current period. You keep paid features until then, and nothing renews.
-            </AlertDialogDescription>
+            <AlertDialogTitle>{t('account.switchToTheFreePlan')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('account.yourPaidPlanIsCancelledAt871')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep my plan</AlertDialogCancel>
+            <AlertDialogCancel>{t('account.keepMyPlan')}</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={(e) => { e.preventDefault(); void switchToFree() }}
               disabled={switchingFree}
             >
-              {switchingFree ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}
-              Switch to free
-            </AlertDialogAction>
+              {switchingFree ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : null}{t('account.switchToFree')}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -491,6 +478,7 @@ function PricingContent() {
 }
 
 export default function PricingPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -500,20 +488,20 @@ export default function PricingPage() {
       const pricingTour: TourStep[] = [
         {
           target: '[data-tour="pricing-header"]',
-          title: 'Plans that scale',
-          description: 'Start free and upgrade only when you need more power.',
+          title: t('account.plansThatScale'),
+          description: t('account.startFreeAndUpgradeOnlyWhencd7'),
           position: 'bottom',
         },
         {
           target: '[data-tour="pricing-plans"]',
-          title: 'Compare plans',
-          description: 'Each tier lists its limits and features side by side for easy comparison.',
+          title: t('account.comparePlans'),
+          description: t('account.eachTierListsItsLimitsAnd6b6'),
           position: 'bottom',
         },
         {
           target: '[data-tour="pricing-cta"]',
-          title: 'Upgrade in one click',
-          description: 'Choose a plan to open checkout, where coupons and payment are handled.',
+          title: t('account.upgradeInOneClick'),
+          description: t('account.chooseAPlanToOpenCheckoutdcd'),
           position: 'top',
         },
       ]

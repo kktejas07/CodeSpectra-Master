@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { getAPIUser } from '@/lib/route-auth'
 import { atsMembers, listMyMemberships } from '@/lib/ats/access'
 import { EmptyState } from '@/components/ui/empty-state'
+import { getAreaI18n } from '@/lib/i18n/area-server'
+import { AreaI18n } from '@/components/i18n/area-i18n'
 
 /**
  * Server gate for /dashboard/hiring/**: only hiring-team members (any ATS role),
@@ -9,7 +11,12 @@ import { EmptyState } from '@/components/ui/empty-state'
  * (the proxy already let them through as signed-in users). Per-tenant role
  * checks happen in each page's API via requireAts.
  */
-export default async function HiringLayout({ children }: { children: React.ReactNode }) {
+export default function HiringLayout({ children }: { children: React.ReactNode }) {
+  return <AreaI18n ns={['hiring']}><HiringGate>{children}</HiringGate></AreaI18n>
+}
+
+async function HiringGate({ children }: { children: React.ReactNode }) {
+  const { t } = await getAreaI18n()
   const user = await getAPIUser()
   if (!user) redirect('/auth/login?redirectTo=/dashboard/hiring')
   if (user.role === 'superadmin') return <>{children}</>
@@ -25,7 +32,7 @@ export default async function HiringLayout({ children }: { children: React.React
     console.error('[hiring/layout] membership check failed:', e)
     return (
       <div className="mx-auto max-w-3xl px-4 py-10">
-        <EmptyState illustration="error" title="We couldn't check your hiring access" description="Please refresh the page in a moment." actionLabel="Back to dashboard" actionHref="/dashboard" />
+        <EmptyState illustration="error" title={t('hiring.weCouldntCheckYourHiringAccess')} description={t('hiring.pleaseRefreshThePageInA615')} actionLabel={t('hiring.backToDashboard')} actionHref="/dashboard" />
       </div>
     )
   }
@@ -35,13 +42,13 @@ export default async function HiringLayout({ children }: { children: React.React
       <div className="mx-auto max-w-3xl px-4 py-10">
         <EmptyState
           illustration="team"
-          title="You're not on a hiring team yet"
+          title={t('hiring.youreNotOnAHiringTeam957')}
           description={
             pendingInvite
-              ? "You've been invited to a hiring team. Open the invite link in your email to join — it's sent to " + user.email + '.'
-              : 'Hiring is for recruiters, interviewers and clients that an organization adds to its team. Ask your organization admin to invite you.'
+              ? t('hiring.youveBeenInvitedToAHiringec7', { email: user.email })
+              : t('hiring.hiringIsForRecruitersInterviewersAndc6a')
           }
-          actionLabel="Back to dashboard"
+          actionLabel={t('hiring.backToDashboard')}
           actionHref="/dashboard"
         />
       </div>

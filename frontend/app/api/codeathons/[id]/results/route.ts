@@ -21,7 +21,7 @@ const ID_RE = /^[A-Za-z0-9_-]{1,80}$/
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const rl = await rateLimitRedis(`codeathon-results:${clientLimiterKeyFromRequest(req, null)}`, 60, 60_000)
   if (!rl.ok) {
-    return NextResponse.json({ error: 'Too many requests. Try again in a minute.' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+    return NextResponse.json({ error: 'Too many requests. Try again in a minute.', code: 'rate_limited_minute' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
   }
   const { id } = await ctx.params
   if (!id || !ID_RE.test(id)) return NextResponse.json({ error: 'Results not found' }, { status: 404 })

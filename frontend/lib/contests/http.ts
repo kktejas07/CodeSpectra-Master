@@ -14,8 +14,8 @@ export function respond<T>(r: ServiceResult<T>): NextResponse {
   return NextResponse.json(r.data, { status: r.status })
 }
 
-export const unauthorized = () => NextResponse.json({ error: 'Sign in to continue.' }, { status: 401 })
-export const notFound = () => NextResponse.json({ error: 'Contest not found' }, { status: 404 })
+export const unauthorized = () => NextResponse.json({ error: 'Sign in to continue.', code: 'sign_in_to_continue' }, { status: 401 })
+export const notFound = () => NextResponse.json({ error: 'Contest not found', code: 'contest_not_found' }, { status: 404 })
 
 /**
  * The contest if this viewer may see it: drafts only for staff and judges;
@@ -37,7 +37,7 @@ export async function guarded(name: string, fn: () => Promise<NextResponse>): Pr
     return await fn()
   } catch (e) {
     logger.error(`[contests] ${name} failed`, (e as Error).message)
-    return NextResponse.json({ error: 'Something went wrong. Try again in a moment.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Try again in a moment.', code: 'server_error_moment' }, { status: 500 })
   }
 }
 

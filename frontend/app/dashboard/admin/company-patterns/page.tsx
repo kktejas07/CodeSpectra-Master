@@ -25,6 +25,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LEVEL_LABEL, type CompanyExamPattern, type CompanyTestSettings, type VersionSummary } from '@/lib/company-tests/types'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type Item = CompanyExamPattern & { versions: VersionSummary[] }
 interface Usage { today: number; monthCostUsd: number; dailyCap: number; monthlyCapUsd: number; remaining: number }
@@ -75,6 +76,7 @@ function LevelChip({ v }: { v: VersionSummary }) {
 }
 
 export default function AdminCompanyPatternsPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const [items, setItems] = useState<Item[] | null>(null)
@@ -111,7 +113,7 @@ export default function AdminCompanyPatternsPage() {
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { addToast({ type: 'error', title: d.error || 'Couldn’t save settings' }); return }
       setSettings(d.settings)
-      addToast({ type: 'success', title: 'Settings saved' })
+      addToast({ type: 'success', title: tx('patterns.settingsSaved') })
     } finally { setBusy(null) }
   }
 
@@ -154,7 +156,7 @@ export default function AdminCompanyPatternsPage() {
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { setFormError(d.error || 'Couldn’t save the pattern'); return }
       setEditing(null)
-      addToast({ type: 'success', title: 'Pattern saved', message: 'Rebuild its versions if you changed sections.' })
+      addToast({ type: 'success', title: tx('patterns.patternSaved'), message: tx('patterns.rebuildItsVersionsIfYou') })
       await load()
     } finally { setBusy(null) }
   }
@@ -165,7 +167,7 @@ export default function AdminCompanyPatternsPage() {
       const res = await csrfFetch(`/api/admin/company-patterns/${p.id}`, { method: 'DELETE' })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) { addToast({ type: 'error', title: d.error || 'Delete failed' }); return }
-      addToast({ type: 'success', title: 'Pattern deleted' })
+      addToast({ type: 'success', title: tx('patterns.patternDeleted') })
       await load()
     } finally { setBusy(null) }
   }
@@ -178,17 +180,17 @@ export default function AdminCompanyPatternsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Company patterns"
-        description={<>Company exam patterns and the practice tests built from them. Seeded patterns are unverified until you check them against the company&apos;s own page. AI drafts go to <Link href="/dashboard/admin/sme-review?tab=drafts" className="font-medium text-primary hover:underline">question drafts</Link> before they reach a test.</>}
+        title={tx('patterns.companyPatterns')}
+        description={<>Company exam patterns and the practice tests built from them. Seeded patterns are unverified until you check them against the company&apos;s own page. AI drafts go to <Link href="/dashboard/admin/sme-review?tab=drafts" className="font-medium text-primary hover:underline">{tx('patterns.questionDrafts')}</Link> {tx('patterns.beforeTheyReachATest')}</>}
         icon={<Building2 />}
-        actions={<Button className="min-h-11" onClick={() => { setFormError(''); setEditing({ form: emptyForm(), isNew: true }) }}><Plus className="mr-1 h-4 w-4" aria-hidden />New pattern</Button>}
+        actions={<Button className="min-h-11" onClick={() => { setFormError(''); setEditing({ form: emptyForm(), isNew: true }) }}><Plus className="mr-1 h-4 w-4" aria-hidden />{tx('patterns.newPattern')}</Button>}
       />
 
       {items && usage ? (
         <div className="grid gap-4 sm:grid-cols-3">
-          <StatCard label="Patterns" value={items.length} hint={unverified ? `${unverified} not verified yet` : 'All verified'} icon={<Building2 />} />
-          <StatCard label="AI questions today" value={`${usage.today} / ${usage.dailyCap}`} icon={<Sparkles />} />
-          <StatCard label="AI spend this month" value={`$${usage.monthCostUsd.toFixed(2)}`} hint={`Cap $${usage.monthlyCapUsd.toFixed(2)} (estimated)`} icon={<Wand2 />} />
+          <StatCard label={tx('patterns.patterns')} value={items.length} hint={unverified ? `${unverified} not verified yet` : 'All verified'} icon={<Building2 />} />
+          <StatCard label={tx('patterns.aiQuestionsToday')} value={`${usage.today} / ${usage.dailyCap}`} icon={<Sparkles />} />
+          <StatCard label={tx('patterns.aiSpendThisMonth')} value={`$${usage.monthCostUsd.toFixed(2)}`} hint={`Cap $${usage.monthlyCapUsd.toFixed(2)} (estimated)`} icon={<Wand2 />} />
         </div>
       ) : null}
 
@@ -196,11 +198,11 @@ export default function AdminCompanyPatternsPage() {
         <Panel className="space-y-4 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-semibold text-foreground">Weekly refresh</h2>
+              <h2 className="text-base font-semibold text-foreground">{tx('patterns.weeklyRefresh')}</h2>
               <p className="text-sm text-muted-foreground">Once a week, swap about {settings.rotatePercent}% of each version&apos;s questions for unused approved ones of the same difficulty. Off by default.</p>
             </div>
             <div className="flex items-center gap-3">
-              <Label htmlFor="refresh-on" className="text-sm">Refresh on</Label>
+              <Label htmlFor="refresh-on" className="text-sm">{tx('patterns.refreshOn')}</Label>
               <Switch id="refresh-on" checked={settings.refreshEnabled} disabled={busy === 'settings'} onCheckedChange={(v) => void saveSettings({ refreshEnabled: v })} />
               <Button variant="outline" className="min-h-11" disabled={busy === 'refresh'} onClick={() => void runRefresh()}>
                 {busy === 'refresh' ? <Loader2 className="mr-1 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw className="mr-1 h-4 w-4" aria-hidden />}Run now
@@ -219,20 +221,20 @@ export default function AdminCompanyPatternsPage() {
               })
             }}
           >
-            <div className="space-y-1"><Label htmlFor="rotatePercent">Rotate per week (%)</Label><Input id="rotatePercent" name="rotatePercent" type="number" min={5} max={80} defaultValue={settings.rotatePercent} /></div>
-            <div className="space-y-1"><Label htmlFor="aiDailyQuestionCap">AI questions per day</Label><Input id="aiDailyQuestionCap" name="aiDailyQuestionCap" type="number" min={0} max={2000} defaultValue={settings.aiDailyQuestionCap} /></div>
-            <div className="space-y-1"><Label htmlFor="aiMonthlyCostCapUsd">Monthly AI cap (USD)</Label><Input id="aiMonthlyCostCapUsd" name="aiMonthlyCostCapUsd" type="number" min={0} max={1000} step="0.5" defaultValue={settings.aiMonthlyCostCapUsd} /></div>
-            <div className="flex items-end"><Button type="submit" variant="outline" className="min-h-11 w-full" disabled={busy === 'settings'}>Save limits</Button></div>
+            <div className="space-y-1"><Label htmlFor="rotatePercent">{tx('patterns.rotatePerWeek')}</Label><Input id="rotatePercent" name="rotatePercent" type="number" min={5} max={80} defaultValue={settings.rotatePercent} /></div>
+            <div className="space-y-1"><Label htmlFor="aiDailyQuestionCap">{tx('patterns.aiQuestionsPerDay')}</Label><Input id="aiDailyQuestionCap" name="aiDailyQuestionCap" type="number" min={0} max={2000} defaultValue={settings.aiDailyQuestionCap} /></div>
+            <div className="space-y-1"><Label htmlFor="aiMonthlyCostCapUsd">{tx('patterns.monthlyAiCapUsd')}</Label><Input id="aiMonthlyCostCapUsd" name="aiMonthlyCostCapUsd" type="number" min={0} max={1000} step="0.5" defaultValue={settings.aiMonthlyCostCapUsd} /></div>
+            <div className="flex items-end"><Button type="submit" variant="outline" className="min-h-11 w-full" disabled={busy === 'settings'}>{tx('patterns.saveLimits')}</Button></div>
           </form>
         </Panel>
       ) : null}
 
       {loadError ? (
-        <Panel className="p-4"><EmptyState title="Couldn't load company patterns" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} /></Panel>
+        <Panel className="p-4"><EmptyState title={tx('patterns.couldnTLoadCompanyPatterns')} description={tx('common.checkConnection')} actionLabel={tx('common.tryAgain')} onAction={() => void load()} /></Panel>
       ) : items === null ? (
         <SkeletonList count={4} />
       ) : items.length === 0 ? (
-        <Panel className="p-4"><EmptyState title="No company patterns yet" description="Add a pattern to describe a company's test: its sections, timing and cut-off." actionLabel="New pattern" onAction={() => setEditing({ form: emptyForm(), isNew: true })} /></Panel>
+        <Panel className="p-4"><EmptyState title={tx('patterns.noCompanyPatternsYet')} description={tx('patterns.addAPatternToDescribe')} actionLabel={tx('patterns.newPattern')} onAction={() => setEditing({ form: emptyForm(), isNew: true })} /></Panel>
       ) : (
         <div className="space-y-3">
           {items.map((p) => (
@@ -244,8 +246,8 @@ export default function AdminCompanyPatternsPage() {
                     <span className="text-sm text-muted-foreground">{p.companyName}</span>
                     {p.verified
                       ? <Badge variant="outline" className="border-green-500/40 text-green-700 dark:text-green-400"><CheckCircle2 className="mr-1 h-3 w-3" aria-hidden />Verified{p.lastReviewed ? ` ${p.lastReviewed}` : ''}</Badge>
-                      : <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">Not verified</Badge>}
-                    {!p.active ? <Badge variant="secondary">Hidden</Badge> : null}
+                      : <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">{tx('patterns.notVerified')}</Badge>}
+                    {!p.active ? <Badge variant="secondary">{tx('patterns.hidden')}</Badge> : null}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     <span className="font-mono">{p.id}</span> · {p.sections.length} sections · {p.sections.reduce((n, s) => n + s.questionCount, 0)} questions · {p.sections.reduce((n, s) => n + s.timeMinutes, 0)} min
@@ -257,7 +259,7 @@ export default function AdminCompanyPatternsPage() {
                   <Button size="sm" variant="outline" disabled={!!busy} onClick={() => void build(p, false)}>
                     {busy === `build:${p.id}` ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden /> : <RefreshCw className="mr-1 h-3.5 w-3.5" aria-hidden />}Build from bank
                   </Button>
-                  <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setAiBuild(p)}><Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden />Build and fill with AI</Button>
+                  <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setAiBuild(p)}><Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden />{tx('patterns.buildAndFillWithAi')}</Button>
                   <Button size="sm" variant="outline" disabled={!!busy} onClick={() => { setFormError(''); setEditing({ form: toForm(p), isNew: false }) }} aria-label={`Edit ${p.examName}`}><Pencil className="h-3.5 w-3.5" aria-hidden /></Button>
                   <Button size="sm" variant="outline" disabled={!!busy} onClick={() => setDeleting(p)} aria-label={`Delete ${p.examName}`}><Trash2 className="h-3.5 w-3.5" aria-hidden /></Button>
                 </div>
@@ -280,40 +282,40 @@ export default function AdminCompanyPatternsPage() {
           {editing ? (
             <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void savePattern() }}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1"><Label htmlFor="f-companyName">Company name</Label><Input id="f-companyName" required value={editing.form.companyName} onChange={(e) => setField('companyName', e.target.value)} /></div>
-                <div className="space-y-1"><Label htmlFor="f-companySlug">Company page slug</Label><Input id="f-companySlug" required placeholder="tcs" value={editing.form.companySlug} onChange={(e) => setField('companySlug', e.target.value)} /></div>
-                <div className="space-y-1"><Label htmlFor="f-examName">Exam name</Label><Input id="f-examName" required value={editing.form.examName} onChange={(e) => setField('examName', e.target.value)} /></div>
-                <div className="space-y-1"><Label htmlFor="f-id">Pattern id</Label><Input id="f-id" disabled={!editing.isNew} placeholder="Made from the company and exam" value={editing.form.id} onChange={(e) => setField('id', e.target.value)} /></div>
-                <div className="space-y-1"><Label htmlFor="f-neg">Negative marking (share of a mark, 0–1)</Label><Input id="f-neg" type="number" min={0} max={1} step="0.05" value={editing.form.negativeMarking} onChange={(e) => setField('negativeMarking', e.target.value)} /></div>
-                <div className="space-y-1"><Label htmlFor="f-cut">Overall cut-off (%)</Label><Input id="f-cut" type="number" min={0} max={100} value={editing.form.cutoffPercent} onChange={(e) => setField('cutoffPercent', e.target.value)} /></div>
-                <div className="space-y-1"><Label htmlFor="f-src">Source link</Label><Input id="f-src" type="url" placeholder="https://" value={editing.form.sourceUrl} onChange={(e) => setField('sourceUrl', e.target.value)} /></div>
-                <div className="space-y-1"><Label htmlFor="f-rev">Last reviewed</Label><Input id="f-rev" type="date" value={editing.form.lastReviewed} onChange={(e) => setField('lastReviewed', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-companyName">{tx('patterns.companyName')}</Label><Input id="f-companyName" required value={editing.form.companyName} onChange={(e) => setField('companyName', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-companySlug">{tx('patterns.companyPageSlug')}</Label><Input id="f-companySlug" required placeholder="tcs" value={editing.form.companySlug} onChange={(e) => setField('companySlug', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-examName">{tx('patterns.examName')}</Label><Input id="f-examName" required value={editing.form.examName} onChange={(e) => setField('examName', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-id">{tx('patterns.patternId')}</Label><Input id="f-id" disabled={!editing.isNew} placeholder={tx('patterns.madeFromTheCompanyAnd')} value={editing.form.id} onChange={(e) => setField('id', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-neg">{tx('patterns.negativeMarkingShareOfA')}</Label><Input id="f-neg" type="number" min={0} max={1} step="0.05" value={editing.form.negativeMarking} onChange={(e) => setField('negativeMarking', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-cut">{tx('patterns.overallCutOff')}</Label><Input id="f-cut" type="number" min={0} max={100} value={editing.form.cutoffPercent} onChange={(e) => setField('cutoffPercent', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-src">{tx('patterns.sourceLink')}</Label><Input id="f-src" type="url" placeholder="https://" value={editing.form.sourceUrl} onChange={(e) => setField('sourceUrl', e.target.value)} /></div>
+                <div className="space-y-1"><Label htmlFor="f-rev">{tx('patterns.lastReviewed')}</Label><Input id="f-rev" type="date" value={editing.form.lastReviewed} onChange={(e) => setField('lastReviewed', e.target.value)} /></div>
               </div>
-              <div className="space-y-1"><Label htmlFor="f-notes">Notes</Label><Textarea id="f-notes" rows={3} value={editing.form.notes} onChange={(e) => setField('notes', e.target.value)} /></div>
+              <div className="space-y-1"><Label htmlFor="f-notes">{tx('patterns.notes')}</Label><Textarea id="f-notes" rows={3} value={editing.form.notes} onChange={(e) => setField('notes', e.target.value)} /></div>
               <div className="flex flex-wrap gap-6">
-                <div className="flex items-center gap-2"><Switch id="f-verified" checked={editing.form.verified} onCheckedChange={(v) => setField('verified', v)} /><Label htmlFor="f-verified">Verified against the source</Label></div>
-                <div className="flex items-center gap-2"><Switch id="f-active" checked={editing.form.active} onCheckedChange={(v) => setField('active', v)} /><Label htmlFor="f-active">Show to learners</Label></div>
+                <div className="flex items-center gap-2"><Switch id="f-verified" checked={editing.form.verified} onCheckedChange={(v) => setField('verified', v)} /><Label htmlFor="f-verified">{tx('patterns.verifiedAgainstTheSource')}</Label></div>
+                <div className="flex items-center gap-2"><Switch id="f-active" checked={editing.form.active} onCheckedChange={(v) => setField('active', v)} /><Label htmlFor="f-active">{tx('patterns.showToLearners')}</Label></div>
               </div>
 
               <fieldset className="space-y-3">
-                <legend className="text-sm font-semibold text-foreground">Sections</legend>
+                <legend className="text-sm font-semibold text-foreground">{tx('patterns.sections')}</legend>
                 {editing.form.sections.map((s, i) => (
                   <div key={i} className="grid gap-2 rounded-2xl border border-border p-3 sm:grid-cols-6">
-                    <div className="space-y-1 sm:col-span-2"><Label htmlFor={`s-name-${i}`}>Name</Label><Input id={`s-name-${i}`} required value={s.name} onChange={(e) => setSection(i, { name: e.target.value })} /></div>
-                    <div className="space-y-1"><Label htmlFor={`s-count-${i}`}>Questions</Label><Input id={`s-count-${i}`} type="number" min={1} max={100} required value={s.questionCount} onChange={(e) => setSection(i, { questionCount: e.target.value })} /></div>
-                    <div className="space-y-1"><Label htmlFor={`s-min-${i}`}>Minutes</Label><Input id={`s-min-${i}`} type="number" min={1} max={300} required value={s.timeMinutes} onChange={(e) => setSection(i, { timeMinutes: e.target.value })} /></div>
-                    <div className="space-y-1"><Label htmlFor={`s-cut-${i}`}>Cut-off %</Label><Input id={`s-cut-${i}`} type="number" min={0} max={100} placeholder="Overall" value={s.cutoffPercent} onChange={(e) => setSection(i, { cutoffPercent: e.target.value })} /></div>
+                    <div className="space-y-1 sm:col-span-2"><Label htmlFor={`s-name-${i}`}>{tx('common.name')}</Label><Input id={`s-name-${i}`} required value={s.name} onChange={(e) => setSection(i, { name: e.target.value })} /></div>
+                    <div className="space-y-1"><Label htmlFor={`s-count-${i}`}>{tx('patterns.questions')}</Label><Input id={`s-count-${i}`} type="number" min={1} max={100} required value={s.questionCount} onChange={(e) => setSection(i, { questionCount: e.target.value })} /></div>
+                    <div className="space-y-1"><Label htmlFor={`s-min-${i}`}>{tx('patterns.minutes')}</Label><Input id={`s-min-${i}`} type="number" min={1} max={300} required value={s.timeMinutes} onChange={(e) => setSection(i, { timeMinutes: e.target.value })} /></div>
+                    <div className="space-y-1"><Label htmlFor={`s-cut-${i}`}>{tx('patterns.cutOff')}</Label><Input id={`s-cut-${i}`} type="number" min={0} max={100} placeholder={tx('patterns.overall')} value={s.cutoffPercent} onChange={(e) => setSection(i, { cutoffPercent: e.target.value })} /></div>
                     <div className="flex items-end justify-end"><Button type="button" size="sm" variant="ghost" disabled={editing.form.sections.length === 1} onClick={() => setEditing((e) => (e ? { ...e, form: { ...e.form, sections: e.form.sections.filter((_, j) => j !== i) } } : e))} aria-label={`Remove section ${i + 1}`}><Trash2 className="h-4 w-4" aria-hidden /></Button></div>
-                    <div className="space-y-1 sm:col-span-3"><Label htmlFor={`s-types-${i}`}>Question types (comma separated)</Label><Input id={`s-types-${i}`} required placeholder="mcq, numeric" value={s.questionTypes} onChange={(e) => setSection(i, { questionTypes: e.target.value })} /></div>
-                    <div className="space-y-1 sm:col-span-3"><Label htmlFor={`s-cats-${i}`}>Categories (comma separated)</Label><Input id={`s-cats-${i}`} placeholder="quant, logical, verbal, coding" value={s.categories} onChange={(e) => setSection(i, { categories: e.target.value })} /></div>
+                    <div className="space-y-1 sm:col-span-3"><Label htmlFor={`s-types-${i}`}>{tx('patterns.questionTypesCommaSeparated')}</Label><Input id={`s-types-${i}`} required placeholder="mcq, numeric" value={s.questionTypes} onChange={(e) => setSection(i, { questionTypes: e.target.value })} /></div>
+                    <div className="space-y-1 sm:col-span-3"><Label htmlFor={`s-cats-${i}`}>{tx('patterns.categoriesCommaSeparated')}</Label><Input id={`s-cats-${i}`} placeholder="quant, logical, verbal, coding" value={s.categories} onChange={(e) => setSection(i, { categories: e.target.value })} /></div>
                   </div>
                 ))}
-                <Button type="button" variant="outline" size="sm" disabled={editing.form.sections.length >= 8} onClick={() => setEditing((e) => (e ? { ...e, form: { ...e.form, sections: [...e.form.sections, emptySection()] } } : e))}><Plus className="mr-1 h-3.5 w-3.5" aria-hidden />Add section</Button>
+                <Button type="button" variant="outline" size="sm" disabled={editing.form.sections.length >= 8} onClick={() => setEditing((e) => (e ? { ...e, form: { ...e.form, sections: [...e.form.sections, emptySection()] } } : e))}><Plus className="mr-1 h-3.5 w-3.5" aria-hidden />{tx('patterns.addSection')}</Button>
               </fieldset>
 
               {formError ? <p role="alert" className="text-sm text-destructive">{formError}</p> : null}
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setEditing(null)}>{tx('common.cancel')}</Button>
                 <Button type="submit" disabled={busy === 'save'}>{busy === 'save' ? <Loader2 className="mr-1 h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden /> : null}Save pattern</Button>
               </div>
             </form>
@@ -323,7 +325,7 @@ export default function AdminCompanyPatternsPage() {
 
       <ConfirmDialog
         open={!!aiBuild}
-        title="Build and fill with AI?"
+        title={tx('patterns.buildAndFillWithAi2')}
         message={`Rebuilds all three levels of ${aiBuild?.examName ?? ''} from the bank, then asks the AI to write the missing questions as drafts (up to ${usage?.remaining ?? 0} more today). Each level stays incomplete until the drafts are approved.`}
         confirmLabel="Build"
         variant="default"
@@ -332,7 +334,7 @@ export default function AdminCompanyPatternsPage() {
       />
       <ConfirmDialog
         open={!!deleting}
-        title="Delete this pattern?"
+        title={tx('patterns.deleteThisPattern')}
         message={`${deleting?.examName ?? ''} and its built versions will be removed. Bank questions stay in the bank. Practice runs already taken keep their results.`}
         confirmLabel="Delete"
         onConfirm={() => { const p = deleting; setDeleting(null); if (p) void remove(p) }}

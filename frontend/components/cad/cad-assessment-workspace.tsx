@@ -54,6 +54,9 @@ import {
   type CadFileKind,
   type CadFileMeta,
 } from '@/lib/cad-submission'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) => m.CADEditor), {
   ssr: false,
@@ -93,10 +96,10 @@ type Phase =
   /** Task is running (exam: after Start; demo: immediately). */
   | { kind: 'ready' }
 
-const FILE_LABEL: Record<CadFileKind, string> = {
-  native: 'Native CAD file',
-  step: 'STEP AP242 export',
-}
+const FILE_LABEL = (t: Translator): Record<CadFileKind, string> => ({
+  native: t('exam.nativeCadFile'),
+  step: t('exam.stepAp242Export'),
+})
 
 function formatBytes(n: number): string {
   return n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`
@@ -122,6 +125,8 @@ export function CadAssessmentWorkspace({
   inviteToken?: string | null
   linkToken?: string | null
 }) {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const addToast = useToast()
   const isDemo = mode === 'demo'
   const [phase, setPhase] = useState<Phase>(isDemo ? { kind: 'ready' } : { kind: 'loading' })
@@ -231,10 +236,10 @@ export function CadAssessmentWorkspace({
       if (j.identity_required) {
         setChecksPassed(false)
         setShowVerification(true)
-        addToast({ type: 'error', title: 'Identity check needed', message: j.error })
+        addToast({ type: 'error', title: tr('exam.identityCheckNeeded'), message: j.error })
         return
       }
-      if (!res.ok || !j.started_at) throw new Error(j.error || 'Could not start the test')
+      if (!res.ok || !j.started_at) throw new Error(apiError(j, tr('exam.couldNotStartTheTest')))
       const startedMs = Date.parse(j.started_at)
       const serverNowMs = j.server_now ? Date.parse(j.server_now) : Date.now()
       const elapsedMs = Math.max(0, serverNowMs - startedMs)
@@ -244,7 +249,7 @@ export function CadAssessmentWorkspace({
       setTimeLeft(minutes > 0 ? Math.max(0, Math.round((minutes * 60_000 - elapsedMs) / 1000)) : null)
       setPhase({ kind: 'ready' })
     } catch (e) {
-      addToast({ type: 'error', title: 'Couldn’t start the test', message: e instanceof Error ? e.message : undefined })
+      addToast({ type: 'error', title: tr('exam.couldntStartTheTest'), message: e instanceof Error ? e.message : undefined })
     } finally {
       setStarting(false)
     }
@@ -275,21 +280,21 @@ export function CadAssessmentWorkspace({
         // Files and rationale stay staged; redo the identity check, then submit again.
         retrySubmitRef.current = autoSubmitted
         setShowVerification(true)
-        addToast({ type: 'error', title: 'Identity check needed', message: 'Redo the identity check to submit. Your files are saved.' })
+        addToast({ type: 'error', title: tr('exam.identityCheckNeeded'), message: tr('exam.redoTheIdentityCheckToSubmit928') })
         return
       }
-      if (!res.ok) throw new Error(j.error || 'Submit failed')
+      if (!res.ok) throw new Error(apiError(j, tr('exam.submitFailed')))
       try {
         localStorage.removeItem(draftKey)
       } catch { /* storage unavailable */ }
       setPhase({ kind: 'submitted', used: j.attempt_no ?? 1, max: j.max_attempts ?? 1 })
-      addToast({ type: 'success', title: 'CAD task submitted' })
+      addToast({ type: 'success', title: tr('exam.cadTaskSubmitted') })
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Submit failed'
       addToast({
         type: 'error',
-        title: autoSubmitted ? 'Time is up, but the auto-submit failed' : 'Couldn’t submit',
-        message: autoSubmitted ? `${message} Keep this tab open and contact the organiser.` : message,
+        title: autoSubmitted ? tr('exam.timeIsUpButTheAutob33') : tr('exam.couldntSubmit'),
+        message: autoSubmitted ? tr('exam.messageKeepThisTabOpenAnd588', { message }) : message,
       })
     } finally {
       setSubmitting(false)
@@ -314,7 +319,7 @@ export function CadAssessmentWorkspace({
   useEffect(() => {
     if (isDemo || phase.kind !== 'ready' || timeLeft !== 1800 || warned30Ref.current) return
     warned30Ref.current = true
-    addToast({ type: 'warning', title: '30 minutes remaining' })
+    addToast({ type: 'warning', title: tr('exam.n30MinutesRemaining') })
     csrfFetch('/api/proctor/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -331,11 +336,11 @@ export function CadAssessmentWorkspace({
   const onPickFile = async (kind: CadFileKind, file: File | undefined) => {
     if (!file) return
     if (!cadFileExtOk(kind, file.name)) {
-      addToast({ type: 'error', title: 'Wrong file type', message: `Use ${CAD_FILE_EXTENSIONS[kind].join(', ')}.` })
+      addToast({ type: 'error', title: tr('exam.wrongFileType'), message: tr('exam.useValue', { value: CAD_FILE_EXTENSIONS[kind].join(', ') }) })
       return
     }
     if (file.size > CAD_MAX_FILE_BYTES) {
-      addToast({ type: 'error', title: 'File too large', message: 'Files must be under 9 MB.' })
+      addToast({ type: 'error', title: tr('exam.fileTooLarge'), message: tr('exam.filesMustBeUnder9Mb') })
       return
     }
     if (isDemo) {
@@ -351,11 +356,11 @@ export function CadAssessmentWorkspace({
       if (linkToken) form.set('linkToken', linkToken)
       const res = await csrfFetch(`/api/exams/${encodeURIComponent(examId)}/cad-submission/files`, { method: 'POST', body: form })
       const j = await res.json().catch(() => ({})) as { error?: string; file?: CadFileMeta }
-      if (!res.ok || !j.file) throw new Error(j.error || 'Upload failed')
+      if (!res.ok || !j.file) throw new Error(apiError(j, tr('exam.uploadFailed')))
       setStaged((prev) => ({ ...prev, [kind]: j.file }))
-      addToast({ type: 'success', title: `${FILE_LABEL[kind]} uploaded` })
+      addToast({ type: 'success', title: tr('exam.valueUploaded', { value: FILE_LABEL(tr)[kind] }) })
     } catch (e) {
-      addToast({ type: 'error', title: 'Upload failed', message: e instanceof Error ? e.message : undefined })
+      addToast({ type: 'error', title: tr('exam.uploadFailed'), message: e instanceof Error ? e.message : undefined })
     } finally {
       setUploading((prev) => ({ ...prev, [kind]: false }))
     }
@@ -364,9 +369,9 @@ export function CadAssessmentWorkspace({
   const handleSaveDraft = () => {
     try {
       localStorage.setItem(draftKey, JSON.stringify({ vivaRationale: vivaRationale || '', selectedTaskCode, savedAt: new Date().toISOString() }))
-      addToast({ type: 'success', title: 'Draft saved on this device' })
+      addToast({ type: 'success', title: tr('exam.draftSavedOnThisDevice') })
     } catch {
-      addToast({ type: 'error', title: 'Could not save draft', message: 'Browser storage is unavailable.' })
+      addToast({ type: 'error', title: tr('exam.couldNotSaveDraft'), message: tr('exam.browserStorageIsUnavailable') })
     }
   }
 
@@ -393,7 +398,7 @@ export function CadAssessmentWorkspace({
     a.click()
     a.remove()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-    addToast({ type: 'success', title: 'Starter template downloaded', message: 'Minimal STEP stub - replace with your full bracket model.' })
+    addToast({ type: 'success', title: tr('exam.starterTemplateDownloaded'), message: tr('exam.minimalStepStubReplaceWithYour4a6') })
   }
 
   const identityDialog = !isDemo && showVerification ? (
@@ -423,14 +428,13 @@ export function CadAssessmentWorkspace({
   if (phase.kind === 'loading') {
     return (
       <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden /> Preparing your CAD task…
-      </div>
+        <Loader2 className="mr-2 h-5 w-5 animate-spin motion-reduce:animate-none" aria-hidden />{' '}{tr('exam.preparingYourCadTask')}</div>
     )
   }
   if (phase.kind === 'blocked') {
     return (
       <div className="flex min-h-[70vh] items-center justify-center p-4">
-        <EmptyState illustration="locked" title={phase.title} description={phase.message} actionLabel="Return home" actionHref="/" />
+        <EmptyState illustration="locked" title={phase.title} description={phase.message} actionLabel={tr('exam.returnHome')} actionHref="/" />
       </div>
     )
   }
@@ -440,13 +444,13 @@ export function CadAssessmentWorkspace({
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 p-4">
         <EmptyState
           illustration="success"
-          title="CAD task submitted"
-          description={`Your files and design rationale are with the reviewers. Your score is shared once they finish reviewing.${phase.max > 1 ? ` Attempts used: ${phase.used} of ${phase.max}.` : ''}`}
-          actionLabel="Return home"
+          title={tr('exam.cadTaskSubmitted')}
+          description={tr('exam.yourFilesAndDesignRationaleAre8a7', { value: phase.max > 1 ? ` Attempts used: ${phase.used} of ${phase.max}.` : '' })}
+          actionLabel={tr('exam.returnHome')}
           actionHref="/"
         />
         {canRetake && (
-          <Button onClick={() => window.location.reload()}>Start attempt {phase.used + 1} of {phase.max}</Button>
+          <Button onClick={() => window.location.reload()}>{tr('exam.startAttempt')}{' '}{phase.used + 1}{' '}{tr('exam.ofMax', { max: phase.max })}</Button>
         )}
       </div>
     )
@@ -461,23 +465,23 @@ export function CadAssessmentWorkspace({
         <div className="flex min-h-[80vh] items-center justify-center bg-background p-4">
           <Card className="w-full max-w-lg space-y-6 rounded-3xl border-border/70 p-8">
             <div className="text-center">
-              <h1 className="mb-2 text-2xl font-bold">{exam?.title || 'CAD task'}</h1>
-              <p className="text-sm text-muted-foreground">Proctored CAD task. Complete the checks below, then press Start.</p>
+              <h1 className="mb-2 text-2xl font-bold">{exam?.title || tr('exam.cadTask')}</h1>
+              <p className="text-sm text-muted-foreground">{tr('exam.proctoredCadTaskCompleteTheChecks212')}</p>
             </div>
 
             <div className="space-y-3 rounded-2xl border border-border bg-muted/40 p-4 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Duration</span>
-                <span className="font-semibold tabular-nums">{minutes > 0 ? `${minutes} minutes` : 'No time limit'}</span>
+                <span className="text-muted-foreground">{tr('exam.duration')}</span>
+                <span className="font-semibold tabular-nums">{minutes > 0 ? tr('exam.minutesMinutes', { minutes }) : tr('exam.noTimeLimit')}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">You submit</span>
-                <span className="font-semibold">Native CAD file, STEP export, rationale</span>
+                <span className="text-muted-foreground">{tr('exam.youSubmit')}</span>
+                <span className="font-semibold">{tr('exam.nativeCadFileStepExportRationale')}</span>
               </div>
               {exam?.attempts && exam.attempts.max > 1 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Attempt</span>
-                  <span className="font-semibold tabular-nums">{exam.attempts.used + 1} of {exam.attempts.max}</span>
+                  <span className="text-muted-foreground">{tr('exam.attempt')}</span>
+                  <span className="font-semibold tabular-nums">{exam.attempts.used + 1}{' '}{tr('exam.ofMax', { max: exam.attempts.max })}</span>
                 </div>
               )}
             </div>
@@ -486,9 +490,7 @@ export function CadAssessmentWorkspace({
               <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
                 <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden />
                 <p>
-                  <strong>Before you start:</strong> the timer starts when you press Start and can&apos;t be paused. Reloading
-                  the page doesn&apos;t reset it. At zero, whatever you&apos;ve uploaded is submitted automatically.
-                </p>
+                  <strong>{tr('exam.beforeYouStart')}</strong>{' '}{tr('exam.theTimerStartsWhenYouPressd12')}</p>
               </div>
             )}
 
@@ -501,37 +503,29 @@ export function CadAssessmentWorkspace({
                     onChange={(e) => setRecordingConsent(e.target.checked)}
                     className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                   />
-                  <span className="text-xs leading-relaxed text-muted-foreground">
-                    I consent to session recording (webcam and screen) during this task. The recording is used solely for
-                    proctoring integrity verification and will be stored securely.
-                  </span>
+                  <span className="text-xs leading-relaxed text-muted-foreground">{tr('exam.iConsentToSessionRecordingWebcam5ab')}</span>
                 </label>
                 {(!requireId || !requireFace) && (
-                  <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-                    Identity check for this test: {!requireId && !requireFace ? 'consent only — no ID or face capture required' : !requireId ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
+                  <div className="rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">{tr('exam.identityCheckForThisTest')}{' '}{!requireId && !requireFace ? tr('exam.consentOnlyNoIdOrFace6b8') : !requireId ? tr('exam.faceSelfieOnlyIdSkipped') : tr('exam.idOnlyFaceCaptureSkipped')}.
                   </div>
                 )}
                 {(requireId || requireFace) && (
                   <p className="text-xs text-muted-foreground">
                     {exam?.no_camera_policy === 'block'
-                      ? 'This test needs a working camera for the identity check.'
-                      : 'No camera on this device? You can upload a photo of your ID instead, and the organiser will check it by hand.'}
+                      ? tr('exam.thisTestNeedsAWorkingCameradb9')
+                      : tr('exam.noCameraOnThisDeviceYouc90')}
                   </p>
                 )}
-                <Button onClick={() => { retrySubmitRef.current = null; setShowVerification(true) }} className="h-12 w-full rounded-xl text-base font-semibold">
-                  Continue to identity check
-                </Button>
+                <Button onClick={() => { retrySubmitRef.current = null; setShowVerification(true) }} className="h-12 w-full rounded-xl text-base font-semibold">{tr('exam.continueToIdentityCheck')}</Button>
               </>
             ) : (
               <>
                 <div className="flex items-start gap-3 rounded-xl border border-primary/20 bg-primary/10 p-4 text-sm text-foreground">
                   <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
-                  <p>Checks complete. The test opens in fullscreen and is proctored from the moment you press Start.</p>
+                  <p>{tr('exam.checksCompleteTheTestOpensIn990')}</p>
                 </div>
                 <Button onClick={() => void handleStart()} disabled={starting} className="h-12 w-full gap-2 rounded-xl text-base font-semibold">
-                  {starting && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}
-                  Start
-                </Button>
+                  {starting && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />}{tr('exam.start')}</Button>
               </>
             )}
           </Card>
@@ -553,15 +547,13 @@ export function CadAssessmentWorkspace({
         <div role="note" className="flex items-start gap-2 border-b border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs text-amber-800 dark:text-amber-300">
           <Eye className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <p>
-            <strong className="font-semibold">Preview.</strong> This is a sample CAD task to try the tools. There is no
-            timer, nothing is proctored, and files you pick are not uploaded or scored.
-          </p>
+            <strong className="font-semibold">{tr('exam.preview')}</strong>{' '}{tr('exam.thisIsASampleCadTaskd7f')}</p>
         </div>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-card px-4 py-2.5">
         <div className="min-w-0">
           {isDemo && (
-            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">Preview · Sample CAD task</span>
+            <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-semibold text-primary">{tr('exam.previewSampleCadTask')}</span>
           )}
           <h1 className="truncate text-base font-bold text-foreground">{title}</h1>
         </div>
@@ -570,22 +562,22 @@ export function CadAssessmentWorkspace({
           {isDemo ? (
             <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
               <Clock className="h-3.5 w-3.5" aria-hidden />
-              <span>No time limit in preview</span>
+              <span>{tr('exam.noTimeLimitInPreview')}</span>
             </div>
           ) : timeLeft !== null ? (
             <div
               role="timer"
-              aria-label="Time remaining"
+              aria-label={tr('exam.timeRemaining')}
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1 font-mono text-xs font-semibold tabular-nums ${
                 lowTime ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-400' : 'border-border bg-muted/40 text-foreground'
               }`}
             >
               <Clock className="h-3.5 w-3.5" aria-hidden />
-              {formatTime(Math.max(0, timeLeft))} <span className="font-sans font-medium opacity-80">left</span>
+              {formatTime(Math.max(0, timeLeft))} <span className="font-sans font-medium opacity-80">{tr('exam.left')}</span>
             </div>
           ) : null}
 
-          <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5 text-xs font-medium" role="tablist" aria-label="Workspace">
+          <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5 text-xs font-medium" role="tablist" aria-label={tr('exam.workspace')}>
             {([['editor', '2D editor'], ['task_selection', 'Task type (T1–T9)'], ['file_upload', 'Submit files']] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -603,15 +595,13 @@ export function CadAssessmentWorkspace({
           </div>
 
           <Button type="button" variant="outline" size="sm" onClick={handleSaveDraft} className="gap-1 text-xs">
-            <Save className="h-3.5 w-3.5" aria-hidden /> Save draft
-          </Button>
+            <Save className="h-3.5 w-3.5" aria-hidden />{' '}{tr('exam.saveDraft')}</Button>
 
           {isDemo ? (
             <>
-              <Button type="button" size="sm" disabled title="Submitting isn't available in preview" aria-describedby="cad-submit-hint" className="gap-1.5 text-xs">
-                <Send className="h-3.5 w-3.5" aria-hidden /> Submit task
-              </Button>
-              <span id="cad-submit-hint" className="sr-only">Submitting isn&apos;t available in preview.</span>
+              <Button type="button" size="sm" disabled title={tr('exam.submittingIsntAvailableInPreview')} aria-describedby="cad-submit-hint" className="gap-1.5 text-xs">
+                <Send className="h-3.5 w-3.5" aria-hidden />{' '}{tr('exam.submitTask')}</Button>
+              <span id="cad-submit-hint" className="sr-only">{tr('exam.submittingIsntAvailableInPreview2')}</span>
             </>
           ) : (
             <Button
@@ -619,12 +609,10 @@ export function CadAssessmentWorkspace({
               size="sm"
               onClick={() => setConfirmOpen(true)}
               disabled={submitting || !ready}
-              title={ready ? undefined : `Upload both files and write at least ${CAD_RATIONALE_MIN_CHARS} characters of rationale first`}
+              title={ready ? undefined : tr('exam.uploadBothFilesAndWriteAt487', { CAD_RATIONALE_MIN_CHARS })}
               className="gap-1.5 text-xs"
             >
-              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden /> : <Send className="h-3.5 w-3.5" aria-hidden />}
-              Submit task
-            </Button>
+              {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden /> : <Send className="h-3.5 w-3.5" aria-hidden />}{tr('exam.submitTask')}</Button>
           )}
         </div>
       </div>
@@ -632,17 +620,17 @@ export function CadAssessmentWorkspace({
       <div className="grid flex-1 grid-cols-1 overflow-hidden lg:grid-cols-4">
         <div className="space-y-4 overflow-y-auto border-r border-border bg-card p-4 text-xs lg:col-span-1">
           <div>
-            <h2 className="text-sm font-bold text-foreground">Design brief</h2>
+            <h2 className="text-sm font-bold text-foreground">{tr('exam.designBrief')}</h2>
             <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
               {isDemo
-                ? 'Reduce component mass by at least 20% while maintaining structural integrity under 5 kN static load.'
-                : exam?.description || 'Follow the brief your organiser shared with your invite.'}
+                ? tr('exam.reduceComponentMassByAtLeast4e7')
+                : exam?.description || tr('exam.followTheBriefYourOrganiserShared615')}
             </p>
           </div>
 
           {isDemo && (
             <div className="space-y-2 rounded-xl border border-border/80 bg-muted/20 p-3">
-              <h3 className="text-base font-semibold text-foreground">Target constraints</h3>
+              <h3 className="text-base font-semibold text-foreground">{tr('exam.targetConstraints')}</h3>
               <ul className="space-y-1.5">
                 {[
                   ['Outer mounting hole OD', '50.0 ± 0.05 mm'],
@@ -661,11 +649,8 @@ export function CadAssessmentWorkspace({
 
           <div className="space-y-2 rounded-xl border border-primary/30 bg-primary/5 p-3">
             <label htmlFor="cad-rationale" className="flex items-center gap-1.5 font-bold text-primary">
-              <MessageSquare className="h-4 w-4" aria-hidden /> Design rationale (required)
-            </label>
-            <p id="cad-rationale-hint" className="text-[11px] text-muted-foreground">
-              Explain your feature tree order, datum scheme and manufacturing trade-offs.
-              {!isDemo && ` At least ${CAD_RATIONALE_MIN_CHARS} characters.`}
+              <MessageSquare className="h-4 w-4" aria-hidden />{' '}{tr('exam.designRationaleRequired')}</label>
+            <p id="cad-rationale-hint" className="text-[11px] text-muted-foreground">{tr('exam.explainYourFeatureTreeOrderDatum279')}{!isDemo && tr('exam.atLeastCadRationaleMinChars4e7', { CAD_RATIONALE_MIN_CHARS })}
             </p>
             <textarea
               id="cad-rationale"
@@ -673,21 +658,20 @@ export function CadAssessmentWorkspace({
               value={vivaRationale}
               maxLength={CAD_RATIONALE_MAX_CHARS}
               onChange={(e) => setVivaRationale(e.target.value)}
-              placeholder="Explain why you chose this feature order, datum scheme, and manufacturing draft angle..."
+              placeholder={tr('exam.explainWhyYouChoseThisFeatureaa8')}
               className="h-24 w-full rounded-lg border border-border bg-background p-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
             />
             {!isDemo && (
-              <p className="text-right text-[11px] tabular-nums text-muted-foreground">{vivaRationale.trim().length} characters</p>
+              <p className="text-right text-[11px] tabular-nums text-muted-foreground">{tr('exam.countCharacters', { count: vivaRationale.trim().length })}</p>
             )}
           </div>
 
           {isDemo && (
             <div className="space-y-2 rounded-lg border border-border p-3">
-              <h3 className="text-base font-semibold text-foreground">Starter file</h3>
-              <p className="text-muted-foreground">Download base starter geometry before modifying:</p>
+              <h3 className="text-base font-semibold text-foreground">{tr('exam.starterFile')}</h3>
+              <p className="text-muted-foreground">{tr('exam.downloadBaseStarterGeometryBeforeModifyi')}</p>
               <Button type="button" variant="secondary" size="sm" onClick={handleDownloadStarter} className="w-full gap-1.5 text-xs">
-                <Download className="h-3.5 w-3.5" aria-hidden /> Download Base_Bracket.step
-              </Button>
+                <Download className="h-3.5 w-3.5" aria-hidden />{' '}{tr('exam.downloadBaseBracketStep')}</Button>
             </div>
           )}
         </div>
@@ -698,10 +682,8 @@ export function CadAssessmentWorkspace({
           {activeTab === 'task_selection' && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-base font-bold text-foreground">Choose the task type (T1–T9)</h2>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Select the task type you worked on so reviewers apply the matching rubric.
-                </p>
+                <h2 className="text-base font-bold text-foreground">{tr('exam.chooseTheTaskTypeT1T9')}</h2>
+                <p className="mt-1 text-xs text-muted-foreground">{tr('exam.selectTheTaskTypeYouWorkedb07')}</p>
               </div>
               <CADTaskTypeSelector selectedTaskCode={selectedTaskCode} onSelectTask={(code) => setSelectedTaskCode(code)} />
             </div>
@@ -714,14 +696,10 @@ export function CadAssessmentWorkspace({
                   <Upload className="h-6 w-6" aria-hidden />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-foreground">Submit both CAD files</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Your native CAD file (for the feature tree) and a STEP AP242 export (for geometry and tolerances). Up to 9 MB each.
-                  </p>
+                  <h3 className="text-base font-bold text-foreground">{tr('exam.submitBothCadFiles')}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{tr('exam.yourNativeCadFileForThe153')}</p>
                   {isDemo && (
-                    <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      Preview only: files stay on your device and are not uploaded or scored.
-                    </p>
+                    <p className="mt-2 text-xs font-medium text-amber-700 dark:text-amber-400">{tr('exam.previewOnlyFilesStayOnYour195')}</p>
                   )}
                 </div>
 
@@ -734,10 +712,10 @@ export function CadAssessmentWorkspace({
                     return (
                       <div key={kind} className="space-y-2 rounded-lg border border-border bg-muted/20 p-4">
                         <div className="text-xs font-bold text-foreground">
-                          {i + 1}. {FILE_LABEL[kind]} ({CAD_FILE_EXTENSIONS[kind].slice(0, 4).join(', ')})
+                          {i + 1}. {FILE_LABEL(tr)[kind]} ({CAD_FILE_EXTENSIONS[kind].slice(0, 4).join(', ')})
                         </div>
                         <p className="text-[11px] text-muted-foreground">
-                          {kind === 'native' ? 'Used to check the feature tree and design intent.' : 'Used to check geometry and tolerances.'}
+                          {kind === 'native' ? tr('exam.usedToCheckTheFeatureTreea74') : tr('exam.usedToCheckGeometryAndTolerances')}
                         </p>
                         <input
                           type="file"
@@ -759,9 +737,9 @@ export function CadAssessmentWorkspace({
                           } ${busy ? 'pointer-events-none opacity-60' : ''}`}
                         >
                           {busy && <Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden />}
-                          {busy ? 'Uploading…' : uploaded ? 'Replace file' : `Choose ${kind === 'native' ? 'native file' : 'STEP file'}`}
+                          {busy ? tr('exam.uploading') : uploaded ? tr('exam.replaceFile') : tr('exam.chooseValue', { value: kind === 'native' ? 'native file' : 'STEP file' })}
                         </label>
-                        {picked && <div className="truncate text-[11px] font-medium text-foreground">Picked: {picked.name}</div>}
+                        {picked && <div className="truncate text-[11px] font-medium text-foreground">{tr('exam.pickedName', { name: picked.name })}</div>}
                         {uploaded && (
                           <div className="flex items-center gap-1.5 text-[11px] font-medium text-foreground">
                             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-600 dark:text-green-400" aria-hidden />
@@ -774,9 +752,7 @@ export function CadAssessmentWorkspace({
                   })}
                 </div>
                 {!isDemo && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Files upload as soon as you pick them. They&apos;re only sent to reviewers when you press Submit task.
-                  </p>
+                  <p className="text-[11px] text-muted-foreground">{tr('exam.filesUploadAsSoonAsYoudf0')}</p>
                 )}
               </div>
             </div>
@@ -788,20 +764,16 @@ export function CadAssessmentWorkspace({
         <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Submit your CAD task?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Your two files and design rationale go to the reviewers. You can&apos;t change them after submitting.
-              </AlertDialogDescription>
+              <AlertDialogTitle>{tr('exam.submitYourCadTask')}</AlertDialogTitle>
+              <AlertDialogDescription>{tr('exam.yourTwoFilesAndDesignRationaled90')}</AlertDialogDescription>
             </AlertDialogHeader>
             {(staged.native?.scan_status === 'unscanned' || staged.step?.scan_status === 'unscanned') && (
               <p className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                The file scanner was busy when you uploaded. Your files are still submitted; reviewers are told they weren&apos;t scanned.
-              </p>
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />{tr('exam.theFileScannerWasBusyWhenc24')}</p>
             )}
             <AlertDialogFooter>
-              <AlertDialogCancel>Keep working</AlertDialogCancel>
-              <AlertDialogAction onClick={() => { setConfirmOpen(false); void submit(false) }}>Submit</AlertDialogAction>
+              <AlertDialogCancel>{tr('exam.keepWorking')}</AlertDialogCancel>
+              <AlertDialogAction onClick={() => { setConfirmOpen(false); void submit(false) }}>{tr('common.submit')}</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>

@@ -10,23 +10,28 @@ import { BrainCircuit, ArrowLeft, Loader2, Sparkles } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { PageHeader } from '@/components/app/page-kit'
 import { ALL_CATEGORIES, CATEGORY_LABELS, DIFFICULTY_LEVELS, type FluencyCategory } from '@/lib/assessments/ai-fluency-types'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
-const DIFFICULTY_LABELS: Record<string, string> = {
-  beginner: 'Beginner — Simple prompts, obvious bugs',
-  intermediate: 'Intermediate — Multi-concept, subtle issues',
-  advanced: 'Advanced — Complex systems, trade-offs',
-  expert: 'Expert — Novel scenarios, edge cases',
-}
+const DIFFICULTY_LABELS = (t: Translator): Record<string, string> => ({
+  beginner: t('practice.beginnerSimplePromptsObviousBugs'),
+  intermediate: t('practice.intermediateMultiConceptSubtleIssues'),
+  advanced: t('practice.advancedComplexSystemsTradeOffs'),
+  expert: t('practice.expertNovelScenariosEdgeCases'),
+})
 
-const CATEGORY_DESCRIPTIONS: Record<FluencyCategory, string> = {
-  prompt_engineering: 'Write effective prompts for AI tools',
-  ai_output_review: 'Find bugs in AI-generated code',
-  debugging_ai_code: 'Fix buggy AI-generated code',
-  ai_decision_making: 'Judge when to use (or NOT use) AI',
-  prompt_chaining: 'Design multi-step AI workflows',
-}
+const CATEGORY_DESCRIPTIONS = (t: Translator): Record<FluencyCategory, string> => ({
+  prompt_engineering: t('practice.writeEffectivePromptsForAiTools'),
+  ai_output_review: t('practice.findBugsInAiGeneratedCode'),
+  debugging_ai_code: t('practice.fixBuggyAiGeneratedCode'),
+  ai_decision_making: t('practice.judgeWhenToUseOrNot167'),
+  prompt_chaining: t('practice.designMultiStepAiWorkflows'),
+})
 
 export default function AiFluencySetupPage() {
+  const apiError = useApiError()
+  const { td, t } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
 
@@ -48,7 +53,7 @@ export default function AiFluencySetupPage() {
 
   const handleStart = async () => {
     if (focusCategories.length === 0) {
-      setError('Select at least one category.')
+      setError(t('practice.selectAtLeastOneCategory'))
       return
     }
     setStarting(true)
@@ -67,7 +72,7 @@ export default function AiFluencySetupPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to start assessment.')
+        setError(apiError(data, t('practice.failedToStartAssessment')))
         setStarting(false)
         return
       }
@@ -82,7 +87,7 @@ export default function AiFluencySetupPage() {
 
       router.push(`/dashboard/assessments/ai-fluency?session=${data.sessionId}`)
     } catch {
-      setError('Network error. Please try again.')
+      setError(t('practice.networkErrorPleaseTryAgain'))
       setStarting(false)
     }
   }
@@ -90,15 +95,14 @@ export default function AiFluencySetupPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="AI fluency assessment"
-        description="Test how well you work with AI tools — from writing good prompts to knowing when not to use AI."
+        title={t('practice.aiFluencyAssessment')}
+        description={t('practice.testHowWellYouWorkWithea9')}
         icon={<BrainCircuit />}
         className="mb-0"
         actions={
           <Button variant="outline" size="sm" className="gap-2" asChild>
             <Link href="/dashboard/assessments">
-              <ArrowLeft className="h-4 w-4" /> Back to assessments
-            </Link>
+              <ArrowLeft className="h-4 w-4" />{' '}{t('practice.backToAssessments')}</Link>
           </Button>
         }
       />
@@ -107,8 +111,8 @@ export default function AiFluencySetupPage() {
 
         {/* Focus Categories */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Focus areas</label>
-          <p className="text-xs text-muted-foreground">Select which AI fluency skills to assess.</p>
+          <label className="text-sm font-medium">{t('practice.focusAreas')}</label>
+          <p className="text-xs text-muted-foreground">{t('practice.selectWhichAiFluencySkillsTo9cf')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {ALL_CATEGORIES.map((cat) => (
               <button
@@ -121,8 +125,8 @@ export default function AiFluencySetupPage() {
                     : 'bg-background border-border text-muted-foreground hover:border-primary/40'
                 }`}
               >
-                <span className="block font-medium">{CATEGORY_LABELS[cat]}</span>
-                <span className="block mt-0.5 text-[11px] opacity-70">{CATEGORY_DESCRIPTIONS[cat]}</span>
+                <span className="block font-medium">{td(`practice.categoryLabels:${cat}`, CATEGORY_LABELS[cat])}</span>
+                <span className="block mt-0.5 text-[11px] opacity-70">{CATEGORY_DESCRIPTIONS(t)[cat]}</span>
               </button>
             ))}
           </div>
@@ -130,7 +134,7 @@ export default function AiFluencySetupPage() {
 
         {/* Difficulty */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Difficulty</label>
+          <label className="text-sm font-medium">{t('practice.difficulty')}</label>
           <div className="grid grid-cols-2 gap-2">
             {DIFFICULTY_LEVELS.map((d) => (
               <button
@@ -143,7 +147,7 @@ export default function AiFluencySetupPage() {
                     : 'bg-background border-border text-muted-foreground hover:border-primary/40'
                 }`}
               >
-                {DIFFICULTY_LABELS[d]}
+                {DIFFICULTY_LABELS(t)[d]}
               </button>
             ))}
           </div>
@@ -151,10 +155,9 @@ export default function AiFluencySetupPage() {
 
         {/* Question Count */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">
-            Questions: <span className="text-primary tabular-nums">{questionCount}</span>
+          <label className="text-sm font-medium">{t('practice.questions')}{' '}<span className="text-primary tabular-nums">{questionCount}</span>
           </label>
-          <input aria-label="Questions"
+          <input aria-label={t('practice.questions2')}
             type="range"
             min={5}
             max={15}
@@ -163,9 +166,9 @@ export default function AiFluencySetupPage() {
             className="w-full accent-primary"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>5 (Quick)</span>
+            <span>{t('practice.n5Quick')}</span>
             <span>10</span>
-            <span>15 (Thorough)</span>
+            <span>{t('practice.n15Thorough')}</span>
           </div>
         </div>
 
@@ -180,9 +183,9 @@ export default function AiFluencySetupPage() {
           size="lg"
         >
           {starting ? (
-            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating questions…</>
+            <><Loader2 className="mr-2 h-4 w-4 animate-spin" />{' '}{t('practice.generatingQuestions')}</>
           ) : (
-            <><Sparkles className="mr-2 h-4 w-4" /> Start assessment</>
+            <><Sparkles className="mr-2 h-4 w-4" />{' '}{t('practice.startAssessment')}</>
           )}
         </Button>
       </Card>

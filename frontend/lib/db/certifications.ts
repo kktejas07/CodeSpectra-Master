@@ -354,6 +354,8 @@ export async function deliverExamCertificate(
         type: 'assessment.certificate_issued',
         title: `You earned a certificate for "${examTitle}"`,
         message: 'Your certificate is ready to view and share. Anyone can verify it from its link.',
+        title_i18n: { key: 'assessment.certificate.title', params: { title: examTitle } },
+        message_i18n: { key: 'assessment.certificate.message' },
         link: path,
       })
       return

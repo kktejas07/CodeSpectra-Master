@@ -121,6 +121,8 @@ export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Sess
     type: 'billing.payment_success',
     title: 'Payment successful',
     message: `Payment of ${(paid / 100).toFixed(2)} ${order.currency.toUpperCase()} completed.`,
+    title_i18n: { key: 'billing.success.title' },
+    message_i18n: { key: 'billing.paid.message', params: { amount: `${(paid / 100).toFixed(2)} ${order.currency.toUpperCase()}` } },
     icon: 'credit-card',
     link: '/dashboard/billing',
   }).catch(() => {})
@@ -289,6 +291,8 @@ export async function syncInvoicePaid(invoice: Stripe.Invoice): Promise<void> {
     type: 'billing.payment_success',
     title: invoice.billing_reason === 'subscription_cycle' ? 'Plan renewed' : 'Payment successful',
     message: `Payment of ${money(paid, currency || order.currency)} completed.`,
+    title_i18n: { key: invoice.billing_reason === 'subscription_cycle' ? 'billing.renewed.title' : 'billing.success.title' },
+    message_i18n: { key: 'billing.paid.message', params: { amount: money(paid, currency || order.currency) } },
     icon: 'credit-card',
     link: '/dashboard/billing',
   }).catch(() => {})
@@ -331,6 +335,8 @@ export async function syncInvoicePaymentFailed(invoice: Stripe.Invoice, now: Dat
       type: 'billing.payment_failed',
       title: 'Payment failed',
       message: `We couldn't renew your plan. Update your payment method by ${new Date(graceEnd).toUTCString().slice(0, 16)} to keep access.`,
+      title_i18n: { key: 'billing.failed.title' },
+      message_i18n: { key: 'billing.renewFailed.message', params: { date: new Date(graceEnd).toUTCString().slice(0, 16) } },
       icon: 'alert-circle',
       link: '/dashboard/billing',
     }).catch(() => {})
@@ -373,6 +379,8 @@ export async function syncSubscriptionFromStripe(subscription: Stripe.Subscripti
       type: 'billing.subscription_cancelled',
       title: 'Subscription ended',
       message: 'Your paid plan has ended. You are on the free plan now.',
+      title_i18n: { key: 'billing.ended.title' },
+      message_i18n: { key: 'billing.ended.message' },
       icon: 'credit-card',
       link: '/dashboard/billing',
     }).catch(() => {})

@@ -15,9 +15,9 @@ export async function GET(req: NextRequest, { params }: IdRouteContext) {
   const { id } = await params
   const order = await getBuyerOrder(gate.user.id, id)
   const line = order?.lines.find((l) => l.id === req.nextUrl.searchParams.get('line'))
-  if (!order || !line || line.kind !== 'service' || line.fulfilment.status !== 'booked') return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+  if (!order || !line || line.kind !== 'service' || line.fulfilment.status !== 'booked') return NextResponse.json({ error: 'Booking not found', code: 'mkt_booking_not_found' }, { status: 404 })
   const b = await (await bookings()).findOne({ order_id: order.id, line_id: line.id, status: { $in: ['booked', 'completed'] } } as never, { projection: { _id: 0 } })
   const ics = bookingIcs(order, { ...line, fulfilment: { ...line.fulfilment, booking: b ? { start: b.start, end: b.end, join_url: b.join_url ?? undefined } : line.fulfilment.booking } })
-  if (!ics) return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+  if (!ics) return NextResponse.json({ error: 'Booking not found', code: 'mkt_booking_not_found' }, { status: 404 })
   return new NextResponse(ics, { headers: { 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': `attachment; filename="booking-${order.number}.ics"`, 'Cache-Control': 'private, no-store' } })
 }

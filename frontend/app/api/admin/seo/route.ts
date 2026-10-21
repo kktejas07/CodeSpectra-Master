@@ -34,7 +34,7 @@ export async function PUT(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const input = (body && typeof body === 'object' && 'settings' in body ? (body as { settings: unknown }).settings : body) as Record<string, unknown>
   if (input && typeof input === 'object' && typeof input.indexnow_key === 'string' && input.indexnow_key && !/^[a-zA-Z0-9-]{8,128}$/.test(input.indexnow_key)) {

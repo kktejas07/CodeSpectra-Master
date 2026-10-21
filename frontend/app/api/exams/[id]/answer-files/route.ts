@@ -39,7 +39,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   try {
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id: examId }, { projection: { tenant_id: 1 } })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
     const asked = req.nextUrl.searchParams.get('user_id')
     const staff = isExamStaff(gate.user, exam as Record<string, unknown>)
     const userId = staff && asked && /^[A-Za-z0-9_-]{1,128}$/.test(asked) ? asked : gate.user.id
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   const user = gate.user
   const { id: examId } = await ctx.params
 
@@ -68,13 +68,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     form = await req.formData()
   } catch {
-    return NextResponse.json({ error: `Upload could not be read. Files must be under ${ANSWER_FILE_MAX_MB} MB.` }, { status: 400 })
+    return NextResponse.json({ error: `Upload could not be read. Files must be under ${ANSWER_FILE_MAX_MB} MB.`, code: 'upload_unreadable_mb', params: { mb: ANSWER_FILE_MAX_MB } }, { status: 400 })
   }
   const file = form.get('file')
   const questionId = String(form.get('question_id') || '')
-  if (!(file instanceof File)) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-  if (!/^[A-Za-z0-9_-]{1,128}$/.test(questionId)) return NextResponse.json({ error: 'Unknown question' }, { status: 400 })
-  if (file.size <= 0) return NextResponse.json({ error: 'This file is empty.' }, { status: 400 })
+  if (!(file instanceof File)) return NextResponse.json({ error: 'No file provided', code: 'upload_no_file' }, { status: 400 })
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(questionId)) return NextResponse.json({ error: 'Unknown question', code: 'exam_unknown_question' }, { status: 400 })
+  if (file.size <= 0) return NextResponse.json({ error: 'This file is empty.', code: 'file_empty' }, { status: 400 })
   const name = safeAnswerName(file.name)
 
   try {
@@ -88,16 +88,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     const rule = answerUploadRule(gate2.q, name, false)
     if ('error' in rule) return NextResponse.json({ error: rule.error }, { status: rule.status })
     const { kind, maxBytes } = rule
-    if (file.size > maxBytes) return NextResponse.json({ error: `Files must be under ${Math.round(maxBytes / 1048576)} MB.` }, { status: 413 })
+    if (file.size > maxBytes) return NextResponse.json({ error: `Files must be under ${Math.round(maxBytes / 1048576)} MB.`, code: 'exam_files_max_mb', params: { mb: Math.round(maxBytes / 1048576) } }, { status: 413 })
 
     const bytes = Buffer.from(await file.arrayBuffer())
-    if (bytes.length > maxBytes) return NextResponse.json({ error: `Files must be under ${Math.round(maxBytes / 1048576)} MB.` }, { status: 413 })
+    if (bytes.length > maxBytes) return NextResponse.json({ error: `Files must be under ${Math.round(maxBytes / 1048576)} MB.`, code: 'exam_files_max_mb', params: { mb: Math.round(maxBytes / 1048576) } }, { status: 413 })
     if (!sniffAnswerFile(new Uint8Array(bytes), kind)) {
-      return NextResponse.json({ error: 'The file content does not match its type. Save it again in the right format and retry.' }, { status: 400 })
+      return NextResponse.json({ error: 'The file content does not match its type. Save it again in the right format and retry.', code: 'file_content_mismatch' }, { status: 400 })
     }
     // Malware is rejected; an unreachable scanner marks the file 'unscanned' (reviewers see it).
     const scan = await scanBuffer(bytes, name)
-    if (scan === 'infected') return NextResponse.json({ error: 'The security scanner rejected this file.' }, { status: 400 })
+    if (scan === 'infected') return NextResponse.json({ error: 'The security scanner rejected this file.', code: 'scanner_rejected' }, { status: 400 })
 
     const blob = await putBlob({ feature: 'exam-answer', tenantId: (gate2.exam.tenant_id as string) ?? null, bytes, contentType: ANSWER_CONTENT_TYPES[kind] })
     const meta = await saveAnswerFile(db, {
@@ -107,6 +107,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: true, file: meta }, { status: 201 })
   } catch (e) {
     console.error('[answer-files] POST:', e instanceof Error ? e.message : 'error')
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Upload failed', code: 'upload_failed' }, { status: 500 })
   }
 }

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (raw.length > 1_000_000) return NextResponse.json({ error: 'Too large' }, { status: 413 })
   const [settings, secrets] = await Promise.all([getBgvSettings(tenant), getVendorSecrets(tenant)])
   const ip = resolveClientIp(req.headers).replace(/^unknown$/, '')
-  if (!idfyVendor.verifyWebhook!(raw, req.headers, secrets, { settings, url, ip })) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!idfyVendor.verifyWebhook!(raw, req.headers, secrets, { settings, url, ip })) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const ev = idfyVendor.parseWebhook!(raw, settings)
   if (!ev) return NextResponse.json({ ok: true, ignored: true })
   try {

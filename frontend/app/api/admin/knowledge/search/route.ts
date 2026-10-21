@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
   const query = typeof body.query === 'string' ? body.query.trim().slice(0, 500) : ''
   if (!query) return NextResponse.json({ error: 'Type something to search for.' }, { status: 400 })

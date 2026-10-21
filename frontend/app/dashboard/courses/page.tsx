@@ -21,31 +21,34 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/difficulty-levels'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const PAGE_SIZE = 10
 
-const CATEGORIES = [
-  { id: 'all', label: 'All courses', icon: <Monitor className="h-4 w-4" /> },
+const CATEGORIES = (t: Translator) => ([
+  { id: 'all', label: t('learning.allCourses'), icon: <Monitor className="h-4 w-4" /> },
   { id: 'CPP', label: 'C++', icon: <Braces className="h-4 w-4" /> },
   { id: 'C', label: 'C', icon: <Terminal className="h-4 w-4" /> },
-  { id: 'Coding', label: 'Coding', icon: <Code className="h-4 w-4" /> },
+  { id: 'Coding', label: t('learning.coding'), icon: <Code className="h-4 w-4" /> },
   { id: 'Python', label: 'Python', icon: <FlaskConical className="h-4 w-4" /> },
   { id: 'Java', label: 'Java', icon: <Cpu className="h-4 w-4" /> },
   { id: 'JavaScript', label: 'JavaScript', icon: <Braces className="h-4 w-4" /> },
-  { id: 'Full Stack Web dev', label: 'Full stack web', icon: <Layers className="h-4 w-4" /> },
+  { id: 'Full Stack Web dev', label: t('learning.fullStackWeb'), icon: <Layers className="h-4 w-4" /> },
   { id: 'React', label: 'React', icon: <Globe className="h-4 w-4" /> },
   { id: 'Node.js', label: 'Node.js', icon: <Server className="h-4 w-4" /> },
-  { id: 'Software Tools', label: 'Software tools', icon: <Settings className="h-4 w-4" /> },
-  { id: 'DevOps', label: 'DevOps', icon: <GitBranch className="h-4 w-4" /> },
-  { id: 'Docker', label: 'Docker / K8s', icon: <Cloud className="h-4 w-4" /> },
-  { id: 'General Aptitude', label: 'Aptitude', icon: <Lightbulb className="h-4 w-4" /> },
-  { id: 'SQL', label: 'SQL / databases', icon: <Database className="h-4 w-4" /> },
-  { id: 'Management', label: 'Management', icon: <Briefcase className="h-4 w-4" /> },
-  { id: 'AI', label: 'AI / ML', icon: <BarChart2 className="h-4 w-4" /> },
-  { id: 'System Design', label: 'System design', icon: <Network className="h-4 w-4" /> },
-  { id: 'Mobile', label: 'Mobile dev', icon: <Smartphone className="h-4 w-4" /> },
-  { id: 'Security', label: 'Security', icon: <Shield className="h-4 w-4" /> },
-]
+  { id: 'Software Tools', label: t('learning.softwareTools'), icon: <Settings className="h-4 w-4" /> },
+  { id: 'DevOps', label: t('learning.devops'), icon: <GitBranch className="h-4 w-4" /> },
+  { id: 'Docker', label: t('learning.dockerK8s'), icon: <Cloud className="h-4 w-4" /> },
+  { id: 'General Aptitude', label: t('learning.aptitude'), icon: <Lightbulb className="h-4 w-4" /> },
+  { id: 'SQL', label: t('learning.sqlDatabases'), icon: <Database className="h-4 w-4" /> },
+  { id: 'Management', label: t('learning.management'), icon: <Briefcase className="h-4 w-4" /> },
+  { id: 'AI', label: t('learning.aiMl'), icon: <BarChart2 className="h-4 w-4" /> },
+  { id: 'System Design', label: t('learning.systemDesign'), icon: <Network className="h-4 w-4" /> },
+  { id: 'Mobile', label: t('learning.mobileDev'), icon: <Smartphone className="h-4 w-4" /> },
+  { id: 'Security', label: t('learning.security'), icon: <Shield className="h-4 w-4" /> },
+])
 
 const CATEGORY_IMAGES: Record<string, string> = {
   'CPP': '/courses/cpp.jpg',
@@ -98,6 +101,8 @@ const CourseSkeleton = () => (
 )
 
 function LearningPageInner() {
+  const apiError = useApiError()
+  const { td, t: tr } = useT()
   const router = useRouter()
   const searchParams = useSearchParams()
   const category = searchParams.get('category') || 'all'
@@ -146,26 +151,26 @@ function LearningPageInner() {
       const coursesTour: TourStep[] = [
         {
           target: '[data-tour="courses-header"]',
-          title: 'Explore course catalog',
-          description: 'Course library where learners browse courses and open the wishlist.',
+          title: tr('learning.exploreCourseCatalog'),
+          description: tr('learning.courseLibraryWhereLearnersBrowseCourses173'),
           position: 'bottom',
         },
         {
           target: '[data-tour="courses-search"]',
-          title: 'Search courses quickly',
-          description: 'Type a title, topic, or tag to narrow the catalog instantly.',
+          title: tr('learning.searchCoursesQuickly'),
+          description: tr('learning.typeATitleTopicOrTag06b'),
           position: 'bottom',
         },
         {
           target: '[data-tour="categories"]',
-          title: 'Filter by category',
-          description: 'Tap a category pill to show only matching courses.',
+          title: tr('learning.filterByCategory'),
+          description: tr('learning.tapACategoryPillToShowe7f'),
           position: 'bottom',
         },
         {
           target: '[data-tour="course-card"]',
-          title: 'Tip open course cards',
-          description: 'Tip: click a card to open details, or tap the heart to save it.',
+          title: tr('learning.tipOpenCourseCards'),
+          description: tr('learning.tipClickACardToOpendbe'),
           position: 'bottom',
         },
       ]
@@ -189,7 +194,7 @@ function LearningPageInner() {
         body: JSON.stringify({ courseId: id }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Wishlist failed')
+      if (!res.ok) throw new Error(apiError(data, tr('learning.wishlistFailed')))
       setSavedCourses(prev => {
         const next = new Set(prev)
         if (data.saved) next.add(id)
@@ -289,13 +294,13 @@ function LearningPageInner() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             illustration="courses"
-            title="Explore courses"
-            description="Short, structured courses on the skills interviews test. Save the ones you like to your wishlist."
+            title={tr('learning.exploreCourses')}
+            description={tr('learning.shortStructuredCoursesOnTheSkillsaf9')}
             icon={<BookOpen />}
             className="mb-4"
             actions={
               <Button asChild variant="outline" size="sm" className="gap-1.5">
-                <Link href="/dashboard/courses/wishlist"><Heart className="h-4 w-4" /> Wishlist</Link>
+                <Link href="/dashboard/courses/wishlist"><Heart className="h-4 w-4" />{' '}{tr('learning.wishlist')}</Link>
               </Button>
             }
           />
@@ -304,8 +309,8 @@ function LearningPageInner() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9 h-11 bg-card rounded-full"
-            aria-label="Search courses"
-            placeholder="Search courses"
+            aria-label={tr('learning.searchCourses')}
+            placeholder={tr('learning.searchCourses')}
             value={search}
             onChange={e => handleSearch(e.target.value)}
           />
@@ -313,7 +318,7 @@ function LearningPageInner() {
       </div>
 
       <div className="flex flex-wrap gap-2" data-tour="categories">
-        {CATEGORIES.map((cat) => (
+        {CATEGORIES(tr).map((cat) => (
           <button
             key={cat.id}
             onClick={() => setCategory(cat.id)}
@@ -339,9 +344,7 @@ function LearningPageInner() {
               ? 'border-primary bg-primary text-primary-foreground'
               : 'border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
           }`}
-        >
-          All levels
-        </button>
+        >{tr('learning.allLevels')}</button>
         {DIFFICULTY_LEVELS.map((lv) => (
           <button
             key={lv}
@@ -353,7 +356,7 @@ function LearningPageInner() {
                 : 'border-border/70 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >
-            {DIFFICULTY_LABELS[lv]}
+            {td(`learning.difficultyLabels:${lv}`, DIFFICULTY_LABELS[lv])}
           </button>
         ))}
       </div>
@@ -370,9 +373,9 @@ function LearningPageInner() {
         <Panel className="p-4">
           <EmptyState
             illustration="error"
-            title="Couldn't load courses"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={tr('learning.couldntLoadCourses')}
+            description={tr('learning.checkYourConnectionAndTryAgain')}
+            actionLabel={tr('common.tryAgain')}
             onAction={() => setReloadKey(k => k + 1)}
           />
         </Panel>
@@ -383,9 +386,9 @@ function LearningPageInner() {
           <EmptyState
             variant="search"
             scene="learning"
-            title="No courses found"
-            description="Try a different category or search term, or clear the filters to see every course."
-            actionLabel="View all courses"
+            title={tr('learning.noCoursesFound')}
+            description={tr('learning.tryADifferentCategoryOrSearchcde')}
+            actionLabel={tr('learning.viewAllCourses')}
             onAction={() => setCategory('all')}
           />
         </Panel>
@@ -416,7 +419,7 @@ function LearningPageInner() {
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex items-center justify-between mb-3">
                       <Badge variant="secondary" className="text-[11px] font-medium capitalize text-primary bg-primary/10 hover:bg-primary/15 truncate max-w-30">
-                        {course.category || course.tags?.[0] || 'General'}
+                        {course.category || course.tags?.[0] || tr('learning.general')}
                       </Badge>
                       <div className="flex items-center gap-1 text-xs font-medium tabular-nums text-amber-600 dark:text-amber-400 shrink-0">
                         <Star className="h-3.5 w-3.5 fill-amber-500" />
@@ -435,14 +438,14 @@ function LearningPageInner() {
                       <div>
                         <div className="flex items-center gap-1.5 text-xs font-medium text-foreground mb-1">
                           <Play className="h-3.5 w-3.5 text-muted-foreground" />
-                          {course.sessions != null ? `${course.sessions} sessions` : '—'}
+                          {course.sessions != null ? tr('learning.sessionsSessions', { sessions: course.sessions }) : '—'}
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <Users className="h-3.5 w-3.5" />
                           {course.enrolled != null
                             ? course.enrolled > 0
-                              ? `${course.enrolled.toLocaleString()} enrolled`
-                              : 'Be the first to enroll'
+                              ? tr('learning.nEnrolled', { n: course.enrolled.toLocaleString() })
+                              : tr('learning.beTheFirstToEnroll')
                             : '—'}
                         </div>
                       </div>
@@ -451,7 +454,7 @@ function LearningPageInner() {
                         <TooltipTrigger asChild>
                           <button
                             onClick={(e) => toggleSave(e, course.id)}
-                            aria-label={savedCourses.has(course.id) ? 'Remove from wishlist' : 'Add to wishlist'}
+                            aria-label={savedCourses.has(course.id) ? tr('learning.removeFromWishlist') : tr('learning.addToWishlist')}
                             aria-pressed={savedCourses.has(course.id)}
                             className={`h-8 w-8 rounded-full border flex items-center justify-center transition-colors ${
                               savedCourses.has(course.id)
@@ -463,7 +466,7 @@ function LearningPageInner() {
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>{savedCourses.has(course.id) ? 'Remove from wishlist' : 'Add to wishlist'}</p>
+                          <p>{savedCourses.has(course.id) ? tr('learning.removeFromWishlist') : tr('learning.addToWishlist')}</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -475,9 +478,7 @@ function LearningPageInner() {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between gap-3 pt-2">
-              <p className="text-xs text-muted-foreground tabular-nums">
-                Showing {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filteredCourses.length)} of {filteredCourses.length}
-              </p>
+              <p className="text-xs text-muted-foreground tabular-nums">{tr('learning.showing')}{' '}{(safePage - 1) * PAGE_SIZE + 1}{tr('learning.valueOfCount', { value: Math.min(safePage * PAGE_SIZE, filteredCourses.length), count: filteredCourses.length })}</p>
               <div className="flex items-center gap-1">
                 <Button
                   variant="outline"
@@ -486,8 +487,7 @@ function LearningPageInner() {
                   disabled={safePage <= 1}
                   onClick={() => setPage(safePage - 1)}
                 >
-                  <ChevronLeft className="h-3 w-3 mr-1" />Prev
-                </Button>
+                  <ChevronLeft className="h-3 w-3 mr-1" />{tr('learning.prev')}</Button>
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(p => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
                   .reduce<(number | 'ellipsis')[]>((acc, p, idx, arr) => {
@@ -516,8 +516,7 @@ function LearningPageInner() {
                   className="h-8 text-xs"
                   disabled={safePage >= totalPages}
                   onClick={() => setPage(safePage + 1)}
-                >
-                  Next<ChevronRight className="h-3 w-3 ml-1" />
+                >{tr('common.next')}<ChevronRight className="h-3 w-3 ml-1" />
                 </Button>
               </div>
             </div>
@@ -529,12 +528,13 @@ function LearningPageInner() {
 }
 
 export default function LearningPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   if (!gate.ready) return (
     <div className="w-full min-h-[60vh] flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <p className="text-sm text-muted-foreground">Loading courses…</p>
+        <p className="text-sm text-muted-foreground">{t('learning.loadingCourses')}</p>
       </div>
     </div>
   )

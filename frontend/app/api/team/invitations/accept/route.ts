@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
   // Public lookup: rate limit token guessing.
   const rl = await rateLimitRedis(`invite-lookup:${clientLimiterKeyFromRequest(request, null)}`, 30, 60_000).catch(() => ({ ok: true as const }))
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429 })
 
   try {
     const invCol = await orgInvitations()
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const token = typeof body.token === 'string' ? body.token.trim() : ''
   if (!/^[a-f0-9]{32,128}$/i.test(token)) {
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       tenantActive: !!tenant && tenant.is_active !== false,
     })
     if (!decision.ok) return NextResponse.json({ error: decision.error }, { status: decision.status })
-    if (!me) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+    if (!me) return NextResponse.json({ error: 'Account not found', code: 'auth_account_not_found' }, { status: 404 })
 
     // Claim the invitation atomically (one accept per token).
     const claim = await invCol.updateOne(

@@ -22,6 +22,7 @@ import { PlacementReadiness } from '@/components/campus/placement-readiness'
 import { PlacementDrives } from '@/components/campus/placement-drives'
 import { PlacementSettings } from '@/components/campus/placement-settings'
 import type { CollegeDoc } from '@/lib/campus/types'
+import { useT } from '@/lib/i18n/client'
 
 const TABS = ['overview', 'students', 'readiness', 'drives', 'settings'] as const
 type Tab = (typeof TABS)[number]
@@ -41,6 +42,7 @@ export default function PlacementPage() {
 }
 
 function PlacementInner() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const params = useSearchParams()
   const router = useRouter()
@@ -76,13 +78,13 @@ function PlacementInner() {
   if (!gate.ready || (!data && !error)) {
     return <div className="w-full space-y-6" aria-busy="true"><SkeletonText lines={2} /><SkeletonList count={4} /></div>
   }
-  if (error) return <EmptyState illustration="error" title="We couldn't load the placement console" description="Check your connection and try again." actionLabel="Try again" onAction={reloadCollege} />
+  if (error) return <EmptyState illustration="error" title={tr('career.weCouldntLoadThePlacementConsole')} description={tr('career.checkYourConnectionAndTryAgain')} actionLabel={tr('common.tryAgain')} onAction={reloadCollege} />
 
   if (data && !data.college) {
     if (data.role === 'superadmin') {
       return (
         <div className="w-full space-y-6">
-          <PageHeader icon={<Building2 aria-hidden />} title="Placement console" description="Pick a college to manage." />
+          <PageHeader icon={<Building2 aria-hidden />} title={tr('career.placementConsole')} description={tr('career.pickACollegeToManage')} />
           {data.colleges?.length ? (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {data.colleges.map((c) => (
@@ -93,7 +95,7 @@ function PlacementInner() {
               ))}
             </div>
           ) : (
-            <EmptyState illustration="team" title="No colleges yet" description="An organisation admin sets their organisation up as a college from the Campus page." />
+            <EmptyState illustration="team" title={tr('career.noCollegesYet')} description={tr('career.anOrganisationAdminSetsTheirOrganisation41a')} />
           )}
         </div>
       )
@@ -101,9 +103,9 @@ function PlacementInner() {
     return (
       <EmptyState
         illustration="locked"
-        title="You're not on a placement team"
-        description="Your college admin can add you as a placement officer. Organisation admins can set their organisation up as a college from the Campus page."
-        actionLabel="Go to Campus" actionHref="/dashboard/campus"
+        title={tr('career.youreNotOnAPlacementTeam')}
+        description={tr('career.yourCollegeAdminCanAddYouba4')}
+        actionLabel={tr('career.goToCampus')} actionHref="/dashboard/campus"
       />
     )
   }
@@ -113,18 +115,18 @@ function PlacementInner() {
       <div className="w-full space-y-6">
         <PageHeader
           icon={<Building2 aria-hidden />}
-          title="Placement console"
-          description={`${ctx!.college.name} — students, readiness and placement drives.`}
-          actions={ctx!.role === 'superadmin' ? <Button asChild variant="outline" size="sm"><Link href="/dashboard/placement">Switch college</Link></Button> : undefined}
+          title={tr('career.placementConsole')}
+          description={tr('career.nameStudentsReadinessAndPlacementDrives', { name: ctx!.college.name })}
+          actions={ctx!.role === 'superadmin' ? <Button asChild variant="outline" size="sm"><Link href="/dashboard/placement">{tr('career.switchCollege')}</Link></Button> : undefined}
         />
         <Tabs value={tab} onValueChange={setTab} className="gap-6">
           <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
             <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="students">Students</TabsTrigger>
-              <TabsTrigger value="readiness">Readiness</TabsTrigger>
-              <TabsTrigger value="drives">Drives</TabsTrigger>
-              <TabsTrigger value="settings">Settings</TabsTrigger>
+              <TabsTrigger value="overview">{tr('career.overview')}</TabsTrigger>
+              <TabsTrigger value="students">{tr('career.students')}</TabsTrigger>
+              <TabsTrigger value="readiness">{tr('career.readiness')}</TabsTrigger>
+              <TabsTrigger value="drives">{tr('career.drives')}</TabsTrigger>
+              <TabsTrigger value="settings">{tr('career.settings')}</TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="overview"><PlacementOverview onGoto={setTab} /></TabsContent>
@@ -134,9 +136,7 @@ function PlacementInner() {
           <TabsContent value="settings"><PlacementSettings /></TabsContent>
         </Tabs>
         {ctx!.college.departments.length === 0 && tab !== 'settings' && (
-          <Panel className="border-primary/30 bg-primary/5 p-5 text-sm text-foreground">
-            Start by adding departments and batches in <button type="button" className="font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setTab('settings')}>Settings</button>, then invite students.
-          </Panel>
+          <Panel className="border-primary/30 bg-primary/5 p-5 text-sm text-foreground">{tr('career.startByAddingDepartmentsAndBatches4bc')}{' '}<button type="button" className="font-semibold text-primary underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" onClick={() => setTab('settings')}>{tr('career.settings')}</button>{tr('career.thenInviteStudents')}</Panel>
         )}
       </div>
     </ConsoleContext.Provider>

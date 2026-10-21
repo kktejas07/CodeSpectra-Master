@@ -22,6 +22,7 @@ import type { BoardApplication } from '../lib/types'
 import { isOverdue, latestResult, type BoardColumn } from '../lib/board'
 import { daysSince, durationLabel, initials } from '../lib/labels'
 import { MatchScore } from '../ui'
+import { useT } from '@/lib/i18n/client'
 
 export function PipelineBoard({
   columns,
@@ -36,17 +37,18 @@ export function PipelineBoard({
   onReject: (app: BoardApplication) => void
   onApprove: (app: BoardApplication, accept: boolean) => void
 }) {
+  const { t } = useT()
   const [dragging, setDragging] = useState<BoardApplication | null>(null)
   const [over, setOver] = useState<string | null>(null)
   const stages = columns.map((c) => c.stage)
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0" role="region" aria-label="Pipeline board" tabIndex={0}>
+    <div className="-mx-4 overflow-x-auto px-4 pb-4 sm:mx-0 sm:px-0" role="region" aria-label={t('hiring.pipelineBoard')} tabIndex={0}>
       <div className="flex min-w-max gap-3">
         {columns.map(({ stage, applications }) => (
           <section
             key={stage.id}
-            aria-label={`${stage.name}, ${applications.length} candidate${applications.length === 1 ? '' : 's'}`}
+            aria-label={t('hiring.nameCountCandidates', { count: applications.length, name: stage.name })}
             onDragOver={(e) => { if (dragging && dragging.stage_id !== stage.id) { e.preventDefault(); setOver(stage.id) } }}
             onDragLeave={() => setOver((o) => (o === stage.id ? null : o))}
             onDrop={(e) => {
@@ -67,7 +69,7 @@ export function PipelineBoard({
             <ul className="flex max-h-[65vh] min-h-24 flex-col gap-2 overflow-y-auto px-2 pb-2">
               {applications.length === 0 && (
                 <li className="rounded-2xl border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
-                  {dragging ? 'Drop here' : 'No one here yet'}
+                  {dragging ? t('hiring.dropHere') : t('hiring.noOneHereYet')}
                 </li>
               )}
               {applications.map((a) => (
@@ -116,6 +118,7 @@ function BoardCard({
   onReject: () => void
   onApprove: (accept: boolean) => void
 }) {
+  const { t } = useT()
   const result = latestResult(app)
   const days = daysSince(app.stage_entered_at)
   const overdue = isOverdue(app, stage)
@@ -143,7 +146,7 @@ function BoardCard({
             onClick={onOpen}
             className="block w-full truncate text-left text-sm font-semibold text-foreground after:absolute after:inset-0 after:rounded-2xl hover:text-primary focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-ring"
           >
-            {app.candidate?.name || 'Candidate'}
+            {app.candidate?.name || t('hiring.candidate')}
           </button>
           <p className="truncate text-xs text-muted-foreground">{app.candidate?.titles?.[0] || app.candidate?.location || app.candidate?.email || ' '}</p>
         </div>
@@ -153,7 +156,7 @@ function BoardCard({
       {result && (
         <p className="mt-2 truncate text-xs text-muted-foreground">
           <span className={cn('font-medium', result.outcome === 'pass' ? 'text-green-700 dark:text-green-400' : result.outcome === 'fail' ? 'text-red-700 dark:text-red-400' : 'text-foreground')}>
-            {result.outcome === 'pass' ? 'Passed' : result.outcome === 'fail' ? 'Failed' : 'Waiting'}
+            {result.outcome === 'pass' ? t('hiring.passed') : result.outcome === 'fail' ? t('hiring.failed') : t('hiring.waiting')}
           </span>
           {resultStage ? ` ${resultStage}` : ''}
           {result.score != null ? ` · ${Math.round(result.score)}` : ''}
@@ -164,37 +167,36 @@ function BoardCard({
         <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] tabular-nums', overdue ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400' : 'bg-muted text-muted-foreground')}>
           {overdue ? <AlertTriangle className="h-3 w-3" aria-hidden /> : <Clock className="h-3 w-3" aria-hidden />}
           {durationLabel(days)}
-          {overdue && <span className="sr-only"> — over the time limit</span>}
+          {overdue && <span className="sr-only">{' '}{t('hiring.overTheTimeLimit')}</span>}
         </span>
-        {app.status === 'on_hold' && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">On hold</span>}
+        {app.status === 'on_hold' && <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">{t('hiring.onHold')}</span>}
         {pendingTo && (
           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-            <Hourglass className="h-3 w-3" aria-hidden /> Approve → {pendingTo}
-          </span>
+            <Hourglass className="h-3 w-3" aria-hidden />{' '}{t('hiring.approvePendingto', { pendingTo })}</span>
         )}
       </div>
 
       {app.pending_move && (
         <div className="relative z-10 mt-2 flex gap-1.5">
-          <Button size="sm" className="h-7 flex-1" onClick={() => onApprove(true)}>Approve</Button>
-          <Button size="sm" variant="outline" className="h-7 flex-1" onClick={() => onApprove(false)}>Decline</Button>
+          <Button size="sm" className="h-7 flex-1" onClick={() => onApprove(true)}>{t('hiring.approve')}</Button>
+          <Button size="sm" variant="outline" className="h-7 flex-1" onClick={() => onApprove(false)}>{t('hiring.decline')}</Button>
         </div>
       )}
 
       <div className="absolute right-1.5 top-10 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${app.candidate?.name ?? 'candidate'}`}><MoreHorizontal aria-hidden /></Button>
+            <Button variant="ghost" size="icon-sm" aria-label={t('hiring.actionsForValue', { value: app.candidate?.name ?? 'candidate' })}><MoreHorizontal aria-hidden /></Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onSelect={onOpen}>Open profile</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onOpen}>{t('hiring.openProfile')}</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">Move to</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">{t('hiring.moveTo2')}</DropdownMenuLabel>
             {stages.filter((s) => s.id !== app.stage_id && s.type !== 'rejected').map((s) => (
               <DropdownMenuItem key={s.id} onSelect={() => onRequestMove(s.id)}>{s.name}</DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onReject} className="text-red-700 focus:text-red-700 dark:text-red-400">Reject</DropdownMenuItem>
+            <DropdownMenuItem onSelect={onReject} className="text-red-700 focus:text-red-700 dark:text-red-400">{t('hiring.reject')}</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

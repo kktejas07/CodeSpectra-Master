@@ -6,6 +6,8 @@
  * `updated` is the date the page copy last changed — bump it when you edit a
  * page so sitemap lastmod stays honest.
  */
+import { isLocalizedPath, splitLocalePath } from '@/lib/i18n/public-paths'
+
 export type SitemapGroup = 'pages' | 'legal'
 
 export interface PublicRoute {
@@ -69,6 +71,9 @@ const PUBLIC_PREFIXES = ['/learn/', '/events/', '/jobs/', '/marketplace/p/', '/m
  */
 export function isPublicMarketingPath(pathname: string): boolean {
   if (pathname === '/og') return true
+  // Hindi / Telugu copies (/hi/…, /te/…) are cached the same way as English.
+  const loc = splitLocalePath(pathname)
+  if (loc.locale !== 'en') return isLocalizedPath(loc.path)
   if (PUBLIC_ROUTES.some((r) => r.path === pathname)) return true
   if (pathname.startsWith('/marketplace/cart') || pathname.startsWith('/marketplace/checkout')) return false
   return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))

@@ -10,7 +10,8 @@ import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForRequester } from '@/lib/i18n/recipient'
 import { createUserSession } from '@/lib/db/sessions'
 import { isIpBlocked, trackDeviceFingerprint, recordSecurityEvent, isIpOutsideWhitelist } from '@/lib/db/security'
 
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
       const ipCheck = await rateLimitRedis(`signup:ip:${ipKey}`, 3, 3600_000)
       if (!ipCheck.ok) {
         return NextResponse.json(
-          { error: `Too many accounts created from this location. Try again later.` },
+          { error: `Too many accounts created from this location. Try again later.`, code: 'auth_signup_ip_limit' },
           { status: 429 },
         )
       }
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
         detail: 'Blocked IP attempted to create an account',
         metadata: { userAgent: request.headers.get('user-agent') },
       })
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied', code: 'access_denied' }, { status: 403 })
     }
 
     if (await isIpOutsideWhitelist(rawIp)) {
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
         detail: 'Signup blocked — IP outside configured whitelist',
         metadata: { userAgent: request.headers.get('user-agent') },
       })
-      return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied from this location', code: 'auth_location_denied' }, { status: 403 })
     }
 
     // Admin switches: registrations closed / maintenance (A-025). A candidate
@@ -112,10 +113,10 @@ export async function POST(request: Request) {
     const graduationYear = Number.isInteger(gradYearNum) && gradYearNum >= 1950 && gradYearNum <= 2100 ? gradYearNum : null
     const turnstileToken = typeof raw.turnstileToken === 'string' ? raw.turnstileToken : ''
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Email and password are required', code: 'auth_email_password_required' }, { status: 400 })
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
+      return NextResponse.json({ error: 'Enter a valid email address', code: 'auth_email_invalid' }, { status: 400 })
     }
     const pwProblem = passwordProblem(password)
     if (pwProblem) {
@@ -127,12 +128,12 @@ export async function POST(request: Request) {
     if (await isCaptchaConfigured()) {
       if (!turnstileToken) {
         await writeAuditLog({ action: 'auth.signup', outcome: 'denied', actor: email?.toLowerCase(), actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'warning', detail: 'Missing captcha token', user_id: email?.toLowerCase() || '' })
-        return NextResponse.json({ error: 'Captcha verification required' }, { status: 403 })
+        return NextResponse.json({ error: 'Captcha verification required', code: 'auth_captcha_required' }, { status: 403 })
       }
       const captchaResult = await verifyTurnstileToken(turnstileToken, rawIp)
       if (!captchaResult.ok) {
         await writeAuditLog({ action: 'auth.signup', outcome: 'denied', actor: email?.toLowerCase(), actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'warning', detail: `Captcha failed: ${captchaResult.error || 'invalid token'}`, user_id: email?.toLowerCase() || '' })
-        return NextResponse.json({ error: 'Captcha verification failed' }, { status: 403 })
+        return NextResponse.json({ error: 'Captcha verification failed', code: 'auth_captcha_failed' }, { status: 403 })
       }
       await writeAuditLog({ action: 'auth.captcha', outcome: 'success', actor: email?.toLowerCase(), actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'info', detail: 'Turnstile verified on signup', user_id: email?.toLowerCase() || '' })
     }
@@ -143,7 +144,7 @@ export async function POST(request: Request) {
     const existing = await db.collection('user').findOne({ email: normalizedEmail })
     if (existing) {
       await writeAuditLog({ action: 'auth.signup', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'warning', detail: 'email already registered', user_id: normalizedEmail })
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 })
+      return NextResponse.json({ error: 'An account with this email already exists', code: 'auth_account_exists' }, { status: 409 })
     }
 
     const passwordHash = await bcrypt.hash(password, 12)
@@ -232,6 +233,8 @@ export async function POST(request: Request) {
 
     // Send welcome email
     const displayName = name || normalizedEmail.split('@')[0]
+    // The language they signed up in (cookie / browser) — no saved setting yet.
+    const emailTemplates = emailTemplatesFor(await localeForRequester(normalizedEmail))
     const template = emailTemplates.welcomeEmail(displayName)
     await sendEmail(normalizedEmail, template).catch((e) => console.error('[Signup] Welcome email failed:', e))
 
@@ -247,6 +250,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('[Signup] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

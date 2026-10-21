@@ -37,13 +37,13 @@ export async function GET(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
   const found = await resolveEventAndTeam(id, teamId)
-  if (!found) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!found) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   const { hk, team } = found
   const staff = isHackathonStaff(user, hk)
-  if (hk.status === 'draft' && !staff) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (hk.status === 'draft' && !staff) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   // Join token is a bearer credential for the share link — only admins or
   // members of the team may read it. Everyone else gets the team sans token.
@@ -66,7 +66,7 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id, teamId } = await ctx.params
   let body: {
@@ -78,17 +78,17 @@ export async function PATCH(
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const found = await resolveEventAndTeam(id, teamId)
-  if (!found) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!found) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   const { hk, team } = found
 
   const isCaptain = Array.isArray(team.members) && team.members.some((m: { user_id?: string; role?: string }) => m.user_id === user.id && m.role === 'captain')
   const staff = isHackathonStaff(user, hk)
   if (!staff && !isCaptain) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   // Points are server-awarded only: XP, achievements and counters are staff-only.
   // A captain may only rename the team.
@@ -141,13 +141,13 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
   const found = await resolveEventAndTeam(id, teamId)
-  if (!found) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!found) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   const { hk, team } = found
   if (!isHackathonStaff(user, hk)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   await (await hackathonTeams()).deleteOne({ id: team.id })
   return NextResponse.json({ ok: true })

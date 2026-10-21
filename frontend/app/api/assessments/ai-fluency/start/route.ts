@@ -14,13 +14,13 @@ interface StartBody {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: StartBody
   try {
     body = (await req.json()) as StartBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const difficulty = body.difficulty || 'intermediate'
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     : ['prompt_engineering', 'ai_output_review', 'debugging_ai_code', 'ai_decision_making', 'prompt_chaining']
 
   if (!['beginner', 'intermediate', 'advanced', 'expert'].includes(difficulty)) {
-    return NextResponse.json({ error: 'Invalid difficulty' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid difficulty', code: 'assess_invalid_difficulty' }, { status: 400 })
   }
 
   let questions: FluencyQuestion[] = []
@@ -39,11 +39,11 @@ export async function POST(req: NextRequest) {
     questions = await generateFluencyQuestions(focusCategories, difficulty, questionCount)
   } catch (e) {
     console.error('[ai-fluency] Question generation error:', e)
-    return NextResponse.json({ error: 'Failed to generate questions. Please try again.' }, { status: 502 })
+    return NextResponse.json({ error: 'Failed to generate questions. Please try again.', code: 'assess_generate_failed' }, { status: 502 })
   }
 
   if (questions.length === 0) {
-    return NextResponse.json({ error: 'Failed to generate questions. Please try again.' }, { status: 502 })
+    return NextResponse.json({ error: 'Failed to generate questions. Please try again.', code: 'assess_generate_failed' }, { status: 502 })
   }
 
   const sessionId = `aifl_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     await db.collection('ai_fluency_sessions').insertOne(sessionDoc)
   } catch (e) {
     console.error('[ai-fluency] DB insert error:', e)
-    return NextResponse.json({ error: 'Failed to create session' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to create session', code: 'assess_session_create_failed' }, { status: 500 })
   }
 
   return NextResponse.json({

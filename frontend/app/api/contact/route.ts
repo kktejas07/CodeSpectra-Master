@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     if (await isCaptchaConfigured()) {
       if (!turnstileToken) return NextResponse.json({ error: 'Complete the verification and send again.' }, { status: 403 })
       const result = await verifyTurnstileToken(turnstileToken, ip)
-      if (!result.ok) return NextResponse.json({ error: 'Verification failed. Refresh the page and try again.' }, { status: 403 })
+      if (!result.ok) return NextResponse.json({ error: 'Verification failed. Refresh the page and try again.', code: 'captcha_invalid' }, { status: 403 })
     }
   } catch (e) {
     console.error('[contact] captcha check failed:', e)

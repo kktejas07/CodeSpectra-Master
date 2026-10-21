@@ -27,7 +27,7 @@ export async function POST(
 
   const { id: examId } = await ctx.params
   const rl = rateLimitSlidingWindow(`exam-draft:${gate.user.id}:${examId}`, 120, 10 * 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
 
   const body = await req.json().catch(() => ({})) as { answers?: unknown }
   if (!body.answers || typeof body.answers !== 'object' || Array.isArray(body.answers)) {
@@ -37,7 +37,7 @@ export async function POST(
   try {
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id: examId }, { projection: { _id: 0, id: 1, duration: 1, ends_at: 1, questionList: 1, questions: 1, sections: 1 } })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     const draft = await getExamDraft(db, examId, gate.user.id)
     const attemptNo = Number(draft?.attempt_no) || 0
@@ -54,11 +54,11 @@ export async function POST(
       if (!ids.has(k)) continue
       const val = Array.isArray(v) ? v.slice(0, 100).map((x) => String(x ?? '').slice(0, 2000)) : String(v ?? '')
       const len = Array.isArray(val) ? val.join('').length : val.length
-      if (len > MAX_ANSWER_CHARS) return NextResponse.json({ error: 'Answer too large' }, { status: 400 })
+      if (len > MAX_ANSWER_CHARS) return NextResponse.json({ error: 'Answer too large', code: 'exam_answer_too_large' }, { status: 400 })
       total += len
       answers[k] = val
     }
-    if (total > MAX_TOTAL_ANSWER_CHARS) return NextResponse.json({ error: 'Draft too large' }, { status: 400 })
+    if (total > MAX_TOTAL_ANSWER_CHARS) return NextResponse.json({ error: 'Draft too large', code: 'exam_draft_too_large' }, { status: 400 })
 
     // Sectioned test: only the current, still-open section's answers are kept;
     // the section clock is applied (and saved) on the way.
@@ -73,11 +73,11 @@ export async function POST(
       { exam_id: examId, user_id: gate.user.id, attempt_no: attemptNo, submitted_at: { $exists: false } },
       { $set: { answers, updated_at: nowIso() } },
     )
-    if (res.matchedCount === 0) return NextResponse.json({ error: 'No attempt in progress.' }, { status: 409 })
+    if (res.matchedCount === 0) return NextResponse.json({ error: 'No attempt in progress.', code: 'exam_no_attempt' }, { status: 409 })
 
     return NextResponse.json({ ok: true, saved_at: nowIso() })
   } catch (e) {
     console.error('[save-draft] error:', e)
-    return NextResponse.json({ error: 'Failed to save draft' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed to save draft', code: 'exam_draft_save_failed' }, { status: 500 })
   }
 }

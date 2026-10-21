@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { GitPullRequest, AlertTriangle, FileCode, Users, Zap, ExternalLink, Loader } from 'lucide-react'
 import { BlastRadiusAnalysis } from './blast-radius-analysis'
 import type { D3Component, D3Dependency } from './d3-force-graph'
+import { useT } from '@/lib/i18n/client'
 
 interface PRFile {
   filename: string
@@ -51,6 +52,7 @@ function matchFileToComponent(filename: string, components: D3Component[]): D3Co
 }
 
 export function PRImpactAnalysis({ components, dependencies, githubToken }: PRImpactAnalysisProps) {
+  const { t } = useT()
   const [prUrl, setPrUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -60,7 +62,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
   const fetchPR = useCallback(async () => {
     const parsed = parsePRUrl(prUrl)
     if (!parsed) {
-      setError('Invalid GitHub PR URL. Expected: https://github.com/owner/repo/pull/123')
+      setError(t('tools.invalidGithubPrUrlExpectedHttpse87'))
       return
     }
     setLoading(true)
@@ -101,7 +103,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
         totalChanges: filesData.reduce((s, f) => s + f.changes, 0),
       })
     } catch (e: any) {
-      setError(e?.message || 'Failed to fetch PR details')
+      setError(e?.message || t('tools.failedToFetchPrDetails'))
     } finally {
       setLoading(false)
     }
@@ -128,11 +130,9 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
       <Card className="rounded-3xl p-5 border-dashed">
         <div className="flex items-center gap-2 mb-4">
           <GitPullRequest className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">GitHub PR Impact Analysis</h3>
+          <h3 className="font-semibold text-foreground">{t('tools.githubPrImpactAnalysis')}</h3>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">
-          Paste a GitHub pull request URL to see which architecture components it affects and its blast radius.
-        </p>
+        <p className="text-sm text-muted-foreground mb-4">{t('tools.pasteAGithubPullRequestUrl708')}</p>
         <div className="flex gap-2">
           <Input
             placeholder="https://github.com/owner/repo/pull/123"
@@ -142,7 +142,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
             className="flex-1 font-mono text-sm"
           />
           <Button onClick={fetchPR} disabled={loading || !prUrl.trim()}>
-            {loading ? <Loader className="w-4 h-4 animate-spin" /> : 'Analyze'}
+            {loading ? <Loader className="w-4 h-4 animate-spin" /> : t('tools.analyze')}
           </Button>
         </div>
         {error && (
@@ -164,7 +164,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
                   </Badge>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>by <span className="text-foreground">@{prDetails.author}</span></span>
+                  <span>{t('tools.by')}{' '}<span className="text-foreground">@{prDetails.author}</span></span>
                   <span>{prDetails.base} ← {prDetails.head}</span>
                   <a
                     href={prUrl}
@@ -172,23 +172,22 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
                     rel="noopener noreferrer"
                     className="flex items-center gap-1 text-primary hover:underline"
                   >
-                    <ExternalLink className="w-3 h-3" /> Open on GitHub
-                  </a>
+                    <ExternalLink className="w-3 h-3" />{' '}{t('tools.openOnGithub')}</a>
                 </div>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="text-center">
                 <p className="text-2xl font-bold text-primary">{prDetails.files.length}</p>
-                <p className="text-xs text-muted-foreground">Files changed</p>
+                <p className="text-xs text-muted-foreground">{t('tools.filesChanged')}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-primary">{prDetails.totalChanges}</p>
-                <p className="text-xs text-muted-foreground">Total changes</p>
+                <p className="text-xs text-muted-foreground">{t('tools.totalChanges')}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold text-primary">{affectedComponents.length}</p>
-                <p className="text-xs text-muted-foreground">Components affected</p>
+                <p className="text-xs text-muted-foreground">{t('tools.componentsAffected')}</p>
               </div>
             </div>
           </Card>
@@ -197,7 +196,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <FileCode className="w-4 h-4 text-primary" />
-                <h4 className="text-sm font-semibold text-foreground">Changed files ({prDetails.files.length})</h4>
+                <h4 className="text-sm font-semibold text-foreground">{t('tools.changedFilesCount', { count: prDetails.files.length })}</h4>
               </div>
               <div className="space-y-1.5 max-h-80 overflow-y-auto">
                 {prDetails.files.map(f => {
@@ -225,7 +224,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
                           → {matched.name}
                         </button>
                       ) : (
-                        <span className="text-xs text-muted-foreground shrink-0">no match</span>
+                        <span className="text-xs text-muted-foreground shrink-0">{t('tools.noMatch')}</span>
                       )}
                       <span className="text-xs text-muted-foreground shrink-0">+{f.additions} -{f.deletions}</span>
                     </div>
@@ -237,12 +236,10 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
             <Card className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Users className="w-4 h-4 text-primary" />
-                <h4 className="text-sm font-semibold text-foreground">Architecture impact</h4>
+                <h4 className="text-sm font-semibold text-foreground">{t('tools.architectureImpact')}</h4>
               </div>
               {affectedComponents.length === 0 ? (
-                <p className="text-sm text-muted-foreground py-4 text-center">
-                  No matching architecture components for changed files.
-                </p>
+                <p className="text-sm text-muted-foreground py-4 text-center">{t('tools.noMatchingArchitectureComponentsForChangf5d')}</p>
               ) : (
                 <div className="space-y-2 max-h-80 overflow-y-auto">
                   {affectedComponents.filter((r): r is { file: PRFile; component: D3Component } => r.component !== null).map(({ file, component }) => (
@@ -288,9 +285,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
             <Card className="p-4 bg-orange-500/5 border-orange-500/20">
               <div className="flex items-center gap-2 mb-3">
                 <AlertTriangle className="w-4 h-4 text-orange-700 dark:text-orange-400" />
-                <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-400">
-                  Unmatched files ({unmatchedFiles.length}) — no matching architecture component
-                </h4>
+                <h4 className="text-sm font-semibold text-orange-700 dark:text-orange-400">{t('tools.unmatchedFilesCountNoMatchingArchitecturbd0', { count: unmatchedFiles.length })}</h4>
               </div>
               <div className="space-y-1">
                 {unmatchedFiles.slice(0, 10).map(f => (
@@ -299,7 +294,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
                   </code>
                 ))}
                 {unmatchedFiles.length > 10 && (
-                  <p className="text-xs text-muted-foreground">…and {unmatchedFiles.length - 10} more</p>
+                  <p className="text-xs text-muted-foreground">{t('tools.and')}{' '}{unmatchedFiles.length - 10}{' '}{t('tools.more')}</p>
                 )}
               </div>
             </Card>

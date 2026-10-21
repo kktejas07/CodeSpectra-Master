@@ -20,10 +20,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; fil
   try {
     const db = await getMongoDb()
     const file = await db.collection('exam_submission_files').findOne({ id: fileId, exam_id: examId })
-    if (!file) return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    if (!file) return NextResponse.json({ error: 'File not found', code: 'file_not_found' }, { status: 404 })
     const exam = await db.collection('exams').findOne({ id: examId }, { projection: { tenant_id: 1 } })
     const staff = !!exam && isExamStaff(gate.user, exam as Record<string, unknown>)
-    if (!staff && file.user_id !== gate.user.id) return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    if (!staff && file.user_id !== gate.user.id) return NextResponse.json({ error: 'File not found', code: 'file_not_found' }, { status: 404 })
 
     // Object storage: a 5-minute presigned URL (attachment, generic type), issued only after the check above.
     // ?mode=play (answer videos): the URL as JSON with a video type, for the reviewer's <video> element.
@@ -32,7 +32,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; fil
     if (signed && play) return NextResponse.json({ url: signed }, { headers: { 'Cache-Control': 'private, no-store' } })
     if (signed) return NextResponse.redirect(signed, { status: 302, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } })
     const bytes = bytesOf(file.data)
-    if (!bytes) return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    if (!bytes) return NextResponse.json({ error: 'File not found', code: 'file_not_found' }, { status: 404 })
     const name = String(file.name || 'file').replace(/[^\w.\- ]/g, '_')
     return new NextResponse(new Uint8Array(bytes), {
       status: 200,
@@ -46,6 +46,6 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string; fil
     })
   } catch (e) {
     console.error('[cad-submission/files/[fileId]] GET:', e)
-    return NextResponse.json({ error: 'Download failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Download failed', code: 'download_failed' }, { status: 500 })
   }
 }

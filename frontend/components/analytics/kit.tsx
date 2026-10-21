@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 export interface RangeValue { preset: string; from: string; to: string; compare: boolean }
 export const DEFAULT_RANGE: RangeValue = { preset: '30d', from: '', to: '', compare: true }
@@ -28,11 +29,12 @@ export function rangeQuery(r: RangeValue): string {
 const PRESETS: [string, string][] = [['7d', 'Last 7 days'], ['30d', 'Last 30 days'], ['90d', 'Last 90 days'], ['365d', 'Last 12 months'], ['custom', 'Custom']]
 
 export function RangePicker({ value, onChange, csvHref, showCompare = true }: { value: RangeValue; onChange: (v: RangeValue) => void; csvHref?: string; showCompare?: boolean }) {
+  const { t } = useT()
   const id = useId()
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="flex flex-col gap-1">
-        <label htmlFor={`${id}-p`} className="text-xs font-medium text-muted-foreground">Period</label>
+        <label htmlFor={`${id}-p`} className="text-xs font-medium text-muted-foreground">{t('dash.period')}</label>
         <select
           id={`${id}-p`}
           value={value.preset}
@@ -45,11 +47,11 @@ export function RangePicker({ value, onChange, csvHref, showCompare = true }: { 
       {value.preset === 'custom' && (
         <>
           <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-f`} className="text-xs font-medium text-muted-foreground">From</label>
+            <label htmlFor={`${id}-f`} className="text-xs font-medium text-muted-foreground">{t('dash.from')}</label>
             <Input id={`${id}-f`} type="date" value={value.from} max={value.to || undefined} onChange={(e) => onChange({ ...value, from: e.target.value })} className="h-10 w-40" />
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor={`${id}-t`} className="text-xs font-medium text-muted-foreground">To</label>
+            <label htmlFor={`${id}-t`} className="text-xs font-medium text-muted-foreground">{t('dash.to')}</label>
             <Input id={`${id}-t`} type="date" value={value.to} min={value.from || undefined} onChange={(e) => onChange({ ...value, to: e.target.value })} className="h-10 w-40" />
           </div>
         </>
@@ -57,12 +59,12 @@ export function RangePicker({ value, onChange, csvHref, showCompare = true }: { 
       {showCompare && (
         <div className="flex h-10 items-center gap-2">
           <Switch id={`${id}-c`} checked={value.compare} onCheckedChange={(v) => onChange({ ...value, compare: v === true })} />
-          <label htmlFor={`${id}-c`} className="text-sm text-foreground">Compare to previous period</label>
+          <label htmlFor={`${id}-c`} className="text-sm text-foreground">{t('dash.compareToPreviousPeriod')}</label>
         </div>
       )}
       {csvHref && (
         <Button asChild variant="outline" size="sm" className="h-10">
-          <a href={csvHref} download><Download className="mr-1.5 h-4 w-4" aria-hidden="true" />Export CSV</a>
+          <a href={csvHref} download><Download className="mr-1.5 h-4 w-4" aria-hidden="true" />{t('dash.exportCsv')}</a>
         </Button>
       )}
     </div>
@@ -82,19 +84,21 @@ export function formatValue(v: number | null | undefined, unit?: string, currenc
 }
 
 export function Change({ change, invert }: { change: number | null | undefined; invert?: boolean }) {
-  if (change === null || change === undefined) return <span className="text-xs text-muted-foreground">No earlier data</span>
+  const { t } = useT()
+  if (change === null || change === undefined) return <span className="text-xs text-muted-foreground">{t('dash.noEarlierData')}</span>
   const up = change > 0
   const good = invert ? !up : up
   const Icon = change === 0 ? Minus : up ? ArrowUpRight : ArrowDownRight
   return (
     <span className={cn('inline-flex items-center gap-0.5 text-xs font-medium tabular-nums', change === 0 ? 'text-muted-foreground' : good ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400')}>
       <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-      {up ? '+' : ''}{change}%<span className="sr-only"> vs previous period</span>
+      {up ? '+' : ''}{change}%<span className="sr-only">{' '}{t('dash.vsPreviousPeriod')}</span>
     </span>
   )
 }
 
 export function KpiGrid({ items, compare }: { items: KpiItem[]; compare: boolean }) {
+  const { t } = useT()
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((k) => (
@@ -103,7 +107,7 @@ export function KpiGrid({ items, compare }: { items: KpiItem[]; compare: boolean
           <p className="mt-1 text-2xl font-bold tabular-nums tracking-tight text-foreground">{formatValue(k.value, k.unit, k.currency)}</p>
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
             {compare && 'previous' in k && <Change change={k.change} />}
-            {compare && k.previous !== undefined && k.previous !== null && <span className="text-xs text-muted-foreground">was {formatValue(k.previous, k.unit, k.currency)}</span>}
+            {compare && k.previous !== undefined && k.previous !== null && <span className="text-xs text-muted-foreground">{t('dash.wasValue', { value: formatValue(k.previous, k.unit, k.currency) })}</span>}
           </div>
           {k.hint && <p className="mt-1 text-xs text-muted-foreground">{k.hint}</p>}
         </Panel>
@@ -115,12 +119,13 @@ export function KpiGrid({ items, compare }: { items: KpiItem[]; compare: boolean
 export interface FunnelData { name: string; label: string; overall: number | null; note?: string; steps: { key: string; label: string; count: number; step_conversion: number | null; overall_conversion: number | null }[] }
 
 export function FunnelView({ funnel }: { funnel: FunnelData }) {
+  const { t } = useT()
   const top = Math.max(1, ...funnel.steps.map((s) => s.count))
   return (
     <Panel className="space-y-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-base font-semibold text-foreground">{funnel.label}</h3>
-        <span className="text-sm text-muted-foreground">Overall <span className="font-semibold tabular-nums text-foreground">{funnel.overall === null ? '—' : `${funnel.overall}%`}</span></span>
+        <span className="text-sm text-muted-foreground">{t('dash.overall')}{' '}<span className="font-semibold tabular-nums text-foreground">{funnel.overall === null ? '—' : `${funnel.overall}%`}</span></span>
       </div>
       <ol className="space-y-3">
         {funnel.steps.map((s, i) => (
@@ -129,7 +134,7 @@ export function FunnelView({ funnel }: { funnel: FunnelData }) {
               <span className="font-medium text-foreground">{i + 1}. {s.label}</span>
               <span className="tabular-nums text-muted-foreground">
                 <span className="font-semibold text-foreground">{formatValue(s.count)}</span>
-                {i > 0 && <> · {s.step_conversion === null ? '—' : `${s.step_conversion}%`} of previous</>}
+                {i > 0 && <> · {s.step_conversion === null ? '—' : `${s.step_conversion}%`}{' '}{t('dash.ofPrevious')}</>}
               </span>
             </div>
             <div className="h-3 rounded-full bg-muted/60" aria-hidden="true">
@@ -146,6 +151,7 @@ export function FunnelView({ funnel }: { funnel: FunnelData }) {
 const PRIMARY = 'hsl(var(--primary))'
 
 export function SeriesChart({ data, xKey, yKey, label, previous, height = 240 }: { data: Record<string, unknown>[]; xKey: string; yKey: string; label: string; previous?: Record<string, unknown>[] | null; height?: number }) {
+  const { t } = useT()
   const merged = data.map((d, i) => ({ ...d, __prev: previous?.[i]?.[yKey] ?? null }))
   return (
     <figure aria-label={label} className="w-full">
@@ -161,12 +167,13 @@ export function SeriesChart({ data, xKey, yKey, label, previous, height = 240 }:
           </AreaChart>
         </ResponsiveContainer>
       </div>
-      <figcaption className="sr-only">{label} per day</figcaption>
+      <figcaption className="sr-only">{t('dash.labelPerDay', { label })}</figcaption>
     </figure>
   )
 }
 
 export function RankTable({ title, rows, valueLabel = 'Count', empty = 'Nothing recorded in this period yet.' }: { title: string; rows: { key: string; count: number; extra?: string }[]; valueLabel?: string; empty?: string }) {
+  const { t } = useT()
   const top = Math.max(1, ...rows.map((r) => r.count))
   return (
     <Panel className="p-5">
@@ -175,7 +182,7 @@ export function RankTable({ title, rows, valueLabel = 'Count', empty = 'Nothing 
         <div className="max-h-96 overflow-y-auto">
           <table className="w-full text-sm">
             <caption className="sr-only">{title}</caption>
-            <thead className="sr-only"><tr><th scope="col">Item</th><th scope="col">{valueLabel}</th></tr></thead>
+            <thead className="sr-only"><tr><th scope="col">{t('dash.item')}</th><th scope="col">{valueLabel}</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.key} className="align-middle">

@@ -6,7 +6,6 @@
  * are identical.
  */
 import 'server-only'
-import { formatDate } from '@/lib/format-datetime'
 import { getMongoDb } from '@/lib/mongodb'
 import { users, candidateInvites, newId, nowIso, type AssessmentStep } from '@/lib/db/admin'
 import { checkInviteTargets, inviteIsForExam, isExamStaff } from '@/lib/exam-access'
@@ -140,9 +139,11 @@ export async function createCandidateInvite(
   let delivery = 'candidate_invite_link'
   try {
     const { sendEmail } = await import('@/lib/send-email')
-    const { emailTemplates } = await import('@/lib/email-templates')
-    const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
-    const template = emailTemplates.assessmentInvite({
+    const { emailLongDate, emailTemplatesFor } = await import('@/lib/email-templates')
+    const { localeForEmail } = await import('@/lib/i18n/recipient')
+    const locale = await localeForEmail(email)
+    const expiresStr = emailLongDate(expiresAt, locale)
+    const template = emailTemplatesFor(locale).assessmentInvite({
       candidateName: full_name,
       examTitle: (typeof input.exam_title === 'string' && input.exam_title.slice(0, 200)) || 'Technical Assessment',
       inviteUrl,
@@ -257,7 +258,8 @@ export async function sendExamInviteReminders(
   }
 
   const { sendEmail } = await import('@/lib/send-email')
-  const { emailTemplates } = await import('@/lib/email-templates')
+  const { emailLongDate, emailTemplatesFor } = await import('@/lib/email-templates')
+  const { localeForRecipient } = await import('@/lib/i18n/recipient')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const examTitle = exam.title || 'Technical Assessment'
   let sent = 0
@@ -267,9 +269,10 @@ export async function sendExamInviteReminders(
     try {
       const inviteUrl = `${appUrl}/assessment/invite/${invite.token}`
       const expiresAt = new Date(invite.expires_at)
-      const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+      const locale = await localeForRecipient({ userId: typeof invite.user_id === 'string' ? invite.user_id : null, email: invite.email })
+      const expiresStr = emailLongDate(expiresAt, locale)
 
-      const template = emailTemplates.assessmentReminder({
+      const template = emailTemplatesFor(locale).assessmentReminder({
         candidateName: invite.full_name || invite.email,
         examTitle,
         inviteUrl,

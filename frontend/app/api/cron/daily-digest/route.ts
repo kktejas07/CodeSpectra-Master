@@ -20,7 +20,7 @@ function authorize(req: NextRequest): boolean {
 
 async function handle(req: NextRequest) {
   if (!authorize(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {

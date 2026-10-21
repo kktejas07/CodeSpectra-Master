@@ -20,9 +20,9 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const { sessionId } = await params
@@ -32,14 +32,14 @@ export async function GET(
 
   const db = await getMongoDb()
   const local = await db.collection('kyc_sessions').findOne({ id: sessionId }, { projection: { user_id: 1 } })
-  if (!local) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!local) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
   if (user.role === 'tenant_admin') {
     const owner = local.user_id ? await getUserById(String(local.user_id)) : null
     const ownerTenant = (owner?.tenantId as string | null) ?? (owner?.organizationId as string | null) ?? null
     if (!user.tenantId || !ownerTenant || ownerTenant !== user.tenantId) {
       // Same answer as a missing session: don't confirm it exists.
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     }
   }
 

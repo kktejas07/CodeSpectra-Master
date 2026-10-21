@@ -12,7 +12,7 @@ const COL = 'user_extended_profiles'
  */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const db = await getMongoDb()
     let doc = await db.collection(COL).findOne({ userId: user.id })
@@ -97,7 +97,7 @@ function sizeOf(v: unknown): number {
 /** PUT — upsert extended profile fields (allow-listed, size-capped). */
 export async function PUT(request: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const text = await request.text()
     if (text.length > MAX_BODY_BYTES) {
@@ -105,10 +105,10 @@ export async function PUT(request: NextRequest) {
     }
     let body: Record<string, unknown> = {}
     try { body = JSON.parse(text || '{}') } catch {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
     }
     if (!body || typeof body !== 'object' || Array.isArray(body)) {
-      return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
     }
 
     const db = await getMongoDb()

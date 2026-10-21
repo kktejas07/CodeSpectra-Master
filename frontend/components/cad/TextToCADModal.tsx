@@ -16,6 +16,9 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface CadConstraint {
   name: string;
@@ -40,30 +43,32 @@ interface TextToCADModalProps {
   onApplyPayload?: (payload: CadItemPayload) => void;
 }
 
-const PRESET_PROMPTS = [
+const PRESET_PROMPTS = (t: Translator) => ([
   {
-    title: 'Mounting Bracket',
+    title: t('exam.mountingBracket'),
     icon: '🔩',
     prompt: 'Create a 60x40mm aluminium mounting bracket with 2 M6 counterbored holes and a 5mm fillet radius.',
   },
   {
-    title: 'Flange Plate',
+    title: t('exam.flangePlate'),
     icon: '⚙️',
     prompt: 'Design a 100mm outer diameter circular flange plate with 4 PCD bolt holes and a 30mm central bore.',
   },
   {
-    title: 'Stepped Shaft',
+    title: t('exam.steppedShaft'),
     icon: '📏',
     prompt: 'Model a 150mm stepped drive shaft with 30mm and 20mm diameter sections and a 5mm keyway slot.',
   },
   {
-    title: 'Enclosure Cover',
+    title: t('exam.enclosureCover'),
     icon: '📦',
     prompt: 'Create a 120x80x15mm electronic enclosure cover with 4 corner mounting posts and 2.5mm wall thickness.',
   },
-];
+]);
 
 export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADModalProps) {
+  const apiError = useApiError()
+  const { t } = useT()
   const [prompt, setPrompt] = useState('');
   const [regionStandard, setRegionStandard] = useState('ISO');
   const [unitSystem, setUnitSystem] = useState('metric');
@@ -95,17 +100,17 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
       });
 
       if (!res.ok) {
-        throw new Error('Failed to generate CAD model specifications from prompt');
+        throw new Error(t('exam.failedToGenerateCadModelSpecifications967'));
       }
 
       const data = await res.json();
       if (data.ok && data.item_payload) {
         setGeneratedPayload(data.item_payload);
       } else {
-        throw new Error(data.error || 'Invalid response from AI CAD service');
+        throw new Error(apiError(data, t('exam.invalidResponseFromAiCadService')));
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during CAD model synthesis.');
+      setErrorMsg(err.message || t('exam.anErrorOccurredDuringCadModel598'));
     } finally {
       setIsGenerating(false);
     }
@@ -118,7 +123,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: `CAD Challenge: ${prompt.slice(0, 45)}...`,
+          title: t('exam.cadChallengeValue', { value: prompt.slice(0, 45) }),
           prompt: prompt.trim(),
           region_standard: regionStandard,
           unit_system: unitSystem,
@@ -146,21 +151,15 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
               <Sparkles className="h-5 w-5" aria-hidden />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-                Text to CAD
-                <span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
-                  Parametric
-                </span>
+              <h2 className="text-base font-semibold text-foreground flex items-center gap-2">{t('exam.textToCad')}<span className="rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">{t('exam.parametric')}</span>
               </h2>
-              <p className="text-xs text-muted-foreground">
-                Describe a part in plain words and get a CAD brief, constraints and a parametric Python model.
-              </p>
+              <p className="text-xs text-muted-foreground">{t('exam.describeAPartInPlainWords1e1')}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={t('common.close')}
             className="rounded-lg p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           >
             <X className="h-4 w-4" />
@@ -172,11 +171,9 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
           
           {/* Preset Chips */}
           <div>
-            <label className="text-xs font-medium text-muted-foreground mb-2 block">
-              Quick Prompt Presets
-            </label>
+            <label className="text-xs font-medium text-muted-foreground mb-2 block">{t('exam.quickPromptPresets')}</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {PRESET_PROMPTS.map((preset) => (
+              {PRESET_PROMPTS(t).map((preset) => (
                 <button
                   key={preset.title}
                   onClick={() => setPrompt(preset.prompt)}
@@ -195,18 +192,14 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                <Wand2 className="h-3.5 w-3.5 text-primary" />
-                Natural Language Description
-              </label>
-              <span className="text-[11px] text-muted-foreground">
-                {prompt.length} chars
-              </span>
+                <Wand2 className="h-3.5 w-3.5 text-primary" />{t('exam.naturalLanguageDescription')}</label>
+              <span className="text-[11px] text-muted-foreground">{t('exam.countChars', { count: prompt.length })}</span>
             </div>
             <textarea
               rows={3}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. Create a 70x40mm aluminium bracket with two 10mm mounting holes, 3mm fillet radius, and 8mm plate thickness..."
+              placeholder={t('exam.eGCreateA70x40mmAluminium012')}
               className="w-full rounded-lg border border-border/60 bg-background/80 px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-none"
             />
           </div>
@@ -214,32 +207,28 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
           {/* Engineering Options Grid */}
           <div className="grid grid-cols-3 gap-3 bg-muted/10 p-3 rounded-lg border border-border/30">
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
-                Standard
-              </label>
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">{t('exam.standard')}</label>
               <select
                 value={regionStandard}
                 onChange={(e) => setRegionStandard(e.target.value)}
                 className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="ISO">ISO (International)</option>
-                <option value="ANSI">ANSI (US Standard)</option>
-                <option value="DIN">DIN (German)</option>
-                <option value="JIS">JIS (Japanese)</option>
+                <option value="ISO">{t('exam.isoInternational')}</option>
+                <option value="ANSI">{t('exam.ansiUsStandard')}</option>
+                <option value="DIN">{t('exam.dinGerman')}</option>
+                <option value="JIS">{t('exam.jisJapanese')}</option>
               </select>
             </div>
 
             <div>
-              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">
-                Unit System
-              </label>
+              <label className="text-[11px] font-medium text-muted-foreground mb-1 block">{t('exam.unitSystem')}</label>
               <select
                 value={unitSystem}
                 onChange={(e) => setUnitSystem(e.target.value)}
                 className="w-full rounded-md border border-border/60 bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="metric">Metric (mm)</option>
-                <option value="imperial">Imperial (in)</option>
+                <option value="metric">{t('exam.metricMm')}</option>
+                <option value="imperial">{t('exam.imperialIn')}</option>
               </select>
             </div>
 
@@ -250,9 +239,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                   checked={vivaRequired}
                   onChange={(e) => setVivaRequired(e.target.checked)}
                   className="rounded border-border/60 text-primary focus:ring-primary h-3.5 w-3.5"
-                />
-                Require Viva Rationale
-              </label>
+                />{t('exam.requireVivaRationale')}</label>
             </div>
           </div>
 
@@ -273,14 +260,10 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Synthesizing Parametric Model…
-                </>
+                  <Loader2 className="h-4 w-4 animate-spin" />{t('exam.synthesizingParametricModel')}</>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4" />
-                  Generate CAD Specifications
-                </>
+                  <Sparkles className="h-4 w-4" />{t('exam.generateCadSpecifications')}</>
               )}
             </button>
           </div>
@@ -301,9 +284,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    <FileText className="h-3.5 w-3.5 text-primary" />
-                    CAD Brief
-                  </button>
+                    <FileText className="h-3.5 w-3.5 text-primary" />{t('exam.cadBrief')}</button>
 
                   <button
                     onClick={() => setActiveTab('constraints')}
@@ -314,9 +295,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    <Ruler className="h-3.5 w-3.5 text-primary" />
-                    Geometric Constraints ({generatedPayload.constraints.length})
-                  </button>
+                    <Ruler className="h-3.5 w-3.5 text-primary" />{t('exam.geometricConstraintsCount', { count: generatedPayload.constraints.length })}</button>
 
                   <button
                     onClick={() => setActiveTab('code')}
@@ -327,9 +306,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                         : 'text-muted-foreground hover:text-foreground'
                     )}
                   >
-                    <Code2 className="h-3.5 w-3.5 text-primary" />
-                    Parametric Code
-                  </button>
+                    <Code2 className="h-3.5 w-3.5 text-primary" />{t('exam.parametricCode')}</button>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -339,14 +316,10 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                   >
                     {savedSuccess ? (
                       <>
-                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
-                        Saved to Bank!
-                      </>
+                        <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />{t('exam.savedToBank')}</>
                     ) : (
                       <>
-                        <Save className="h-3.5 w-3.5 text-muted-foreground" />
-                        Save to Item Bank
-                      </>
+                        <Save className="h-3.5 w-3.5 text-muted-foreground" />{t('exam.saveToItemBank')}</>
                     )}
                   </button>
 
@@ -357,9 +330,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                         onClose();
                       }}
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                    >
-                      Apply to Workspace
-                      <ArrowRight className="h-3.5 w-3.5" />
+                    >{t('exam.applyToWorkspace')}<ArrowRight className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
@@ -373,9 +344,9 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
                       {generatedPayload.cad_brief}
                     </pre>
                     <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-                      <span>Standard: <strong className="text-foreground">{generatedPayload.region_standard}</strong></span>
-                      <span>Units: <strong className="text-foreground">{generatedPayload.unit_system}</strong></span>
-                      <span>Viva Required: <strong className="text-foreground">{generatedPayload.viva_required ? 'Yes' : 'No'}</strong></span>
+                      <span>{t('exam.standard2')}{' '}<strong className="text-foreground">{generatedPayload.region_standard}</strong></span>
+                      <span>{t('exam.units')}{' '}<strong className="text-foreground">{generatedPayload.unit_system}</strong></span>
+                      <span>{t('exam.vivaRequired')}{' '}<strong className="text-foreground">{generatedPayload.viva_required ? t('exam.yes') : t('exam.no')}</strong></span>
                     </div>
                   </div>
                 )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -19,12 +19,14 @@ import { usePageGuard, useLockedFeatures } from '@/lib/use-page-guard'
 import { useFeedbackReport } from '@/lib/use-feedback-report'
 import type { InterviewSessionDoc } from '@/lib/db/interviews'
 import { Illustration } from '@/components/illustrations/spot'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-function scoreCategory(score: number) {
-  if (score >= 80) return { label: 'Strong', color: 'bg-green-500/15 text-green-800 dark:text-green-300' }
-  if (score >= 60) return { label: 'Competent', color: 'bg-primary/15 text-primary' }
-  if (score >= 40) return { label: 'Developing', color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300' }
-  return { label: 'Needs improvement', color: 'bg-red-500/15 text-red-800 dark:text-red-300' }
+function scoreCategory(t: Translator, score: number) {
+  if (score >= 80) return { label: t('career.scoreStrong'), color: 'bg-green-500/15 text-green-800 dark:text-green-300' }
+  if (score >= 60) return { label: t('career.scoreCompetent'), color: 'bg-primary/15 text-primary' }
+  if (score >= 40) return { label: t('career.scoreDeveloping'), color: 'bg-amber-500/15 text-amber-800 dark:text-amber-300' }
+  return { label: t('career.scoreNeedsImprovement'), color: 'bg-red-500/15 text-red-800 dark:text-red-300' }
 }
 
 function scoreBarColor(score: number) {
@@ -41,6 +43,8 @@ function formatTime(seconds?: number) {
 }
 
 export default function InterviewFeedbackPage() {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('tenant_admin')
   const { lockedFeatures } = useLockedFeatures()
   const chatLocked = lockedFeatures.includes('interviews/feedback:chat')
@@ -78,13 +82,12 @@ export default function InterviewFeedbackPage() {
     return (
       <div className="space-y-6">
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to interviews
-        </Link>
+          <ArrowLeft className="h-4 w-4" />{' '}{t('career.backToInterviews')}</Link>
         <EmptyState illustration="interview"
           variant="sessions"
-          title="No interview selected"
-          description="Pick an interview from your list to see its feedback."
-          actionLabel="Go to interviews"
+          title={t('career.noInterviewSelected')}
+          description={t('career.pickAnInterviewFromYourList021')}
+          actionLabel={t('career.goToInterviews')}
           actionHref="/dashboard/interviews"
         />
       </div>
@@ -112,14 +115,11 @@ export default function InterviewFeedbackPage() {
     return (
       <div className="space-y-6">
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to interviews
-        </Link>
+          <ArrowLeft className="h-4 w-4" />{' '}{t('career.backToInterviews')}</Link>
         <Card className="flex flex-col items-center justify-center h-64 rounded-3xl text-destructive">
           <AlertCircle className="h-10 w-10 mb-3" />
-          <p className="text-sm font-medium">Interview not found</p>
-          <Link href="/dashboard/interviews" className="text-xs text-destructive hover:underline mt-1">
-            Return to interviews
-          </Link>
+          <p className="text-sm font-medium">{t('career.interviewNotFound')}</p>
+          <Link href="/dashboard/interviews" className="text-xs text-destructive hover:underline mt-1">{t('career.returnToInterviews')}</Link>
         </Card>
       </div>
     )
@@ -129,12 +129,11 @@ export default function InterviewFeedbackPage() {
     return (
       <div className="space-y-6">
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to interviews
-        </Link>
+          <ArrowLeft className="h-4 w-4" />{' '}{t('career.backToInterviews')}</Link>
         <Card className="flex flex-col items-center justify-center min-h-64 rounded-3xl p-6 text-center text-amber-700 dark:text-amber-400">
           <Illustration name="locked" className="mb-3 w-36" />
-          <p className="text-sm font-medium">Access denied</p>
-          <p className="text-xs mt-1 text-muted-foreground">You do not have permission to view this interview.</p>
+          <p className="text-sm font-medium">{t('career.accessDenied')}</p>
+          <p className="text-xs mt-1 text-muted-foreground">{t('career.youDoNotHavePermissionToc31')}</p>
         </Card>
       </div>
     )
@@ -145,7 +144,7 @@ export default function InterviewFeedbackPage() {
   const feedback = session.feedback || []
   const hasFeedback = feedback.length > 0
   const overallScore = session.overall_score ?? 0
-  const cat = hasFeedback || session.overall_score != null ? scoreCategory(overallScore) : null
+  const cat = hasFeedback || session.overall_score != null ? scoreCategory(t, overallScore) : null
 
   const statusColors: Record<string, string> = {
     scheduled: 'bg-primary/10 text-primary',
@@ -183,28 +182,25 @@ export default function InterviewFeedbackPage() {
       {/* Header */}
       <div className="space-y-4">
         <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back to interviews
-        </Link>
+          <ArrowLeft className="h-4 w-4" />{' '}{t('career.backToInterviews')}</Link>
         <PageHeader
           className="mb-0"
           icon={<MessageSquare />}
           title={session.title}
           description={
             <span className="flex flex-wrap items-center gap-2">
-              <span>{session.type} interview</span>
+              <span>{t('career.typeInterview', { type: session.type })}</span>
               <span>·</span>
               <span>{session.role}</span>
               <Badge variant="outline" className={`capitalize ${statusColors[session.status] || ''}`}>{String(session.status ?? '').replace('_', ' ')}</Badge>
               {session.completed_at && (
-                <span className="ml-2">Completed {formatDate(session.completed_at)}</span>
+                <span className="ml-2">{t('career.completedDate', { date: formatDate(session.completed_at) })}</span>
               )}
             </span>
           }
           actions={hasFeedback ? (
             <Button variant="outline" className="gap-2" onClick={handleDownload}>
-              <Download className="w-4 h-4" />
-              Download report
-            </Button>
+              <Download className="w-4 h-4" />{t('career.downloadReport')}</Button>
           ) : undefined}
         />
       </div>
@@ -219,7 +215,7 @@ export default function InterviewFeedbackPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-foreground mb-2">Overall recommendation</h2>
+                <h2 className="text-lg font-semibold text-foreground mb-2">{t('career.overallRecommendation')}</h2>
                 {cat && <Badge className={cat.color}>{cat.label}</Badge>}
               </div>
               <div className="text-right">
@@ -236,8 +232,8 @@ export default function InterviewFeedbackPage() {
           <div className="flex items-center gap-3 text-muted-foreground">
             <AlertCircle className="w-5 h-5 shrink-0" />
             <div>
-              <p className="font-medium text-foreground">Feedback not yet available</p>
-              <p className="text-xs mt-0.5">Complete the interview to receive AI-generated feedback.</p>
+              <p className="font-medium text-foreground">{t('career.feedbackNotYetAvailable')}</p>
+              <p className="text-xs mt-0.5">{t('career.completeTheInterviewToReceiveAi406')}</p>
             </div>
           </div>
         </Card>
@@ -246,9 +242,9 @@ export default function InterviewFeedbackPage() {
       {/* Tabs */}
       <Tabs defaultValue={chatLocked ? (analysisLocked ? 'audio' : 'analysis') : 'chat'} className="w-full">
         <TabsList className="grid w-full" style={{ gridTemplateColumns: gridCols }}>
-          {!chatLocked && <TabsTrigger value="chat">Chat transcript</TabsTrigger>}
-          {!analysisLocked && <TabsTrigger value="analysis">Feedback</TabsTrigger>}
-          <TabsTrigger value="audio">Audio</TabsTrigger>
+          {!chatLocked && <TabsTrigger value="chat">{t('career.chatTranscript')}</TabsTrigger>}
+          {!analysisLocked && <TabsTrigger value="analysis">{t('career.feedback')}</TabsTrigger>}
+          <TabsTrigger value="audio">{t('career.audio')}</TabsTrigger>
         </TabsList>
 
         {/* Chat Transcript Tab */}
@@ -257,7 +253,7 @@ export default function InterviewFeedbackPage() {
             {session.questions.length === 0 ? (
               <Card className="rounded-3xl p-8 text-center text-muted-foreground">
                 <MessageSquare className="mx-auto h-8 w-8 mb-2 opacity-50" aria-hidden />
-                <p className="text-sm">No questions recorded for this interview.</p>
+                <p className="text-sm">{t('career.noQuestionsRecordedForThisInterview')}</p>
               </Card>
             ) : (
               <div className="space-y-4">
@@ -273,7 +269,7 @@ export default function InterviewFeedbackPage() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <span className="font-semibold text-foreground text-sm">AI interviewer</span>
+                            <span className="font-semibold text-foreground text-sm">{t('career.aiInterviewer')}</span>
                             <Badge variant="outline" className="text-[10px]">{q.category}</Badge>
                             <Badge variant="outline" className={`text-[10px] ${
                               q.difficulty === 'Hard' ? 'text-red-600 dark:text-red-400' : q.difficulty === 'Medium' ? 'text-amber-700 dark:text-amber-400' : 'text-green-700 dark:text-green-400'
@@ -298,13 +294,13 @@ export default function InterviewFeedbackPage() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="font-semibold text-foreground text-sm">Candidate</span>
+                              <span className="font-semibold text-foreground text-sm">{t('career.candidate')}</span>
                               {q.time_spent_seconds != null && q.time_spent_seconds > 0 && (
                                 <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                                   <Clock className="w-3 h-3" /> {formatTime(q.time_spent_seconds)}
                                 </span>
                               )}
-                              {q.skipped && <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400">Skipped</Badge>}
+                              {q.skipped && <Badge variant="outline" className="text-[10px] text-amber-700 dark:text-amber-400">{t('career.skipped')}</Badge>}
                             </div>
                             <div className="p-3 rounded-2xl bg-muted border border-border">
                               <p className="text-sm text-foreground leading-relaxed">{q.answer}</p>
@@ -316,7 +312,7 @@ export default function InterviewFeedbackPage() {
                       {/* AI Follow-up */}
                       {q.ai_follow_up && (
                         <div className="ml-11 pl-11 border-l-2 border-dashed border-primary/20">
-                          <p className="text-xs text-muted-foreground mb-1 font-medium">AI follow-up</p>
+                          <p className="text-xs text-muted-foreground mb-1 font-medium">{t('career.aiFollowUp')}</p>
                           <p className="text-sm text-foreground/80 italic">{q.ai_follow_up}</p>
                         </div>
                       )}
@@ -333,8 +329,8 @@ export default function InterviewFeedbackPage() {
             {!hasFeedback ? (
               <Card className="rounded-3xl p-8 text-center text-muted-foreground">
                 <BarChart3 className="mx-auto h-8 w-8 mb-2 opacity-50" aria-hidden />
-                <p className="text-sm">No feedback data available for this interview.</p>
-                <p className="text-xs mt-1">Feedback will appear after the interview is completed.</p>
+                <p className="text-sm">{t('career.noFeedbackDataAvailableForThis6d8')}</p>
+                <p className="text-xs mt-1">{t('career.feedbackWillAppearAfterTheInterview91f')}</p>
               </Card>
             ) : (
               <>
@@ -367,7 +363,7 @@ export default function InterviewFeedbackPage() {
                 <Card className="rounded-3xl p-6 border-primary/20 bg-primary/5">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold text-foreground">Overall score</h3>
+                      <h3 className="text-lg font-semibold text-foreground">{t('career.overallScore')}</h3>
                       <span className="text-2xl font-bold tabular-nums text-foreground">{Math.round(overallScore)}%</span>
                     </div>
                     <div className="w-full bg-muted rounded-full h-3">
@@ -388,7 +384,7 @@ export default function InterviewFeedbackPage() {
           ) : (
             <Card className="rounded-3xl p-8 text-center text-muted-foreground">
               <Volume2 className="mx-auto h-8 w-8 mb-2 opacity-50" aria-hidden />
-              <p className="text-sm">Audio recording not available for this interview.</p>
+              <p className="text-sm">{t('career.audioRecordingNotAvailableForThis804')}</p>
             </Card>
           )}
         </TabsContent>
@@ -398,6 +394,7 @@ export default function InterviewFeedbackPage() {
 }
 
 function AudioPlayer({ url }: { url: string }) {
+  const { t } = useT()
   const audioRef = useRef<HTMLAudioElement>(null)
   const [playing, setPlaying] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -443,9 +440,9 @@ function AudioPlayer({ url }: { url: string }) {
     <Card className="rounded-3xl border-border/70 p-6">
       <audio ref={audioRef} src={url} preload="metadata" />
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">Audio recording</h3>
+        <h3 className="text-lg font-semibold text-foreground">{t('career.audioRecording')}</h3>
         <div className="flex items-center gap-4">
-          <Button size="sm" className="rounded-full w-10 h-10 p-0" onClick={togglePlay} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>
+          <Button size="sm" className="rounded-full w-10 h-10 p-0" onClick={togglePlay} title={playing ? t('career.pause') : t('career.play')} aria-label={playing ? t('career.pause') : t('career.play')}>
             {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           </Button>
           <div
@@ -453,7 +450,7 @@ function AudioPlayer({ url }: { url: string }) {
             onClick={seek}
             role="slider"
             tabIndex={0}
-            aria-label="Seek"
+            aria-label={t('career.seek')}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round(progress * 100)}
@@ -474,7 +471,7 @@ function AudioPlayer({ url }: { url: string }) {
         </div>
         <div className="flex items-center gap-2">
           <Volume2 className="w-4 h-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Speed:</span>
+          <span className="text-sm text-muted-foreground">{t('career.speed')}</span>
           {[0.5, 0.75, 1, 1.25, 1.5, 2].map((s) => (
             <Button
               key={s}

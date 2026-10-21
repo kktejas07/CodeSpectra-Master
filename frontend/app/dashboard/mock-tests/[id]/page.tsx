@@ -9,16 +9,19 @@ import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/app/page-kit'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-const DIFFICULTIES = [
-  { id: 'beginner', title: 'Beginner', description: 'Basic concepts and foundational knowledge', icon: Lightbulb, color: 'text-primary', bg: 'bg-primary/10' },
-  { id: 'basic', title: 'Basic', description: 'Standard interview questions and practical usage', icon: Target, color: 'text-primary', bg: 'bg-primary/10' },
-  { id: 'intermediate', title: 'Intermediate', description: 'Complex scenarios and architectural decisions', icon: Zap, color: 'text-primary', bg: 'bg-primary/10' },
-  { id: 'advanced', title: 'Advanced', description: 'Deep dives into internals and performance', icon: BrainCircuit, color: 'text-primary', bg: 'bg-primary/10' },
-  { id: 'expert', title: 'Expert', description: 'System design and highly specialized problems', icon: Sparkles, color: 'text-primary', bg: 'bg-primary/10' },
-]
+const DIFFICULTIES = (t: Translator) => ([
+  { id: 'beginner', title: t('practice.beginner'), description: t('practice.basicConceptsAndFoundationalKnowledge'), icon: Lightbulb, color: 'text-primary', bg: 'bg-primary/10' },
+  { id: 'basic', title: t('practice.basic'), description: t('practice.standardInterviewQuestionsAndPracticalUs'), icon: Target, color: 'text-primary', bg: 'bg-primary/10' },
+  { id: 'intermediate', title: t('practice.intermediate'), description: t('practice.complexScenariosAndArchitecturalDecision'), icon: Zap, color: 'text-primary', bg: 'bg-primary/10' },
+  { id: 'advanced', title: t('practice.advanced'), description: t('practice.deepDivesIntoInternalsAndPerformance'), icon: BrainCircuit, color: 'text-primary', bg: 'bg-primary/10' },
+  { id: 'expert', title: t('practice.expert'), description: t('practice.systemDesignAndHighlySpecializedProblems'), icon: Sparkles, color: 'text-primary', bg: 'bg-primary/10' },
+])
 
 export default function MockTestSetupPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -32,20 +35,20 @@ export default function MockTestSetupPage() {
       const mockTestDetailTour: TourStep[] = [
         {
           target: '[data-tour="mock-test-detail-header"]',
-          title: 'Set test difficulty level',
-          description: 'Configure this company role test for your interview prep so AI matches your level.',
+          title: t('practice.setTestDifficultyLevel'),
+          description: t('practice.configureThisCompanyRoleTestFor950'),
           position: 'bottom',
         },
         {
           target: '[data-tour="mock-test-detail-levels"]',
-          title: 'Pick your difficulty card',
-          description: 'Select one card from Beginner to Expert to set question depth for your test.',
+          title: t('practice.pickYourDifficultyCard'),
+          description: t('practice.selectOneCardFromBeginnerTo530'),
           position: 'top',
         },
         {
           target: '[data-tour="mock-test-detail-continue"]',
-          title: 'Continue to start test',
-          description: 'Where next: select a level first, then Continue to open your generated test.',
+          title: t('practice.continueToStartTest'),
+          description: t('practice.whereNextSelectALevelFirstc80'),
           position: 'top',
         },
       ]
@@ -68,19 +71,19 @@ export default function MockTestSetupPage() {
     <div className="flex-1 space-y-6">
       <div data-tour="mock-test-detail-header">
         <PageHeader
-          title="Set up your test"
-          description="How comfortable are you with this role's core topics? Pick the level that fits."
+          title={t('practice.setUpYourTest')}
+          description={t('practice.howComfortableAreYouWithThisb75')}
           className="mb-0"
           icon={
-            <button type="button" onClick={() => router.back()} aria-label="Go back" className="flex h-full w-full items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-primary">
+            <button type="button" onClick={() => router.back()} aria-label={t('practice.goBack')} className="flex h-full w-full items-center justify-center rounded-xl focus-visible:outline-2 focus-visible:outline-primary">
               <ArrowLeft />
             </button>
           }
         />
       </div>
 
-      <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Difficulty" data-tour="mock-test-detail-levels">
-        {DIFFICULTIES.map((diff) => (
+      <div className="cs-stagger grid gap-4 md:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label={t('practice.difficulty')} data-tour="mock-test-detail-levels">
+        {DIFFICULTIES(t).map((diff) => (
           <Card 
             key={diff.id} 
             role="radio"
@@ -111,7 +114,7 @@ export default function MockTestSetupPage() {
           onClick={handleStart}
           className="w-full sm:w-auto"
         >
-          {isSubmitting ? 'Starting…' : 'Continue to test'}
+          {isSubmitting ? t('practice.starting') : t('practice.continueToTest')}
         </Button>
       </div>
     </div>

@@ -7,6 +7,8 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import { sendWebPushToUser, userAllowsPush } from '@/lib/pwa/web-push'
+import { outboundT } from '@/lib/i18n/outbound'
+import { localeForUser } from '@/lib/i18n/recipient'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,9 +22,11 @@ export async function POST(req: Request) {
     if (!(await userAllowsPush(gate.user.id, 'push.test'))) {
       return NextResponse.json({ error: 'Push notifications are switched off for your account' }, { status: 409 })
     }
+    // In the user's interface language (lib/i18n/messages/*/notify.json).
+    const t = outboundT('notify', await localeForUser(gate.user.id))
     const sent = await sendWebPushToUser(gate.user.id, {
-      title: 'Notifications are working',
-      body: 'You will get alerts for contests, results and your study plan here.',
+      title: t('push.test.title'),
+      body: t('push.test.body'),
       link: '/dashboard/notifications/preferences',
       data: { type: 'push.test' },
     }, { urgent: true })

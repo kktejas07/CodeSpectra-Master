@@ -24,6 +24,6 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const user = await withUser()
   if (!user) return unauthorized()
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   return guarded('create', async () => respond(await createContest(user, await readJson(req))))
 }

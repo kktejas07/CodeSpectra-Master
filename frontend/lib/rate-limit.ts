@@ -21,7 +21,7 @@ export async function limitRequest(
   const rl = await rateLimitRedis(`${name}:${key}`, maxHits, windowMs)
   if (rl.ok) return null
   return NextResponse.json(
-    { error: 'Too many requests. Please wait a moment and try again.' },
+    { error: 'Too many requests. Please wait a moment and try again.', code: 'rate_limited', params: { seconds: rl.retryAfterSec } },
     { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
   )
 }

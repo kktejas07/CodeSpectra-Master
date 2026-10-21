@@ -52,7 +52,7 @@ export async function GET(
   const { slug } = await ctx.params
   const decoded = decodeURIComponent(slug || '').trim()
   if (!decoded || !SLUG_RE.test(decoded)) {
-    return NextResponse.json({ error: 'user not found' }, { status: 404 })
+    return NextResponse.json({ error: 'user not found', code: 'user_not_found' }, { status: 404 })
   }
 
   const db = await getMongoDb()
@@ -64,7 +64,7 @@ export async function GET(
     (await users.findOne({ username: decoded }, { projection })) ||
     (await users.findOne({ username: { $regex: `^${sanitizeRegex(decoded)}$`, $options: 'i' } }, { projection }))
 
-  if (!user?.id) return NextResponse.json({ error: 'user not found' }, { status: 404 })
+  if (!user?.id) return NextResponse.json({ error: 'user not found', code: 'user_not_found' }, { status: 404 })
 
   const userId = String(user.id)
   const submissions = db.collection<SubmissionRow>('submissions')

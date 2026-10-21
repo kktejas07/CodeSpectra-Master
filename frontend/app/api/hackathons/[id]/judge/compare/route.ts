@@ -99,7 +99,7 @@ export async function POST(
   ctx: { params: Promise<{ id: string }> },
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const userId = user.id
 
   const rateCheck = await rateLimitAIRedis(req, userId)
@@ -110,21 +110,21 @@ export async function POST(
   const { id } = await ctx.params
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
-  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!hk) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   if (user.role === 'tenant_admin' && (!user.tenantId || hk.tenant_id !== user.tenantId)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const isJudge = (hk.judges || []).includes(user.id)
   if (!isAdmin && !isJudge) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   let body: { aSubmissionId?: unknown; bSubmissionId?: unknown; criterion?: unknown }
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const aId = str(body.aSubmissionId).trim()
   const bId = str(body.bSubmissionId).trim()

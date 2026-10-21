@@ -21,6 +21,9 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import type { BotChannel } from '@/lib/ats/contract'
 import { PlatformAdminHint } from '@/components/hiring/platform-admin-hint'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface RegionRow { key: string; whatsapp_phone_number_id: string; whatsapp_display_number: string; call_number: string; vapi_phone_number_id: string; provider: 'vapi' | 'exotel' | 'twilio' }
 interface Status {
@@ -50,26 +53,29 @@ interface Call {
   answers: Record<string, unknown>; score: number | null; summary: string | null; error?: string | null; recording_url?: string | null
 }
 
-const CHANNEL_LABEL: Record<BotChannel, string> = { whatsapp_chat: 'WhatsApp chat', whatsapp_call: 'WhatsApp call', phone_call: 'Phone call' }
+const CHANNEL_LABEL = (t: Translator): Record<BotChannel, string> => ({ whatsapp_chat: t('hiring.whatsappChat'), whatsapp_call: t('hiring.whatsappCall'), phone_call: t('hiring.phoneCall') })
 const ACTIVE = ['queued', 'permission_requested', 'ringing', 'in_progress']
 
 function StatePill({ ok, label }: { ok: boolean; label?: string }) {
+  const { t } = useT()
   return ok
-    ? <Badge variant="success">{label || 'Connected'}</Badge>
-    : <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300">{label || 'Simulated — not configured'}</Badge>
+    ? <Badge variant="success">{label || t('hiring.connected')}</Badge>
+    : <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300">{label || t('hiring.simulatedNotConfigured')}</Badge>
 }
 
 function KeyLine({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  const { t } = useT()
   return (
     <li className="flex items-center gap-2 text-sm">
       {ok ? <Check className="h-4 w-4 text-green-600 dark:text-green-400" aria-hidden /> : <X className="h-4 w-4 text-muted-foreground" aria-hidden />}
       <span className={ok ? 'text-foreground' : 'text-muted-foreground'}>{children}</span>
-      <span className="sr-only">{ok ? 'configured' : 'missing'}</span>
+      <span className="sr-only">{ok ? t('hiring.configured') : t('hiring.missing2')}</span>
     </li>
   )
 }
 
 function CopyField({ label, value }: { label: string; value: string }) {
+  const { t } = useT()
   const [done, setDone] = useState(false)
   return (
     <div className="space-y-1">
@@ -77,7 +83,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
       <div className="flex gap-2">
         <Input readOnly value={value} className="font-mono text-xs" aria-label={label} onFocus={(e) => e.currentTarget.select()} />
         <Button
-          type="button" variant="outline" size="icon" aria-label={`Copy ${label}`}
+          type="button" variant="outline" size="icon" aria-label={t('hiring.copyLabel', { label })}
           onClick={async () => { try { await navigator.clipboard.writeText(value); setDone(true); setTimeout(() => setDone(false), 1500) } catch { /* ignore */ } }}
         >
           {done ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
@@ -90,6 +96,8 @@ function CopyField({ label, value }: { label: string; value: string }) {
 // ─── Test with my number ────────────────────────────────────────────────────
 
 function TestPanel({ q, status }: { q: string; status: Status }) {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const addToast = useToast()
   const [phone, setPhone] = useState('')
   const [channel, setChannel] = useState<BotChannel>('whatsapp_chat')
@@ -116,11 +124,11 @@ function TestPanel({ q, status }: { q: string; status: Status }) {
     try {
       const res = await csrfFetch(`/api/ats/screening/test${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone, channel }) })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Could not start the test')
+      if (!res.ok) throw new Error(apiError(json, tr('hiring.couldNotStartTheTest')))
       setCall(json.call)
-      addToast({ type: 'success', title: json.call?.simulated ? 'Simulated test started' : 'Test started — check your phone' })
+      addToast({ type: 'success', title: json.call?.simulated ? tr('hiring.simulatedTestStarted') : tr('hiring.testStartedCheckYourPhone') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Test failed', message: (e as Error).message })
+      addToast({ type: 'error', title: tr('hiring.testFailed'), message: (e as Error).message })
     } finally {
       setBusy(false)
     }
@@ -132,11 +140,11 @@ function TestPanel({ q, status }: { q: string; status: Status }) {
     try {
       const res = await csrfFetch(`/api/ats/screening/${call.id}${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Could not update')
+      if (!res.ok) throw new Error(apiError(json, tr('hiring.couldNotUpdate')))
       if (json.call) setCall(json.call)
       setReply('')
     } catch (e) {
-      addToast({ type: 'error', title: 'Could not send', message: (e as Error).message })
+      addToast({ type: 'error', title: tr('hiring.couldNotSend'), message: (e as Error).message })
     } finally {
       setBusy(false)
     }
@@ -146,40 +154,39 @@ function TestPanel({ q, status }: { q: string; status: Status }) {
     <Panel>
       <div className="grid gap-4 sm:grid-cols-[1fr_200px_auto] sm:items-end">
         <div className="space-y-1">
-          <Label htmlFor="test-phone">Your phone number</Label>
+          <Label htmlFor="test-phone">{tr('hiring.yourPhoneNumber')}</Label>
           <Input id="test-phone" type="tel" inputMode="tel" placeholder="+91 98765 43210" value={phone} onChange={(e) => setPhone(e.target.value)} />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="test-channel">Channel</Label>
+          <Label htmlFor="test-channel">{tr('hiring.channel')}</Label>
           <Select value={channel} onValueChange={(v) => setChannel(v as BotChannel)}>
             <SelectTrigger id="test-channel"><SelectValue /></SelectTrigger>
             <SelectContent>
-              {(Object.keys(CHANNEL_LABEL) as BotChannel[]).map((c) => <SelectItem key={c} value={c}>{CHANNEL_LABEL[c]}</SelectItem>)}
+              {(Object.keys(CHANNEL_LABEL(tr)) as BotChannel[]).map((c) => <SelectItem key={c} value={c}>{CHANNEL_LABEL(tr)[c]}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <Button onClick={start} disabled={busy || !phone.trim()} className="min-h-11">
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />} Test with my number
-        </Button>
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Phone className="mr-2 h-4 w-4" />}{' '}{tr('hiring.testWithMyNumber')}</Button>
       </div>
       <p className="mt-2 text-sm text-muted-foreground">
         {configured
-          ? 'Runs the real flow on your phone with three sample questions. Nothing is added to a pipeline.'
-          : 'This channel isn’t configured, so the test is simulated — nothing is sent. Reply below as if you were the candidate.'}
+          ? tr('hiring.runsTheRealFlowOnYoure63')
+          : tr('hiring.thisChannelIsntConfiguredSoThecd1')}
       </p>
 
       {call && (
         <div className="mt-5 space-y-3 rounded-2xl border border-border bg-muted/30 p-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium text-foreground">{CHANNEL_LABEL[call.channel]}</span>
+            <span className="font-medium text-foreground">{CHANNEL_LABEL(tr)[call.channel]}</span>
             <Badge variant="outline">{call.status.replace(/_/g, ' ')}</Badge>
-            {call.simulated && <StatePill ok={false} label="Simulated" />}
-            {typeof call.score === 'number' && <span className="ml-auto font-mono text-sm tabular-nums text-foreground">Score {call.score}/100</span>}
+            {call.simulated && <StatePill ok={false} label={tr('hiring.simulated')} />}
+            {typeof call.score === 'number' && <span className="ml-auto font-mono text-sm tabular-nums text-foreground">{tr('hiring.scoreScore100', { score: call.score })}</span>}
           </div>
           <ol className="max-h-80 space-y-2 overflow-y-auto" aria-live="polite">
             {call.transcript.map((t, i) => (
               <li key={i} className={t.role === 'bot' ? 'mr-8 rounded-xl bg-card px-3 py-2 text-sm text-foreground' : 'ml-8 rounded-xl bg-primary/10 px-3 py-2 text-sm text-foreground'}>
-                <span className="sr-only">{t.role === 'bot' ? 'Bot: ' : 'You: '}</span>{t.text}
+                <span className="sr-only">{t.role === 'bot' ? tr('hiring.bot') : tr('hiring.you')}</span>{t.text}
               </li>
             ))}
           </ol>
@@ -189,14 +196,14 @@ function TestPanel({ q, status }: { q: string; status: Status }) {
             <div className="space-y-2">
               {(call.step === 'awaiting_consent' || call.step === 'asking') && (
                 <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (reply.trim()) void simulate({ event: 'reply', text: reply }) }}>
-                  <Input aria-label="Reply as the candidate" placeholder="Reply as the candidate (e.g. yes, 4, I want to grow…)" value={reply} onChange={(e) => setReply(e.target.value)} />
-                  <Button type="submit" size="icon" aria-label="Send reply" disabled={busy || !reply.trim()}><Send className="h-4 w-4" /></Button>
+                  <Input aria-label={tr('hiring.replyAsTheCandidate')} placeholder={tr('hiring.replyAsTheCandidateEG7f0')} value={reply} onChange={(e) => setReply(e.target.value)} />
+                  <Button type="submit" size="icon" aria-label={tr('hiring.sendReply')} disabled={busy || !reply.trim()}><Send className="h-4 w-4" /></Button>
                 </form>
               )}
               {call.step === 'awaiting_permission' && (
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="outline" onClick={() => simulate({ event: 'permission', accept: true })} disabled={busy}>Allow call</Button>
-                  <Button variant="outline" onClick={() => simulate({ event: 'permission', accept: false })} disabled={busy}>Decline call</Button>
+                  <Button variant="outline" onClick={() => simulate({ event: 'permission', accept: true })} disabled={busy}>{tr('hiring.allowCall')}</Button>
+                  <Button variant="outline" onClick={() => simulate({ event: 'permission', accept: false })} disabled={busy}>{tr('hiring.declineCall')}</Button>
                 </div>
               )}
               {call.step === 'calling' && (
@@ -204,19 +211,19 @@ function TestPanel({ q, status }: { q: string; status: Status }) {
                   <Button variant="outline" disabled={busy} onClick={() => simulate({
                     event: 'call_report',
                     transcript: [
-                      { role: 'bot', text: 'Are you open to working from our office?' }, { role: 'candidate', text: 'Yes, I am.' },
-                      { role: 'bot', text: 'How many years of experience do you have?' }, { role: 'candidate', text: 'About five years.' },
-                      { role: 'bot', text: 'What are you looking for next?' }, { role: 'candidate', text: 'A product team where I can own backend services end to end.' },
+                      { role: 'bot', text: tr('hiring.areYouOpenToWorkingFrombe4') }, { role: 'candidate', text: tr('hiring.yesIAm') },
+                      { role: 'bot', text: tr('hiring.howManyYearsOfExperienceDoc2b') }, { role: 'candidate', text: tr('hiring.aboutFiveYears') },
+                      { role: 'bot', text: tr('hiring.whatAreYouLookingForNext') }, { role: 'candidate', text: tr('hiring.aProductTeamWhereICane2c') },
                     ],
                     answers: { q_relocate: true, q_years: 5 },
-                  })}>Finish call with sample answers</Button>
-                  <Button variant="outline" onClick={() => simulate({ event: 'no_answer' })} disabled={busy}>No answer</Button>
+                  })}>{tr('hiring.finishCallWithSampleAnswers')}</Button>
+                  <Button variant="outline" onClick={() => simulate({ event: 'no_answer' })} disabled={busy}>{tr('hiring.noAnswer')}</Button>
                 </div>
               )}
             </div>
           )}
           {!call.simulated && ACTIVE.includes(call.status) && (
-            <Button variant="ghost" size="sm" onClick={() => void refresh(call.id)}><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" /> Waiting for replies…</Button>
+            <Button variant="ghost" size="sm" onClick={() => void refresh(call.id)}><Loader2 className="mr-2 h-4 w-4 animate-spin motion-reduce:animate-none" />{' '}{tr('hiring.waitingForReplies')}</Button>
           )}
         </div>
       )}
@@ -238,6 +245,8 @@ function toRows(regions: SettingsResp['settings']['regions']): RegionRow[] {
 }
 
 function ScreeningSettingsInner() {
+  const apiError = useApiError()
+  const { t } = useT()
   const sp = useSearchParams()
   const tenant = sp.get('tenant')
   const q = tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''
@@ -253,7 +262,7 @@ function ScreeningSettingsInner() {
     try {
       const res = await fetch(`/api/ats/screening/settings${q}`, { credentials: 'include', cache: 'no-store' })
       const json = await res.json()
-      if (!res.ok) { setError(json.error || 'Could not load settings'); return }
+      if (!res.ok) { setError(apiError(json, t('hiring.couldNotLoadSettings'))); return }
       setData(json)
       setError(null)
       const s = json.settings as SettingsResp['settings']
@@ -264,7 +273,7 @@ function ScreeningSettingsInner() {
         reminder: s.reminder_after_hours, timeout: s.reply_timeout_hours, permission: s.permission_timeout_hours, retry: s.retry_delay_hours,
       })
     } catch {
-      setError('Could not load settings')
+      setError(t('hiring.couldNotLoadSettings'))
     }
   }, [q])
   useEffect(() => { void load() }, [load])
@@ -292,11 +301,11 @@ function ScreeningSettingsInner() {
         }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Save failed')
-      addToast({ type: 'success', title: 'Screening settings saved' })
+      if (!res.ok) throw new Error(apiError(json, t('hiring.saveFailed')))
+      addToast({ type: 'success', title: t('hiring.screeningSettingsSaved') })
       await load()
     } catch (e) {
-      addToast({ type: 'error', title: 'Could not save', message: (e as Error).message })
+      addToast({ type: 'error', title: t('hiring.couldNotSave'), message: (e as Error).message })
     } finally {
       setSaving(false)
     }
@@ -307,20 +316,20 @@ function ScreeningSettingsInner() {
     try {
       const res = await csrfFetch(`/api/ats/screening/settings${q}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'apply_sip', phone_number_id: pnid }) })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Failed')
-      addToast({ type: 'success', title: 'WhatsApp calling enabled on this number' })
+      if (!res.ok) throw new Error(apiError(json, t('hiring.failed')))
+      addToast({ type: 'success', title: t('hiring.whatsappCallingEnabledOnThisNumber') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Could not enable calling', message: (e as Error).message })
+      addToast({ type: 'error', title: t('hiring.couldNotEnableCalling'), message: (e as Error).message })
     } finally {
       setApplying(null)
     }
   }
 
   if (error) {
-    return <EmptyState illustration="locked" title="Bot screening settings aren't available" description={error} actionLabel="Back to hiring" actionHref="/dashboard/hiring" />
+    return <EmptyState illustration="locked" title={t('hiring.botScreeningSettingsArentAvailable')} description={error} actionLabel={t('hiring.backToHiring')} actionHref="/dashboard/hiring" />
   }
   if (!data) {
-    return <div className="flex min-h-[40vh] items-center justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" /><span className="sr-only">Loading</span></div>
+    return <div className="flex min-h-[40vh] items-center justify-center" role="status"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground motion-reduce:animate-none" /><span className="sr-only">{t('hiring.loading')}</span></div>
   }
   const st = data.status
   const edit = data.can_edit
@@ -329,47 +338,46 @@ function ScreeningSettingsInner() {
   return (
     <div className="space-y-8">
       <PageHeader
-        title="Bot screening"
-        description="Candidates are screened on WhatsApp chat, WhatsApp calls or a regional phone number — tried in the order each job's stage sets. Messages and calls only go out between your outreach hours, in the candidate's local time."
+        title={t('hiring.botScreening')}
+        description={t('hiring.candidatesAreScreenedOnWhatsappChat805')}
         icon={<Bot />}
         illustration="integrations"
       />
 
-      <Section title="Connections" description="Which providers are set up. Channels that aren't use a simulated provider, so you can try the flow without sending anything.">
+      <Section title={t('hiring.connections')} description={t('hiring.whichProvidersAreSetUpChannelsfa4')}>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Panel className="p-5">
-            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">WhatsApp chat</h3><StatePill ok={st.whatsapp.ready} /></div>
+            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">{t('hiring.whatsappChat')}</h3><StatePill ok={st.whatsapp.ready} /></div>
             <ul className="space-y-1.5">
-              <KeyLine ok={st.whatsapp.access_token}>Access token</KeyLine>
-              <KeyLine ok={st.whatsapp.app_secret}>App secret</KeyLine>
-              <KeyLine ok={st.whatsapp.verify_token}>Webhook verify token</KeyLine>
-              <KeyLine ok={st.whatsapp.default_number || rows.some((r) => r.whatsapp_phone_number_id)}>A WhatsApp number</KeyLine>
+              <KeyLine ok={st.whatsapp.access_token}>{t('hiring.accessToken')}</KeyLine>
+              <KeyLine ok={st.whatsapp.app_secret}>{t('hiring.appSecret')}</KeyLine>
+              <KeyLine ok={st.whatsapp.verify_token}>{t('hiring.webhookVerifyToken')}</KeyLine>
+              <KeyLine ok={st.whatsapp.default_number || rows.some((r) => r.whatsapp_phone_number_id)}>{t('hiring.aWhatsappNumber')}</KeyLine>
             </ul>
           </Panel>
           <Panel className="p-5">
-            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">WhatsApp calls</h3><StatePill ok={st.whatsapp_call.ready} /></div>
+            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">{t('hiring.whatsappCalls')}</h3><StatePill ok={st.whatsapp_call.ready} /></div>
             <ul className="space-y-1.5">
-              <KeyLine ok={st.whatsapp.ready}>WhatsApp chat connected</KeyLine>
-              <KeyLine ok={st.whatsapp_call.voice_agent_sip_uri || !!form.voice_agent_sip_uri}>Voice agent SIP URI</KeyLine>
-              <KeyLine ok={st.vapi.whatsapp_trunk || st.voice_agent_webhook}>Agent dialer (Vapi trunk or custom)</KeyLine>
+              <KeyLine ok={st.whatsapp.ready}>{t('hiring.whatsappChatConnected')}</KeyLine>
+              <KeyLine ok={st.whatsapp_call.voice_agent_sip_uri || !!form.voice_agent_sip_uri}>{t('hiring.voiceAgentSipUri')}</KeyLine>
+              <KeyLine ok={st.vapi.whatsapp_trunk || st.voice_agent_webhook}>{t('hiring.agentDialerVapiTrunkOrCustom')}</KeyLine>
             </ul>
-            <p className="mt-2 text-xs text-muted-foreground">Mode: {st.whatsapp.call_mode === 'graph' ? 'Graph API (WebRTC)' : 'SIP'}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{t('hiring.modeValue', { value: st.whatsapp.call_mode === 'graph' ? t('hiring.graphApiWebrtc') : t('hiring.sip') })}</p>
           </Panel>
           <Panel className="p-5">
-            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">Phone calls</h3><StatePill ok={st.vapi.ready || st.voice_agent_webhook} /></div>
+            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">{t('hiring.phoneCalls')}</h3><StatePill ok={st.vapi.ready || st.voice_agent_webhook} /></div>
             <ul className="space-y-1.5">
-              <KeyLine ok={st.vapi.api_key}>Vapi API key</KeyLine>
-              <KeyLine ok={st.vapi.webhook_secret}>Vapi webhook secret</KeyLine>
-              <KeyLine ok={st.vapi.regions.length > 0 || rows.some((r) => r.vapi_phone_number_id)}>
-                Regional numbers{st.vapi.regions.length ? ` (${st.vapi.regions.join(', ')})` : ''}
+              <KeyLine ok={st.vapi.api_key}>{t('hiring.vapiApiKey')}</KeyLine>
+              <KeyLine ok={st.vapi.webhook_secret}>{t('hiring.vapiWebhookSecret')}</KeyLine>
+              <KeyLine ok={st.vapi.regions.length > 0 || rows.some((r) => r.vapi_phone_number_id)}>{t('hiring.regionalNumbers')}{st.vapi.regions.length ? ` (${st.vapi.regions.join(', ')})` : ''}
               </KeyLine>
-              <KeyLine ok={st.twilio}>Twilio status callbacks (optional)</KeyLine>
-              <KeyLine ok={st.exotel}>Exotel status callbacks (optional)</KeyLine>
+              <KeyLine ok={st.twilio}>{t('hiring.twilioStatusCallbacksOptional')}</KeyLine>
+              <KeyLine ok={st.exotel}>{t('hiring.exotelStatusCallbacksOptional')}</KeyLine>
             </ul>
           </Panel>
           <Panel className="p-5">
-            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">Voice notes</h3><StatePill ok={st.deepgram} label={st.deepgram ? 'Transcribed' : 'Ask to type'} /></div>
-            <p className="text-sm text-muted-foreground">With a Deepgram key, voice-note answers on WhatsApp are transcribed. Without it, candidates are asked to type instead.</p>
+            <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold text-foreground">{t('hiring.voiceNotes')}</h3><StatePill ok={st.deepgram} label={st.deepgram ? t('hiring.transcribed') : t('hiring.askToType')} /></div>
+            <p className="text-sm text-muted-foreground">{t('hiring.withADeepgramKeyVoiceNote1d0')}</p>
           </Panel>
         </div>
       </Section>
@@ -385,60 +393,60 @@ function ScreeningSettingsInner() {
       )}
 
       <Section
-        title="Numbers per region"
-        description="Pick numbers by the candidate's country (or their phone's country code). Use * for your default. Leave empty to use the platform's numbers."
-        actions={edit ? <Button variant="outline" onClick={() => setRows((r) => [...r, { key: '', whatsapp_phone_number_id: '', whatsapp_display_number: '', call_number: '', vapi_phone_number_id: '', provider: 'vapi' }])}><Plus className="mr-2 h-4 w-4" /> Add region</Button> : null}
+        title={t('hiring.numbersPerRegion')}
+        description={t('hiring.pickNumbersByTheCandidatesCountrybda')}
+        actions={edit ? <Button variant="outline" onClick={() => setRows((r) => [...r, { key: '', whatsapp_phone_number_id: '', whatsapp_display_number: '', call_number: '', vapi_phone_number_id: '', provider: 'vapi' }])}><Plus className="mr-2 h-4 w-4" />{' '}{t('hiring.addRegion')}</Button> : null}
       >
         {rows.length === 0 ? (
           <EmptyState
             compact
             illustration="integrations"
-            title="No regional numbers yet"
-            description="Screening uses the platform's default WhatsApp number and regional caller numbers. Add a region to use your own."
+            title={t('hiring.noRegionalNumbersYet')}
+            description={t('hiring.screeningUsesThePlatformsDefaultWhatsapp413')}
           />
         ) : (
           <div className="space-y-3">
             {rows.map((r, i) => (
               <Panel key={i} className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-[90px_1fr_1fr_1fr_1fr_130px_auto] lg:items-end">
                 <div className="space-y-1">
-                  <Label htmlFor={`rk-${i}`}>Country</Label>
-                  <Input id={`rk-${i}`} placeholder="IN" maxLength={2} value={r.key} disabled={!edit} onChange={(e) => setRow(i, { key: e.target.value.toUpperCase() })} />
+                  <Label htmlFor={`rk-${i}`}>{t('hiring.country')}</Label>
+                  <Input id={`rk-${i}`} placeholder={t('hiring.in2')} maxLength={2} value={r.key} disabled={!edit} onChange={(e) => setRow(i, { key: e.target.value.toUpperCase() })} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`rw-${i}`}>WhatsApp phone number ID</Label>
+                  <Label htmlFor={`rw-${i}`}>{t('hiring.whatsappPhoneNumberId')}</Label>
                   <Input id={`rw-${i}`} inputMode="numeric" value={r.whatsapp_phone_number_id} disabled={!edit} onChange={(e) => setRow(i, { whatsapp_phone_number_id: e.target.value.trim() })} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`rd-${i}`}>WhatsApp number</Label>
+                  <Label htmlFor={`rd-${i}`}>{t('hiring.whatsappNumber')}</Label>
                   <Input id={`rd-${i}`} type="tel" placeholder="+91…" value={r.whatsapp_display_number} disabled={!edit} onChange={(e) => setRow(i, { whatsapp_display_number: e.target.value })} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`rc-${i}`}>Caller number</Label>
+                  <Label htmlFor={`rc-${i}`}>{t('hiring.callerNumber')}</Label>
                   <Input id={`rc-${i}`} type="tel" placeholder="+91…" value={r.call_number} disabled={!edit} onChange={(e) => setRow(i, { call_number: e.target.value })} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`rv-${i}`}>Vapi phone number ID</Label>
+                  <Label htmlFor={`rv-${i}`}>{t('hiring.vapiPhoneNumberId')}</Label>
                   <Input id={`rv-${i}`} value={r.vapi_phone_number_id} disabled={!edit} onChange={(e) => setRow(i, { vapi_phone_number_id: e.target.value.trim() })} />
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor={`rp-${i}`}>Carrier</Label>
+                  <Label htmlFor={`rp-${i}`}>{t('hiring.carrier')}</Label>
                   <Select value={r.provider} onValueChange={(v) => setRow(i, { provider: v as RegionRow['provider'] })} disabled={!edit}>
                     <SelectTrigger id={`rp-${i}`}><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="vapi">Vapi number</SelectItem>
-                      <SelectItem value="exotel">Exotel (India)</SelectItem>
-                      <SelectItem value="twilio">Twilio</SelectItem>
+                      <SelectItem value="vapi">{t('hiring.vapiNumber')}</SelectItem>
+                      <SelectItem value="exotel">{t('hiring.exotelIndia')}</SelectItem>
+                      <SelectItem value="twilio">{t('hiring.twilio')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex gap-2">
                   {edit && r.whatsapp_phone_number_id && (
                     <Button variant="outline" size="sm" className="min-h-10" disabled={applying === r.whatsapp_phone_number_id} onClick={() => applySip(r.whatsapp_phone_number_id)}>
-                      {applying === r.whatsapp_phone_number_id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Enable calls'}
+                      {applying === r.whatsapp_phone_number_id ? <Loader2 className="h-4 w-4 animate-spin" /> : t('hiring.enableCalls')}
                     </Button>
                   )}
                   {edit && (
-                    <Button variant="ghost" size="icon" aria-label={`Remove region ${r.key || i + 1}`} onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))}>
+                    <Button variant="ghost" size="icon" aria-label={t('hiring.removeRegionValue', { value: r.key || i + 1 })} onClick={() => setRows((rs) => rs.filter((_, k) => k !== i))}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
@@ -449,23 +457,23 @@ function ScreeningSettingsInner() {
         )}
       </Section>
 
-      <Section title="Messages and timing">
+      <Section title={t('hiring.messagesAndTiming')}>
         <Panel>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="space-y-1">
-              <Label htmlFor="tc">Chat template name</Label>
+              <Label htmlFor="tc">{t('hiring.chatTemplateName')}</Label>
               <Input id="tc" placeholder={st.whatsapp.template_chat} value={form.template_chat} disabled={!edit} onChange={(e) => setForm({ ...form, template_chat: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="tl">Call template name</Label>
+              <Label htmlFor="tl">{t('hiring.callTemplateName')}</Label>
               <Input id="tl" placeholder={st.whatsapp.template_call} value={form.template_call} disabled={!edit} onChange={(e) => setForm({ ...form, template_call: e.target.value })} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="tg">Template language</Label>
+              <Label htmlFor="tg">{t('hiring.templateLanguage')}</Label>
               <Input id="tg" placeholder={st.whatsapp.template_language} value={form.template_language} disabled={!edit} onChange={(e) => setForm({ ...form, template_language: e.target.value })} />
             </div>
             <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-              <Label htmlFor="sip">Your voice agent SIP URI (optional — overrides the platform agent)</Label>
+              <Label htmlFor="sip">{t('hiring.yourVoiceAgentSipUriOptional6b9')}</Label>
               <Input id="sip" placeholder="sip:agent.example.com:5061" value={form.voice_agent_sip_uri} disabled={!edit} onChange={(e) => setForm({ ...form, voice_agent_sip_uri: e.target.value })} />
             </div>
             {([
@@ -482,25 +490,24 @@ function ScreeningSettingsInner() {
           {edit && (
             <div className="mt-5 flex justify-end">
               <Button onClick={save} disabled={saving} className="min-h-11">
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Save settings
-              </Button>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}{' '}{t('hiring.saveSettings')}</Button>
             </div>
           )}
         </Panel>
       </Section>
 
-      <Section title="Webhook URLs" description="Paste these into Meta, Vapi, Twilio and Exotel. The tick URL is for your scheduler (every 5 minutes, Bearer CRON_SECRET).">
+      <Section title={t('hiring.webhookUrls')} description={t('hiring.pasteTheseIntoMetaVapiTwilio4e6')}>
         <Panel className="grid gap-4 md:grid-cols-2">
-          <CopyField label="WhatsApp (Meta) — fields: messages, calls" value={data.webhooks.whatsapp} />
-          <CopyField label="Vapi server URL" value={data.webhooks.vapi} />
-          <CopyField label="Twilio status callback" value={data.webhooks.twilio} />
-          <CopyField label="Exotel status callback" value={data.webhooks.exotel} />
-          <CopyField label="Scheduler tick" value={data.webhooks.tick} />
+          <CopyField label={t('hiring.whatsappMetaFieldsMessagesCalls')} value={data.webhooks.whatsapp} />
+          <CopyField label={t('hiring.vapiServerUrl')} value={data.webhooks.vapi} />
+          <CopyField label={t('hiring.twilioStatusCallback')} value={data.webhooks.twilio} />
+          <CopyField label={t('hiring.exotelStatusCallback')} value={data.webhooks.exotel} />
+          <CopyField label={t('hiring.schedulerTick')} value={data.webhooks.tick} />
         </Panel>
       </Section>
 
       {edit && (
-        <Section title="Test with my number" description="Try a channel end to end before candidates see it.">
+        <Section title={t('hiring.testWithMyNumber')} description={t('hiring.tryAChannelEndToEnd37c')}>
           <TestPanel q={q} status={st} />
         </Section>
       )}

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { Field, StatusPill, ctcRange, errorOf, fieldClass, fmtDate, money } from '@/components/campus/shared'
+import { useT } from '@/lib/i18n/client'
 
 interface DriveCard {
   id: string; title: string; company: string; role_title: string; description: string
@@ -51,6 +52,7 @@ export default function CampusPage() {
 }
 
 function CampusInner() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const params = useSearchParams()
@@ -81,20 +83,20 @@ function CampusInner() {
     <div className="w-full space-y-8">
       <PageHeader
         icon={<GraduationCap aria-hidden />}
-        title="Campus"
-        description="Placement drives from your college, your applications and offers."
+        title={t('career.campus')}
+        description={t('career.placementDrivesFromYourCollegeYour84a')}
         actions={data?.staff ? (
-          <Button asChild size="sm"><Link href="/dashboard/placement">Open placement console</Link></Button>
+          <Button asChild size="sm"><Link href="/dashboard/placement">{t('career.openPlacementConsole')}</Link></Button>
         ) : undefined}
       />
 
-      {error && <EmptyState illustration="error" title="We couldn't load your campus page" description="Check your connection and try again." actionLabel="Try again" onAction={refresh} />}
+      {error && <EmptyState illustration="error" title={t('career.weCouldntLoadYourCampusPage')} description={t('career.checkYourConnectionAndTryAgain')} actionLabel={t('common.tryAgain')} onAction={refresh} />}
 
       {data && invite && (
         <InviteJoin token={invite} onDone={(msg) => { addToast({ type: 'success', title: msg }); router.replace('/dashboard/campus'); refresh() }} />
       )}
 
-      {data?.can_onboard && <OnboardCollege onDone={() => { addToast({ type: 'success', title: 'Your college is set up' }); router.push('/dashboard/placement') }} />}
+      {data?.can_onboard && <OnboardCollege onDone={() => { addToast({ type: 'success', title: t('career.yourCollegeIsSetUp') }); router.push('/dashboard/placement') }} />}
 
       {data && !invite && data.memberships.length === 0 && !data.staff && (
         <SelfJoin colleges={data.joinable} onDone={(msg) => { addToast({ type: 'success', title: msg }); refresh() }} />
@@ -106,6 +108,7 @@ function CampusInner() {
 }
 
 function InviteJoin({ token, onDone }: { token: string; onDone: (msg: string) => void }) {
+  const { t } = useT()
   const [roll, setRoll] = useState('')
   const [needsRoll, setNeedsRoll] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -121,7 +124,7 @@ function InviteJoin({ token, onDone }: { token: string; onDone: (msg: string) =>
       const r = await csrfFetch('/api/campus/join', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, ...(rollNo ? { roll_no: rollNo } : {}) }) })
       if (!r.ok) { setMsg(await errorOf(r)); if (r.status === 403) setNeedsRoll(true); return }
       const d = await r.json()
-      if (d.needs_roll_no) { setNeedsRoll(true); setMsg('Your account email is not on your college domain. Enter your roll number to verify.'); return }
+      if (d.needs_roll_no) { setNeedsRoll(true); setMsg(t('career.yourAccountEmailIsNotOnff1')); return }
       done.current(`You joined ${d.college}`)
     } finally { setBusy(false) }
   }, [token])
@@ -135,33 +138,34 @@ function InviteJoin({ token, onDone }: { token: string; onDone: (msg: string) =>
 
   return (
     <Panel>
-      <h2 className="text-lg font-semibold text-foreground">Join your college</h2>
+      <h2 className="text-lg font-semibold text-foreground">{t('career.joinYourCollege')}</h2>
       {msg && <p className="mt-2 text-sm text-muted-foreground" role="status">{msg}</p>}
       {needsRoll && (
         <form className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={(e) => { e.preventDefault(); void submit(roll) }}>
-          <Field id="roll" label="Roll number" className="sm:w-64">
+          <Field id="roll" label={t('career.rollNumber')} className="sm:w-64">
             <Input id="roll" value={roll} onChange={(e) => setRoll(e.target.value)} autoComplete="off" required maxLength={40} />
           </Field>
-          <Button type="submit" disabled={busy || !roll.trim()} className="min-h-11">Verify</Button>
+          <Button type="submit" disabled={busy || !roll.trim()} className="min-h-11">{t('career.verify')}</Button>
         </form>
       )}
-      {busy && !needsRoll && <p className="mt-2 text-sm text-muted-foreground">Checking your invitation…</p>}
+      {busy && !needsRoll && <p className="mt-2 text-sm text-muted-foreground">{t('career.checkingYourInvitation')}</p>}
     </Panel>
   )
 }
 
 function SelfJoin({ colleges, onDone }: { colleges: MeResponse['joinable']; onDone: (msg: string) => void }) {
+  const { t } = useT()
   const [college, setCollege] = useState('')
   const [roll, setRoll] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   if (!colleges.length) {
-    return <EmptyState illustration="team" title="No college linked yet" description="When your placement office invites you, open the link in the email to join. You'll see drives you're eligible for here." />
+    return <EmptyState illustration="team" title={t('career.noCollegeLinkedYet')} description={t('career.whenYourPlacementOfficeInvitesYou795')} />
   }
   return (
     <Panel>
-      <h2 className="text-lg font-semibold text-foreground">Join your college</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Use the invite link from your placement office, or join here if you signed up with your college email.</p>
+      <h2 className="text-lg font-semibold text-foreground">{t('career.joinYourCollege')}</h2>
+      <p className="mt-1 text-sm text-muted-foreground">{t('career.useTheInviteLinkFromYourd14')}</p>
       <form
         className="mt-4 grid gap-4 sm:grid-cols-[1fr_200px_auto] sm:items-end"
         onSubmit={async (e) => {
@@ -175,16 +179,16 @@ function SelfJoin({ colleges, onDone }: { colleges: MeResponse['joinable']; onDo
           } finally { setBusy(false) }
         }}
       >
-        <Field id="college" label="College">
+        <Field id="college" label={t('career.college')}>
           <select id="college" className={fieldClass} value={college} onChange={(e) => setCollege(e.target.value)} required>
-            <option value="">Select your college</option>
+            <option value="">{t('career.selectYourCollege')}</option>
             {colleges.map((c) => <option key={c.slug} value={c.slug}>{c.name}{c.city ? ` — ${c.city}` : ''}</option>)}
           </select>
         </Field>
-        <Field id="self-roll" label="Roll number">
+        <Field id="self-roll" label={t('career.rollNumber')}>
           <Input id="self-roll" value={roll} onChange={(e) => setRoll(e.target.value)} required maxLength={40} autoComplete="off" />
         </Field>
-        <Button type="submit" disabled={busy || !college || !roll.trim()} className="min-h-11">Join</Button>
+        <Button type="submit" disabled={busy || !college || !roll.trim()} className="min-h-11">{t('career.join')}</Button>
       </form>
       {err && <p className="mt-3 text-sm text-destructive" role="alert">{err}</p>}
     </Panel>
@@ -192,6 +196,7 @@ function SelfJoin({ colleges, onDone }: { colleges: MeResponse['joinable']; onDo
 }
 
 function OnboardCollege({ onDone }: { onDone: () => void }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [domains, setDomains] = useState('')
@@ -202,10 +207,10 @@ function OnboardCollege({ onDone }: { onDone: () => void }) {
     <Panel>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Run placements for your college</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Set your organisation up as a college to invite students, track readiness and run placement drives.</p>
+          <h2 className="text-lg font-semibold text-foreground">{t('career.runPlacementsForYourCollege')}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t('career.setYourOrganisationUpAsA9e0')}</p>
         </div>
-        {!open && <Button variant="outline" onClick={() => setOpen(true)} className="min-h-11"><School className="mr-2 h-4 w-4" aria-hidden />Set up your college</Button>}
+        {!open && <Button variant="outline" onClick={() => setOpen(true)} className="min-h-11"><School className="mr-2 h-4 w-4" aria-hidden />{t('career.setUpYourCollege')}</Button>}
       </div>
       {open && (
         <form
@@ -220,15 +225,15 @@ function OnboardCollege({ onDone }: { onDone: () => void }) {
             } finally { setBusy(false) }
           }}
         >
-          <Field id="cname" label="College name"><Input id="cname" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={160} /></Field>
-          <Field id="ccity" label="City"><Input id="ccity" value={city} onChange={(e) => setCity(e.target.value)} maxLength={80} /></Field>
-          <Field id="cdomains" label="College email domains" hint="Comma separated, e.g. college.edu. Students on these domains are verified automatically." className="sm:col-span-2">
+          <Field id="cname" label={t('career.collegeName')}><Input id="cname" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={160} /></Field>
+          <Field id="ccity" label={t('career.city')}><Input id="ccity" value={city} onChange={(e) => setCity(e.target.value)} maxLength={80} /></Field>
+          <Field id="cdomains" label={t('career.collegeEmailDomains')} hint={t('career.commaSeparatedEGCollegeEdu5dc')} className="sm:col-span-2">
             <Input id="cdomains" value={domains} onChange={(e) => setDomains(e.target.value)} placeholder="college.edu" />
           </Field>
           {err && <p className="text-sm text-destructive sm:col-span-2" role="alert">{err}</p>}
           <div className="flex gap-2 sm:col-span-2">
-            <Button type="submit" disabled={busy} className="min-h-11">Set up college</Button>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="min-h-11">Cancel</Button>
+            <Button type="submit" disabled={busy} className="min-h-11">{t('career.setUpCollege')}</Button>
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="min-h-11">{t('common.cancel')}</Button>
           </div>
         </form>
       )}
@@ -237,6 +242,7 @@ function OnboardCollege({ onDone }: { onDone: () => void }) {
 }
 
 function MembershipView({ m, onChange }: { m: Membership; onChange: () => void }) {
+  const { t } = useT()
   const addToast = useToast()
   const [busy, setBusy] = useState<string | null>(null)
   const open = m.drives.filter((d) => d.open && !d.application)
@@ -249,8 +255,8 @@ function MembershipView({ m, onChange }: { m: Membership; onChange: () => void }
       if (!r.ok) { addToast({ type: 'error', title: await errorOf(r) }); return }
       const j = await r.json()
       if (j.warning) addToast({ type: 'warning', title: j.warning })
-      else addToast({ type: 'success', title: `Applied to ${d.company}` })
-      if (j.next?.href && j.next.kind === 'company_test') addToast({ type: 'info', title: 'Next: take the company test from the drive card' })
+      else addToast({ type: 'success', title: t('career.appliedToCompany', { company: d.company }) })
+      if (j.next?.href && j.next.kind === 'company_test') addToast({ type: 'info', title: t('career.nextTakeTheCompanyTestFrom193') })
       onChange()
     } finally { setBusy(null) }
   }
@@ -269,23 +275,21 @@ function MembershipView({ m, onChange }: { m: Membership; onChange: () => void }
         <div className="min-w-0">
           <p className="text-sm text-muted-foreground">{m.college.name}</p>
           <p className="text-lg font-semibold text-foreground">{m.student.name}</p>
-          <p className="text-sm text-muted-foreground">{[m.student.department, m.student.batch, m.student.roll_no].filter(Boolean).join(' · ') || 'Your placement office will add your department and batch'}</p>
+          <p className="text-sm text-muted-foreground">{[m.student.department, m.student.batch, m.student.roll_no].filter(Boolean).join(' · ') || t('career.yourPlacementOfficeWillAddYour7b9')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-sm">
           <StatusPill status={m.student.status} />
           {m.student.cgpa !== null && <span className="tabular-nums text-muted-foreground">CGPA {m.student.cgpa}</span>}
-          <Link href={`/leagues/colleges/${m.college.slug}`} className="inline-flex items-center gap-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">College league <ArrowRight className="h-4 w-4" aria-hidden /></Link>
+          <Link href={`/leagues/colleges/${m.college.slug}`} className="inline-flex items-center gap-1 font-medium text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{t('career.collegeLeague')}{' '}<ArrowRight className="h-4 w-4" aria-hidden /></Link>
         </div>
       </Panel>
       {m.student.status !== 'verified' && (
-        <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200" role="status">
-          Your account isn't verified yet, so you can't apply to drives. Open the invite link again and enter your roll number, or ask your placement office to verify you.
-        </p>
+        <p className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-200" role="status">{t('career.yourAccountIsntVerifiedYetSod8f')}</p>
       )}
 
-      <Section title="Open drives" description="Drives you can apply to now.">
+      <Section title={t('career.openDrives')} description={t('career.drivesYouCanApplyToNow')}>
         {open.length === 0 ? (
-          <EmptyState compact illustration="jobs" title="No open drives right now" description="You'll get a notification when your placement office opens a drive you're eligible for." />
+          <EmptyState compact illustration="jobs" title={t('career.noOpenDrivesRightNow')} description={t('career.youllGetANotificationWhenYourcb3')} />
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {open.map((d) => (
@@ -295,16 +299,16 @@ function MembershipView({ m, onChange }: { m: Membership; onChange: () => void }
                     <p className="text-sm font-medium text-primary">{d.company}</p>
                     <h3 className="text-base font-semibold text-foreground">{d.role_title}</h3>
                   </div>
-                  {d.eligible ? <StatusPill status="open" /> : <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">Not eligible</span>}
+                  {d.eligible ? <StatusPill status="open" /> : <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{t('career.notEligible')}</span>}
                 </div>
                 {d.description && <p className="line-clamp-3 text-sm text-muted-foreground">{d.description}</p>}
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" aria-hidden />Apply by {fmtDate(d.schedule.apply_by)}</span>
+                  <span className="inline-flex items-center gap-1.5"><CalendarDays className="h-4 w-4" aria-hidden />{t('career.applyByDate', { date: fmtDate(d.schedule.apply_by) })}</span>
                   {ctcRange(d.ctc_minor_min, d.ctc_minor_max, d.currency) && <span className="tabular-nums">CTC {ctcRange(d.ctc_minor_min, d.ctc_minor_max, d.currency)}</span>}
                 </div>
                 {!d.eligible && <ul className="list-disc pl-5 text-sm text-muted-foreground">{d.reasons.map((r) => <li key={r}>{r}</li>)}</ul>}
                 <div className="mt-auto">
-                  <Button onClick={() => apply(d)} disabled={!d.eligible || busy === d.id} className="min-h-11"><Briefcase className="mr-2 h-4 w-4" aria-hidden />Apply</Button>
+                  <Button onClick={() => apply(d)} disabled={!d.eligible || busy === d.id} className="min-h-11"><Briefcase className="mr-2 h-4 w-4" aria-hidden />{t('career.apply')}</Button>
                 </div>
               </Panel>
             ))}
@@ -312,27 +316,27 @@ function MembershipView({ m, onChange }: { m: Membership; onChange: () => void }
         )}
       </Section>
 
-      <Section title="My applications">
+      <Section title={t('career.myApplications')}>
         {mine.length === 0 ? (
-          <EmptyState compact illustration="inbox" title="No applications yet" description="Drives you apply to show up here with their next step." />
+          <EmptyState compact illustration="inbox" title={t('career.noApplicationsYet')} description={t('career.drivesYouApplyToShowUpc25')} />
         ) : (
           <div className="space-y-3">
             {mine.map((d) => (
               <Panel key={d.id} className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
                   <p className="font-semibold text-foreground">{d.company} · {d.role_title}</p>
-                  <p className="text-sm text-muted-foreground">Applied {fmtDate(d.application!.applied_at)}{d.schedule.test_at ? ` · Test ${fmtDate(d.schedule.test_at)}` : ''}</p>
+                  <p className="text-sm text-muted-foreground">{t('career.appliedDate', { date: fmtDate(d.application!.applied_at) })}{d.schedule.test_at ? t('career.testDate', { date: fmtDate(d.schedule.test_at) }) : ''}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusPill status={d.application!.status} />
                   {d.process.mode === 'company_test' && d.process.pattern_id && d.application!.status !== 'withdrawn' && (
-                    <Button asChild size="sm" variant="outline"><Link href={`/dashboard/company-tests/${encodeURIComponent(d.process.pattern_id)}`}>Take the test</Link></Button>
+                    <Button asChild size="sm" variant="outline"><Link href={`/dashboard/company-tests/${encodeURIComponent(d.process.pattern_id)}`}>{t('career.takeTheTest')}</Link></Button>
                   )}
                   {d.process.mode === 'external' && d.process.external_url && (
-                    <Button asChild size="sm" variant="outline"><a href={d.process.external_url} target="_blank" rel="noopener noreferrer">Company form</a></Button>
+                    <Button asChild size="sm" variant="outline"><a href={d.process.external_url} target="_blank" rel="noopener noreferrer">{t('career.companyForm')}</a></Button>
                   )}
                   {['applied', 'shortlisted'].includes(d.application!.status) && (
-                    <Button size="sm" variant="ghost" onClick={() => withdraw(d)} disabled={busy === d.id}>Withdraw</Button>
+                    <Button size="sm" variant="ghost" onClick={() => withdraw(d)} disabled={busy === d.id}>{t('career.withdraw')}</Button>
                   )}
                 </div>
               </Panel>
@@ -342,7 +346,7 @@ function MembershipView({ m, onChange }: { m: Membership; onChange: () => void }
       </Section>
 
       {m.offers.length > 0 && (
-        <Section title="My offers">
+        <Section title={t('career.myOffers')}>
           <div className="grid gap-4 md:grid-cols-2">
             {m.offers.map((o) => (
               <Panel key={o.id} className="space-y-1 p-5">
@@ -351,8 +355,8 @@ function MembershipView({ m, onChange }: { m: Membership; onChange: () => void }
                   <StatusPill status={o.status} />
                 </div>
                 <p className="text-sm text-muted-foreground">{o.role_title}</p>
-                <p className="text-lg font-bold tabular-nums text-foreground">{money(o.ctc_minor, o.currency)}<span className="ml-1 text-sm font-normal text-muted-foreground">per year</span></p>
-                {o.joining_date && <p className="text-sm text-muted-foreground">Joining {fmtDate(o.joining_date)}</p>}
+                <p className="text-lg font-bold tabular-nums text-foreground">{money(o.ctc_minor, o.currency)}<span className="ml-1 text-sm font-normal text-muted-foreground">{t('career.perYear')}</span></p>
+                {o.joining_date && <p className="text-sm text-muted-foreground">{t('career.joiningDate2', { date: fmtDate(o.joining_date) })}</p>}
               </Panel>
             ))}
           </div>

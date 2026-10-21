@@ -21,7 +21,7 @@ export async function GET() {
   } catch (error) {
     console.error('[quality-gates]', error)
     return NextResponse.json(
-      { success: false, error: 'Failed' },
+      { success: false, error: 'Failed', code: 'failed' },
       { status: 500 },
     )
   }
@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const col = await qualityGates()

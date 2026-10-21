@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     const max = await maxUploadBytes()
     const name = new URL(req.url).searchParams.get('name') || 'file'
     const bytes = await readCapped(req, max)
-    if (!bytes) return json({ error: `Files can be up to ${max / 1024 / 1024} MB.` }, 413)
+    if (!bytes) return json({ error: `Files can be up to ${max / 1024 / 1024} MB.`, code: 'mkt_file_too_large', params: { mb: max / 1024 / 1024 } }, 413)
     return json({ file: await storeSellerFile(g.seller.id, name, bytes) }, 201)
   } catch (e) {
     return errorResponse(e, 'file upload')

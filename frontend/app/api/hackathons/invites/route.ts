@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonInvites, nowIso } from '@/lib/db/qr-events'
-import { hackathonEmailTemplates } from '@/lib/email-templates'
+import { hackathonEmailTemplatesFor } from '@/lib/email-templates'
+import { localeForUser } from '@/lib/i18n/recipient'
 import { sendEmail } from '@/lib/send-email'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
@@ -15,11 +16,11 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(req: NextRequest) {
   const rl = await rateLimitRedis(`hk-invite-get:${clientLimiterKeyFromRequest(req, null)}`, 30, 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
 
   const { searchParams } = new URL(req.url)
   const token = searchParams.get('token')
-  if (!token || token.length > 64) return NextResponse.json({ error: 'Token required' }, { status: 400 })
+  if (!token || token.length > 64) return NextResponse.json({ error: 'Token required', code: 'token_required' }, { status: 400 })
 
   const invitesCol = await hackathonInvites()
   const invite = await invitesCol.findOne({ token })
@@ -49,10 +50,10 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const body = await req.json().catch(() => ({}))
   const token = typeof body?.token === 'string' ? body.token : null
-  if (!token) return NextResponse.json({ error: 'Token required' }, { status: 400 })
+  if (!token) return NextResponse.json({ error: 'Token required', code: 'token_required' }, { status: 400 })
 
   const invitesCol = await hackathonInvites()
   const invite = await invitesCol.findOne({ token })
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
 
   const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   try {
-    const template = hackathonEmailTemplates.teamJoinConfirmation({
+    const template = hackathonEmailTemplatesFor(await localeForUser(user.id)).teamJoinConfirmation({
       eventName: hk.name,
       teamName: team.name,
       memberName: user.name || 'Team Member',

@@ -38,12 +38,14 @@ export async function POST(req: Request) {
       type: 'system.feedback_received',
       title: 'New Feedback Received',
       message: `A user has submitted a new ${data.type}.`,
+      title_i18n: { key: 'admin.feedback.title' },
+      message_i18n: { key: 'admin.feedback.message', params: { kind: String(data.type) } },
       link: '/dashboard/admin/feedback',
     })
 
     return NextResponse.json({ success: true, id })
   } catch (error: any) {
     console.error('Failed to submit feedback:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

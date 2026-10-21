@@ -1,9 +1,9 @@
-import { formatDate } from '@/lib/format-datetime'
 import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailLongDate, emailTemplatesFor } from '@/lib/email-templates'
+import { localeForRecipient } from '@/lib/i18n/recipient'
 import { inviteIsForExam } from '@/lib/exam-access'
 
 /** A resent link that had run out gets this much more time. */
@@ -34,7 +34,7 @@ export async function POST(
     const invite = await db.collection('candidate_invites').findOne({ id: inviteId })
     // The invite must belong to this (tenant-checked) exam.
     if (!invite || !inviteIsForExam(invite as Record<string, unknown>, examId)) {
-      return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Invite not found', code: 'talent_invite_not_found' }, { status: 404 })
     }
     if (invite.status === 'revoked' || invite.status === 'used') {
       return NextResponse.json({ error: invite.status === 'used' ? 'This candidate has already used the invite.' : 'This invite was withdrawn. Send a new invite instead.' }, { status: 409 })
@@ -56,7 +56,10 @@ export async function POST(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const inviteUrl = `${appUrl}/assessment/invite/${invite.token}`
 
-    const expiresStr = formatDate(expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' })
+    // In the candidate's language (their account's setting when the email has one; else English).
+    const locale = await localeForRecipient({ userId: typeof invite.user_id === 'string' ? invite.user_id : null, email: invite.email })
+    const expiresStr = emailLongDate(expiresAt, locale)
+    const emailTemplates = emailTemplatesFor(locale)
 
     const template = isReminder
       ? emailTemplates.assessmentReminder({

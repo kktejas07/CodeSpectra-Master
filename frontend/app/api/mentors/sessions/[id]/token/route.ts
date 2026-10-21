@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
   const g = await userGate(req, { write: true, bucket: 'mentor-video', max: 20 })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Session not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Session not found', code: 'session_not_found' }, 404)
   try {
     const { sessionVideoToken } = await import('@/lib/mentors/sessions')
     const r = await sessionVideoToken({ id: g.user.id, name: g.user.name, email: g.user.email }, id)

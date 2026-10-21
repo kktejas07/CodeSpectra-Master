@@ -25,12 +25,12 @@ async function loadCall(actor: AtsActor, id: string): Promise<ScreeningCallDoc |
 
 export async function GET(req: NextRequest, { params }: Ctx) {
   const id = parseId((await params).id)
-  if (!id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!id) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   const gate = await requireAts([...SCREENING_VIEW_ROLES], tenantFromRequest(req))
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const call = await loadCall(gate.actor, id)
-    if (!call) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!call) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     return NextResponse.json({ call: publicCall(call) })
   } catch (e) {
     console.error('[ats/screening/get] failed:', e)
@@ -42,17 +42,17 @@ const str = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0
 
 export async function POST(req: NextRequest, { params }: Ctx) {
   const id = parseId((await params).id)
-  if (!id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!id) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   const gate = await requireAts(['admin', 'recruiter'], tenantFromRequest(req))
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { actor } = gate
-  if (!can(actor, 'application.move') && actor.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!can(actor, 'application.move') && actor.role !== 'admin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   const limited = await limitRequest(req, 'ats-screening-sim', actor.userId, 60, 60_000)
   if (limited) return limited
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
   try {
     const call = await loadCall(actor, id)
-    if (!call) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!call) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     if (call.provider !== 'simulated') return NextResponse.json({ error: 'Only simulated screenings can be driven by hand' }, { status: 409 })
     const msgId = `sim_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     let result: string

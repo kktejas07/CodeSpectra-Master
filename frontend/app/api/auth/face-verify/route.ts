@@ -37,28 +37,28 @@ export async function POST(request: Request) {
     const ipKey = clientLimiterKeyFromRequest(request, null)
     const ipCheck = await rateLimitRedis(`face-login:ip:${ipKey}`, 20, 3600_000)
     if (!ipCheck.ok) {
-      return NextResponse.json({ error: 'Too many face sign-in attempts from this location. Try again later.' }, { status: 429 })
+      return NextResponse.json({ error: 'Too many face sign-in attempts from this location. Try again later.', code: 'auth_face_ip_limit' }, { status: 429 })
     }
 
     const rawIp = ipKey.replace(/^(ip:|u:)/, '')
     if (await isIpBlocked(rawIp) || await isIpOutsideWhitelist(rawIp)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied', code: 'access_denied' }, { status: 403 })
     }
 
     const body = (await request.json().catch(() => ({}))) as { email?: unknown; descriptors?: unknown; liveness?: unknown }
     const normalizedEmail = typeof body.email === 'string' ? body.email.toLowerCase().trim().slice(0, 320) : ''
     const claim = parseLivenessClaim({ descriptors: body.descriptors, liveness: body.liveness })
     if (!normalizedEmail || !claim) {
-      return NextResponse.json({ error: 'Enter your email and complete the camera check.' }, { status: 400 })
+      return NextResponse.json({ error: 'Enter your email and complete the camera check.', code: 'auth_face_email_required' }, { status: 400 })
     }
 
     const throttle = await checkAuthThrottle('face', normalizedEmail, rawIp)
     if (!throttle.ok) {
-      return NextResponse.json({ error: `Too many attempts. Try again in ${throttle.retryAfterSec}s, or use your password.` }, { status: 429 })
+      return NextResponse.json({ error: `Too many attempts. Try again in ${throttle.retryAfterSec}s, or use your password.`, code: 'auth_too_many_attempts_password', params: { seconds: throttle.retryAfterSec } }, { status: 429 })
     }
     const acctCheck = await rateLimitRedis(`face-login:acct:${normalizedEmail}`, 10, 3600_000)
     if (!acctCheck.ok) {
-      return NextResponse.json({ error: 'Too many face sign-in attempts for this account. Use your password.' }, { status: 429 })
+      return NextResponse.json({ error: 'Too many face sign-in attempts for this account. Use your password.', code: 'auth_face_account_limit' }, { status: 429 })
     }
 
     const db = await getMongoDb()
@@ -100,8 +100,8 @@ export async function POST(request: Request) {
       const issued = await issueFaceEmailCode(uid, email)
       if (!issued.ok) {
         return issued.reason === 'rate_limited'
-          ? NextResponse.json({ error: `We’ve sent several codes already. Try again in ${issued.retryAfterSec ?? 600}s, or use your password.` }, { status: 429 })
-          : NextResponse.json({ error: 'We couldn’t send your sign-in code. Use your password instead.' }, { status: 503 })
+          ? NextResponse.json({ error: `We’ve sent several codes already. Try again in ${issued.retryAfterSec ?? 600}s, or use your password.`, code: 'auth_codes_limit_password', params: { seconds: issued.retryAfterSec ?? 600 } }, { status: 429 })
+          : NextResponse.json({ error: 'We couldn’t send your sign-in code. Use your password instead.', code: 'auth_code_send_failed' }, { status: 503 })
       }
       await clearPending2faCookie()
       await setPendingFaceEmailCookie({ uid, email, role, challengeId: issued.challengeId })
@@ -122,6 +122,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ user: { id: uid, email, role, name: user.name || null } })
   } catch (error) {
     console.error('[FaceVerify] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

@@ -34,6 +34,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, call: publicCall(call) })
   } catch (e) {
     console.error('[ats/screening/test] failed:', e)
-    return NextResponse.json({ error: 'Could not start the test' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not start the test', code: 'exam_start_failed' }, { status: 500 })
   }
 }

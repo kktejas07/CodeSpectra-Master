@@ -14,23 +14,23 @@ interface AnswerBody {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: AnswerBody
   try {
     body = (await req.json()) as AnswerBody
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const { sessionId, answer } = body
 
   if (!sessionId || typeof answer !== 'string') {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    return NextResponse.json({ error: 'Missing required fields', code: 'missing_fields' }, { status: 400 })
   }
 
   if (answer.trim().length === 0) {
-    return NextResponse.json({ error: 'Answer cannot be empty' }, { status: 400 })
+    return NextResponse.json({ error: 'Answer cannot be empty', code: 'assess_answer_empty' }, { status: 400 })
   }
   if (answer.length > 10_000) {
     return NextResponse.json({ error: 'Answer is too long (max 10,000 characters).' }, { status: 400 })
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   const db = await getMongoDb()
   const doc = await db.collection('ai_mock_sessions').findOne({ id: sessionId, userId: user.id })
   if (!doc) {
-    return NextResponse.json({ error: 'Session not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Session not found', code: 'session_not_found' }, { status: 404 })
   }
 
   if (doc.status !== 'active') {

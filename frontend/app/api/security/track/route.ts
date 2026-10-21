@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ ok: true, multiAccountRisk: result.multiAccountRisk })
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }
 

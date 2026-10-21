@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const name = String(body.name || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_')
@@ -78,7 +78,7 @@ export async function PATCH(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const name = String(body.name || '').trim()
@@ -104,7 +104,7 @@ export async function DELETE(req: NextRequest) {
 
   const { searchParams } = new URL(req.url)
   const name = searchParams.get('id')
-  if (!name) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!name) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
 
   const col = await featureFlags()
   await col.deleteOne({ id: name })

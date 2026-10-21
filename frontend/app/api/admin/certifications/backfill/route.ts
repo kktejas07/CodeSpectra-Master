@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   const rl = await rateLimitRedis(`cert-backfill:${gate.user.id}`, 20, 60_000)
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many requests. Try again in a minute.' },
+      { error: 'Too many requests. Try again in a minute.', code: 'rate_limited_minute' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }

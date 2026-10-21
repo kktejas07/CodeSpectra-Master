@@ -33,6 +33,9 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { cn } from '@/lib/utils'
 import { PageHeader, StatCard } from '@/components/app/page-kit'
+import { useT } from '@/lib/i18n/client'
+import type { MessageKey, Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 type RecentItem = {
   type: string
@@ -43,17 +46,17 @@ type RecentItem = {
 }
 
 const TYPE_META: Record<string, { label: string; icon: typeof BookOpen; color: string }> = {
-  course: { label: 'Course', icon: BookOpen, color: 'text-primary bg-primary/10' },
-  lesson: { label: 'Lesson', icon: Video, color: 'text-primary bg-primary/10' },
-  problem: { label: 'Problem', icon: Code2, color: 'text-foreground bg-muted' },
-  article: { label: 'Article', icon: Newspaper, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10' },
-  quiz: { label: 'Quiz', icon: ListChecks, color: 'text-foreground bg-muted' },
+  course: { label: 'dash.actType_course', icon: BookOpen, color: 'text-primary bg-primary/10' },
+  lesson: { label: 'dash.actType_lesson', icon: Video, color: 'text-primary bg-primary/10' },
+  problem: { label: 'dash.actType_problem', icon: Code2, color: 'text-foreground bg-muted' },
+  article: { label: 'dash.actType_article', icon: Newspaper, color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10' },
+  quiz: { label: 'dash.actType_quiz', icon: ListChecks, color: 'text-foreground bg-muted' },
 }
 
-function typeMeta(type: string) {
+function typeMeta(t: Translator, type: string) {
   return (
-    TYPE_META[type] || {
-      label: type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Item',
+    (TYPE_META[type] && { ...TYPE_META[type], label: t(TYPE_META[type].label as MessageKey) }) || {
+      label: type ? type.charAt(0).toUpperCase() + type.slice(1) : t('dash.actType_item'),
       icon: FileText,
       color: 'text-muted-foreground bg-muted',
     }
@@ -90,6 +93,8 @@ function dayGroup(iso: string): string {
 const GROUP_ORDER = ['Today', 'Yesterday', 'Last 7 days', 'Older']
 
 export default function RecentlyViewedPage() {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const { startTour, setTourSeen } = useTour()
@@ -106,11 +111,11 @@ export default function RecentlyViewedPage() {
     try {
       const r = await fetch('/api/user/recently-viewed', { credentials: 'include' })
       const d = await r.json().catch(() => ({}))
-      if (!r.ok) throw new Error(d.error || `Request failed (${r.status})`)
+      if (!r.ok) throw new Error(apiError(d, tr('dash.requestFailedStatus', { status: r.status })))
       setItems(Array.isArray(d.items) ? d.items : [])
     } catch (e) {
       setItems([])
-      setError(e instanceof Error ? e.message : 'Failed to load history')
+      setError(e instanceof Error ? e.message : tr('dash.failedToLoadHistory'))
     } finally {
       setLoading(false)
     }
@@ -127,23 +132,23 @@ export default function RecentlyViewedPage() {
       const recentTour: TourStep[] = [
         {
           target: '[data-tour="recent-header"]',
-          title: 'Recently viewed',
+          title: tr('dash.recentlyViewed'),
           description:
-            'This page lists everything you opened so you can resume courses, lessons, and problems.',
+            tr('dash.thisPageListsEverythingYouOpenedc8c'),
           position: 'bottom',
         },
         {
           target: '[data-tour="recent-stats"]',
-          title: 'Quick stats',
+          title: tr('dash.quickStats'),
           description:
-            'See your total views, recent activity, and most-viewed content type at a glance.',
+            tr('dash.seeYourTotalViewsRecentActivity925'),
           position: 'bottom',
         },
         {
           target: '[data-tour="recent-list"]',
-          title: 'Jump back in',
+          title: tr('dash.jumpBackIn'),
           description:
-            'Click any entry to continue. Hover to remove a single item, or clear the whole history.',
+            tr('dash.clickAnyEntryToContinueHover74e'),
           position: 'top',
         },
       ]
@@ -214,15 +219,15 @@ export default function RecentlyViewedPage() {
         { method: 'DELETE' },
       )
       if (!res.ok) throw new Error(String(res.status))
-      addToast({ type: 'success', title: 'Removed from history' })
+      addToast({ type: 'success', title: tr('dash.removedFromHistory') })
     } catch {
       setItems(before)
-      addToast({ type: 'error', title: 'Couldn’t remove this item', message: 'Please try again.' })
+      addToast({ type: 'error', title: tr('dash.couldntRemoveThisItem'), message: tr('dash.pleaseTryAgain') })
     }
   }
 
   async function clearAll() {
-    if (!window.confirm('Clear your entire viewing history? This cannot be undone.')) return
+    if (!window.confirm(tr('dash.clearYourEntireViewingHistoryThis08f'))) return
     setClearing(true)
     try {
       const res = await csrfFetch('/api/user/recently-viewed', { method: 'DELETE' })
@@ -230,9 +235,9 @@ export default function RecentlyViewedPage() {
       setItems([])
       setQuery('')
       setTypeFilter('all')
-      addToast({ type: 'success', title: 'Viewing history cleared' })
+      addToast({ type: 'success', title: tr('dash.viewingHistoryCleared') })
     } catch {
-      addToast({ type: 'error', title: 'Couldn’t clear your history', message: 'Please try again.' })
+      addToast({ type: 'error', title: tr('dash.couldntClearYourHistory'), message: tr('dash.pleaseTryAgain') })
     } finally {
       setClearing(false)
     }
@@ -252,7 +257,7 @@ export default function RecentlyViewedPage() {
     )
   }
 
-  const topMeta = stats.topType ? typeMeta(stats.topType) : null
+  const topMeta = stats.topType ? typeMeta(tr, stats.topType) : null
 
   return (
     <div className="w-full space-y-6">
@@ -263,20 +268,18 @@ export default function RecentlyViewedPage() {
           className="mb-0"
           icon={<History aria-hidden />}
           title={
-            <span className="flex flex-wrap items-center gap-2">
-              Recently viewed
-              {items.length > 0 && (
+            <span className="flex flex-wrap items-center gap-2">{tr('dash.recentlyViewed')}{items.length > 0 && (
                 <Badge variant="secondary" className="tabular-nums">
                   {items.length}
                 </Badge>
               )}
             </span>
           }
-          description="Pick up where you left off — courses, lessons, and problems you opened."
+          description={tr('dash.pickUpWhereYouLeftOff5c7')}
           actions={items.length > 0 ? (
             <Button variant="outline" size="sm" onClick={clearAll} disabled={clearing}>
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              {clearing ? 'Clearing…' : 'Clear history'}
+              {clearing ? tr('dash.clearing') : tr('dash.clearHistory')}
             </Button>
           ) : undefined}
         />
@@ -284,18 +287,17 @@ export default function RecentlyViewedPage() {
 
       {error ? (
         <Card className="flex flex-col items-center gap-3 rounded-3xl p-10 text-center">
-          <p className="text-sm font-medium text-foreground">Couldn&apos;t load your history</p>
+          <p className="text-sm font-medium text-foreground">{tr('dash.couldntLoadYourHistory')}</p>
           <p className="text-xs text-muted-foreground">{error}</p>
           <Button size="sm" onClick={load}>
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" /> Try again
-          </Button>
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />{' '}{tr('common.tryAgain')}</Button>
         </Card>
       ) : items.length === 0 ? (
         <EmptyState illustration="analytics"
           variant="default"
-          title="Nothing viewed yet"
-          description="Open a course, lesson, or problem and it will show up here automatically."
-          actionLabel="Browse courses"
+          title={tr('dash.nothingViewedYet')}
+          description={tr('dash.openACourseLessonOrProblemc49')}
+          actionLabel={tr('dash.browseCourses')}
           actionHref="/dashboard/courses"
         />
       ) : (
@@ -305,9 +307,9 @@ export default function RecentlyViewedPage() {
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
             data-tour="recent-stats"
           >
-            <StatCard icon={<History aria-hidden />} label="Total items" value={stats.total} />
-            <StatCard icon={<Clock aria-hidden />} label="Viewed today" value={stats.today} />
-            <StatCard icon={<CalendarDays aria-hidden />} label="This week" value={stats.thisWeek} />
+            <StatCard icon={<History aria-hidden />} label={tr('dash.totalItems')} value={stats.total} />
+            <StatCard icon={<Clock aria-hidden />} label={tr('dash.viewedToday')} value={stats.today} />
+            <StatCard icon={<CalendarDays aria-hidden />} label={tr('dash.thisWeek')} value={stats.thisWeek} />
             <Card className="rounded-3xl border-border/70 p-5">
               <div className="flex items-center gap-4">
                 <div
@@ -323,12 +325,12 @@ export default function RecentlyViewedPage() {
                   )}
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Most viewed</p>
+                  <p className="text-sm font-medium text-muted-foreground">{tr('dash.mostViewed')}</p>
                   <p className="text-lg font-bold capitalize text-foreground">
                     {topMeta?.label || '—'}
                   </p>
                   {topMeta && (
-                    <p className="text-xs tabular-nums text-muted-foreground">{stats.topCount} views</p>
+                    <p className="text-xs tabular-nums text-muted-foreground">{tr('dash.topcountViews', { topCount: stats.topCount })}</p>
                   )}
                 </div>
               </div>
@@ -345,9 +347,9 @@ export default function RecentlyViewedPage() {
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search your history…"
+                placeholder={tr('dash.searchYourHistory')}
                 className="pl-9"
-                aria-label="Search history"
+                aria-label={tr('dash.searchHistory')}
               />
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -360,11 +362,9 @@ export default function RecentlyViewedPage() {
                     ? 'border-primary bg-primary text-primary-foreground'
                     : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground',
                 )}
-              >
-                All
-              </button>
+              >{tr('dash.all')}</button>
               {availableTypes.map(([type, count]) => {
-                const meta = typeMeta(type)
+                const meta = typeMeta(tr, type)
                 return (
                   <button
                     key={type}
@@ -389,10 +389,8 @@ export default function RecentlyViewedPage() {
           {/* ── List ─────────────────────────────────────────────────── */}
           {filtered.length === 0 ? (
             <Card className="rounded-3xl p-10 text-center">
-              <p className="text-sm font-medium text-foreground">No matches</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Try a different search or clear the type filter.
-              </p>
+              <p className="text-sm font-medium text-foreground">{tr('dash.noMatches')}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{tr('dash.tryADifferentSearchOrClearb79')}</p>
               <Button
                 size="sm"
                 variant="outline"
@@ -401,9 +399,7 @@ export default function RecentlyViewedPage() {
                   setQuery('')
                   setTypeFilter('all')
                 }}
-              >
-                Reset filters
-              </Button>
+              >{tr('dash.resetFilters')}</Button>
             </Card>
           ) : (
             <div className="space-y-7" data-tour="recent-list">
@@ -414,7 +410,7 @@ export default function RecentlyViewedPage() {
                   </h2>
                   <ul className="space-y-2">
                     {group.items.map((it) => {
-                      const meta = typeMeta(it.type)
+                      const meta = typeMeta(tr, it.type)
                       const Icon = meta.icon
                       return (
                         <li key={`${it.type}-${it.id}`}>
@@ -429,7 +425,7 @@ export default function RecentlyViewedPage() {
                             </span>
                             <Link href={it.href} className="min-w-0 flex-1">
                               <p className="truncate font-medium leading-tight text-foreground">
-                                {it.title || 'Untitled'}
+                                {it.title || tr('dash.untitled')}
                               </p>
                               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <span className="capitalize">{meta.label}</span>
@@ -442,15 +438,14 @@ export default function RecentlyViewedPage() {
                             <Link
                               href={it.href}
                               className="hidden shrink-0 items-center gap-1 text-xs font-medium text-primary opacity-0 transition-opacity hover:underline group-hover:opacity-100 sm:inline-flex"
-                            >
-                              Continue <ArrowRight className="h-3.5 w-3.5" />
+                            >{tr('common.continue')}{' '}<ArrowRight className="h-3.5 w-3.5" />
                             </Link>
                             <button
                               type="button"
                               onClick={() => removeItem(it)}
                               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus:opacity-100 group-hover:opacity-100"
-                              aria-label={`Remove ${it.title} from history`}
-                              title="Remove from history"
+                              aria-label={tr('dash.removeTitleFromHistory', { title: it.title })}
+                              title={tr('dash.removeFromHistory')}
                             >
                               <X className="h-4 w-4" />
                             </button>
@@ -472,14 +467,12 @@ export default function RecentlyViewedPage() {
           href="/dashboard/activity/sessions"
           className="inline-flex items-center gap-1.5 text-primary hover:underline"
         >
-          <Video className="h-3.5 w-3.5" /> My sessions
-        </Link>
+          <Video className="h-3.5 w-3.5" />{' '}{tr('dash.mySessions')}</Link>
         <Link
           href="/dashboard/activity/bookmarks"
           className="inline-flex items-center gap-1.5 text-primary hover:underline"
         >
-          <Bookmark className="h-3.5 w-3.5" /> Bookmarked questions
-        </Link>
+          <Bookmark className="h-3.5 w-3.5" />{' '}{tr('dash.bookmarkedQuestions')}</Link>
       </div>
     </div>
   )

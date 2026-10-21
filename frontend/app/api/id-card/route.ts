@@ -44,7 +44,7 @@ function absoluteOrigin(req: NextRequest): string {
 
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
   // Only the holder's own role badge, or the plain member badge — never a
@@ -111,12 +111,12 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const url = new URL(req.url)
   const action = url.searchParams.get('action')
   if (action !== 'revoke') {
-    return NextResponse.json({ error: 'unknown action' }, { status: 400 })
+    return NextResponse.json({ error: 'unknown action', code: 'unknown_action' }, { status: 400 })
   }
 
   // Only the holder's own role badge, or the plain member badge — never a

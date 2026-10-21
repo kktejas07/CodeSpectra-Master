@@ -20,11 +20,11 @@ export async function captchaGate(
   if (!(await isCaptchaConfigured())) return null
   const t = typeof token === 'string' ? token.slice(0, 2048) : ''
   if (!t) {
-    return NextResponse.json({ error: 'Complete the verification and try again.', captcha: 'missing' }, { status: 403 })
+    return NextResponse.json({ error: 'Complete the verification and try again.', code: 'captcha_missing', captcha: 'missing' }, { status: 403 })
   }
   const result = await verifyTurnstileToken(t, clientIpOrEmpty(req) || undefined)
   if (!result.ok) {
-    return NextResponse.json({ error: 'Verification failed. Refresh the page and try again.', captcha: 'invalid' }, { status: 403 })
+    return NextResponse.json({ error: 'Verification failed. Refresh the page and try again.', code: 'captcha_invalid', captcha: 'invalid' }, { status: 403 })
   }
   return null
 }

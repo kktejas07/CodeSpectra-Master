@@ -145,10 +145,10 @@ export async function POST(req: NextRequest) {
   if (body.action === 'unsuppress') {
     const { unsuppressAddress, normalizeEmail } = await import('@/lib/automation/outbox')
     const email = normalizeEmail(body.email)
-    if (!email) return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
+    if (!email) return NextResponse.json({ error: 'Enter a valid email address', code: 'auth_email_invalid' }, { status: 400 })
     await unsuppressAddress(email)
     await auditAdmin(gate.user, 'email.unsuppress', 'email', 'suppression', 'address re-enabled', 'warning')
     return NextResponse.json({ ok: true })
   }
-  return NextResponse.json({ error: 'unknown action' }, { status: 400 })
+  return NextResponse.json({ error: 'unknown action', code: 'unknown_action' }, { status: 400 })
 }

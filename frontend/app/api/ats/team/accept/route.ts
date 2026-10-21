@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   if (!payload) return NextResponse.json({ error: 'This invite link is invalid or has expired. Ask for a new one.' }, { status: 410 })
   try {
     const member = await (await atsMembers()).findOne({ id: payload.m })
-    if (!member || member.status === 'disabled') return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
+    if (!member || member.status === 'disabled') return NextResponse.json({ error: 'Invitation not found', code: 'invite_not_found' }, { status: 404 })
     const db = await getMongoDb()
     const [tenant, client] = await Promise.all([
       db.collection('tenants').findOne({ id: member.tenant_id }, { projection: { name: 1, is_active: 1 } }),
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-invite-accept', gate.user.id, 10, 60_000)
   if (limited) return limited
   let token: unknown
-  try { token = ((await req.json()) as { token?: unknown })?.token } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { token = ((await req.json()) as { token?: unknown })?.token } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
 
   try {
     const payload = await verifyAtsInvite(token)

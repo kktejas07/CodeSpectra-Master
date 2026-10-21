@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   // Public endpoint: throttle list-bombing (5 per IP per 10 minutes).
   const limit = await rateLimitRedis(`newsletter:ip:${clientLimiterKeyFromRequest(req, null)}`, 5, 10 * 60_000)
   if (!limit.ok) {
-    return NextResponse.json({ error: `Too many requests. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+    return NextResponse.json({ error: `Too many requests. Try again in ${limit.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: limit.retryAfterSec } }, { status: 429 })
   }
   const body = await req.json().catch(() => ({})) as { email?: string; source?: string; turnstileToken?: string }
   const captcha = await captchaGate(req, body.turnstileToken)

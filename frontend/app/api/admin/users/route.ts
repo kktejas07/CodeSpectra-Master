@@ -219,8 +219,9 @@ async function provisionAccount(
       const { sendEmail } = await import('@/lib/send-email')
       const roleName = role === 'tenant_admin' ? 'Organization Admin' : role === 'superadmin' ? 'Superadmin' : role === 'judge' ? 'Judge' : 'Team Member'
       if (password) {
-        const { emailTemplates } = await import('@/lib/email-templates')
-        const r = await sendEmail(email, emailTemplates.accountCredentials({ name: full_name, email, role: roleName, orgName }))
+        const { emailTemplatesFor } = await import('@/lib/email-templates')
+        const { localeForEmail } = await import('@/lib/i18n/recipient')
+        const r = await sendEmail(email, emailTemplatesFor(await localeForEmail(email)).accountCredentials({ name: full_name, email, role: roleName, orgName }))
         emailSent = !!r?.success
       } else {
         const hours = 72

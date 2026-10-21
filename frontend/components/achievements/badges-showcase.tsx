@@ -18,6 +18,7 @@ import {
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 interface BadgesShowcaseProps {
   userBadges?: string[]
@@ -58,14 +59,12 @@ export function BadgesShowcase({
   earnedCount = 0,
   totalCount = AVAILABLE_BADGES.length,
 }: BadgesShowcaseProps) {
+  const { t } = useT()
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-2xl font-bold text-foreground">Your badges</h2>
-        <p className="text-muted-foreground mt-2">
-          Earn badges by solving challenges and completing practice paths. You&apos;ve earned {earnedCount} of{' '}
-          {totalCount} badges.
-        </p>
+        <h2 className="text-2xl font-bold text-foreground">{t('dash.yourBadges')}</h2>
+        <p className="text-muted-foreground mt-2">{t('dash.earnBadgesBySolvingChallengesAnda06', { earnedCount, totalCount })}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
@@ -96,9 +95,7 @@ export function BadgesShowcase({
                 ))}
               </div>
               {isEarned && (
-                <Badge className="mt-4 border border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300">
-                  Earned
-                </Badge>
+                <Badge className="mt-4 border border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300">{t('dash.earned')}</Badge>
               )}
             </Card>
           )
@@ -106,11 +103,8 @@ export function BadgesShowcase({
       </div>
 
       <Card className="rounded-3xl border-border/70 bg-muted/30 p-6">
-        <h3 className="font-semibold text-foreground mb-2">How do I earn badges?</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          Solve problems and challenges on the practice tracks. Each badge unlocks when you finish enough problems in that
-          skill.
-        </p>
+        <h3 className="font-semibold text-foreground mb-2">{t('dash.howDoIEarnBadges')}</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">{t('dash.solveProblemsAndChallengesOnThe8c4')}</p>
       </Card>
     </div>
   )

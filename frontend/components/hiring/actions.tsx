@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import type { ApplicationStatus, AtsApplication, PipelineStage } from '@/lib/ats/contract'
 import { atsSend, errorMessage } from './lib/api'
 import { Field, InlineError, NativeSelect } from './ui'
+import { useT } from '@/lib/i18n/client'
 
 const enc = encodeURIComponent
 
@@ -74,6 +75,7 @@ export function ActionDialog({
   onClose: () => void
   onDone: (r: { kind: ActionRequest['kind']; ids: string[]; to?: string; failed: number }) => void
 }) {
+  const { t } = useT()
   const [to, setTo] = useState('')
   const [reason, setReason] = useState('')
   const [preset, setPreset] = useState('')
@@ -100,8 +102,8 @@ export function ActionDialog({
 
   const submit = async () => {
     setError(null)
-    if (request.kind === 'move' && !to) { setError('Choose a stage.'); return }
-    if (needsReason && !fullReason) { setError('Add a reason. It is kept in the history, not sent to the candidate.'); return }
+    if (request.kind === 'move' && !to) { setError(t('hiring.chooseAStage')); return }
+    if (needsReason && !fullReason) { setError(t('hiring.addAReasonItIsKepte87')); return }
     setBusy(true)
     const fn =
       request.kind === 'move'
@@ -122,33 +124,33 @@ export function ActionDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {request.kind === 'move'
-              ? 'Moving skips any approval for this step. The candidate gets the next stage’s messages.'
+              ? t('hiring.movingSkipsAnyApprovalForThis2d6')
               : request.kind === 'reject'
-                ? 'They leave the pipeline. Your reason is kept in the history.'
-                : 'They stay in their stage but no messages or reminders go out.'}
+                ? t('hiring.theyLeaveThePipelineYourReason6d1')
+                : t('hiring.theyStayInTheirStageBut913')}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           {request.kind === 'move' && (
-            <Field label="Move to" htmlFor="act-to">
-              <NativeSelect id="act-to" value={to} onChange={setTo} placeholder="Choose a stage" options={stages.map((s) => ({ value: s.id, label: s.name }))} />
+            <Field label={t('hiring.moveTo2')} htmlFor="act-to">
+              <NativeSelect id="act-to" value={to} onChange={setTo} placeholder={t('hiring.chooseAStage2')} options={stages.map((s) => ({ value: s.id, label: s.name }))} />
             </Field>
           )}
           {needsReason && (
-            <Field label="Reason" htmlFor="act-preset">
-              <NativeSelect id="act-preset" value={preset} onChange={setPreset} placeholder="Pick a common reason (optional)" options={REJECT_REASONS.map((r) => ({ value: r, label: r }))} />
+            <Field label={t('hiring.reason')} htmlFor="act-preset">
+              <NativeSelect id="act-preset" value={preset} onChange={setPreset} placeholder={t('hiring.pickACommonReasonOptional')} options={REJECT_REASONS.map((r) => ({ value: r, label: r }))} />
             </Field>
           )}
-          <Field label={needsReason ? 'Notes' : 'Reason (optional)'} htmlFor="act-reason">
-            <Textarea id="act-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} placeholder="Why are you making this change?" />
+          <Field label={needsReason ? t('hiring.notes') : t('hiring.reasonOptional')} htmlFor="act-reason">
+            <Textarea id="act-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} placeholder={t('hiring.whyAreYouMakingThisChange')} />
           </Field>
           <InlineError message={error} />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>{t('common.cancel')}</Button>
           <Button variant={request.kind === 'reject' || target?.type === 'rejected' ? 'destructive' : 'default'} onClick={submit} disabled={busy}>
             {busy && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}
-            {request.kind === 'move' ? 'Move' : request.kind === 'reject' ? 'Reject' : 'Put on hold'}
+            {request.kind === 'move' ? t('hiring.move') : request.kind === 'reject' ? t('hiring.reject') : t('hiring.putOnHold')}
           </Button>
         </DialogFooter>
       </DialogContent>

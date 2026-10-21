@@ -53,7 +53,7 @@ export async function POST(
 
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   }
   const userId = gate.user.id
   const email = gate.user.email
@@ -73,7 +73,7 @@ export async function POST(
       }).toArray()
       for (const entry of blockedEntries) {
         if (isIpInCidr(clientIp, String(entry.ip))) {
-          return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
+          return NextResponse.json({ error: 'This IP address has been blocked.', code: 'exam_ip_blocked' }, { status: 403 })
         }
       }
     }
@@ -86,12 +86,12 @@ export async function POST(
       created_at: { $gte: new Date(Date.now() - 3600000).toISOString() }
     })
     if (recentSubmissions >= 3) {
-      return NextResponse.json({ error: 'Too many submission attempts. Please try again later.' }, { status: 429 })
+      return NextResponse.json({ error: 'Too many submission attempts. Please try again later.', code: 'exam_submit_rate' }, { status: 429 })
     }
 
     const exams = db.collection('exams')
     const exam = await exams.findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     // Server-side entry gate (the page's checks are UX only): published,
     // starts_at/ends_at window, invite-only (valid invite for this exam + account,
@@ -108,7 +108,7 @@ export async function POST(
     const draft = await getExamDraft(db, examId, userId)
     const timeState = attemptTimeState(exam as Record<string, unknown>, draft, access.attemptNo)
     if (timeState.status === 'not_started') {
-      return NextResponse.json({ error: 'Start the assessment before submitting.' }, { status: 409 })
+      return NextResponse.json({ error: 'Start the assessment before submitting.', code: 'exam_start_assessment_before_submit' }, { status: 409 })
     }
     const late = timeState.status === 'expired'
 
@@ -157,13 +157,13 @@ export async function POST(
       if (!questionIds.has(k)) continue
       const s = Array.isArray(v) ? v.map((x) => String(x ?? '')).join(', ') : String(v ?? '')
       if (s.length > MAX_ANSWER_CHARS) {
-        return NextResponse.json({ error: `Answer too large (max ${MAX_ANSWER_CHARS} characters per question)` }, { status: 400 })
+        return NextResponse.json({ error: `Answer too large (max ${MAX_ANSWER_CHARS} characters per question)`, code: 'exam_answer_too_large_max', params: { max: MAX_ANSWER_CHARS } }, { status: 400 })
       }
       totalChars += s.length
       answers[k.slice(0, 128)] = s
     }
     if (totalChars > MAX_TOTAL_ANSWER_CHARS) {
-      return NextResponse.json({ error: 'Submission too large' }, { status: 400 })
+      return NextResponse.json({ error: 'Submission too large', code: 'exam_submission_too_large' }, { status: 400 })
     }
     let totalScore = 0
     let maxScore = 0
@@ -288,7 +288,7 @@ export async function POST(
     // second write hits the unique key / conditional replace and gets a 409.
     const stored = await recordExamAttempt(db, access.current, submission, access.attemptNo)
     if (!stored.ok) {
-      return NextResponse.json({ error: 'This attempt was already submitted.' }, { status: 409 })
+      return NextResponse.json({ error: 'This attempt was already submitted.', code: 'exam_already_submitted' }, { status: 409 })
     }
     knowledgeOnSubmission(examId, userId, (exam as { tenant_id?: unknown }).tenant_id)
     // Automation bus: receipts, auto-grading (coding tests + AI), workflows (lib/automation).

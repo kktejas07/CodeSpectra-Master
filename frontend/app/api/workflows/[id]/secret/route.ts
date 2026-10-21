@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (limited) return limited
   const { id } = await ctx.params
   const wf = await loadWorkflow(g, id)
-  if (!wf) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!wf) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
   const secret = newWebhookSecret()
   await (await col('workflows')).updateOne({ id: wf.id }, { $set: { webhook_secret_enc: await encryptValue(secret), webhook_secret_hint: maskSecret(secret), updated_at: nowIso(), updated_by: g.user.id } })
   await auditAdmin(g.user, wf.webhook_secret_enc ? 'workflow.rotate_secret' : 'workflow.create_secret', 'workflow', wf.id, wf.name, 'warning')

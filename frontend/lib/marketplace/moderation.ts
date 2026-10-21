@@ -107,7 +107,7 @@ export async function decideRefund(actorId: string, id: string, decision: 'appro
       for (const lineId of r.line_ids ?? []) await rescheduleLineHold(r.order_id, lineId, nowIso()).catch(() => {})
     }
     const { notify } = await import('@/lib/notifications')
-    await notify({ user_id: r.buyer_id, type: 'mkt.refund_update', title: 'Refund request declined', message: note, link: `/dashboard/orders/${r.order_id}` }).catch(() => null)
+    await notify({ user_id: r.buyer_id, type: 'mkt.refund_update', title: 'Refund request declined', message: note, title_i18n: { key: 'mkt.refundDeclined.title' }, link: `/dashboard/orders/${r.order_id}` }).catch(() => null)
     return { ...r, status: 'rejected', note }
   }
   const order = (await (await ordersCol()).findOne({ id: r.order_id }, { projection: { _id: 0 } })) as Order | null
@@ -131,7 +131,7 @@ export async function decideRefund(actorId: string, id: string, decision: 'appro
   const { audit, getSellerById } = await import('./sellers')
   await audit(actorId, 'refund.approved', id, `${amount} ${r.currency} via ${via}`, 'refund')
   const { notify } = await import('@/lib/notifications')
-  await notify({ user_id: r.buyer_id, type: 'mkt.refund_update', title: 'Refund approved', message: `Your refund for order ${order.number} has been approved.`, link: `/dashboard/orders/${r.order_id}` }).catch(() => null)
+  await notify({ user_id: r.buyer_id, type: 'mkt.refund_update', title: 'Refund approved', message: `Your refund for order ${order.number} has been approved.`, title_i18n: { key: 'mkt.refundApproved.title' }, message_i18n: { key: 'mkt.refundApproved.message', params: { number: order.number } }, link: `/dashboard/orders/${r.order_id}` }).catch(() => null)
   const seller = await getSellerById(r.seller_id)
   if (seller) {
     const { notifySeller } = await import('./seller-notify')

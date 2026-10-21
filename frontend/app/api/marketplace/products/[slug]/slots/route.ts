@@ -17,7 +17,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ slug
   const { slug } = await params
   try {
     const found = await getProductBySlug(slug)
-    if (!found || found.raw.kind !== 'service') return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!found || found.raw.kind !== 'service') return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     const fromRaw = Date.parse(req.nextUrl.searchParams.get('from') || '')
     const from = Number.isFinite(fromRaw) ? Math.max(fromRaw, Date.now()) : Date.now()
     const days = Math.min(31, Math.max(1, Number(req.nextUrl.searchParams.get('days')) || 14))

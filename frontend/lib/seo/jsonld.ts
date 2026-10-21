@@ -107,7 +107,7 @@ export function breadcrumbJsonLd(items: Crumb[], site: string): JsonLdObject | n
 }
 
 /** WebPage with speakable selectors (voice assistants read the answer-first summary). */
-export function webPageJsonLd(args: { site: string; path: string; name: string; description: string; speakable?: string[]; type?: string; dateModified?: string }): JsonLdObject {
+export function webPageJsonLd(args: { site: string; path: string; name: string; description: string; speakable?: string[]; type?: string; dateModified?: string; /** BCP-47 page language (hi / te copies under /hi, /te). */ inLanguage?: string }): JsonLdObject {
   return compact({
     '@context': CTX,
     '@type': args.type || 'WebPage',
@@ -117,7 +117,7 @@ export function webPageJsonLd(args: { site: string; path: string; name: string; 
     description: args.description,
     isPartOf: { '@id': websiteId(args.site) },
     publisher: { '@id': orgId(args.site) },
-    inLanguage: 'en',
+    inLanguage: args.inLanguage || 'en',
     dateModified: args.dateModified,
     speakable: args.speakable?.length ? { '@type': 'SpeakableSpecification', cssSelector: args.speakable } : undefined,
   })
@@ -158,12 +158,13 @@ export function softwareApplicationJsonLd(args: { site: string; plans?: PlanOffe
 
 export interface QA { q: string; a: string }
 
-export function faqJsonLd(items: QA[]): JsonLdObject | null {
+export function faqJsonLd(items: QA[], inLanguage?: string): JsonLdObject | null {
   const list = items.filter((x) => x.q?.trim() && x.a?.trim())
   if (!list.length) return null
   return {
     '@context': CTX,
     '@type': 'FAQPage',
+    ...(inLanguage && inLanguage !== 'en' ? { inLanguage } : {}),
     mainEntity: list.map((x) => ({ '@type': 'Question', name: x.q.trim(), acceptedAnswer: { '@type': 'Answer', text: x.a.trim() } })),
   }
 }

@@ -45,7 +45,7 @@ function shape(a: { verify_token: string; submitted_at?: string | null; cert_sna
 
 export async function GET(_request: NextRequest, { params }: Ctx) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id: courseId } = await params
   try {
     const existing = await (await certificationAttempts()).findOne(
@@ -61,12 +61,12 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
 
 export async function POST(_request: NextRequest, { params }: Ctx) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const rl = await rateLimitRedis(`course-cert:${user.id}`, 10, 60_000)
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many requests. Try again in a minute.' },
+      { error: 'Too many requests. Try again in a minute.', code: 'rate_limited_minute' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }
@@ -83,7 +83,7 @@ export async function POST(_request: NextRequest, { params }: Ctx) {
 
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id: courseId })
-    if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
 
     const progress = await db.collection('course_progress').findOne({ courseId, userId: user.id })
     if (!progress) return NextResponse.json({ error: 'Enroll in this course first' }, { status: 400 })

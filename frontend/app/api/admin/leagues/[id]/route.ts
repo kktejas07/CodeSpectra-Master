@@ -54,6 +54,6 @@ export async function POST(req: Request, { params }: Ctx) {
       await revalidateLeagues()
       return NextResponse.json({ ok: true, badges: r.badges })
     }
-    return NextResponse.json({ error: 'Unknown action' }, { status: 400 })
+    return NextResponse.json({ error: 'Unknown action', code: 'unknown_action' }, { status: 400 })
   })
 }

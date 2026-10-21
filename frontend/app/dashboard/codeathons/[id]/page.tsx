@@ -1,5 +1,5 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -23,6 +23,8 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { AddEventToCalendar } from '@/components/calendar/add-event-to-calendar'
 import { CodeathonResultsCard } from '@/components/codeathons/codeathon-results-card'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Problem {
   id: string
@@ -106,6 +108,9 @@ function CountdownTimer({ target }: { target: string }) {
 }
 
 export default function CodeathonDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
+  const { formatDateTime } = useLocaleDates()
+  const { t: tr } = useT()
   const { id } = React.use(params)
   const router = useRouter()
   const gate = usePageGuard('user')
@@ -139,20 +144,20 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       const codeathonDetailTour: TourStep[] = [
         {
           target: '[data-tour="codeathon-detail-header"]',
-          title: 'Codeathon details for participants',
-          description: 'This page shows one codeathon’s rules, teams, and problems for participants.',
+          title: tr('compete.codeathonDetailsForParticipants'),
+          description: tr('compete.thisPageShowsOneCodeathonsRules8e3'),
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathon-detail-register"]',
-          title: 'Register for the event',
-          description: 'Click Register for Codeathon to join, then solve problems when contest starts.',
+          title: tr('compete.registerForTheEvent'),
+          description: tr('compete.clickRegisterForCodeathonToJoind85'),
           position: 'top',
         },
         {
           target: '[data-tour="codeathon-detail-overview"]',
-          title: 'Check stats before registering',
-          description: 'Pro tip: check prize, difficulty, and countdown here before registering or forming a team.',
+          title: tr('compete.checkStatsBeforeRegistering'),
+          description: tr('compete.proTipCheckPrizeDifficultyAnd72c'),
           position: 'top',
         },
       ]
@@ -198,14 +203,14 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         body: JSON.stringify({ teamName: myTeam?.name }),
       })
       if (res.ok) {
-        addToast({ type: 'success', title: 'Registered!', message: 'You are now registered for this codeathon' })
+        addToast({ type: 'success', title: tr('compete.registered'), message: tr('compete.youAreNowRegisteredForThis19e') })
         setCodeathon(prev => prev ? { ...prev, registered: true } : prev)
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: 'Failed', message: data.error || 'Registration failed' })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.registrationFailed')) })
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to register' })
+      addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToRegister') })
     } finally {
       setRegistering(false)
     }
@@ -226,13 +231,13 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         setTeams(prev => [data.team, ...prev])
         setCreateTeamOpen(false)
         setNewTeamName('')
-        addToast({ type: 'success', title: 'Team created!' })
+        addToast({ type: 'success', title: tr('compete.teamCreated') })
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: 'Failed', message: data.error || 'Failed to create team' })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.failedToCreateTeam')) })
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to create team' })
+      addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToCreateTeam') })
     } finally {
       setCreatingTeam(false)
     }
@@ -247,16 +252,16 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         body: JSON.stringify({ join_code: code.trim() }),
       })
       if (res.ok) {
-        addToast({ type: 'success', title: 'Joined team!' })
+        addToast({ type: 'success', title: tr('compete.joinedTeam') })
         setJoinTarget(null)
         setJoinCode('')
         void fetchData()
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: 'Failed', message: data.error || 'Failed to join' })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.failedToJoin')) })
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to join team' })
+      addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToJoinTeam') })
     } finally {
       setJoiningTeam(null)
     }
@@ -272,10 +277,10 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       if (res.ok) {
         setMyTeam(null)
         void fetchData()
-        addToast({ type: 'success', title: 'Left team' })
+        addToast({ type: 'success', title: tr('compete.leftTeam') })
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to leave team' })
+      addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToLeaveTeam') })
     }
   }
 
@@ -289,13 +294,13 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       })
       if (res.ok) {
         setInviteEmail('')
-        addToast({ type: 'success', title: 'Invitation sent!' })
+        addToast({ type: 'success', title: tr('compete.invitationSent') })
       } else {
         const data = await res.json() as { error?: string }
-        addToast({ type: 'error', title: 'Failed', message: data.error || 'Failed to invite' })
+        addToast({ type: 'error', title: tr('compete.failed'), message: apiError(data, tr('compete.failedToInvite')) })
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to send invitation' })
+      addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToSendInvitation') })
     }
   }
 
@@ -306,11 +311,11 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
         credentials: 'include',
       })
       if (res.ok) {
-        addToast({ type: 'success', title: 'Joined team!' })
+        addToast({ type: 'success', title: tr('compete.joinedTeam') })
         void fetchData()
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to accept invitation' })
+      addToast({ type: 'error', title: tr('compete.error'), message: tr('compete.failedToAcceptInvitation') })
     }
   }
 
@@ -322,9 +327,9 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       })
       if (!res.ok) throw new Error(String(res.status))
       setInvitations(prev => prev.filter(i => i.id !== inviteId))
-      addToast({ type: 'success', title: 'Invitation declined' })
+      addToast({ type: 'success', title: tr('compete.invitationDeclined') })
     } catch {
-      addToast({ type: 'error', title: 'Couldn’t decline the invitation', message: 'Please try again.' })
+      addToast({ type: 'error', title: tr('compete.couldntDeclineTheInvitation'), message: tr('compete.pleaseTryAgain') })
     }
   }
 
@@ -338,7 +343,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
     const origin = typeof window !== 'undefined' ? window.location.origin : ''
     navigator.clipboard.writeText(`${origin}/dashboard/codeathons/${id}`)
     setCopied(true)
-    addToast({ type: 'success', title: 'Event link copied to clipboard!' })
+    addToast({ type: 'success', title: tr('compete.eventLinkCopiedToClipboard') })
     setTimeout(() => setCopied(false), 2500)
   }
 
@@ -351,11 +356,11 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
 
   if (!codeathon) return (
     <Panel className="mx-auto max-w-md p-10 text-center">
-      <p className="font-semibold text-foreground">Codeathon not found</p>
-      <p className="mt-1 text-sm text-muted-foreground">It may have been removed, or the connection dropped. Try again or pick another one from the list.</p>
+      <p className="font-semibold text-foreground">{tr('compete.codeathonNotFound')}</p>
+      <p className="mt-1 text-sm text-muted-foreground">{tr('compete.itMayHaveBeenRemovedOrc19')}</p>
       <div className="mt-4 flex flex-wrap justify-center gap-2">
-        <Button variant="outline" size="sm" onClick={() => { setLoading(true); void fetchData() }}>Try again</Button>
-        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>All codeathons</Button>
+        <Button variant="outline" size="sm" onClick={() => { setLoading(true); void fetchData() }}>{tr('common.tryAgain')}</Button>
+        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>{tr('compete.allCodeathons')}</Button>
       </div>
     </Panel>
   )
@@ -365,8 +370,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       {/* Header */}
       <div data-tour="codeathon-detail-header">
         <Button variant="ghost" size="sm" className="-ml-2 mb-3 gap-1 text-muted-foreground" onClick={() => router.push('/dashboard/codeathons')}>
-          <ChevronRight className="h-4 w-4 rotate-180" aria-hidden /> All codeathons
-        </Button>
+          <ChevronRight className="h-4 w-4 rotate-180" aria-hidden />{' '}{tr('compete.allCodeathons')}</Button>
         <PageHeader
           className="mb-0"
           icon={<Trophy />}
@@ -381,7 +385,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
                 }`}>
                   {codeathon.status}
                 </Badge>
-                <Badge variant="outline">{isTeamMode ? 'Team event' : 'Individual'}</Badge>
+                <Badge variant="outline">{isTeamMode ? tr('compete.teamEvent') : tr('compete.individual')}</Badge>
               </span>
               {codeathon.description && <span>{codeathon.description}</span>}
             </span>
@@ -408,7 +412,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
                 className="gap-1.5 text-xs font-semibold"
               >
                 {copied ? <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /> : <Share2 className="h-3.5 w-3.5" />}
-                {copied ? 'Link copied' : 'Share event'}
+                {copied ? tr('compete.linkCopied') : tr('compete.shareEvent')}
               </Button>
             </>
           }
@@ -418,16 +422,16 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       {/* Invitations Banner */}
       {invitations.length > 0 && (
         <Panel className="border-primary/20 bg-primary/5 p-5">
-          <h3 className="mb-2 text-sm font-semibold text-foreground">Team invitations</h3>
+          <h3 className="mb-2 text-sm font-semibold text-foreground">{tr('compete.teamInvitations')}</h3>
           {invitations.map(inv => (
             <div key={inv.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-primary/10 py-2 last:border-0">
               <div>
                 <p className="text-sm font-medium">{inv.team_name}</p>
-                <p className="text-xs text-muted-foreground">Invited by {inv.inviter_name}</p>
+                <p className="text-xs text-muted-foreground">{tr('compete.invitedByInviterName', { inviter_name: inv.inviter_name })}</p>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => handleAcceptInvite(inv.id)}>Accept</Button>
-                <Button size="sm" variant="outline" onClick={() => handleDeclineInvite(inv.id)}>Decline</Button>
+                <Button size="sm" onClick={() => handleAcceptInvite(inv.id)}>{tr('compete.accept')}</Button>
+                <Button size="sm" variant="outline" onClick={() => handleDeclineInvite(inv.id)}>{tr('compete.decline')}</Button>
               </div>
             </div>
           ))}
@@ -439,24 +443,24 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="overview">{tr('compete.overview')}</TabsTrigger>
           {isTeamMode && <TabsTrigger value="teams">Teams ({teams.length})</TabsTrigger>}
-          {problemsVisible && codeathon.problems && <TabsTrigger value="problems">Problems ({codeathon.problems.length})</TabsTrigger>}
+          {problemsVisible && codeathon.problems && <TabsTrigger value="problems">{tr('compete.problemsCount', { count: codeathon.problems.length })}</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
           {/* Stats */}
           <div className="cs-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4" data-tour="codeathon-detail-overview">
-            <StatCard label="Participants" value={codeathon.participants || 0} icon={<Users />} />
-            <StatCard label="Prize pool" value={codeathon.prizePool || '—'} icon={<Trophy />} />
-            <StatCard label="Difficulty" value={codeathon.difficulty || 'Medium'} icon={<Target />} />
+            <StatCard label={tr('compete.participants')} value={codeathon.participants || 0} icon={<Users />} />
+            <StatCard label={tr('compete.prizePool')} value={codeathon.prizePool || '—'} icon={<Trophy />} />
+            <StatCard label={tr('compete.difficulty')} value={codeathon.difficulty || 'Medium'} icon={<Target />} />
             <StatCard
-              label="Starts in"
+              label={tr('compete.startsIn')}
               icon={<Clock />}
               value={codeathon.startDate ? (
                 <CountdownTimer target={codeathon.startDate} />
               ) : (
-                <span className="text-sm font-medium">TBA</span>
+                <span className="text-sm font-medium">{tr('compete.tba')}</span>
               )}
             />
           </div>
@@ -464,7 +468,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           {/* Topics */}
           {codeathon.topics && codeathon.topics.length > 0 && (
             <Panel className="p-5">
-              <h3 className="mb-2 text-sm font-semibold text-foreground">Topics</h3>
+              <h3 className="mb-2 text-sm font-semibold text-foreground">{tr('compete.topics')}</h3>
               <div className="flex flex-wrap gap-1.5">
                 {codeathon.topics.map(t => <Badge key={t} variant="secondary">{t}</Badge>)}
               </div>
@@ -474,10 +478,8 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           {/* Team info */}
           {isTeamMode && (
             <Panel className="p-5">
-              <h3 className="mb-2 text-sm font-semibold text-foreground">Team format</h3>
-              <p className="text-sm tabular-nums text-muted-foreground">
-                Team size: {codeathon.team_size_min || 2}–{codeathon.team_size_max || 4} members
-              </p>
+              <h3 className="mb-2 text-sm font-semibold text-foreground">{tr('compete.teamFormat')}</h3>
+              <p className="text-sm tabular-nums text-muted-foreground">{tr('compete.teamSize')}{' '}{codeathon.team_size_min || 2}–{codeathon.team_size_max || 4}{' '}{tr('compete.members')}</p>
             </Panel>
           )}
         </TabsContent>
@@ -486,8 +488,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           {!myTeam && (
             <div className="flex gap-2">
               <Button onClick={() => setCreateTeamOpen(true)}>
-                <Plus className="h-4 w-4 mr-1" />Create team
-              </Button>
+                <Plus className="h-4 w-4 mr-1" />{tr('compete.createTeam')}</Button>
             </div>
           )}
 
@@ -495,16 +496,12 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
             <Panel className="border-primary/20 p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Shield className="h-4 w-4 text-primary" />Your team: {myTeam.name}
-                </h3>
+                  <Shield className="h-4 w-4 text-primary" />{tr('compete.yourTeamName', { name: myTeam.name })}</h3>
                 <Button size="sm" variant="outline" onClick={handleLeaveTeam}>
-                  <UserMinus className="h-3.5 w-3.5 mr-1" />Leave
-                </Button>
+                  <UserMinus className="h-3.5 w-3.5 mr-1" />{tr('compete.leave')}</Button>
               </div>
               {myTeam.join_code && (
-                <p className="mb-3 text-sm text-muted-foreground">
-                  Join code: <span className="font-mono font-semibold tabular-nums text-foreground">{myTeam.join_code}</span> — share it with teammates.
-                </p>
+                <p className="mb-3 text-sm text-muted-foreground">{tr('compete.joinCode')}{' '}<span className="font-mono font-semibold tabular-nums text-foreground">{myTeam.join_code}</span>{' '}{tr('compete.shareItWithTeammates')}</p>
               )}
               <div className="space-y-2">
                 {myTeam.members?.map(m => (
@@ -516,35 +513,34 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
               </div>
               <div className="mt-3 flex gap-2">
                 <Input
-                  placeholder="Email to invite"
-                  aria-label="Email to invite"
+                  placeholder={tr('compete.emailToInvite')}
+                  aria-label={tr('compete.emailToInvite')}
                   type="email"
                   value={inviteEmail}
                   onChange={e => setInviteEmail(e.target.value)}
                   className="flex-1"
                 />
                 <Button size="sm" onClick={handleInvite} disabled={!inviteEmail.trim()}>
-                  <Mail className="h-3.5 w-3.5 mr-1" />Invite
-                </Button>
+                  <Mail className="h-3.5 w-3.5 mr-1" />{tr('compete.invite')}</Button>
               </div>
             </Panel>
           )}
 
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">All teams</h3>
+            <h3 className="text-sm font-semibold text-foreground">{tr('compete.allTeams')}</h3>
             {teams.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No teams yet. Create one to get started.</p>
+              <p className="text-sm text-muted-foreground">{tr('compete.noTeamsYetCreateOneTo61f')}</p>
             ) : (
               teams.map(team => (
                 <Card key={team.id} className="gap-0 rounded-2xl p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">{team.name}</p>
-                      <p className="text-xs tabular-nums text-muted-foreground">{team.member_count} members</p>
+                      <p className="text-xs tabular-nums text-muted-foreground">{tr('compete.memberCountMembers', { member_count: team.member_count })}</p>
                     </div>
                     {!myTeam && (
                       <Button size="sm" variant="outline" onClick={() => { setJoinTarget(team); setJoinCode('') }} disabled={joiningTeam === team.id}>
-                        {joiningTeam === team.id ? 'Joining…' : 'Join'}
+                        {joiningTeam === team.id ? tr('compete.joining') : tr('compete.join')}
                       </Button>
                     )}
                   </div>
@@ -558,8 +554,8 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           {!problemsVisible ? (
             <Panel className="flex flex-col items-center p-10 text-center">
               <Target className="mb-3 h-10 w-10 text-primary/50" aria-hidden />
-              <p className="font-semibold text-foreground">Problems unlock when the contest starts</p>
-              <p className="mt-1 text-sm tabular-nums text-muted-foreground">Start time: {codeathon.startDate ? formatDateTime(codeathon.startDate) : 'TBA'}</p>
+              <p className="font-semibold text-foreground">{tr('compete.problemsUnlockWhenTheContestStarts')}</p>
+              <p className="mt-1 text-sm tabular-nums text-muted-foreground">{tr('compete.startTime')}{' '}{codeathon.startDate ? formatDateTime(codeathon.startDate) : tr('compete.tba')}</p>
             </Panel>
           ) : (
             <div className="space-y-2">
@@ -579,7 +575,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
                           }>
                             {p.difficulty}
                           </Badge>
-                          <span className="text-xs tabular-nums text-muted-foreground">{p.points} pts</span>
+                          <span className="text-xs tabular-nums text-muted-foreground">{tr('compete.pointsPts', { points: p.points })}</span>
                         </div>
                       </div>
                     </div>
@@ -596,12 +592,11 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       <div className="flex gap-2" data-tour="codeathon-detail-register">
         {!codeathon.registered ? (
           <Button onClick={handleRegister} disabled={registering} size="lg">
-            {registering ? 'Registering…' : 'Register for this codeathon'}
+            {registering ? tr('compete.registering') : tr('compete.registerForThisCodeathon')}
           </Button>
         ) : (
           <Button variant="outline" size="lg" disabled>
-            <CheckCircle2 className="h-4 w-4 mr-1" />Registered
-          </Button>
+            <CheckCircle2 className="h-4 w-4 mr-1" />{tr('compete.registered2')}</Button>
         )}
       </div>
 
@@ -609,17 +604,17 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       <Dialog open={!!joinTarget} onOpenChange={(o) => { if (!o) setJoinTarget(null) }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Join {joinTarget?.name || 'team'}</DialogTitle>
-            <DialogDescription>Ask a member of this team for its join code.</DialogDescription>
+            <DialogTitle>{tr('compete.join')}{' '}{joinTarget?.name || tr('compete.team')}</DialogTitle>
+            <DialogDescription>{tr('compete.askAMemberOfThisTeamfde')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
-            <Label htmlFor="join-code">Join code</Label>
+            <Label htmlFor="join-code">{tr('compete.joinCode2')}</Label>
             <Input id="join-code" value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="e.g. 3F9A1C2B" autoComplete="off" />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setJoinTarget(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setJoinTarget(null)}>{tr('common.cancel')}</Button>
             <Button onClick={() => joinTarget && handleJoinTeam(joinTarget.id, joinCode)} disabled={!joinCode.trim() || !!joiningTeam}>
-              {joiningTeam ? 'Joining…' : 'Join team'}
+              {joiningTeam ? tr('compete.joining') : tr('compete.joinTeam')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -629,19 +624,19 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create a team</DialogTitle>
-            <DialogDescription>Create a team for this codeathon</DialogDescription>
+            <DialogTitle>{tr('compete.createATeam')}</DialogTitle>
+            <DialogDescription>{tr('compete.createATeamForThisCodeathon')}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="new-team-name">Team name</Label>
-              <Input id="new-team-name" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} placeholder="Enter team name" />
+              <Label htmlFor="new-team-name">{tr('compete.teamName')}</Label>
+              <Input id="new-team-name" value={newTeamName} onChange={e => setNewTeamName(e.target.value)} placeholder={tr('compete.enterTeamName')} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateTeamOpen(false)}>Cancel</Button>
+            <Button variant="outline" onClick={() => setCreateTeamOpen(false)}>{tr('common.cancel')}</Button>
             <Button onClick={handleCreateTeam} disabled={creatingTeam || !newTeamName.trim()}>
-              {creatingTeam ? 'Creating…' : 'Create team'}
+              {creatingTeam ? tr('compete.creating') : tr('compete.createTeam')}
             </Button>
           </DialogFooter>
         </DialogContent>

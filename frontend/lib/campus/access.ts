@@ -14,6 +14,7 @@ import { getAPIUser, type APIUser } from '@/lib/route-auth'
 import { logger } from '@/lib/logger'
 import { collegesCol, clean } from './store'
 import type { CollegeDoc } from './types'
+import { apiErrorBody } from '@/lib/api-errors'
 
 export type CampusRole = 'superadmin' | 'college_admin' | 'placement_officer'
 export interface StaffContext { user: APIUser; college: CollegeDoc; role: CampusRole }
@@ -42,9 +43,9 @@ export async function loadStaffContext(user: APIUser, requested?: string | null)
   return role ? { user, college: clean(college)!, role } : null
 }
 
-export const unauthorized = () => NextResponse.json({ error: 'Sign in to continue.' }, { status: 401 })
-export const noCollege = () => NextResponse.json({ error: 'You are not on a college placement team.' }, { status: 403 })
-export const bad = (error: string, status = 400) => NextResponse.json({ error }, { status })
+export const unauthorized = () => NextResponse.json({ error: 'Sign in to continue.', code: 'sign_in_to_continue' }, { status: 401 })
+export const noCollege = () => NextResponse.json({ error: 'You are not on a college placement team.', code: 'campus_not_staff' }, { status: 403 })
+export const bad = (error: string, status = 400) => NextResponse.json(apiErrorBody(error), { status })
 
 export async function withUser(): Promise<APIUser | null> {
   try { return await getAPIUser() } catch { return null }
@@ -57,7 +58,7 @@ export async function guarded(name: string, fn: () => Promise<NextResponse | Res
     const status = (e as { status?: number })?.status
     if (typeof status === 'number' && status >= 400 && status < 500) return bad((e as Error).message, status)
     logger.error(`[campus] ${name} failed`, (e as Error).message)
-    return NextResponse.json({ error: 'Something went wrong. Try again in a moment.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Try again in a moment.', code: 'server_error_moment' }, { status: 500 })
   }
 }
 

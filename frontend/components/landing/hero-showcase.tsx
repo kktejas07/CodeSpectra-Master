@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useCallback, useEffect, useId, useState } from 'react'
 import { Check, Pause, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
+import type { MessageKey } from '@/lib/i18n/catalog'
 
 /**
  * White + mint hero: a headline whose role word slides through the roles
@@ -15,38 +17,17 @@ import { cn } from '@/lib/utils'
  * off entirely for people who prefer reduced motion.
  */
 
-const ROLES = ['developers', 'design engineers', 'QA engineers', 'graduates']
+// Copy lives in the `public` catalog (lib/i18n/messages/*/public.json): heroRole*, heroSlide<Id>*.
+const ROLES = ['heroRoleDevelopers', 'heroRoleDesignEngineers', 'heroRoleQa', 'heroRoleGraduates'] as const
 
 const SLIDES = [
-  {
-    id: 'build',
-    tab: 'Build',
-    title: 'Build the assessment in minutes',
-    body: 'Pick the role and experience band, then edit the difficulty-weighted questions.',
-    alt: 'Building an assessment for a design engineer role, with questions weighted by difficulty',
-  },
-  {
-    id: 'proctor',
-    tab: 'Proctor',
-    title: 'Candidates test under live proctoring',
-    body: 'Webcam face matching, tab-switch and paste detection, each event timestamped.',
-    alt: 'A candidate taking a proctored coding test with webcam face matching and event logging',
-  },
-  {
-    id: 'results',
-    tab: 'Rank',
-    title: 'Get a ranked shortlist',
-    body: 'Everyone is scored the same way. Review the top 20, then release results or export.',
-    alt: 'Ranked screening results with a top-20 shortlist cutoff',
-  },
-  {
-    id: 'hackathon',
-    tab: 'Judge',
-    title: 'Run and judge hackathons',
-    body: 'Teams submit repositories; judges score every entry on one rubric.',
-    alt: 'Hackathon judge dashboard with team scores on a shared rubric',
-  },
-]
+  { id: 'build', key: 'Build' },
+  { id: 'proctor', key: 'Proctor' },
+  { id: 'results', key: 'Rank' },
+  { id: 'hackathon', key: 'Judge' },
+] as const
+type SlideField = 'Tab' | 'Title' | 'Body' | 'Alt'
+const slideKey = (s: (typeof SLIDES)[number], f: SlideField) => `public.heroSlide${s.key}${f}` as MessageKey
 
 const SLIDE_MS = 6500
 const ROLE_MS = 2600
@@ -65,6 +46,7 @@ function usePrefersReducedMotion() {
 
 export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { primaryHref: string; secondaryHref: string; secondaryLabel: string }) {
   const reduced = usePrefersReducedMotion()
+  const { t: tx, locale } = useT()
   const [role, setRole] = useState(0)
   const [slide, setSlide] = useState(0)
   const [paused, setPaused] = useState(false) // user pressed pause
@@ -113,9 +95,10 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
         {/* Copy */}
         <div>
           <h1 className="cs-display text-[3rem] sm:text-7xl lg:text-[4.6rem]">
-            <span className="sr-only">Hire developers, design engineers, QA engineers and graduates on proven skills.</span>
-            <span aria-hidden className="block">Hire</span>
-            <span aria-hidden className="relative block h-[1.08em] overflow-hidden">
+            <span className="sr-only">{tx('public.heroSr')}</span>
+            {tx('public.heroPrefix') && <span aria-hidden className="block">{tx('public.heroPrefix')}</span>}
+            {/* Indic scripts need room for vowel signs above and below the line. */}
+            <span aria-hidden className={cn('relative block overflow-hidden', locale === 'en' ? 'h-[1.08em]' : 'h-[1.3em]')}>
               {ROLES.map((r, i) => (
                 <span
                   key={r}
@@ -125,27 +108,24 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                   )}
                 >
                   <span className="relative inline-block">
-                    {r}
+                    {tx(`public.${r}`)}
                     {/* underline draws in each time the word changes */}
                     {i === role && <span key={`u-${role}`} className="cs-underline absolute inset-x-0 bottom-[0.02em] h-[0.09em] origin-left rounded-full bg-[#2f5be7]" />}
                   </span>
                 </span>
               ))}
             </span>
-            <span aria-hidden className="block">on proven skills.</span>
+            <span aria-hidden className="block">{tx('public.heroSuffix')}</span>
           </h1>
 
-          <p className="mt-7 max-w-[50ch] text-lg leading-relaxed text-cs-ink-soft">
-            CodeSpectra runs proctored, auto-scored skills assessments for software, CAD and mechanical design, QA
-            and aptitude roles, and hands your team a ranked shortlist.
-          </p>
+          <p className="mt-7 max-w-[50ch] text-lg leading-relaxed text-cs-ink-soft">{tx('public.heroLead')}</p>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link
               href={primaryHref}
               className="inline-flex h-12 items-center justify-center rounded-full bg-[#2f5be7] px-7 text-[15px] font-bold text-white shadow-lg shadow-[#2f5be7]/25 transition-[filter,box-shadow] hover:shadow-[#2f5be7]/40 hover:brightness-110"
             >
-              Book a pilot
+              {tx('public.bookPilot')}
             </Link>
             <Link
               href={secondaryHref}
@@ -156,7 +136,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
           </div>
 
           <ul className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-[15px] text-cs-ink-soft">
-            {['Proctored', 'Auto-scored', 'Any role, not only code'].map((x) => (
+            {[tx('public.heroCheckProctored'), tx('public.heroCheckAutoScored'), tx('public.heroCheckAnyRole')].map((x) => (
               <li key={x} className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#2f5be7]/12">
                   <Check className="h-3.5 w-3.5 text-[#1e40af]" strokeWidth={3} aria-hidden />
@@ -171,7 +151,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
         <div
           role="region"
           aria-roledescription="carousel"
-          aria-label="What CodeSpectra does"
+          aria-label={tx('public.heroCarousel')}
           onMouseEnter={() => setHovering(true)}
           onMouseLeave={() => setHovering(false)}
           onFocusCapture={() => setHovering(true)}
@@ -210,7 +190,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                   <img
                     key={i === slide ? `${s.id}-on-${slide}` : s.id}
                     src={`/illustrations/codespectra/hero-screen-${s.id}.svg`}
-                    alt={s.alt}
+                    alt={tx(slideKey(s, 'Alt'))}
                     width={584}
                     height={440}
                     loading={i === 0 ? 'eager' : 'lazy'}
@@ -224,12 +204,12 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
           </div>
 
           <div aria-live={running ? 'off' : 'polite'} className="mt-5 min-h-[3.5rem] px-1">
-            <p className="text-lg font-semibold">{current.title}</p>
-            <p className="mt-0.5 text-cs-ink-soft">{current.body}</p>
+            <p className="text-lg font-semibold">{tx(slideKey(current, 'Title'))}</p>
+            <p className="mt-0.5 text-cs-ink-soft">{tx(slideKey(current, 'Body'))}</p>
           </div>
 
           <div className="mt-4 flex items-center gap-3">
-            <div role="tablist" aria-label="Choose a step" className="grid flex-1 grid-cols-4 gap-2" onKeyDown={onTabKey}>
+            <div role="tablist" aria-label={tx('public.heroChooseStep')} className="grid flex-1 grid-cols-4 gap-2" onKeyDown={onTabKey}>
               {SLIDES.map((s, i) => {
                 const active = i === slide
                 return (
@@ -255,7 +235,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
                       />
                     </span>
                     <span className={cn('mt-2 block text-sm font-semibold transition-colors', active ? 'text-cs-ink' : 'text-cs-ink-soft group-hover:text-cs-ink')}>
-                      {s.tab}
+                      {tx(slideKey(s, 'Tab'))}
                     </span>
                   </button>
                 )
@@ -265,7 +245,7 @@ export function HeroShowcase({ primaryHref, secondaryHref, secondaryLabel }: { p
               <button
                 type="button"
                 onClick={() => setPaused((p) => !p)}
-                aria-label={paused ? 'Play slideshow' : 'Pause slideshow'}
+                aria-label={paused ? tx('public.heroPlay') : tx('public.heroPause')}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-300 bg-white text-cs-ink hover:border-[#2f5be7]"
               >
                 {paused ? <Play className="h-4 w-4" aria-hidden /> : <Pause className="h-4 w-4" aria-hidden />}

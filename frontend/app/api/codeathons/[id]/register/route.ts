@@ -84,6 +84,8 @@ export async function POST(request: Request, { params }: IdRouteContext) {
         type: 'xp.awarded',
         title: 'Registered',
         message: `You earned ${xpAmount} XP for registering for ${title}`,
+        title_i18n: { key: 'xp.registered.title' },
+        message_i18n: { key: 'xp.registered.message', params: { amount: xpAmount, title } },
         link: `/dashboard/codeathons/${id}`,
         icon: 'star',
       })

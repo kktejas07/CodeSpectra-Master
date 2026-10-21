@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Clock, Trash2, Pencil, Eye } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface ScanResult {
   id: string
@@ -31,6 +32,7 @@ interface ScanHistoryProps {
 }
 
 export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, totalPages = 1, onPageChange }: ScanHistoryProps) {
+  const { t } = useT()
   const getQualityColor = (score: number) => {
     if (score >= 80) return 'bg-green-500/20 text-green-600 border-green-500/30'
     if (score >= 60) return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
@@ -50,8 +52,8 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
         <div className="flex flex-col items-center gap-3">
           <Clock className="w-8 h-8 text-muted-foreground" />
           <div>
-            <p className="font-medium text-foreground">No scans yet</p>
-            <p className="text-sm text-muted-foreground">Your scan history will appear here</p>
+            <p className="font-medium text-foreground">{t('tools.noScansYet')}</p>
+            <p className="text-sm text-muted-foreground">{t('tools.yourScanHistoryWillAppearHere')}</p>
           </div>
         </div>
       </Card>
@@ -61,9 +63,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
   return (
     <div className="space-y-3">
       <h3 className="font-semibold text-foreground flex items-center gap-2">
-        <Clock className="w-5 h-5" />
-        Recent Scans
-      </h3>
+        <Clock className="w-5 h-5" />{t('tools.recentScans')}</h3>
 
       <div className="space-y-2">
         {scans.map((scan) => (
@@ -77,7 +77,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-foreground">{scan.target}</p>
                   <Badge variant="outline" className="text-xs">
-                    {scan.source === 'github' ? 'GitHub' : 'Manual'}
+                    {scan.source === 'github' ? 'GitHub' : t('tools.manual')}
                   </Badge>
                   {scan.language && (
                     <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600">
@@ -105,8 +105,8 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                   <button
                     onClick={() => onSelectScan?.(scan)}
                     className="p-2 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
-                    title="View full report"
-                    aria-label="View full report"
+                    title={t('tools.viewFullReport')}
+                    aria-label={t('tools.viewFullReport')}
                   >
                     <Eye className="w-4 h-4" />
                   </button>
@@ -114,8 +114,8 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                   <button
                     onClick={() => onEdit?.(scan)}
                     className="p-2 hover:bg-background rounded text-muted-foreground hover:text-foreground transition"
-                    title="Edit previous scan"
-                    aria-label="Edit previous scan"
+                    title={t('tools.editPreviousScan')}
+                    aria-label={t('tools.editPreviousScan')}
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -123,8 +123,8 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
                   <button
                     onClick={() => onDelete?.(scan.id)}
                     className="p-2 hover:bg-red-500/10 rounded text-muted-foreground hover:text-red-600 transition"
-                    title="Delete"
-                    aria-label="Delete scan"
+                    title={t('common.delete')}
+                    aria-label={t('tools.deleteScan')}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -136,18 +136,15 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
             <div className="flex gap-4 mt-3 pt-3 border-t border-border/50 text-xs">
               {scan.bugs > 0 && (
                 <span className="text-red-600">
-                  <span className="font-semibold">{scan.bugs}</span> bugs
-                </span>
+                  <span className="font-semibold">{scan.bugs}</span>{' '}{t('tools.bugs3')}</span>
               )}
               {scan.vulnerabilities > 0 && (
                 <span className="text-orange-600">
-                  <span className="font-semibold">{scan.vulnerabilities}</span> vulnerabilities
-                </span>
+                  <span className="font-semibold">{scan.vulnerabilities}</span>{' '}{t('tools.vulnerabilities3')}</span>
               )}
               {scan.codeSmells > 0 && (
                 <span className="text-yellow-600">
-                  <span className="font-semibold">{scan.codeSmells}</span> code smells
-                </span>
+                  <span className="font-semibold">{scan.codeSmells}</span>{' '}{t('tools.codeSmells4')}</span>
               )}
             </div>
           </Card>
@@ -157,26 +154,20 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, t
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between pt-2">
-          <p className="text-xs text-muted-foreground">
-            Page {page} of {totalPages}
-          </p>
+          <p className="text-xs text-muted-foreground">{t('tools.pagePageOfTotalpages', { page, totalPages })}</p>
           <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
               disabled={page <= 1}
               onClick={() => onPageChange?.(page - 1)}
-            >
-              Previous
-            </Button>
+            >{t('common.previous')}</Button>
             <Button
               variant="outline"
               size="sm"
               disabled={page >= totalPages}
               onClick={() => onPageChange?.(page + 1)}
-            >
-              Next
-            </Button>
+            >{t('common.next')}</Button>
           </div>
         </div>
       )}

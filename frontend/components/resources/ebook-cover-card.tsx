@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 export type EbookCoverTheme = 'violet' | 'teal' | 'amber' | 'rose' | 'slate'
 
@@ -39,6 +40,7 @@ export function EbookCoverCard({
   href?: string
   showStatus?: boolean
 }) {
+  const { t } = useT()
   const theme = (ebook.coverTheme || 'violet') as EbookCoverTheme
   const to = href || `/dashboard/resources/${ebook.slug}`
 
@@ -89,7 +91,7 @@ export function EbookCoverCard({
             {showStatus && ebook.status ? (
               <span className="rounded bg-black/25 px-1.5 py-0.5 capitalize">{ebook.status}</span>
             ) : (
-              <span className="font-medium opacity-90">Read →</span>
+              <span className="font-medium opacity-90">{t('dash.read')}</span>
             )}
           </div>
         </div>

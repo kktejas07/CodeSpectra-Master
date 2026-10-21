@@ -6,13 +6,15 @@ import { cookies } from 'next/headers'
 import { getAPIUser, type APIUser } from '@/lib/route-auth'
 import { ANON_CART_COOKIE, CartError, mergeAnonCart, type CartRef } from './cart'
 import { MktError } from './settings'
+import { apiErrorBody } from '@/lib/api-errors'
 
 export function errorResponse(e: unknown, where: string): NextResponse {
   if (e instanceof CartError || e instanceof MktError) {
-    return NextResponse.json({ error: e.message, ...(e instanceof CartError && e.code ? { code: e.code } : {}) }, { status: e.status })
+    // CartError codes the cart UI branches on ('address', 'coupon', …) win; otherwise a catalog code (lib/api-errors).
+    return NextResponse.json(apiErrorBody(e.message, e.code, e.params), { status: e.status })
   }
   console.error(`[marketplace] ${where} failed:`, (e as Error)?.message)
-  return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+  return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
 }
 
 const ANON_RE = /^[a-f0-9-]{36}$/

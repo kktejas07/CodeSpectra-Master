@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     body = await req.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   try {
@@ -117,6 +117,6 @@ export async function GET(req: NextRequest) {
     })
   } catch (e) {
     console.error('[ai analytics] error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

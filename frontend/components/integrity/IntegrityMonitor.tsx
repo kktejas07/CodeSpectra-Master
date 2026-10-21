@@ -16,6 +16,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { keyClassOf, summariseCadence, type KeySample } from '@/lib/integrity/cadence'
 import { frameJpeg, loadFaceWatch, sampleFaces } from '@/lib/integrity/face-watch'
 import type { CandidateIntegrityConfig, IntegrityEventType, SignalId, TargetKind } from '@/lib/integrity/types'
+import { useT } from '@/lib/i18n/client'
 
 interface Props {
   kind: TargetKind
@@ -41,6 +42,7 @@ function questionOf(target: EventTarget | null): string | null {
 }
 
 export function IntegrityMonitor({ kind, targetId, config, active }: Props) {
+  const { t: tr } = useT()
   const on = (s: SignalId) => config.enabled && config.signals.includes(s)
   const queue = useRef<QueuedEvent[]>([])
   const lastByType = useRef<Record<string, number>>({})
@@ -177,7 +179,7 @@ export function IntegrityMonitor({ kind, targetId, config, active }: Props) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240, facingMode: 'user' }, audio: false })
         } catch (err) {
-          if (!stopped) { setCamera('blocked'); push('camera_blocked', { reason: (err as Error)?.name === 'NotAllowedError' ? 'denied' : 'unavailable' }) }
+          if (!stopped) { setCamera('blocked'); push('camera_blocked', { reason: (err as Error)?.name === 'NotAllowedError' ? tr('exam.denied') : tr('exam.unavailable') }) }
           return
         }
         if (stopped) { stream.getTracks().forEach((t) => t.stop()); return }
@@ -231,11 +233,11 @@ export function IntegrityMonitor({ kind, targetId, config, active }: Props) {
   return (
     <div className="pointer-events-none fixed bottom-3 left-3 z-40 flex items-center gap-2 rounded-full border border-border bg-card/95 px-3 py-1.5 text-xs text-muted-foreground shadow-sm dark:shadow-none" role="status" aria-live="polite">
       <ShieldCheck className="h-3.5 w-3.5 text-primary" aria-hidden />
-      <span>Integrity checks on</span>
+      <span>{tr('exam.integrityChecksOn')}</span>
       {camera !== 'off' && (
         <span className="inline-flex items-center gap-1">
           <Camera className="h-3.5 w-3.5" aria-hidden />
-          {camera === 'on' ? 'camera' : camera === 'starting' ? 'starting camera' : 'camera unavailable'}
+          {camera === 'on' ? tr('exam.camera') : camera === 'starting' ? tr('exam.startingCamera3') : tr('exam.cameraUnavailable')}
         </span>
       )}
       {/* Hidden: frames are analysed in the browser; nothing is recorded. */}

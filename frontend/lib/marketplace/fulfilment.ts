@@ -163,7 +163,7 @@ export async function updateLine(
   }
   const { notify } = await import('@/lib/notifications')
   const words: Record<LineAction, string> = { processing: 'is being prepared', shipped: 'has shipped', delivered: 'was delivered', completed: 'is complete', cancelled: 'was cancelled by the seller — a refund is on its way' }
-  await notify({ user_id: order.buyer_id, type: 'mkt.order_update', title: `Order ${order.number} update`, message: `${line.title.slice(0, 80)} ${words[action]}.`, link: `/dashboard/orders/${order.id}` }).catch(() => null)
+  await notify({ user_id: order.buyer_id, type: 'mkt.order_update', title: `Order ${order.number} update`, message: `${line.title.slice(0, 80)} ${words[action]}.`, title_i18n: { key: 'mkt.orderUpdate.title', params: { number: order.number } }, message_i18n: { key: `mkt.line.${action}`, params: { title: line.title.slice(0, 80) } }, link: `/dashboard/orders/${order.id}` }).catch(() => null)
   if (action === 'shipped') {
     const shipped = fresh.lines.find((l) => l.id === lineId)
     if (shipped) {

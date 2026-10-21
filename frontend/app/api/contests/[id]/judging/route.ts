@@ -37,7 +37,7 @@ export async function POST(req: Request, ctx: Ctx) {
   if (!user) return unauthorized()
   const { id } = await ctx.params
   const parsed = schema.safeParse(await readJson(req))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   return guarded('judging-score', async () => {
     const c = await loadVisible(id, user)
     if (!c) return notFound()

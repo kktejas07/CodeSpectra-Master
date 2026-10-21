@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState, useCallback } from 'react'
@@ -22,6 +22,8 @@ import { SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { UserAvatar } from '@/components/ui/user-avatar'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ActivityItem {
   ts: string
@@ -32,6 +34,8 @@ interface ActivityItem {
 }
 
 function TwoFactorAuth() {
+  const apiError = useApiError()
+  const { t } = useT()
   const [status, setStatus] = useState<{ enabled: boolean; setupAt?: string | null; verifiedAt?: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [setupData, setSetupData] = useState<{ secret: string; otpauth: string } | null>(null)
@@ -68,9 +72,9 @@ function TwoFactorAuth() {
         const url = await QRCode.toDataURL(json.otpauth, { width: 200, margin: 2 })
         setQrCode(url)
       } else {
-        setSetupError(json.error || 'Couldn’t start 2FA setup. Try again.')
+        setSetupError(apiError(json, t('account.couldntStart2faSetupTryAgain')))
       }
-    } catch { setSetupError('Couldn’t reach the server. Check your connection and try again.') }
+    } catch { setSetupError(t('account.couldntReachTheServerCheckYour6e9')) }
     setLoading(false)
   }
 
@@ -90,9 +94,9 @@ function TwoFactorAuth() {
         setVerifyToken('')
         await fetchStatus()
       } else {
-        setVerifyError(json.error || 'Verification failed')
+        setVerifyError(apiError(json, t('account.verificationFailed')))
       }
-    } catch { setVerifyError('Network error') }
+    } catch { setVerifyError(t('account.networkError')) }
     setVerifying(false)
   }
 
@@ -111,7 +115,7 @@ function TwoFactorAuth() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setDisableError(json.error || 'Couldn’t turn off 2FA. Try again.')
+        setDisableError(apiError(json, t('account.couldntTurnOff2faTryAgain')))
       } else {
         setDisableOpen(false)
         setDisableSecret('')
@@ -119,7 +123,7 @@ function TwoFactorAuth() {
         setSetupData(null)
         await fetchStatus()
       }
-    } catch { setDisableError('Couldn’t reach the server. Check your connection and try again.') }
+    } catch { setDisableError(t('account.couldntReachTheServerCheckYour6e9')) }
     setDisabling(false)
   }
 
@@ -127,7 +131,7 @@ function TwoFactorAuth() {
     <Card className="rounded-3xl border-border/70 p-5 text-sm">
       <div className="mb-3 flex items-center gap-2">
         <Shield className="h-4 w-4 text-primary" aria-hidden />
-        <span className="font-medium text-foreground">Two-factor authentication</span>
+        <span className="font-medium text-foreground">{t('account.twoFactorAuthentication')}</span>
       </div>
       {loading ? (
         <SkeletonText lines={2} />
@@ -135,13 +139,11 @@ function TwoFactorAuth() {
         <div>
           <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
             <CheckCircle2 className="h-4 w-4" />
-            <span className="font-medium">Enabled</span>
+            <span className="font-medium">{t('account.enabled')}</span>
           </div>
           {disableOpen ? (
             <form className="mt-3 space-y-2" onSubmit={e => { e.preventDefault(); handleDisable() }}>
-              <label htmlFor="disable-2fa-secret" className="block text-xs text-muted-foreground">
-                Enter your current password, or a 6-digit code from your authenticator app, to turn off 2FA.
-              </label>
+              <label htmlFor="disable-2fa-secret" className="block text-xs text-muted-foreground">{t('account.enterYourCurrentPasswordOrA7e5')}</label>
               <input
                 id="disable-2fa-secret"
                 type="password"
@@ -153,26 +155,22 @@ function TwoFactorAuth() {
               />
               {disableError ? <p className="text-xs text-destructive">{disableError}</p> : null}
               <div className="flex gap-2">
-                <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={() => { setDisableOpen(false); setDisableSecret(''); setDisableError('') }}>
-                  Cancel
-                </Button>
+                <Button type="button" variant="ghost" size="sm" className="flex-1" onClick={() => { setDisableOpen(false); setDisableSecret(''); setDisableError('') }}>{t('common.cancel')}</Button>
                 <Button type="submit" variant="destructive" size="sm" className="flex-1" disabled={!disableSecret.trim() || disabling}>
-                  {disabling ? <Loader className="h-3 w-3 animate-spin" /> : 'Turn off 2FA'}
+                  {disabling ? <Loader className="h-3 w-3 animate-spin" /> : t('account.turnOff2fa')}
                 </Button>
               </div>
             </form>
           ) : (
             <Button variant="outline" size="sm" className="mt-3 w-full gap-2" onClick={() => setDisableOpen(true)}>
-              <XCircle className="h-3.5 w-3.5" />
-              Disable
-            </Button>
+              <XCircle className="h-3.5 w-3.5" />{t('account.disable')}</Button>
           )}
         </div>
       ) : setupData ? (
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">Scan this with your authenticator app, then enter the 6-digit code.</p>
+          <p className="text-xs text-muted-foreground">{t('account.scanThisWithYourAuthenticatorAppebd')}</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          {qrCode ? <img src={qrCode} alt="Two-factor setup QR code" className="mx-auto h-40 w-40 rounded-xl border border-border bg-white p-1" /> : <div className="mx-auto h-40 w-40 rounded-xl border border-border flex items-center justify-center"><Loader className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
+          {qrCode ? <img src={qrCode} alt={t('account.twoFactorSetupQrCode')} className="mx-auto h-40 w-40 rounded-xl border border-border bg-white p-1" /> : <div className="mx-auto h-40 w-40 rounded-xl border border-border flex items-center justify-center"><Loader className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
           <p className="text-center text-[10px] text-muted-foreground break-all font-mono">{setupData.secret}</p>
           <div className="flex gap-2">
             <input
@@ -182,11 +180,11 @@ function TwoFactorAuth() {
               value={verifyToken}
               onChange={e => setVerifyToken(e.target.value.replace(/\D/g, '').slice(0, 6))}
               placeholder="000000"
-              aria-label="6-digit code"
+              aria-label={t('account.n6DigitCode')}
               className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-center text-sm font-mono tabular-nums text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
             <Button size="sm" onClick={handleVerify} disabled={verifyToken.length !== 6 || verifying}>
-              {verifying ? <Loader className="h-3 w-3 animate-spin" /> : 'Verify'}
+              {verifying ? <Loader className="h-3 w-3 animate-spin" /> : t('account.verify')}
             </Button>
           </div>
           {verifyError ? <p className="text-xs text-destructive">{verifyError}</p> : null}
@@ -195,12 +193,10 @@ function TwoFactorAuth() {
         <div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <XCircle className="h-4 w-4" />
-            <span>Not enabled</span>
+            <span>{t('account.notEnabled')}</span>
           </div>
           <Button variant="outline" size="sm" className="mt-3 w-full gap-2" onClick={handleSetup}>
-            <Smartphone className="h-3.5 w-3.5" />
-            Set up
-          </Button>
+            <Smartphone className="h-3.5 w-3.5" />{t('account.setUp')}</Button>
           {setupError ? <p className="mt-2 text-xs text-destructive">{setupError}</p> : null}
         </div>
       )}
@@ -209,6 +205,8 @@ function TwoFactorAuth() {
 }
 
 export default function ProfilePage() {
+  const { formatDate } = useLocaleDates()
+  const { t: tr } = useT()
   const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
 
@@ -340,20 +338,20 @@ export default function ProfilePage() {
       const profileTour: TourStep[] = [
         {
           target: '[data-tour="profile-header"]',
-          title: 'Your developer profile overview',
-          description: 'This page showcases your identity, level, and progress to recruiters and teammates.',
+          title: tr('account.yourDeveloperProfileOverview'),
+          description: tr('account.thisPageShowcasesYourIdentityLevel2c7'),
           position: 'bottom',
         },
         {
           target: '[data-tour="profile-edit"]',
-          title: 'Edit profile details',
-          description: 'Open the profile editor to update bio, links, and experience for completeness.',
+          title: tr('account.editProfileDetails'),
+          description: tr('account.openTheProfileEditorToUpdated0b'),
           position: 'bottom',
         },
         {
           target: '[data-tour="profile-about"]',
-          title: 'Tip: Strengthen about bio',
-          description: 'Tip: write two lines on skills and goals so recruiters understand you quickly.',
+          title: tr('account.tipStrengthenAboutBio'),
+          description: tr('account.tipWriteTwoLinesOnSkills565'),
           position: 'top',
         },
       ]
@@ -377,7 +375,7 @@ export default function ProfilePage() {
     <div className="w-full min-h-screen flex items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
-        <p className="text-sm text-muted-foreground">Loading your profile…</p>
+        <p className="text-sm text-muted-foreground">{tr('account.loadingYourProfile')}</p>
       </div>
     </div>
   )
@@ -396,7 +394,7 @@ export default function ProfilePage() {
         {(coverTheme.includes('-3d') || ['dark-tech','gradient-blue','emerald-code'].includes(coverTheme)) && (
           <Image
             src={`/covers/${coverTheme}.jpg`}
-            alt="Cover background"
+            alt={tr('account.coverBackground')}
             fill
             className="object-cover opacity-80"
             priority
@@ -411,8 +409,7 @@ export default function ProfilePage() {
         
         <div className="absolute top-4 right-4 z-10 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity flex items-center gap-2">
           <Button size="sm" variant="secondary" className="gap-2 bg-white/20 hover:bg-white/40 text-white border-0 backdrop-blur-md" onClick={() => setCoverModalOpen(true)}>
-            <ImageIcon className="h-4 w-4" /> Edit cover
-          </Button>
+            <ImageIcon className="h-4 w-4" />{' '}{tr('account.editCover')}</Button>
         </div>
       </div>
 
@@ -443,8 +440,8 @@ export default function ProfilePage() {
                 size="icon"
                 variant="outline"
                 className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
-                title="Copy profile link"
-                aria-label="Share profile link"
+                title={tr('account.copyProfileLink')}
+                aria-label={tr('account.shareProfileLink')}
                 onClick={async () => {
                   const handle = publicHandle || user?.id
                   const url = typeof window !== 'undefined' && handle ? `${window.location.origin}/users/${encodeURIComponent(handle)}` : ''
@@ -460,7 +457,7 @@ export default function ProfilePage() {
               >
                 <Share2 className="h-4 w-4" />
               </Button>
-              <Button size="icon" variant="outline" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground" aria-label="Preview public profile" title="Preview public profile" asChild>
+              <Button size="icon" variant="outline" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground" aria-label={tr('account.previewPublicProfile')} title={tr('account.previewPublicProfile')} asChild>
                 <Link href={`/users/${encodeURIComponent(publicHandle || user?.id || '')}?preview=true`}>
                   <Eye className="h-4 w-4" />
                 </Link>
@@ -470,7 +467,7 @@ export default function ProfilePage() {
             <div className="mt-6 flex justify-center gap-6 text-sm">
               <div className="flex flex-col items-center p-3 rounded-2xl bg-muted/40 min-w-20">
                 <span className="font-bold tabular-nums text-foreground text-xl">{level}</span>
-                <span className="text-xs font-medium text-muted-foreground mt-1">Level</span>
+                <span className="text-xs font-medium text-muted-foreground mt-1">{tr('account.level')}</span>
               </div>
               <div className="flex flex-col items-center p-3 rounded-2xl bg-muted/40 min-w-20">
                 <span className="font-bold tabular-nums text-foreground text-xl">{xp}</span>
@@ -483,20 +480,19 @@ export default function ProfilePage() {
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-primary" aria-hidden />
                 </div>
-                <span className="font-medium text-foreground">CodeSpectra member</span>
+                <span className="font-medium text-foreground">{tr('account.codespectraMember')}</span>
               </div>
               <div className="flex items-center gap-3">
                 <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <Clock className="w-4 h-4 text-primary" aria-hidden />
                 </div>
-                <span className="font-medium text-foreground">Joined {memberDate || 'recently'}</span>
+                <span className="font-medium text-foreground">{tr('account.joined')}{' '}{memberDate || tr('account.recently')}</span>
               </div>
             </div>
             
             <Button size="sm" className="w-full gap-2 rounded-xl h-10 font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all" asChild>
               <Link href="/dashboard/profile/edit" className="w-full mt-6 block" data-tour="profile-edit">
-                <Edit2 className="h-4 w-4" /> Edit profile
-              </Link>
+                <Edit2 className="h-4 w-4" />{' '}{tr('account.editProfile')}</Link>
             </Button>
           </Card>
 
@@ -504,18 +500,16 @@ export default function ProfilePage() {
           <Card className="rounded-3xl border-border/70 p-5 bg-card relative overflow-hidden">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-primary" aria-hidden /> Profile completeness
-              </h3>
+                <CheckCircle2 className="w-4 h-4 text-primary" aria-hidden />{' '}{tr('account.profileCompleteness')}</h3>
               <span className="text-primary font-bold tabular-nums text-xs bg-primary/10 px-2 py-0.5 rounded-full">{profileCompletion}%</span>
             </div>
             <div className="w-full bg-muted rounded-full h-2.5 mb-4">
               <div className="bg-primary h-2.5 rounded-full transition-all duration-500 motion-reduce:transition-none" style={{ width: `${profileCompletion}%` }}></div>
             </div>
-            <p className="text-xs text-muted-foreground mb-4">Complete your profile to stand out to recruiters and fill your resumes in automatically.</p>
+            <p className="text-xs text-muted-foreground mb-4">{tr('account.completeYourProfileToStandOut6fb')}</p>
             <Button size="sm" variant="outline" className="w-full gap-2 border-primary/25 text-primary hover:bg-primary/10" asChild>
               <Link href="/dashboard/profile/edit">
-                <Sparkles className="w-3.5 h-3.5" /> Complete now
-              </Link>
+                <Sparkles className="w-3.5 h-3.5" />{' '}{tr('account.completeNow')}</Link>
             </Button>
           </Card>
 
@@ -525,41 +519,39 @@ export default function ProfilePage() {
           {/* Rankings Card */}
           <Card className="rounded-3xl border-border/70 p-5 bg-card">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-base font-semibold text-foreground">Rankings</h3>
+              <h3 className="text-base font-semibold text-foreground">{tr('account.rankings')}</h3>
             </div>
             
             <div className="rounded-2xl bg-linear-to-br from-primary/5 to-primary/10 p-5 text-center border border-primary/20 relative overflow-hidden">
               <div className="absolute right-0 top-0 opacity-10">
                 <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
               </div>
-              <p className="text-xs font-medium text-muted-foreground text-left">Global rank</p>
+              <p className="text-xs font-medium text-muted-foreground text-left">{tr('account.globalRank')}</p>
               <div className="mt-2 flex items-center gap-3">
                 <Trophy className="h-7 w-7 text-amber-500 drop-shadow-sm" aria-hidden />
                 <span className="text-3xl font-extrabold tabular-nums text-foreground tracking-tight">{globalRank != null ? globalRank : '—'}</span>
               </div>
               <Button size="sm" className="w-full rounded-full font-medium h-9 shadow-sm" asChild>
-                <Link href="/dashboard/leaderboard" className="block mt-5">
-                  View leaderboard
-                </Link>
+                <Link href="/dashboard/leaderboard" className="block mt-5">{tr('account.viewLeaderboard')}</Link>
               </Button>
             </div>
             
             <div className="mt-5 grid grid-cols-2 gap-4 text-sm pt-2">
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Total scans</p>
+                <p className="text-xs font-medium text-muted-foreground">{tr('account.totalScans')}</p>
                 <p className="font-bold tabular-nums text-foreground text-base">{stats?.scans ?? 0}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Total XP</p>
+                <p className="text-xs font-medium text-muted-foreground">{tr('account.totalXp')}</p>
                 <p className="font-bold tabular-nums text-primary text-base">{xp}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground">Total reviews</p>
+                <p className="text-xs font-medium text-muted-foreground">{tr('account.totalReviews')}</p>
                 <p className="font-bold tabular-nums text-foreground text-base">{stats?.reviews ?? 0}</p>
               </div>
               <div className="space-y-1 flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground">Total fixes</p>
+                  <p className="text-xs font-medium text-muted-foreground">{tr('account.totalFixes')}</p>
                   <p className="font-bold tabular-nums text-foreground text-base">{stats?.fixes ?? 0}</p>
                 </div>
                 {Number(stats?.fixes) > 0 && <span className="text-xs font-bold tabular-nums text-green-700 dark:text-green-400 bg-green-500/10 px-1.5 py-0.5 rounded">+{stats?.fixes}</span>}
@@ -574,25 +566,19 @@ export default function ProfilePage() {
         <div className="space-y-6 min-w-0">
           <Card data-tour="profile-about" className="rounded-3xl border-border/70 p-6">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-semibold text-foreground tracking-tight">About</h2>
-              <Link href="/dashboard/profile/edit" className="text-xs font-medium text-primary hover:underline">Edit</Link>
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">{tr('account.about')}</h2>
+              <Link href="/dashboard/profile/edit" className="text-xs font-medium text-primary hover:underline">{tr('account.edit')}</Link>
             </div>
             {aboutBio?.trim() ? (
               <p className="mt-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aboutBio}</p>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-                No bio yet.{" "}
-                <Link href="/dashboard/profile/edit" className="text-primary hover:underline font-medium">
-                  Add an About section
-                </Link>{" "}
-                so recruiters and teammates can learn who you are.
-              </p>
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{tr('account.noBioYet')}{' '}<Link href="/dashboard/profile/edit" className="text-primary hover:underline font-medium">{tr('account.addAnAboutSection')}</Link>{' '}{tr('account.soRecruitersAndTeammatesCanLearnc24')}</p>
             )}
           </Card>
 
           <Card className="rounded-3xl border-border/70 p-6 overflow-hidden">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground tracking-tight">Digital ID card</h2>
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">{tr('account.digitalIdCard')}</h2>
             </div>
             <DigitalIdCard
               name={displayName}
@@ -609,7 +595,7 @@ export default function ProfilePage() {
             <div className="mb-5 flex items-center justify-between relative z-10">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" aria-hidden />
-                <h2 className="text-lg font-semibold text-foreground tracking-tight">Suggested practice</h2>
+                <h2 className="text-lg font-semibold text-foreground tracking-tight">{tr('account.suggestedPractice')}</h2>
               </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4 relative z-10">
@@ -618,12 +604,12 @@ export default function ProfilePage() {
                   <div className="p-2 rounded-lg bg-primary/10">
                     <TrendingUp className="h-4 w-4 text-primary" aria-hidden />
                   </div>
-                  <Badge variant="outline" className="text-[10px] text-primary border-primary/30">Priority</Badge>
+                  <Badge variant="outline" className="text-[10px] text-primary border-primary/30">{tr('account.priority')}</Badge>
                 </div>
-                <h4 className="text-base font-semibold text-foreground mb-1">System design: Scaling</h4>
-                <p className="text-xs text-muted-foreground mb-3">A core topic in most system design interviews</p>
+                <h4 className="text-base font-semibold text-foreground mb-1">{tr('account.systemDesignScaling')}</h4>
+                <p className="text-xs text-muted-foreground mb-3">{tr('account.aCoreTopicInMostSystem63e')}</p>
                 <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors" asChild>
-                  <Link href="/dashboard/interview-prep">Practice now</Link>
+                  <Link href="/dashboard/interview-prep">{tr('account.practiceNow')}</Link>
                 </Button>
               </div>
               <div className="rounded-2xl border border-border/70 bg-card p-4 hover:border-primary/30 transition-colors duration-200 group">
@@ -632,45 +618,44 @@ export default function ProfilePage() {
                     <FolderGit2 className="h-4 w-4 text-primary" aria-hidden />
                   </div>
                 </div>
-                <h4 className="text-base font-semibold text-foreground mb-1">React state management</h4>
-                <p className="text-xs text-muted-foreground mb-3">A frequent topic in frontend interviews</p>
+                <h4 className="text-base font-semibold text-foreground mb-1">{tr('account.reactStateManagement')}</h4>
+                <p className="text-xs text-muted-foreground mb-3">{tr('account.aFrequentTopicInFrontendInterviews')}</p>
                 <Button variant="secondary" size="sm" className="w-full text-xs font-medium group-hover:bg-primary group-hover:text-primary-foreground transition-colors" asChild>
-                  <Link href="/dashboard/problems">Practice now</Link>
+                  <Link href="/dashboard/problems">{tr('account.practiceNow')}</Link>
                 </Button>
               </div>
             </div>
           </Card>
 
           <Card className="rounded-3xl border-border/70 p-6">
-            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">Social links</h2>
+            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">{tr('account.socialLinks')}</h2>
             {/* Saved links from the extended profile; nothing is shown when none are set. */}
             {socialLinks.linkedin || socialLinks.github || socialLinks.portfolio ? (
               <div className="flex gap-3">
                 {socialLinks.linkedin && (
-                  <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn profile" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
+                  <a href={socialLinks.linkedin} target="_blank" rel="noopener noreferrer" aria-label={tr('account.linkedinProfile')} className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
                   </a>
                 )}
                 {socialLinks.github && (
-                  <a href={socialLinks.github} target="_blank" rel="noopener noreferrer" aria-label="GitHub profile" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
+                  <a href={socialLinks.github} target="_blank" rel="noopener noreferrer" aria-label={tr('account.githubProfile')} className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                   </a>
                 )}
                 {socialLinks.portfolio && (
-                  <a href={socialLinks.portfolio} target="_blank" rel="noopener noreferrer" aria-label="Portfolio" className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
+                  <a href={socialLinks.portfolio} target="_blank" rel="noopener noreferrer" aria-label={tr('account.portfolio')} className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/30 text-muted-foreground hover:bg-muted/80 hover:text-foreground transition-all">
                     <Globe className="h-4 w-4" aria-hidden />
                   </a>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">
-                No links yet. <Link href="/dashboard/profile/edit" className="text-primary underline-offset-4 hover:underline">Add your LinkedIn or GitHub</Link>.
+              <p className="text-sm text-muted-foreground">{tr('account.noLinksYet')}{' '}<Link href="/dashboard/profile/edit" className="text-primary underline-offset-4 hover:underline">{tr('account.addYourLinkedinOrGithub')}</Link>.
               </p>
             )}
           </Card>
 
           <Card className="rounded-3xl border-border/70 p-6">
-            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-5">Streaks</h2>
+            <h2 className="text-lg font-semibold text-foreground tracking-tight mb-5">{tr('account.streaks')}</h2>
             <ContributionGraph
               cells={heatmapData?.cells ?? null}
               dayLabels={heatmapData?.dayLabels}
@@ -683,8 +668,8 @@ export default function ProfilePage() {
           
           <ActivityTimeline
             activities={activity}
-            title="Recent activity"
-            subtitle="Your latest contributions and actions"
+            title={tr('account.recentActivity')}
+            subtitle={tr('account.yourLatestContributionsAndActions')}
           />
         </div>
       </div>
@@ -694,13 +679,13 @@ export default function ProfilePage() {
       <Dialog open={coverModalOpen} onOpenChange={setCoverModalOpen}>
         <DialogContent className="sm:max-w-175">
           <DialogHeader>
-            <DialogTitle>Customize cover banner</DialogTitle>
+            <DialogTitle>{tr('account.customizeCoverBanner')}</DialogTitle>
           </DialogHeader>
           <div className="py-4">
-            <h4 className="text-sm font-medium text-foreground mb-3">Default cover image</h4>
-            <p className="text-xs text-muted-foreground mb-4">We will add a default cover image in case you do not upload custom desktop or mobile banners. You can also customize these as per your liking.</p>
+            <h4 className="text-sm font-medium text-foreground mb-3">{tr('account.defaultCoverImage')}</h4>
+            <p className="text-xs text-muted-foreground mb-4">{tr('account.weWillAddADefaultCover99b')}</p>
             
-            <h4 className="text-sm font-medium text-foreground mb-3">Choose a template</h4>
+            <h4 className="text-sm font-medium text-foreground mb-3">{tr('account.chooseATemplate')}</h4>
             <div className="flex flex-wrap gap-3 mb-6">
               {[
                 { id: 'blue', color: 'bg-primary' },
@@ -713,7 +698,7 @@ export default function ProfilePage() {
                   key={t.id}
                   type="button"
                   onClick={() => setCoverTheme(t.id)}
-                  aria-label={`${t.id} cover`}
+                  aria-label={tr('account.idCover', { id: t.id })}
                   aria-pressed={coverTheme === t.id}
                   className={`w-8 h-8 rounded-full ${t.color} ${coverTheme === t.id ? 'ring-2 ring-offset-2 ring-offset-background ring-primary' : 'hover:opacity-80'}`}
                 />
@@ -722,19 +707,19 @@ export default function ProfilePage() {
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
                {[
-                 { id: 'blue-3d', label: 'Tech nodes', file: 'blue-3d.jpg' },
-                 { id: 'purple-3d', label: 'Neon fluid', file: 'purple-3d.jpg' },
-                 { id: 'green-3d', label: 'Cyber city', file: 'green-3d.jpg' },
-                 { id: 'dark-tech', label: 'Dark tech', file: 'dark-tech.jpg' },
-                 { id: 'gradient-blue', label: 'Ocean wave', file: 'gradient-blue.jpg' },
-                 { id: 'emerald-code', label: 'Code dark', file: 'emerald-code.jpg' },
+                 { id: 'blue-3d', label: tr('account.techNodes'), file: 'blue-3d.jpg' },
+                 { id: 'purple-3d', label: tr('account.neonFluid'), file: 'purple-3d.jpg' },
+                 { id: 'green-3d', label: tr('account.cyberCity'), file: 'green-3d.jpg' },
+                 { id: 'dark-tech', label: tr('account.darkTech'), file: 'dark-tech.jpg' },
+                 { id: 'gradient-blue', label: tr('account.oceanWave'), file: 'gradient-blue.jpg' },
+                 { id: 'emerald-code', label: tr('account.codeDark'), file: 'emerald-code.jpg' },
                ].map((t) => (
                  <button
                    type="button"
                    key={t.id}
                    onClick={() => setCoverTheme(t.id)}
                    aria-pressed={coverTheme === t.id}
-                   aria-label={`${t.label} cover`}
+                   aria-label={tr('account.labelCover', { label: t.label })}
                    className={`relative h-24 rounded-xl overflow-hidden border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${coverTheme === t.id ? 'border-primary shadow-md' : 'border-transparent hover:border-border'}`}
                  >
                    <Image src={`/covers/${t.file}`} alt="" fill className="object-cover" />
@@ -745,22 +730,22 @@ export default function ProfilePage() {
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-foreground relative flex items-center w-full">
                 <span className="grow border-t border-border/50"></span>
-                <span className="mx-4 text-muted-foreground text-xs font-semibold">or</span>
+                <span className="mx-4 text-muted-foreground text-xs font-semibold">{tr('account.or')}</span>
                 <span className="grow border-t border-border/50"></span>
               </h4>
               <div className="mt-4">
-                <h4 className="text-sm font-medium text-foreground mb-1">Upload banner</h4>
-                <p className="text-xs text-muted-foreground mb-3">You can upload custom banners for your profile. We recommend uploading a 1920x480 image.</p>
+                <h4 className="text-sm font-medium text-foreground mb-1">{tr('account.uploadBanner')}</h4>
+                <p className="text-xs text-muted-foreground mb-3">{tr('account.youCanUploadCustomBannersForfb5')}</p>
                 <div className="border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center justify-center text-center">
                   <ImageIcon className="h-8 w-8 text-muted-foreground mb-2" />
-                  <p className="text-sm font-medium text-foreground">Custom banner uploads aren’t available yet</p>
-                  <p className="text-xs text-muted-foreground mt-1">SVG, PNG, JPG or GIF (max. 5MB)</p>
+                  <p className="text-sm font-medium text-foreground">{tr('account.customBannerUploadsArentAvailableYet')}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{tr('account.svgPngJpgOrGifMax9ad')}</p>
                 </div>
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setCoverModalOpen(false)}>Done</Button>
+            <Button onClick={() => setCoverModalOpen(false)}>{tr('account.done')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

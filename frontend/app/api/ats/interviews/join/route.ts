@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, 'ats-join-post', null, 10, 60_000)
   if (limited) return limited
   let body: { token?: unknown }
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
   try {
     const iv = await interviewFromToken(body.token, 'join')
     if (!iv) return NextResponse.json({ error: 'This link has expired or is no longer valid.' }, { status: 404 })

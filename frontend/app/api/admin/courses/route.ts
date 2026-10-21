@@ -8,7 +8,7 @@ import { auditAdmin } from '@/lib/admin-audit'
 export async function GET(request: NextRequest) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
@@ -17,14 +17,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data: courses })
   } catch (e) {
     console.error('[admin/courses]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
@@ -58,6 +58,8 @@ export async function POST(request: NextRequest) {
       type: 'content.course_generated',
       title: 'Course Generated',
       message: `A new course "${newCourse.title}" has been successfully generated.`,
+      title_i18n: { key: 'admin.courseGenerated.title' },
+      message_i18n: { key: 'admin.courseGenerated.message', params: { title: String(newCourse.title) } },
       link: `/dashboard/admin/courses/${newCourse.id}`
     })
 
@@ -65,6 +67,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: newCourse })
   } catch (e) {
     console.error('[admin/courses]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

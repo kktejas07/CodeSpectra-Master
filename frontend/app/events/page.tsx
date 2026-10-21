@@ -1,37 +1,13 @@
 import { Metadata } from 'next'
-import { PublicPageWrapper } from '@/app/public-layout'
-import { PageHero } from '@/components/landing/page-hero'
-import { DeviceShowcase } from '@/components/visuals'
-import { EventsExplorer } from '@/components/events-feed/events-explorer'
-import { eventsFeedCached } from '@/lib/cache/public-data'
-import { getAppOrigin } from '@/lib/app-origin'
-import { buildMetadata } from '@/lib/seo/metadata'
-import { publicRoute } from '@/lib/seo/public-routes'
+import { EventsView, eventsMetadata } from './events-view'
 
-const route = publicRoute('/events')!
-export const metadata: Metadata = (() => {
-  const m = buildMetadata({ title: route.title, description: route.description, path: '/events', kind: 'event' })
-  return { ...m, alternates: { ...m.alternates, types: { 'application/rss+xml': '/events/feed.xml' } } }
-})()
+export const metadata: Metadata = eventsMetadata('en')
 
 // Rendered per request, never at build (the build has no DB). Data comes from
 // the tag-purged data cache (lib/cache/public-data.ts), so the first request
 // after a deploy fills it and later ones don't hit Mongo.
 export const dynamic = 'force-dynamic'
-// A DB outage with nothing cached goes to the error boundary (not an empty list).
 
-export default async function PublicEventsPage() {
-  const events = await eventsFeedCached()
-  return (
-    <PublicPageWrapper>
-      <PageHero
-        title="Events"
-        lead="Hackathons, codeathons, buildathons, CTFs and coding contests happening around the world — and our own events, featured first. Register on the organiser’s site, add events to your calendar, or get notified when new ones match what you like."
-        art={<DeviceShowcase variant="candidate" compact />}
-      />
-      <div className="mx-auto max-w-[1200px] px-4 py-12 sm:px-6 lg:px-8">
-        <EventsExplorer events={events} origin={getAppOrigin()} />
-      </div>
-    </PublicPageWrapper>
-  )
+export default function PublicEventsPage() {
+  return <EventsView locale="en" />
 }

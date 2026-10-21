@@ -12,7 +12,7 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/
 export async function GET() {
   const user = await getAPIUser()
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   try {
     const db = await getMongoDb()
@@ -32,7 +32,7 @@ export async function GET() {
 export async function PUT(req: NextRequest) {
   const user = await getAPIUser()
   if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   const body = await req.json().catch(() => ({}))

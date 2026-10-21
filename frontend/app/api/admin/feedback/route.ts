@@ -59,6 +59,6 @@ export async function GET(req: Request) {
     return NextResponse.json(feedback)
   } catch (error: any) {
     console.error('Failed to list feedback:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

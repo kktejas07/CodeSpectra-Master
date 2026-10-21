@@ -35,7 +35,7 @@ export async function GET() {
     return NextResponse.json({ items, feeds, settings: normalizeSignalSettings(settings as unknown as Record<string, unknown>), usage: settings.usage || null, budget: aiBudget(settings, settings.usage, new Date()) })
   } catch (e) {
     console.error('[signals] GET:', (e as Error)?.message)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const parsed = Body.safeParse(await req.json().catch(() => ({ action: 'approve' })))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   const body = parsed.data
 
   try {
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     const col = await draftsCol()
     const draft = await col.findOne({ id: body.id }, { projection: { _id: 0 } })
-    if (!draft) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!draft) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     if (body.action === 'reject') {
       await col.updateOne({ id: body.id }, { $set: { status: 'rejected', updated_at: nowIso() } })
@@ -109,6 +109,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, status: 'published', url: `/news/${post.slug}`, post })
   } catch (e) {
     console.error('[signals] POST:', (e as Error)?.message)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

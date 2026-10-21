@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
     const body = await request.json()
     const normalized = normalizeBankQuestion(body || {})
     if (!normalized) return NextResponse.json({ error: 'Question prompt is required' }, { status: 400 })
@@ -109,10 +109,10 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
     const db = await getMongoDb()
     await db.collection('question_bank').deleteOne({ id })
     knowledgeOnLibraryChange('question', id)
     return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

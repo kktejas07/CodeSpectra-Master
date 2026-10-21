@@ -10,7 +10,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
   const g = await userGate(req, { write: true, bucket: 'mentor-reschedule', max: 10 })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Session not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Session not found', code: 'session_not_found' }, 404)
   try {
     const b = await bodyOf(req)
     const { rescheduleSession } = await import('@/lib/mentors/sessions')

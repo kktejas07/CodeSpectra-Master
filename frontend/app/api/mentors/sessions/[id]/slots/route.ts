@@ -10,7 +10,7 @@ export async function GET(req: NextRequest, { params }: IdRouteContext) {
   const g = await userGate(req)
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Session not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Session not found', code: 'session_not_found' }, 404)
   try {
     const { rescheduleSlots } = await import('@/lib/mentors/sessions')
     const from = Date.parse(req.nextUrl.searchParams.get('from') || '')

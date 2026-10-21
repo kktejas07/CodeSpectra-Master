@@ -23,5 +23,5 @@ export async function GET() {
     const db = await getMongoDb()
     const data = await db.collection('arena_challenges').find({}).toArray()
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

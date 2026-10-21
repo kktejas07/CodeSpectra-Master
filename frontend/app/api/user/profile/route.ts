@@ -6,7 +6,7 @@ import { invalidateAuthProfile } from '@/lib/session'
 /** PATCH /api/user/profile — { name } updates the display name. */
 export async function PATCH(request: Request) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   try {
     const body = (await request.json().catch(() => ({}))) as { name?: unknown }

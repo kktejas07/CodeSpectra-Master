@@ -16,7 +16,7 @@ const defaults: UserAISettings = {
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const db = await getMongoDb()
   const doc = await db.collection('user_ai_settings').findOne({ user_id: user.id })
@@ -26,7 +26,7 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const body = (await req.json()) as Partial<UserAISettings>
   const db = await getMongoDb()

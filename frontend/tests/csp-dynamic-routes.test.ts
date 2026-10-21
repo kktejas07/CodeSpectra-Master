@@ -39,7 +39,8 @@ interface Route { file: string; url: string; segs: string[] }
 const ROUTES: Route[] = pages(APP).map((file) => {
   const rel = path.relative(APP, path.dirname(file))
   const segs = rel ? rel.split(path.sep) : []
-  const url = '/' + segs.filter((s) => !s.startsWith('(') && !s.startsWith('@')).map((s) => (s.startsWith('[') ? 'x' : s)).join('/')
+  // app/[lang]/… are the Hindi / Telugu copies (/hi/…, /te/…); other dynamic segments → 'x'.
+  const url = '/' + segs.filter((s) => !s.startsWith('(') && !s.startsWith('@')).map((s, i) => (i === 0 && s === '[lang]' ? 'hi' : s.startsWith('[') ? 'x' : s)).join('/')
   return { file, url: url === '/' ? '/' : url.replace(/\/$/, ''), segs }
 })
 
@@ -70,7 +71,13 @@ describe('CSP nonce pages render per request', () => {
   })
 
   it('DB-backed public pages are never prerendered at build (no DB there)', () => {
-    const dbPages = ROUTES.filter((r) => /@\/lib\/cache\/public-data/.test(read(r.file)!))
+    // Public pages shared by every language render a view module (app/<page>/<page>-view.tsx).
+    const withViews = (r: Route) => {
+      const src = read(r.file)!
+      const views = [...src.matchAll(/from '((?:@\/app\/|\.\/)[^']*-view)'/g)].map((m) => m[1].startsWith('./') ? path.join(path.dirname(r.file), m[1].slice(2)) : path.join(APP, m[1].slice('@/app/'.length)))
+      return [src, ...views.map((v) => read(`${v}.tsx`) ?? '')].join('\n')
+    }
+    const dbPages = ROUTES.filter((r) => /@\/lib\/cache\/public-data/.test(withViews(r)))
     expect(dbPages.map((r) => r.url).sort()).toEqual(expect.arrayContaining(['/', '/contests', '/events', '/events/x', '/learn/x', '/news/x', '/pricing']))
     const bad = dbPages.filter((r) => !forceDynamic(read(r.file))).map((r) => path.relative(APP, r.file))
     expect(bad).toEqual([])

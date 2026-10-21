@@ -10,6 +10,8 @@ import { FaceCamera } from '@/components/auth/face-camera'
 import { faceMatchScore, type FaceMatchReport } from '@/components/proctoring/face-match-score'
 import { identityRequirement, type ExamIdentityPolicy, type NoCameraPolicy } from '@/lib/exam-access'
 import { X, ShieldAlert, ArrowRight, FileText, AlertCircle, RefreshCw, Camera, CameraOff, User, Check, Loader2, Upload } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export interface IdentityResult {
   idPhoto: string | null
@@ -75,6 +77,8 @@ export function IdentityVerification({
   inviteToken = null,
   linkToken = null,
 }: IdentityVerificationProps) {
+  const apiError = useApiError()
+  const { t } = useT()
   const needId = requireId !== false
   const needFace = requireFace !== false
   const policy: ExamIdentityPolicy = {
@@ -194,7 +198,7 @@ export function IdentityVerification({
     if (probe === 'ok') enterCameraFlow()
     else {
       setNoCameraReason(probe)
-      addToast({ type: 'error', title: 'Still no camera', message: probe === 'permission_denied' ? 'Camera access is still blocked in your browser.' : 'We still can’t find a working camera.' })
+      addToast({ type: 'error', title: t('exam.stillNoCamera'), message: probe === 'permission_denied' ? t('exam.cameraAccessIsStillBlockedIn14b') : t('exam.weStillCantFindAWorking175') })
     }
   }
 
@@ -217,7 +221,7 @@ export function IdentityVerification({
         }
       }
     } catch (err) {
-      addToast({ type: 'error', title: 'Capture failed', message: 'Failed to capture frame.' })
+      addToast({ type: 'error', title: t('exam.captureFailed'), message: t('exam.failedToCaptureFrame') })
     }
   }
 
@@ -239,11 +243,11 @@ export function IdentityVerification({
         })
         const data = await res.json()
         if (!res.ok) {
-          throw new Error(data.error || 'Failed to verify ID')
+          throw new Error(apiError(data, t('exam.failedToVerifyId')))
         }
 
         setNameMatch(data.nameMatch === 'partial' ? 'partial' : 'match')
-        addToast({ type: 'success', title: 'ID accepted', message: data.message || 'Your ID was read successfully.' })
+        addToast({ type: 'success', title: t('exam.idAccepted'), message: data.message || t('exam.yourIdWasReadSuccessfully') })
         stopCamera()
         if (needFace) {
           setStep('capture_face')
@@ -268,10 +272,10 @@ export function IdentityVerification({
     try {
       let faceMatch: FaceMatchReport | null = null
       if (needId && needFace && idPhoto && facePhoto) {
-        setFinishLabel('Comparing photos…')
+        setFinishLabel(t('exam.comparingPhotos'))
         faceMatch = await faceMatchScore(idPhoto, facePhoto)
       }
-      setFinishLabel('Saving…')
+      setFinishLabel(t('common.saving'))
       const res = await csrfFetch(`/api/exams/${encodeURIComponent(examId)}/identity`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -286,11 +290,11 @@ export function IdentityVerification({
         }),
       })
       const data = await res.json().catch(() => ({})) as { error?: string }
-      if (!res.ok) throw new Error(data.error || 'We couldn’t save your identity check. Try again.')
+      if (!res.ok) throw new Error(apiError(data, t('exam.weCouldntSaveYourIdentityCheck595')))
       if (useAsProfile && facePhoto) setProfileAvatar(facePhoto)
       onComplete({ idPhoto: needId ? idPhoto : null, facePhoto: needFace ? facePhoto : null, needsReview: nameMatch === 'partial' })
     } catch (err) {
-      setVerificationError(err instanceof Error ? err.message : 'We couldn’t save your identity check. Try again.')
+      setVerificationError(err instanceof Error ? err.message : t('exam.weCouldntSaveYourIdentityCheck595'))
     } finally {
       setIsVerifying(false)
     }
@@ -300,11 +304,11 @@ export function IdentityVerification({
     setUploadError(null)
     if (!file) return
     if (!ID_UPLOAD_TYPES.includes(file.type)) {
-      setUploadError('Use a JPG, PNG or WebP photo.')
+      setUploadError(t('exam.useAJpgPngOrWebp97c'))
       return
     }
     if (file.size > ID_UPLOAD_MAX_BYTES) {
-      setUploadError('The photo must be under 5 MB.')
+      setUploadError(t('exam.thePhotoMustBeUnder5184'))
       return
     }
     setUploadFile(file)
@@ -324,10 +328,10 @@ export function IdentityVerification({
       if (linkToken) form.set('linkToken', linkToken)
       const res = await csrfFetch(`/api/exams/${encodeURIComponent(examId)}/identity`, { method: 'POST', body: form })
       const data = await res.json().catch(() => ({})) as { error?: string }
-      if (!res.ok) throw new Error(data.error || 'Upload failed. Try again.')
+      if (!res.ok) throw new Error(apiError(data, t('exam.uploadFailedTryAgain')))
       onComplete({ idPhoto: null, facePhoto: null, needsReview: true })
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed. Try again.')
+      setUploadError(err instanceof Error ? err.message : t('exam.uploadFailedTryAgain'))
     } finally {
       setUploading(false)
     }
@@ -362,27 +366,25 @@ export function IdentityVerification({
       type="button"
       onClick={() => goNoCamera('error')}
       className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
-    >
-      My camera isn&apos;t working
-    </button>
+    >{t('exam.myCameraIsntWorking')}</button>
   )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-      <Card ref={panelRef} role="dialog" aria-modal="true" aria-label="Identity verification" className="max-w-xl w-full max-h-[92vh] overflow-y-auto rounded-3xl p-6 border-border/70 space-y-6 bg-card text-card-foreground shadow-2xl dark:shadow-none relative">
+      <Card ref={panelRef} role="dialog" aria-modal="true" aria-label={t('exam.identityVerification')} className="max-w-xl w-full max-h-[92vh] overflow-y-auto rounded-3xl p-6 border-border/70 space-y-6 bg-card text-card-foreground shadow-2xl dark:shadow-none relative">
         <button
           onClick={onCancel}
           className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          title="Close"
-          aria-label="Close"
+          title={t('common.close')}
+          aria-label={t('common.close')}
         >
           <X className="h-5 w-5" />
         </button>
 
         {/* Wizard Header */}
         <div className="border-b border-border pb-4">
-          <h2 className="text-xl font-bold text-foreground">Identity check</h2>
-          <p className="text-xs text-muted-foreground mt-1">Required before you start <strong className="text-foreground">{examTitle}</strong></p>
+          <h2 className="text-xl font-bold text-foreground">{t('exam.identityCheck')}</h2>
+          <p className="text-xs text-muted-foreground mt-1">{t('exam.requiredBeforeYouStart')}{' '}<strong className="text-foreground">{examTitle}</strong></p>
 
           {/* Steps Indicator — skipped steps render muted so the bar matches the active flow */}
           {step !== 'no_camera' && (
@@ -405,12 +407,12 @@ export function IdentityVerification({
             <div className="flex items-start gap-3 p-4 bg-muted/40 rounded-2xl border border-border text-sm leading-relaxed">
               <ShieldAlert className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div className="space-y-2">
-                <p className="font-semibold text-foreground">Exam rules</p>
+                <p className="font-semibold text-foreground">{t('exam.examRules')}</p>
                 <ul className="list-disc pl-4 space-y-1.5 text-muted-foreground text-xs">
-                  <li><strong>Proctored session:</strong> We monitor your camera stream, eye movements, and active browser tab.</li>
-                  <li><strong>No outside help:</strong> Switching tabs, copy-pasting, or using external AI resources will flag your assessment.</li>
+                  <li><strong>{t('exam.proctoredSession')}</strong>{' '}{t('exam.weMonitorYourCameraStreamEye7e8')}</li>
+                  <li><strong>{t('exam.noOutsideHelp')}</strong>{' '}{t('exam.switchingTabsCopyPastingOrUsing605')}</li>
                   {(needId || needFace) && (
-                    <li><strong>Identity check:</strong> {needId && needFace ? 'You take a photo of your ID card and a live photo of your face' : needId ? 'You take a photo of your ID card' : 'You take a live photo of your face'}. The hiring team sees these photos with your answers.</li>
+                    <li><strong>{t('exam.identityCheck2')}</strong> {needId && needFace ? t('exam.youTakeAPhotoOfYour5e2') : needId ? t('exam.youTakeAPhotoOfYour9dd') : t('exam.youTakeALivePhotoOfe6f')}{t('exam.theHiringTeamSeesThesePhotosc06')}</li>
                   )}
                 </ul>
               </div>
@@ -424,9 +426,7 @@ export function IdentityVerification({
                   onChange={(e) => setAgreedTerms(e.target.checked)}
                   className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
-                <span className="text-muted-foreground text-xs">
-                  I agree to keep my camera enabled, stay in full-screen mode, and complete this test without external aid.
-                </span>
+                <span className="text-muted-foreground text-xs">{t('exam.iAgreeToKeepMyCamerafc8')}</span>
               </label>
 
               <label className="flex items-start gap-3 cursor-pointer">
@@ -436,21 +436,19 @@ export function IdentityVerification({
                   onChange={(e) => setAgreedPrivacy(e.target.checked)}
                   className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
-                <span className="text-muted-foreground text-xs">
-                  I consent to CodeSpectra collecting {needId && needFace ? 'my live face photo and Government ID photo' : needId ? 'my government ID photo' : needFace ? 'my live face photo' : 'session proctoring data'}. I understand {needId || needFace ? 'these are' : 'it is'} used solely by the recruiting team for verification and will be stored securely.
-                </span>
+                <span className="text-muted-foreground text-xs">{t('exam.iConsentToCodespectraCollecting')}{' '}{needId && needFace ? t('exam.myLiveFacePhotoAndGovernment413') : needId ? t('exam.myGovernmentIdPhoto') : needFace ? t('exam.myLiveFacePhoto') : t('exam.sessionProctoringData')}{t('exam.iUnderstandValueUsedSolelyByf1e', { value: needId || needFace ? t('exam.theseAre') : t('exam.itIs') })}</span>
               </label>
             </div>
 
             <div className="flex justify-end gap-3 pt-4">
-              <Button variant="outline" onClick={onCancel}>Cancel</Button>
+              <Button variant="outline" onClick={onCancel}>{t('common.cancel')}</Button>
               <Button
                 onClick={() => void handleNextFromConsent()}
                 disabled={!agreedTerms || !agreedPrivacy || checkingCamera}
                 className="gap-2"
               >
-                {checkingCamera ? (<><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> Checking your camera…</>)
-                  : (!needId && !needFace) ? (<>Start assessment <ArrowRight className="h-4 w-4" /></>) : (<>Continue <ArrowRight className="h-4 w-4" /></>)}
+                {checkingCamera ? (<><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{' '}{t('exam.checkingYourCamera')}</>)
+                  : (!needId && !needFace) ? (<>{t('exam.startAssessment')}{' '}<ArrowRight className="h-4 w-4" /></>) : (<>{t('common.continue')}{' '}<ArrowRight className="h-4 w-4" /></>)}
               </Button>
             </div>
           </div>
@@ -462,34 +460,34 @@ export function IdentityVerification({
             <div className="text-center space-y-2">
               <CameraOff className="h-8 w-8 mx-auto text-muted-foreground" aria-hidden />
               <h3 className="font-semibold text-base">
-                {noCameraReason === 'permission_denied' ? 'Camera access is blocked' : noCameraReason === 'no_device' ? 'No camera found' : 'Your camera isn’t working'}
+                {noCameraReason === 'permission_denied' ? t('exam.cameraAccessIsBlocked') : noCameraReason === 'no_device' ? t('exam.noCameraFound') : t('exam.yourCameraIsntWorking')}
               </h3>
               <p className="text-sm text-muted-foreground">
                 {noCameraReason === 'permission_denied'
-                  ? 'Your browser didn’t give this page access to the camera. You can allow it in the address bar or browser settings, then choose Try camera again.'
-                  : 'We couldn’t use a camera on this device. If you have one, connect it and choose Try camera again.'}
+                  ? t('exam.yourBrowserDidntGiveThisPagedc1')
+                  : t('exam.weCouldntUseACameraOnf65')}
               </p>
             </div>
 
             {noCameraStep.kind === 'blocked' ? (
               <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-2xl text-sm text-foreground flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" aria-hidden />
-                <p>This test needs a working camera, so you can&apos;t start it on this device. Use a device with a camera, or contact the organiser.</p>
+                <p>{t('exam.thisTestNeedsAWorkingCamera1b5')}</p>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="p-4 bg-muted/40 border border-border rounded-2xl text-sm text-muted-foreground space-y-1">
-                  <p className="font-semibold text-foreground">You can still take this test</p>
-                  <p>Upload a clear photo of your government ID instead. The organiser will check your identity by hand before your result is final.</p>
+                  <p className="font-semibold text-foreground">{t('exam.youCanStillTakeThisTest')}</p>
+                  <p>{t('exam.uploadAClearPhotoOfYour91c')}</p>
                 </div>
                 <label className="flex flex-col items-center justify-center gap-2 w-full cursor-pointer min-h-28 border border-dashed border-border rounded-2xl hover:bg-muted/50 transition-colors p-4 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
                   {uploadPreview ? (
-                    <img src={uploadPreview} alt="Your ID photo" className="max-h-48 rounded-lg object-contain" />
+                    <img src={uploadPreview} alt={t('exam.yourIdPhoto')} className="max-h-48 rounded-lg object-contain" />
                   ) : (
                     <>
                       <Upload className="h-5 w-5 text-muted-foreground" aria-hidden />
-                      <span className="text-sm font-medium">Choose a photo of your ID</span>
-                      <span className="text-xs text-muted-foreground">JPG, PNG or WebP, up to 5 MB</span>
+                      <span className="text-sm font-medium">{t('exam.chooseAPhotoOfYourId')}</span>
+                      <span className="text-xs text-muted-foreground">{t('exam.jpgPngOrWebpUpTo54c')}</span>
                     </>
                   )}
                   <input
@@ -500,7 +498,7 @@ export function IdentityVerification({
                   />
                 </label>
                 {uploadFile && (
-                  <p className="text-xs text-muted-foreground text-center truncate">{uploadFile.name} · choose again to replace it</p>
+                  <p className="text-xs text-muted-foreground text-center truncate">{t('exam.nameChooseAgainToReplaceIt', { name: uploadFile.name })}</p>
                 )}
                 {uploadError && (
                   <div role="alert" className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
@@ -513,13 +511,12 @@ export function IdentityVerification({
 
             <div className="flex flex-wrap justify-end gap-3 border-t pt-4">
               <Button variant="outline" onClick={() => void retryCamera()} disabled={checkingCamera || uploading} className="gap-2">
-                {checkingCamera ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Camera className="h-4 w-4" />} Try camera again
-              </Button>
+                {checkingCamera ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Camera className="h-4 w-4" />}{' '}{t('exam.tryCameraAgain')}</Button>
               {noCameraStep.kind === 'blocked' ? (
-                <Button onClick={onCancel}>Close</Button>
+                <Button onClick={onCancel}>{t('common.close')}</Button>
               ) : (
                 <Button onClick={() => void handleUploadContinue()} disabled={!uploadFile || uploading} className="gap-2">
-                  {uploading ? <><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> Uploading…</> : <>Continue without camera <ArrowRight className="h-4 w-4" /></>}
+                  {uploading ? <><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" />{' '}{t('exam.uploading')}</> : <>{t('exam.continueWithoutCamera')}{' '}<ArrowRight className="h-4 w-4" /></>}
                 </Button>
               )}
             </div>
@@ -531,11 +528,8 @@ export function IdentityVerification({
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base flex items-center justify-center gap-2">
-                <FileText className="h-5 w-5 text-primary" /> Hold up your government ID
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Place your ID (Aadhaar, Passport, Driver's License, etc.) within the frame. Ensure all text and details are readable.
-              </p>
+                <FileText className="h-5 w-5 text-primary" />{' '}{t('exam.holdUpYourGovernmentId')}</h3>
+              <p className="text-xs text-muted-foreground">{t('exam.placeYourIdAadhaarPassportDriversa5d')}</p>
             </div>
 
             {cameraError && (
@@ -547,7 +541,7 @@ export function IdentityVerification({
 
             <div className="relative mx-auto max-w-sm aspect-4/3 rounded-2xl border-2 border-dashed border-muted-foreground/30 bg-muted/20 overflow-hidden flex items-center justify-center">
               {idPhoto ? (
-                <img src={idPhoto} alt="Captured ID" className="w-full h-full object-cover" />
+                <img src={idPhoto} alt={t('exam.capturedId')} className="w-full h-full object-cover" />
               ) : (
                 <>
                   <video
@@ -569,30 +563,28 @@ export function IdentityVerification({
               <div className="flex justify-center gap-3">
                 {idPhoto ? (
                   <Button variant="outline" onClick={() => retakePhoto('id')} className="gap-2">
-                    <RefreshCw className="h-4 w-4" /> Retake photo
-                  </Button>
+                    <RefreshCw className="h-4 w-4" />{' '}{t('exam.retakePhoto')}</Button>
                 ) : (
                   <Button
                     onClick={() => capturePhoto('id')}
                     disabled={isCameraLoading || !!cameraError}
                     className="gap-2"
                   >
-                    <Camera className="h-4 w-4" /> Capture ID photo
-                  </Button>
+                    <Camera className="h-4 w-4" />{' '}{t('exam.captureIdPhoto')}</Button>
                 )}
               </div>
 
               {!idPhoto && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground w-full max-w-sm">
                   <div className="flex-1 border-b border-border"></div>
-                  <span className="text-xs">or upload</span>
+                  <span className="text-xs">{t('exam.orUpload')}</span>
                   <div className="flex-1 border-b border-border"></div>
                 </div>
               )}
 
               {!idPhoto && (
                 <label className="flex items-center justify-center w-full max-w-sm cursor-pointer h-11 border border-border rounded-lg hover:bg-muted/50 transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring">
-                  <span className="text-sm font-medium">Upload ID document</span>
+                  <span className="text-sm font-medium">{t('exam.uploadIdDocument')}</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -600,8 +592,8 @@ export function IdentityVerification({
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (!file) return
-                      if (!ID_UPLOAD_TYPES.includes(file.type)) { setIdError('Use a JPG, PNG or WebP photo.'); return }
-                      if (file.size > ID_UPLOAD_MAX_BYTES) { setIdError('The photo must be under 5 MB.'); return }
+                      if (!ID_UPLOAD_TYPES.includes(file.type)) { setIdError(t('exam.useAJpgPngOrWebp97c')); return }
+                      if (file.size > ID_UPLOAD_MAX_BYTES) { setIdError(t('exam.thePhotoMustBeUnder5184')); return }
                       setIdError(null)
                       const reader = new FileReader()
                       reader.onload = (ev) => setIdPhoto(ev.target?.result as string)
@@ -621,14 +613,14 @@ export function IdentityVerification({
                 </div>
               )}
               <div className="flex justify-end gap-3">
-                <Button variant="outline" onClick={() => { stopCamera(); setStep('consent'); }} disabled={isIdVerifying}>Back</Button>
+                <Button variant="outline" onClick={() => { stopCamera(); setStep('consent'); }} disabled={isIdVerifying}>{t('common.back')}</Button>
                 <Button onClick={handleNextFromId} disabled={!idPhoto || isIdVerifying} className="gap-2">
                   {isIdVerifying ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Verifying…</>
+                    <><Loader2 className="h-4 w-4 animate-spin" />{' '}{t('exam.verifying')}</>
                   ) : needFace ? (
-                    <>Next: face photo <ArrowRight className="h-4 w-4" /></>
+                    <>{t('exam.nextFacePhoto')}{' '}<ArrowRight className="h-4 w-4" /></>
                   ) : (
-                    <>Next: review <ArrowRight className="h-4 w-4" /></>
+                    <>{t('exam.nextReview')}{' '}<ArrowRight className="h-4 w-4" /></>
                   )}
                 </Button>
               </div>
@@ -641,11 +633,8 @@ export function IdentityVerification({
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base flex items-center justify-center gap-2">
-                <User className="h-5 w-5 text-primary" /> Face check
-              </h3>
-              <p className="text-xs text-muted-foreground">
-                Look directly into the camera to take a live photo of your face.
-              </p>
+                <User className="h-5 w-5 text-primary" />{' '}{t('exam.faceCheck')}</h3>
+              <p className="text-xs text-muted-foreground">{t('exam.lookDirectlyIntoTheCameraTo0e3')}</p>
             </div>
 
             {verificationError && (
@@ -670,7 +659,7 @@ export function IdentityVerification({
 
             <div className="flex items-center justify-between gap-3 border-t pt-4">
               {cameraBrokenLink}
-              <Button variant="outline" onClick={() => { if (needId) { setStep('capture_id'); startCamera(); } else { setStep('consent'); } }}>Back</Button>
+              <Button variant="outline" onClick={() => { if (needId) { setStep('capture_id'); startCamera(); } else { setStep('consent'); } }}>{t('common.back')}</Button>
             </div>
           </div>
         )}
@@ -679,34 +668,28 @@ export function IdentityVerification({
         {step === 'confirm' && (
           <div className="space-y-4">
             <div className="text-center space-y-1">
-              <h3 className="font-semibold text-base">Review your photos</h3>
-              <p className="text-xs text-muted-foreground">
-                Verify that {needId && needFace ? 'both images are' : 'the image is'} clear and readable. If correct, submit to start the assessment.
-              </p>
+              <h3 className="font-semibold text-base">{t('exam.reviewYourPhotos')}</h3>
+              <p className="text-xs text-muted-foreground">{t('exam.verifyThatValueClearAndReadablee16', { value: needId && needFace ? t('exam.bothImagesAre') : t('exam.theImageIs') })}</p>
             </div>
 
             <div className={`grid gap-4 ${needId && needFace ? 'grid-cols-2' : 'grid-cols-1 max-w-xs mx-auto w-full'}`}>
               {needId && (
               <div className="space-y-1.5">
-                <span className="text-xs font-semibold text-muted-foreground block text-center">Government ID</span>
+                <span className="text-xs font-semibold text-muted-foreground block text-center">{t('exam.governmentId')}</span>
                 <div className="aspect-4/3 rounded-xl border border-border overflow-hidden bg-muted">
-                  {idPhoto && <img src={idPhoto} alt="ID preview" className="w-full h-full object-cover" />}
+                  {idPhoto && <img src={idPhoto} alt={t('exam.idPreview')} className="w-full h-full object-cover" />}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { setIdPhoto(null); setStep('capture_id'); startCamera(); }} className="w-full text-xs" disabled={isVerifying}>
-                  Retake ID
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setIdPhoto(null); setStep('capture_id'); startCamera(); }} className="w-full text-xs" disabled={isVerifying}>{t('exam.retakeId')}</Button>
               </div>
               )}
 
               {needFace && (
               <div className="space-y-1.5">
-                <span className="text-xs font-semibold text-muted-foreground block text-center">Live selfie</span>
+                <span className="text-xs font-semibold text-muted-foreground block text-center">{t('exam.liveSelfie')}</span>
                 <div className="aspect-4/3 rounded-xl border border-border overflow-hidden bg-muted">
-                  {facePhoto && <img src={facePhoto} alt="Face preview" className="w-full h-full object-cover" />}
+                  {facePhoto && <img src={facePhoto} alt={t('exam.facePreview')} className="w-full h-full object-cover" />}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { setStep('capture_face'); }} className="w-full text-xs" disabled={isVerifying}>
-                  Retake selfie
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setStep('capture_face'); }} className="w-full text-xs" disabled={isVerifying}>{t('exam.retakeSelfie')}</Button>
               </div>
               )}
             </div>
@@ -719,9 +702,7 @@ export function IdentityVerification({
                   onChange={(e) => setUseAsProfile(e.target.checked)}
                   className="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
-                <span className="text-muted-foreground text-xs">
-                  Also use my verification selfie as my profile picture. You can change it anytime from Profile &gt; Edit.
-                </span>
+                <span className="text-muted-foreground text-xs">{t('exam.alsoUseMyVerificationSelfieAs450')}</span>
               </label>
             )}
 
@@ -733,9 +714,9 @@ export function IdentityVerification({
             )}
 
             <div className="flex justify-end gap-3 border-t pt-4">
-              <Button variant="outline" disabled={isVerifying} onClick={() => { if (needFace) { setStep('capture_face'); } else if (needId) { setStep('capture_id'); startCamera(); } else { setStep('consent'); } }}>Back</Button>
+              <Button variant="outline" disabled={isVerifying} onClick={() => { if (needFace) { setStep('capture_face'); } else if (needId) { setStep('capture_id'); startCamera(); } else { setStep('consent'); } }}>{t('common.back')}</Button>
               <Button onClick={() => void handleFinish()} disabled={isVerifying} className="gap-2">
-                {isVerifying ? <><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> {finishLabel}</> : <><Check className="h-4 w-4" /> Start assessment</>}
+                {isVerifying ? <><Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> {finishLabel}</> : <><Check className="h-4 w-4" />{' '}{t('exam.startAssessment')}</>}
               </Button>
             </div>
           </div>

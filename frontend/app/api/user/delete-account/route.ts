@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
   const limit = await rateLimitRedis(`delete-account:${gate.user.id}`, 5, 15 * 60_000)
   if (!limit.ok) {
-    return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+    return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: limit.retryAfterSec } }, { status: 429 })
   }
 
   try {
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
 
     const user = (await getUserById(gate.user.id)) as (Record<string, unknown> & { _id: unknown }) | null
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
     }
 
     // SEC-011: password, else authenticator code, else a REAL sign-in within
@@ -100,6 +100,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[DeleteAccount] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

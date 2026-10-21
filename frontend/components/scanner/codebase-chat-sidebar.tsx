@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { MessageSquare, Send, Sparkles, Loader2, FileCode, Bot, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface FileMetric {
   path: string
@@ -30,6 +31,7 @@ interface CodebaseChatSidebarProps {
 }
 
 export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarProps) {
+  const { t } = useT()
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
@@ -93,22 +95,18 @@ export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarP
       <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-muted/20">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-primary" />
-          <h3 className="font-semibold text-foreground">Codebase assistant</h3>
+          <h3 className="font-semibold text-foreground">{t('tools.codebaseAssistant')}</h3>
         </div>
         <Badge variant="outline" className="text-xs gap-1 border-primary/20 text-primary">
-          <Sparkles className="w-3 h-3" />
-          AI Powered
-        </Badge>
+          <Sparkles className="w-3 h-3" />{t('tools.aiPowered')}</Badge>
       </div>
 
       {/* File Selector */}
       <div className="border-b border-border p-3 max-h-[140px] overflow-y-auto bg-muted/10 space-y-2">
         <div className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 mb-1.5">
-          <FileCode className="w-3.5 h-3.5" />
-          Attach Context Files ({selectedPaths.size})
-        </div>
+          <FileCode className="w-3.5 h-3.5" />{t('tools.attachContextFilesSize', { size: selectedPaths.size })}</div>
         {files.length === 0 ? (
-          <div className="text-xs text-muted-foreground italic">No scanned files available</div>
+          <div className="text-xs text-muted-foreground italic">{t('tools.noScannedFilesAvailable')}</div>
         ) : (
           <div className="space-y-1.5">
             {files.map((file) => (
@@ -159,9 +157,7 @@ export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarP
               <Bot className="w-4 h-4 text-primary" />
             </div>
             <div className="rounded-lg p-3 text-sm bg-muted border border-border text-muted-foreground flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin text-primary" />
-              Analyzing attached codebase files...
-            </div>
+              <Loader2 className="w-4 h-4 animate-spin text-primary" />{t('tools.analyzingAttachedCodebaseFiles')}</div>
           </div>
         )}
       </div>
@@ -173,11 +169,11 @@ export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarP
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder={selectedPaths.size > 0 ? "Ask about attached files..." : "Select files above to begin..."}
+            placeholder={selectedPaths.size > 0 ? t('tools.askAboutAttachedFiles') : t('tools.selectFilesAboveToBegin')}
             disabled={loading}
             className="h-10"
           />
-          <Button onClick={handleSend} disabled={loading} size="icon" className="h-10 w-10 shrink-0" title="Send" aria-label="Send message">
+          <Button onClick={handleSend} disabled={loading} size="icon" className="h-10 w-10 shrink-0" title={t('tools.send')} aria-label={t('tools.sendMessage')}>
             <Send className="w-4 h-4" />
           </Button>
         </div>

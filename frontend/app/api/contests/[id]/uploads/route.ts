@@ -33,19 +33,19 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params
   return guarded('upload', async () => {
     const parsed = body.safeParse(await req.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
     const input = parsed.data
     const c = await loadVisible(id, user)
     if (!c) return notFound()
     const meta = FORMATS[c.format]
     // Predictions CSVs are scored in-request, so they stay on the regular submit.
     const slot = meta.submission === 'files' ? (meta.files || []).find((s) => s.role === input.role) : undefined
-    if (!slot) return NextResponse.json({ error: 'This contest does not take that file.' }, { status: 400 })
-    if (!submissionsOpen(c)) return NextResponse.json({ error: 'Submissions are closed.' }, { status: 409 })
+    if (!slot) return NextResponse.json({ error: 'This contest does not take that file.', code: 'contest_file_not_accepted' }, { status: 400 })
+    if (!submissionsOpen(c)) return NextResponse.json({ error: 'Submissions are closed.', code: 'contest_closed' }, { status: 409 })
     const entry = await myEntry(c.id, user.id)
-    if (!entry) return NextResponse.json({ error: 'Join the contest first.' }, { status: 403 })
+    if (!entry) return NextResponse.json({ error: 'Join the contest first.', code: 'contest_join_first' }, { status: 403 })
     const rl = await rateLimitRedis(`contest-direct:${c.id}:${user.id}`, 20, 10 * 60_000)
-    if (!rl.ok) return NextResponse.json({ error: `Too many uploads. Try again in ${rl.retryAfterSec} s.` }, { status: 429 })
+    if (!rl.ok) return NextResponse.json({ error: `Too many uploads. Try again in ${rl.retryAfterSec} s.`, code: 'contest_upload_rate', params: { seconds: rl.retryAfterSec } }, { status: 429 })
     const scope = contestUploadScope(c.id, entry.id, slot.role)
     const maxBytes = slotMaxBytes(slot, true, largeUploadLimits())
 

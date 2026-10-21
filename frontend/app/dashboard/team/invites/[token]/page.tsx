@@ -8,6 +8,8 @@ import { Illustration, SoftGlow } from '@/components/visuals'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface InviteInfo {
   org_name: string | null
@@ -20,6 +22,8 @@ interface InviteInfo {
 }
 
 export default function TeamInvitePage() {
+  const apiError = useApiError()
+  const { t } = useT()
   const params = useParams<{ token: string }>()
   const token = params.token || ''
   const router = useRouter()
@@ -59,13 +63,13 @@ export default function TeamInvitePage() {
       })
       const json = await res.json()
       if (res.ok) {
-        setDone({ ok: true, message: `You're now a member of ${json.tenant_name || 'the organization'}.` })
+        setDone({ ok: true, message: t('hiring.youreNowAMemberOfValue', { value: json.tenant_name || 'the organization' }) })
         setTimeout(() => router.push('/dashboard'), 1500)
       } else {
-        setDone({ ok: false, message: json.error || 'Failed to accept invitation' })
+        setDone({ ok: false, message: apiError(json, t('hiring.failedToAcceptInvitation')) })
       }
     } catch {
-      setDone({ ok: false, message: 'Failed to accept invitation' })
+      setDone({ ok: false, message: t('hiring.failedToAcceptInvitation') })
     } finally {
       setAccepting(false)
     }
@@ -74,7 +78,7 @@ export default function TeamInvitePage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading invitation" />
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label={t('hiring.loadingInvitation')} />
       </div>
     )
   }
@@ -85,9 +89,9 @@ export default function TeamInvitePage() {
         <SoftGlow />
         <Panel className="w-full max-w-md p-8 text-center">
           <Illustration name="error" className="mx-auto w-36" />
-          <h1 className="mt-3 text-lg font-semibold text-foreground">Invitation unavailable</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{info?.error || 'This invite may have expired or already been used.'}</p>
-          <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>
+          <h1 className="mt-3 text-lg font-semibold text-foreground">{t('hiring.invitationUnavailable')}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{apiError(info, t('hiring.thisInviteMayHaveExpiredOr041'))}</p>
+          <Button className="mt-5" onClick={() => router.push('/dashboard')}>{t('hiring.goToDashboard')}</Button>
         </Panel>
       </div>
     )
@@ -100,38 +104,35 @@ export default function TeamInvitePage() {
         {done ? (
           <>
             <Illustration name={done.ok ? 'success' : 'error'} className="mx-auto w-36" />
-            <h1 className="mt-3 text-lg font-semibold text-foreground">{done.ok ? 'Welcome!' : 'Could not join'}</h1>
+            <h1 className="mt-3 text-lg font-semibold text-foreground">{done.ok ? t('hiring.welcome') : t('hiring.couldNotJoin')}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{done.message}</p>
-            {!done.ok && <Button className="mt-5" onClick={() => router.push('/dashboard')}>Go to dashboard</Button>}
+            {!done.ok && <Button className="mt-5" onClick={() => router.push('/dashboard')}>{t('hiring.goToDashboard')}</Button>}
           </>
         ) : (
           <>
             <Illustration name="team" className="mx-auto w-36" />
-            <h1 className="mt-4 text-lg font-semibold text-foreground">Join {info.org_name || 'your organization'}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              You've been invited to join an organization on CodeSpectra.
-            </p>
+            <h1 className="mt-4 text-lg font-semibold text-foreground">{t('hiring.join')}{' '}{info.org_name || t('hiring.yourOrganization')}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">{t('hiring.youveBeenInvitedToJoinAn42c')}</p>
 
             {info.expired || !info.org_active ? (
               <p className="mt-4 text-sm text-amber-700 dark:text-amber-400">
-                {info.expired ? 'This invitation has expired.' : 'This organization is currently inactive.'}
+                {info.expired ? t('hiring.thisInvitationHasExpired') : t('hiring.thisOrganizationIsCurrentlyInactive')}
               </p>
             ) : emailMatches ? (
               <>
-                <p className="mt-4 text-xs text-muted-foreground">
-                  Signed in as <strong className="text-foreground">{user?.email}</strong>.
+                <p className="mt-4 text-xs text-muted-foreground">{t('hiring.signedInAs')}{' '}<strong className="text-foreground">{user?.email}</strong>.
                 </p>
                 <Button className="mt-5 w-full" disabled={accepting} onClick={() => void handleAccept()}>
-                  {accepting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Joining…</> : 'Accept invitation'}
+                  {accepting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />{t('hiring.joining')}</> : t('hiring.acceptInvitation')}
                 </Button>
               </>
             ) : (
               <div className="mt-4 rounded-2xl border border-border/70 bg-muted/30 p-4 text-sm text-muted-foreground">
                 {user
-                  ? <>This invite is for <strong className="text-foreground">{info.email}</strong>, but you're signed in as <strong className="text-foreground">{user.email}</strong>. Sign out and accept with the invited account.</>
-                  : <>Sign in with <strong className="text-foreground">{info.email}</strong> to accept this invitation.</>}
+                  ? <>{t('hiring.thisInviteIsFor')}{' '}<strong className="text-foreground">{info.email}</strong>{t('hiring.butYoureSignedInAs')}{' '}<strong className="text-foreground">{user.email}</strong>{t('hiring.signOutAndAcceptWithThe11b')}</>
+                  : <>{t('hiring.signInWith')}{' '}<strong className="text-foreground">{info.email}</strong>{' '}{t('hiring.toAcceptThisInvitation')}</>}
                 <Button className="mt-3 w-full" variant="outline" onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(`/dashboard/team/invites/${token}`)}`)}>
-                  {user ? 'Switch account' : 'Sign in'}
+                  {user ? t('hiring.switchAccount') : t('hiring.signIn')}
                 </Button>
               </div>
             )}

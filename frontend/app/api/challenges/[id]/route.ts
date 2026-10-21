@@ -22,7 +22,7 @@ export async function GET(
     }
 
     if (!doc) {
-      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     }
 
     return NextResponse.json({
@@ -33,6 +33,6 @@ export async function GET(
       initialCode: doc.initialCode || doc.starterCode || '',
     })
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

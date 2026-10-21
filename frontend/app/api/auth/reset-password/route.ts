@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const ipCheck = await rateLimitRedis(`reset-pw:ip:${ipKey}`, 5, 60_000)
   if (!ipCheck.ok) {
     return NextResponse.json(
-      { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.` },
+      { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: ipCheck.retryAfterSec } },
       { status: 429 },
     )
   }
@@ -26,11 +26,11 @@ export async function POST(request: Request) {
     code = String(body.code || '').trim()
     newPassword = String(body.newPassword || '')
   } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
 
   if (!code || !newPassword) {
-    return NextResponse.json({ error: 'Code and new password are required' }, { status: 400 })
+    return NextResponse.json({ error: 'Code and new password are required', code: 'auth_reset_fields_required' }, { status: 400 })
   }
 
   const pwProblem = passwordProblem(newPassword)
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   })
 
   if (!user) {
-    return NextResponse.json({ error: 'Invalid or expired reset code' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid or expired reset code', code: 'auth_reset_code_invalid' }, { status: 400 })
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 12)

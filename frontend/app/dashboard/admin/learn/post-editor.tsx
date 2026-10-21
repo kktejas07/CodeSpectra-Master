@@ -25,6 +25,7 @@ import { LEARN_CATEGORIES, LEARN_LEVELS, type LearnPostDoc } from '@/lib/learn/t
 import { REGENERATABLE_SECTIONS, SECTION_HEADINGS, type SectionKey } from '@/lib/learn/schema'
 import type { LearnAction } from '@/lib/learn/state'
 import { TranslationsPanel } from './translations-panel'
+import { useAdminT } from '@/lib/i18n/admin'
 
 const ACTION_LABEL: Record<LearnAction, string> = {
   approve: 'Approve',
@@ -41,6 +42,7 @@ export function scoreVariant(score: number): 'success' | 'warning' | 'danger' {
 }
 
 export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId: string | null; onClose: () => void; onChanged: () => void; onOpenPost?: (id: string) => void }) {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [post, setPost] = useState<LearnPostDoc | null>(null)
   const [actions, setActions] = useState<LearnAction[]>([])
@@ -117,7 +119,7 @@ export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId:
     if (action === 'reject') body.reason = rejectReason
     if (action === 'schedule') {
       const t = new Date(publishAt)
-      if (Number.isNaN(t.getTime())) return addToast({ type: 'error', title: 'Pick a date and time to publish.' })
+      if (Number.isNaN(t.getTime())) return addToast({ type: 'error', title: tx('learnEditor.pickADateAndTime') })
       body.publish_at = t.toISOString()
     }
     const done = await call(action, `/api/learn/admin/posts/${post.id}/action`, { method: 'POST', body: JSON.stringify(body) }, `${ACTION_LABEL[action]} — done`)
@@ -139,16 +141,16 @@ export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId:
       <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-4xl">
         <SheetHeader>
           <SheetTitle className="pr-8">{post?.title ?? 'Loading…'}</SheetTitle>
-          <SheetDescription>Review, edit and decide. Nothing is public until you publish or schedule it.</SheetDescription>
+          <SheetDescription>{tx('learnEditor.reviewEditAndDecideNothing')}</SheetDescription>
         </SheetHeader>
 
         {loading || !post ? (
-          <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading" /></div>
+          <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label={tx('learnEditor.loading')} /></div>
         ) : (
           <div className="space-y-5 px-4 pb-10">
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <Badge variant="outline" className="capitalize">{post.status}</Badge>
-              <Badge variant={scoreVariant(post.quality.score)}>Quality <span className="tabular-nums">{post.quality.score}</span></Badge>
+              <Badge variant={scoreVariant(post.quality.score)}>{tx('learnEditor.quality')} <span className="tabular-nums">{post.quality.score}</span></Badge>
               <span className="text-muted-foreground">{post.generated_by === 'bot' ? 'Written by the bot' : 'Written on request'}{post.model ? ` · ${post.model}` : ''}</span>
               {post.status === 'published' && (
                 <Link href={`/learn/${post.slug}`} target="_blank" className="inline-flex items-center gap-1 text-primary hover:underline">
@@ -162,7 +164,7 @@ export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId:
 
             {post.quality.flags.length > 0 && (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
-                <p className="flex items-center gap-2 font-medium text-foreground"><AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden /> Check before approving</p>
+                <p className="flex items-center gap-2 font-medium text-foreground"><AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden /> {tx('learnEditor.checkBeforeApproving')}</p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 font-mono text-xs text-muted-foreground">
                   {post.quality.flags.map((f) => <li key={f}>{f}</li>)}
                 </ul>
@@ -172,44 +174,44 @@ export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId:
 
             {/* Decision bar */}
             <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-border bg-card p-3">
-              {actions.includes('approve') && <Button size="sm" onClick={() => act('approve')} disabled={!!busy}><CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />Approve</Button>}
-              {actions.includes('publish') && <Button size="sm" onClick={() => act('publish')} disabled={!!busy}><Send className="mr-1.5 h-4 w-4" aria-hidden />Publish now</Button>}
+              {actions.includes('approve') && <Button size="sm" onClick={() => act('approve')} disabled={!!busy}><CheckCircle2 className="mr-1.5 h-4 w-4" aria-hidden />{tx('common.approve')}</Button>}
+              {actions.includes('publish') && <Button size="sm" onClick={() => act('publish')} disabled={!!busy}><Send className="mr-1.5 h-4 w-4" aria-hidden />{tx('learnEditor.publishNow')}</Button>}
               {actions.includes('schedule') && (
                 <div className="flex flex-wrap items-end gap-2">
                   <div>
-                    <Label htmlFor="learn-publish-at" className="text-xs">Publish at</Label>
+                    <Label htmlFor="learn-publish-at" className="text-xs">{tx('learnEditor.publishAt')}</Label>
                     <Input id="learn-publish-at" type="datetime-local" value={publishAt} onChange={(e) => setPublishAt(e.target.value)} className="h-9 w-52" />
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => act('schedule')} disabled={!!busy}><CalendarClock className="mr-1.5 h-4 w-4" aria-hidden />Schedule</Button>
+                  <Button size="sm" variant="outline" onClick={() => act('schedule')} disabled={!!busy}><CalendarClock className="mr-1.5 h-4 w-4" aria-hidden />{tx('learnEditor.schedule')}</Button>
                 </div>
               )}
               {(['unschedule', 'unpublish', 'reopen'] as LearnAction[]).filter((a) => actions.includes(a)).map((a) => (
                 <Button key={a} size="sm" variant="outline" onClick={() => act(a)} disabled={!!busy}>{ACTION_LABEL[a]}</Button>
               ))}
-              {actions.includes('reject') && <Button size="sm" variant="outline" onClick={() => setShowReject((v) => !v)} disabled={!!busy}><XCircle className="mr-1.5 h-4 w-4" aria-hidden />Reject</Button>}
-              {post.status !== 'published' && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={!!busy} aria-label="Delete post"><Trash2 className="h-4 w-4" aria-hidden /></Button>}
-              {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="Working" />}
+              {actions.includes('reject') && <Button size="sm" variant="outline" onClick={() => setShowReject((v) => !v)} disabled={!!busy}><XCircle className="mr-1.5 h-4 w-4" aria-hidden />{tx('common.reject')}</Button>}
+              {post.status !== 'published' && <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={!!busy} aria-label={tx('learnEditor.deletePost')}><Trash2 className="h-4 w-4" aria-hidden /></Button>}
+              {busy && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label={tx('learnEditor.working')} />}
             </div>
             {confirmDelete && (
-              <div role="alertdialog" aria-label="Confirm delete" className="flex flex-wrap items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/5 p-3 text-sm">
-                <span className="text-foreground">Delete this post? This cannot be undone.</span>
-                <Button size="sm" variant="destructive" onClick={remove} disabled={!!busy}>Delete</Button>
-                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+              <div role="alertdialog" aria-label={tx('learnEditor.confirmDelete')} className="flex flex-wrap items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/5 p-3 text-sm">
+                <span className="text-foreground">{tx('learnEditor.deleteThisPostThisCannot')}</span>
+                <Button size="sm" variant="destructive" onClick={remove} disabled={!!busy}>{tx('common.delete')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>{tx('common.cancel')}</Button>
               </div>
             )}
             {showReject && (
               <div className="space-y-2 rounded-2xl border border-border p-3">
-                <Label htmlFor="learn-reject">Why are you rejecting it? The bot reads this next time it writes the topic.</Label>
-                <Textarea id="learn-reject" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={1000} placeholder="e.g. The complexity of the worst case is wrong; code examples are too long" />
-                <Button size="sm" variant="destructive" onClick={() => act('reject')} disabled={!rejectReason.trim() || !!busy}>Reject post</Button>
+                <Label htmlFor="learn-reject">{tx('learnEditor.whyAreYouRejectingIt')}</Label>
+                <Textarea id="learn-reject" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} maxLength={1000} placeholder={tx('learnEditor.eGTheComplexityOf')} />
+                <Button size="sm" variant="destructive" onClick={() => act('reject')} disabled={!rejectReason.trim() || !!busy}>{tx('learnEditor.rejectPost')}</Button>
               </div>
             )}
 
             <Tabs defaultValue="preview">
               <TabsList>
-                <TabsTrigger value="preview">Preview</TabsTrigger>
+                <TabsTrigger value="preview">{tx('learnEditor.preview')}</TabsTrigger>
                 <TabsTrigger value="edit">Edit{dirty ? ' •' : ''}</TabsTrigger>
-                <TabsTrigger value="regenerate">Rewrite a section</TabsTrigger>
+                <TabsTrigger value="regenerate">{tx('learnEditor.rewriteASection')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="preview" className="pt-4">
@@ -218,7 +220,7 @@ export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId:
                 <LearnMarkdown content={form.body} className="mt-6" />
                 {post.sources.length > 0 && (
                   <div className="mt-6 rounded-2xl border border-border p-4 text-sm">
-                    <p className="font-medium text-foreground">Sources (URLs only)</p>
+                    <p className="font-medium text-foreground">{tx('learnEditor.sourcesUrlsOnly')}</p>
                     <ul className="mt-2 space-y-1">{post.sources.map((s) => <li key={s.url}><a className="break-all text-primary hover:underline" href={s.url} target="_blank" rel="noopener noreferrer">{s.url}</a></li>)}</ul>
                   </div>
                 )}
@@ -227,44 +229,44 @@ export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId:
               <TabsContent value="edit" className="space-y-4 pt-4">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="sm:col-span-2">
-                    <Label htmlFor="learn-title">Title</Label>
+                    <Label htmlFor="learn-title">{tx('common.title')}</Label>
                     <Input id="learn-title" value={form.title} onChange={(e) => set('title', e.target.value)} maxLength={140} />
                   </div>
                   <div className="sm:col-span-2">
-                    <Label htmlFor="learn-summary">Summary</Label>
+                    <Label htmlFor="learn-summary">{tx('learnEditor.summary')}</Label>
                     <Textarea id="learn-summary" value={form.summary} onChange={(e) => set('summary', e.target.value)} rows={2} maxLength={400} />
                   </div>
                   <div>
-                    <Label htmlFor="learn-category">Category</Label>
+                    <Label htmlFor="learn-category">{tx('learnEditor.category')}</Label>
                     <Select value={form.category} onValueChange={(v) => set('category', v)}>
                       <SelectTrigger id="learn-category"><SelectValue /></SelectTrigger>
                       <SelectContent>{LEARN_CATEGORIES.map((c) => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="learn-level">Level</Label>
+                    <Label htmlFor="learn-level">{tx('learnEditor.level')}</Label>
                     <Select value={form.level} onValueChange={(v) => set('level', v)}>
                       <SelectTrigger id="learn-level"><SelectValue /></SelectTrigger>
                       <SelectContent>{LEARN_LEVELS.map((l) => <SelectItem key={l} value={l} className="capitalize">{l}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div>
-                    <Label htmlFor="learn-tags">Tags (comma separated)</Label>
+                    <Label htmlFor="learn-tags">{tx('learnEditor.tagsCommaSeparated')}</Label>
                     <Input id="learn-tags" value={form.tags} onChange={(e) => set('tags', e.target.value)} />
                   </div>
                   <div>
-                    <Label htmlFor="learn-slug">Link</Label>
+                    <Label htmlFor="learn-slug">{tx('learnEditor.link')}</Label>
                     <Input id="learn-slug" value={form.slug} onChange={(e) => set('slug', e.target.value)} disabled={!!post.published_at} />
                   </div>
                   <div className="flex items-center gap-3">
                     <Switch id="learn-featured" checked={form.featured} onCheckedChange={(v) => set('featured', v)} />
-                    <Label htmlFor="learn-featured">Feature on the home page</Label>
+                    <Label htmlFor="learn-featured">{tx('learnEditor.featureOnTheHomePage')}</Label>
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="learn-body">Post (markdown)</Label>
+                  <Label htmlFor="learn-body">{tx('learnEditor.postMarkdown')}</Label>
                   <Textarea id="learn-body" value={form.body} onChange={(e) => set('body', e.target.value)} rows={24} className="font-mono text-[13px]" spellCheck={false} />
-                  <p className="mt-1 text-xs text-muted-foreground">Raw HTML is removed when you save. Use the Preview tab to check the result.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{tx('learnEditor.rawHtmlIsRemovedWhen')}</p>
                 </div>
                 <Button onClick={save} disabled={!dirty || !!busy}>{busy === 'save' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : null}Save changes</Button>
               </TabsContent>
@@ -272,25 +274,25 @@ export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId:
               <TabsContent value="regenerate" className="space-y-4 pt-4">
                 <p className="text-sm text-muted-foreground">The bot rewrites just this section; the rest of the post, including your edits, stays as it is.</p>
                 {post.status === 'published' ? (
-                  <p className="text-sm text-muted-foreground">Unpublish the post first to rewrite a section.</p>
+                  <p className="text-sm text-muted-foreground">{tx('learnEditor.unpublishThePostFirstTo')}</p>
                 ) : (
                   <>
                     <div className="max-w-xs">
-                      <Label htmlFor="learn-section">Section</Label>
+                      <Label htmlFor="learn-section">{tx('learnEditor.section')}</Label>
                       <Select value={section} onValueChange={(v) => setSection(v as SectionKey)}>
                         <SelectTrigger id="learn-section"><SelectValue /></SelectTrigger>
                         <SelectContent>{REGENERATABLE_SECTIONS.map((s) => <SelectItem key={s} value={s}>{SECTION_HEADINGS[s]}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="learn-instr">What should change? (optional)</Label>
-                      <Textarea id="learn-instr" value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={2} maxLength={500} placeholder="e.g. Use a smaller example and explain the base case" />
+                      <Label htmlFor="learn-instr">{tx('learnEditor.whatShouldChangeOptional')}</Label>
+                      <Textarea id="learn-instr" value={instructions} onChange={(e) => setInstructions(e.target.value)} rows={2} maxLength={500} placeholder={tx('learnEditor.eGUseASmaller')} />
                     </div>
                     <Button onClick={regenerate} disabled={!!busy || dirty} variant="outline">
                       {busy === 'regen' ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <RefreshCw className="mr-1.5 h-4 w-4" aria-hidden />}
-                      Rewrite section
+                      {tx('learnEditor.rewriteSection')}
                     </Button>
-                    {dirty && <p className="text-xs text-muted-foreground">Save your edits first.</p>}
+                    {dirty && <p className="text-xs text-muted-foreground">{tx('learnEditor.saveYourEditsFirst')}</p>}
                   </>
                 )}
               </TabsContent>

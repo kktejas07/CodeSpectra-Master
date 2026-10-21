@@ -71,6 +71,8 @@ paths = [
   '''frontend/tests/llm-legacy-key.test.ts''',
   '''frontend/tests/log-redact.test.ts''',
   '''backend/tests/test_log_redaction_and_docs.py''',
+  # UI translation catalogs (plain interface strings; e.g. "Add to LinkedIn" trips linkedin-client-id).
+  '''frontend/lib/i18n/messages/.*\.json''',
 ]
 commits = ["de4ddf656aea2bf23b7d97b2770d4e49f4bb04ae", "f2fb8c0f19c7f69d91b10df045df31083bc1c1a9"]  # f2fb8c0f19c7f69d91b10df045df31083bc1c1a9: fake test DSNs (example.com/localhost), later marked gitleaks:allow
 # Matched against the extracted secret: placeholder passwords in docs/samples,

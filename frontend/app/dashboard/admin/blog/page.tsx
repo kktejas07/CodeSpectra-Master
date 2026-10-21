@@ -26,6 +26,7 @@ import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { FileText, CheckCircle2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type Post = {
   id: string
@@ -44,6 +45,7 @@ type Post = {
 }
 
 export default function AdminBlogPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const confirmDialog = useConfirm()
@@ -65,7 +67,7 @@ export default function AdminBlogPage() {
   /** Generate cover art — for an existing post (slug) or the create form (no slug). */
   const genCover = async (slug?: string) => {
     if (!slug && !title.trim()) {
-      addToast({ type: 'error', title: 'Add a title first' })
+      addToast({ type: 'error', title: tx('blog.addATitleFirst') })
       return
     }
     setAiSlug(slug || '__form')
@@ -80,11 +82,11 @@ export default function AdminBlogPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Generation failed')
       if (slug) {
-        addToast({ type: 'success', title: 'Cover art updated' })
+        addToast({ type: 'success', title: tx('blog.coverArtUpdated') })
         await load()
       } else {
         setCoverImage(data.cover_image || '')
-        addToast({ type: 'success', title: 'Cover generated' })
+        addToast({ type: 'success', title: tx('blog.coverGenerated') })
       }
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
@@ -95,7 +97,7 @@ export default function AdminBlogPage() {
 
   const genBody = async () => {
     if (!title.trim()) {
-      addToast({ type: 'error', title: 'Add a title first' })
+      addToast({ type: 'error', title: tx('blog.addATitleFirst') })
       return
     }
     setAiSlug('__body')
@@ -108,7 +110,7 @@ export default function AdminBlogPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Generation failed')
       setBody(data.html || '')
-      addToast({ type: 'success', title: 'Draft generated' })
+      addToast({ type: 'success', title: tx('blog.draftGenerated') })
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
     } finally {
@@ -128,7 +130,7 @@ export default function AdminBlogPage() {
       setLoadError(false)
     } catch {
       setLoadError(true)
-      addToast({ type: 'error', title: 'Failed to load posts' })
+      addToast({ type: 'error', title: tx('blog.failedToLoadPosts') })
     } finally {
       setLoading(false)
     }
@@ -142,7 +144,7 @@ export default function AdminBlogPage() {
 
   const savePost = async (publish: boolean) => {
     if (!title.trim()) {
-      addToast({ type: 'error', title: 'Title required' })
+      addToast({ type: 'error', title: tx('blog.titleRequired') })
       return
     }
     setSaving(true)
@@ -197,10 +199,10 @@ export default function AdminBlogPage() {
     if (!(await confirmDialog({ title: 'Delete this post?', description: 'The post is removed from the blog. This cannot be undone.', confirmText: 'Delete', destructive: true }))) return
     const res = await csrfFetch(`/api/blog/${encodeURIComponent(slug)}`, { method: 'DELETE' })
     if (!res.ok) {
-      addToast({ type: 'error', title: 'Delete failed' })
+      addToast({ type: 'error', title: tx('blog.deleteFailed') })
       return
     }
-    addToast({ type: 'success', title: 'Deleted' })
+    addToast({ type: 'success', title: tx('blog.deleted') })
     await load()
   }
 
@@ -208,12 +210,12 @@ export default function AdminBlogPage() {
     <div className="space-y-6">
       <PageHeader
         illustration="inbox"
-        title="Newsroom"
+        title={tx('blog.newsroom')}
         description={
           <>
             Posts shown in{' '}
             <Link href="/learn?source=team" className="font-medium text-primary hover:underline" target="_blank">
-              Learn, under From the team
+              {tx('blog.learnUnderFromTheTeam')}
             </Link>
             . Publish newsletters here too when they should stay readable for good.
           </>
@@ -235,8 +237,8 @@ export default function AdminBlogPage() {
 
       {!loading && items.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
-          <StatCard label="Published" value={items.filter((p) => p.status === 'published').length} icon={<CheckCircle2 />} />
-          <StatCard label="Drafts" value={items.filter((p) => p.status !== 'published').length} icon={<FileText />} />
+          <StatCard label={tx('blog.published')} value={items.filter((p) => p.status === 'published').length} icon={<CheckCircle2 />} />
+          <StatCard label={tx('blog.drafts')} value={items.filter((p) => p.status !== 'published').length} icon={<FileText />} />
         </div>
       )}
 
@@ -244,13 +246,13 @@ export default function AdminBlogPage() {
         <Panel className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="post-title">Title</Label>
-              <Input id="post-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+              <Label htmlFor="post-title">{tx('common.title')}</Label>
+              <Input id="post-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={tx('blog.articleTitle')} />
             </div>
             <div className="space-y-1.5">
-              <Label>Category</Label>
+              <Label>{tx('blog.category')}</Label>
               <Select value={category} onValueChange={(v) => setCategory(v as BlogCategoryId)}>
-                <SelectTrigger aria-label="Category">
+                <SelectTrigger aria-label={tx('blog.category')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -263,21 +265,21 @@ export default function AdminBlogPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="post-author">Author</Label>
+              <Label htmlFor="post-author">{tx('blog.author')}</Label>
               <Input id="post-author" value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="post-excerpt">Excerpt</Label>
+              <Label htmlFor="post-excerpt">{tx('blog.excerpt')}</Label>
               <Textarea id="post-excerpt" value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="post-cover">Cover image</Label>
+              <Label htmlFor="post-cover">{tx('blog.coverImage')}</Label>
               <div className="flex gap-2">
                 <Input
                   id="post-cover"
                   value={coverImage}
                   onChange={(e) => setCoverImage(e.target.value)}
-                  placeholder="https://… (or generate AI art from the title)"
+                  placeholder={tx('blog.httpsOrGenerateAiArt')}
                 />
                 <Button
                   type="button"
@@ -290,7 +292,7 @@ export default function AdminBlogPage() {
                   ) : (
                     <Sparkles className="mr-1 h-4 w-4 text-primary" />
                   )}
-                  Generate
+                  {tx('blog.generate')}
                 </Button>
               </div>
               {coverImage ? (
@@ -308,15 +310,15 @@ export default function AdminBlogPage() {
                   <Label className="text-base flex items-center gap-2">
                     <Globe className="h-4 w-4" aria-hidden /> Live web research
                   </Label>
-                  <p className="text-sm text-muted-foreground">Search the web for the latest breaking news on this topic before writing.</p>
+                  <p className="text-sm text-muted-foreground">{tx('blog.searchTheWebForThe')}</p>
                 </div>
-                <Switch checked={doResearch} onCheckedChange={setDoResearch} aria-label="Live web research" />
+                <Switch checked={doResearch} onCheckedChange={setDoResearch} aria-label={tx('blog.liveWebResearch')} />
               </div>
             </div>
 
             <div className="space-y-1.5 sm:col-span-2">
               <div className="flex items-center justify-between">
-                <Label>Body</Label>
+                <Label>{tx('blog.body')}</Label>
                 <Button
                   type="button"
                   variant="secondary"
@@ -335,7 +337,7 @@ export default function AdminBlogPage() {
               <RichTextEditor
                 value={body}
                 onChange={setBody}
-                placeholder="Write your article here..."
+                placeholder={tx('blog.writeYourArticleHere')}
                 minHeight={300}
               />
             </div>
@@ -346,7 +348,7 @@ export default function AdminBlogPage() {
               {editingSlug ? 'Update and publish' : 'Publish'}
             </Button>
             <Button variant="outline" disabled={saving} onClick={() => void savePost(false)}>
-              Save draft
+              {tx('blog.saveDraft')}
             </Button>
             <Button variant="ghost" onClick={() => {
               setShowForm(false)
@@ -356,7 +358,7 @@ export default function AdminBlogPage() {
               setBody('')
               setCoverImage('')
             }}>
-              Cancel
+              {tx('common.cancel')}
             </Button>
           </div>
         </Panel>
@@ -365,9 +367,9 @@ export default function AdminBlogPage() {
       {loading ? (
         <SkeletonList count={3} />
       ) : loadError && items.length === 0 ? (
-        <EmptyState illustration="error" title="Couldn't load posts" description="Check your connection and try again." actionLabel="Try again" onAction={() => void load()} />
+        <EmptyState illustration="error" title={tx('blog.couldnTLoadPosts')} description={tx('common.checkConnection')} actionLabel={tx('common.tryAgain')} onAction={() => void load()} />
       ) : items.length === 0 ? (
-        <EmptyState illustration="inbox" title="No posts yet" description="Use New post to write your first article." />
+        <EmptyState illustration="inbox" title={tx('blog.noPostsYet')} description={tx('blog.useNewPostToWrite')} />
       ) : (
         <div className="space-y-2">
           {items.map((p) => (
@@ -402,14 +404,14 @@ export default function AdminBlogPage() {
                   size="sm"
                   disabled={aiSlug === p.slug}
                   onClick={() => void genCover(p.slug)}
-                  title="Generate AI cover art from the article"
+                  title={tx('blog.generateAiCoverArtFrom')}
                 >
                   {aiSlug === p.slug ? (
                     <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" />
                   )}
-                  AI cover
+                  {tx('blog.aiCover')}
                 </Button>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={p.public_path || `/learn/${encodeURIComponent(p.slug)}`} target="_blank">
@@ -417,9 +419,9 @@ export default function AdminBlogPage() {
                   </Link>
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => editPost(p)}>
-                  Edit
+                  {tx('common.edit')}
                 </Button>
-                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)} aria-label={`Delete ${p.title}`} title="Delete">
+                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)} aria-label={`Delete ${p.title}`} title={tx('common.delete')}>
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
                 </Button>
               </div>

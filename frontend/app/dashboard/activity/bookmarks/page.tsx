@@ -14,6 +14,7 @@ import { useToast } from '@/lib/toast-context'
 import { cn } from '@/lib/utils'
 import { PageHeader } from '@/components/app/page-kit'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { useT } from '@/lib/i18n/client'
 
 type ProblemItem = { problemId: string; slug: string; title: string; difficulty?: string | null }
 
@@ -31,6 +32,7 @@ type QuizItem = {
 type Tab = 'problems' | 'quizzes'
 
 function BookmarksInner() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const { startTour, setTourSeen } = useTour()
@@ -75,20 +77,20 @@ function BookmarksInner() {
       const bookmarksTour: TourStep[] = [
         {
           target: '[data-tour="bookmarks-header"]',
-          title: 'Your saved questions',
-          description: 'This page collects problems and quiz questions you saved for later review.',
+          title: t('dash.yourSavedQuestions'),
+          description: t('dash.thisPageCollectsProblemsAndQuizc4f'),
           position: 'bottom',
         },
         {
           target: '[data-tour="bookmarks-tabs"]',
-          title: 'Switch saved collections',
-          description: 'Toggle between Problems and Module quizzes to find saved items faster.',
+          title: t('dash.switchSavedCollections'),
+          description: t('dash.toggleBetweenProblemsAndModuleQuizzesdee'),
           position: 'bottom',
         },
         {
           target: '[data-tour="bookmarks-list"]',
-          title: 'Reopen or remove saves',
-          description: 'Click an entry to jump back in or press Remove; empty lists point to problems or courses next.',
+          title: t('dash.reopenOrRemoveSaves'),
+          description: t('dash.clickAnEntryToJumpBackefb'),
           position: 'top',
         },
       ]
@@ -104,9 +106,9 @@ function BookmarksInner() {
       })
       if (!res.ok) throw new Error(String(res.status))
       setProblems((prev) => prev.filter((i) => i.problemId !== problemId))
-      addToast({ type: 'success', title: 'Bookmark removed' })
+      addToast({ type: 'success', title: t('dash.bookmarkRemoved') })
     } catch {
-      addToast({ type: 'error', title: 'Couldn’t remove the bookmark', message: 'Please try again.' })
+      addToast({ type: 'error', title: t('dash.couldntRemoveTheBookmark'), message: t('dash.pleaseTryAgain') })
     }
   }
 
@@ -124,9 +126,9 @@ function BookmarksInner() {
       })
       if (!res.ok) throw new Error(String(res.status))
       setQuizzes((prev) => prev.filter((x) => x.id !== it.id))
-      addToast({ type: 'success', title: 'Bookmark removed' })
+      addToast({ type: 'success', title: t('dash.bookmarkRemoved') })
     } catch {
-      addToast({ type: 'error', title: 'Couldn’t remove the bookmark', message: 'Please try again.' })
+      addToast({ type: 'error', title: t('dash.couldntRemoveTheBookmark'), message: t('dash.pleaseTryAgain') })
     }
   }
 
@@ -154,8 +156,8 @@ function BookmarksInner() {
           illustration="bookmarks"
           className="mb-0"
           icon={<Bookmark aria-hidden />}
-          title="Bookmarked questions"
-          description="Problems and module-quiz questions you saved for later."
+          title={t('dash.bookmarkedQuestions')}
+          description={t('dash.problemsAndModuleQuizQuestionsYoudd8')}
         />
       </div>
 
@@ -167,9 +169,7 @@ function BookmarksInner() {
             'rounded-lg px-3 py-1.5 text-sm font-medium tabular-nums transition-colors',
             tab === 'problems' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
           )}
-        >
-          Problems ({problems.length})
-        </button>
+        >{t('dash.problemsCount', { count: problems.length })}</button>
         <button
           type="button"
           onClick={() => setTab('quizzes')}
@@ -177,27 +177,25 @@ function BookmarksInner() {
             'rounded-lg px-3 py-1.5 text-sm font-medium tabular-nums transition-colors',
             tab === 'quizzes' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
           )}
-        >
-          Module quizzes ({quizzes.length})
-        </button>
+        >{t('dash.moduleQuizzesCount', { count: quizzes.length })}</button>
       </div>
 
       <div data-tour="bookmarks-list">
       {loadError ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load your bookmarks"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={t('dash.couldntLoadYourBookmarks')}
+          description={t('dash.checkYourConnectionAndTryAgain')}
+          actionLabel={t('common.tryAgain')}
           onAction={load}
         />
       ) : tab === 'problems' ? (
         emptyProblems ? (
           <EmptyState
             variant="bookmarks"
-            title="No bookmarked problems yet"
-            description="Bookmark problems while you practice and they will show up here."
-            actionLabel="Browse problems"
+            title={t('dash.noBookmarkedProblemsYet')}
+            description={t('dash.bookmarkProblemsWhileYouPracticeAnd4c0')}
+            actionLabel={t('dash.browseProblems')}
             actionHref="/dashboard/problems"
           />
         ) : (
@@ -216,9 +214,7 @@ function BookmarksInner() {
                     size="sm"
                     variant="ghost"
                     onClick={() => void removeProblem(it.problemId, it.slug, it.title)}
-                  >
-                    Remove
-                  </Button>
+                  >{t('dash.remove')}</Button>
                 </Card>
               </li>
             ))}
@@ -227,9 +223,9 @@ function BookmarksInner() {
       ) : emptyQuizzes ? (
         <EmptyState
           variant="bookmarks"
-          title="No bookmarked quiz questions yet"
-          description="Open a course module quiz and tap the bookmark icon on any question to save it here."
-          actionLabel="Browse courses"
+          title={t('dash.noBookmarkedQuizQuestionsYet')}
+          description={t('dash.openACourseModuleQuizAndc2b')}
+          actionLabel={t('dash.browseCourses')}
           actionHref="/dashboard/courses"
         />
       ) : (
@@ -240,12 +236,9 @@ function BookmarksInner() {
                 <Link href={it.href} className="min-w-0 flex-1 space-y-1 hover:underline">
                   <p className="font-medium leading-snug text-foreground">{it.question}</p>
                   <p className="text-xs text-muted-foreground">
-                    {it.courseTitle || 'Course'} · module quiz
-                  </p>
+                    {it.courseTitle || t('dash.course')}{' '}{t('dash.moduleQuiz')}</p>
                 </Link>
-                <Button type="button" size="sm" variant="ghost" onClick={() => void removeQuiz(it)}>
-                  Remove
-                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => void removeQuiz(it)}>{t('dash.remove')}</Button>
               </Card>
             </li>
           ))}

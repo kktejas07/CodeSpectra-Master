@@ -13,88 +13,90 @@ import type { CandidateSource } from '@/lib/ats/contract'
 import type { AnalyticsResponse, JobListItem } from './lib/types'
 import { JOB_STATUS_LABELS, SOURCE_LABELS } from './lib/labels'
 import { BarList } from './ui'
+import { useT } from '@/lib/i18n/client'
 
 const fmtDays = (d: number | null | undefined) => (d == null ? '—' : `${Math.round(d * 10) / 10} d`)
 
 export function AnalyticsView({ data, jobs }: { data: AnalyticsResponse; jobs?: JobListItem[] }) {
+  const { t } = useT()
   const funnel = (data.funnel ?? []).filter((f) => f.type !== 'rejected')
   const tth = data.time_to_hire_days
 
   if (!data.total) {
-    return <EmptyState illustration="analytics" title="No data yet" description="Numbers show up once candidates start applying." />
+    return <EmptyState illustration="analytics" title={t('hiring.noDataYet')} description={t('hiring.numbersShowUpOnceCandidatesStart092')} />
   }
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Applications" value={data.total} hint={`${data.active} active · ${data.rejected} rejected`} icon={<Users />} />
-        <StatCard label="Hired" value={data.hired} icon={<Trophy />} />
-        <StatCard label="Applied to hired" value={`${Math.round((data.hired / data.total) * 1000) / 10}%`} icon={<Percent />} />
+        <StatCard label={t('hiring.applications')} value={data.total} hint={t('hiring.activeActiveRejectedRejected', { active: data.active, rejected: data.rejected })} icon={<Users />} />
+        <StatCard label={t('hiring.hired')} value={data.hired} icon={<Trophy />} />
+        <StatCard label={t('hiring.appliedToHired')} value={`${Math.round((data.hired / data.total) * 1000) / 10}%`} icon={<Percent />} />
         <StatCard
-          label="Time to hire"
+          label={t('hiring.timeToHire')}
           value={fmtDays(tth?.median)}
-          hint={tth?.count ? `Median of ${tth.count} hire${tth.count === 1 ? '' : 's'}${tth.average != null ? ` · average ${fmtDays(tth.average)}` : ''}` : 'No hires yet'}
+          hint={tth?.count ? t('hiring.medianOfCountHiresValue', { count: tth.count, value: tth.average != null ? ` · average ${fmtDays(tth.average)}` : '' }) : t('hiring.noHiresYet')}
           icon={<Clock />}
         />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Panel>
-          <Section title="Funnel" description="How many candidates reached each stage.">
+          <Section title={t('hiring.funnel')} description={t('hiring.howManyCandidatesReachedEachStage')}>
             <BarList
-              caption="Candidates who reached each stage"
-              rows={funnel.map((f) => ({ label: f.name, value: f.reached, hint: f.conversion_pct != null ? `${Math.round(f.conversion_pct)}% of the previous stage` : undefined }))}
+              caption={t('hiring.candidatesWhoReachedEachStage')}
+              rows={funnel.map((f) => ({ label: f.name, value: f.reached, hint: f.conversion_pct != null ? t('hiring.nOfThePreviousStage', { n: Math.round(f.conversion_pct) }) : undefined }))}
             />
           </Section>
         </Panel>
         <Panel>
-          <Section title="Time in stage" description="Median days candidates spend in each stage.">
+          <Section title={t('hiring.timeInStage')} description={t('hiring.medianDaysCandidatesSpendInEach7b9')}>
             {funnel.some((f) => f.median_days != null) ? (
               <BarList
-                caption="Median days in each stage"
+                caption={t('hiring.medianDaysInEachStage')}
                 format={(n) => `${Math.round(n * 10) / 10} d`}
                 rows={funnel.filter((f) => f.median_days != null && f.type !== 'hired').map((f) => ({ label: f.name, value: f.median_days ?? 0 }))}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">Not enough moves yet to measure.</p>
+              <p className="text-sm text-muted-foreground">{t('hiring.notEnoughMovesYetToMeasure')}</p>
             )}
           </Section>
         </Panel>
         <Panel>
-          <Section title="Where candidates come from">
+          <Section title={t('hiring.whereCandidatesComeFrom')}>
             {data.source_mix?.length ? (
               <BarList
-                caption="Applications by source"
+                caption={t('hiring.applicationsBySource')}
                 format={(n) => String(n)}
                 rows={data.source_mix.map((s) => ({ label: SOURCE_LABELS[s.source as CandidateSource] ?? s.source, value: s.count, hint: `${Math.round(s.pct)}%` }))}
               />
             ) : (
-              <p className="text-sm text-muted-foreground">No sources recorded yet.</p>
+              <p className="text-sm text-muted-foreground">{t('hiring.noSourcesRecordedYet')}</p>
             )}
           </Section>
         </Panel>
         <Panel>
-          <Section title="Why candidates were rejected">
+          <Section title={t('hiring.whyCandidatesWereRejected')}>
             {data.rejection_reasons?.length ? (
-              <BarList caption="Rejections by reason" rows={data.rejection_reasons.slice(0, 8).map((r) => ({ label: r.reason, value: r.count }))} />
+              <BarList caption={t('hiring.rejectionsByReason')} rows={data.rejection_reasons.slice(0, 8).map((r) => ({ label: r.reason, value: r.count }))} />
             ) : (
-              <p className="text-sm text-muted-foreground">No rejections yet.</p>
+              <p className="text-sm text-muted-foreground">{t('hiring.noRejectionsYet')}</p>
             )}
           </Section>
         </Panel>
       </div>
 
       <Panel>
-        <Section title="Stage by stage">
+        <Section title={t('hiring.stageByStage')}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[480px] text-sm">
               <thead className="text-left text-xs text-muted-foreground">
                 <tr>
-                  <th scope="col" className="py-2 pr-3 font-medium">Stage</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Reached</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">There now</th>
-                  <th scope="col" className="py-2 pr-3 text-right font-medium">Conversion</th>
-                  <th scope="col" className="py-2 text-right font-medium">Median days</th>
+                  <th scope="col" className="py-2 pr-3 font-medium">{t('hiring.stage')}</th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">{t('hiring.reached')}</th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">{t('hiring.thereNow')}</th>
+                  <th scope="col" className="py-2 pr-3 text-right font-medium">{t('hiring.conversion')}</th>
+                  <th scope="col" className="py-2 text-right font-medium">{t('hiring.medianDays')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border tabular-nums">
@@ -115,17 +117,17 @@ export function AnalyticsView({ data, jobs }: { data: AnalyticsResponse; jobs?: 
 
       {jobs && jobs.length > 0 && (
         <Panel>
-          <Section title="By job">
+          <Section title={t('hiring.byJob')}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
                 <thead className="text-left text-xs text-muted-foreground">
                   <tr>
-                    <th scope="col" className="py-2 pr-3 font-medium">Job</th>
-                    <th scope="col" className="py-2 pr-3 font-medium">Status</th>
-                    <th scope="col" className="py-2 pr-3 text-right font-medium">Candidates</th>
-                    <th scope="col" className="py-2 pr-3 text-right font-medium">Active</th>
-                    <th scope="col" className="py-2 pr-3 text-right font-medium">Hired</th>
-                    <th scope="col" className="py-2 text-right font-medium">To approve</th>
+                    <th scope="col" className="py-2 pr-3 font-medium">{t('hiring.job')}</th>
+                    <th scope="col" className="py-2 pr-3 font-medium">{t('hiring.status')}</th>
+                    <th scope="col" className="py-2 pr-3 text-right font-medium">{t('hiring.candidates')}</th>
+                    <th scope="col" className="py-2 pr-3 text-right font-medium">{t('hiring.active')}</th>
+                    <th scope="col" className="py-2 pr-3 text-right font-medium">{t('hiring.hired')}</th>
+                    <th scope="col" className="py-2 text-right font-medium">{t('hiring.toApprove2')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border tabular-nums">

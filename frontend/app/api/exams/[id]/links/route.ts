@@ -130,7 +130,7 @@ async function logLinkUsage(
 export async function POST(req: NextRequest, ctx: IdRouteContext) {
   // W4-05: requireAdmin (role + tenant + admin 2FA), rate-limited like bulk invites.
   const gate = await requireAdmin().catch(() => null)
-  if (!gate) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!gate) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const limited = await limitRequest(req, 'exam-links-create', gate.user.id, 30, 60_000)
   if (limited) return limited
@@ -146,9 +146,9 @@ export async function POST(req: NextRequest, ctx: IdRouteContext) {
   const type = body.type === 'invited' ? 'invited' : 'public'
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
-  if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+  if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
   if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const now = nowIso()
@@ -234,20 +234,20 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
   // secret, so no session is required. Logs usage with IP/device/timestamp.
   if (token) {
     const rl = await rateLimitRedis(`link-check:${getClientIp(req) || 'unknown'}`, 60, 10 * 60_000)
-    if (!rl.ok) return NextResponse.json({ valid: false, error: 'Too many requests. Please try again shortly.' }, { status: 429 })
+    if (!rl.ok) return NextResponse.json({ valid: false, error: 'Too many requests. Please try again shortly.', code: 'rate_limited_shortly' }, { status: 429 })
     const col = await linksCol()
     const link = await col.findOne({ exam_id: examId, token })
     if (!link || link.revoked) {
-      return NextResponse.json({ valid: false, error: 'This link has expired or been revoked.' }, { status: 410 })
+      return NextResponse.json({ valid: false, error: 'This link has expired or been revoked.', code: 'exam_link_revoked' }, { status: 410 })
     }
     if (link.expires_at && new Date(link.expires_at).getTime() < Date.now()) {
-      return NextResponse.json({ valid: false, error: 'This link has expired.' }, { status: 410 })
+      return NextResponse.json({ valid: false, error: 'This link has expired.', code: 'exam_link_expired' }, { status: 410 })
     }
     // Uses are counted per account when an attempt starts (lib/exam-access
     // checkExamEntry claimLinkUse), not per page load.
     const usedBy = Array.isArray(link.used_by) ? link.used_by.length : 0
     if (link.max_uses != null && usedBy >= link.max_uses) {
-      return NextResponse.json({ valid: false, error: 'This link has reached its usage limit.' }, { status: 410 })
+      return NextResponse.json({ valid: false, error: 'This link has reached its usage limit.', code: 'exam_link_limit' }, { status: 410 })
     }
 
     // Log detailed usage (best-effort, non-blocking)
@@ -271,16 +271,16 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
   if (linkId) {
     const gate = await requireAuth().catch(() => null)
     if (!gate || 'error' in gate) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     }
     if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
     if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
     }
     const usageCol = await linkUsageCol()
     const usage = await usageCol
@@ -294,16 +294,16 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
   // List path — admins only (tokens are the URLs, never expose to candidates).
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
-  if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+  if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
   if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const links = await (await linksCol()).find({ exam_id: examId }).sort({ created_at: -1 }).toArray()
   const origin = getAppOrigin()
@@ -320,23 +320,23 @@ export async function GET(req: NextRequest, ctx: IdRouteContext) {
 export async function DELETE(req: NextRequest, ctx: IdRouteContext) {
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const { id: examId } = await ctx.params
   const linkId = new URL(req.url).searchParams.get('linkId')
   if (!linkId) return NextResponse.json({ error: 'linkId required' }, { status: 400 })
   const db = await getMongoDb()
   const exam = await db.collection('exams').findOne({ id: examId })
-  if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+  if (!exam) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
   if (gate.user.role === 'tenant_admin' && (!gate.user.tenantId || exam.tenant_id !== gate.user.tenantId)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   const col = await linksCol()
   const link = await col.findOne({ id: linkId, exam_id: examId })
-  if (!link) return NextResponse.json({ error: 'Link not found' }, { status: 404 })
+  if (!link) return NextResponse.json({ error: 'Link not found', code: 'exam_link_not_found' }, { status: 404 })
   await col.updateOne({ id: linkId }, { $set: { revoked: true } })
   if (link.type === 'invited') {
     await db.collection('candidate_invites').updateOne(

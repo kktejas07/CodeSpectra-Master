@@ -150,6 +150,6 @@ export async function GET() {
     })
   } catch (e) {
     console.error('[contribution-graph] error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

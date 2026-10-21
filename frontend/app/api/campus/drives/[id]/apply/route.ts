@@ -16,7 +16,7 @@ export async function POST(_req: Request, { params }: Ctx) {
     const user = await withUser()
     if (!user) return unauthorized()
     const rl = await rateLimitRedis(`campus-apply:${user.id}`, 30, 600_000)
-    if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+    if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
     return NextResponse.json(await applyToDrive(user, id))
   })
 }

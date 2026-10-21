@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: NextRequest) {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
 
   try {
@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id: courseId })
-    if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
 
     const sections = course.sections || []
     if (!sections[sectionIndex]) return NextResponse.json({ error: 'Section not found' }, { status: 404 })
@@ -55,6 +55,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (e) {
     console.error('[generate-quiz] error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

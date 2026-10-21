@@ -10,10 +10,10 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
   if ('res' in g) return g.res
   const { id } = await params
   const b = await bodyOf(req)
-  if (!idOk(id) || !idOk(b.line_id)) return json({ error: 'Order not found' }, 404)
+  if (!idOk(id) || !idOk(b.line_id)) return json({ error: 'Order not found', code: 'mkt_order_not_found' }, 404)
   const action = ACTIONS.find((a) => a === b.action)
-  if (!action) return json({ error: 'Unknown action' }, 400)
-  if (g.seller.status === 'suspended' && action !== 'cancelled') return json({ error: 'Your seller account is suspended.' }, 403)
+  if (!action) return json({ error: 'Unknown action', code: 'unknown_action' }, 400)
+  if (g.seller.status === 'suspended' && action !== 'cancelled') return json({ error: 'Your seller account is suspended.', code: 'mkt_seller_suspended' }, 403)
   try {
     const { updateLine } = await import('@/lib/marketplace/fulfilment')
     const str = (v: unknown) => (typeof v === 'string' ? v : undefined)

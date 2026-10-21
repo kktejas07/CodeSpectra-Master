@@ -26,7 +26,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if (g.actor.userId !== t.userId || g.actor.tenantId !== t.tenantId) return NextResponse.json({ error: 'This link was opened by someone else. Open the document from the candidate page.' }, { status: 404 })
   const c = await getCase(t.tenantId, t.caseId)
   const doc = c?.checks.flatMap((k) => k.documents).find((d) => d.id === t.docId)
-  if (!c || !doc) return NextResponse.json({ error: 'File not found' }, { status: 404 })
+  if (!c || !doc) return NextResponse.json({ error: 'File not found', code: 'file_not_found' }, { status: 404 })
   const bytes = await readDocument(c.tenant_id, c.id, doc).catch(() => null)
   if (!bytes) return NextResponse.json({ error: 'File not available' }, { status: 404 })
   const safeName = doc.name.replace(/[^\w.\- ]+/g, '_')

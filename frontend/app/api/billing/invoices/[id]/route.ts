@@ -11,7 +11,7 @@ export async function GET(_req: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     const invoice = await getUserInvoice(user.id, id)
     if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 })
     return NextResponse.json(invoice)

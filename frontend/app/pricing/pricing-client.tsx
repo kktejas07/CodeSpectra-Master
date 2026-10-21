@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Check, ArrowRight, Loader2 } from 'lucide-react'
-import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { useCurrency } from '@/lib/use-currency'
 import { PageHero } from '@/components/landing/page-hero'
 import { CONTACT_SALES_HREF, inAppPricingHref, planCheckoutMode, type PlanCheckoutMode } from '@/lib/billing-plan-mode'
 import { getCurrencySymbol } from '@/lib/currency'
-import { pricingFaqs } from '@/lib/seo/faq-content'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
+import { useLocalizedHref } from '@/components/i18n/public-language'
 
 export type PublicPlan = {
   id: string
@@ -26,9 +27,14 @@ export type PublicPlan = {
 /**
  * Interactive pricing (billing-period toggle, checkout links). The server page
  * passes the plans so prices are in the HTML; it only fetches when the server
- * could not load them.
+ * could not load them. The page wraps this in PublicPageWrapper (header and
+ * footer); the pricing FAQ comes from the server in the page's language.
+ * Plan names, descriptions and features are admin-entered and stay as written.
  */
-export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | null }) {
+export function PricingClient({ initialPlans, faqs }: { initialPlans: PublicPlan[] | null; faqs: { q: string; a: string }[] }) {
+  const { t, rich } = useT()
+  const apiError = useApiError()
+  const lp = useLocalizedHref()
   const [annual, setAnnual] = useState(false)
   const [plans, setPlans] = useState<PublicPlan[] | null>(initialPlans)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -41,16 +47,16 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
       try {
         const r = await fetch('/api/pricing/plans')
         const j = await r.json()
-        if (!r.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Failed to load pricing')
+        if (!r.ok) throw new Error(apiError(j, t('publicPages.pricingLoadFailed')))
         if (!cancelled && Array.isArray(j)) setPlans(j)
       } catch (e) {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Failed to load pricing')
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : t('publicPages.pricingLoadFailed'))
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [initialPlans])
+  }, [initialPlans, t, apiError])
 
   const annualSavingsPct = useMemo(() => {
     if (!plans?.length) return 15
@@ -63,42 +69,35 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
 
   if (loadError && !plans) {
     return (
-      <PublicPageWrapper>
-        <div className="mx-auto max-w-lg py-24 text-center">
-          <p className="text-destructive">{loadError}</p>
-          <Button asChild className="mt-6">
-            <Link href="/">Back home</Link>
-          </Button>
-        </div>
-      </PublicPageWrapper>
+      <div className="mx-auto max-w-lg py-24 text-center">
+        <p className="text-destructive">{loadError}</p>
+        <Button asChild className="mt-6">
+          <Link href={lp('/')}>{t('publicPages.backHome')}</Link>
+        </Button>
+      </div>
     )
   }
 
   if (!plans) {
     return (
-      <PublicPageWrapper>
-        <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          Loading pricing…
-        </div>
-      </PublicPageWrapper>
+      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
+        <Loader2 className="h-6 w-6 animate-spin" aria-hidden />
+        {t('publicPages.pricingLoading')}
+      </div>
     )
   }
 
   return (
-    <PublicPageWrapper>
+    <>
       <PageHero
-        title="Pricing that starts free"
-        lead={
-          <>
-            Candidates practise for free. Hiring teams pick a plan for the assessments they run, or{' '}
-            <Link href="/contact?topic=sales" className="font-semibold text-cs-accent-text underline underline-offset-4">talk to us</Link> about a campus or company licence.
-          </>
-        }
+        title={t('publicPages.pricingTitle')}
+        lead={rich('publicPages.pricingLead', {
+          link: <Link href={lp('/contact?topic=sales')} className="font-semibold text-cs-accent-text underline underline-offset-4">{t('publicPages.pricingTalkToUs')}</Link>,
+        })}
       />
       <div className="mx-auto max-w-[1200px] space-y-20 px-4 py-16 sm:px-6 lg:px-8">
 
-        <div role="group" aria-label="Billing period" className="mx-auto flex w-fit items-center gap-1 rounded-full border border-cs-grid bg-cs-sheet p-1">
+        <div role="group" aria-label={t('publicPages.billingPeriod')} className="mx-auto flex w-fit items-center gap-1 rounded-full border border-cs-grid bg-cs-sheet p-1">
           <button
             type="button"
             onClick={() => setAnnual(false)}
@@ -107,7 +106,7 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
               !annual ? 'bg-cs-accent text-cs-accent-ink' : 'text-cs-ink-soft hover:text-cs-ink'
             }`}
           >
-            Monthly
+            {t('publicPages.monthly')}
           </button>
           <button
             type="button"
@@ -117,9 +116,9 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
               annual ? 'bg-cs-accent text-cs-accent-ink' : 'text-cs-ink-soft hover:text-cs-ink'
             }`}
           >
-            Annual
+            {t('publicPages.annual')}
             <span className={`rounded-full px-2 py-0.5 text-xs ${annual ? 'bg-white/20 text-current' : 'bg-green-500/15 text-green-700 dark:text-green-400'}`}>
-              Save ~{annualSavingsPct}%
+              {t('publicPages.savePct', { pct: annualSavingsPct })}
             </span>
           </button>
         </div>
@@ -147,7 +146,7 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
                 {plan.popular ? (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <span className="rounded-full bg-cs-accent px-3 py-1 text-xs font-semibold text-cs-accent-ink">
-                      Most popular
+                      {t('publicPages.mostPopular')}
                     </span>
                   </div>
                 ) : null}
@@ -159,21 +158,21 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
 
                 <div className="mb-8">
                   {isCustom ? (
-                    <span className="text-4xl font-bold">Custom</span>
+                    <span className="text-4xl font-bold">{t('publicPages.custom')}</span>
                   ) : !annual ? (
                     <div className="flex items-baseline gap-1">
                       <span className="text-4xl font-bold">{symbol}{monthlyDisplay.toFixed(2)}</span>
-                      <span className="text-muted-foreground">/month</span>
+                      <span className="text-muted-foreground">{t('publicPages.perMonth')}</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
                       <div className="flex items-baseline gap-1">
                         <span className="text-4xl font-bold">{symbol}{yearlyDisplay.toFixed(2)}</span>
-                        <span className="text-muted-foreground">/year</span>
+                        <span className="text-muted-foreground">{t('publicPages.perYear')}</span>
                       </div>
                       {perMonthIfAnnual > 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          ≈ {symbol}{perMonthIfAnnual.toFixed(2)}/mo billed annually
+                          {t('publicPages.perMonthBilledAnnually', { price: `${symbol}${perMonthIfAnnual.toFixed(2)}` })}
                         </p>
                       ) : null}
                     </div>
@@ -197,7 +196,7 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
                   <Link
                     href={
                       isCustom
-                        ? CONTACT_SALES_HREF
+                        ? lp(CONTACT_SALES_HREF)
                         : mode === 'free'
                           ? '/auth/signup'
                           // Carry the plan through signup: after signup the user lands on
@@ -209,7 +208,7 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
                             }).toString()}`
                     }
                   >
-                    {isCustom ? 'Contact sales' : mode === 'free' ? 'Start free' : 'Get started'}
+                    {isCustom ? t('publicPages.contactSales') : mode === 'free' ? t('publicPages.startFree') : t('publicPages.getStarted')}
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </Button>
@@ -220,11 +219,11 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
 
         <div className="mx-auto max-w-4xl">
           <div className="mb-12 text-center">
-            <h2 className="cs-heading text-4xl sm:text-5xl">Questions about pricing</h2>
+            <h2 className="cs-heading text-4xl sm:text-5xl">{t('publicPages.pricingFaqTitle')}</h2>
           </div>
 
           <div className="grid gap-6 md:grid-cols-2">
-            {pricingFaqs(annualSavingsPct).map((faq, i) => (
+            {faqs.map((faq, i) => (
               <div
                 key={i}
                 className="rounded-3xl border border-cs-grid bg-cs-sheet p-6 transition-colors hover:border-cs-accent/40"
@@ -237,23 +236,21 @@ export function PricingClient({ initialPlans }: { initialPlans: PublicPlan[] | n
         </div>
 
         <div className="border-t border-cs-grid py-12 text-center">
-          <h2 className="cs-heading mb-4 text-4xl">Not sure which plan fits?</h2>
-          <p className="mx-auto mb-8 max-w-xl text-cs-ink-soft">
-            Run a pilot on one open role first, then choose a plan from what you actually used.
-          </p>
-          <div className="flex justify-center gap-4">
+          <h2 className="cs-heading mb-4 text-4xl">{t('publicPages.pricingNotSure')}</h2>
+          <p className="mx-auto mb-8 max-w-xl text-cs-ink-soft">{t('publicPages.pricingNotSureBody')}</p>
+          <div className="flex flex-wrap justify-center gap-4">
             <Button size="lg" asChild className="gap-2">
-              <Link href="/contact">
-                Book a pilot
-                <ArrowRight className="h-4 w-4" />
+              <Link href={lp('/contact')}>
+                {t('public.bookPilot')}
+                <ArrowRight className="h-4 w-4" aria-hidden />
               </Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="/contact?topic=sales">Contact sales</Link>
+              <Link href={lp('/contact?topic=sales')}>{t('publicPages.contactSales')}</Link>
             </Button>
           </div>
         </div>
       </div>
-    </PublicPageWrapper>
+    </>
   )
 }

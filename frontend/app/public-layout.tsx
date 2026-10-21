@@ -10,6 +10,9 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
+import { LanguageSuggestBanner, PublicLanguageLinks, PublicLanguageMenu, useLocalizedHref } from '@/components/i18n/public-language'
 import dynamic from 'next/dynamic'
 
 // Decorative canvas animation below the fold: load it after hydration so it
@@ -23,6 +26,14 @@ import { FooterWordmark } from '@/components/landing/footer-wordmark'
 const TurnstileWidget = dynamic(() => import('@/components/auth/turnstile-widget').then((m) => m.TurnstileWidget), { ssr: false })
 
 export const DASHBOARD_HREF = '/dashboard'
+
+/** Footer columns: [href, label key]. Links to translated pages get the current language's prefix. */
+const FOOTER_COLUMNS = [
+  { title: 'public.footProduct', links: [['/features', 'public.navFeatures'], ['/pricing', 'public.navPricing'], ['/marketplace', 'public.navMarketplace'], ['/jobs', 'public.footJobBoard'], ['/hackathons', 'public.navHackathons'], ['/events', 'public.navEvents'], ['/companies', 'public.footInterviewPrep']] },
+  { title: 'public.footResources', links: [['/docs', 'public.footDocs'], ['/newsletter', 'public.footNewsletter'], ['/learn', 'public.navLearn'], ['/news', 'public.footTechNews'], ['/api-reference', 'public.footApi'], ['/support', 'public.footSupport'], ['/faq', 'public.footFaq']] },
+  { title: 'public.footCompany', links: [['/about', 'public.footAbout'], ['/contact', 'public.footContact'], ['/careers', 'public.footCareers'], ['/security', 'public.footSecurity'], ['/open-source', 'public.footOpenSource'], ['/editorial-policy', 'public.footEditorial']] },
+  { title: 'public.footLegal', links: [['/privacy', 'public.footPrivacy'], ['/terms', 'public.footTerms'], ['/cookies', 'public.footCookies']] },
+] as const
 
 export function PublicPageWrapper({
   children,
@@ -38,6 +49,10 @@ export function PublicPageWrapper({
   const [newsletterCaptcha, setNewsletterCaptcha] = useState<string | null>(null)
   const [newsletterCaptchaReset, setNewsletterCaptchaReset] = useState(0)
   const pathname = usePathname()
+  // Public pages are English unless rendered under app/[lang] (Hindi / Telugu provider).
+  const { t } = useT()
+  const apiError = useApiError()
+  const lp = useLocalizedHref()
   const headerRef = useRef<HTMLElement>(null)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
 
@@ -97,21 +112,22 @@ export function PublicPageWrapper({
   }, [])
 
   const navLinks = [
-    { href: '/features', label: 'Features' },
-    { href: '/hackathons', label: 'Hackathons' },
-    { href: '/jobs', label: 'Jobs' },
-    { href: '/events', label: 'Events' },
-    { href: '/pricing', label: 'Pricing' },
-    { href: '/marketplace', label: 'Marketplace' },
-    { href: '/learn', label: 'Learn' },
-    { href: '/news', label: 'News' },
-    { href: '/docs', label: 'Docs' },
+    { href: lp('/features'), label: t('public.navFeatures') },
+    { href: '/hackathons', label: t('public.navHackathons') },
+    { href: '/jobs', label: t('public.navJobs') },
+    { href: lp('/events'), label: t('public.navEvents') },
+    { href: lp('/pricing'), label: t('public.navPricing') },
+    { href: lp('/marketplace'), label: t('public.navMarketplace') },
+    { href: lp('/learn'), label: t('public.navLearn') },
+    { href: lp('/news'), label: t('public.navNews') },
+    { href: '/docs', label: t('public.navDocs') },
   ]
+  const footLink = 'text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200'
 
   return (
     <div className="cs-brand min-h-screen flex flex-col">
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[60] focus:rounded-md focus:bg-cs-sheet focus:px-4 focus:py-2">
-        Skip to content
+        {t('common.skipToContent')}
       </a>
 
       {/* Navigation */}
@@ -124,11 +140,11 @@ export function PublicPageWrapper({
         )}
       >
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="CodeSpectra home">
+          <Link href={lp('/')} className="flex shrink-0 items-center gap-2.5" aria-label={t('common.homeAria')}>
             <BrandLogo />
           </Link>
 
-          <nav className="hidden items-center gap-0.5 lg:flex" aria-label="Primary">
+          <nav className="hidden items-center gap-0.5 lg:flex" aria-label={t('public.primaryNav')}>
             {navLinks.map((l) => (
               <Link
                 key={l.href}
@@ -141,6 +157,7 @@ export function PublicPageWrapper({
           </nav>
 
           <div className="flex shrink-0 items-center gap-2">
+            <PublicLanguageMenu className="hidden sm:block" />
             <div className="hidden sm:block">
               <NavThemeSwitch compact />
             </div>
@@ -149,18 +166,18 @@ export function PublicPageWrapper({
                 href={DASHBOARD_HREF}
                 className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
               >
-                Dashboard
+                {t('public.dashboard')}
               </Link>
             ) : (
               <>
                 <Link href="/auth/login" className="hidden rounded-md px-3 py-2 text-sm font-semibold text-cs-ink sm:inline-flex">
-                  Log in
+                  {t('public.logIn')}
                 </Link>
                 <Link
-                  href="/contact"
-                  className="inline-flex h-10 items-center rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
+                  href={lp('/contact')}
+                  className="inline-flex h-10 items-center whitespace-nowrap rounded-md bg-cs-accent px-4 text-sm font-semibold text-cs-accent-ink hover:brightness-110"
                 >
-                  Book a pilot
+                  {t('public.bookPilot')}
                 </Link>
               </>
             )}
@@ -169,7 +186,7 @@ export function PublicPageWrapper({
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="inline-flex h-10 w-10 items-center justify-center rounded-md text-cs-ink lg:hidden"
-              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-label={mobileMenuOpen ? t('public.closeMenu') : t('public.openMenu')}
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
             >
@@ -183,7 +200,7 @@ export function PublicPageWrapper({
             id="mobile-menu"
             className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-cs-grid bg-cs-paper px-4 pb-6 lg:hidden"
           >
-            <nav className="flex flex-col py-2" aria-label="Mobile">
+            <nav className="flex flex-col py-2" aria-label={t('public.mobileNav')}>
               {navLinks.map((l) => (
                 <Link
                   key={l.href}
@@ -197,16 +214,17 @@ export function PublicPageWrapper({
               ))}
             </nav>
             <div className="flex items-center justify-between py-4">
-              <span className="text-sm text-cs-ink-soft">Appearance</span>
+              <span className="text-sm text-cs-ink-soft">{t('public.appearance')}</span>
               <NavThemeSwitch />
             </div>
+            <PublicLanguageLinks className="pb-4" />
             {!hasSession && (
               <Link
                 href="/auth/login"
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex h-12 items-center justify-center rounded-md border border-cs-ink/25 font-semibold"
               >
-                Log in
+                {t('public.logIn')}
               </Link>
             )}
           </div>
@@ -221,6 +239,7 @@ export function PublicPageWrapper({
       )}
 
       <main id="main" className="flex-1 pt-16">
+        <LanguageSuggestBanner />
         {children}
       </main>
 
@@ -230,61 +249,28 @@ export function PublicPageWrapper({
         <div className="relative z-10 mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
-              <Link href="/" className="mb-5 flex items-center gap-2.5" aria-label="CodeSpectra home">
+              <Link href={lp('/')} className="mb-5 flex items-center gap-2.5" aria-label={t('common.homeAria')}>
                 <BrandLogo />
               </Link>
-              <p className="text-sm text-cs-ink-soft leading-relaxed">
-                Proctored skills assessments and hackathons that rank every candidate, for hiring teams, colleges and
-                the people they assess.
-              </p>
+              <p className="text-sm text-cs-ink-soft leading-relaxed">{t('public.footerBlurb')}</p>
+              <PublicLanguageLinks className="mt-5" />
             </div>
-            <div>
-              <h2 className="text-sm font-semibold text-cs-ink mb-4">Product</h2>
-              <ul className="space-y-3">
-                <li><Link href="/features" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Features</Link></li>
-                <li><Link href="/pricing" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Pricing</Link></li>
-                <li><Link href="/marketplace" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Marketplace</Link></li>
-                <li><Link href="/jobs" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Job board</Link></li>
-                <li><Link href="/hackathons" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Hackathons</Link></li>
-                <li><Link href="/events" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Events</Link></li>
-                <li><Link href="/companies" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Interview prep</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-cs-ink mb-4">Resources</h2>
-              <ul className="space-y-3">
-                <li><Link href="/docs" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Documentation</Link></li>
-                <li><Link href="/newsletter" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Newsletter</Link></li>
-                <li><Link href="/learn" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Learn</Link></li>
-                <li><Link href="/news" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Tech news</Link></li>
-                <li><Link href="/api-reference" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">API reference</Link></li>
-                <li><Link href="/support" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Support</Link></li>
-                <li><Link href="/faq" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">FAQ</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-cs-ink mb-4">Company</h2>
-              <ul className="space-y-3">
-                <li><Link href="/about" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">About</Link></li>
-                <li><Link href="/contact" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Contact</Link></li>
-                <li><Link href="/careers" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Careers</Link></li>
-                <li><Link href="/security" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Security</Link></li>
-                <li><Link href="/open-source" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Open source</Link></li>
-                <li><Link href="/editorial-policy" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Editorial policy</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-cs-ink mb-4">Legal</h2>
-              <ul className="space-y-3">
-                <li><Link href="/privacy" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Privacy</Link></li>
-                <li><Link href="/terms" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Terms</Link></li>
-                <li><Link href="/cookies" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Cookies</Link></li>
-                <li><button type="button" data-cookie-settings className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Cookie settings</button></li>
-              </ul>
-            </div>
+            {FOOTER_COLUMNS.map((col) => (
+              <div key={col.title}>
+                <h2 className="text-sm font-semibold text-cs-ink mb-4">{t(col.title)}</h2>
+                <ul className="space-y-3">
+                  {col.links.map(([href, label]) => (
+                    <li key={href}><Link href={lp(href)} className={footLink}>{t(label)}</Link></li>
+                  ))}
+                  {col.title === 'public.footLegal' && (
+                    <li><button type="button" data-cookie-settings className={footLink}>{t('public.cookieSettings')}</button></li>
+                  )}
+                </ul>
+              </div>
+            ))}
             <div className="col-span-2 md:col-span-1">
-              <h2 className="text-sm font-semibold text-cs-ink mb-4">Newsletter</h2>
-              <p className="text-sm text-cs-ink-soft mb-4">New hackathons, assessment features and hiring guides, about once a month.</p>
+              <h2 className="text-sm font-semibold text-cs-ink mb-4">{t('public.footNewsletter')}</h2>
+              <p className="text-sm text-cs-ink-soft mb-4">{t('public.newsletterBlurb')}</p>
               <form 
                 className="space-y-2"
                 onSubmit={async (e) => {
@@ -300,21 +286,21 @@ export function PublicPageWrapper({
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ email, source: 'footer', turnstileToken: newsletterCaptcha || undefined })
                     })
-                    let errMsg = `Subscribe failed (${res.status})`
+                    let errMsg = t('public.subscribeFailedStatus', { status: res.status })
                     let already = false
                     let needsConfirm = false
                     try {
                       const data = (await res.json()) as { ok?: boolean; already_subscribed?: boolean; confirmation_required?: boolean; error?: string }
                       if (data?.already_subscribed) already = true
                       if (data?.confirmation_required) needsConfirm = true
-                      if (data?.error) errMsg = data.error
+                      if (data?.error) errMsg = apiError(data, errMsg)
                     } catch { /* non-JSON body — keep status message */ }
                     if (!res.ok) throw new Error(errMsg)
-                    if (needsConfirm) addToast({ type: 'info', title: 'Check your email', message: 'You unsubscribed earlier, so confirm with the link we just sent.' })
-                    else addToast({ type: 'success', title: already ? 'Already subscribed!' : 'Subscribed successfully!' })
+                    if (needsConfirm) addToast({ type: 'info', title: t('public.checkEmail'), message: t('public.confirmResubscribe') })
+                    else addToast({ type: 'success', title: already ? t('public.alreadySubscribed') : t('public.subscribed') })
                     form.reset()
                   } catch (err) {
-                    addToast({ type: 'error', title: 'Failed to subscribe.', message: err instanceof Error ? err.message : undefined })
+                    addToast({ type: 'error', title: t('public.subscribeFailed'), message: err instanceof Error ? err.message : undefined })
                   } finally {
                     // Turnstile tokens are single-use.
                     setNewsletterCaptcha(null)
@@ -327,8 +313,8 @@ export function PublicPageWrapper({
                   type="email"
                   name="email"
                   required
-                  placeholder="Enter your email"
-                  aria-label="Email address"
+                  placeholder={t('public.emailPlaceholder')}
+                  aria-label={t('public.emailLabel')}
                   onFocus={() => setNewsletterCaptchaOn(true)}
                   className="h-10 w-full rounded-md border border-cs-grid bg-cs-paper px-3 text-sm text-cs-ink placeholder:text-cs-ink-soft"
                 />
@@ -339,13 +325,13 @@ export function PublicPageWrapper({
                   aria-busy={subscribing}
                   className="h-10 w-full rounded-md bg-cs-ink text-sm font-semibold text-cs-paper disabled:opacity-60"
                 >
-                  {subscribing ? 'Subscribing…' : 'Subscribe'}
+                  {subscribing ? t('public.subscribing') : t('public.subscribe')}
                 </button>
               </form>
             </div>
           </div>
           <div className="flex flex-col gap-6 border-t border-cs-grid pt-8 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-cs-ink-soft" suppressHydrationWarning>{copyrightLine()}. All rights reserved.</p>
+            <p className="text-xs text-cs-ink-soft" suppressHydrationWarning>{t('public.copyright', { line: copyrightLine() })}</p>
             <div className="flex flex-wrap items-center gap-4 sm:justify-end">
               <Link
                 href="/status"
@@ -353,9 +339,9 @@ export function PublicPageWrapper({
               >
                 {/* Not a live claim: the status page reports the real state. */}
                 <span className="relative inline-flex h-2 w-2 shrink-0 rounded-full bg-[#2f5be7]" aria-hidden />
-                System status
+                {t('public.systemStatus')}
               </Link>
-              <Link href="/docs" className="text-cs-ink-soft transition-colors hover:text-cs-ink" aria-label="Documentation">
+              <Link href="/docs" className="text-cs-ink-soft transition-colors hover:text-cs-ink" aria-label={t('public.footDocs')}>
                 <CodeXml className="h-5 w-5" aria-hidden />
               </Link>
             </div>

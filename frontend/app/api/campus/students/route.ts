@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const dryRun = body.dry_run === true
     if (!dryRun) {
       const rl = await rateLimitRedis(`campus-import:${ctx.college.tenant_id}`, 20, 3_600_000)
-      if (!rl.ok) return NextResponse.json({ error: 'Too many imports — try again later' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+      if (!rl.ok) return NextResponse.json({ error: 'Too many imports — try again later', code: 'campus_imports_limit' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
     }
     const r = await importStudents(ctx, body.csv, { dryRun, sendInvites: body.send_invites !== false })
     return NextResponse.json(r, { status: r.issues.length ? 422 : 200 })

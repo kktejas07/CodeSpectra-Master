@@ -40,9 +40,9 @@ export async function GET(req: NextRequest) {
   try {
     const col = (await getMongoDb()).collection('ai_mock_sessions')
     if (id) {
-      if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
       const d = (await col.findOne({ id, userId: gate.user.id }, { projection: { _id: 0, resume: 0, resumeSource: 0 } })) as Doc | null
-      if (!d) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (!d) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
       const history = Array.isArray(d.conversationHistory) ? (d.conversationHistory as Array<{ role?: unknown; text?: unknown; timestamp?: unknown }>) : []
       return NextResponse.json({
         session: summary(d),

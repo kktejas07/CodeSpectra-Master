@@ -23,6 +23,8 @@ import { QuestionAnswerInput, type AnswerQuestion } from '@/components/assessmen
 import { LEVEL_LABEL, PRACTICE_LEVELS, isPracticeLevel, type PracticeLevel } from '@/lib/company-tests/types'
 import { cn } from '@/lib/utils'
 import { useT, type ClientI18n } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface PatternInfo {
   id: string
@@ -83,12 +85,13 @@ function fmtClock(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
 
-const STATUS_LABEL: Record<string, string> = { correct: 'Correct', partial: 'Partly right', wrong: 'Wrong', unanswered: 'Not answered', not_scored: 'Not auto-scored' }
+const STATUS_LABEL = (t: Translator): Record<string, string> => ({ correct: t('practice.correct'), partial: t('practice.partlyRight'), wrong: t('practice.wrong'), unanswered: t('practice.notAnswered'), not_scored: t('practice.notAutoScored') })
 
 /** Practice level label in the interface language (stored values stay easy / moderate / tough). */
 const levelText = (td: ClientI18n['td'], l: PracticeLevel) => td(`dashboard.practiceLevel:${l}`, LEVEL_LABEL[l] ?? l)
 
 export default function CompanyTestRunnerPage() {
+  const apiError = useApiError()
   const gate = usePageGuard('user')
   const { t, td, fmt } = useT()
   const router = useRouter()
@@ -130,7 +133,7 @@ export default function CompanyTestRunnerPage() {
       .then(({ ok, d }) => {
         if (!live) return
         if (ok && d.attempt) setAttempt(d.attempt)
-        else setLoadError(d.error || t('dashboard.ctOpenRunFailed'))
+        else setLoadError(apiError(d, t('dashboard.ctOpenRunFailed')))
       })
       .catch(() => { if (live) setLoadError(t('dashboard.ctOpenRunFailedRefresh')) })
     return () => { live = false }
@@ -146,7 +149,7 @@ export default function CompanyTestRunnerPage() {
         body: JSON.stringify({ patternId, level }),
       })
       const d = await res.json().catch(() => ({}))
-      if (!res.ok || !d.attempt) { setError(d.error || t('dashboard.ctStartFailed')); return }
+      if (!res.ok || !d.attempt) { setError(apiError(d, t('dashboard.ctStartFailed'))); return }
       setAttempt(d.attempt)
       router.replace(`/dashboard/company-tests/${patternId}?attempt=${d.attempt.id}`)
     } catch {
@@ -438,7 +441,7 @@ function SectionRunner({ attempt, onUpdate }: { attempt: AttemptView; onUpdate: 
 function Results({ attempt, onRetry }: { attempt: AttemptView; onRetry: () => void }) {
   const r = attempt.result
   const { t, td } = useT()
-  const statusText = (st: string) => td(`dashboard.qstatus:${st}`, STATUS_LABEL[st] ?? st)
+  const statusText = (st: string) => td(`dashboard.qstatus:${st}`, STATUS_LABEL(t)[st] ?? st)
   const [open, setOpen] = useState<string | null>(attempt.review?.[0]?.id ?? null)
   if (!r) return null
   return (

@@ -13,7 +13,7 @@ import { CHUNKS, parseRange, readChunkBytes, verifyChunkViewToken, type Recordin
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const NOT_FOUND = () => NextResponse.json({ error: 'Not found' }, { status: 404 })
+const NOT_FOUND = () => NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAdmin()

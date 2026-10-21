@@ -19,7 +19,7 @@ export async function GET() {
       { projection: privateFieldsProjection() },
     )
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
     }
 
     return new NextResponse(JSON.stringify(user, null, 2), {
@@ -31,6 +31,6 @@ export async function GET() {
     })
   } catch (error) {
     console.error('[Export] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

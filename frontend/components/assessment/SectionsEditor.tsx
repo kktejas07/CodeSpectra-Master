@@ -20,6 +20,7 @@ import { useToast } from '@/lib/toast-context'
 import { MAX_SECTIONS, MAX_SECTION_MINUTES, normalizeSections, type ExamSection } from '@/lib/exam-sections'
 import { isScoredType, metaFor } from '@/lib/question-types'
 import { aptitudeSections } from '@/lib/question-extensions'
+import { useT } from '@/lib/i18n/client'
 
 interface QuestionLite { id: string; title: string; type: string; score?: number; aptitude_area?: string }
 
@@ -42,6 +43,7 @@ export function SectionsEditor({
   durationMinutes: number
   onSaved?: (sections: ExamSection[]) => void
 }) {
+  const { t: tr } = useT()
   const addToast = useToast()
   const [sections, setSections] = useState<ExamSection[]>(() => normalizeSections(initial))
   const [dirty, setDirty] = useState(false)
@@ -65,7 +67,7 @@ export function SectionsEditor({
 
   const addSection = () => {
     if (sections.length >= MAX_SECTIONS) return
-    update([...sections, { id: newSectionId(), title: `Section ${sections.length + 1}`, time_limit_minutes: null, lock_after_leave: false, question_ids: [] }])
+    update([...sections, { id: newSectionId(), title: tr('exam.sectionValue', { value: sections.length + 1 }), time_limit_minutes: null, lock_after_leave: false, question_ids: [] }])
   }
   const removeSection = (i: number) => update(sections.filter((_, j) => j !== i))
   // Aptitude tests: one locked, timed section per area (Quant → Logical → Verbal), from each question's aptitude area.
@@ -108,9 +110,9 @@ export function SectionsEditor({
       setSections(clean)
       setDirty(false)
       onSaved?.(clean)
-      addToast({ type: 'success', title: clean.length ? 'Sections saved' : 'Sections removed' })
+      addToast({ type: 'success', title: clean.length ? tr('exam.sectionsSaved') : tr('exam.sectionsRemoved') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Couldn’t save sections', message: e instanceof Error && e.message ? e.message : 'Your change was not saved.' })
+      addToast({ type: 'error', title: tr('exam.couldntSaveSections'), message: e instanceof Error && e.message ? e.message : tr('exam.yourChangeWasNotSaved') })
     } finally {
       setSaving(false)
     }
@@ -127,7 +129,7 @@ export function SectionsEditor({
       <GripVertical className="h-3.5 w-3.5 shrink-0 cursor-grab text-muted-foreground" aria-hidden />
       <span className="min-w-0 flex-1 truncate" title={q.title}>{q.title}</span>
       <Badge variant="outline" className="shrink-0 text-[11px]">{metaFor(q.type).short}</Badge>
-      <label className="sr-only" htmlFor={`sec-of-${q.id}`}>Section for {q.title}</label>
+      <label className="sr-only" htmlFor={`sec-of-${q.id}`}>{tr('exam.sectionForTitle', { title: q.title })}</label>
       <select
         id={`sec-of-${q.id}`}
         value={sectionOf.get(q.id) ?? UNASSIGNED}
@@ -138,7 +140,7 @@ export function SectionsEditor({
         }}
         className="h-8 max-w-[9rem] shrink-0 rounded-md border border-input bg-card px-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <option value={UNASSIGNED}>No section</option>
+        <option value={UNASSIGNED}>{tr('exam.noSection')}</option>
         {sections.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
       </select>
     </li>
@@ -162,30 +164,23 @@ export function SectionsEditor({
     <Panel className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-lg font-semibold"><Layers className="h-5 w-5 text-primary" aria-hidden /> Sections</h2>
-          <p className="text-sm text-muted-foreground">
-            Split the test into ordered parts, each with its own timer if you like. Leave this empty for a single, untimed-by-section test.
-          </p>
+          <h2 className="flex items-center gap-2 text-lg font-semibold"><Layers className="h-5 w-5 text-primary" aria-hidden />{' '}{tr('exam.sections')}</h2>
+          <p className="text-sm text-muted-foreground">{tr('exam.splitTheTestIntoOrderedParts237')}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {hasAptitude && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={buildAptitude} title="Replace the sections with one 20-minute section per aptitude area. Adjust the times before saving.">
-              <Brain className="h-4 w-4" aria-hidden /> Aptitude sections
-            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={buildAptitude} title={tr('exam.replaceTheSectionsWithOne2093c')}>
+              <Brain className="h-4 w-4" aria-hidden />{' '}{tr('exam.aptitudeSections')}</Button>
           )}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={addSection} disabled={sections.length >= MAX_SECTIONS}>
-            <Plus className="h-4 w-4" aria-hidden /> Add section
-          </Button>
+            <Plus className="h-4 w-4" aria-hidden />{' '}{tr('exam.addSection')}</Button>
           <Button size="sm" className="gap-1.5" onClick={save} disabled={!dirty || saving}>
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />} Save sections
-          </Button>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Save className="h-4 w-4" aria-hidden />}{' '}{tr('exam.saveSections')}</Button>
         </div>
       </div>
 
       {sections.length > 0 && timedMinutes > durationMinutes && durationMinutes > 0 && (
-        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
-          Section time limits add up to <span className="tabular-nums">{timedMinutes}</span> minutes, more than the test’s <span className="tabular-nums">{durationMinutes}</span>. The overall time still ends the test.
-        </p>
+        <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">{tr('exam.sectionTimeLimitsAddUpTo')}{' '}<span className="tabular-nums">{timedMinutes}</span>{' '}{tr('exam.minutesMoreThanTheTests')}{' '}<span className="tabular-nums">{durationMinutes}</span>{tr('exam.theOverallTimeStillEndsThec64')}</p>
       )}
 
       {sections.length > 0 && (
@@ -207,17 +202,17 @@ export function SectionsEditor({
                 <div className="flex flex-wrap items-start gap-3">
                   <GripVertical className="mt-2 h-4 w-4 shrink-0 cursor-grab text-muted-foreground" aria-hidden />
                   <div className="min-w-[12rem] flex-1 space-y-1">
-                    <Label htmlFor={`sec-title-${s.id}`} className="text-xs">Section {i + 1} title</Label>
+                    <Label htmlFor={`sec-title-${s.id}`} className="text-xs">{tr('exam.section')}{' '}{i + 1}{' '}{tr('exam.title')}</Label>
                     <Input id={`sec-title-${s.id}`} value={s.title} maxLength={120} onChange={(e) => patch(i, { title: e.target.value })} />
                   </div>
                   <div className="w-40 space-y-1">
-                    <Label htmlFor={`sec-time-${s.id}`} className="text-xs">Time limit (minutes)</Label>
+                    <Label htmlFor={`sec-time-${s.id}`} className="text-xs">{tr('exam.timeLimitMinutes')}</Label>
                     <Input
                       id={`sec-time-${s.id}`}
                       type="number"
                       min={1}
                       max={MAX_SECTION_MINUTES}
-                      placeholder="Shares test time"
+                      placeholder={tr('exam.sharesTestTime')}
                       value={s.time_limit_minutes ?? ''}
                       onChange={(e) => {
                         const n = Math.round(Number(e.target.value))
@@ -227,25 +222,25 @@ export function SectionsEditor({
                   </div>
                   <div className="flex items-center gap-2 pt-6">
                     <Switch id={`sec-lock-${s.id}`} checked={s.lock_after_leave} onCheckedChange={(v) => patch(i, { lock_after_leave: v === true })} />
-                    <Label htmlFor={`sec-lock-${s.id}`} className="text-sm">Lock after leaving</Label>
+                    <Label htmlFor={`sec-lock-${s.id}`} className="text-sm">{tr('exam.lockAfterLeaving')}</Label>
                   </div>
                   <div className="ml-auto flex gap-1 pt-5">
-                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label={`Move ${s.title} up`} onClick={() => move(i, i - 1)} disabled={i === 0}><ArrowUp className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label={`Move ${s.title} down`} onClick={() => move(i, i + 1)} disabled={i === sections.length - 1}><ArrowDown className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-destructive" aria-label={`Remove ${s.title}`} onClick={() => removeSection(i)}><Trash2 className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label={tr('exam.moveTitleUp', { title: s.title })} onClick={() => move(i, i - 1)} disabled={i === 0}><ArrowUp className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0" aria-label={tr('exam.moveTitleDown', { title: s.title })} onClick={() => move(i, i + 1)} disabled={i === sections.length - 1}><ArrowDown className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-destructive" aria-label={tr('exam.removeTitle', { title: s.title })} onClick={() => removeSection(i)}><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 </div>
                 <div className="mt-3 space-y-1">
-                  <Label htmlFor={`sec-ins-${s.id}`} className="text-xs">Instructions (optional)</Label>
+                  <Label htmlFor={`sec-ins-${s.id}`} className="text-xs">{tr('exam.instructionsOptional')}</Label>
                   <Textarea id={`sec-ins-${s.id}`} rows={2} maxLength={4000} value={s.instructions ?? ''} onChange={(e) => patch(i, { instructions: e.target.value })} />
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  <span className="tabular-nums">{t.count}</span> questions · <span className="tabular-nums">{t.points}</span> points · {s.time_limit_minutes ? <><span className="tabular-nums">{s.time_limit_minutes}</span> min</> : 'shares the test time'}
-                  {s.lock_after_leave ? ' · locks when the candidate leaves' : ''}
+                  <span className="tabular-nums">{t.count}</span>{' '}{tr('exam.questions2')}{' '}<span className="tabular-nums">{t.points}</span>{' '}{tr('exam.points2')}{' '}{s.time_limit_minutes ? <><span className="tabular-nums">{s.time_limit_minutes}</span> min</> : tr('exam.sharesTheTestTime')}
+                  {s.lock_after_leave ? tr('exam.locksWhenTheCandidateLeaves') : ''}
                 </p>
                 <ul className="mt-2 space-y-1.5">
                   {items.map(questionChip)}
-                  {items.length === 0 && <li className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">Drag questions here, or pick this section next to a question.</li>}
+                  {items.length === 0 && <li className="rounded-lg border border-dashed border-border p-3 text-center text-xs text-muted-foreground">{tr('exam.dragQuestionsHereOrPickThis0b8')}</li>}
                 </ul>
               </li>
             )
@@ -255,8 +250,8 @@ export function SectionsEditor({
 
       {sections.length > 0 && (
         <div className={`rounded-2xl border border-dashed p-4 ${dropTarget === UNASSIGNED ? 'border-primary' : 'border-border'}`} {...dropZone(UNASSIGNED)}>
-          <p className="text-sm font-medium">Not in a section <span className="tabular-nums text-muted-foreground">({unassigned.length})</span></p>
-          <p className="mb-2 text-xs text-muted-foreground">Candidates get these at the end of the last section.</p>
+          <p className="text-sm font-medium">{tr('exam.notInASection')}{' '}<span className="tabular-nums text-muted-foreground">({unassigned.length})</span></p>
+          <p className="mb-2 text-xs text-muted-foreground">{tr('exam.candidatesGetTheseAtTheEnd6a1')}</p>
           <ul className="space-y-1.5">{unassigned.map(questionChip)}</ul>
         </div>
       )}

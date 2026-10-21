@@ -69,7 +69,7 @@ export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null
-  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body || typeof body !== 'object') return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   const parsed = parsePack(body)
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
   const doc = parsed.doc
@@ -108,13 +108,13 @@ export async function DELETE(request: Request) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const id = new URL(request.url).searchParams.get('id') || ''
-  if (!isValidPlanId(id)) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!isValidPlanId(id)) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
   if (DEFAULT_PROBLEM_PACKS.some((p) => p.id === id)) {
     return NextResponse.json({ error: 'Built-in packs cannot be deleted. Remove their problems or stop selling them instead.' }, { status: 400 })
   }
   try {
     const res = await (await billingPacks()).deleteOne({ id })
-    if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     invalidateProblemPacks()
     await auditAdmin(gate.user, 'admin.pack.delete', 'plan', `pack/${id}`, undefined, 'warning')
     return NextResponse.json({ ok: true })

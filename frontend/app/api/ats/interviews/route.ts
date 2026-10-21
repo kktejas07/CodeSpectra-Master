@@ -72,12 +72,12 @@ export async function POST(req: NextRequest) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { actor } = gate
   let body: { application_id?: unknown }
-  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
   const appId = typeof body.application_id === 'string' && ID.test(body.application_id) ? body.application_id : null
   if (!appId) return NextResponse.json({ error: 'application_id is required' }, { status: 400 })
   try {
     const app = (await (await atsApplications()).findOne({ id: appId, tenant_id: actor.tenantId }, { projection: { _id: 0 } })) as AtsApplication | null
-    if (!app) return NextResponse.json({ error: 'Application not found' }, { status: 404 })
+    if (!app) return NextResponse.json({ error: 'Application not found', code: 'campus_application_not_found' }, { status: 404 })
     const job = (await (await atsJobs()).findOne({ id: app.job_id, tenant_id: actor.tenantId }, { projection: { _id: 0 } })) as AtsJob | null
     if (!job || !canScheduleInterview(actor, { tenant_id: app.tenant_id }, job)) return NextResponse.json({ error: 'Not allowed' }, { status: 403 })
     const stage = job.pipeline.find((s) => s.id === app.stage_id)

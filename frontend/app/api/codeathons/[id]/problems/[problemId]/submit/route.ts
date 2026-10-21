@@ -17,7 +17,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string; problemId: string }> }
 ): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: codeathonId, problemId } = await params
   const rl = rateLimitSlidingWindow(`codeathon-submit:${user.id}`, 10, 60_000)
@@ -52,7 +52,7 @@ export async function POST(
 
     // Get problem
     const problem = (codeathon.problems as any[])?.find(p => p.id === problemId)
-    if (!problem) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    if (!problem) return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
 
     // Only registered participants (or team members) may submit.
     if (!(await isCodeathonParticipant(db, codeathon, user.id))) {

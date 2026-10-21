@@ -12,7 +12,7 @@ import { DIGEST_DEFAULTS } from '@/lib/notifications-delivery'
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const db = await getMongoDb()
     const doc = await db.collection('notification_preferences').findOne({ user_id: user.id, type: 'digest' })
@@ -29,13 +29,13 @@ export async function GET() {
 /** PATCH body: { daily?: boolean, weekly?: boolean } — nothing else is accepted. */
 export async function PATCH(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
   const set: Record<string, boolean> = {}
   if (typeof body.daily === 'boolean') set.daily = body.daily
   if (typeof body.weekly === 'boolean') set.weekly = body.weekly
-  if (Object.keys(set).length === 0) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+  if (Object.keys(set).length === 0) return NextResponse.json({ error: 'Nothing to update', code: 'nothing_to_update' }, { status: 400 })
 
   try {
     const now = new Date().toISOString()

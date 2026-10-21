@@ -46,10 +46,12 @@ export function formatDateTime(
   value: string | number | Date | null | undefined,
   tz?: string | null,
   opts?: Intl.DateTimeFormatOptions,
+  /** BCP-47 tag of the interface language (lib/i18n `LOCALE_META[locale].intl`); English keeps en-GB. */
+  intl = 'en-GB',
 ): string {
   const d = toDate(value)
   if (!d) return MISSING
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(intl, {
     timeZone: resolveTimezone(tz),
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit', hour12: true,
@@ -62,10 +64,12 @@ export function formatDate(
   value: string | number | Date | null | undefined,
   tz?: string | null,
   opts?: Intl.DateTimeFormatOptions,
+  /** BCP-47 tag of the interface language (lib/i18n `LOCALE_META[locale].intl`); English keeps en-GB. */
+  intl = 'en-GB',
 ): string {
   const d = toDate(value)
   if (!d) return MISSING
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(intl, {
     timeZone: resolveTimezone(tz),
     day: '2-digit', month: 'short', year: 'numeric',
     ...opts,
@@ -77,10 +81,12 @@ export function formatTime(
   value: string | number | Date | null | undefined,
   tz?: string | null,
   opts?: Intl.DateTimeFormatOptions,
+  /** BCP-47 tag of the interface language (lib/i18n `LOCALE_META[locale].intl`); English keeps en-GB. */
+  intl = 'en-GB',
 ): string {
   const d = toDate(value)
   if (!d) return MISSING
-  return new Intl.DateTimeFormat('en-GB', {
+  return new Intl.DateTimeFormat(intl, {
     timeZone: resolveTimezone(tz),
     hour: '2-digit', minute: '2-digit', hour12: true,
     ...opts,

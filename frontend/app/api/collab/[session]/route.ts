@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ session: st
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
-  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   const clientVersion = Number(req.nextUrl.searchParams.get('v')) || 0
 
   const col = await collabDocuments()
@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ session: 
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
-  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const body = await req.json().catch(() => ({})) as {
     content?: string; language?: string; version?: number
@@ -90,7 +90,7 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ session
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { session } = await ctx.params
-  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!(await canAccessCollab(gate.user, session))) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const { getOrCreateDocument } = await import('@/lib/db/collab')
   const doc = await getOrCreateDocument(session, 'javascript')

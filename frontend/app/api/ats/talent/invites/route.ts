@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { errorResponse, gate, json } from '@/lib/ats/http'
 import { sendInviteSchema } from '@/lib/talent/core'
 import { listTenantInvites, quotaState, sendTalentInvite, TalentError } from '@/lib/talent/db'
+import { apiErrorBody } from '@/lib/api-errors'
 
 /** GET /api/ats/talent/invites — invites your organisation sent (contact details on accepted ones only). */
 export async function GET(req: NextRequest) {
@@ -28,8 +29,8 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     if (e instanceof TalentError) {
       return e.retryAfterSec
-        ? Response.json({ error: e.message }, { status: e.status, headers: { 'Retry-After': String(e.retryAfterSec), 'Cache-Control': 'private, no-store' } })
-        : json({ error: e.message }, e.status)
+        ? Response.json(apiErrorBody(e.message, e.code, e.params), { status: e.status, headers: { 'Retry-After': String(e.retryAfterSec), 'Cache-Control': 'private, no-store' } })
+        : json(apiErrorBody(e.message, e.code, e.params), e.status)
     }
     return errorResponse(e, 'talent invites POST')
   }

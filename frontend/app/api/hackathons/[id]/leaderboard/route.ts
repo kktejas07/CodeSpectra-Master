@@ -15,21 +15,21 @@ export async function GET(
   const { id } = await ctx.params
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
-  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!hk) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   const user = await getAPIUser().catch(() => null)
   const isStaff = isHackathonStaff(user, hk)
   const isJudge = isHackathonJudge(user, hk)
-  if (hk.status === 'draft' && !isStaff) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (hk.status === 'draft' && !isStaff) return NextResponse.json({ error: 'not found', code: 'not_found' }, { status: 404 })
 
   // Check leaderboard visibility
   const visibility = hk.features?.leaderboard_visibility || 'public'
   if (visibility === 'private' && !isStaff && !isJudge) {
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     return NextResponse.json({ error: 'Leaderboard is private' }, { status: 403 })
   }
   if (visibility === 'after_event' && !hasEnded(hk) && !hk.results_released && !isStaff) {
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     return NextResponse.json({ error: 'Leaderboard will be available after the event ends' }, { status: 403 })
   }
 

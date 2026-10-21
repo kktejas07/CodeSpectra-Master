@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
   const rateCheck = await rateLimitRedis(`2fa:disable:${gate.user.id}`, 5, 60_000)
   if (!rateCheck.ok) {
-    return NextResponse.json({ error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
+    return NextResponse.json({ error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: rateCheck.retryAfterSec } }, { status: 429 })
   }
 
   try {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     const db = await getMongoDb()
     const user = await db.collection('user').findOne({ id: gate.user.id })
-    if (!user) return NextResponse.json({ error: 'Account not found.' }, { status: 404 })
+    if (!user) return NextResponse.json({ error: 'Account not found.', code: 'auth_account_not_found' }, { status: 404 })
 
     let valid = false
     if (password && user.passwordHash) {

@@ -7,8 +7,8 @@ export const runtime = 'nodejs'
 // GET: Test connection to a KYC provider
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
+  if (user.role !== 'superadmin') return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const { searchParams } = new URL(request.url)
   const provider = searchParams.get('provider')

@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState, LoadingRows } from './ui'
 import type { AtsError } from './lib/api'
+import { useT } from '@/lib/i18n/client'
 
 export function HiringShell({
   title,
@@ -48,13 +49,14 @@ export function QueryGate({
   onRetry: () => void
   rows?: number
 }) {
+  const { t } = useT()
   if (error && (error.status === 403 || error.status === 401)) {
     return (
       <EmptyState
         illustration="locked"
-        title="You can't open this"
-        description={`${error.message.replace(/[.!?]?\s*$/, ".")} Ask your organisation's hiring admin if you need access.`}
-        actionLabel="Back to hiring"
+        title={t('hiring.youCantOpenThis')}
+        description={t('hiring.valueAskYourOrganisationsHiringAdmin9ea', { value: error.message.replace(/[.!?]?\s*$/, ".") })}
+        actionLabel={t('hiring.backToHiring')}
         actionHref="/dashboard/hiring"
       />
     )

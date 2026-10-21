@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
   if (limited) return limited
 
   let body: unknown
-  try { body = sanitizeMongoInput(await req.json()) } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = sanitizeMongoInput(await req.json()) } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
   const parsed = parseInviteInput(body)
   if (!parsed.ok) return NextResponse.json({ error: parsed.error }, { status: 400 })
   const input = parsed.value

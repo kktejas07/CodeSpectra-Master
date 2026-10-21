@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { reportSchema } from '@/lib/talent/core'
 import { blockOrReport, TalentError } from '@/lib/talent/db'
+import { apiErrorBody } from '@/lib/api-errors'
 
 /**
  * POST /api/passport/blocks — block (or unblock) an organisation that
@@ -11,17 +12,17 @@ import { blockOrReport, TalentError } from '@/lib/talent/db'
  */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const rl = await rateLimitRedis(`talent-block:${user.id}`, 10, 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests. Try again in a minute.' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests. Try again in a minute.', code: 'rate_limited_minute' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
   const parsed = reportSchema.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   try {
     await blockOrReport(user.id, parsed.data)
     return NextResponse.json({ ok: true })
   } catch (e) {
-    if (e instanceof TalentError) return NextResponse.json({ error: e.message }, { status: e.status })
+    if (e instanceof TalentError) return NextResponse.json(apiErrorBody(e.message, e.code, e.params), { status: e.status })
     console.error('[talent] block failed:', (e as Error)?.message)
-    return NextResponse.json({ error: 'Couldn’t save. Try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Couldn’t save. Try again.', code: 'save_failed' }, { status: 500 })
   }
 }

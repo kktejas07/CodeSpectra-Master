@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string; teamId: string }> }) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const { id, teamId } = await ctx.params
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // Verify user is on the team or is an admin
   const isMember = team.members.some((m) => m.user_id === user.id)
   if (!isMember && !isHackathonStaff(user, hk)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const body = await req.json().catch(() => ({})) as { problem_slug?: string }

@@ -129,6 +129,6 @@ export async function GET(req: NextRequest) {
     })
   } catch (e) {
     console.error('[revenue analytics] error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

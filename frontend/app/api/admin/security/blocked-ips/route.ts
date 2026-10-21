@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     const active = data.filter((d: any) => d.active !== false).length
     return NextResponse.json({ data, active })
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }
 
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     await blockIp({ ip, reason, actor: gate.user.email, expiresAt })
     return NextResponse.json({ ok: true })
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }
 
@@ -64,6 +64,6 @@ export async function DELETE(req: NextRequest) {
     await unblockIp(ip, gate.user.email)
     return NextResponse.json({ ok: true })
   } catch {
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

@@ -34,7 +34,13 @@ export interface WhatsAppMessage {
   /** Optional link (template value 3). */
   link?: string
   /** A specific approved template + values instead of the generic one for `kind`. */
-  template?: { name: string; params: string[]; language?: string }
+  template?: { name: string; params: string[]; language?: string; fallbackLanguage?: string | null }
+  /**
+   * Recipient's interface language. Picks the template translation when it is
+   * approved (Admin → Automations → approved template languages), else the
+   * base language. Looked up from the profile for sendWhatsAppToUser.
+   */
+  locale?: import('@/lib/i18n/config').Locale
   /** Ignore the recipient's quiet hours. */
   urgent?: boolean
 }
@@ -87,14 +93,31 @@ export async function unofficialWhatsAppEnabled(): Promise<boolean> {
   }
 }
 
-async function genericTemplate(kind: WhatsAppMessageKind): Promise<{ name: string; language: string } | null> {
+async function genericTemplate(kind: WhatsAppMessageKind, locale?: string | null): Promise<{ name: string; language: string; fallbackLanguage: string | null } | null> {
   try {
     const { getSystemSettings, configValue } = await import('@/lib/automation/settings')
+    const { whatsappTemplateLanguage } = await import('@/lib/i18n/whatsapp-language')
     const cfg = (await getSystemSettings()).config
     const name = kind === 'newsletter' ? cfg.wa_template_newsletter : kind === 'hiring' ? cfg.wa_template_hiring || cfg.wa_template_notification : cfg.wa_template_notification
-    return name ? { name, language: configValue(cfg, 'wa_template_language') } : null
+    if (!name) return null
+    const lang = whatsappTemplateLanguage(locale, { base: configValue(cfg, 'wa_template_language'), approved: cfg.wa_template_locales })
+    return { name, language: lang.language, fallbackLanguage: lang.fallback }
   } catch {
     return null
+  }
+}
+
+/** A caller-chosen template without a language: pick it from the recipient's locale like the generic ones. */
+async function withTemplateLanguage(t: NonNullable<WhatsAppMessage['template']>, locale?: string | null): Promise<NonNullable<WhatsAppMessage['template']>> {
+  if (t.language || !locale) return t
+  try {
+    const { getSystemSettings, configValue } = await import('@/lib/automation/settings')
+    const { whatsappTemplateLanguage } = await import('@/lib/i18n/whatsapp-language')
+    const cfg = (await getSystemSettings()).config
+    const lang = whatsappTemplateLanguage(locale, { base: configValue(cfg, 'wa_template_language'), approved: cfg.wa_template_locales })
+    return { ...t, language: lang.language, fallbackLanguage: lang.fallback }
+  } catch {
+    return t
   }
 }
 
@@ -161,7 +184,9 @@ export async function sendWhatsAppConsented(rcpt: WhatsAppRecipient | null, msg:
   try {
     if (!rcpt) return { sent: false, skipped: 'no_consent' }
     if (await isWhatsAppOptedOut(rcpt.phone, rcpt.consented_at ?? null)) return { sent: false, skipped: 'opted_out' }
-    const tpl = msg.template ?? (await genericTemplate(msg.kind).then((g) => (g ? { name: g.name, language: g.language, params: [msg.title, msg.text, msg.link || ''].map((v) => String(v || '').slice(0, 200)) } : null)))
+    const tpl = msg.template
+      ? await withTemplateLanguage(msg.template, msg.locale)
+      : await genericTemplate(msg.kind, msg.locale).then((g) => (g ? { name: g.name, language: g.language, fallbackLanguage: g.fallbackLanguage, params: [msg.title, msg.text, msg.link || ''].map((v) => String(v || '').slice(0, 200)) } : null))
     if (tpl) {
       const { sendWhatsAppTemplate } = await import('@/lib/automation/whatsapp')
       const r = await sendWhatsAppTemplate(rcpt, tpl, { userId: msg.urgent ? null : opts.userId ?? null, now: opts.now })
@@ -189,7 +214,8 @@ export async function sendWhatsAppConsented(rcpt: WhatsAppRecipient | null, msg:
 export async function sendWhatsAppToUser(userId: string, msg: WhatsAppMessage, opts: { now?: Date } = {}): Promise<WhatsAppSendOutcome> {
   const { whatsappRecipientForUser } = await import('@/lib/automation/whatsapp')
   const rcpt = await whatsappRecipientForUser(userId).catch(() => null)
-  return sendWhatsAppConsented(rcpt, msg, { userId, now: opts.now })
+  const locale = msg.locale ?? (rcpt ? await import('@/lib/i18n/recipient').then((m) => m.localeForUser(userId)) : undefined)
+  return sendWhatsAppConsented(rcpt, { ...msg, locale }, { userId, now: opts.now })
 }
 
 /** A hiring candidate record (consent.whatsapp must be true). */

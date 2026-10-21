@@ -9,7 +9,9 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface TrustedDevice {
   id: string
@@ -30,6 +32,9 @@ interface FaceStatus {
  * that can use it without an emailed code.
  */
 export function FaceSignInSection() {
+  const apiError = useApiError()
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const addToast = useToast()
   const confirmDialog = useConfirm()
   const [face, setFace] = useState<FaceStatus | null>(null)
@@ -44,7 +49,7 @@ export function FaceSignInSection() {
         fetch('/api/auth/face-login', { credentials: 'include' }),
         fetch('/api/auth/trusted-devices', { credentials: 'include' }),
       ])
-      if (!f.ok || !d.ok) throw new Error('load failed')
+      if (!f.ok || !d.ok) throw new Error(t('dash.loadFailed'))
       setFace(await f.json())
       setDevices(((await d.json()).devices as TrustedDevice[]) || [])
     } catch {
@@ -65,11 +70,11 @@ export function FaceSignInSection() {
         body: JSON.stringify({ enabled }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Couldn’t save the setting.')
+      if (!res.ok) throw new Error(apiError(json, t('dash.couldntSaveTheSetting')))
       setFace(json)
-      addToast({ type: 'success', title: enabled ? 'Face sign-in turned on' : 'Face sign-in turned off' })
+      addToast({ type: 'success', title: enabled ? t('dash.faceSignInTurnedOn') : t('dash.faceSignInTurnedOff') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Couldn’t save', message: e instanceof Error ? e.message : 'Try again.' })
+      addToast({ type: 'error', title: t('dash.couldntSave'), message: e instanceof Error ? e.message : t('common.tryAgainSentence') })
     } finally {
       setBusy(null)
     }
@@ -78,10 +83,10 @@ export function FaceSignInSection() {
   const remove = async (target: { id: string } | { all: true }) => {
     const all = 'all' in target
     const ok = await confirmDialog({
-      title: all ? 'Remove all trusted devices?' : 'Remove this device?',
+      title: all ? t('dash.removeAllTrustedDevices') : t('dash.removeThisDevice'),
       description: all
-        ? 'Face sign-in on any device will need a code from your email again. You stay signed in where you are.'
-        : 'Face sign-in on this device will need a code from your email again.',
+        ? t('dash.faceSignInOnAnyDevice690')
+        : t('dash.faceSignInOnThisDevice438'),
     })
     if (!ok) return
     setBusy(all ? 'all' : target.id)
@@ -92,11 +97,11 @@ export function FaceSignInSection() {
         body: JSON.stringify(target),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Couldn’t remove the device.')
+      if (!res.ok) throw new Error(apiError(json, t('dash.couldntRemoveTheDevice')))
       setDevices((prev) => (all ? [] : (prev || []).filter((d) => d.id !== target.id)))
-      addToast({ type: 'success', title: all ? 'All devices removed' : 'Device removed' })
+      addToast({ type: 'success', title: all ? t('dash.allDevicesRemoved') : t('dash.deviceRemoved') })
     } catch (e) {
-      addToast({ type: 'error', title: 'Couldn’t remove', message: e instanceof Error ? e.message : 'Try again.' })
+      addToast({ type: 'error', title: t('dash.couldntRemove'), message: e instanceof Error ? e.message : t('common.tryAgainSentence') })
     } finally {
       setBusy(null)
     }
@@ -106,20 +111,20 @@ export function FaceSignInSection() {
     <>
       <div className="flex items-center justify-between gap-4 px-6 py-5">
         <div className="min-w-0 space-y-0.5">
-          <p className="font-medium text-foreground">Face sign-in</p>
+          <p className="font-medium text-foreground">{t('dash.faceSignIn')}</p>
           <p className="text-sm text-muted-foreground">
             {face === null
-              ? loadError ? 'Couldn’t load this setting.' : 'Loading status…'
+              ? loadError ? t('dash.couldntLoadThisSetting') : t('dash.loadingStatus')
               : !face.enrolled
-                ? 'Enroll your face above to sign in with it.'
+                ? t('dash.enrollYourFaceAboveToSign5a1')
                 : face.enabled
-                  ? 'On — sign in by looking at the camera. On a new device we also email you a code.'
-                  : 'Off — your face is only used for proctored assessments.'}
+                  ? t('dash.onSignInByLookingAt55e')
+                  : t('dash.offYourFaceIsOnlyUsedaef')}
           </p>
         </div>
         {face === null ? (
           loadError ? (
-            <Button variant="outline" size="sm" onClick={() => void load()}>Retry</Button>
+            <Button variant="outline" size="sm" onClick={() => void load()}>{t('common.retry')}</Button>
           ) : (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )
@@ -128,7 +133,7 @@ export function FaceSignInSection() {
             checked={face.enrolled && face.enabled}
             disabled={!face.enrolled || busy === 'toggle'}
             onCheckedChange={(v) => void toggleFace(v)}
-            aria-label="Face sign-in"
+            aria-label={t('dash.faceSignIn')}
           />
         )}
       </div>
@@ -136,30 +141,25 @@ export function FaceSignInSection() {
       <div className="px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 space-y-0.5">
-            <p className="font-medium text-foreground">Trusted devices</p>
-            <p className="text-sm text-muted-foreground">
-              Devices where you’ve signed in fully. Face sign-in on these skips the emailed code.
-            </p>
+            <p className="font-medium text-foreground">{t('dash.trustedDevices')}</p>
+            <p className="text-sm text-muted-foreground">{t('dash.devicesWhereYouveSignedInFully7b2')}</p>
           </div>
           {devices && devices.length > 0 && (
             <Button variant="outline" size="sm" className="gap-2 shrink-0" disabled={busy !== null} onClick={() => void remove({ all: true })}>
-              {busy === 'all' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              Remove all
-            </Button>
+              {busy === 'all' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}{t('dash.removeAll')}</Button>
           )}
         </div>
         {devices === null ? (
           !loadError && (
             <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading devices…
-            </div>
+              <Loader2 className="h-4 w-4 animate-spin" />{' '}{t('dash.loadingDevices')}</div>
           )
         ) : devices.length === 0 ? (
           <EmptyState
             compact
             illustration="security"
-            title="No trusted devices"
-            description="Sign in with your password, Google, GitHub or single sign-on and that device is added here."
+            title={t('dash.noTrustedDevices')}
+            description={t('dash.signInWithYourPasswordGoogle406')}
           />
         ) : (
           <ul className="mt-4 divide-y divide-border/60 rounded-2xl border border-border/60">
@@ -170,16 +170,13 @@ export function FaceSignInSection() {
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-foreground">
                       {d.user_agent}
-                      {d.current && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">This device</span>}
+                      {d.current && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{t('dash.thisDevice')}</span>}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Last used {formatDateTime(d.last_used_at, undefined, { dateStyle: 'medium', timeStyle: 'short' })} · added{' '}
-                      {formatDateTime(d.created_at, undefined, { dateStyle: 'medium' })}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{t('dash.lastUsed')}{' '}{formatDateTime(d.last_used_at, undefined, { dateStyle: 'medium', timeStyle: 'short' })}{' '}{t('dash.addedDate', { date: formatDateTime(d.created_at, undefined, { dateStyle: 'medium' }) })}</p>
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" disabled={busy !== null} onClick={() => void remove({ id: d.id })}>
-                  {busy === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Remove'}
+                  {busy === d.id ? <Loader2 className="h-4 w-4 animate-spin" /> : t('dash.remove')}
                 </Button>
               </li>
             ))}

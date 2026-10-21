@@ -40,14 +40,14 @@ function canRead(actor: AtsActor): 'all' | 'client' | null {
 /** GET /api/ats/applications/[id]/comments — internal + client comments (clients: client-visible only). */
 export async function GET(req: NextRequest, { params }: Ctx) {
   const id = parseId((await params).id)
-  if (!id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!id) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   const gate = await requireAts([], tenantFromRequest(req))
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { actor } = gate
   const scope = canRead(actor)
   if (!scope) return NextResponse.json({ error: "Your hiring role can't see comments" }, { status: 403 })
   try {
-    if (!(await loadVisible(actor, id))) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!(await loadVisible(actor, id))) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     const filter: Record<string, unknown> = { tenant_id: actor.tenantId, application_id: id }
     if (scope === 'client') filter.visibility = 'client'
     const comments = await (await atsComments()).find(filter, { projection: { _id: 0 } }).sort({ created_at: 1 }).limit(500).toArray()
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 /** POST /api/ats/applications/[id]/comments { body, visibility: 'internal' | 'client' } */
 export async function POST(req: NextRequest, { params }: Ctx) {
   const id = parseId((await params).id)
-  if (!id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!id) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   const gate = await requireAts([], tenantFromRequest(req))
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { actor } = gate
@@ -73,7 +73,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const b = await req.json()
     raw = b && typeof b === 'object' ? b : {}
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   // eslint-disable-next-line no-control-regex
   const text = typeof raw.body === 'string' ? raw.body.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim() : ''
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
 
   try {
     const hit = await loadVisible(actor, id)
-    if (!hit) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!hit) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     const doc: AtsCommentDoc = {
       id: newId(),
       tenant_id: actor.tenantId,

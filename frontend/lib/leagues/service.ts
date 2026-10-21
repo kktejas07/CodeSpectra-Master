@@ -265,7 +265,8 @@ export async function finalizeSeason(id: string, now = new Date()): Promise<{ sn
   }
   if (newlyAwarded.length) {
     void import('@/lib/notifications').then(({ notifyMany }) => notifyMany([...new Set(newlyAwarded)], {
-      type: 'league.badge', title: 'You earned a league badge', message: `Final standings for ${season.name} are in.`, link: '/dashboard/leagues', icon: 'trophy',
+      type: 'league.badge', title: 'You earned a league badge', message: `Final standings for ${season.name} are in.`,
+      title_i18n: { key: 'league.badge.title' }, message_i18n: { key: 'league.badge.message', params: { season: season.name } }, link: '/dashboard/leagues', icon: 'trophy',
     })).catch((e) => logger.error('[leagues] badge notify failed', (e as Error).message))
   }
   return { snapshot: snap, badges: inserted }

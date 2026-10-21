@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const user = await withUser()
     if (!user) return unauthorized()
     const rl = await rateLimitRedis(`campus-join:${user.id}`, 10, 900_000)
-    if (!rl.ok) return NextResponse.json({ error: 'Too many attempts — try again in a few minutes' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+    if (!rl.ok) return NextResponse.json({ error: 'Too many attempts — try again in a few minutes', code: 'campus_attempts' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
     const body = await readJson(req, 10_000)
     const r = body.token !== undefined
       ? await joinByInvite(user, body.token, body.roll_no)

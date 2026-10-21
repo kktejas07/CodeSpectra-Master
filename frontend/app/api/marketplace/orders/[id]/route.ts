@@ -14,7 +14,7 @@ export async function GET(_req: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const order = await getBuyerOrder(gate.user.id, id)
-    if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    if (!order) return NextResponse.json({ error: 'Order not found', code: 'mkt_order_not_found' }, { status: 404 })
     return NextResponse.json({ order: await buyerOrderView(order) })
   } catch (e) {
     return errorResponse(e, 'order read')

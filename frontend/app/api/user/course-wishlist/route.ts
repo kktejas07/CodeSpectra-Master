@@ -10,14 +10,14 @@ const COL = 'course_wishlists'
 /** GET — list wishlist course ids for the logged-in user. */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const db = await getMongoDb()
     const rows = await db.collection(COL).find({ userId: user.id }).project({ courseId: 1 }).toArray()
     return NextResponse.json({ data: rows.map(r => String(r.courseId)) })
   } catch (e) {
     console.error('[user/course-wishlist]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -27,7 +27,7 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const body = await request.json().catch(() => ({}))
     const courseId = String(body?.courseId || '').trim()
@@ -48,6 +48,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ saved: true })
   } catch (e) {
     console.error('[user/course-wishlist]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

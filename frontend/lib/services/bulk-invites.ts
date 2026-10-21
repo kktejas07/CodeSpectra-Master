@@ -17,7 +17,6 @@
 import 'server-only'
 import type { Db } from 'mongodb'
 import type { RowError } from '@/lib/assessment-invite-rows'
-import { formatDate } from '@/lib/format-datetime'
 import { escapeHtml } from '@/lib/org-invitations-core'
 import { newId, nowIso } from '@/lib/db/ids'
 
@@ -34,13 +33,16 @@ export function inviteUrlFor(token: string): string {
 }
 
 /** The invite e-mail (names and the recruiter note are escaped). */
-export async function inviteEmail(p: { name: string; examTitle: string; token: string; expiresAt: string; message?: string | null }) {
-  const { emailTemplates } = await import('@/lib/email-templates')
-  const tpl = emailTemplates.assessmentInvite({
+export async function inviteEmail(p: { name: string; examTitle: string; token: string; expiresAt: string; message?: string | null; email?: string | null }) {
+  const { emailLongDate, emailTemplatesFor } = await import('@/lib/email-templates')
+  // The candidate's language when the address belongs to an account with one set; else English.
+  const { localeForEmail } = await import('@/lib/i18n/recipient')
+  const locale = await localeForEmail(p.email)
+  const tpl = emailTemplatesFor(locale).assessmentInvite({
     candidateName: escapeHtml(p.name),
     examTitle: escapeHtml(p.examTitle),
     inviteUrl: inviteUrlFor(p.token),
-    expiresIn: formatDate(p.expiresAt, undefined, { month: 'long', day: 'numeric', year: 'numeric' }),
+    expiresIn: emailLongDate(p.expiresAt, locale),
   })
   if (p.message) tpl.html = tpl.html.replace('</h1>', `</h1><p style="margin:12px 0 0;font-size:14px;white-space:pre-line">${escapeHtml(p.message)}</p>`)
   return { subject: tpl.subject.replace(/[\r\n]+/g, ' '), html: tpl.html }
@@ -145,6 +147,7 @@ export async function sendInviteEmail(db: Db, invite: InviteDoc, examTitle: stri
   try {
     const { sendEmail } = await import('@/lib/send-email')
     const r = await sendEmail(invite.email, await inviteEmail({
+      email: invite.email,
       name: invite.full_name || invite.email.split('@')[0], examTitle: examTitle || 'Technical assessment',
       token: invite.token, expiresAt: invite.expires_at, message: invite.custom_message,
     }), undefined, { category: 'assessment_invite' })

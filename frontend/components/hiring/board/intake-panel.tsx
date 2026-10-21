@@ -22,6 +22,9 @@ import { AtsError, atsSend, errorMessage, useAts } from '../lib/api'
 import { csvToCandidates, parseCsv, type CsvCandidate } from '../lib/board'
 import type { ResumeUploadResult, TalentSuggestion } from '../lib/types'
 import { ChipInput, ErrorState, Field, InlineError, LoadingRows, MatchScore, NativeSelect } from '../ui'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const ACCEPT = '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown'
 const MAX_BYTES = 5 * 1024 * 1024
@@ -48,6 +51,7 @@ export function IntakePanel({ job, onAdded }: { job: AtsJob; onAdded: () => void
 }
 
 function ShareLink({ job }: { job: AtsJob }) {
+  const { t } = useT()
   const [copied, setCopied] = useState(false)
   const path = publicPath(job)
   const live = job.is_public && job.status === 'open' && !!path
@@ -55,25 +59,24 @@ function ShareLink({ job }: { job: AtsJob }) {
   const url = path && origin ? `${origin}${path}` : path ?? ''
   return (
     <Panel>
-      <Section title="Public apply link" description="Share it on job boards, LinkedIn or WhatsApp. Every application is screened automatically.">
+      <Section title={t('hiring.publicApplyLink')} description={t('hiring.shareItOnJobBoardsLinkedin76b')}>
         {live ? (
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input readOnly value={url} aria-label="Apply link" onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
+            <Input readOnly value={url} aria-label={t('hiring.applyLink')} onFocus={(e) => e.currentTarget.select()} className="font-mono text-xs" />
             <Button
               variant="outline"
               onClick={async () => {
                 try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch { /* clipboard blocked */ }
               }}
             >
-              {copied ? <Check aria-hidden /> : <Copy aria-hidden />} {copied ? 'Copied' : 'Copy'}
+              {copied ? <Check aria-hidden /> : <Copy aria-hidden />} {copied ? t('hiring.copied') : t('hiring.copy')}
             </Button>
-            <Button variant="ghost" asChild><Link href={path!} target="_blank" rel="noopener">Preview</Link></Button>
+            <Button variant="ghost" asChild><Link href={path!} target="_blank" rel="noopener">{t('hiring.preview')}</Link></Button>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {!job.is_public ? 'The public apply page is off for this job.' : job.status !== 'open' ? 'The link appears once the job is open.' : 'The link is being set up. Reload in a moment.'}{' '}
-            <Link href={`/dashboard/hiring/jobs/${job.id}/edit`} className="font-medium text-primary hover:underline">Edit the job</Link> to change it.
-          </p>
+            {!job.is_public ? t('hiring.thePublicApplyPageIsOffc71') : job.status !== 'open' ? t('hiring.theLinkAppearsOnceTheJob11e') : t('hiring.theLinkIsBeingSetUp3d4')}{' '}
+            <Link href={`/dashboard/hiring/jobs/${job.id}/edit`} className="font-medium text-primary hover:underline">{t('hiring.editTheJob')}</Link>{' '}{t('hiring.toChangeIt')}</p>
         )}
       </Section>
     </Panel>
@@ -81,6 +84,7 @@ function ShareLink({ job }: { job: AtsJob }) {
 }
 
 function ResumeDrop({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
+  const { t } = useT()
   const [items, setItems] = useState<UploadItem[]>([])
   const [over, setOver] = useState(false)
   const input = useRef<HTMLInputElement>(null)
@@ -137,7 +141,7 @@ function ResumeDrop({ jobId, onAdded }: { jobId: string; onAdded: () => void }) 
   const done = items.filter((i) => i.state === 'done').length
   return (
     <Panel>
-      <Section title="Upload résumés" description="Drop up to 200 files. Each one is parsed, matched to a candidate and screened.">
+      <Section title={t('hiring.uploadRSumS')} description={t('hiring.dropUpTo200FilesEach0e7')}>
         <div
           onDragOver={(e) => { e.preventDefault(); setOver(true) }}
           onDragLeave={() => setOver(false)}
@@ -145,26 +149,24 @@ function ResumeDrop({ jobId, onAdded }: { jobId: string; onAdded: () => void }) 
           className={cn('flex flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-8 text-center transition-colors', over ? 'border-primary bg-primary/5' : 'border-border')}
         >
           <UploadCloud className="mb-2 h-8 w-8 text-primary" aria-hidden />
-          <p className="text-sm font-medium text-foreground">Drag résumés here</p>
-          <p className="text-xs text-muted-foreground">PDF, DOCX, TXT or MD, up to 5 MB each</p>
+          <p className="text-sm font-medium text-foreground">{t('hiring.dragRSumSHere')}</p>
+          <p className="text-xs text-muted-foreground">{t('hiring.pdfDocxTxtOrMdUpe4a')}</p>
           <Button variant="outline" size="sm" className="mt-3 rounded-full" onClick={() => input.current?.click()} disabled={running}>
-            <FileUp aria-hidden /> Choose files
-          </Button>
+            <FileUp aria-hidden />{' '}{t('hiring.chooseFiles')}</Button>
           <input
             ref={input}
             type="file"
             multiple
             accept={ACCEPT}
             className="sr-only"
-            aria-label="Choose résumé files"
+            aria-label={t('hiring.chooseRSumFiles')}
             onChange={(e) => { if (e.target.files?.length) void addFiles(e.target.files); e.target.value = '' }}
           />
         </div>
         {items.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground" aria-live="polite">
-              <span className="tabular-nums">{done}</span> of <span className="tabular-nums">{items.length}</span> added{running ? ' · uploading…' : ''}
-            </p>
+              <span className="tabular-nums">{done}</span>{' '}{t('hiring.of')}{' '}<span className="tabular-nums">{items.length}</span>{' '}{t('hiring.addedValue', { value: running ? t('hiring.uploading') : '' })}</p>
             <ul className="max-h-64 space-y-1.5 overflow-y-auto">
               {items.map((i) => (
                 <li key={i.key} className="flex items-center gap-2 rounded-xl border border-border bg-background px-3 py-2 text-sm">
@@ -178,11 +180,11 @@ function ResumeDrop({ jobId, onAdded }: { jobId: string; onAdded: () => void }) 
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-foreground">{i.result?.name || i.file.name}</span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {i.state === 'queued' ? 'Waiting' : i.state === 'uploading' ? 'Reading résumé…' : i.state === 'failed' ? i.error : i.result?.duplicate ? 'Already a candidate — added to this job' : 'Added'}
+                      {i.state === 'queued' ? t('hiring.waiting') : i.state === 'uploading' ? t('hiring.readingRSum') : i.state === 'failed' ? i.error : i.result?.duplicate ? t('hiring.alreadyACandidateAddedToThis115') : t('hiring.added')}
                     </span>
                   </span>
                   {i.state === 'done' && i.result?.candidate_id && (
-                    <Link href={`/dashboard/hiring/candidates/${i.result.candidate_id}${i.result.application_id ? `?app=${i.result.application_id}` : ''}`} className="shrink-0 text-xs font-medium text-primary hover:underline">Open</Link>
+                    <Link href={`/dashboard/hiring/candidates/${i.result.candidate_id}${i.result.application_id ? `?app=${i.result.application_id}` : ''}`} className="shrink-0 text-xs font-medium text-primary hover:underline">{t('hiring.open')}</Link>
                   )}
                 </li>
               ))}
@@ -194,18 +196,19 @@ function ResumeDrop({ jobId, onAdded }: { jobId: string; onAdded: () => void }) 
   )
 }
 
-const COUNTRIES = [
-  { value: 'IN', label: 'India' },
-  { value: 'US', label: 'United States' },
-  { value: 'GB', label: 'United Kingdom' },
-  { value: 'AE', label: 'United Arab Emirates' },
-  { value: 'SG', label: 'Singapore' },
-  { value: 'CA', label: 'Canada' },
-  { value: 'AU', label: 'Australia' },
-  { value: 'DE', label: 'Germany' },
-]
+const COUNTRIES = (t: Translator) => ([
+  { value: 'IN', label: t('hiring.india') },
+  { value: 'US', label: t('hiring.unitedStates') },
+  { value: 'GB', label: t('hiring.unitedKingdom') },
+  { value: 'AE', label: t('hiring.unitedArabEmirates') },
+  { value: 'SG', label: t('hiring.singapore') },
+  { value: 'CA', label: t('hiring.canada') },
+  { value: 'AU', label: t('hiring.australia') },
+  { value: 'DE', label: t('hiring.germany') },
+])
 
 function AddCandidate({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
+  const { t } = useT()
   const addToast = useToast()
   const [f, setF] = useState({ name: '', email: '', phone: '', country: 'IN', resume_text: '' })
   const [tags, setTags] = useState<string[]>([])
@@ -215,9 +218,9 @@ function AddCandidate({ jobId, onAdded }: { jobId: string; onAdded: () => void }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!f.name.trim()) return setError('Add a name.')
-    if (!f.email.trim() && !f.phone.trim()) return setError('Add an email or a phone number.')
-    if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return setError('That email doesn\u2019t look right.')
+    if (!f.name.trim()) return setError(t('hiring.addAName'))
+    if (!f.email.trim() && !f.phone.trim()) return setError(t('hiring.addAnEmailOrAPhone667'))
+    if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) return setError(t('hiring.thatEmailDoesntLookRight'))
     setBusy(true)
     try {
       const r = await atsSend<{ duplicate?: boolean }>(`/api/ats/jobs/${encodeURIComponent(jobId)}/candidates`, 'POST', {
@@ -230,7 +233,7 @@ function AddCandidate({ jobId, onAdded }: { jobId: string; onAdded: () => void }
         source: referral ? 'referral' : 'manual',
         tags,
       })
-      addToast({ type: 'success', title: r?.duplicate ? 'Already a candidate — added to this job' : 'Candidate added' })
+      addToast({ type: 'success', title: r?.duplicate ? t('hiring.alreadyACandidateAddedToThis115') : t('hiring.candidateAdded') })
       setF({ name: '', email: '', phone: '', country: f.country, resume_text: '' })
       setTags([])
       onAdded()
@@ -238,22 +241,21 @@ function AddCandidate({ jobId, onAdded }: { jobId: string; onAdded: () => void }
   }
   return (
     <Panel>
-      <Section title="Add a candidate" description="For referrals or people you found yourself. They start in the first stage.">
+      <Section title={t('hiring.addACandidate')} description={t('hiring.forReferralsOrPeopleYouFound594')}>
         <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-          <Field label="Name" htmlFor="ac-name"><Input id="ac-name" value={f.name} maxLength={120} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="off" /></Field>
+          <Field label={t('hiring.name')} htmlFor="ac-name"><Input id="ac-name" value={f.name} maxLength={120} onChange={(e) => setF({ ...f, name: e.target.value })} autoComplete="off" /></Field>
           <Field label="Email" htmlFor="ac-email"><Input id="ac-email" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} autoComplete="off" /></Field>
-          <Field label="Phone" htmlFor="ac-phone" hint="With country code, e.g. +91 98765 43210"><Input id="ac-phone" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} autoComplete="off" /></Field>
-          <Field label="Country" htmlFor="ac-country"><NativeSelect id="ac-country" value={f.country} onChange={(v) => setF({ ...f, country: v })} options={COUNTRIES} /></Field>
-          <Field label="Résumé text (optional)" htmlFor="ac-cv" className="sm:col-span-2" hint="Paste it to screen them right away.">
+          <Field label={t('hiring.phone')} htmlFor="ac-phone" hint={t('hiring.withCountryCodeEG9192a')}><Input id="ac-phone" type="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} autoComplete="off" /></Field>
+          <Field label={t('hiring.country')} htmlFor="ac-country"><NativeSelect id="ac-country" value={f.country} onChange={(v) => setF({ ...f, country: v })} options={COUNTRIES(t)} /></Field>
+          <Field label={t('hiring.rSumTextOptional')} htmlFor="ac-cv" className="sm:col-span-2" hint={t('hiring.pasteItToScreenThemRightb55')}>
             <Textarea id="ac-cv" rows={3} value={f.resume_text} onChange={(e) => setF({ ...f, resume_text: e.target.value })} />
           </Field>
-          <div className="sm:col-span-2"><ChipInput label="Tags" value={tags} onChange={setTags} placeholder="e.g. react, campus-2026" /></div>
+          <div className="sm:col-span-2"><ChipInput label={t('hiring.tags')} value={tags} onChange={setTags} placeholder={t('hiring.eGReactCampus2026')} /></div>
           <label className="flex items-center gap-2 text-sm text-foreground sm:col-span-2">
-            <Checkbox checked={referral} onCheckedChange={(v) => setReferral(v === true)} /> This is a referral
-          </label>
+            <Checkbox checked={referral} onCheckedChange={(v) => setReferral(v === true)} />{' '}{t('hiring.thisIsAReferral')}</label>
           <div className="space-y-2 sm:col-span-2">
             <InlineError message={error} />
-            <Button type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <UserPlus aria-hidden />} Add candidate</Button>
+            <Button type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <UserPlus aria-hidden />}{' '}{t('hiring.addCandidate')}</Button>
           </div>
         </form>
       </Section>
@@ -262,6 +264,8 @@ function AddCandidate({ jobId, onAdded }: { jobId: string; onAdded: () => void }
 }
 
 function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
+  const apiError = useApiError()
+  const { t } = useT()
   const addToast = useToast()
   const [preview, setPreview] = useState<{ name: string; text: string; valid: CsvCandidate[]; invalid: number } | null>(null)
   const [failures, setFailures] = useState<{ line: number; error?: string }[]>([])
@@ -272,11 +276,11 @@ function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
   const read = async (file: File) => {
     setError(null)
     setFailures([])
-    if (file.size > 2 * 1024 * 1024) return setError('Keep CSV files under 2 MB.')
+    if (file.size > 2 * 1024 * 1024) return setError(t('hiring.keepCsvFilesUnder2Mb'))
     const text = await file.text()
     const { valid, invalid } = csvToCandidates(parseCsv(text))
-    if (!valid.length) return setError('No rows with a name and an email or phone. Check the header row.')
-    if (valid.length > 1000) return setError('Import up to 1,000 rows at a time.')
+    if (!valid.length) return setError(t('hiring.noRowsWithANameAnd2cd'))
+    if (valid.length > 1000) return setError(t('hiring.importUpTo1000Rowsd18'))
     setPreview({ name: file.name, text, valid, invalid })
   }
   const submit = async () => {
@@ -289,7 +293,7 @@ function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
       )
       const added = res?.added ?? 0
       const failed = (res?.results ?? []).filter((r) => !r.ok)
-      addToast({ type: failed.length ? 'warning' : 'success', title: `${added} candidate${added === 1 ? '' : 's'} imported`, message: failed.length ? `${failed.length} row${failed.length === 1 ? '' : 's'} skipped` : undefined })
+      addToast({ type: failed.length ? 'warning' : 'success', title: t('hiring.countCandidatesImported', { count: added }), message: failed.length ? t('hiring.countRowsSkipped', { count: failed.length }) : undefined })
       setFailures(failed)
       setPreview(null)
       onAdded()
@@ -297,31 +301,30 @@ function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
   }
   return (
     <Panel>
-      <Section title="Import a CSV" description="Header row with name, email, phone, country and resume_url — optionally experience (fresher or experienced), current_ctc, expected_ctc, currency, period and notice_days. Up to 1,000 rows.">
+      <Section title={t('hiring.importACsv')} description={t('hiring.headerRowWithNameEmailPhonebb1')}>
         {!preview ? (
-          <Button variant="outline" className="rounded-full" onClick={() => input.current?.click()}><FileUp aria-hidden /> Choose CSV</Button>
+          <Button variant="outline" className="rounded-full" onClick={() => input.current?.click()}><FileUp aria-hidden />{' '}{t('hiring.chooseCsv')}</Button>
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-foreground">
-              <span className="font-medium">{preview.name}</span>: <span className="tabular-nums">{preview.valid.length}</span> ready
-              {preview.invalid > 0 && <span className="text-amber-700 dark:text-amber-400">, <span className="tabular-nums">{preview.invalid}</span> look incomplete (missing name or contact)</span>}
+              <span className="font-medium">{preview.name}</span>: <span className="tabular-nums">{preview.valid.length}</span>{' '}{t('hiring.ready2')}{preview.invalid > 0 && <span className="text-amber-700 dark:text-amber-400">, <span className="tabular-nums">{preview.invalid}</span>{' '}{t('hiring.lookIncompleteMissingNameOrContact')}</span>}
             </p>
             <ul className="max-h-40 divide-y divide-border overflow-y-auto rounded-xl border border-border text-sm">
               {preview.valid.slice(0, 8).map((c, i) => (
                 <li key={i} className="flex justify-between gap-3 px-3 py-1.5"><span className="truncate text-foreground">{c.name}</span><span className="truncate text-muted-foreground">{c.email || c.phone}</span></li>
               ))}
-              {preview.valid.length > 8 && <li className="px-3 py-1.5 text-xs text-muted-foreground">and {preview.valid.length - 8} more</li>}
+              {preview.valid.length > 8 && <li className="px-3 py-1.5 text-xs text-muted-foreground">{t('hiring.and')}{' '}{preview.valid.length - 8}{' '}{t('hiring.more')}</li>}
             </ul>
             <div className="flex gap-2">
-              <Button onClick={submit} disabled={busy}>{busy && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />} Import</Button>
-              <Button variant="ghost" onClick={() => setPreview(null)} disabled={busy}>Cancel</Button>
+              <Button onClick={submit} disabled={busy}>{busy && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}{' '}{t('hiring.import')}</Button>
+              <Button variant="ghost" onClick={() => setPreview(null)} disabled={busy}>{t('common.cancel')}</Button>
             </div>
           </div>
         )}
-        <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" aria-label="Choose CSV file" onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />
+        <input ref={input} type="file" accept=".csv,text/csv" className="sr-only" aria-label={t('hiring.chooseCsvFile')} onChange={(e) => { const f = e.target.files?.[0]; if (f) void read(f); e.target.value = '' }} />
         {failures.length > 0 && (
           <ul className="max-h-32 space-y-0.5 overflow-y-auto text-xs text-amber-700 dark:text-amber-400">
-            {failures.slice(0, 20).map((f) => <li key={f.line}>Line {f.line}: {f.error || 'skipped'}</li>)}
+            {failures.slice(0, 20).map((f) => <li key={f.line}>{t('hiring.lineLine', { line: f.line })}{' '}{apiError(f, t('hiring.skipped2'))}</li>)}
           </ul>
         )}
         <InlineError message={error} />
@@ -331,6 +334,7 @@ function CsvImport({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
 }
 
 function TalentPool({ jobId, onAdded }: { jobId: string; onAdded: () => void }) {
+  const { t } = useT()
   const addToast = useToast()
   const pool = useAts<TalentSuggestion[]>(`/api/ats/jobs/${encodeURIComponent(jobId)}/talent-pool`, 'candidates')
   const [adding, setAdding] = useState<Set<string>>(new Set())
@@ -342,10 +346,10 @@ function TalentPool({ jobId, onAdded }: { jobId: string; onAdded: () => void }) 
       const ok = (res?.results ?? ids.map((id) => ({ id, ok: true }))).filter((r) => r.ok).map((r) => r.id)
       setAdded((s) => new Set([...s, ...ok]))
       const failed = ids.length - ok.length
-      addToast({ type: failed ? 'warning' : 'success', title: ok.length === 1 ? 'Added to this job' : `${ok.length} added to this job`, message: failed ? `${failed} could not be added` : undefined })
+      addToast({ type: failed ? 'warning' : 'success', title: ok.length === 1 ? t('hiring.addedToThisJob') : t('hiring.countAddedToThisJob', { count: ok.length }), message: failed ? t('hiring.failedCouldNotBeAdded', { failed }) : undefined })
       if (ok.length) onAdded()
     } catch (e) {
-      addToast({ type: 'error', title: 'Could not add', message: errorMessage(e) })
+      addToast({ type: 'error', title: t('hiring.couldNotAdd'), message: errorMessage(e) })
     } finally {
       setAdding((s) => { const n = new Set(s); ids.forEach((i) => n.delete(i)); return n })
     }
@@ -354,16 +358,16 @@ function TalentPool({ jobId, onAdded }: { jobId: string; onAdded: () => void }) 
   return (
     <Panel>
       <Section
-        title="From your talent pool"
-        description="Your organisation's candidates and past job-board applicants who match this job."
-        actions={list.length > 1 && <Button size="sm" variant="outline" onClick={() => add(list.slice(0, 10).map((s) => s.id))}><Sparkles aria-hidden /> Add top {Math.min(10, list.length)}</Button>}
+        title={t('hiring.fromYourTalentPool')}
+        description={t('hiring.yourOrganisationsCandidatesAndPastJob052')}
+        actions={list.length > 1 && <Button size="sm" variant="outline" onClick={() => add(list.slice(0, 10).map((s) => s.id))}><Sparkles aria-hidden />{' '}{t('hiring.addTopValue', { value: Math.min(10, list.length) })}</Button>}
       >
         {pool.loading && !pool.data ? (
           <LoadingRows rows={2} />
         ) : pool.error ? (
           <ErrorState compact message={pool.error.message} onRetry={pool.reload} />
         ) : list.length === 0 ? (
-          <EmptyState compact illustration="search" title="No matches in your pool yet" description="As candidates apply to other jobs, good fits for this one show up here." />
+          <EmptyState compact illustration="search" title={t('hiring.noMatchesInYourPoolYet')} description={t('hiring.asCandidatesApplyToOtherJobse05')} />
         ) : (
           <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {list.slice(0, 12).map((s) => (
@@ -376,13 +380,12 @@ function TalentPool({ jobId, onAdded }: { jobId: string; onAdded: () => void }) 
                     <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
                   )}
                   <p className="truncate text-xs text-muted-foreground">
-                    {s.kind === 'past_applicant' ? 'Past job-board applicant · ' : ''}
-                    {s.missing_must.length ? `Missing ${s.missing_must.slice(0, 2).join(', ')}` : s.reasons[0] || [s.location, s.total_years != null && `${s.total_years} yrs`].filter(Boolean).join(' · ')}
+                    {s.kind === 'past_applicant' ? t('hiring.pastJobBoardApplicant') : ''}
+                    {s.missing_must.length ? t('hiring.missingValue', { value: s.missing_must.slice(0, 2).join(', ') }) : s.reasons[0] || [s.location, s.total_years != null && `${s.total_years} yrs`].filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <Button size="sm" variant="outline" disabled={adding.has(s.id)} onClick={() => add([s.id])} aria-label={`Add ${s.name} to this job`}>
-                  {adding.has(s.id) ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <UserPlus aria-hidden />} Add
-                </Button>
+                <Button size="sm" variant="outline" disabled={adding.has(s.id)} onClick={() => add([s.id])} aria-label={t('hiring.addNameToThisJob', { name: s.name })}>
+                  {adding.has(s.id) ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <UserPlus aria-hidden />}{' '}{t('hiring.add')}</Button>
               </li>
             ))}
           </ul>

@@ -27,5 +27,5 @@ export async function GET() {
     }
     const data = (await col.find({}).toArray()).map((t) => ({ ...t, tone: TONE }))
     return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }

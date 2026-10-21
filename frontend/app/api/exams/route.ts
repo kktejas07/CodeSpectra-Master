@@ -132,7 +132,7 @@ export async function POST(request: Request) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const body = await request.json()
@@ -151,7 +151,7 @@ export async function PATCH(request: Request) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const body = await request.json()
@@ -159,7 +159,7 @@ export async function PATCH(request: Request) {
     const r = await updateExam(user, id, body)
     if (!r.ok) return NextResponse.json(errorBody(r), { status: r.status })
     return NextResponse.json({ ok: true })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+  } catch { return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 }) }
 }
 
 export async function DELETE(request: Request) {
@@ -167,18 +167,18 @@ export async function DELETE(request: Request) {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
   if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id })
-    if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!exam) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     // Tenant-scoped: superadmin, or a tenant_admin of this exam's tenant (a
     // missing tenantId never matches).
-    if (!isExamStaff(user, exam)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!isExamStaff(user, exam)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
     // No soft-delete pattern exists for exams, so delete the dependents in the
     // same handler — before the exam itself, so a failure part-way leaves the

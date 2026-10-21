@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
 import { limitRequest } from '@/lib/rate-limit'
 import { attemptView, loadAttempt, PracticeError, submitSection } from '@/lib/company-tests/practice'
+import { apiErrorBody } from '@/lib/api-errors'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,16 +22,16 @@ const submitSchema = z.object({
 })
 
 function fail(e: unknown, what: string) {
-  if (e instanceof PracticeError) return NextResponse.json({ error: e.message }, { status: e.status })
+  if (e instanceof PracticeError) return NextResponse.json(apiErrorBody(e.message), { status: e.status })
   console.error(`[company-tests/attempt] ${what}:`, (e as Error)?.message)
-  return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+  return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
 }
 
 export async function GET(_req: NextRequest, { params }: Ctx) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id } = await params
-  if (!UUID.test(id)) return NextResponse.json({ error: 'Practice run not found.' }, { status: 404 })
+  if (!UUID.test(id)) return NextResponse.json({ error: 'Practice run not found.', code: 'ct_run_not_found' }, { status: 404 })
   try {
     return NextResponse.json({ attempt: attemptView(await loadAttempt(gate.user.id, id)) })
   } catch (e) {
@@ -44,9 +45,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const limited = await limitRequest(req, 'company-test-submit', gate.user.id, 30, 60_000)
   if (limited) return limited
   const { id } = await params
-  if (!UUID.test(id)) return NextResponse.json({ error: 'Practice run not found.' }, { status: 404 })
+  if (!UUID.test(id)) return NextResponse.json({ error: 'Practice run not found.', code: 'ct_run_not_found' }, { status: 404 })
   const parsed = submitSchema.safeParse(await req.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid answers' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid answers', code: 'ct_invalid_answers' }, { status: 400 })
   try {
     const a = await submitSection(gate.user.id, id, parsed.data.sectionId, parsed.data.answers)
     return NextResponse.json({ attempt: attemptView(a) })

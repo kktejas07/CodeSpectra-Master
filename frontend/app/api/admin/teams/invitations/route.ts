@@ -88,11 +88,11 @@ export async function DELETE(req: NextRequest) {
   try {
     const filter: Record<string, unknown> = { id, status: 'pending' }
     if (gate.user.role !== 'superadmin') {
-      if (!gate.user.tenantId) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (!gate.user.tenantId) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
       filter.organization_id = gate.user.tenantId
     }
     const res = await (await orgInvitations()).updateOne(filter as never, { $set: { status: 'revoked', updated_at: nowIso() } } as never)
-    if (res.modifiedCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (res.modifiedCount === 0) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     await auditAdmin(gate.user, 'admin.org.invite_revoke', 'organization', `invitation/${id}`)
     return NextResponse.json({ ok: true })
   } catch (e) {

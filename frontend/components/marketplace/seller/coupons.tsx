@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/lib/toast-context'
 import { api, Field, NativeSelect, TableWrap, fmtDate, th, td, withAs } from './shared'
+import { useT } from '@/lib/i18n/client'
 
 interface SellerCoupon {
   id: string
@@ -26,6 +27,7 @@ interface SellerCoupon {
 }
 
 export function SellerCoupons({ asPlatform, defaultCurrency }: { asPlatform: boolean; defaultCurrency: 'INR' | 'USD' }) {
+  const { t } = useT()
   const addToast = useToast()
   const [rows, setRows] = useState<SellerCoupon[] | null>(null)
   const [optIn, setOptIn] = useState(false)
@@ -35,7 +37,7 @@ export function SellerCoupons({ asPlatform, defaultCurrency }: { asPlatform: boo
   const load = useCallback(() => {
     api<{ coupons: SellerCoupon[]; accepts_platform_coupons: boolean }>(withAs('/api/marketplace/seller/coupons', asPlatform))
       .then((d) => { setRows(d.coupons); setOptIn(d.accepts_platform_coupons) })
-      .catch((e) => { setRows([]); addToast({ type: 'error', title: 'Could not load coupons', message: e.message }) })
+      .catch((e) => { setRows([]); addToast({ type: 'error', title: t('market.couldNotLoadCoupons'), message: e.message }) })
   }, [asPlatform, addToast])
   useEffect(load, [load])
 
@@ -51,10 +53,10 @@ export function SellerCoupons({ asPlatform, defaultCurrency }: { asPlatform: boo
         },
       })
       setForm((f) => ({ ...f, code: '', value: '', max: '', until: '' }))
-      addToast({ type: 'success', title: 'Coupon created' })
+      addToast({ type: 'success', title: t('market.couponCreated') })
       load()
     } catch (err) {
-      addToast({ type: 'error', title: 'Could not create the coupon', message: (err as Error).message })
+      addToast({ type: 'error', title: t('market.couldNotCreateTheCoupon'), message: (err as Error).message })
     } finally {
       setSaving(false)
     }
@@ -65,7 +67,7 @@ export function SellerCoupons({ asPlatform, defaultCurrency }: { asPlatform: boo
       await api(withAs(`/api/marketplace/seller/coupons?id=${c.id}`, asPlatform), { method: 'PATCH', body })
       load()
     } catch (err) {
-      addToast({ type: 'error', title: 'Could not update', message: (err as Error).message })
+      addToast({ type: 'error', title: t('market.couldNotUpdate'), message: (err as Error).message })
     }
   }
   const remove = async (c: SellerCoupon) => {
@@ -73,7 +75,7 @@ export function SellerCoupons({ asPlatform, defaultCurrency }: { asPlatform: boo
       await api(withAs(`/api/marketplace/seller/coupons?id=${c.id}`, asPlatform), { method: 'DELETE' })
       setRows((r) => (r ? r.filter((x) => x.id !== c.id) : r))
     } catch (err) {
-      addToast({ type: 'error', title: 'Could not delete', message: (err as Error).message })
+      addToast({ type: 'error', title: t('market.couldNotDelete'), message: (err as Error).message })
     }
   }
   const toggleOptIn = async (v: boolean) => {
@@ -82,7 +84,7 @@ export function SellerCoupons({ asPlatform, defaultCurrency }: { asPlatform: boo
       await api(withAs('/api/marketplace/seller/profile', asPlatform), { method: 'PATCH', body: { accepts_platform_coupons: v } })
     } catch (err) {
       setOptIn(!v)
-      addToast({ type: 'error', title: 'Could not save', message: (err as Error).message })
+      addToast({ type: 'error', title: t('market.couldNotSave'), message: (err as Error).message })
     }
   }
 
@@ -91,73 +93,69 @@ export function SellerCoupons({ asPlatform, defaultCurrency }: { asPlatform: boo
       {!asPlatform && (
         <Panel className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h3 className="font-semibold text-foreground">Join CodeSpectra promotions</h3>
-            <p className="text-sm text-muted-foreground">
-              When on, site-wide CodeSpectra coupons also discount your items and the discount comes out of your earnings.
-              When off, your items are only discounted by promotions CodeSpectra pays for.
-            </p>
+            <h3 className="font-semibold text-foreground">{t('market.joinCodespectraPromotions')}</h3>
+            <p className="text-sm text-muted-foreground">{t('market.whenOnSiteWideCodespectraCouponsd46')}</p>
           </div>
-          <Switch checked={optIn} onCheckedChange={toggleOptIn} aria-label="Join CodeSpectra promotions" />
+          <Switch checked={optIn} onCheckedChange={toggleOptIn} aria-label={t('market.joinCodespectraPromotions')} />
         </Panel>
       )}
 
       <Panel>
-        <h3 className="mb-1 font-semibold text-foreground">New coupon</h3>
-        <p className="mb-4 text-sm text-muted-foreground">Your coupons only discount your own items, and you pay for the discount.</p>
+        <h3 className="mb-1 font-semibold text-foreground">{t('market.newCoupon')}</h3>
+        <p className="mb-4 text-sm text-muted-foreground">{t('market.yourCouponsOnlyDiscountYourOwnca2')}</p>
         <form onSubmit={create} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Code" htmlFor="sc-code" hint="3–32 letters, numbers, _ or -">
-            <Input id="sc-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} required className="uppercase" placeholder="MYSTORE10" />
+          <Field label="Code" htmlFor="sc-code" hint={t('market.n332LettersNumbersOr')}>
+            <Input id="sc-code" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} required className="uppercase" placeholder={t('market.mystore10')} />
           </Field>
-          <Field label="Type" htmlFor="sc-type">
+          <Field label={t('market.type')} htmlFor="sc-type">
             <NativeSelect id="sc-type" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as 'percentage' | 'flat' })}>
-              <option value="percentage">Percent off</option>
-              <option value="flat">Fixed amount off</option>
+              <option value="percentage">{t('market.percentOff')}</option>
+              <option value="flat">{t('market.fixedAmountOff')}</option>
             </NativeSelect>
           </Field>
-          <Field label={form.type === 'percentage' ? 'Percent' : 'Amount'} htmlFor="sc-value">
+          <Field label={form.type === 'percentage' ? t('market.percent') : t('market.amount')} htmlFor="sc-value">
             <Input id="sc-value" type="number" min={0} step="any" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} required />
           </Field>
           {form.type === 'flat' && (
-            <Field label="Currency" htmlFor="sc-cur" hint="Only applies to orders in this currency.">
+            <Field label={t('market.currency')} htmlFor="sc-cur" hint={t('market.onlyAppliesToOrdersInThisd5d')}>
               <NativeSelect id="sc-cur" value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value as 'INR' | 'USD' })}>
                 <option value="INR">INR (₹)</option>
                 <option value="USD">USD ($)</option>
               </NativeSelect>
             </Field>
           )}
-          <Field label="Max uses" htmlFor="sc-max" hint="Empty = unlimited">
+          <Field label={t('market.maxUses')} htmlFor="sc-max" hint={t('market.emptyUnlimited')}>
             <Input id="sc-max" type="number" min={0} value={form.max} onChange={(e) => setForm({ ...form, max: e.target.value })} />
           </Field>
-          <Field label="Expires" htmlFor="sc-until">
+          <Field label={t('market.expires')} htmlFor="sc-until">
             <Input id="sc-until" type="datetime-local" value={form.until} onChange={(e) => setForm({ ...form, until: e.target.value })} />
           </Field>
           <div className="sm:col-span-2 lg:col-span-3">
             <Button type="submit" disabled={saving || !form.code || !form.value}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create coupon
-            </Button>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{' '}{t('market.createCoupon')}</Button>
           </div>
         </form>
       </Panel>
 
       <Panel>
-        <h3 className="mb-3 font-semibold text-foreground">Your coupons</h3>
+        <h3 className="mb-3 font-semibold text-foreground">{t('market.yourCoupons')}</h3>
         {rows === null ? (
           <div className="h-24 animate-pulse rounded-2xl bg-muted/40 motion-reduce:animate-none" />
         ) : rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No coupons yet — create one above and share the code with your buyers.</p>
+          <p className="text-sm text-muted-foreground">{t('market.noCouponsYetCreateOneAbove868')}</p>
         ) : (
           <TableWrap>
-            <thead><tr><th className={th}>Code</th><th className={th}>Discount</th><th className={th}>Used</th><th className={th}>Expires</th><th className={th}>Active</th><th className={th}><span className="sr-only">Actions</span></th></tr></thead>
+            <thead><tr><th className={th}>Code</th><th className={th}>{t('market.discount')}</th><th className={th}>{t('market.used')}</th><th className={th}>{t('market.expires')}</th><th className={th}>{t('market.active')}</th><th className={th}><span className="sr-only">{t('market.actions')}</span></th></tr></thead>
             <tbody>
               {rows.map((c) => (
                 <tr key={c.id}>
                   <td className={`${td} font-mono font-semibold`}>{c.code}</td>
-                  <td className={td}>{c.discount_type === 'percentage' ? `${c.discount_value}%` : `${c.currency === 'USD' ? '$' : '₹'}${c.discount_value} (${c.currency} orders)`}</td>
+                  <td className={td}>{c.discount_type === 'percentage' ? `${c.discount_value}%` : t('market.valueDiscountValueCurrencyOrders', { value: c.currency === 'USD' ? '$' : '₹', discount_value: c.discount_value, currency: c.currency })}</td>
                   <td className={`${td} tabular-nums`}>{c.current_uses} / {c.max_uses > 0 ? c.max_uses : '∞'}</td>
-                  <td className={td}>{c.valid_until ? fmtDate(c.valid_until) : 'Never'}</td>
+                  <td className={td}>{c.valid_until ? fmtDate(c.valid_until) : t('market.never')}</td>
                   <td className={td}><Switch checked={c.active} onCheckedChange={(v) => patch(c, { active: v })} aria-label={`${c.active ? 'Turn off' : 'Turn on'} ${c.code}`} /></td>
                   <td className={td}>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(c)} aria-label={`Delete ${c.code}`}><Trash2 className="h-4 w-4" /></Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(c)} aria-label={t('market.deleteCode', { code: c.code })}><Trash2 className="h-4 w-4" /></Button>
                   </td>
                 </tr>
               ))}

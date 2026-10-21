@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   const g = await botAdmin()
   if ('res' in g) return g.res
   const body = await readBody(req)
-  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   const v = parseDomainInput(body)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
   try {
@@ -39,9 +39,9 @@ export async function PATCH(req: NextRequest) {
   const g = await botAdmin()
   if ('res' in g) return g.res
   const id = idOf(req)
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
   const body = await readBody(req)
-  if (!body) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body) return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   const v = parseDomainPatch(body)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
   try {
@@ -63,7 +63,7 @@ export async function DELETE(req: NextRequest) {
   const g = await botAdmin()
   if ('res' in g) return g.res
   const id = idOf(req)
-  if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+  if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
   try {
     if (!(await deleteDomain(id))) return NextResponse.json({ error: 'Domain not found' }, { status: 404 })
     await audit(g.user.id, 'question_bot.domain_delete', id, 'Removed domain')

@@ -13,6 +13,7 @@ import {
   type GitHubRepoListItem,
   type FileContent,
 } from '@/lib/github-service'
+import { useT } from '@/lib/i18n/client'
 
 function guessLanguageFromPath(filePath: string): string {
   const ext = (filePath.split('.').pop() || '').toLowerCase()
@@ -52,6 +53,7 @@ export function RepositoryBrowser({
   scanBusy,
   onScanBusyChange,
 }: RepositoryBrowserProps) {
+  const { t } = useT()
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set())
   const [selectedRepo, setSelectedRepo] = useState<GitHubRepoListItem | null>(null)
   const [isLoadingFiles, setIsLoadingFiles] = useState(false)
@@ -76,12 +78,12 @@ export function RepositoryBrowser({
           } else {
             setRepos(list.repositories || [])
             if (list.repositories?.length === 0) {
-              setRepoError('No repositories returned — connect GitHub or ensure you have accessible repos.')
+              setRepoError(t('tools.noRepositoriesReturnedConnectGithubOr198'))
             }
           }
         }
       } catch {
-        if (!cancelled) setRepoError('Could not load repositories.')
+        if (!cancelled) setRepoError(t('tools.couldNotLoadRepositories'))
       } finally {
         if (!cancelled) setLoadingRepos(false)
       }
@@ -112,7 +114,7 @@ export function RepositoryBrowser({
         const fc = await getFileContent(owner, name, file.path)
         if (fc?.error || typeof fc?.content !== 'string') {
           console.error('[CodeSpectra] file content:', fc?.error)
-          setFileScanError({ file, repo, message: `Couldn't read ${file.path} from GitHub.` })
+          setFileScanError({ file, repo, message: t('tools.couldntReadPathFromGithub', { path: file.path }) })
           return
         }
         const lang = guessLanguageFromPath(file.path)
@@ -125,7 +127,7 @@ export function RepositoryBrowser({
         })
         if (result?.error) {
           console.error('[CodeSpectra] analyze from GitHub:', result.error)
-          setFileScanError({ file, repo, message: `Couldn't scan ${file.path}.` })
+          setFileScanError({ file, repo, message: t('tools.couldntScanPath', { path: file.path }) })
           return
         }
         onGitHubScanResult({
@@ -134,7 +136,7 @@ export function RepositoryBrowser({
         })
       } catch (e) {
         console.error('[CodeSpectra] GitHub file scan:', e)
-        setFileScanError({ file, repo, message: `Couldn't scan ${file.path}.` })
+        setFileScanError({ file, repo, message: t('tools.couldntScanPath', { path: file.path }) })
       } finally {
         onScanBusyChange?.(false)
       }
@@ -223,25 +225,18 @@ export function RepositoryBrowser({
       {!selectedRepo && (
         <div className="space-y-4">
           <h3 className="flex items-center gap-2 font-semibold text-foreground">
-            <Code2 className="h-5 w-5" />
-            Select repository
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Pick a repo, then open a file to scan it. Scans are saved when you are signed in (same history as manual
-            mode).
-          </p>
+            <Code2 className="h-5 w-5" />{t('tools.selectRepository')}</h3>
+          <p className="text-sm text-muted-foreground">{t('tools.pickARepoThenOpenA001')}</p>
           {loadingRepos ? (
             <div className="flex items-center gap-2 py-6 text-muted-foreground">
-              <Loader className="h-5 w-5 animate-spin" />
-              Loading repositories…
-            </div>
+              <Loader className="h-5 w-5 animate-spin" />{t('tools.loadingRepositories')}</div>
           ) : repoError ? (
             <EmptyState
               compact
               illustration="error"
-              title="Couldn't load repositories"
+              title={t('tools.couldntLoadRepositories')}
               description={repoError}
-              actionLabel="Try again"
+              actionLabel={t('common.tryAgain')}
               onAction={() => setRepoReloadKey((k) => k + 1)}
             />
           ) : (
@@ -283,16 +278,12 @@ export function RepositoryBrowser({
                 setFileTree([])
                 setExpandedFolders(new Set())
               }}
-            >
-              Change
-            </Button>
+            >{t('tools.change')}</Button>
           </div>
 
           {scanBusy ? (
             <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Loader className="h-3.5 w-3.5 animate-spin" />
-              Running scan…
-            </p>
+              <Loader className="h-3.5 w-3.5 animate-spin" />{t('tools.runningScan')}</p>
           ) : fileScanError ? (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2" role="alert">
               <p className="text-xs text-destructive">{fileScanError.message}</p>
@@ -300,9 +291,7 @@ export function RepositoryBrowser({
                 variant="outline"
                 size="sm"
                 onClick={() => void runGitHubFileScan(fileScanError.file, fileScanError.repo)}
-              >
-                Try again
-              </Button>
+              >{t('common.tryAgain')}</Button>
             </div>
           ) : null}
 
@@ -314,9 +303,9 @@ export function RepositoryBrowser({
             <EmptyState
               compact
               illustration="error"
-              title="Couldn't load this repository's files"
-              description="Check that GitHub is still connected, then try again."
-              actionLabel="Try again"
+              title={t('tools.couldntLoadThisRepositorysFiles')}
+              description={t('tools.checkThatGithubIsStillConnected4ce')}
+              actionLabel={t('common.tryAgain')}
               onAction={() => void handleSelectRepository(selectedRepo)}
             />
           ) : (
@@ -324,7 +313,7 @@ export function RepositoryBrowser({
               {fileTree.length > 0 ? (
                 fileTree.map((file) => <FileTreeItem key={file.path} file={file} />)
               ) : (
-                <p className="py-4 text-sm text-muted-foreground">No files found</p>
+                <p className="py-4 text-sm text-muted-foreground">{t('tools.noFilesFound')}</p>
               )}
             </div>
           )}

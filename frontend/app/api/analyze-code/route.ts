@@ -64,7 +64,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       body = await request.json()
     } catch {
-      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
     }
 
     const { code, language, ...githubMeta } = body

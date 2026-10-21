@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,7 @@ import { User, UserPlus } from 'lucide-react'
 import { PageHeader } from '@/components/app/page-kit'
 import { useRouter } from 'next/navigation'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Resume {
   id: string
@@ -36,6 +37,8 @@ interface DraftSummary {
 }
 
 export default function MyResumesPage() {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
   const addToast = useToast()
@@ -56,7 +59,7 @@ export default function MyResumesPage() {
         fetch('/api/resumes', { credentials: 'include' }),
         fetch('/api/resumes/drafts?list=1', { credentials: 'include' }),
       ])
-      if (!res.ok || !dres.ok) throw new Error(`Failed to load resumes (${res.status})`)
+      if (!res.ok || !dres.ok) throw new Error(t('career.failedToLoadResumesStatus', { status: res.status }))
       const json = await res.json()
       const djson = await dres.json()
       // /api/resumes returns a plain array.
@@ -70,11 +73,11 @@ export default function MyResumesPage() {
   const deleteDraft = async (id: string) => {
     const res = await csrfFetch(`/api/resumes/drafts?id=${encodeURIComponent(id)}`, { method: 'DELETE', credentials: 'include' })
     if (!res.ok) {
-      addToast({ type: 'error', title: 'Could not delete the draft' })
+      addToast({ type: 'error', title: t('career.couldNotDeleteTheDraft') })
       return
     }
     setDrafts(prev => prev.filter(d => d.id !== id))
-    addToast({ type: 'success', title: 'Draft deleted' })
+    addToast({ type: 'success', title: t('career.draftDeleted') })
   }
 
   useEffect(() => { fetchData() }, [])
@@ -85,20 +88,20 @@ export default function MyResumesPage() {
       const resumesTour: TourStep[] = [
         {
           target: '[data-tour="resumes-templates"]',
-          title: 'Resumes workspace overview',
-          description: 'Your space to build and manage resumes from templates or profile data.',
+          title: t('career.resumesWorkspaceOverview'),
+          description: t('career.yourSpaceToBuildAndManage74b'),
           position: 'bottom',
         },
         {
           target: '[data-tour="resumes-create"]',
-          title: 'Start new resume',
-          description: 'Start a resume from profile data or from scratch via the builder.',
+          title: t('career.startNewResume'),
+          description: t('career.startAResumeFromProfileData7de'),
           position: 'bottom',
         },
         {
           target: '[data-tour="resumes-list"]',
-          title: 'Search and clean up',
-          description: 'Tip: search by file name and select rows to delete resumes in bulk.',
+          title: t('career.searchAndCleanUp'),
+          description: t('career.tipSearchByFileNameAnddbf'),
           position: 'top',
         },
       ]
@@ -109,7 +112,7 @@ export default function MyResumesPage() {
     for (const id of ids) {
       await csrfFetch(`/api/resumes/${id}`, { method: 'DELETE', credentials: 'include' })
     }
-    addToast({ type: 'success', title: `${ids.length} resume${ids.length !== 1 ? 's' : ''} deleted` })
+    addToast({ type: 'success', title: t('career.countResumesDeleted', { count: ids.length }) })
     setResumes(prev => prev.filter(r => !ids.includes(r.id)))
   }
 
@@ -120,7 +123,7 @@ export default function MyResumesPage() {
 
   const handleProceed = () => {
     if (!creationOption) {
-      addToast({ type: 'error', title: 'Please select an option' })
+      addToast({ type: 'error', title: t('career.pleaseSelectAnOption') })
       return
     }
     router.push(`/dashboard/resumes/builder?source=${creationOption}`)
@@ -129,18 +132,18 @@ export default function MyResumesPage() {
   const formatSize = (bytes: number) => bytes < 1024 ? `${bytes}B` : bytes < 1048576 ? `${(bytes/1024).toFixed(1)}KB` : `${(bytes/1048576).toFixed(1)}MB`
 
   const columns: DataTableColumn<Resume>[] = [
-    { key: 'name', header: 'File', cell: (r) => <span className="font-medium">{r.file_name}</span> },
-    { key: 'size', header: 'Size', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
-    { key: 'status', header: 'Status', cell: (r) => (
+    { key: 'name', header: t('career.file'), cell: (r) => <span className="font-medium">{r.file_name}</span> },
+    { key: 'size', header: t('career.size'), cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
+    { key: 'status', header: t('career.status'), cell: (r) => (
       <Badge className={`capitalize ${r.status === 'processed' ? 'bg-green-500/15 text-green-700 dark:text-green-400' : 'bg-amber-500/15 text-amber-700 dark:text-amber-400'}`}>
-        {r.status || 'pending'}
+        {r.status || t('career.pending')}
       </Badge>
     )},
-    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{r.uploaded_at ? formatDate(r.uploaded_at) : '—'}</span> },
+    { key: 'date', header: t('career.uploaded'), cell: (r) => <span className="text-xs tabular-nums text-muted-foreground">{r.uploaded_at ? formatDate(r.uploaded_at) : '—'}</span> },
   ]
 
   const bulkActions: BulkAction[] = [
-    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+    { label: t('common.delete'), variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
   ]
 
   if (!gate.ready) return null
@@ -151,18 +154,17 @@ export default function MyResumesPage() {
         illustration="resume"
         className="mb-0"
         icon={<FileText aria-hidden />}
-        title="Resumes"
-        description="Build a resume from a template or your profile, and keep the files you've uploaded in one place."
+        title={t('career.resumes')}
+        description={t('career.buildAResumeFromATemplate898')}
         actions={
           <Button onClick={handleTemplateClick}>
-            <Plus className="mr-1 h-4 w-4" /> New resume
-          </Button>
+            <Plus className="mr-1 h-4 w-4" />{' '}{t('career.newResume')}</Button>
         }
       />
 
       {/* Top Section: Templates */}
       <div className="bg-card rounded-3xl border border-border/70 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none p-6 overflow-hidden" data-tour="resumes-templates">
-        <h2 className="text-lg font-semibold text-foreground mb-5">Start from a template</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-5">{t('career.startFromATemplate')}</h2>
         
         <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar -mx-2 px-2">
           {/* Create New Card */}
@@ -170,8 +172,8 @@ export default function MyResumesPage() {
             <div className="h-14 w-14 rounded-full bg-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-200 motion-reduce:group-hover:scale-100 shadow-md">
               <Plus className="h-7 w-7 text-primary-foreground" aria-hidden />
             </div>
-            <span className="text-primary font-bold text-lg">Create a</span>
-            <span className="text-primary font-bold text-lg">new resume</span>
+            <span className="text-primary font-bold text-lg">{t('career.createA')}</span>
+            <span className="text-primary font-bold text-lg">{t('career.newResume2')}</span>
           </div>
           
           {/* Mock Template 1 */}
@@ -299,19 +301,17 @@ export default function MyResumesPage() {
       {/* Builder drafts saved to the account */}
       {drafts.length > 0 && (
         <div className="bg-card rounded-3xl border border-border/70 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none p-6">
-          <h2 className="text-lg font-semibold text-foreground mb-4">Your drafts</h2>
+          <h2 className="text-lg font-semibold text-foreground mb-4">{t('career.yourDrafts')}</h2>
           <ul className="divide-y divide-border/60">
             {drafts.map(d => (
               <li key={d.id} className="flex items-center justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="font-medium text-foreground truncate">{d.name || 'Untitled resume'}</p>
-                  <p className="text-xs text-muted-foreground tabular-nums">Saved {d.updated_at ? formatDate(d.updated_at) : '—'}</p>
+                  <p className="font-medium text-foreground truncate">{d.name || t('career.untitledResume')}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">{t('common.saved')}{' '}{d.updated_at ? formatDate(d.updated_at) : '—'}</p>
                 </div>
                 <div className="flex shrink-0 gap-2">
-                  <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/resumes/builder?draft=${encodeURIComponent(d.id)}`)}>
-                    Open
-                  </Button>
-                  <Button size="sm" variant="ghost" aria-label={`Delete draft ${d.name || 'Untitled resume'}`} onClick={() => void deleteDraft(d.id)}>
+                  <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/resumes/builder?draft=${encodeURIComponent(d.id)}`)}>{t('career.open')}</Button>
+                  <Button size="sm" variant="ghost" aria-label={t('career.deleteDraftValue', { value: d.name || 'Untitled resume' })} onClick={() => void deleteDraft(d.id)}>
                     <Trash2 className="h-4 w-4" aria-hidden />
                   </Button>
                 </div>
@@ -323,7 +323,7 @@ export default function MyResumesPage() {
 
       {/* Bottom Section: My Resumes */}
       <div className="bg-card rounded-3xl border border-border/70 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-14px_rgba(15,23,41,0.10)] dark:shadow-none p-6 min-h-[400px] flex flex-col" data-tour="resumes-list">
-        <h2 className="text-lg font-semibold text-foreground mb-5">Uploaded files</h2>
+        <h2 className="text-lg font-semibold text-foreground mb-5">{t('career.uploadedFiles')}</h2>
         
         {loading ? (
           <div className="flex-1 space-y-3">
@@ -332,18 +332,18 @@ export default function MyResumesPage() {
         ) : loadError && resumes.length === 0 ? (
           <EmptyState
             illustration="error"
-            title="Couldn't load your resumes"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={t('career.couldntLoadYourResumes')}
+            description={t('career.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
             onAction={() => void fetchData()}
             className="flex-1 border-0 bg-transparent"
           />
         ) : resumes.length === 0 ? (
           <EmptyState illustration="resume"
-            title={drafts.length ? 'No uploaded files' : 'No resumes yet'}
+            title={drafts.length ? t('career.noUploadedFiles') : t('career.noResumesYet')}
             description={drafts.length
-              ? 'Your builder drafts are listed above.'
-              : 'Create one from a template above. Drafts you save show up on this page.'}
+              ? t('career.yourBuilderDraftsAreListedAbove')
+              : t('career.createOneFromATemplateAbove9c4')}
             className="flex-1 border-0 bg-transparent"
           />
         ) : (
@@ -351,7 +351,7 @@ export default function MyResumesPage() {
             <DataTable
               columns={columns}
               data={resumes}
-              searchPlaceholder="Search resumes…"
+              searchPlaceholder={t('career.searchResumes')}
               searchKeys={['file_name']}
               bulkActions={bulkActions}
               loading={loading}
@@ -364,10 +364,8 @@ export default function MyResumesPage() {
       <Dialog open={creationModalOpen} onOpenChange={setCreationModalOpen}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle className="text-xl text-center">Choose creation option</DialogTitle>
-            <DialogDescription className="text-center pt-2">
-              Start from the details already on your profile, or begin with a blank resume.
-            </DialogDescription>
+            <DialogTitle className="text-xl text-center">{t('career.chooseCreationOption')}</DialogTitle>
+            <DialogDescription className="text-center pt-2">{t('career.startFromTheDetailsAlreadyOn3bd')}</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 gap-4 py-6 sm:grid-cols-2">
             <button
@@ -381,7 +379,7 @@ export default function MyResumesPage() {
               }`}
             >
               <User className="h-5 w-5" />
-              <span className="font-semibold">Use my profile</span>
+              <span className="font-semibold">{t('career.useMyProfile')}</span>
             </button>
             <button
               type="button"
@@ -394,12 +392,12 @@ export default function MyResumesPage() {
               }`}
             >
               <UserPlus className="h-5 w-5" />
-              <span className="font-semibold">Start blank</span>
+              <span className="font-semibold">{t('career.startBlank')}</span>
             </button>
           </div>
           <DialogFooter className="sm:justify-between w-full flex gap-3">
-            <Button variant="outline" className="flex-1 rounded-full" onClick={() => setCreationModalOpen(false)}>Cancel</Button>
-            <Button className="flex-1 rounded-full" onClick={handleProceed}>Proceed</Button>
+            <Button variant="outline" className="flex-1 rounded-full" onClick={() => setCreationModalOpen(false)}>{t('common.cancel')}</Button>
+            <Button className="flex-1 rounded-full" onClick={handleProceed}>{t('career.proceed')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

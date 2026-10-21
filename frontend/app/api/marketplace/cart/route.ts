@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
   const limited = await limitRequest(req, 'mkt-cart-write', null, 60, 60_000)
   if (limited) return limited
   const action = parseCartAction(await req.json().catch(() => null))
-  if (!action) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!action) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   try {
     const r = await resolveCartRef({ create: action.action === 'add' })
     await applyCartAction(r.ref, action)

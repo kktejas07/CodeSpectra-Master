@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   return leagueGuard('me GET', async () => {
     const user = await getAPIUser().catch(() => null)
-    if (!user) return NextResponse.json({ error: 'Sign in to continue.' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Sign in to continue.', code: 'sign_in_to_continue' }, { status: 401 })
     return NextResponse.json(await myLeague(user), { headers: { 'Cache-Control': 'no-store' } })
   })
 }

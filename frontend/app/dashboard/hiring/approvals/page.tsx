@@ -13,8 +13,10 @@ import { approveMove, runBulk } from '@/components/hiring/actions'
 import { errorMessage, useAts } from '@/components/hiring/lib/api'
 import { timeAgo } from '@/components/hiring/lib/labels'
 import type { ApprovalItem } from '@/components/hiring/lib/types'
+import { useT } from '@/lib/i18n/client'
 
 export default function HiringApprovalsPage() {
+  const { t } = useT()
   const addToast = useToast()
   const q = useAts<ApprovalItem[]>('/api/ats/approvals', 'approvals')
   const [sel, setSel] = useState<Set<string>>(new Set())
@@ -42,20 +44,20 @@ export default function HiringApprovalsPage() {
       setSel(new Set())
       q.reload()
     } else {
-      addToast({ type: 'error', title: 'That didn’t work', message: firstError ?? errorMessage(null) })
+      addToast({ type: 'error', title: t('hiring.thatDidntWork'), message: firstError ?? errorMessage(null) })
     }
   }
 
   return (
     <HiringShell
-      title="Approvals"
-      description="Moves the pipeline suggested and is waiting for you to confirm."
+      title={t('hiring.approvals')}
+      description={t('hiring.movesThePipelineSuggestedAndIs619')}
       icon={<CheckCheck />}
     >
       <QueryGate loading={q.loading} error={q.error} hasData={!!q.data} onRetry={q.reload} />
       {q.data && (
         items.length === 0 ? (
-          <EmptyState illustration="success" title="You're all caught up" description="When a candidate passes a stage that needs your approval, it shows up here." />
+          <EmptyState illustration="success" title={t('hiring.youreAllCaughtUp')} description={t('hiring.whenACandidatePassesAStage13d')} />
         ) : (
           <div className="space-y-3">
             <div className="flex min-h-10 flex-wrap items-center gap-2">
@@ -63,22 +65,20 @@ export default function HiringApprovalsPage() {
                 <Checkbox
                   checked={selected.length === list.length && list.length > 0 ? true : selected.length ? 'indeterminate' : false}
                   onCheckedChange={(v) => setSel(v ? new Set(list.map((a) => a.application_id)) : new Set())}
-                  aria-label="Select all"
+                  aria-label={t('hiring.selectAll')}
                 />
-                {selected.length ? <span className="tabular-nums">{selected.length} selected</span> : 'Select all'}
+                {selected.length ? <span className="tabular-nums">{t('hiring.countSelected', { count: selected.length })}</span> : t('hiring.selectAll')}
               </label>
               {selected.length > 0 && (
                 <>
                   <Button size="sm" onClick={() => decide(selected, true, 'approve')} disabled={!!busy}>
-                    {busy === 'approve' ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <CheckCircle2 aria-hidden />} Approve
-                  </Button>
+                    {busy === 'approve' ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <CheckCircle2 aria-hidden />}{' '}{t('hiring.approve')}</Button>
                   <Button size="sm" variant="outline" onClick={() => decide(selected, false, 'decline')} disabled={!!busy}>
-                    {busy === 'decline' ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <XCircle aria-hidden />} Decline
-                  </Button>
+                    {busy === 'decline' ? <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden /> : <XCircle aria-hidden />}{' '}{t('hiring.decline')}</Button>
                 </>
               )}
               {jobs.length > 1 && (
-                <NativeSelect aria-label="Filter by job" value={jobFilter} onChange={setJobFilter} placeholder="All jobs" className="ml-auto sm:w-56" options={jobs} />
+                <NativeSelect aria-label={t('hiring.filterByJob')} value={jobFilter} onChange={setJobFilter} placeholder={t('hiring.allJobs')} className="ml-auto sm:w-56" options={jobs} />
               )}
             </div>
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border/70 bg-card">
@@ -87,7 +87,7 @@ export default function HiringApprovalsPage() {
                 return (
                   <li key={id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
                     <div className="flex min-w-0 flex-1 items-start gap-3">
-                      <Checkbox checked={sel.has(id)} onCheckedChange={() => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })} aria-label={`Select ${a.candidate.name}`} className="mt-1" />
+                      <Checkbox checked={sel.has(id)} onCheckedChange={() => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n })} aria-label={t('hiring.selectName', { name: a.candidate.name })} className="mt-1" />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <Link href={`/dashboard/hiring/candidates/${a.candidate.id}?app=${id}`} className="truncate font-medium text-foreground hover:text-primary">{a.candidate.name}</Link>
@@ -95,18 +95,16 @@ export default function HiringApprovalsPage() {
                         </div>
                         <p className="text-sm text-muted-foreground">
                           <Link href={`/dashboard/hiring/jobs/${a.job.id}`} className="hover:text-foreground">{a.job.title}</Link>
-                          {' · '}{a.from?.name ?? 'Current stage'} → <span className={a.to?.type === 'rejected' ? 'font-medium text-red-700 dark:text-red-400' : 'font-medium text-foreground'}>{a.to?.name ?? 'Next stage'}</span>
+                          {' · '}{a.from?.name ?? t('hiring.currentStage')} → <span className={a.to?.type === 'rejected' ? 'font-medium text-red-700 dark:text-red-400' : 'font-medium text-foreground'}>{a.to?.name ?? t('hiring.nextStage')}</span>
                         </p>
                         {a.reason && <p className="mt-0.5 text-xs text-muted-foreground">{a.reason} · {timeAgo(a.suggested_at)}</p>}
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2 pl-7 sm:pl-0">
                       <Button size="sm" onClick={() => decide([id], true, id + ':y')} disabled={!!busy}>
-                        {busy === id + ':y' && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />} Approve
-                      </Button>
+                        {busy === id + ':y' && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}{' '}{t('hiring.approve')}</Button>
                       <Button size="sm" variant="outline" onClick={() => decide([id], false, id + ':n')} disabled={!!busy}>
-                        {busy === id + ':n' && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />} Decline
-                      </Button>
+                        {busy === id + ':n' && <Loader2 className="animate-spin motion-reduce:animate-none" aria-hidden />}{' '}{t('hiring.decline')}</Button>
                     </div>
                   </li>
                 )

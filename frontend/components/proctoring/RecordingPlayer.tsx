@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Camera, Monitor, Pause, Play, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { locate } from '@/lib/proctoring/recording-playback'
+import { useT } from '@/lib/i18n/client'
 
 export interface PlayerItem { id: string; chunk_index: number; offset_ms: number; duration_ms: number; url: string; has_audio: boolean }
 export interface PlayerRecording {
@@ -28,6 +29,7 @@ export function fmtClock(ms: number): string {
 }
 
 export function RecordingPlayer({ recording, onExpired }: { recording: PlayerRecording; onExpired?: () => void }) {
+  const { t: tr } = useT()
   const hasScreen = recording.streams.screen.length > 0
   const hasWebcam = recording.streams.webcam.length > 0
   const [stream, setStream] = useState<'webcam' | 'screen'>(hasWebcam ? 'webcam' : 'screen')
@@ -85,25 +87,21 @@ export function RecordingPlayer({ recording, onExpired }: { recording: PlayerRec
   }
 
   if (!items.length) {
-    return <p className="text-sm text-muted-foreground">No footage for this stream.</p>
+    return <p className="text-sm text-muted-foreground">{tr('exam.noFootageForThisStream')}</p>
   }
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Recording stream">
+      <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label={tr('exam.recordingStream')}>
         {hasWebcam && (
           <Button type="button" size="sm" role="tab" aria-selected={stream === 'webcam'} variant={stream === 'webcam' ? 'default' : 'outline'} onClick={() => setStream('webcam')} className="gap-2">
-            <Camera className="h-4 w-4" aria-hidden /> Webcam
-          </Button>
+            <Camera className="h-4 w-4" aria-hidden />{' '}{tr('exam.webcam')}</Button>
         )}
         {hasScreen && (
           <Button type="button" size="sm" role="tab" aria-selected={stream === 'screen'} variant={stream === 'screen' ? 'default' : 'outline'} onClick={() => setStream('screen')} className="gap-2">
-            <Monitor className="h-4 w-4" aria-hidden /> Screen
-          </Button>
+            <Monitor className="h-4 w-4" aria-hidden />{' '}{tr('exam.screen')}</Button>
         )}
-        <label className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
-          Speed
-          <select
+        <label className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">{tr('exam.speed')}<select
             className="rounded-lg border border-border bg-background px-2 py-1 text-sm text-foreground"
             value={rate}
             onChange={(e) => { const r = Number(e.target.value); setRate(r); if (videoRef.current) videoRef.current.playbackRate = r }}
@@ -125,14 +123,14 @@ export function RecordingPlayer({ recording, onExpired }: { recording: PlayerRec
           onLoadedMetadata={onLoaded}
           onTimeUpdate={onTime}
           onEnded={onEnded}
-          onError={() => { setError('This part of the recording could not be loaded. The link may have expired — reload the page.'); onExpired?.() }}
+          onError={() => { setError(tr('exam.thisPartOfTheRecordingCouldb6a')); onExpired?.() }}
           onPlay={() => setError(null)}
-          aria-label={`${stream === 'webcam' ? 'Webcam' : 'Screen'} recording`}
+          aria-label={tr('exam.valueRecording', { value: stream === 'webcam' ? 'Webcam' : 'Screen' })}
         />
       </div>
 
       <div className="flex items-center gap-3">
-        <Button type="button" size="icon" variant="outline" onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} className="h-11 w-11 shrink-0">
+        <Button type="button" size="icon" variant="outline" onClick={toggle} aria-label={playing ? tr('exam.pause') : tr('exam.play')} className="h-11 w-11 shrink-0">
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </Button>
         <input
@@ -143,23 +141,19 @@ export function RecordingPlayer({ recording, onExpired }: { recording: PlayerRec
           value={Math.min(now, recording.total_ms)}
           onChange={(e) => load(Number(e.target.value))}
           className="w-full accent-[hsl(var(--primary))]"
-          aria-label="Seek"
+          aria-label={tr('exam.seek')}
           aria-valuetext={fmtClock(now)}
         />
         <span className="shrink-0 text-sm tabular-nums text-muted-foreground">{fmtClock(now)} / {fmtClock(recording.total_ms)}</span>
       </div>
-      <p className="text-xs text-muted-foreground tabular-nums">
-        Part {idx + 1} of {items.length}{item && !item.has_audio && stream === 'webcam' ? ' · no audio' : ''}
-      </p>
+      <p className="text-xs text-muted-foreground tabular-nums">{tr('exam.part')}{' '}{idx + 1}{' '}{tr('exam.ofCountValue', { count: items.length, value: item && !item.has_audio && stream === 'webcam' ? tr('exam.noAudio') : '' })}</p>
 
       {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
       {gapsHere.length > 0 && (
         <div className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>
-            {gapsHere.reduce((n, g) => n + g.missing.length, 0)} minute-long part(s) of the {stream} recording never arrived
-            (after part{gapsHere.length > 1 ? 's' : ''} {gapsHere.map((g) => g.after_index + 1).join(', ')}). The player skips over them.
-          </span>
+            {gapsHere.reduce((n, g) => n + g.missing.length, 0)}{' '}{tr('exam.minuteLongPartSOfThe598', { stream, value: gapsHere.length > 1 ? 's' : '' })}{' '}{gapsHere.map((g) => g.after_index + 1).join(', ')}{tr('exam.thePlayerSkipsOverThem')}</span>
         </div>
       )}
     </div>

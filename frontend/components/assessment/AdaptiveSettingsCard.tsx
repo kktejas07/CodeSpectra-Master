@@ -16,6 +16,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ADAPTIVE_LENGTH_DEFAULT, ADAPTIVE_LENGTH_MAX } from '@/lib/adaptive-test'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Payload {
   settings: { adaptive: boolean; adaptive_domain: string | null; adaptive_length: number }
@@ -24,6 +26,8 @@ interface Payload {
 }
 
 export function AdaptiveSettingsCard({ examId, onSaved }: { examId: string; onSaved?: (s: Payload['settings']) => void }) {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const addToast = useToast()
   const [data, setData] = useState<Payload | null>(null)
   const [failed, setFailed] = useState(false)
@@ -71,8 +75,8 @@ export function AdaptiveSettingsCard({ examId, onSaved }: { examId: string; onSa
         body: JSON.stringify({ adaptive: on, adaptive_domain: domain || null, adaptive_length: Number(length) }),
       })
       const j = await r.json().catch(() => ({})) as { error?: string; settings?: Payload['settings'] }
-      if (!r.ok || !j.settings) throw new Error(j.error || 'Could not save')
-      addToast({ type: 'success', title: on ? 'Adaptive mode is on' : 'Adaptive mode is off' })
+      if (!r.ok || !j.settings) throw new Error(apiError(j, tr('exam.couldNotSave')))
+      addToast({ type: 'success', title: on ? tr('exam.adaptiveModeIsOn') : tr('exam.adaptiveModeIsOff') })
       onSaved?.(j.settings)
     } catch (e) {
       addToast({ type: 'error', title: (e as Error).message })
@@ -88,58 +92,53 @@ export function AdaptiveSettingsCard({ examId, onSaved }: { examId: string; onSa
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><TrendingUp className="h-5 w-5" aria-hidden /></span>
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-foreground">Adaptive mode</h2>
-            <p className="text-sm text-muted-foreground">One question at a time from the approved bank. Two right in a row → harder; a wrong answer → easier. Harder questions count for more.</p>
+            <h2 className="text-lg font-semibold text-foreground">{tr('exam.adaptiveMode')}</h2>
+            <p className="text-sm text-muted-foreground">{tr('exam.oneQuestionAtATimeFromac8')}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Switch id="adaptive-on" checked={on} onCheckedChange={setOn} disabled={!data} />
-          <Label htmlFor="adaptive-on">{on ? 'On' : 'Off'}</Label>
+          <Label htmlFor="adaptive-on">{on ? tr('exam.on') : tr('exam.off')}</Label>
         </div>
       </div>
 
       {on ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <Label htmlFor="adaptive-domain">Questions from</Label>
+            <Label htmlFor="adaptive-domain">{tr('exam.questionsFrom')}</Label>
             <select
               id="adaptive-domain"
               value={domain}
               onChange={(e) => pickDomain(e.target.value)}
               className="mt-1 h-10 w-full rounded-lg border border-input bg-card px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <option value="">Pick a domain</option>
+              <option value="">{tr('exam.pickADomain')}</option>
               {(data?.domains ?? []).map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
             </select>
           </div>
           <div>
-            <Label htmlFor="adaptive-length">Number of questions</Label>
+            <Label htmlFor="adaptive-length">{tr('exam.numberOfQuestions')}</Label>
             <Input id="adaptive-length" type="number" min={3} max={ADAPTIVE_LENGTH_MAX} inputMode="numeric" value={length} onChange={(e) => setLength(e.target.value)} className="mt-1 tabular-nums" />
           </div>
           {domain && data?.pool && data.pool.domain === domain ? (
             <div className="sm:col-span-2">
-              <p className="text-sm text-muted-foreground">
-                Approved questions ready: <span className="tabular-nums text-foreground">Easy {data.pool.counts.Easy} · Medium {data.pool.counts.Medium} · Hard {data.pool.counts.Hard}</span>
+              <p className="text-sm text-muted-foreground">{tr('exam.approvedQuestionsReady')}{' '}<span className="tabular-nums text-foreground">{tr('exam.easyEasyMediumMediumHardHard', { Easy: data.pool.counts.Easy, Medium: data.pool.counts.Medium, Hard: data.pool.counts.Hard })}</span>
               </p>
               {data.pool.thin.length ? (
                 <p className="mt-2 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-800 dark:text-amber-200">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-                  <span>
-                    Fewer than {data.pool.min} approved questions at {data.pool.thin.map((t) => `${t.difficulty} (${t.count})`).join(', ')}. The test still runs — it borrows from the nearest level and ends early if the bank runs out — but candidates may see a narrow set. Approve more drafts or run the question bot.
-                  </span>
+                  <span>{tr('exam.fewerThanMinApprovedQuestionsAt', { min: data.pool.min })}{' '}{data.pool.thin.map((t) => `${t.difficulty} (${t.count})`).join(', ')}{tr('exam.theTestStillRunsItBorrowsadc')}</span>
                 </p>
               ) : null}
             </div>
           ) : null}
-          <p className="text-xs text-muted-foreground sm:col-span-2">While adaptive mode is on, the question list below is not shown to candidates.</p>
+          <p className="text-xs text-muted-foreground sm:col-span-2">{tr('exam.whileAdaptiveModeIsOnThee8e')}</p>
         </div>
       ) : null}
 
       <div className="flex justify-end">
         <Button size="sm" onClick={() => void save()} disabled={saving || !data || (on && !domain)}>
-          {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <Save className="mr-1.5 h-4 w-4" aria-hidden />}
-          Save adaptive settings
-        </Button>
+          {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <Save className="mr-1.5 h-4 w-4" aria-hidden />}{tr('exam.saveAdaptiveSettings')}</Button>
       </div>
     </Panel>
   )

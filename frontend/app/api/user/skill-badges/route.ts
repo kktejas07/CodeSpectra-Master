@@ -152,6 +152,6 @@ export async function GET() {
     return NextResponse.json({ badges })
   } catch (e) {
     console.error('[skill-badges] error:', e)
-    return NextResponse.json({ error: 'Failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Failed', code: 'failed' }, { status: 500 })
   }
 }

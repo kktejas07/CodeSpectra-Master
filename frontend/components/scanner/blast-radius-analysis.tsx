@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { AlertTriangle, Zap, Database, Layers, ArrowRight, Target } from 'lucide-react'
 import type { D3Component, D3Dependency } from './d3-force-graph'
+import { useT } from '@/lib/i18n/client'
 
 interface BlastRadiusAnalysisProps {
   components: D3Component[]
@@ -98,6 +99,7 @@ export function BlastRadiusAnalysis({
   selectedId,
   onHighlightIds,
 }: BlastRadiusAnalysisProps) {
+  const { t } = useT()
   const result = useMemo(() => {
     if (!selectedId) return null
     return computeBlastRadius(components, dependencies, selectedId)
@@ -107,7 +109,7 @@ export function BlastRadiusAnalysis({
     return (
       <Card className="rounded-3xl p-6 border-dashed text-center">
         <Target className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
-        <p className="text-sm text-muted-foreground">Select a node in the force graph to analyze its blast radius.</p>
+        <p className="text-sm text-muted-foreground">{t('tools.selectANodeInTheForce301')}</p>
       </Card>
     )
   }
@@ -117,9 +119,9 @@ export function BlastRadiusAnalysis({
       <Card className="rounded-3xl p-6">
         <div className="flex items-center gap-2 mb-3">
           <Zap className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold text-foreground">Blast Radius — {components.find(c => c.id === selectedId)?.name}</h3>
+          <h3 className="font-semibold text-foreground">{t('tools.blastRadiusName', { name: components.find(c => c.id === selectedId)?.name })}</h3>
         </div>
-        <p className="text-sm text-muted-foreground">No downstream dependencies — isolated component.</p>
+        <p className="text-sm text-muted-foreground">{t('tools.noDownstreamDependenciesIsolatedComponen')}</p>
       </Card>
     )
   }
@@ -135,20 +137,20 @@ export function BlastRadiusAnalysis({
       <Card className="rounded-3xl p-5 bg-linear-to-r from-primary/5 to-primary/10 border-primary/20">
         <div className="flex items-center gap-2 mb-3">
           <AlertTriangle className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold text-foreground">Blast Radius — {components.find(c => c.id === selectedId)?.name}</h3>
+          <h3 className="font-semibold text-foreground">{t('tools.blastRadiusName', { name: components.find(c => c.id === selectedId)?.name })}</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="text-center">
             <p className="text-2xl font-bold text-primary">{result.affected.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Affected components</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('tools.affectedComponents')}</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-primary">{result.maxDepth}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Max cascade depth</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('tools.maxCascadeDepth')}</p>
           </div>
           <div className="text-center">
             <p className="text-2xl font-bold text-primary">{result.cascadingPaths.length}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Dependency edges</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('tools.dependencyEdges')}</p>
           </div>
         </div>
 
@@ -166,15 +168,13 @@ export function BlastRadiusAnalysis({
           variant="outline"
           className="mt-3 w-full"
           onClick={() => onHighlightIds?.(new Set([selectedId, ...result.affected.map(a => a.id)]))}
-        >
-          Highlight all in graph
-        </Button>
+        >{t('tools.highlightAllInGraph')}</Button>
       </Card>
 
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <Layers className="w-4 h-4 text-muted-foreground" />
-          <h4 className="text-sm font-semibold text-foreground">Cascade paths</h4>
+          <h4 className="text-sm font-semibold text-foreground">{t('tools.cascadePaths')}</h4>
         </div>
         <div className="space-y-3">
           {Array.from(byDepth.entries())
@@ -185,7 +185,7 @@ export function BlastRadiusAnalysis({
               const toComps = toIds.map(id => components.find(c => c.id === id)).filter(Boolean)
               return (
                 <div key={depth} className="border-l-2 border-primary/30 pl-3">
-                  <p className="text-xs font-semibold text-primary mb-1">Depth {depth} ({paths.length} edge{paths.length !== 1 ? 's' : ''})</p>
+                  <p className="text-xs font-semibold text-primary mb-1">{t('tools.depthDepthCountEdges', { count: paths.length, depth })}</p>
                   <div className="space-y-1">
                     {toComps.map(to => to && (
                       <div key={to.id} className="flex items-center gap-2 text-xs">
@@ -205,14 +205,14 @@ export function BlastRadiusAnalysis({
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">
           <Database className="w-4 h-4 text-muted-foreground" />
-          <h4 className="text-sm font-semibold text-foreground">All affected components</h4>
+          <h4 className="text-sm font-semibold text-foreground">{t('tools.allAffectedComponents')}</h4>
         </div>
         <div className="space-y-2">
           {result.affected.map(comp => (
             <div key={comp.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
               <div>
                 <p className="text-sm font-medium text-foreground">{comp.name}</p>
-                <p className="text-xs text-muted-foreground">{comp.files} files · {comp.linesOfCode.toLocaleString()} LOC</p>
+                <p className="text-xs text-muted-foreground">{t('tools.filesFilesNLoc2', { files: comp.files, n: comp.linesOfCode.toLocaleString() })}</p>
               </div>
               <HealthBadge health={comp.health} />
             </div>

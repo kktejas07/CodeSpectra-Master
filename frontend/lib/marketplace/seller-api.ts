@@ -11,6 +11,7 @@ import { limitRequest } from '@/lib/rate-limit'
 import type { SellerDoc } from './db'
 import { MktError } from './settings'
 import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
+import { apiErrorBody } from '@/lib/api-errors'
 
 export const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
@@ -19,9 +20,10 @@ export function json(body: unknown, status = 200) {
 }
 
 export function errorResponse(e: unknown, label: string) {
-  if (e instanceof MktError || e instanceof FileRejected) return json({ error: e.message }, e.status)
+  if (e instanceof MktError) return json(apiErrorBody(e.message, e.code, e.params), e.status)
+  if (e instanceof FileRejected) return json(apiErrorBody(e.message), e.status)
   console.error(`[marketplace] ${label}:`, (e as Error)?.message)
-  return json({ error: 'Something went wrong. Try again.' }, 500)
+  return json({ error: 'Something went wrong. Try again.', code: 'server_error_retry' }, 500)
 }
 
 export async function bodyOf(req: Request): Promise<Record<string, unknown>> {

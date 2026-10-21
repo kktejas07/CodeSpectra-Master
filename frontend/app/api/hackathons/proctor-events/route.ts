@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const body = await req.json()
   const type = typeof body?.type === 'string' ? body.type : null
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { searchParams } = new URL(req.url)
   const hackathonId = searchParams.get('hackathon_id')
@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
   if (!hk) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
 
   // Judges of this event, superadmin, or this event's own company admin (deny by default).
-  if (!isHackathonJudge(user, hk) && !isHackathonStaff(user, hk)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!isHackathonJudge(user, hk) && !isHackathonStaff(user, hk)) return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 
   const col = await hackathonProctorEvents()
   const events = await col.find({ hackathon_id: hk.id }).sort({ created_at: -1 }).toArray()

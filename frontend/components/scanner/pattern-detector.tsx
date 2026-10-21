@@ -5,6 +5,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Search, CheckCircle2, AlertCircle, Code, Coffee, Layers } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
 export interface PatternResult {
   id: string
@@ -22,7 +24,7 @@ interface PatternDetectorProps {
   onAnalyze?: (patterns: PatternResult[]) => void
 }
 
-const PATTERNS: Array<{
+const PATTERNS = (t: Translator): Array<{
   id: string
   name: string
   category: PatternResult['category']
@@ -30,14 +32,14 @@ const PATTERNS: Array<{
   regex: RegExp
   description: string
   snippetLines?: number
-}> = [
+}> => ([
   {
     id: 'singleton',
     name: 'Singleton',
     category: 'creational',
     severity: 'info',
     regex: /\b(const|let|var)\s+\w+\s*=\s*(?:new\s+)?(?:\w+_instance|instance|singleton|sharedInstance|getInstance|shared)\b/,
-    description: 'Singleton pattern — one global instance. Consider dependency injection for testability.',
+    description: t('tools.singletonPatternOneGlobalInstanceConside58c'),
   },
   {
     id: 'factory',
@@ -45,7 +47,7 @@ const PATTERNS: Array<{
     category: 'creational',
     severity: 'info',
     regex: /\b(function|const)\s+\w*(?:Factory|factory|create\w*)\s*[=:]?\s*(?:\(|async\s*\()/,
-    description: 'Factory pattern — creation logic centralized. Good for decoupling object creation.',
+    description: t('tools.factoryPatternCreationLogicCentralizedGo3ef'),
   },
   {
     id: 'observer',
@@ -53,7 +55,7 @@ const PATTERNS: Array<{
     category: 'behavioral',
     severity: 'info',
     regex: /\b(addEventListener|on\(|subscribe\(|removeEventListener|off\(|emit\(|publish\()/,
-    description: 'Observer/event-emitter pattern — decoupled communication between components.',
+    description: t('tools.observerEventEmitterPatternDecoupledCommc76'),
   },
   {
     id: 'decorator',
@@ -61,7 +63,7 @@ const PATTERNS: Array<{
     category: 'structural',
     severity: 'info',
     regex: /@(?:\w+_decorator|decorator|logged| memoized|cached)\b/,
-    description: 'Decorator pattern — behavior attached to objects without modifying their class.',
+    description: t('tools.decoratorPatternBehaviorAttachedToObject14b'),
   },
   {
     id: 'adapter',
@@ -69,7 +71,7 @@ const PATTERNS: Array<{
     category: 'structural',
     severity: 'info',
     regex: /\b(adapter|convertTo|transformTo|toLegacy|toModern)\b/,
-    description: 'Adapter pattern — interface conversion between incompatible types.',
+    description: t('tools.adapterPatternInterfaceConversionBetween0b1'),
   },
   {
     id: 'strategy',
@@ -77,7 +79,7 @@ const PATTERNS: Array<{
     category: 'behavioral',
     severity: 'info',
     regex: /\b(strategy|algorithms?|policy|route\d*)\s*[:=]\s*\{/,
-    description: 'Strategy pattern — interchangeable algorithms selected at runtime.',
+    description: t('tools.strategyPatternInterchangeableAlgorithms1ff'),
   },
   {
     id: 'useState',
@@ -85,7 +87,7 @@ const PATTERNS: Array<{
     category: 'react',
     severity: 'info',
     regex: /useState\s*[<(]/,
-    description: 'React state hook — ensure state updates are batched and stable setState reference.',
+    description: t('tools.reactStateHookEnsureStateUpdates91f'),
   },
   {
     id: 'useEffect',
@@ -93,7 +95,7 @@ const PATTERNS: Array<{
     category: 'react',
     severity: 'warning',
     regex: /useEffect\s*\(/,
-    description: 'React effect hook — verify dependency array; missing deps cause stale closures.',
+    description: t('tools.reactEffectHookVerifyDependencyArrayd41'),
   },
   {
     id: 'useCallback',
@@ -101,7 +103,7 @@ const PATTERNS: Array<{
     category: 'react',
     severity: 'info',
     regex: /useCallback\s*\(/,
-    description: 'React callback memoization — prevents unnecessary re-renders in child components.',
+    description: t('tools.reactCallbackMemoizationPreventsUnnecess7d2'),
   },
   {
     id: 'useMemo',
@@ -109,7 +111,7 @@ const PATTERNS: Array<{
     category: 'react',
     severity: 'info',
     regex: /useMemo\s*\(/,
-    description: 'React memoization hook — caches expensive computations across renders.',
+    description: t('tools.reactMemoizationHookCachesExpensiveCompuc9b'),
   },
   {
     id: 'useRef',
@@ -117,7 +119,7 @@ const PATTERNS: Array<{
     category: 'react',
     severity: 'info',
     regex: /useRef\s*[<(]/,
-    description: 'React ref hook — mutable value that persists without causing re-renders.',
+    description: t('tools.reactRefHookMutableValueThat6d9'),
   },
   {
     id: 'async-await',
@@ -125,7 +127,7 @@ const PATTERNS: Array<{
     category: 'behavioral',
     severity: 'info',
     regex: /\basync\s+(?:function|\(|(?:const|let|var)\s+\w+\s*=)/,
-    description: 'Async/await pattern — prefer try/catch for error handling, avoid unhandled rejections.',
+    description: t('tools.asyncAwaitPatternPreferTryCatchc4e'),
   },
   {
     id: 'try-catch',
@@ -133,7 +135,7 @@ const PATTERNS: Array<{
     category: 'behavioral',
     severity: 'info',
     regex: /\btry\s*\{/,
-    description: 'Try-catch pattern — ensure catch blocks handle errors meaningfully, not just console.log.',
+    description: t('tools.tryCatchPatternEnsureCatchBlockse82'),
   },
   {
     id: 'deeply-nested',
@@ -141,7 +143,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'warning',
     regex: /\{[\s\S]*?\{[\s\S]*?\{[\s\S]*?\{[\s\S]*?\{/,
-    description: 'Callback Pyramid / Arrow hell — refactor with early returns, named functions, or async/await.',
+    description: t('tools.callbackPyramidArrowHellRefactorWithd92'),
   },
   {
     id: 'any-type',
@@ -149,7 +151,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'warning',
     regex: /:\s*any\b/,
-    description: 'TypeScript `any` type — disables type checking. Use `unknown` with type guards instead.',
+    description: t('tools.typescriptAnyTypeDisablesTypeCheckinge82'),
   },
   {
     id: 'console-log',
@@ -157,7 +159,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'info',
     regex: /\bconsole\.(log|debug|info|warn|error)\s*\(/,
-    description: 'Console statement in source — remove or replace with a proper logging library before production.',
+    description: t('tools.consoleStatementInSourceRemoveOr857'),
   },
   {
     id: 'magic-numbers',
@@ -165,7 +167,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'warning',
     regex: /(?<![A-Za-z_$])(?:0x[A-Fa-f0-9]+|(?:[1-9]\d{2,}))\b/,
-    description: 'Magic numbers — extract to named constants for readability and maintainability.',
+    description: t('tools.magicNumbersExtractToNamedConstants61e'),
   },
   {
     id: 'global-mutation',
@@ -173,7 +175,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'error',
     regex: /\bwindow\.\w+\s*=/,
-    description: 'Global window mutation — state should flow through React/context, not window globals.',
+    description: t('tools.globalWindowMutationStateShouldFlow957'),
   },
   {
     id: 'inner-functions',
@@ -181,7 +183,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'info',
     regex: /\b(?:const|let|var)\s+\w+\s*=\s*(?:function\s*\([^)]*\)\s*\{[\s\S]*?\}\s*,\s*(?:function|async))/,
-    description: 'Nested IIFE or long function expressions — consider named functions or module-level declarations.',
+    description: t('tools.nestedIifeOrLongFunctionExpressionse08'),
   },
   {
     id: 'promisify-callback',
@@ -189,7 +191,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'warning',
     regex: /\bcallback\s*\(\s*(?:null|undefined|err)\s*,/,
-    description: 'Node.js callback pattern not wrapped in promisify — use util.promisify or .then() conversion.',
+    description: t('tools.nodeJsCallbackPatternNotWrappedd60'),
   },
   {
     id: 'n-plus-1',
@@ -197,7 +199,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'warning',
     regex: /\.forEach\s*\([^)]*\)\s*=>\s*\{[^}]*\.find\(|for\s*\([^)]*\)\s*\{[^}]*\.query\(|for\s*\([^)]*\)\s*\{[^}]*await\s+\w+\.find\(/,
-    description: 'Potential N+1 query pattern — fetching related data inside a loop. Use JOIN or batch queries.',
+    description: t('tools.potentialN1QueryPatternFetching536'),
   },
   {
     id: 'hardcoded-secret',
@@ -205,7 +207,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'error',
     regex: /(?:password|secret|token|api[_-]?key)\s*[=:]\s*["'](?:(?!(YOUR|EXAMPLE|\$|HOME|USER))[A-Za-z0-9_\-]{8,})["']/i,
-    description: 'Potential hardcoded secret detected — use environment variables instead.',
+    description: t('tools.potentialHardcodedSecretDetectedUseEnvir762'),
   },
   {
     id: 'sql-concat',
@@ -213,7 +215,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'error',
     regex: /[`"']\s*(?:SELECT|INSERT|UPDATE|DELETE|ALTER|CREATE|DROP)\s+[^`"']+\+[^`"']+[`"']/i,
-    description: 'SQL injection risk — use parameterized queries instead of string concatenation.',
+    description: t('tools.sqlInjectionRiskUseParameterizedQueriese63'),
   },
   {
     id: 'eval',
@@ -221,7 +223,7 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'error',
     regex: /\beval\s*\(/,
-    description: 'eval() is a code injection risk and performance anti-pattern — use JSON.parse for data or Function constructor alternatives.',
+    description: t('tools.evalIsACodeInjectionRiskaf3'),
   },
   {
     id: 'inner-html',
@@ -229,17 +231,17 @@ const PATTERNS: Array<{
     category: 'anti-pattern',
     severity: 'warning',
     regex: /\.innerHTML\s*=/,
-    description: 'innerHTML assignment — XSS risk. Use textContent or sanitize with DOMPurify before setting HTML.',
+    description: t('tools.innerhtmlAssignmentXssRiskUseTextcontent349'),
   },
-]
+])
 
-const CATEGORY_LABELS: Record<PatternResult['category'], string> = {
-  structural: 'Structural',
-  behavioral: 'Behavioral',
-  creational: 'Creational',
+const CATEGORY_LABELS = (t: Translator): Record<PatternResult['category'], string> => ({
+  structural: t('tools.structural'),
+  behavioral: t('tools.behavioral'),
+  creational: t('tools.creational'),
   react: 'React',
-  'anti-pattern': 'Anti-pattern',
-}
+  'anti-pattern': t('tools.antiPattern'),
+})
 
 const SEVERITY_COLOR: Record<PatternResult['severity'], string> = {
   info: 'bg-blue-500/20 text-primary border-blue-500/30',
@@ -256,6 +258,7 @@ const CATEGORY_ICONS: Record<PatternResult['category'], React.ReactNode> = {
 }
 
 export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps) {
+  const { t } = useT()
   const [filter, setFilter] = useState<'all' | 'info' | 'warning' | 'error'>('all')
   const [catFilter, setCatFilter] = useState<'all' | PatternResult['category']>('all')
 
@@ -265,7 +268,7 @@ export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps)
       const lines = file.content.split('\n')
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i]
-        for (const p of PATTERNS) {
+        for (const p of PATTERNS(t)) {
           p.regex.lastIndex = 0
           if (p.regex.test(line)) {
             results.push({
@@ -321,7 +324,7 @@ export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps)
               className="h-8 text-xs"
               onClick={() => setFilter(s)}
             >
-              {s === 'all' ? `All (${stats.total})` : `${s} (${s === 'error' ? stats.errors : s === 'warning' ? stats.warnings : stats.info})`}
+              {s === 'all' ? t('tools.allTotal', { total: stats.total }) : `${s} (${s === 'error' ? stats.errors : s === 'warning' ? stats.warnings : stats.info})`}
             </Button>
           ))}
         </div>
@@ -330,8 +333,8 @@ export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps)
           value={catFilter}
           onChange={e => setCatFilter(e.target.value as typeof catFilter)}
         >
-          <option value="all">All categories</option>
-          {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+          <option value="all">{t('tools.allCategories')}</option>
+          {Object.entries(CATEGORY_LABELS(t)).map(([k, v]) => (
             <option key={k} value={k}>{v}</option>
           ))}
         </select>
@@ -342,13 +345,13 @@ export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps)
           <CheckCircle2 className="w-8 h-8 text-green-400/60 mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">
             {files.length === 0
-              ? 'No code provided. Add files to scan for patterns.'
-              : 'No patterns detected in the provided code.'}
+              ? t('tools.noCodeProvidedAddFilesTod6c')
+              : t('tools.noPatternsDetectedInTheProvided02e')}
           </p>
         </Card>
       ) : filtered.length === 0 ? (
         <Card className="rounded-3xl p-6 border-dashed text-center">
-          <p className="text-sm text-muted-foreground">No patterns match the current filter.</p>
+          <p className="text-sm text-muted-foreground">{t('tools.noPatternsMatchTheCurrentFilter')}</p>
         </Card>
       ) : (
         <div className="space-y-4">
@@ -356,7 +359,7 @@ export function PatternDetector({ files = [], onAnalyze }: PatternDetectorProps)
             <Card key={cat} className="p-4">
               <div className="flex items-center gap-2 mb-3">
                 {CATEGORY_ICONS[cat as PatternResult['category']]}
-                <h4 className="text-sm font-semibold text-foreground">{CATEGORY_LABELS[cat as PatternResult['category']]}</h4>
+                <h4 className="text-sm font-semibold text-foreground">{CATEGORY_LABELS(t)[cat as PatternResult['category']]}</h4>
                 <Badge variant="outline" className="text-xs ml-auto">{catPatterns.length}</Badge>
               </div>
               <div className="space-y-2">

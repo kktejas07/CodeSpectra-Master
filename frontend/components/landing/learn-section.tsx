@@ -6,11 +6,22 @@
  */
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { LearnPostCardView } from '@/components/learn/post-card'
+import { ENGLISH_CARD_LABELS, LearnPostCardView, type CardLabels } from '@/components/learn/post-card'
 import type { LearnPostCard } from '@/lib/learn/types'
+import { useT } from '@/lib/i18n/client'
+import { useLocalizedHref } from '@/components/i18n/public-language'
 
 export function LearnSection({ initialPosts }: { initialPosts?: LearnPostCard[] } = {}) {
   const [posts, setPosts] = useState<LearnPostCard[]>(initialPosts ?? [])
+  const { t, td, locale } = useT()
+  const lp = useLocalizedHref()
+  const labels: CardLabels = locale === 'en' ? ENGLISH_CARD_LABELS : {
+    ...ENGLISH_CARD_LABELS,
+    category: (id, fallback) => td(`learn.category:${id}`, fallback),
+    level: (l) => td(`public.level:${l}`, l),
+    minRead: (n) => t('learn.minRead', { count: n }),
+    series: (s) => t('learn.seriesLabel', { series: s }),
+  }
 
   useEffect(() => {
     // Server-loaded (landing page) — already in the HTML, no client refetch.
@@ -32,18 +43,16 @@ export function LearnSection({ initialPosts }: { initialPosts?: LearnPostCard[] 
       <div className="mx-auto max-w-[1200px] px-4 py-20 sm:px-6 lg:px-8 lg:py-24">
         <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="text-sm font-semibold text-cs-accent-text">Learn</p>
-            <h2 id="learn-heading" className="cs-heading mt-3 max-w-[20ch] text-4xl sm:text-5xl">Free explainers for every coding skill</h2>
-            <p className="mt-4 max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">
-              Algorithms, system design, patterns and engineering practices, with code you can run and problems to practise.
-            </p>
+            <p className="text-sm font-semibold text-cs-accent-text">{t('public.navLearn')}</p>
+            <h2 id="learn-heading" className="cs-heading mt-3 max-w-[20ch] text-4xl sm:text-5xl">{t('public.learnSectionTitle')}</h2>
+            <p className="mt-4 max-w-[56ch] text-lg leading-relaxed text-cs-ink-soft">{t('public.learnSectionLead')}</p>
           </div>
-          <Link href="/learn" className="inline-flex h-12 items-center justify-center rounded-md border border-cs-ink/25 px-6 text-[15px] font-semibold text-cs-ink transition-colors hover:border-cs-ink">
-            Browse all posts
+          <Link href={lp('/learn')} className="inline-flex h-12 items-center justify-center rounded-md border border-cs-ink/25 px-6 text-[15px] font-semibold text-cs-ink transition-colors hover:border-cs-ink">
+            {t('public.learnSectionAll')}
           </Link>
         </div>
         <div className="cs-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5">
-          {posts.map((p) => <LearnPostCardView key={p.slug} post={p} />)}
+          {posts.map((p) => <LearnPostCardView key={p.slug} post={p} labels={labels} />)}
         </div>
       </div>
     </section>

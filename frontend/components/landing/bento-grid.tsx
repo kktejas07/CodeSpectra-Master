@@ -6,6 +6,7 @@ import { useEffect, useRef } from 'react'
 import { Cog, ClipboardCheck, Download, FileStack, GitCompare, Layers, ScanFace, Trophy, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ThemeIllustration } from '@/components/landing/theme-illustration'
+import { useT } from '@/lib/i18n/client'
 
 /**
  * Landing "bento" grid (UI/UX Pro Max: Bento Box Grid).
@@ -96,7 +97,8 @@ export function BentoBody({ children, className }: { children: React.ReactNode; 
   return <p className={cn('mt-2 max-w-[46ch] text-[15px] leading-relaxed text-cs-ink-soft', className)}>{children}</p>
 }
 
-const ROLES = ['Java', 'Python', 'JavaScript', 'SQL', 'QA automation', 'Mechanical CAD', 'Drawing review', 'Aptitude', 'Written answers']
+// Tech names stay in English in every language; the rest come from the `public` catalog.
+const ROLES = ['Java', 'Python', 'JavaScript', 'SQL', 'public.bentoRoleQa', 'public.bentoRoleCad', 'public.bentoRoleDrawing', 'public.bentoRoleAptitude', 'public.bentoRoleWritten']
 
 /** Grid wrapper that runs the centre-out stagger reveal for every BentoCard inside it. */
 export function BentoShell({ className, children }: { className?: string; children: React.ReactNode }) {
@@ -141,21 +143,20 @@ export function BentoShell({ className, children }: { className?: string; childr
 }
 
 export function BentoGrid() {
+  const { t, td } = useT()
+  const roles = ROLES.map((r) => (r.startsWith('public.') ? td(r, r) : r))
   return (
     <BentoShell className="auto-rows-[minmax(220px,auto)]">
       {/* A — 2×2: any role */}
       <BentoCard className="sm:col-span-2 lg:row-span-2">
         <BentoIcon><Layers className="h-5 w-5" aria-hidden /></BentoIcon>
-        <BentoTitle>Assess any role, not only developers</BentoTitle>
-        <BentoBody>
-          Coding with hidden test cases, CAD design tasks, test-automation scripts, written answers and aptitude,
-          in one assessment and one score.
-        </BentoBody>
+        <BentoTitle>{t('public.bentoAnyRoleTitle')}</BentoTitle>
+        <BentoBody>{t('public.bentoAnyRoleBody')}</BentoBody>
         {/* sliding role chips */}
         <div className="relative mt-6 overflow-hidden [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
           <div className="cs-marquee flex w-max gap-2">
-            {[...ROLES, ...ROLES].map((r, i) => (
-              <span key={i} aria-hidden={i >= ROLES.length} className="whitespace-nowrap rounded-full border border-cs-grid bg-cs-paper px-3.5 py-1.5 text-sm font-medium text-cs-ink">
+            {[...roles, ...roles].map((r, i) => (
+              <span key={i} aria-hidden={i >= roles.length} className="whitespace-nowrap rounded-full border border-cs-grid bg-cs-paper px-3.5 py-1.5 text-sm font-medium text-cs-ink">
                 {r}
               </span>
             ))}
@@ -163,7 +164,7 @@ export function BentoGrid() {
         </div>
         <div className="mt-auto pt-6">
           <div className="aspect-[4/3] max-h-[300px] w-full overflow-hidden rounded-2xl bg-linear-to-br from-cs-accent/8 to-transparent">
-            <BentoVisual v={{ photo: PHOTOS.code, svg: 'binary-brackets', alt: 'Code brackets filled with streaming binary digits', w: 360, h: 240 }} className="mx-auto h-full" />
+            <BentoVisual v={{ photo: PHOTOS.code, svg: 'binary-brackets', alt: t('public.bentoAltCode'), w: 360, h: 240 }} className="mx-auto h-full" />
           </div>
         </div>
       </BentoCard>
@@ -173,16 +174,16 @@ export function BentoGrid() {
         <div className="grid h-full gap-6 sm:grid-cols-[1.1fr_1fr] sm:items-center">
           <div>
             <BentoIcon><ScanFace className="h-5 w-5" aria-hidden /></BentoIcon>
-            <BentoTitle>Proctoring that leaves a record</BentoTitle>
-            <BentoBody>Every event is timestamped on the candidate’s report, so a reviewer decides what it means.</BentoBody>
-            <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Checks during the test">
-              {['Fullscreen lock', 'Tab switches', 'Face match', 'Copy-paste', 'Second screen'].map((c) => (
+            <BentoTitle>{t('public.bentoProctorTitle')}</BentoTitle>
+            <BentoBody>{t('public.bentoProctorBody')}</BentoBody>
+            <ul className="mt-4 flex flex-wrap gap-1.5" aria-label={t('public.bentoChecksLabel')}>
+              {[t('public.bentoCheckFullscreen'), t('public.bentoCheckTabs'), t('public.bentoCheckFace'), t('public.bentoCheckPaste'), t('public.bentoCheckScreen')].map((c) => (
                 <li key={c} className="rounded-md bg-cs-accent/10 px-2 py-1 text-xs font-semibold text-cs-accent-text">{c}</li>
               ))}
             </ul>
           </div>
           <div className="aspect-[4/3] w-full">
-            <BentoVisual v={{ photo: PHOTOS.proctor, svg: 'integrity-shield', alt: 'Proctoring radar logging events', w: 300, h: 220 }} className="h-full" />
+            <BentoVisual v={{ photo: PHOTOS.proctor, svg: 'integrity-shield', alt: t('public.bentoAltProctor'), w: 300, h: 220 }} className="h-full" />
           </div>
         </div>
       </BentoCard>
@@ -190,12 +191,12 @@ export function BentoGrid() {
       {/* C — 1×1: weighted points */}
       <BentoCard>
         <BentoIcon><ClipboardCheck className="h-5 w-5" aria-hidden /></BentoIcon>
-        <BentoTitle>Weighted by difficulty</BentoTitle>
-        <div className="mt-auto flex items-end gap-3 pt-4" aria-label="Easy 3 points, medium 4 points, hard 5 points">
+        <BentoTitle>{t('public.bentoWeightedTitle')}</BentoTitle>
+        <div className="mt-auto flex items-end gap-3 pt-4" aria-label={t('public.bentoWeightedLabel')}>
           {[
-            ['Easy', 3, 'h-10'],
-            ['Medium', 4, 'h-14'],
-            ['Hard', 5, 'h-[4.5rem]'],
+            [t('public.easy'), 3, 'h-10'],
+            [t('public.medium'), 4, 'h-14'],
+            [t('public.hard'), 5, 'h-[4.5rem]'],
           ].map(([lab, pts, h]) => (
             <div key={lab as string} className="flex flex-1 flex-col items-center gap-1.5">
               <span className="cs-display text-3xl text-cs-ink">{pts}</span>
@@ -209,10 +210,10 @@ export function BentoGrid() {
       {/* D — 1×1: CAD */}
       <BentoCard>
         <BentoIcon><Cog className="h-5 w-5" aria-hidden /></BentoIcon>
-        <BentoTitle>CAD design tasks</BentoTitle>
-        <BentoBody className="text-sm">Model a valve or pump part, then review drawings.</BentoBody>
+        <BentoTitle>{t('public.bentoCadTitle')}</BentoTitle>
+        <BentoBody className="text-sm">{t('public.bentoCadBody')}</BentoBody>
         <div className="mt-auto h-36 w-full pt-3">
-          <BentoVisual v={{ photo: PHOTOS.cad, svg: 'domain-cad', alt: 'CAD model of a valve with a turning handwheel', w: 96, h: 96 }} className="mx-auto h-full max-h-32" />
+          <BentoVisual v={{ photo: PHOTOS.cad, svg: 'domain-cad', alt: t('public.bentoAltCad'), w: 96, h: 96 }} className="mx-auto h-full max-h-32" />
         </div>
       </BentoCard>
 
@@ -221,10 +222,10 @@ export function BentoGrid() {
         <div className="grid h-full gap-6 sm:grid-cols-[1fr_1.1fr] sm:items-center">
           <div>
             <BentoIcon><Trophy className="h-5 w-5" aria-hidden /></BentoIcon>
-            <BentoTitle>A ranked shortlist, not a pile of PDFs</BentoTitle>
-            <BentoBody>Everyone is scored the same way. Review the top 20 of 100 and skip the rest.</BentoBody>
+            <BentoTitle>{t('public.bentoShortlistTitle')}</BentoTitle>
+            <BentoBody>{t('public.bentoShortlistBody')}</BentoBody>
           </div>
-          <div className="space-y-2" aria-label="Sample shortlist">
+          <div className="space-y-2" aria-label={t('public.bentoSampleShortlist')}>
             {[
               ['Ananya Rao', 112],
               ['Kiran Patel', 108],
@@ -247,12 +248,12 @@ export function BentoGrid() {
       {/* F — 1×1: plagiarism */}
       <BentoCard>
         <BentoIcon><GitCompare className="h-5 w-5" aria-hidden /></BentoIcon>
-        <BentoTitle>Plagiarism check</BentoTitle>
-        <BentoBody className="text-sm">Code answers are compared across everyone who took the test.</BentoBody>
+        <BentoTitle>{t('public.bentoPlagiarismTitle')}</BentoTitle>
+        <BentoBody className="text-sm">{t('public.bentoPlagiarismBody')}</BentoBody>
         <div className="mt-auto flex items-center gap-2 pt-4 font-mono text-xs" aria-hidden>
           <span className="rounded-md bg-cs-paper px-2 py-1 text-cs-ink-soft">#14</span>
           <span className="h-px flex-1 bg-cs-flag/50" />
-          <span className="rounded-full bg-cs-flag/12 px-2 py-1 font-semibold text-cs-flag">92% match</span>
+          <span className="rounded-full bg-cs-flag/12 px-2 py-1 font-semibold text-cs-flag">{t('public.bentoMatch', { pct: '92%' })}</span>
           <span className="h-px flex-1 bg-cs-flag/50" />
           <span className="rounded-md bg-cs-paper px-2 py-1 text-cs-ink-soft">#31</span>
         </div>
@@ -261,25 +262,25 @@ export function BentoGrid() {
       {/* G — 1×1: export */}
       <BentoCard>
         <BentoIcon><Download className="h-5 w-5" aria-hidden /></BentoIcon>
-        <BentoTitle>Release or export</BentoTitle>
-        <BentoBody className="text-sm">Publish scores to candidates, or download the results as CSV.</BentoBody>
+        <BentoTitle>{t('public.bentoReleaseTitle')}</BentoTitle>
+        <BentoBody className="text-sm">{t('public.bentoReleaseBody')}</BentoBody>
         <div className="mt-auto flex gap-2 pt-4" aria-hidden>
-          <span className="rounded-lg border border-cs-grid px-3 py-1.5 text-xs font-semibold text-cs-ink">Export CSV</span>
-          <span className="rounded-lg bg-cs-accent px-3 py-1.5 text-xs font-semibold text-cs-accent-ink">Release results</span>
+          <span className="rounded-lg border border-cs-grid px-3 py-1.5 text-xs font-semibold text-cs-ink">{t('public.bentoExportCsv')}</span>
+          <span className="rounded-lg bg-cs-accent px-3 py-1.5 text-xs font-semibold text-cs-accent-ink">{t('public.bentoReleaseResults')}</span>
         </div>
       </BentoCard>
 
       {/* H — 3×1: hackathons */}
-      <BentoCard className="sm:col-span-2 lg:col-span-3" href="/hackathons" label="Run hackathons — see upcoming hackathons">
+      <BentoCard className="sm:col-span-2 lg:col-span-3" href="/hackathons" label={t('public.bentoHackathonLabel')}>
         <div className="grid h-full gap-6 md:grid-cols-[1fr_1.2fr] md:items-center">
           <div>
             <BentoIcon><Users className="h-5 w-5" aria-hidden /></BentoIcon>
-            <BentoTitle>Run hackathons on the same platform</BentoTitle>
-            <BentoBody>Teams of up to five join with one link and submit a repository. Judges score every entry out of 100 on one rubric.</BentoBody>
-            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-cs-accent-text group-hover:underline">See upcoming hackathons</span>
+            <BentoTitle>{t('public.bentoHackathonTitle')}</BentoTitle>
+            <BentoBody>{t('public.bentoHackathonBody')}</BentoBody>
+            <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-cs-accent-text group-hover:underline">{t('public.bentoHackathonCta')}</span>
           </div>
           <div className="aspect-[2/1] w-full">
-            <BentoVisual v={{ photo: PHOTOS.team, svg: 'hackathon-team', alt: 'A team of five submits a repository that judges score out of 100', w: 420, h: 210 }} className="h-full" />
+            <BentoVisual v={{ photo: PHOTOS.team, svg: 'hackathon-team', alt: t('public.bentoAltTeam'), w: 420, h: 210 }} className="h-full" />
           </div>
         </div>
       </BentoCard>
@@ -287,10 +288,10 @@ export function BentoGrid() {
       {/* I — 1×1: question bank */}
       <BentoCard>
         <BentoIcon><FileStack className="h-5 w-5" aria-hidden /></BentoIcon>
-        <BentoTitle>Editable question bank</BentoTitle>
-        <BentoBody className="text-sm">Start from a generated set, then change any question before it goes out.</BentoBody>
+        <BentoTitle>{t('public.bentoBankTitle')}</BentoTitle>
+        <BentoBody className="text-sm">{t('public.bentoBankBody')}</BentoBody>
         <div className="mt-auto space-y-1.5 pt-4" aria-hidden>
-          {['Hard', 'Medium', 'Easy'].map((l, i) => (
+          {[t('public.hard'), t('public.medium'), t('public.easy')].map((l, i) => (
             <div key={l} className="cs-slide-in flex items-center justify-between rounded-lg border border-cs-grid bg-cs-paper px-3 py-1.5 text-xs" style={{ ['--gd' as string]: `${i * 120}ms` }}>
               <span className="h-1.5 w-16 rounded-full bg-cs-ink-soft/30" />
               <span className="font-semibold text-cs-accent-text">{l}</span>

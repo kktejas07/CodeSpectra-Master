@@ -33,7 +33,7 @@ async function gate() {
   const g = await requireSuperAdmin()
   if ('error' in g) return { response: NextResponse.json({ error: g.error }, { status: g.status }) }
   const caller = callerFromUser(g.user)
-  if (!caller || caller.role !== 'superadmin') return { response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  if (!caller || caller.role !== 'superadmin') return { response: NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 }) }
   return { caller }
 }
 
@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   const limited = knowledgeLimit(g.caller, 'vector-store', 30, 10 * 60_000)
   if (limited) return limited
   const parsed = Body.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   const body = parsed.data
   try {
     if (body.action === 'reset') {

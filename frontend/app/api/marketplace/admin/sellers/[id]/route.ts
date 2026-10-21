@@ -7,7 +7,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
   const g = await adminGate(req, { write: true })
   if ('res' in g) return g.res
   const { id } = await params
-  if (!idOk(id)) return json({ error: 'Seller not found' }, 404)
+  if (!idOk(id)) return json({ error: 'Seller not found', code: 'mkt_seller_not_found' }, 404)
   try {
     const b = await bodyOf(req)
     const { decideSeller, setSellerCommission, publicSeller, getSellerById } = await import('@/lib/marketplace/sellers')
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
       return json({ seller: s ? publicSeller(s) : null })
     }
     const action = (['approve', 'reject', 'suspend', 'reinstate'] as const).find((a) => a === b.action)
-    if (!action) return json({ error: 'Unknown action' }, 400)
+    if (!action) return json({ error: 'Unknown action', code: 'unknown_action' }, 400)
     return json({ seller: publicSeller(await decideSeller(g.user.id, id, action, typeof b.note === 'string' ? b.note : null)) })
   } catch (e) {
     return errorResponse(e, 'seller decide')

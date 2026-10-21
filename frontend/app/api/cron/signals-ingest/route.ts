@@ -19,7 +19,7 @@ export const maxDuration = 300
 
 async function postImpl(req: NextRequest) {
   if (!isCronAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   const r = await runSignalsIngest()
   return NextResponse.json({ ok: true, ...r })

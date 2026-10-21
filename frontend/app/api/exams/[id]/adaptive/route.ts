@@ -31,10 +31,10 @@ const AnswerBody = z.object({
 
 export async function POST(req: NextRequest, ctx: Ctx) {
   const gate = await requireAuth().catch(() => null)
-  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+  if (!gate || 'error' in gate) return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   const { id: examId } = await ctx.params
   const rl = rateLimitSlidingWindow(`exam-adaptive:${gate.user.id}:${examId}`, 120, 10 * 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } })
 
   const parsed = AnswerBody.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: 'question_id and answer are required' }, { status: 400 })
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   try {
     const db = await getMongoDb()
     const exam = (await db.collection('exams').findOne({ id: examId }, { projection: { _id: 0, id: 1, published: 1, duration: 1, ends_at: 1, adaptive: 1, adaptive_domain: 1, adaptive_length: 1 } })) as Record<string, unknown> | null
-    if (!exam || !exam.published || !isAdaptiveExam(exam)) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam || !exam.published || !isAdaptiveExam(exam)) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
     // Same rule as save-draft: only the running attempt (started via ./start) can answer.
     const draft = await getExamDraft(db, examId, gate.user.id)
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ ok: true, adaptive: r.view })
   } catch (e) {
     logger.error(`[exams/adaptive] POST: ${(e as Error)?.message}`)
-    return NextResponse.json({ error: 'Could not save your answer' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not save your answer', code: 'exam_answer_save_failed' }, { status: 500 })
   }
 }
 
@@ -67,8 +67,8 @@ async function staffGate(ctx: Ctx) {
   const { id } = await ctx.params
   const db = await getMongoDb()
   const exam = (await db.collection('exams').findOne({ id }, { projection: { _id: 0, id: 1, tenant_id: 1, adaptive: 1, adaptive_domain: 1, adaptive_length: 1 } })) as Record<string, unknown> | null
-  if (!exam) return { res: NextResponse.json({ error: 'Exam not found' }, { status: 404 }) }
-  if (!isExamStaff(gate.user, exam)) return { res: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  if (!exam) return { res: NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 }) }
+  if (!isExamStaff(gate.user, exam)) return { res: NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 }) }
   return { db, exam, user: gate.user }
 }
 
@@ -100,7 +100,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   const g = await staffGate(ctx)
   if ('res' in g) return g.res
   const body = await req.json().catch(() => null)
-  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   const v = normalizeAdaptiveSettings(body as Record<string, unknown>)
   if (!v.ok) return NextResponse.json({ error: v.error }, { status: 400 })
   try {

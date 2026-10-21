@@ -29,19 +29,22 @@ import { cn } from '@/lib/utils';
 import type { CADTool } from '@/types/cad';
 import { useZoom } from '@/hooks/useZoom';
 import { TextToCADModal } from './TextToCADModal';
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
 
-const tools: { id: CADTool; label: string; icon: React.ElementType; shortcut: string }[] = [
-  { id: 'select', label: 'Select', icon: MousePointer2, shortcut: 'V' },
-  { id: 'line', label: 'Line', icon: Minus, shortcut: 'L' },
-  { id: 'rectangle', label: 'Rectangle', icon: Square, shortcut: 'R' },
-  { id: 'circle', label: 'Circle', icon: Circle, shortcut: 'C' },
-  { id: 'polygon', label: 'Polygon', icon: Hexagon, shortcut: 'P' },
-  { id: 'text', label: 'Text', icon: Type, shortcut: 'T' },
-  { id: 'dimension', label: 'Dimension', icon: Ruler, shortcut: 'D' },
-  { id: 'pan', label: 'Pan', icon: Hand, shortcut: 'Space' },
-];
+const tools = (t: Translator): { id: CADTool; label: string; icon: React.ElementType; shortcut: string }[] => ([
+  { id: 'select', label: t('common.select'), icon: MousePointer2, shortcut: 'V' },
+  { id: 'line', label: t('exam.line'), icon: Minus, shortcut: 'L' },
+  { id: 'rectangle', label: t('exam.rectangle'), icon: Square, shortcut: 'R' },
+  { id: 'circle', label: t('exam.circle'), icon: Circle, shortcut: 'C' },
+  { id: 'polygon', label: t('exam.polygon'), icon: Hexagon, shortcut: 'P' },
+  { id: 'text', label: t('exam.text'), icon: Type, shortcut: 'T' },
+  { id: 'dimension', label: t('exam.dimension'), icon: Ruler, shortcut: 'D' },
+  { id: 'pan', label: t('exam.pan'), icon: Hand, shortcut: 'Space' },
+]);
 
 export function Toolbar() {
+  const { t } = useT()
   const currentTool = useCADStore((s) => s.tool);
   const setTool = useCADStore((s) => s.setTool);
   const undo = useCADStore((s) => s.undo);
@@ -104,7 +107,7 @@ export function Toolbar() {
     <div className="flex h-12 items-center gap-1 border-b border-border/40 bg-card/80 px-3 backdrop-blur-sm">
       {/* Tool buttons */}
       <div className="flex items-center gap-0.5">
-        {tools.map((tool) => {
+        {tools(t).map((tool) => {
           const Icon = tool.icon;
           const isActive = currentTool === tool.id;
           return (
@@ -132,7 +135,7 @@ export function Toolbar() {
       <div className="flex items-center gap-0.5">
         <button
           type="button"
-          title="Undo (Ctrl+Z)"
+          title={t('exam.undoCtrlZ')}
           onClick={undo}
           disabled={!canUndo}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
@@ -141,7 +144,7 @@ export function Toolbar() {
         </button>
         <button
           type="button"
-          title="Redo (Ctrl+Shift+Z)"
+          title={t('exam.redoCtrlShiftZ')}
           onClick={redo}
           disabled={!canRedo}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed"
@@ -156,7 +159,7 @@ export function Toolbar() {
       <div className="flex items-center gap-0.5">
         <button
           type="button"
-          title="Zoom In"
+          title={t('exam.zoomIn')}
           onClick={zoomIn}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         >
@@ -164,7 +167,7 @@ export function Toolbar() {
         </button>
         <button
           type="button"
-          title="Zoom Out"
+          title={t('exam.zoomOut')}
           onClick={zoomOut}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         >
@@ -172,7 +175,7 @@ export function Toolbar() {
         </button>
         <button
           type="button"
-          title="Fit to Screen"
+          title={t('exam.fitToScreen')}
           onClick={resetZoom}
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
         >
@@ -186,7 +189,7 @@ export function Toolbar() {
       <div className="flex items-center gap-0.5">
         <button
           type="button"
-          title="Toggle Grid"
+          title={t('exam.toggleGrid')}
           onClick={() => setGrid({ visible: !grid.visible })}
           className={cn(
             'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
@@ -199,7 +202,7 @@ export function Toolbar() {
         </button>
         <button
           type="button"
-          title="Toggle Snap (S)"
+          title={t('exam.toggleSnapS')}
           onClick={() => setSnap({ enabled: !snap.enabled })}
           className={cn(
             'flex h-8 w-8 items-center justify-center rounded-md transition-colors',
@@ -217,7 +220,7 @@ export function Toolbar() {
       {/* Delete */}
       <button
         type="button"
-        title="Delete Selected (Del)"
+        title={t('exam.deleteSelectedDel')}
         onClick={handleDelete}
         disabled={selectedIds.length === 0}
         className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
@@ -230,12 +233,12 @@ export function Toolbar() {
       {/* AI Text-to-CAD Generator Button */}
       <button
         type="button"
-        title="AI Text-to-CAD Generator"
+        title={t('exam.aiTextToCadGenerator')}
         onClick={() => setIsAiModalOpen(true)}
         className="flex h-8 items-center gap-1.5 rounded-md px-2.5 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 transition-colors shadow-xs"
       >
         <Sparkles className="h-3.5 w-3.5 animate-pulse" />
-        <span className="text-xs font-semibold">AI Text-to-CAD</span>
+        <span className="text-xs font-semibold">{t('exam.aiTextToCad')}</span>
       </button>
 
       <div className="mx-1 h-6 w-px bg-border/40" />
@@ -244,12 +247,12 @@ export function Toolbar() {
       <div className="relative" ref={exportRef}>
         <button
           type="button"
-          title="Export"
+          title={t('exam.export')}
           onClick={() => setShowExport(!showExport)}
           className="flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           <Download className="h-3.5 w-3.5" />
-          <span className="text-[10px]">Export</span>
+          <span className="text-[10px]">{t('exam.export')}</span>
         </button>
         {showExport && (
           <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-border/40 bg-card p-1 shadow-xl">
@@ -258,17 +261,13 @@ export function Toolbar() {
               onClick={handleExportPNG}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <Image className="h-3.5 w-3.5" />
-              Export PNG
-            </button>
+              <Image className="h-3.5 w-3.5" />{t('exam.exportPng')}</button>
             <button
               type="button"
               onClick={handleExportSVG}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
             >
-              <FileCode className="h-3.5 w-3.5" />
-              Export SVG
-            </button>
+              <FileCode className="h-3.5 w-3.5" />{t('exam.exportSvg')}</button>
           </div>
         )}
       </div>
@@ -278,12 +277,12 @@ export function Toolbar() {
       {/* Keyboard shortcuts help */}
       <button
         type="button"
-        title="Keyboard Shortcuts (?)"
+        title={t('exam.keyboardShortcuts2')}
         onClick={() => window.dispatchEvent(new CustomEvent('cad:toggle-shortcuts'))}
         className="flex h-8 items-center gap-1.5 rounded-md px-2 text-muted-foreground hover:bg-muted hover:text-foreground"
       >
         <HelpCircle className="h-3.5 w-3.5" />
-        <span className="text-[10px]">Shortcuts</span>
+        <span className="text-[10px]">{t('exam.shortcuts')}</span>
       </button>
 
       {/* Text to CAD Modal */}

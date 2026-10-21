@@ -11,6 +11,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, BentoGrid } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   python: FileCode2,
@@ -35,6 +36,7 @@ interface TrackDef {
 }
 
 export default function TracksPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -63,14 +65,14 @@ export default function TracksPage() {
       const tracksTour: TourStep[] = [
         {
           target: '[data-tour="tracks-header"]',
-          title: 'Tech-stack tracks',
-          description: 'Curated problem tracks by stack for learners building real-world skills.',
+          title: tr('practice.techStackTracks'),
+          description: tr('practice.curatedProblemTracksByStackForc2a'),
           position: 'bottom',
         },
         {
           target: '[data-tour="tracks-grid"]',
-          title: 'Practise a track',
-          description: 'Tip: click any track card to practice its filtered problems list.',
+          title: tr('practice.practiseATrack'),
+          description: tr('practice.tipClickAnyTrackCardTofc0'),
           position: 'bottom',
         },
       ]
@@ -93,8 +95,8 @@ export default function TracksPage() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             illustration="courses"
-            title="Tech-stack tracks"
-            description="Pick a stack and work through problems picked for it."
+            title={tr('practice.techStackTracks')}
+            description={tr('practice.pickAStackAndWorkThroughbff')}
             icon={<Layers />}
             className="mb-0"
           />
@@ -109,18 +111,18 @@ export default function TracksPage() {
         <Panel className="p-4">
           <EmptyState
             illustration="error"
-            title="Couldn't load tracks"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={tr('practice.couldntLoadTracks')}
+            description={tr('practice.checkYourConnectionAndTryAgain')}
+            actionLabel={tr('common.tryAgain')}
             onAction={() => setReloadKey(k => k + 1)}
           />
         </Panel>
       ) : tracks.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="courses"
-            title="No tracks yet"
-            description="Tracks will appear here soon. Until then, browse all coding problems."
-            actionLabel="Go to problems"
+            title={tr('practice.noTracksYet')}
+            description={tr('practice.tracksWillAppearHereSoonUntil128')}
+            actionLabel={tr('practice.goToProblems')}
             actionHref="/dashboard/problems"
           />
         </Panel>
@@ -149,9 +151,8 @@ export default function TracksPage() {
                     ))}
                   </div>
                   <div className="mt-auto flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground tabular-nums">{count > 0 ? `${count} ${count === 1 ? 'problem' : 'problems'}` : 'More problems coming'}</span>
-                    <span className="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0">
-                      Practice <ArrowRight className="h-3 w-3" />
+                    <span className="text-muted-foreground tabular-nums">{count > 0 ? tr('practice.countProblems', { count }) : tr('practice.moreProblemsComing')}</span>
+                    <span className="inline-flex items-center gap-1 font-medium text-primary transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:group-hover:translate-x-0">{tr('practice.practice')}{' '}<ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
                 </Panel>

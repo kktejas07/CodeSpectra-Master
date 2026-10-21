@@ -12,8 +12,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
+import type { Translator } from '@/lib/i18n/catalog'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface ReviewComment { id: string; author_name: string; author_role: string; body: string; created_at: string }
 interface ReviewApp {
@@ -43,14 +46,17 @@ interface ReviewData {
   contacts_visible: boolean
 }
 
-const OUTCOME: Record<string, { label: string; cls: string }> = {
-  pass: { label: 'Passed', cls: 'text-green-700 dark:text-green-400' },
-  fail: { label: 'Did not pass', cls: 'text-red-700 dark:text-red-400' },
-  pending: { label: 'In progress', cls: 'text-muted-foreground' },
-  skipped: { label: 'Skipped', cls: 'text-muted-foreground' },
-}
+const OUTCOME = (t: Translator): Record<string, { label: string; cls: string }> => ({
+  pass: { label: t('hiring.passed'), cls: 'text-green-700 dark:text-green-400' },
+  fail: { label: t('hiring.didNotPass'), cls: 'text-red-700 dark:text-red-400' },
+  pending: { label: t('hiring.inProgress'), cls: 'text-muted-foreground' },
+  skipped: { label: t('hiring.skipped'), cls: 'text-muted-foreground' },
+})
 
 function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onChanged: () => Promise<void> }) {
+  const apiError = useApiError()
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const addToast = useToast()
   const confirm = useConfirm()
   const [comment, setComment] = useState('')
@@ -59,7 +65,7 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
 
   async function decide(accept: boolean) {
     if (!accept) {
-      const ok = await confirm({ title: `Reject ${app.candidate.name}?`, description: 'The hiring team will be told. Add a comment first if you want to share why.', confirmText: 'Reject', destructive: true })
+      const ok = await confirm({ title: t('hiring.rejectName', { name: app.candidate.name }), description: t('hiring.theHiringTeamWillBeTold7d8'), confirmText: t('hiring.reject'), destructive: true })
       if (!ok) return
     }
     setBusy(accept ? 'approve' : 'reject')
@@ -68,10 +74,10 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision: accept ? 'approve' : 'reject' }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) addToast({ type: 'error', title: json.error || 'Could not save your decision' })
-      else { addToast({ type: 'success', title: accept ? `${app.candidate.name} approved` : `${app.candidate.name} rejected` }); await onChanged() }
+      if (!res.ok) addToast({ type: 'error', title: apiError(json, t('hiring.couldNotSaveYourDecision')) })
+      else { addToast({ type: 'success', title: accept ? t('hiring.nameApproved', { name: app.candidate.name }) : t('hiring.nameRejected', { name: app.candidate.name }) }); await onChanged() }
     } catch {
-      addToast({ type: 'error', title: 'Network error — try again' })
+      addToast({ type: 'error', title: t('hiring.networkErrorTryAgain') })
     } finally {
       setBusy(null)
     }
@@ -86,10 +92,10 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
         method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ body: comment, visibility: 'client' }),
       })
       const json = await res.json().catch(() => ({}))
-      if (!res.ok) addToast({ type: 'error', title: json.error || 'Could not post your comment' })
+      if (!res.ok) addToast({ type: 'error', title: apiError(json, t('hiring.couldNotPostYourComment')) })
       else { setComment(''); await onChanged() }
     } catch {
-      addToast({ type: 'error', title: 'Network error — try again' })
+      addToast({ type: 'error', title: t('hiring.networkErrorTryAgain') })
     } finally {
       setBusy(null)
     }
@@ -101,30 +107,30 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-foreground">{app.candidate.name}</h2>
           <p className="text-sm text-muted-foreground">
-            {[p?.titles?.[0], p?.total_years != null ? `${p.total_years} yrs` : null, p?.location].filter(Boolean).join(' · ') || 'Résumé summary below'}
+            {[p?.titles?.[0], p?.total_years != null ? `${p.total_years} yrs` : null, p?.location].filter(Boolean).join(' · ') || t('hiring.rSumSummaryBelow')}
           </p>
           {(app.candidate.email || app.candidate.phone) && (
             <p className="mt-0.5 text-sm text-muted-foreground">{[app.candidate.email, app.candidate.phone].filter(Boolean).join(' · ')}</p>
           )}
           <div className="mt-2 flex flex-wrap gap-2">
             <Badge variant="outline">{app.stage.name}</Badge>
-            {app.status === 'hired' && <Badge variant="success">Hired</Badge>}
-            {app.pending_move && <Badge variant="secondary">Suggested: {app.pending_move.to}</Badge>}
+            {app.status === 'hired' && <Badge variant="success">{t('hiring.hired')}</Badge>}
+            {app.pending_move && <Badge variant="secondary">{t('hiring.suggestedTo', { to: app.pending_move.to })}</Badge>}
           </div>
         </div>
         {app.match && (
           <div className="shrink-0 rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2 text-center">
-            <p className="text-xs text-muted-foreground">Match</p>
+            <p className="text-xs text-muted-foreground">{t('hiring.match')}</p>
             <p className="text-2xl font-bold tabular-nums text-primary">{Math.round(app.match.score)}</p>
           </div>
         )}
       </div>
 
       {(p?.summary || p?.skills?.length) && (
-        <section aria-label="Résumé summary" className="space-y-2">
+        <section aria-label={t('hiring.rSumSummary')} className="space-y-2">
           {p?.summary && <p className="text-sm leading-relaxed text-foreground">{p.summary}</p>}
           {!!p?.skills?.length && (
-            <ul className="flex flex-wrap gap-1.5" aria-label="Skills">
+            <ul className="flex flex-wrap gap-1.5" aria-label={t('hiring.skills')}>
               {p.skills.slice(0, 16).map((s) => <li key={s} className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground">{s}</li>)}
             </ul>
           )}
@@ -135,19 +141,19 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
       )}
 
       {app.match && (app.match.reasons.length > 0 || app.match.missing_must.length > 0) && (
-        <section aria-label="Why this match" className="text-sm">
+        <section aria-label={t('hiring.whyThisMatch')} className="text-sm">
           {app.match.reasons.length > 0 && <ul className="list-disc space-y-0.5 pl-5 text-muted-foreground">{app.match.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>}
-          {app.match.missing_must.length > 0 && <p className="mt-1 text-amber-700 dark:text-amber-400">Missing: {app.match.missing_must.join(', ')}</p>}
+          {app.match.missing_must.length > 0 && <p className="mt-1 text-amber-700 dark:text-amber-400">{t('hiring.missingValue2', { value: app.match.missing_must.join(', ') })}</p>}
         </section>
       )}
 
       {(app.results.length > 0 || app.scorecards.length > 0) && (
-        <section aria-label="Stage results" className="grid gap-3 sm:grid-cols-2">
+        <section aria-label={t('hiring.stageResults')} className="grid gap-3 sm:grid-cols-2">
           {app.results.map((r, i) => (
             <div key={`r${i}`} className="rounded-2xl border border-border/70 p-3">
               <p className="text-sm font-medium text-foreground">{r.stage_name}</p>
-              <p className={cn('text-sm', OUTCOME[r.outcome]?.cls)}>
-                {OUTCOME[r.outcome]?.label || r.outcome}{r.score != null && <span className="tabular-nums"> · {Math.round(r.score)}/100</span>}
+              <p className={cn('text-sm', OUTCOME(t)[r.outcome]?.cls)}>
+                {OUTCOME(t)[r.outcome]?.label || r.outcome}{r.score != null && <span className="tabular-nums"> · {Math.round(r.score)}/100</span>}
               </p>
               {r.summary && <p className="mt-1 text-xs text-muted-foreground">{r.summary}</p>}
             </div>
@@ -156,7 +162,7 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
             <div key={`s${i}`} className="rounded-2xl border border-border/70 p-3">
               <p className="flex items-center gap-1.5 text-sm font-medium text-foreground"><ClipboardList className="h-4 w-4 text-primary" aria-hidden />{s.stage_name}</p>
               <p className="text-sm text-muted-foreground">
-                {s.count} {s.count === 1 ? 'scorecard' : 'scorecards'}{s.avg_rating != null && <> · avg <span className="tabular-nums">{s.avg_rating}</span>/5</>}
+                {s.count} {s.count === 1 ? t('hiring.scorecard') : t('hiring.scorecards')}{s.avg_rating != null && <>{' '}{t('hiring.avg')}{' '}<span className="tabular-nums">{s.avg_rating}</span>/5</>}
               </p>
               <p className="text-xs text-muted-foreground">
                 {(['strong_yes', 'yes', 'no', 'strong_no'] as const).filter((k) => s.recommendations[k]).map((k) => `${s.recommendations[k]} ${k.replace('_', ' ')}`).join(', ')}
@@ -166,7 +172,7 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
         </section>
       )}
 
-      <section aria-label="Comments" className="space-y-3 border-t border-border/70 pt-4">
+      <section aria-label={t('hiring.comments')} className="space-y-3 border-t border-border/70 pt-4">
         {app.comments.length > 0 && (
           <ul className="space-y-2">
             {app.comments.map((c) => (
@@ -178,21 +184,18 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
           </ul>
         )}
         <form onSubmit={postComment} className="space-y-2">
-          <label htmlFor={`c-${app.id}`} className="sr-only">Comment for the hiring team</label>
-          <Textarea id={`c-${app.id}`} value={comment} maxLength={4000} onChange={(e) => setComment(e.target.value)} placeholder="Share feedback with the hiring team" rows={2} />
+          <label htmlFor={`c-${app.id}`} className="sr-only">{t('hiring.commentForTheHiringTeam')}</label>
+          <Textarea id={`c-${app.id}`} value={comment} maxLength={4000} onChange={(e) => setComment(e.target.value)} placeholder={t('hiring.shareFeedbackWithTheHiringTeam')} rows={2} />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" variant="outline" size="sm" disabled={busy !== null || !comment.trim()}>
-              {busy === 'comment' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-1 h-4 w-4" />}Comment
-            </Button>
+              {busy === 'comment' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-1 h-4 w-4" />}{t('hiring.comment')}</Button>
             {app.can_review && (
               <>
                 <span className="flex-1" />
                 <Button type="button" variant="outline" className="min-h-11" disabled={busy !== null} onClick={() => void decide(false)}>
-                  {busy === 'reject' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <X className="mr-1 h-4 w-4" />}Reject
-                </Button>
+                  {busy === 'reject' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <X className="mr-1 h-4 w-4" />}{t('hiring.reject')}</Button>
                 <Button type="button" className="min-h-11" disabled={busy !== null} onClick={() => void decide(true)}>
-                  {busy === 'approve' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}Approve
-                </Button>
+                  {busy === 'approve' ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Check className="mr-1 h-4 w-4" />}{t('hiring.approve')}</Button>
               </>
             )}
           </div>
@@ -203,6 +206,8 @@ function CandidateCard({ app, q, onChanged }: { app: ReviewApp; q: string; onCha
 }
 
 function ReviewInner() {
+  const apiError = useApiError()
+  const { t } = useT()
   const params = useParams<{ id: string }>()
   const sp = useSearchParams()
   const tenant = sp.get('tenant')
@@ -215,10 +220,10 @@ function ReviewInner() {
     try {
       const res = await fetch(`/api/ats/client/jobs/${encodeURIComponent(params.id)}${q}`, { credentials: 'include', cache: 'no-store' })
       const json = await res.json()
-      if (!res.ok) setError(json.error || 'Could not load candidates')
+      if (!res.ok) setError(apiError(json, t('hiring.couldNotLoadCandidates')))
       else { setData(json); setError(null) }
     } catch {
-      setError('Could not load candidates')
+      setError(t('hiring.couldNotLoadCandidates'))
     }
   }, [params.id, q])
 
@@ -230,24 +235,23 @@ function ReviewInner() {
   if (error) {
     return (
       <div className="mx-auto max-w-4xl px-4 py-8">
-        <EmptyState illustration="not-found" title="This role isn't available" description={error} actionLabel="Back to your roles" actionHref={`/dashboard/hiring/client${q}`} />
+        <EmptyState illustration="not-found" title={t('hiring.thisRoleIsntAvailable')} description={error} actionLabel={t('hiring.backToYourRoles')} actionHref={`/dashboard/hiring/client${q}`} />
       </div>
     )
   }
-  if (!data) return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading candidates" /></div>
+  if (!data) return <div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label={t('hiring.loadingCandidates')} /></div>
 
   const list = filter === 'review' ? toReview : data.applications
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 px-4 py-6 sm:px-6">
       <Link href={`/dashboard/hiring/client${q}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-4 w-4" aria-hidden />Your roles
-      </Link>
+        <ArrowLeft className="h-4 w-4" aria-hidden />{t('hiring.yourRoles')}</Link>
       <PageHeader
         title={data.job.title}
         description={[data.job.location, data.job.work_mode, `${data.job.openings} ${data.job.openings === 1 ? 'opening' : 'openings'}`].filter(Boolean).join(' · ')}
       />
-      <div role="tablist" aria-label="Filter candidates" className="inline-flex rounded-full border border-border/70 bg-muted/30 p-1">
+      <div role="tablist" aria-label={t('hiring.filterCandidates')} className="inline-flex rounded-full border border-border/70 bg-muted/30 p-1">
         {([['review', `To review (${toReview.length})`], ['all', `All shared (${data.applications.length})`]] as const).map(([k, label]) => (
           <button key={k} role="tab" aria-selected={filter === k} onClick={() => setFilter(k)}
             className={cn('min-h-9 rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', filter === k ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}>
@@ -256,20 +260,21 @@ function ReviewInner() {
         ))}
       </div>
       {list.length === 0 ? (
-        <EmptyState illustration="resume" title={filter === 'review' ? 'Nothing waiting for you' : 'No candidates shared yet'} description={filter === 'review' ? "You're all caught up. New shortlisted candidates will appear here." : 'The hiring team will share candidates here once they reach your review stage.'} />
+        <EmptyState illustration="resume" title={filter === 'review' ? t('hiring.nothingWaitingForYou') : t('hiring.noCandidatesSharedYet')} description={filter === 'review' ? t('hiring.youreAllCaughtUpNewShortlisted38d') : t('hiring.theHiringTeamWillShareCandidatesff7')} />
       ) : (
         <div className="space-y-4">{list.map((a) => <CandidateCard key={a.id} app={a} q={q} onChanged={load} />)}</div>
       )}
       {!data.contacts_visible && data.applications.length > 0 && (
-        <p className="text-xs text-muted-foreground">Contact details are kept with the hiring team.</p>
+        <p className="text-xs text-muted-foreground">{t('hiring.contactDetailsAreKeptWithTheca7')}</p>
       )}
     </div>
   )
 }
 
 export default function ClientReviewPage() {
+  const { t } = useT()
   return (
-    <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label="Loading" /></div>}>
+    <Suspense fallback={<div className="flex min-h-[40vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-label={t('hiring.loading')} /></div>}>
       <ReviewInner />
     </Suspense>
   )

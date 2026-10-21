@@ -23,6 +23,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 const TEST_DURATION_SEC = 15 * 60
 
@@ -63,6 +65,8 @@ interface GradedResult {
 }
 
 export default function TakeMockTestPage() {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams<{ id: string }>()
@@ -156,14 +160,14 @@ export default function TakeMockTestPage() {
       }),
     })
     const data = await res.json().catch(() => null)
-    if (!res.ok) throw new Error(data?.error || 'Failed to generate test')
+    if (!res.ok) throw new Error(apiError(data, tr('practice.failedToGenerateTest')))
     return data
   }, [company, role, difficulty])
 
   const fetchQuestions = useCallback(async () => {
     if (requestedRef.current) return
     if (!company || !role) {
-      setError('This test is missing a company or role. Go back and pick a test.')
+      setError(tr('practice.thisTestIsMissingACompany5a9'))
       setLoading(false)
       return
     }
@@ -173,7 +177,7 @@ export default function TakeMockTestPage() {
       // Reload / second tab returns the in-progress attempt (no credit spent).
       applyAttempt(await requestAttempt(false))
     } catch (err: any) {
-      setError(err.message || 'An error occurred')
+      setError(err.message || tr('practice.anErrorOccurred'))
     } finally {
       setLoading(false)
     }
@@ -192,7 +196,7 @@ export default function TakeMockTestPage() {
       applyAttempt(data)
       setConfirmNewOpen(false)
     } catch (err) {
-      setNewTestError(err instanceof Error ? err.message : 'Could not start a new test')
+      setNewTestError(err instanceof Error ? err.message : tr('practice.couldNotStartANewTest'))
     } finally {
       setStartingNew(false)
     }
@@ -281,11 +285,11 @@ export default function TakeMockTestPage() {
         }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok) throw new Error(data?.error || 'Could not save your answers')
+      if (!res.ok) throw new Error(apiError(data, tr('practice.couldNotSaveYourAnswers')))
       setResult(data as GradedResult)
       clearLocal(sessionId)
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'Could not save your answers')
+      setSubmitError(err instanceof Error ? err.message : tr('practice.couldNotSaveYourAnswers'))
     } finally {
       setSubmitting(false)
     }
@@ -299,23 +303,21 @@ export default function TakeMockTestPage() {
     <AlertDialog open={confirmNewOpen} onOpenChange={(open) => { if (!startingNew) { setConfirmNewOpen(open); if (!open) setNewTestError(null) } }}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Start a new test?</AlertDialogTitle>
+          <AlertDialogTitle>{tr('practice.startANewTest')}</AlertDialogTitle>
           <AlertDialogDescription>
             {finished && result
-              ? 'You get a fresh set of questions for this company and role. This uses 1 AI credit.'
-              : 'Your current attempt will be dropped and not scored. You get a fresh set of questions, and this uses 1 AI credit.'}
+              ? tr('practice.youGetAFreshSetOfbdc')
+              : tr('practice.yourCurrentAttemptWillBeDroppeda1c')}
           </AlertDialogDescription>
         </AlertDialogHeader>
         {newTestError && <p role="alert" className="text-sm text-destructive">{newTestError}</p>}
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={startingNew}>Cancel</AlertDialogCancel>
+          <AlertDialogCancel disabled={startingNew}>{tr('common.cancel')}</AlertDialogCancel>
           <AlertDialogAction
             disabled={startingNew}
             onClick={(e) => { e.preventDefault(); void startNewTest() }}
           >
-            {startingNew && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Start a new test
-          </AlertDialogAction>
+            {startingNew && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{tr('practice.startANewTest2')}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
@@ -323,8 +325,7 @@ export default function TakeMockTestPage() {
 
   const newTestButton = (variant: 'outline' | 'default' | 'ghost' = 'outline') => (
     <Button variant={variant} onClick={() => setConfirmNewOpen(true)} disabled={startingNew}>
-      <RotateCcw className="mr-2 h-4 w-4" /> Start a new test
-    </Button>
+      <RotateCcw className="mr-2 h-4 w-4" />{' '}{tr('practice.startANewTest2')}</Button>
   )
 
   if (!gate.ready || loading) {
@@ -345,9 +346,9 @@ export default function TakeMockTestPage() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-4">
         <Illustration name="error" className="w-40" />
-        <h1 className="text-xl font-bold">Failed to load test</h1>
-        <p className="text-muted-foreground">{error || 'No questions received.'}</p>
-        <Button onClick={() => router.back()}>Go back</Button>
+        <h1 className="text-xl font-bold">{tr('practice.failedToLoadTest')}</h1>
+        <p className="text-muted-foreground">{error || tr('practice.noQuestionsReceived')}</p>
+        <Button onClick={() => router.back()}>{tr('practice.goBack')}</Button>
       </div>
     )
   }
@@ -355,29 +356,24 @@ export default function TakeMockTestPage() {
   if (!started) {
     return (
       <div className="flex-1 space-y-6">
-        <h1 className="sr-only">{company} mock test</h1>
+        <h1 className="sr-only">{tr('practice.companyMockTest', { company })}</h1>
         <Button variant="ghost" onClick={() => router.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" /> Back to config
-        </Button>
+          <ArrowLeft className="h-4 w-4 mr-2" />{' '}{tr('practice.backToConfig')}</Button>
         <Card className="rounded-3xl border-border/70">
           <CardHeader>
             <CardTitle className="flex items-center gap-3 text-2xl">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Sparkles className="h-5 w-5" /></span>
-              Before you start: {company} mock test
-            </CardTitle>
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Sparkles className="h-5 w-5" /></span>{tr('practice.beforeYouStartCompanyMockTest', { company })}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-muted-foreground">
             <ul className="list-disc pl-6 space-y-2">
-              <li>This test contains <strong>{questions.length} multiple-choice questions</strong>.</li>
-              <li>You have <strong>{Math.floor(TEST_DURATION_SEC / 60)} minutes</strong> to complete it. The timer starts when you press Start and keeps running if you reload.</li>
-              <li>Once you submit an answer or skip, you cannot go back.</li>
-              <li>The test will automatically submit when the timer runs out.</li>
+              <li>{tr('practice.thisTestContains')}{' '}<strong>{tr('practice.countMultipleChoiceQuestions', { count: questions.length })}</strong>.</li>
+              <li>{tr('practice.youHave')}{' '}<strong>{tr('practice.valueMinutes', { value: Math.floor(TEST_DURATION_SEC / 60) })}</strong>{' '}{tr('practice.toCompleteItTheTimerStarts8ff')}</li>
+              <li>{tr('practice.onceYouSubmitAnAnswerOracd')}</li>
+              <li>{tr('practice.theTestWillAutomaticallySubmitWhen379')}</li>
             </ul>
           </CardContent>
           <CardFooter>
-            <Button size="lg" className="w-full" onClick={beginTest}>
-              Start test
-            </Button>
+            <Button size="lg" className="w-full" onClick={beginTest}>{tr('practice.startTest')}</Button>
           </CardFooter>
         </Card>
         {newTestDialog}
@@ -391,16 +387,16 @@ export default function TakeMockTestPage() {
         {submitError ? (
           <>
             <AlertTriangle className="h-12 w-12 text-destructive" />
-            <h1 className="text-xl font-bold">Couldn&apos;t save your answers</h1>
+            <h1 className="text-xl font-bold">{tr('practice.couldntSaveYourAnswers')}</h1>
             <p className="text-muted-foreground">{submitError}</p>
             <div className="flex flex-wrap justify-center gap-2">
-              <Button onClick={() => { setSubmitError(null) }}>Try again</Button>
+              <Button onClick={() => { setSubmitError(null) }}>{tr('common.tryAgain')}</Button>
               {newTestButton('outline')}
             </div>
             {newTestDialog}
           </>
         ) : (
-          <p className="text-muted-foreground">Saving your answers…</p>
+          <p className="text-muted-foreground">{tr('practice.savingYourAnswers')}</p>
         )}
       </div>
     )
@@ -411,7 +407,7 @@ export default function TakeMockTestPage() {
 
     return (
       <div className="flex-1 space-y-6">
-        <h1 className="sr-only">{company} mock test results</h1>
+        <h1 className="sr-only">{tr('practice.companyMockTestResults', { company })}</h1>
         <Card className="rounded-3xl border-border/70 text-center p-8">
           <div className="mb-6 flex justify-center">
             {percentage >= 70 ? (
@@ -420,21 +416,17 @@ export default function TakeMockTestPage() {
               <Illustration name="mock-test" className="w-40" />
             )}
           </div>
-          <h2 className="text-3xl font-bold mb-2">Test complete</h2>
-          <p className="text-xl text-muted-foreground tabular-nums mb-8">
-            You scored {score} out of {questions.length} ({percentage}%)
-          </p>
+          <h2 className="text-3xl font-bold mb-2">{tr('practice.testComplete')}</h2>
+          <p className="text-xl text-muted-foreground tabular-nums mb-8">{tr('practice.youScoredScoreOutOfCountf69', { score, count: questions.length, percentage })}</p>
           <div className="flex gap-4 justify-center">
-            <Button variant="outline" onClick={() => router.push('/dashboard/mock-tests')}>
-              Back to tests and history
-            </Button>
+            <Button variant="outline" onClick={() => router.push('/dashboard/mock-tests')}>{tr('practice.backToTestsAndHistory')}</Button>
             {newTestButton('default')}
           </div>
         </Card>
         {newTestDialog}
 
         <div className="space-y-6">
-          <h3 className="text-xl font-semibold">Review your answers</h3>
+          <h3 className="text-xl font-semibold">{tr('practice.reviewYourAnswers')}</h3>
           {questions.map((q, i) => {
             const correctIndex = result.review[i]?.correctIndex
             const explanation = result.review[i]?.explanation
@@ -446,11 +438,11 @@ export default function TakeMockTestPage() {
                   <CardTitle className="text-lg flex justify-between gap-4">
                     <span>{i + 1}. {q.question}</span>
                     {skipped ? (
-                      <span className="text-sm font-normal text-muted-foreground">Skipped</span>
+                      <span className="text-sm font-normal text-muted-foreground">{tr('practice.skipped')}</span>
                     ) : isCorrect ? (
-                      <span className="text-sm font-normal text-green-600 dark:text-green-400 flex items-center shrink-0"><CheckCircle2 className="w-4 h-4 mr-1"/> Correct</span>
+                      <span className="text-sm font-normal text-green-600 dark:text-green-400 flex items-center shrink-0"><CheckCircle2 className="w-4 h-4 mr-1"/>{' '}{tr('practice.correct')}</span>
                     ) : (
-                      <span className="text-sm font-normal text-destructive flex items-center shrink-0"><AlertCircle className="w-4 h-4 mr-1"/> Incorrect</span>
+                      <span className="text-sm font-normal text-destructive flex items-center shrink-0"><AlertCircle className="w-4 h-4 mr-1"/>{' '}{tr('practice.incorrect')}</span>
                     )}
                   </CardTitle>
                 </CardHeader>
@@ -463,7 +455,7 @@ export default function TakeMockTestPage() {
                     ))}
                   </div>
                   <div className="bg-muted/50 p-4 rounded-xl text-sm">
-                    <strong>Explanation:</strong> {explanation}
+                    <strong>{tr('practice.explanation')}</strong> {explanation}
                   </div>
                 </CardContent>
               </Card>
@@ -483,11 +475,11 @@ export default function TakeMockTestPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-xl font-bold">{company} · {role}</h1>
-          <p className="text-sm text-muted-foreground tabular-nums">Question {currentIndex + 1} of {questions.length}</p>
+          <p className="text-sm text-muted-foreground tabular-nums">{tr('practice.question')}{' '}{currentIndex + 1}{' '}{tr('practice.ofCount', { count: questions.length })}</p>
         </div>
         <div className="flex items-center gap-3">
           {newTestButton('ghost')}
-          <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono tabular-nums text-lg" aria-label="Time left">
+          <div className="flex items-center gap-2 bg-muted px-4 py-2 rounded-full font-mono tabular-nums text-lg" aria-label={tr('practice.timeLeft')}>
             <Clock className="h-5 w-5" />
             <span className={timeLeft < 60 ? 'text-destructive font-bold' : ''}>
               {formatTime(timeLeft)}
@@ -497,7 +489,7 @@ export default function TakeMockTestPage() {
       </div>
       {newTestDialog}
       {resumed && (
-        <p className="-mt-6 mb-6 text-sm text-muted-foreground">Picked up where you left off. The timer kept running from when you started.</p>
+        <p className="-mt-6 mb-6 text-sm text-muted-foreground">{tr('practice.pickedUpWhereYouLeftOffeb7')}</p>
       )}
 
       <Progress value={((currentIndex + 1) / questions.length) * 100} className="mb-8 h-2" />
@@ -531,11 +523,9 @@ export default function TakeMockTestPage() {
           </RadioGroup>
 
           <div className="flex justify-between items-center mt-8 pt-6 border-t">
-            <Button variant="ghost" onClick={handleNext} className="text-muted-foreground">
-              Skip question
-            </Button>
+            <Button variant="ghost" onClick={handleNext} className="text-muted-foreground">{tr('practice.skipQuestion')}</Button>
             <Button onClick={handleNext} disabled={!hasAnsweredCurrent} size="lg">
-              {currentIndex === questions.length - 1 ? 'Submit test' : 'Submit and next'}
+              {currentIndex === questions.length - 1 ? tr('practice.submitTest') : tr('practice.submitAndNext')}
             </Button>
           </div>
         </div>

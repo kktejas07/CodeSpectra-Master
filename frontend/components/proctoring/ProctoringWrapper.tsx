@@ -13,6 +13,7 @@ import { KeyboardDynamicsTracker, type KeyboardDynamics } from '@/lib/proctoring
 import { ExamAadhaarGate } from './ExamAadhaarGate'
 import { DeviceAuditModal } from './DeviceAuditModal'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface ProctoringWrapperProps {
   children: React.ReactNode
@@ -38,6 +39,7 @@ export function ProctoringWrapper({
   identityStatus = null,
   examTitle,
 }: ProctoringWrapperProps) {
+  const { t: tr } = useT()
   const [tabFocusLostCount, setTabFocusLostCount] = useState(0)
   const [showWarningBanner, setShowWarningBanner] = useState(false)
   const [warningMessage, setWarningMessage] = useState('Switching tabs or copying content is logged.')
@@ -94,7 +96,7 @@ export function ProctoringWrapper({
       const warns = result.devices.filter((d) => d.verdict === 'warn')
       if (blocked.length > 0 || warns.length > 0) {
         setShowWarningBanner(true)
-        setWarningMessage(`Hardware Security Warning: ${blocked[0]?.productName || warns[0]?.productName || 'Unrecognized device detected'}`)
+        setWarningMessage(tr('exam.hardwareSecurityWarningValue', { value: blocked[0]?.productName || warns[0]?.productName || 'Unrecognized device detected' }))
         if (onFlagEvent) onFlagEvent({ type: 'hardware_port_anomaly', timestamp: Date.now(), details: result.violations.join('; ') })
       }
     })
@@ -108,8 +110,8 @@ export function ProctoringWrapper({
         setTabFocusLostCount((prev) => {
           const next = prev + 1
           setShowWarningBanner(true)
-          setWarningMessage(`Tab switch detected (Count: ${next}). Stay focused on this window.`)
-          if (onFlagEvent) onFlagEvent({ type: 'tab_focus_lost', timestamp: Date.now(), details: `Candidate lost tab focus (Count: ${next})` })
+          setWarningMessage(tr('exam.tabSwitchDetectedCountNextStayac7', { next }))
+          if (onFlagEvent) onFlagEvent({ type: 'tab_focus_lost', timestamp: Date.now(), details: tr('exam.candidateLostTabFocusCountNext', { next }) })
           return next
         })
       }
@@ -118,8 +120,8 @@ export function ProctoringWrapper({
       if (proctoringLevel === 'strict_lockdown' || proctoringLevel === 'ai_flagged') {
         e.preventDefault()
         setShowWarningBanner(true)
-        setWarningMessage('Copy-paste is disabled during proctored assessment.')
-        if (onFlagEvent) onFlagEvent({ type: 'copy_paste_attempt', timestamp: Date.now(), details: 'Candidate attempted to copy or paste content' })
+        setWarningMessage(tr('exam.copyPasteIsDisabledDuringProctored650'))
+        if (onFlagEvent) onFlagEvent({ type: 'copy_paste_attempt', timestamp: Date.now(), details: tr('exam.candidateAttemptedToCopyOrPaste0ac') })
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -153,7 +155,7 @@ export function ProctoringWrapper({
           current_screen: current.screen,
         })
         setShowWarningBanner(true)
-        setWarningMessage('Device/browser change detected. This is logged as a security event.')
+        setWarningMessage(tr('exam.deviceBrowserChangeDetectedThisIs909'))
       }
     }, 30000)
 
@@ -185,7 +187,7 @@ export function ProctoringWrapper({
             })
             if (faceMismatchCountRef.current >= 3) {
               setShowWarningBanner(true)
-              setWarningMessage(`Face verification mismatch (${faceMismatchCountRef.current} times). The person on camera may differ from the ID photo.`)
+              setWarningMessage(tr('exam.faceVerificationMismatchCurrentTimesThecfb', { current: faceMismatchCountRef.current }))
             }
           } else {
             // Reset mismatch count on successful match
@@ -226,7 +228,7 @@ export function ProctoringWrapper({
         })
         if (dynamics.isSuspicious) {
           setShowWarningBanner(true)
-          setWarningMessage('Automated typing pattern detected. This session is flagged for review.')
+          setWarningMessage(tr('exam.automatedTypingPatternDetectedThisSessioe27'))
         }
         // Note: We don't reset the tracker here to avoid clearing ongoing keystroke data
         // The tracker accumulates all keystrokes for comprehensive pattern analysis
@@ -277,7 +279,7 @@ export function ProctoringWrapper({
               if (analysis.headPose.isTurnedAway) {
                 sendEvent('head_pose_turned_away', { yaw: analysis.headPose.yaw, pitch: analysis.headPose.pitch, gaze_direction: analysis.gazeDirection })
                 setShowWarningBanner(true)
-                setWarningMessage('Head turned away from camera center. Keep eyes on screen.')
+                setWarningMessage(tr('exam.headTurnedAwayFromCameraCenter99f'))
               }
             }
           } finally {
@@ -309,38 +311,37 @@ export function ProctoringWrapper({
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <div className="flex items-center gap-1.5 font-bold text-foreground">
             <ShieldAlert className="h-4 w-4 text-primary" />
-            <span>Proctoring on</span>
+            <span>{tr('exam.proctoringOn')}</span>
           </div>
           <span className="font-semibold text-primary text-[11px] bg-primary/10 px-2 py-0.5 rounded-full inline-block first-letter:uppercase">{String(proctoringLevel).replace(/_/g, ' ')}</span>
 
           {gazeAnalysis && (
             <div className="flex items-center gap-2 border-l border-border/60 pl-3 text-[11px]">
               <span className="flex items-center gap-1 text-muted-foreground font-medium">
-                <Eye className="h-3.5 w-3.5" /> Blinks: <span className="tabular-nums text-foreground">{gazeAnalysis.blinkCount}</span>
+                <Eye className="h-3.5 w-3.5" />{' '}{tr('exam.blinks')}{' '}<span className="tabular-nums text-foreground">{gazeAnalysis.blinkCount}</span>
               </span>
-              <span className="text-muted-foreground">· Gaze:</span>
+              <span className="text-muted-foreground">{tr('exam.gaze')}</span>
               <span className="font-semibold capitalize text-foreground">{gazeAnalysis.gazeDirection}</span>
             </div>
           )}
 
           {hardwareAudit && hardwareAudit.isMultiMonitor && (
             <div className="flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 font-bold text-red-600 dark:text-red-400 text-[11px]">
-              <Monitor className="h-3.5 w-3.5" /> Multiple monitors (<span className="tabular-nums">{hardwareAudit.screenCount}</span>)
+              <Monitor className="h-3.5 w-3.5" />{' '}{tr('exam.multipleMonitors')}<span className="tabular-nums">{hardwareAudit.screenCount}</span>)
             </div>
           )}
 
           {/* Face Match Status */}
           {idPhoto && faceMatchRef.current && (
             <div className={`flex items-center gap-1 rounded-full px-2 py-0.5 font-bold text-[11px] ${faceMatchRef.current.matched ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-red-500/10 text-red-600 dark:text-red-400'}`}>
-              <Camera className="h-3.5 w-3.5" /> Face: {faceMatchRef.current.matched ? 'Verified' : `Doesn't match (${Math.round(faceMatchRef.current.score * 100)}%)`}
+              <Camera className="h-3.5 w-3.5" />{' '}{tr('exam.face')}{' '}{faceMatchRef.current.matched ? tr('exam.verified') : tr('exam.doesntMatchN', { n: Math.round(faceMatchRef.current.score * 100) })}
             </div>
           )}
 
           {/* Fingerprint Status */}
           {fingerprintRef.current && (
             <div className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-primary text-[11px] font-medium">
-              <Fingerprint className="h-3.5 w-3.5" /> Device verified
-            </div>
+              <Fingerprint className="h-3.5 w-3.5" />{' '}{tr('exam.deviceVerified')}</div>
           )}
         </div>
 
@@ -348,24 +349,21 @@ export function ProctoringWrapper({
           {tabFocusLostCount > 0 && (
             <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-bold">
               <AlertTriangle className="h-3 w-3" />
-              <span><span className="tabular-nums">{tabFocusLostCount}</span> {tabFocusLostCount === 1 ? 'tab switch' : 'tab switches'}</span>
+              <span><span className="tabular-nums">{tabFocusLostCount}</span> {tabFocusLostCount === 1 ? tr('exam.tabSwitch') : tr('exam.tabSwitches')}</span>
             </div>
           )}
           {identityStatus === 'needs_review' ? (
-            <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-bold text-[11px]" title="No camera was available, so your uploaded ID will be checked by the organiser">
-              <UserCheck className="h-3.5 w-3.5" /> ID sent for review
-            </div>
+            <div className="flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300 font-bold text-[11px]" title={tr('exam.noCameraWasAvailableSoYour6a5')}>
+              <UserCheck className="h-3.5 w-3.5" />{' '}{tr('exam.idSentForReview')}</div>
           ) : identityStatus === 'verified' || kycVerified ? (
             <div className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-green-700 dark:text-green-400 font-bold text-[11px]">
-              <UserCheck className="h-3.5 w-3.5" /> {identityStatus === 'verified' ? 'Identity check done' : 'ID verified'}
+              <UserCheck className="h-3.5 w-3.5" /> {identityStatus === 'verified' ? tr('exam.identityCheckDone') : tr('exam.idVerified')}
             </div>
           ) : (
             <button onClick={() => setShowIdKycModal(true)} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary transition-colors hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-              <UserCheck className="h-3.5 w-3.5" /> Verify Aadhaar / ID
-            </button>
+              <UserCheck className="h-3.5 w-3.5" />{' '}{tr('exam.verifyAadhaarId')}</button>
           )}
-          <div className="text-muted-foreground">
-            Candidate: <span className="font-semibold text-foreground">{candidateName}</span>
+          <div className="text-muted-foreground">{tr('exam.candidate')}{' '}<span className="font-semibold text-foreground">{candidateName}</span>
           </div>
         </div>
       </div>
@@ -376,10 +374,10 @@ export function ProctoringWrapper({
         <div className="fixed top-12 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-xl border border-amber-500/40 bg-amber-50 dark:bg-amber-950/80 px-4 py-2.5 text-xs text-amber-800 dark:text-amber-200 shadow-lg backdrop-blur">
           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
           <div>
-            <div className="font-bold">Warning recorded</div>
+            <div className="font-bold">{tr('exam.warningRecorded')}</div>
             <div>{warningMessage}</div>
           </div>
-          <button onClick={() => setShowWarningBanner(false)} className="ml-2 rounded px-1.5 py-1 font-bold text-amber-800 dark:text-amber-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">Dismiss</button>
+          <button onClick={() => setShowWarningBanner(false)} className="ml-2 rounded px-1.5 py-1 font-bold text-amber-800 dark:text-amber-200 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{tr('exam.dismiss')}</button>
         </div>
       )}
 

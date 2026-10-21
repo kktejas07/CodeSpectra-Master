@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -18,6 +18,7 @@ import {
   Users, TrendingUp, AlertTriangle, Shield, Clock, Target, Loader, Eye,
   Download, ArrowUpDown,
 } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface Candidate {
   candidate_id: string
@@ -60,6 +61,8 @@ const COLORS = ['var(--color-primary)', '#F59E0B', '#06B6D4', '#EC4899', '#8B5CF
 const TOOLTIP_STYLE = { backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '12px', color: 'var(--color-card-foreground)' }
 
 export default function RecruiterAnalyticsPage() {
+  const { formatDate } = useLocaleDates()
+  const { td, t } = useT()
   const gate = usePageGuard('tenant_admin')
   const { startTour, setTourSeen } = useTour()
   const [data, setData] = useState<AnalyticsData | null>(null)
@@ -88,20 +91,20 @@ export default function RecruiterAnalyticsPage() {
       const recruiterAnalyticsTour: TourStep[] = [
         {
           target: '[data-tour="recruiter-analytics-header"]',
-          title: 'Hiring insights hub',
-          description: 'Track candidate performance and interview activity across every role in one place.',
+          title: t('hiring.hiringInsightsHub'),
+          description: t('hiring.trackCandidatePerformanceAndInterviewAct2aa'),
           position: 'bottom',
         },
         {
           target: '[data-tour="recruiter-analytics-kpis"]',
-          title: 'Key hiring metrics',
-          description: 'Totals, average scores, candidate counts, and flagged sessions update with each interview.',
+          title: t('hiring.keyHiringMetrics'),
+          description: t('hiring.totalsAverageScoresCandidateCountsAnd44c'),
           position: 'bottom',
         },
         {
           target: '[data-tour="recruiter-analytics-ranking"]',
-          title: 'Rank every candidate',
-          description: 'Compare average scores and roles side by side, then export the shortlist to CSV.',
+          title: t('hiring.rankEveryCandidate'),
+          description: t('hiring.compareAverageScoresAndRolesSide4b3'),
           position: 'top',
         },
       ]
@@ -144,16 +147,16 @@ export default function RecruiterAnalyticsPage() {
           <SoftGlow className="-inset-y-6 [mask-image:radial-gradient(ellipse_at_75%_45%,#000_30%,transparent_72%)]" />
           <PageHeader
             className="mb-0"
-            title="Recruiter analytics"
-            description="Candidate performance and interview insights."
+            title={t('hiring.recruiterAnalytics')}
+            description={t('hiring.candidatePerformanceAndInterviewInsights')}
             icon={<TrendingUp />}
           />
         </div>
         <div className="grid items-stretch gap-6 lg:grid-cols-2">
           <EmptyState illustration="interview"
-            title="No interview data yet"
-            description="Create interviews and invite candidates — scores, rankings and proctoring flags will show up here."
-            actionLabel="Go to interviews"
+            title={t('hiring.noInterviewDataYet')}
+            description={t('hiring.createInterviewsAndInviteCandidatesScorec6a')}
+            actionLabel={t('hiring.goToInterviews')}
             actionHref="/dashboard/interviews"
             className="h-full"
           />
@@ -179,44 +182,42 @@ export default function RecruiterAnalyticsPage() {
         <PageHeader
           illustration="analytics"
           className="mb-0"
-          title="Recruiter analytics"
-          description="Candidate performance and interview insights for hiring managers."
+          title={t('hiring.recruiterAnalytics')}
+          description={t('hiring.candidatePerformanceAndInterviewInsightsfeb')}
           icon={<TrendingUp />}
           actions={data && data.candidates.length > 0 ? (
             <button
               onClick={exportCsv}
               className="flex min-h-11 items-center gap-2 rounded-xl border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors duration-200 hover:border-primary/40 hover:bg-accent focus-visible:outline-2 focus-visible:outline-primary"
             >
-              <Download className="h-4 w-4" />
-              Export CSV
-            </button>
+              <Download className="h-4 w-4" />{t('hiring.exportCsv')}</button>
           ) : undefined}
         />
       </div>
 
       {/* KPI Cards */}
       <div className="cs-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-5" data-tour="recruiter-analytics-kpis">
-        <StatCard icon={<Users />} label="Total interviews" value={data.totalInterviews} hint={`${data.completedInterviews} completed`} />
-        <StatCard icon={<TrendingUp />} label="Average score" value={`${data.avgScore}%`} hint="Across all interviews" />
-        <StatCard icon={<Target />} label="Candidates" value={data.candidates.length} hint="Unique candidates assessed" />
+        <StatCard icon={<Users />} label={t('hiring.totalInterviews')} value={data.totalInterviews} hint={t('hiring.completedinterviewsCompleted', { completedInterviews: data.completedInterviews })} />
+        <StatCard icon={<TrendingUp />} label={t('hiring.averageScore')} value={`${data.avgScore}%`} hint={t('hiring.acrossAllInterviews')} />
+        <StatCard icon={<Target />} label={t('hiring.candidates')} value={data.candidates.length} hint={t('hiring.uniqueCandidatesAssessed')} />
         <StatCard
           icon={<AlertTriangle />}
-          label="Flagged sessions"
+          label={t('hiring.flaggedSessions')}
           value={data.flaggedSessions}
-          hint="Sessions with proctoring flags"
+          hint={t('hiring.sessionsWithProctoringFlags')}
           className={data.flaggedSessions > 0 ? '[&>span:first-child]:border-red-500/20 [&>span:first-child]:bg-red-500/10 [&>span:first-child]:text-red-600 dark:[&>span:first-child]:text-red-400' : undefined}
         />
       </div>
 
       {outcomes && outcomes.total > 0 && (
         <Panel>
-          <h2 className="mb-1 text-lg font-semibold text-foreground">Hiring outcomes</h2>
-          <p className="mb-4 text-sm text-muted-foreground">Recorded by your team on assessment results.</p>
+          <h2 className="mb-1 text-lg font-semibold text-foreground">{t('hiring.hiringOutcomes')}</h2>
+          <p className="mb-4 text-sm text-muted-foreground">{t('hiring.recordedByYourTeamOnAssessment5e9')}</p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {OUTCOME_STATUSES.map((st) => (
               <div key={st} className="rounded-2xl border border-border/70 p-3">
                 <div className="text-2xl font-bold tabular-nums text-foreground">{outcomes.counts[st] ?? 0}</div>
-                <div className="text-xs text-muted-foreground">{OUTCOME_LABELS[st]}</div>
+                <div className="text-xs text-muted-foreground">{td(`hiring.outcomeLabels:${st}`, OUTCOME_LABELS[st])}</div>
               </div>
             ))}
           </div>
@@ -227,9 +228,7 @@ export default function RecruiterAnalyticsPage() {
       {data.recentInterviews.length > 2 && (
         <Panel>
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            Scores and flags (latest 20 interviews)
-          </h2>
+            <TrendingUp className="h-5 w-5 text-primary" />{t('hiring.scoresAndFlagsLatest20Interviews')}</h2>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={data.recentInterviews.slice().reverse().map((interview, i) => ({
@@ -254,7 +253,7 @@ export default function RecruiterAnalyticsPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Score Distribution */}
         <Panel className="lg:col-span-2">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Score distribution</h2>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">{t('hiring.scoreDistribution')}</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.scoreDistribution}>
@@ -270,7 +269,7 @@ export default function RecruiterAnalyticsPage() {
 
         {/* Role Breakdown */}
         <Panel>
-          <h2 className="mb-4 text-lg font-semibold text-foreground">By role</h2>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">{t('hiring.byRole')}</h2>
           {rolePieData.length > 0 ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -285,7 +284,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState illustration="analytics" title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="analytics" title={t('hiring.noDataYet')} description={t('hiring.thisFillsInAsInterviewsAre42e')} className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
       </div>
@@ -294,9 +293,7 @@ export default function RecruiterAnalyticsPage() {
       <div className="grid lg:grid-cols-2 gap-6">
         <Panel>
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Shield className="h-5 w-5 text-red-500" />
-            Proctoring flags by type
-          </h2>
+            <Shield className="h-5 w-5 text-red-500" />{t('hiring.proctoringFlagsByType')}</h2>
           {violationBarData.length > 0 ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -310,12 +307,12 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState illustration="proctoring" title="No proctoring flags recorded" description="Flags from proctored interviews are grouped here by type." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="proctoring" title={t('hiring.noProctoringFlagsRecorded')} description={t('hiring.flagsFromProctoredInterviewsAreGrouped28d')} className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
 
         <Panel>
-          <h2 className="mb-4 text-lg font-semibold text-foreground">By interview type</h2>
+          <h2 className="mb-4 text-lg font-semibold text-foreground">{t('hiring.byInterviewType')}</h2>
           {typePieData.length > 0 ? (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -330,7 +327,7 @@ export default function RecruiterAnalyticsPage() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState illustration="analytics" title="No data yet" description="This fills in as interviews are completed." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+            <EmptyState illustration="analytics" title={t('hiring.noDataYet')} description={t('hiring.thisFillsInAsInterviewsAre42e')} className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
           )}
         </Panel>
       </div>
@@ -338,20 +335,18 @@ export default function RecruiterAnalyticsPage() {
       {/* Candidate Comparison Table with Ranking */}
       <Panel data-tour="recruiter-analytics-ranking">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-          <ArrowUpDown className="h-5 w-5 text-primary" />
-          Candidate ranking
-        </h2>
+          <ArrowUpDown className="h-5 w-5 text-primary" />{t('hiring.candidateRanking')}</h2>
         {data.candidates.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left py-2 px-3 font-medium text-muted-foreground w-12">#</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Candidate</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Interviews</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Avg score</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Roles</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Latest</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.candidate')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.interviews')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.avgScore')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.roles')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.latest')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -396,28 +391,26 @@ export default function RecruiterAnalyticsPage() {
             </table>
           </div>
         ) : (
-          <EmptyState illustration="team" title="No candidates yet" description="Candidates are ranked here once they finish an interview." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+          <EmptyState illustration="team" title={t('hiring.noCandidatesYet')} description={t('hiring.candidatesAreRankedHereOnceThey2e6')} className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Panel>
 
       {/* Recent Interviews */}
       <Panel>
         <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-          <Clock className="h-5 w-5 text-primary" />
-          Recent interviews
-        </h2>
+          <Clock className="h-5 w-5 text-primary" />{t('hiring.recentInterviews')}</h2>
         {data.recentInterviews.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-[760px]">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Title</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Role</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Type</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Score</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Flags</th>
-                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">Date</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.title')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.role')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.type')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.status')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.score')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.flags')}</th>
+                  <th className="text-left py-2 px-3 font-medium text-muted-foreground">{t('hiring.date')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -465,7 +458,7 @@ export default function RecruiterAnalyticsPage() {
             </table>
           </div>
         ) : (
-          <EmptyState illustration="interview" variant="sessions" title="No interviews yet" description="Your most recent interviews will be listed here." className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
+          <EmptyState illustration="interview" variant="sessions" title={t('hiring.noInterviewsYet')} description={t('hiring.yourMostRecentInterviewsWillBeabe')} className="border-0 bg-transparent py-4 md:py-6 [&_h3]:text-base" />
         )}
       </Panel>
     </div>

@@ -18,6 +18,8 @@
 import { notifications, newId, nowIso } from '@/lib/db/admin'
 import type { NotificationDoc } from '@/lib/db/admin'
 import type { Document, Filter } from 'mongodb'
+import type { Locale } from '@/lib/i18n/config'
+import { hasOutboundKey, outboundT, renderOutbound, type OutboundText } from '@/lib/i18n/outbound'
 
 // ─── All platform notification types ────────────────────────────────────────
 
@@ -108,6 +110,17 @@ interface NotifyInput {
   type: string
   title?: string
   message?: string
+  /**
+   * Translatable title / message (keys in lib/i18n/messages/<locale>/notify.json),
+   * rendered in the recipient's interface language and stored as plain text
+   * like `title` / `message` (so existing rows keep showing). Several message
+   * parts are joined with a space. A key missing from the catalog falls back
+   * to `title` / `message`.
+   */
+  title_i18n?: OutboundText
+  message_i18n?: OutboundText | OutboundText[]
+  /** Recipient language when the caller already knows it (skips the profile lookup). */
+  locale?: Locale
   link?: string
   icon?: string
   metadata?: Record<string, unknown>
@@ -136,11 +149,13 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
   try {
     const typeInfo = NOTIFICATION_TYPES[input.type as NotificationType]
     const col = await notifications()
+    const locale = await recipientLocale(input)
+    const text = notificationText(input, locale)
     const doc: NotificationDoc = {
       id: newId(),
       user_id: input.user_id,
-      title: input.title || typeInfo?.default_title || 'Notification',
-      message: input.message || '',
+      title: text.title,
+      message: text.message,
       type: input.type,
       is_read: false,
       link: input.link || typeInfo?.default_link || '',
@@ -154,7 +169,7 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
     // Out-of-app delivery (push / email / WhatsApp). Built up front, then sent
     // now or deferred to the end of the user's quiet hours (see
     // lib/notifications-delivery.ts). Fire-and-forget so callers never block.
-    void deliverOutOfApp(input, doc)
+    void deliverOutOfApp(input, doc, locale)
 
     return doc
   } catch (e) {
@@ -163,10 +178,36 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
   }
 }
 
+/** The recipient's saved interface language (English when unset or the lookup fails). */
+async function recipientLocale(input: Pick<NotifyInput, 'user_id' | 'locale'>): Promise<Locale> {
+  if (input.locale) return input.locale
+  const { localeForUser } = await import('@/lib/i18n/recipient')
+  return localeForUser(input.user_id)
+}
+
+const keyOk = (t: OutboundText | undefined) => !!t && hasOutboundKey('notify', t.key)
+
+/**
+ * Pure: the stored title / message for a notification in `locale`.
+ * English keeps the caller's own text when given (unchanged from before);
+ * other languages use the keys when they exist. Then the caller's text, the
+ * type's default title (translated), "Notification".
+ */
+export function notificationText(input: Pick<NotifyInput, 'type' | 'title' | 'message' | 'title_i18n' | 'message_i18n'>, locale: Locale): { title: string; message: string } {
+  const typeInfo = NOTIFICATION_TYPES[input.type as NotificationType]
+  const t = outboundT('notify', locale)
+  const typeTitle = typeInfo ? (hasOutboundKey('notify', `type.${input.type}`) ? t(`type.${input.type}`) : typeInfo.default_title) : undefined
+  const useKeys = (given: string | undefined) => locale !== 'en' || !given
+  const title = keyOk(input.title_i18n) && useKeys(input.title) ? renderOutbound('notify', locale, input.title_i18n!) : input.title || typeTitle || t('fallbackTitle')
+  const parts = input.message_i18n ? (Array.isArray(input.message_i18n) ? input.message_i18n : [input.message_i18n]) : []
+  const message = parts.length && parts.every(keyOk) && useKeys(input.message) ? renderOutbound('notify', locale, parts) : input.message || ''
+  return { title, message }
+}
+
 const esc = (v: unknown) =>
   String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 
-async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promise<void> {
+async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc, locale: Locale): Promise<void> {
   try {
     const { getMongoDb } = await import('@/lib/mongodb')
     const { deliverOrDefer } = await import('@/lib/notifications-delivery')
@@ -205,16 +246,18 @@ async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promis
         db.collection('notification_preferences').findOne({ user_id: input.user_id, type: 'email' }),
       ])
       if (typePref?.enabled !== false && channelPref?.enabled !== false) {
+        const et = outboundT('email', locale)
         payload.email = {
           to: String(user.email),
+          locale,
           // Unsubscribes are honoured and the link added (AUTO-052); billing/security can't be unsubscribed from.
           category: doc.category === 'security' ? 'security' : doc.category === 'billing' ? 'billing' : 'transactional',
           subject: doc.title,
-          html: `<div style="font-family:sans-serif;padding:24px;max-width:480px">
+          html: `<div lang="${locale}" style="font-family:sans-serif;padding:24px;max-width:480px">
                 <h2 style="margin:0 0 8px">${esc(doc.title)}</h2>
                 <p style="color:#4b5563;margin:0 0 16px">${esc(doc.message)}</p>
-                ${doc.link ? `<a href="${esc(base + doc.link)}" style="display:inline-block;background:#6366f1;color:white;padding:8px 16px;border-radius:6px;text-decoration:none">View</a>` : ''}
-                <p style="color:#9ca3af;font-size:12px;margin-top:24px">CodeSpectra Notification</p>
+                ${doc.link ? `<a href="${esc(base + doc.link)}" style="display:inline-block;background:#6366f1;color:white;padding:8px 16px;border-radius:6px;text-decoration:none">${esc(et('notify.view'))}</a>` : ''}
+                <p style="color:#9ca3af;font-size:12px;margin-top:24px">${esc(et('notify.footer'))}</p>
               </div>`,
         }
       }
@@ -225,7 +268,7 @@ async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promis
       // Here: the per-type switch only.
       const typePref = await db.collection('notification_preferences').findOne({ user_id: input.user_id, type: input.type }, { projection: { enabled: 1, whatsapp: 1 } })
       if (typePref?.enabled !== false && typePref?.whatsapp !== false) {
-        payload.whatsapp = { title: doc.title, text: doc.message, link: doc.link ? `${base}${doc.link}` : '' }
+        payload.whatsapp = { title: doc.title, text: doc.message, link: doc.link ? `${base}${doc.link}` : '', locale }
       }
     }
 
@@ -289,13 +332,12 @@ export async function notifySubmissionStatusChange(
   newStatus: string,
   rejectionReason?: string,
 ) {
-  const statusMessages: Record<string, string> = {
-    under_review: 'Your submission is now under review',
-    review_completed: 'Your submission review is complete',
-    accepted: 'Your submission has been accepted!',
-    rejected: `Your submission was not selected${rejectionReason ? `: ${rejectionReason}` : ''}`,
-    released: 'Your score has been released!',
-  }
+  const known = ['under_review', 'review_completed', 'accepted', 'released'] as const
+  const messageKey: OutboundText = (known as readonly string[]).includes(newStatus)
+    ? { key: `submission.${newStatus}` }
+    : newStatus === 'rejected'
+      ? (rejectionReason ? { key: 'submission.rejectedReason', params: { reason: rejectionReason } } : { key: 'submission.rejected' })
+      : { key: 'submission.other', params: { status: newStatus } }
 
   const statusTypes: Record<string, string> = {
     under_review: 'hackathon.submission_status',
@@ -305,15 +347,14 @@ export async function notifySubmissionStatusChange(
     released: 'hackathon.results',
   }
 
-  const message = statusMessages[newStatus] || `Submission status updated to ${newStatus}`
   const type = statusTypes[newStatus] || 'hackathon.submission_status'
 
   for (const member of teamMembers) {
     await notify({
       user_id: member.user_id,
       type: type as any,
-      title: `${hackathonName} — ${problemSlug}`,
-      message,
+      title_i18n: { key: 'submission.title', params: { event: hackathonName, problem: problemSlug } },
+      message_i18n: messageKey,
       link: `/dashboard/events/${hackathonId}`,
       metadata: {
         hackathon_id: hackathonId,

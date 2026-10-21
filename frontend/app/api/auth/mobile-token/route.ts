@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const ipCheck = await rateLimitRedis(`login:ip:${ipKey}`, 10, 60_000)
     if (!ipCheck.ok) {
       return NextResponse.json(
-        { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.` },
+        { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: ipCheck.retryAfterSec } },
         { status: 429 },
       )
     }
@@ -36,15 +36,15 @@ export async function POST(request: Request) {
 
     const { email, password, totpToken } = await request.json()
     if (!email || !password) {
-      return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+      return NextResponse.json({ error: 'Email and password are required', code: 'auth_email_password_required' }, { status: 400 })
     }
     const ident = String(email).toLowerCase().trim()
     if (await isIpBlocked(rawIp)) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+      return NextResponse.json({ error: 'Access denied', code: 'access_denied' }, { status: 403 })
     }
     const throttle = await checkAuthThrottle('login', ident, rawIp)
     if (!throttle.ok) {
-      return NextResponse.json({ error: `Too many failed attempts. Try again in ${throttle.retryAfterSec}s.` }, { status: 429 })
+      return NextResponse.json({ error: `Too many failed attempts. Try again in ${throttle.retryAfterSec}s.`, code: 'auth_too_many_failed', params: { seconds: throttle.retryAfterSec } }, { status: 429 })
     }
 
     const db = await getMongoDb()
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     })
     if (!user || !user.passwordHash) {
       await recordAuthFailure('login', ident, rawIp)
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid email or password', code: 'auth_invalid_credentials' }, { status: 401 })
     }
 
     let valid = false
@@ -73,16 +73,16 @@ export async function POST(request: Request) {
       const emailCheck = await rateLimitRedis(`login:email:${ident}`, 5, 60_000)
       if (!emailCheck.ok) {
         return NextResponse.json(
-          { error: `Too many attempts. Try again in ${emailCheck.retryAfterSec}s.` },
+          { error: `Too many attempts. Try again in ${emailCheck.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: emailCheck.retryAfterSec } },
           { status: 429 },
         )
       }
       await recordAuthFailure('login', ident, rawIp)
-      return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid email or password', code: 'auth_invalid_credentials' }, { status: 401 })
     }
 
     if (accountBlockReason(user)) {
-      return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.' }, { status: 403 })
+      return NextResponse.json({ error: 'This account has been deactivated. Contact your administrator.', code: 'account_disabled' }, { status: 403 })
     }
 
     const uid = String(user.id || user._id)
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       const { consumeTotp } = await import('@/lib/totp')
       const isValid = await consumeTotp(user, totpToken)
       if (!isValid) await recordAuthFailure('login', ident, rawIp)
-      if (!isValid) return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })
+      if (!isValid) return NextResponse.json({ error: 'Invalid two-factor code', code: 'auth_invalid_2fa' }, { status: 401 })
     }
 
     // SEC-009: an admin past the 2FA grace period must turn 2FA on (web) first —
@@ -140,6 +140,6 @@ export async function POST(request: Request) {
     })
   } catch (e) {
     console.error('[mobile-token] Error:', e)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

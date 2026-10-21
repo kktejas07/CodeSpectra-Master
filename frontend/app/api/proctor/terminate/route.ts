@@ -13,13 +13,13 @@ interface TerminateReq {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: TerminateReq
   try {
     body = (await req.json()) as TerminateReq
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   if (!body.session_id || !body.reason) {
     return NextResponse.json({ error: 'session_id + reason required' }, { status: 400 })

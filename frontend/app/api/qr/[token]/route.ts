@@ -63,7 +63,7 @@ export async function GET(
     const u = ObjectId.isValid(idRow.user_id)
       ? ((await db.collection('user').findOne({ _id: new ObjectId(idRow.user_id) })) as UserDoc | null)
       : ((await db.collection('user').findOne({ _id: idRow.user_id as never })) as UserDoc | null)
-    if (!u) return NextResponse.json({ error: 'user not found', kind: 'user' }, { status: 404 })
+    if (!u) return NextResponse.json({ error: 'user not found', code: 'user_not_found', kind: 'user' }, { status: 404 })
 
     const xp = await getUserXp(idRow.user_id)
     const level = xpToLevel(xp, (await getGamificationConfig()).levels)

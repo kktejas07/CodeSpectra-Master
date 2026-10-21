@@ -6,7 +6,7 @@ export const runtime = 'nodejs'
 
 export async function GET(): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const col = await identityVerifications()
   const latest = await col.findOne(

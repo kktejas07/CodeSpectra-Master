@@ -8,6 +8,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel, StatCard } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface SkillData {
   user?: { email?: string; id?: string } | null
@@ -42,6 +43,7 @@ interface SkillData {
 }
 
 export default function SkillAnalyticsPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -56,11 +58,11 @@ export default function SkillAnalyticsPage() {
     fetch('/api/analytics/skills', { cache: 'no-store' })
       .then(async (r) => {
         const j = await r.json().catch(() => ({}))
-        if (!r.ok) throw new Error(j.error || (r.status === 429 ? 'Too many requests. Wait a moment and try again.' : `Something went wrong (${r.status}). Please try again.`))
+        if (!r.ok) throw new Error(j.error || (r.status === 429 ? t('dash.tooManyRequestsWaitAMoment928') : t('dash.somethingWentWrongStatusPleaseTryb1e', { status: r.status })))
         return j as SkillData
       })
       .then(setData)
-      .catch((e) => setErr(e instanceof Error ? e.message : 'Please try again.'))
+      .catch((e) => setErr(e instanceof Error ? e.message : t('dash.pleaseTryAgain')))
       .finally(() => setLoading(false))
   }, [reloadKey])
 
@@ -70,20 +72,20 @@ export default function SkillAnalyticsPage() {
       const skillAnalyticsTour: TourStep[] = [
         {
           target: '[data-tour="skill-analytics-header"]',
-          title: 'Skill fingerprint',
-          description: 'Your problem-solving fingerprint, built from every submission.',
+          title: t('dash.skillFingerprint'),
+          description: t('dash.yourProblemSolvingFingerprintBuiltFrombf7'),
           position: 'bottom',
         },
         {
           target: '[data-tour="skill-analytics-kpis"]',
-          title: 'Headline metrics',
-          description: 'Submissions, accuracy, scores, and run time at a glance.',
+          title: t('dash.headlineMetrics'),
+          description: t('dash.submissionsAccuracyScoresAndRunTimef98'),
           position: 'bottom',
         },
         {
           target: '[data-tour="skill-analytics-recent"]',
-          title: 'Recent submissions',
-          description: 'Per-problem tests, scores, and timing for your latest work.',
+          title: t('dash.recentSubmissions'),
+          description: t('dash.perProblemTestsScoresAndTiming5a2'),
           position: 'top',
         },
       ]
@@ -112,9 +114,9 @@ export default function SkillAnalyticsPage() {
   if (err) {
     return (
       <EmptyState illustration="error"
-        title="Couldn't load your skill analytics"
+        title={t('dash.couldntLoadYourSkillAnalytics')}
         description={err}
-        actionLabel="Try again"
+        actionLabel={t('common.tryAgain')}
         onAction={() => setReloadKey((k) => k + 1)}
       />
     )
@@ -122,9 +124,9 @@ export default function SkillAnalyticsPage() {
   if (!data || !data.totals) {
     return (
       <EmptyState illustration="analytics"
-        title="No skill data yet"
-        description="Solve a few problems and your skill fingerprint will build up here."
-        actionLabel="Go to problems"
+        title={t('dash.noSkillDataYet')}
+        description={t('dash.solveAFewProblemsAndYour3e0')}
+        actionLabel={t('dash.goToProblems')}
         actionHref="/dashboard/problems"
       />
     )
@@ -133,39 +135,39 @@ export default function SkillAnalyticsPage() {
   const cards = [
     {
       icon: Activity,
-      label: 'Submissions',
+      label: t('dash.submissions'),
       value: data.totals.submissions ?? 0,
-      hint: `${data.totals.accepted ?? 0} accepted`,
+      hint: t('dash.valueAccepted', { value: data.totals.accepted ?? 0 }),
       testid: 'kpi-submissions',
     },
     {
       icon: CheckCircle2,
-      label: 'Accuracy',
+      label: t('dash.accuracy'),
       value: typeof data.totals.accuracy_pct === 'number' ? `${data.totals.accuracy_pct}%` : '—',
-      hint: 'Accepted / total',
+      hint: t('dash.acceptedTotal'),
       testid: 'kpi-accuracy',
     },
     {
       icon: TrendingUp,
-      label: 'Avg score',
+      label: t('dash.avgScore'),
       value: typeof data.totals.avg_score === 'number' ? data.totals.avg_score.toLocaleString() : '—',
-      hint: 'Across submissions',
+      hint: t('dash.acrossSubmissions'),
       testid: 'kpi-avg-score',
     },
     {
       icon: Users,
-      label: 'Top skill',
+      label: t('dash.topSkill'),
       value: data.totals.top_skill || '—',
       hint: data.totals.top_skill
-        ? (typeof data.totals.top_score === 'number' ? `${data.totals.top_score}% proficiency` : 'Your strongest area')
-        : 'No data yet',
+        ? (typeof data.totals.top_score === 'number' ? t('dash.topScoreProficiency', { top_score: data.totals.top_score }) : t('dash.yourStrongestArea'))
+        : t('dash.noDataYet'),
       testid: 'kpi-top-skill',
     },
     {
       icon: Clock,
-      label: 'Avg run time',
+      label: t('dash.avgRunTime'),
       value: typeof data.totals.avg_time_ms === 'number' ? `${data.totals.avg_time_ms}ms` : '—',
-      hint: 'Across submissions',
+      hint: t('dash.acrossSubmissions'),
       testid: 'kpi-time',
     },
   ]
@@ -180,8 +182,8 @@ export default function SkillAnalyticsPage() {
           illustration="analytics"
           className="mb-0"
           icon={<Activity />}
-          title="Skill analytics"
-          description={<>{userEmail} — your problem-solving fingerprint, built from every submission.</>}
+          title={t('dash.skillAnalytics')}
+          description={<>{t('dash.useremailYourProblemSolvingFingerprintBue4b', { userEmail })}</>}
         />
       </div>
 
@@ -208,22 +210,20 @@ export default function SkillAnalyticsPage() {
         >
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-4 w-4 text-primary" aria-hidden />
-            <h2 className="text-base font-semibold text-foreground">
-              Your AI growth plan
-            </h2>
+            <h2 className="text-base font-semibold text-foreground">{t('dash.yourAiGrowthPlan')}</h2>
           </div>
           <div className="grid lg:grid-cols-3 gap-4 text-sm">
-            <Block title="Strengths" items={data.ai_insights.strengths || []} icon={Zap} />
-            <Block title="Weak topics" items={data.ai_insights.weak_topics || []} icon={TrendingUp} />
+            <Block title={t('dash.strengths')} items={data.ai_insights.strengths || []} icon={Zap} />
+            <Block title={t('dash.weakTopics')} items={data.ai_insights.weak_topics || []} icon={TrendingUp} />
             <Block
-              title="Recommended"
+              title={t('dash.recommended')}
               items={data.ai_insights.recommended_problems || []}
               icon={Target}
             />
           </div>
           {data.ai_insights.growth_plan && data.ai_insights.growth_plan.length > 0 && (
             <div className="mt-4 rounded-2xl border border-border/70 bg-card p-4 text-sm text-foreground">
-              <div className="mb-1.5 font-semibold">Next steps</div>
+              <div className="mb-1.5 font-semibold">{t('dash.nextSteps')}</div>
               <ol className="list-decimal pl-4 space-y-1">
                 {data.ai_insights.growth_plan.map((g, i) => (
                   <li key={i}>{g}</li>
@@ -234,49 +234,41 @@ export default function SkillAnalyticsPage() {
           <div className="mt-3 grid gap-3 text-sm text-foreground sm:grid-cols-2">
             {data.ai_insights.speed_assessment && (
               <div className="rounded-2xl border border-border/70 bg-card p-4">
-                <div className="mb-1 text-xs font-medium text-muted-foreground">Speed</div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground">{t('dash.speed')}</div>
                 {data.ai_insights.speed_assessment}
               </div>
             )}
             {data.ai_insights.accuracy_assessment && (
               <div className="rounded-2xl border border-border/70 bg-card p-4">
-                <div className="mb-1 text-xs font-medium text-muted-foreground">Accuracy</div>
+                <div className="mb-1 text-xs font-medium text-muted-foreground">{t('dash.accuracy')}</div>
                 {data.ai_insights.accuracy_assessment}
               </div>
             )}
           </div>
         </section>
       ) : (
-        <div className="rounded-3xl border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">
-          Submit at least 3 problems on the{' '}
-          <a href="/dashboard/problems" className="font-medium text-primary underline-offset-4 hover:underline">
-            Problems page
-          </a>{' '}
-          to unlock your AI growth plan.
-        </div>
+        <div className="rounded-3xl border border-dashed border-border bg-muted/30 p-5 text-sm text-muted-foreground">{t('dash.submitAtLeast3ProblemsOn4b3')}{' '}<a href="/dashboard/problems" className="font-medium text-primary underline-offset-4 hover:underline">{t('dash.problemsPage')}</a>{' '}{t('dash.toUnlockYourAiGrowthPlan')}</div>
       )}
 
       {/* Breakdowns */}
       <div className="grid gap-4 lg:grid-cols-2 lg:gap-5">
-        <KvCard title="By language" data={data.by_language || {}} testid="by-lang" />
-        <KvCard title="By difficulty" data={data.by_difficulty || {}} testid="by-diff" />
+        <KvCard title={t('dash.byLanguage')} data={data.by_language || {}} testid="by-lang" />
+        <KvCard title={t('dash.byDifficulty')} data={data.by_difficulty || {}} testid="by-diff" />
       </div>
 
       {/* Recent submissions */}
       <Panel className="overflow-hidden p-0" data-tour="skill-analytics-recent">
-        <div className="border-b border-border/70 px-6 py-4 text-base font-semibold text-foreground">
-          Recent submissions
-        </div>
+        <div className="border-b border-border/70 px-6 py-4 text-base font-semibold text-foreground">{t('dash.recentSubmissions')}</div>
         <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] md:min-w-0 text-sm">
           <thead className="bg-muted/40 text-left text-xs font-medium text-muted-foreground">
             <tr>
-              <th className="px-4 py-2.5 font-medium">Problem</th>
-              <th className="px-4 py-2.5 font-medium">Difficulty</th>
-              <th className="px-4 py-2.5 font-medium">Language</th>
-              <th className="px-4 py-2.5 text-right font-medium">Tests</th>
-              <th className="px-4 py-2.5 text-right font-medium">Score</th>
-              <th className="px-4 py-2.5 text-right font-medium">Time</th>
+              <th className="px-4 py-2.5 font-medium">{t('dash.problem')}</th>
+              <th className="px-4 py-2.5 font-medium">{t('dash.difficulty')}</th>
+              <th className="px-4 py-2.5 font-medium">{t('common.language')}</th>
+              <th className="px-4 py-2.5 text-right font-medium">{t('dash.tests')}</th>
+              <th className="px-4 py-2.5 text-right font-medium">{t('dash.score')}</th>
+              <th className="px-4 py-2.5 text-right font-medium">{t('dash.time')}</th>
             </tr>
           </thead>
           <tbody>
@@ -294,9 +286,7 @@ export default function SkillAnalyticsPage() {
             ))}
             {(data.recent || []).length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                  No submissions yet. Solve a problem and it will show up here.
-                </td>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">{t('dash.noSubmissionsYetSolveAProblem1c9')}</td>
               </tr>
             )}
           </tbody>
@@ -316,6 +306,7 @@ function KvCard({
   data: Record<string, number>
   testid: string
 }) {
+  const { t } = useT()
   const safeData = data || {}
   const total = Object.values(safeData).reduce((a, b) => a + b, 0)
   const items = Object.entries(safeData).sort((a, b) => b[1] - a[1])
@@ -323,7 +314,7 @@ function KvCard({
     <Panel data-testid={testid}>
       <div className="mb-4 text-base font-semibold text-foreground">{title}</div>
       <div className="space-y-3 text-sm">
-        {items.length === 0 && <div className="text-muted-foreground">No data yet.</div>}
+        {items.length === 0 && <div className="text-muted-foreground">{t('dash.noDataYet2')}</div>}
         {items.map(([k, v]) => {
           const pct = total === 0 ? 0 : Math.round((v / total) * 100)
           return (

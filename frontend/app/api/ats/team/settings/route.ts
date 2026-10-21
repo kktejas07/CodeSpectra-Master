@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest) {
     const raw = await req.json()
     body = raw && typeof raw === 'object' ? raw : {}
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
   const patch: Record<string, boolean> = {}
   for (const k of ['recruiters_see_all_jobs', 'client_sees_contacts'] as const) {

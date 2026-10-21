@@ -18,7 +18,7 @@ const MAP: Record<string, CallStatusEvent['event']> = {
 export async function POST(req: NextRequest) {
   const cfg = await getPlatformConfig()
   if (!verifySharedToken(new URL(req.url).searchParams.get('token'), cfg.voice.exotel_webhook_token)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   }
   const ct = req.headers.get('content-type') || ''
   const params: Record<string, string> = {}

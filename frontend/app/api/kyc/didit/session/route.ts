@@ -9,7 +9,7 @@ const WORKFLOW_ID = 'b4c4c9b0-7b86-4a7a-a156-e2db3896bca5'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   // Check for sandbox API key in settings first, then fall back to env
   let apiKey = process.env.DIDIT_API_KEY

@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
   const patternId = (sp.get('pattern') || '').trim().toLowerCase()
   const SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/
   const all = sp.get('all') === '1'
-  if (!all && !SLUG.test(company) && !SLUG.test(patternId)) return NextResponse.json({ error: 'Give a company or a pattern' }, { status: 400 })
+  if (!all && !SLUG.test(company) && !SLUG.test(patternId)) return NextResponse.json({ error: 'Give a company or a pattern', code: 'ct_company_or_pattern' }, { status: 400 })
   try {
     const list = all
       ? await listPatterns({ activeOnly: true })
@@ -48,6 +48,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items }, { headers: { 'Cache-Control': 'private, max-age=60' } })
   } catch (e) {
     console.error('[company-tests] GET:', (e as Error)?.message)
-    return NextResponse.json({ error: 'Could not load practice tests.' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not load practice tests.', code: 'ct_tests_load_failed' }, { status: 500 })
   }
 }

@@ -3,6 +3,7 @@
 import { isFullscreen, requestFullscreenSafe } from '@/lib/proctoring/fullscreen'
 import { useEffect, useRef, useCallback } from 'react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useT } from '@/lib/i18n/client'
 
 interface RealTimeProctorProps {
   children: React.ReactNode
@@ -40,6 +41,7 @@ export function RealTimeProctor({
   enabled = true,
   enforceFullscreen = false,
 }: RealTimeProctorProps) {
+  const { t: tr } = useT()
   const lastUsbDevicesRef = useRef<string[]>([])
   const screenShareActiveRef = useRef(false)
   // Baseline content width + whether a shrink has already been flagged.
@@ -513,7 +515,7 @@ export function RealTimeProctor({
           viewportFlaggedRef.current = true
           sendEventRef('viewport_shrunk', {
             baseline: base, current: w, delta,
-            hint: 'side panel, docked DevTools, or window snapped — verify',
+            hint: tr('exam.sidePanelDockedDevtoolsOrWindow412'),
           })
         } else if (delta <= RESTORE_PX && viewportFlaggedRef.current) {
           viewportFlaggedRef.current = false
@@ -598,16 +600,16 @@ export function RealTimeProctor({
     if (!enabled) return
 
     const BLOCKED_KEYS = [
-      { key: 'F12', ctrl: false, label: 'DevTools' },
-      { key: 'I', ctrl: true, shift: true, label: 'DevTools' },
-      { key: 'J', ctrl: true, shift: true, label: 'Console' },
-      { key: 'U', ctrl: true, label: 'View Source' },
-      { key: 'C', ctrl: true, shift: true, label: 'DevTools' },
-      { key: 'W', ctrl: true, label: 'Close Tab' },
-      { key: 'T', ctrl: true, label: 'New Tab' },
-      { key: 'N', ctrl: true, label: 'New Window' },
+      { key: 'F12', ctrl: false, label: tr('exam.devtools') },
+      { key: 'I', ctrl: true, shift: true, label: tr('exam.devtools') },
+      { key: 'J', ctrl: true, shift: true, label: tr('exam.console') },
+      { key: 'U', ctrl: true, label: tr('exam.viewSource') },
+      { key: 'C', ctrl: true, shift: true, label: tr('exam.devtools') },
+      { key: 'W', ctrl: true, label: tr('exam.closeTab') },
+      { key: 'T', ctrl: true, label: tr('exam.newTab') },
+      { key: 'N', ctrl: true, label: tr('exam.newWindow') },
       { key: 'P', ctrl: true, shift: true, label: 'Print/Screenshot' },
-      { key: 'S', ctrl: true, label: 'Save Page' },
+      { key: 'S', ctrl: true, label: tr('exam.savePage') },
     ]
 
     const handleKeyDown = (e: KeyboardEvent) => {

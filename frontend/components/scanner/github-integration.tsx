@@ -12,8 +12,12 @@ import {
   type GitHubRepoListItem,
 } from '@/lib/github-service'
 import { useToast } from '@/lib/toast-context'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 export function GitHubIntegration() {
+  const apiError = useApiError()
+  const { t } = useT()
   const addToast = useToast()
   const [isConnecting, setIsConnecting] = useState(false)
   const [isLoadingRepos, setIsLoadingRepos] = useState(false)
@@ -27,8 +31,8 @@ export function GitHubIntegration() {
     if (!ok) {
       addToast({
         type: 'error',
-        title: 'GitHub sign-in isn’t available',
-        message: 'GitHub sign-in isn’t set up on this platform yet. Please contact support.',
+        title: t('tools.githubSignInIsntAvailable'),
+        message: t('tools.githubSignInIsntSetUp13c'),
         duration: 8000,
       })
       setIsConnecting(false)
@@ -45,21 +49,21 @@ export function GitHubIntegration() {
       if (!list.success) {
         addToast({
           type: 'error',
-          title: 'GitHub connection issue',
-          message: list.error || 'Could not load repositories. Make sure GitHub is connected in Settings.',
+          title: t('tools.githubConnectionIssue'),
+          message: apiError(list, t('tools.couldNotLoadRepositoriesMakeSurec83')),
           duration: 6000,
         })
       } else if (list.repositories.length === 0) {
         addToast({
           type: 'info',
-          title: 'No repositories loaded',
-          message: 'Connect GitHub first, or ensure your token is stored. If you just connected, refresh and try again.',
+          title: t('tools.noRepositoriesLoaded'),
+          message: t('tools.connectGithubFirstOrEnsureYour80e'),
           duration: 6000,
         })
       }
     } catch (error) {
       console.error('[CodeSpectra] Failed to load repositories:', error)
-      setLoadError('Could not load repositories. Check that you are signed in and GitHub is connected.')
+      setLoadError(t('tools.couldNotLoadRepositoriesCheckThat15e'))
     } finally {
       setIsLoadingRepos(false)
     }
@@ -72,25 +76,17 @@ export function GitHubIntegration() {
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <Github className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold text-foreground">Connect GitHub</h3>
+              <h3 className="font-semibold text-foreground">{t('tools.connectGithub')}</h3>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Authorize CodeSpectra to list your repositories for scanning. After GitHub redirects back here, use{' '}
-              <strong className="text-foreground">Browse repositories</strong> to load the list (uses your Supabase
-              session).
-            </p>
+            <p className="text-sm text-muted-foreground">{t('tools.authorizeCodespectraToListYourRepositori866')}{' '}<strong className="text-foreground">{t('tools.browseRepositories')}</strong>{' '}{t('tools.toLoadTheListUsesYour605')}</p>
           </div>
           <Button onClick={handleConnectGitHub} disabled={isConnecting} className="shrink-0 whitespace-nowrap">
             {isConnecting ? (
               <>
-                <Loader className="mr-2 h-4 w-4 animate-spin" />
-                Redirecting…
-              </>
+                <Loader className="mr-2 h-4 w-4 animate-spin" />{t('tools.redirecting')}</>
             ) : (
               <>
-                <Github className="mr-2 h-4 w-4" />
-                Connect GitHub
-              </>
+                <Github className="mr-2 h-4 w-4" />{t('tools.connectGithub')}</>
             )}
           </Button>
         </div>
@@ -98,7 +94,7 @@ export function GitHubIntegration() {
 
       {loadError && (
         <Alert variant="destructive">
-          <AlertTitle>Repository list</AlertTitle>
+          <AlertTitle>{t('tools.repositoryList')}</AlertTitle>
           <AlertDescription>{loadError}</AlertDescription>
         </Alert>
       )}
@@ -107,28 +103,22 @@ export function GitHubIntegration() {
         <Button onClick={() => void handleLoadRepositories()} disabled={isLoadingRepos} variant="outline" className="w-full">
           {isLoadingRepos ? (
             <>
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-              Loading repositories…
-            </>
+              <Loader className="mr-2 h-4 w-4 animate-spin" />{t('tools.loadingRepositories')}</>
           ) : (
             <>
-              <GitBranch className="mr-2 h-4 w-4" />
-              Browse GitHub repositories
-            </>
+              <GitBranch className="mr-2 h-4 w-4" />{t('tools.browseGithubRepositories')}</>
           )}
         </Button>
       ) : (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-foreground">Your repositories</h3>
-            <Button variant="ghost" size="sm" onClick={() => setShowRepos(false)} className="text-xs">
-              Collapse
-            </Button>
+            <h3 className="font-semibold text-foreground">{t('tools.yourRepositories')}</h3>
+            <Button variant="ghost" size="sm" onClick={() => setShowRepos(false)} className="text-xs">{t('tools.collapse')}</Button>
           </div>
 
           {repos.length === 0 ? (
             <Card className="p-4 text-center">
-              <p className="text-sm text-muted-foreground">No repositories found. Connect GitHub first, then try again.</p>
+              <p className="text-sm text-muted-foreground">{t('tools.noRepositoriesFoundConnectGithubFirst961')}</p>
             </Card>
           ) : (
             <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
@@ -152,7 +142,7 @@ export function GitHubIntegration() {
                       </div>
                     </div>
                     <Button asChild size="sm" variant="ghost" className="shrink-0">
-                      <a href={repo.html_url} target="_blank" rel="noopener noreferrer" aria-label={`Open ${repo.name} on GitHub`}>
+                      <a href={repo.html_url} target="_blank" rel="noopener noreferrer" aria-label={t('tools.openNameOnGithub', { name: repo.name })}>
                         <ChevronRight className="h-4 w-4" aria-hidden />
                       </a>
                     </Button>

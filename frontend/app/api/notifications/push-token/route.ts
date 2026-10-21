@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
   const token = body.token
   if (!validToken(token)) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid token', code: 'auth_invalid_token' }, { status: 400 })
   }
   // Native clients (FCM/APNs device tokens) report their own platform; the
   // web push client predates the field, so it stays 'web'.
@@ -75,7 +75,7 @@ export async function DELETE(req: NextRequest) {
   const userId = gate.user.id
   const body = sanitizeMongoInput(await req.json().catch(() => ({}))) as { token?: string }
   if (!validToken(body.token)) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid token', code: 'auth_invalid_token' }, { status: 400 })
   }
 
   try {

@@ -16,7 +16,7 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const len = Number(req.headers.get('content-length') || 0)
   if (len > 64 * 1024) return NextResponse.json({ error: 'Batch too large' }, { status: 413 })
   const body = await req.json().catch(() => null)

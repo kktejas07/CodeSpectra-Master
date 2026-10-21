@@ -25,31 +25,31 @@ export async function POST(request: Request) {
   try {
     const pending = await readPending2faCookie()
     if (!pending) {
-      return NextResponse.json({ error: 'Your sign-in took too long. Start again.', expired: true }, { status: 401 })
+      return NextResponse.json({ error: 'Your sign-in took too long. Start again.', code: 'auth_signin_timeout', expired: true }, { status: 401 })
     }
 
     const ipKey = clientLimiterKeyFromRequest(request, null)
     const limit = await rateLimitRedis(`login:2fa:${pending.uid}`, 5, 5 * 60_000)
     if (!limit.ok) {
-      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: limit.retryAfterSec } }, { status: 429 })
     }
 
     const { totpToken } = (await request.json().catch(() => ({}))) as { totpToken?: unknown }
     if (typeof totpToken !== 'string' || !totpToken.trim()) {
-      return NextResponse.json({ error: 'Enter the 6-digit code from your authenticator app.' }, { status: 400 })
+      return NextResponse.json({ error: 'Enter the 6-digit code from your authenticator app.', code: 'auth_totp_required' }, { status: 400 })
     }
 
     const db = await getMongoDb()
     const user = await db.collection('user').findOne({ $or: [{ id: pending.uid }, { _id: pending.uid as never }] })
     if (!user || accountBlockReason(user) || !user.totp_enabled || !user.totp_secret) {
       await clearPending2faCookie()
-      return NextResponse.json({ error: 'Your sign-in couldn’t be completed. Start again.', expired: true }, { status: 401 })
+      return NextResponse.json({ error: 'Your sign-in couldn’t be completed. Start again.', code: 'auth_signin_incomplete', expired: true }, { status: 401 })
     }
 
     const actorIp = ipKey.replace(/^(ip:|u:)/, '')
     if (!(await consumeTotp(user, totpToken))) {
       await writeAuditLog({ action: `auth.${pending.method}_login`, outcome: 'denied', actor: pending.email, actorIp, resource: 'user/' + pending.uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: pending.uid }).catch(() => {})
-      return NextResponse.json({ error: 'That code is incorrect or has expired.' }, { status: 401 })
+      return NextResponse.json({ error: 'That code is incorrect or has expired.', code: 'auth_code_incorrect_expired' }, { status: 401 })
     }
 
     await clearPending2faCookie()
@@ -66,6 +66,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('[auth/two-factor] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

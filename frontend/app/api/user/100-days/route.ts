@@ -17,7 +17,7 @@ const LANGS = new Set(Object.keys(HUNDRED_DAYS[0]?.problems[0]?.starterCode ?? {
  */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   try {
     const db = await getMongoDb()
@@ -47,13 +47,13 @@ export async function GET() {
 /** POST — save preferences only (`language`). Progress is recorded by the grader. */
 export async function POST(request: Request) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   let body: { language?: unknown }
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const language = typeof body.language === 'string' ? body.language : ''

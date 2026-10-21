@@ -17,6 +17,7 @@ import { useToast } from '@/lib/toast-context'
 import { PASSPORT_LEVELS, LEVEL_LABELS, type PassportLevel } from '@/lib/passport/core'
 import { AVAILABILITY, AVAILABILITY_LABELS, INVITE_TARGET_LABELS, type InviteTarget, type TalentResult } from '@/lib/talent/core'
 import { cn } from '@/lib/utils'
+import { useT } from '@/lib/i18n/client'
 
 interface Quota { used: number; limit: number; month: string }
 interface SearchResponse { total: number; page: number; results: TalentResult[]; quota: Quota }
@@ -26,17 +27,18 @@ interface Targets { tests: Array<{ id: string; title: string }>; jobs: Array<{ i
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 
 export default function TalentSearchPage() {
+  const { t } = useT()
   const initial = useBrowserValue(() => (new URLSearchParams(window.location.search).get('tab') === 'invites' ? 'invites' : 'search'), 'search' as 'search' | 'invites')
   const [tab, setTab] = useState<'search' | 'invites'>('search')
   useEffect(() => setTab(initial), [initial])
   return (
     <HiringShell
-      title="Talent search"
-      description="Find learners who chose to be discoverable, by skills CodeSpectra verified. Contact details unlock only when someone accepts your invite."
+      title={t('hiring.talentSearch')}
+      description={t('hiring.findLearnersWhoChoseToBecac')}
       icon={<UserSearch />}
     >
       <div className="mb-5">
-        <Segmented label="Talent search view" value={tab} onChange={setTab} options={[{ value: 'search', label: 'Search' }, { value: 'invites', label: 'Sent invites' }]} />
+        <Segmented label={t('hiring.talentSearchView')} value={tab} onChange={setTab} options={[{ value: 'search', label: t('common.search') }, { value: 'invites', label: t('hiring.sentInvites') }]} />
       </div>
       {tab === 'search' ? <SearchTab /> : <InvitesTab />}
     </HiringShell>
@@ -44,6 +46,7 @@ export default function TalentSearchPage() {
 }
 
 function SearchTab() {
+  const { td, t } = useT()
   const addToast = useToast()
   const [skills, setSkills] = useState<string[]>([])
   const [level, setLevel] = useState<PassportLevel>('intermediate')
@@ -76,7 +79,7 @@ function SearchTab() {
       setRes(await atsSend<SearchResponse>('/api/ats/talent/search', 'POST', body))
       setPage(p)
     } catch (e) {
-      setError(e instanceof AtsError ? e.message : 'Search failed. Try again.')
+      setError(e instanceof AtsError ? e.message : t('hiring.searchFailedTryAgain'))
     } finally {
       setLoading(false)
     }
@@ -87,22 +90,22 @@ function SearchTab() {
     <div className="space-y-5">
       <Panel className="space-y-4">
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); void run(1) }}>
-          <ChipInput label="Verified skills" value={skills} onChange={(v) => setSkills(v.slice(0, 5))} placeholder="e.g. python, sql, react" hint="Up to five. Learners must have every skill at the level below." />
+          <ChipInput label={t('hiring.verifiedSkills')} value={skills} onChange={(v) => setSkills(v.slice(0, 5))} placeholder={t('hiring.eGPythonSqlReact')} hint={t('hiring.upToFiveLearnersMustHave47c')} />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Minimum level" htmlFor="ts-level">
-              <NativeSelect id="ts-level" value={level} onChange={(v) => setLevel(v as PassportLevel)} options={PASSPORT_LEVELS.map((l) => ({ value: l, label: LEVEL_LABELS[l] }))} />
+            <Field label={t('hiring.minimumLevel')} htmlFor="ts-level">
+              <NativeSelect id="ts-level" value={level} onChange={(v) => setLevel(v as PassportLevel)} options={PASSPORT_LEVELS.map((l) => ({ value: l, label: td(`hiring.levelLabels:${l}`, LEVEL_LABELS[l]) }))} />
             </Field>
-            <Field label="Country code" htmlFor="ts-country" hint="Two letters, e.g. IN"><Input id="ts-country" value={country} maxLength={2} onChange={(e) => setCountry(e.target.value.replace(/[^a-z]/gi, ''))} /></Field>
-            <Field label="City" htmlFor="ts-city"><Input id="ts-city" value={city} maxLength={80} onChange={(e) => setCity(e.target.value)} /></Field>
-            <Field label="Availability" htmlFor="ts-avail">
-              <NativeSelect id="ts-avail" value={availability} onChange={setAvailability} placeholder="Any" options={AVAILABILITY.map((a) => ({ value: a, label: AVAILABILITY_LABELS[a] }))} />
+            <Field label={t('hiring.countryCode')} htmlFor="ts-country" hint={t('hiring.twoLettersEGIn')}><Input id="ts-country" value={country} maxLength={2} onChange={(e) => setCountry(e.target.value.replace(/[^a-z]/gi, ''))} /></Field>
+            <Field label={t('hiring.city')} htmlFor="ts-city"><Input id="ts-city" value={city} maxLength={80} onChange={(e) => setCity(e.target.value)} /></Field>
+            <Field label={t('hiring.availability')} htmlFor="ts-avail">
+              <NativeSelect id="ts-avail" value={availability} onChange={setAvailability} placeholder={t('hiring.any')} options={AVAILABILITY.map((a) => ({ value: a, label: td(`hiring.availabilityLabels:${a}`, AVAILABILITY_LABELS[a]) }))} />
             </Field>
-            <Field label="Graduated from" htmlFor="ts-ymin"><Input id="ts-ymin" inputMode="numeric" maxLength={4} value={yearMin} onChange={(e) => setYearMin(e.target.value.replace(/\D/g, ''))} placeholder="Year" /></Field>
-            <Field label="Graduated by" htmlFor="ts-ymax"><Input id="ts-ymax" inputMode="numeric" maxLength={4} value={yearMax} onChange={(e) => setYearMax(e.target.value.replace(/\D/g, ''))} placeholder="Year" /></Field>
+            <Field label={t('hiring.graduatedFrom')} htmlFor="ts-ymin"><Input id="ts-ymin" inputMode="numeric" maxLength={4} value={yearMin} onChange={(e) => setYearMin(e.target.value.replace(/\D/g, ''))} placeholder={t('hiring.year')} /></Field>
+            <Field label={t('hiring.graduatedBy')} htmlFor="ts-ymax"><Input id="ts-ymax" inputMode="numeric" maxLength={4} value={yearMax} onChange={(e) => setYearMax(e.target.value.replace(/\D/g, ''))} placeholder={t('hiring.year')} /></Field>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" className="h-11 rounded-xl" disabled={loading}><Search className="h-4 w-4" aria-hidden /> {loading ? 'Searching…' : 'Search'}</Button>
-            {res?.quota && <p className="text-sm text-muted-foreground tabular-nums">Invites this month: {res.quota.used} of {res.quota.limit}</p>}
+            <Button type="submit" className="h-11 rounded-xl" disabled={loading}><Search className="h-4 w-4" aria-hidden /> {loading ? t('hiring.searching') : t('common.search')}</Button>
+            {res?.quota && <p className="text-sm text-muted-foreground tabular-nums">{t('hiring.invitesThisMonthUsedOfLimit', { used: res.quota.used, limit: res.quota.limit })}</p>}
           </div>
         </form>
         <InlineError message={error} />
@@ -110,10 +113,10 @@ function SearchTab() {
 
       {res && (
         res.results.length === 0 ? (
-          <EmptyState variant="search" title="No discoverable learners match" description="Try fewer skills, a lower level or a wider location. Only learners who opted in appear here." />
+          <EmptyState variant="search" title={t('hiring.noDiscoverableLearnersMatch')} description={t('hiring.tryFewerSkillsALowerLevelfb4')} />
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">{res.total} learner{res.total === 1 ? '' : 's'} found</p>
+            <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">{t('hiring.countLearnersFound', { count: res.total })}</p>
             <ul className={cn('grid gap-3 md:grid-cols-2', loading && 'opacity-70')}>
               {res.results.map((r) => (
                 <li key={r.handle}>
@@ -122,12 +125,12 @@ function SearchTab() {
                       <div className="min-w-0">
                         <p className="font-semibold text-foreground">{r.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {[r.city, r.country].filter(Boolean).join(', ') || 'Location not shared'}
-                          {r.graduation_year ? ` · Class of ${r.graduation_year}` : ''}
-                          {r.availability ? ` · ${AVAILABILITY_LABELS[r.availability as keyof typeof AVAILABILITY_LABELS] ?? r.availability}` : ''}
+                          {[r.city, r.country].filter(Boolean).join(', ') || t('hiring.locationNotShared')}
+                          {r.graduation_year ? t('hiring.classOfGraduationYear', { graduation_year: r.graduation_year }) : ''}
+                          {r.availability ? ` · ${td(`hiring.availabilityLabels:${r.availability as keyof typeof AVAILABILITY_LABELS}`, AVAILABILITY_LABELS[r.availability as keyof typeof AVAILABILITY_LABELS]) ?? r.availability}` : ''}
                         </p>
                       </div>
-                      <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium tabular-nums text-primary" title="Match score from verified levels">{r.match}</span>
+                      <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium tabular-nums text-primary" title={t('hiring.matchScoreFromVerifiedLevels')}>{r.match}</span>
                     </div>
                     <ul className="flex flex-wrap gap-1.5">
                       {r.skills.map((s) => (
@@ -138,7 +141,7 @@ function SearchTab() {
                       ))}
                     </ul>
                     <div className="flex flex-wrap gap-2">
-                      <Button type="button" className="h-11 rounded-xl" onClick={() => setInviteFor(r)}><Send className="h-4 w-4" aria-hidden /> Invite</Button>
+                      <Button type="button" className="h-11 rounded-xl" onClick={() => setInviteFor(r)}><Send className="h-4 w-4" aria-hidden />{' '}{t('hiring.invite')}</Button>
                     </div>
                   </Panel>
                 </li>
@@ -146,23 +149,24 @@ function SearchTab() {
             </ul>
             {pages > 1 && (
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" disabled={page <= 1 || loading} onClick={() => void run(page - 1)}>Previous</Button>
-                <span className="text-sm tabular-nums text-muted-foreground">Page {page} of {pages}</span>
-                <Button type="button" variant="outline" disabled={page >= pages || loading} onClick={() => void run(page + 1)}>Next</Button>
+                <Button type="button" variant="outline" disabled={page <= 1 || loading} onClick={() => void run(page - 1)}>{t('common.previous')}</Button>
+                <span className="text-sm tabular-nums text-muted-foreground">{t('hiring.pagePageOfPages', { page, pages })}</span>
+                <Button type="button" variant="outline" disabled={page >= pages || loading} onClick={() => void run(page + 1)}>{t('common.next')}</Button>
               </div>
             )}
           </div>
         )
       )}
       {!res && !loading && (
-        <EmptyState illustration="search" title="Search verified talent" description="Add a skill and a minimum level, then search. Only learners who opted in to discovery are shown." />
+        <EmptyState illustration="search" title={t('hiring.searchVerifiedTalent')} description={t('hiring.addASkillAndAMinimum14f')} />
       )}
-      <InviteDialog target={inviteFor} onClose={() => setInviteFor(null)} onSent={() => { addToast({ type: 'success', title: 'Invite sent' }); setInviteFor(null); void run(page) }} />
+      <InviteDialog target={inviteFor} onClose={() => setInviteFor(null)} onSent={() => { addToast({ type: 'success', title: t('hiring.inviteSent') }); setInviteFor(null); void run(page) }} />
     </div>
   )
 }
 
 function InviteDialog({ target, onClose, onSent }: { target: TalentResult | null; onClose: () => void; onSent: () => void }) {
+  const { td, t } = useT()
   const targets = useAts<Targets>(target ? '/api/ats/talent/targets' : null)
   const [type, setType] = useState<InviteTarget>('job')
   const [targetId, setTargetId] = useState('')
@@ -179,7 +183,7 @@ function InviteDialog({ target, onClose, onSent }: { target: TalentResult | null
       await atsSend('/api/ats/talent/invites', 'POST', { handle: target.handle, target_type: type, target_id: targetId, ...(message.trim() ? { message: message.trim() } : {}) })
       onSent()
     } catch (e) {
-      setError(e instanceof AtsError ? e.message : 'Couldn’t send the invite.')
+      setError(e instanceof AtsError ? e.message : t('hiring.couldntSendTheInvite'))
     } finally {
       setBusy(false)
     }
@@ -188,22 +192,22 @@ function InviteDialog({ target, onClose, onSent }: { target: TalentResult | null
     <Dialog open={!!target} onOpenChange={(o) => { if (!o) onClose() }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite {target?.name}</DialogTitle>
-          <DialogDescription>They’ll get a notification. Their email and phone are shared with you only if they accept.</DialogDescription>
+          <DialogTitle>{t('hiring.inviteName', { name: target?.name })}</DialogTitle>
+          <DialogDescription>{t('hiring.theyllGetANotificationTheirEmail5b9')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <Segmented label="Invite to" value={type} onChange={(v) => { setType(v); setTargetId('') }} options={(['job', 'test', 'interview'] as const).map((v) => ({ value: v, label: INVITE_TARGET_LABELS[v] }))} />
-          <Field label={type === 'test' ? 'Test' : 'Job'} htmlFor="ti-target" hint={type === 'interview' ? 'Accepting adds them to this job’s pipeline so you can schedule the interview.' : undefined}>
-            <NativeSelect id="ti-target" value={targetId} onChange={setTargetId} placeholder={targets.loading ? 'Loading…' : options.length ? 'Choose one' : type === 'test' ? 'No published tests' : 'No open jobs'} options={options.map((o) => ({ value: o.id, label: o.title }))} />
+          <Segmented label={t('hiring.inviteTo')} value={type} onChange={(v) => { setType(v); setTargetId('') }} options={(['job', 'test', 'interview'] as const).map((v) => ({ value: v, label: td(`hiring.inviteTargetLabels:${v}`, INVITE_TARGET_LABELS[v]) }))} />
+          <Field label={type === 'test' ? t('hiring.test') : t('hiring.job')} htmlFor="ti-target" hint={type === 'interview' ? t('hiring.acceptingAddsThemToThisJobs16d') : undefined}>
+            <NativeSelect id="ti-target" value={targetId} onChange={setTargetId} placeholder={targets.loading ? t('common.loading') : options.length ? t('hiring.chooseOne') : type === 'test' ? t('hiring.noPublishedTests') : t('hiring.noOpenJobs')} options={options.map((o) => ({ value: o.id, label: o.title }))} />
           </Field>
-          <Field label="Message (optional)" htmlFor="ti-msg">
-            <Textarea id="ti-msg" value={message} maxLength={1000} rows={4} onChange={(e) => setMessage(e.target.value)} placeholder="Why you’re reaching out" />
+          <Field label={t('hiring.messageOptional')} htmlFor="ti-msg">
+            <Textarea id="ti-msg" value={message} maxLength={1000} rows={4} onChange={(e) => setMessage(e.target.value)} placeholder={t('hiring.whyYoureReachingOut')} />
           </Field>
           <InlineError message={error || targets.error?.message} />
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="button" disabled={!targetId || busy} onClick={() => void send()}><Send className="h-4 w-4" aria-hidden /> {busy ? 'Sending…' : 'Send invite'}</Button>
+          <Button type="button" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
+          <Button type="button" disabled={!targetId || busy} onClick={() => void send()}><Send className="h-4 w-4" aria-hidden /> {busy ? t('hiring.sending') : t('hiring.sendInvite')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -211,15 +215,16 @@ function InviteDialog({ target, onClose, onSent }: { target: TalentResult | null
 }
 
 function InvitesTab() {
+  const { td, t } = useT()
   const addToast = useToast()
   const q = useAts<{ invites: SentInvite[]; quota: Quota }>('/api/ats/talent/invites')
   const withdraw = async (id: string) => {
     try {
       await atsSend(`/api/ats/talent/invites/${encodeURIComponent(id)}`, 'DELETE')
-      addToast({ type: 'success', title: 'Invite withdrawn' })
+      addToast({ type: 'success', title: t('hiring.inviteWithdrawn') })
       q.reload()
     } catch (e) {
-      addToast({ type: 'error', title: e instanceof AtsError ? e.message : 'Couldn’t withdraw.' })
+      addToast({ type: 'error', title: e instanceof AtsError ? e.message : t('hiring.couldntWithdraw') })
     }
   }
   const invites = q.data?.invites ?? []
@@ -227,18 +232,18 @@ function InvitesTab() {
     <div className="space-y-4">
       <QueryGate loading={q.loading} error={q.error} hasData={!!q.data} onRetry={q.reload} />
       {q.data && (invites.length === 0 ? (
-        <EmptyState illustration="inbox" title="No invites sent yet" description="Search for talent and invite people to a test, job or interview." />
+        <EmptyState illustration="inbox" title={t('hiring.noInvitesSentYet')} description={t('hiring.searchForTalentAndInvitePeoplefc4')} />
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-border/70">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-muted/40 text-left text-muted-foreground">
-              <tr><th className="px-4 py-2.5 font-medium">Learner</th><th className="px-4 py-2.5 font-medium">Invited to</th><th className="px-4 py-2.5 font-medium">Status</th><th className="px-4 py-2.5 font-medium">Contact</th><th className="px-4 py-2.5 font-medium"><span className="sr-only">Actions</span></th></tr>
+              <tr><th className="px-4 py-2.5 font-medium">{t('hiring.learner2')}</th><th className="px-4 py-2.5 font-medium">{t('hiring.invitedTo')}</th><th className="px-4 py-2.5 font-medium">{t('hiring.status')}</th><th className="px-4 py-2.5 font-medium">{t('hiring.contact')}</th><th className="px-4 py-2.5 font-medium"><span className="sr-only">{t('hiring.actions')}</span></th></tr>
             </thead>
             <tbody>
               {invites.map((i) => (
                 <tr key={i.id} className="border-t border-border/60">
                   <td className="px-4 py-2.5"><span className="font-medium text-foreground">{i.learner_name}</span><span className="block text-xs text-muted-foreground">{day(i.created_at)}</span></td>
-                  <td className="px-4 py-2.5">{INVITE_TARGET_LABELS[i.target_type]}: {i.target_title}</td>
+                  <td className="px-4 py-2.5">{td(`hiring.inviteTargetLabels:${i.target_type}`, INVITE_TARGET_LABELS[i.target_type])}: {i.target_title}</td>
                   <td className="px-4 py-2.5 capitalize">{i.status}</td>
                   <td className="px-4 py-2.5">
                     {i.contact ? (
@@ -246,10 +251,10 @@ function InvitesTab() {
                         {i.contact.email && <a href={`mailto:${i.contact.email}`} className="flex items-center gap-1 text-primary underline-offset-2 hover:underline"><Mail className="h-3.5 w-3.5" aria-hidden />{i.contact.email}</a>}
                         {i.contact.phone && <span className="flex items-center gap-1"><Phone className="h-3.5 w-3.5" aria-hidden />{i.contact.phone}</span>}
                       </span>
-                    ) : <span className="text-muted-foreground">Shared on accept</span>}
+                    ) : <span className="text-muted-foreground">{t('hiring.sharedOnAccept')}</span>}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    {i.status === 'pending' && <Button type="button" size="sm" variant="ghost" onClick={() => void withdraw(i.id)} aria-label={`Withdraw invite to ${i.learner_name}`}><X className="h-4 w-4" aria-hidden /> Withdraw</Button>}
+                    {i.status === 'pending' && <Button type="button" size="sm" variant="ghost" onClick={() => void withdraw(i.id)} aria-label={t('hiring.withdrawInviteToLearnerName', { learner_name: i.learner_name })}><X className="h-4 w-4" aria-hidden />{' '}{t('hiring.withdraw')}</Button>}
                   </td>
                 </tr>
               ))}

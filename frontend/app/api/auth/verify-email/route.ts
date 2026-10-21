@@ -56,17 +56,17 @@ function redirectWithMessage(msg: string) {
 export async function POST() {
   const { getAPIUser } = await import('@/lib/route-auth')
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { rateLimitRedis } = await import('@/lib/upstash-rate-limit')
   const limit = await rateLimitRedis(`verify-email:resend:${user.id}`, 3, 3600_000)
   if (!limit.ok) {
-    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.` }, { status: 429 })
+    return NextResponse.json({ error: `Too many requests. Try again in ${Math.ceil(limit.retryAfterSec / 60)} min.`, code: 'rate_limited_minutes', params: { minutes: Math.ceil(limit.retryAfterSec / 60) } }, { status: 429 })
   }
 
   const db = await getMongoDb()
   const doc = await db.collection('user').findOne({ $or: [{ id: user.id }, { _id: user.id as never }] }, { projection: { _id: 1, email: 1, emailVerified: 1 } })
-  if (!doc?.email) return NextResponse.json({ error: 'Account not found' }, { status: 404 })
+  if (!doc?.email) return NextResponse.json({ error: 'Account not found', code: 'auth_account_not_found' }, { status: 404 })
   if (doc.emailVerified !== false) return NextResponse.json({ ok: true, alreadyVerified: true })
 
   const token = crypto.randomBytes(32).toString('hex')
@@ -81,12 +81,13 @@ export async function POST() {
   )
   const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const { sendEmail } = await import('@/lib/send-email')
-  const { emailTemplates } = await import('@/lib/email-templates')
+  const { emailTemplatesFor } = await import('@/lib/email-templates')
+  const { localeForRequester } = await import('@/lib/i18n/recipient')
   try {
-    await sendEmail(String(doc.email), emailTemplates.emailVerification(`${origin}/api/auth/verify-email?token=${token}`))
+    await sendEmail(String(doc.email), emailTemplatesFor(await localeForRequester(String(doc.email))).emailVerification(`${origin}/api/auth/verify-email?token=${token}`))
   } catch (e) {
     console.error('[verify-email] resend failed:', e)
-    return NextResponse.json({ error: 'We couldn’t send the email. Try again later.' }, { status: 502 })
+    return NextResponse.json({ error: 'We couldn’t send the email. Try again later.', code: 'auth_email_send_failed' }, { status: 502 })
   }
   return NextResponse.json({ ok: true })
 }

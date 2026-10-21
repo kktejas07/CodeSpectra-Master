@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: courseId } = await params
 
@@ -28,7 +28,7 @@ export async function GET(
     })
   } catch (e) {
     console.error('[enrollment] GET error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -38,7 +38,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: courseId } = await params
 
@@ -46,7 +46,7 @@ export async function POST(
     const db = await getMongoDb()
 
     const course = await db.collection('courses').findOne({ id: courseId }, { projection: { id: 1 } })
-    if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
 
     // Atomic: only inserts when not enrolled yet, so the count can't double up.
     const r = await db.collection('course_enrollments').updateOne(
@@ -74,7 +74,7 @@ export async function POST(
     return NextResponse.json({ success: true, message: 'Enrolled successfully' })
   } catch (e) {
     console.error('[enrollment] POST error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -84,7 +84,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: courseId } = await params
 
@@ -106,6 +106,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, message: 'Unenrolled' })
   } catch (e) {
     console.error('[enrollment] DELETE error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

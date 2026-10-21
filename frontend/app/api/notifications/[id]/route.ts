@@ -16,7 +16,7 @@ export async function POST(_req: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     return await markRead(user.id, id)
   } catch (error) {
     console.error('[CodeSpectra] Mark notification read error:', error)
@@ -28,7 +28,7 @@ export async function PATCH(_req: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     return await markRead(user.id, id)
   } catch (error) {
     console.error('[CodeSpectra] Mark notification read error:', error)
@@ -40,7 +40,7 @@ export async function DELETE(_req: Request, { params }: IdRouteContext) {
   const { id } = await params
   try {
     const user = await getAPIUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
     const col = await notifications()
     await col.deleteOne({ id, user_id: user.id })

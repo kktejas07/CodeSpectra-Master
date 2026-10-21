@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import type { DriveDoc } from '@/lib/campus/types'
 import { useConsole } from './console-context'
 import { Field, fieldClass } from './shared'
+import { useT } from '@/lib/i18n/client'
 
 interface PatternOpt { id: string; companyName: string; examName: string }
 
@@ -22,6 +23,7 @@ const major = (minor: number | null | undefined) => (minor === null || minor ===
 const minor = (v: string) => (v.trim() === '' ? null : Math.round(Number(v) * 100))
 
 export function DriveForm({ initial, onSubmit, busy, submitLabel }: { initial?: DriveDoc; onSubmit: (body: Record<string, unknown>) => void; busy: boolean; submitLabel: string }) {
+  const { t } = useT()
   const { college } = useConsole()
   const [patterns, setPatterns] = useState<PatternOpt[]>([])
   const [f, setF] = useState(() => ({
@@ -60,27 +62,27 @@ export function DriveForm({ initial, onSubmit, busy, submitLabel }: { initial?: 
         })
       }}
     >
-      <Field id="d-title" label="Drive title"><Input id="d-title" value={f.title} onChange={set('title')} required minLength={3} maxLength={160} placeholder="TCS Ninja 2027" /></Field>
-      <Field id="d-role" label="Role"><Input id="d-role" value={f.role} onChange={set('role')} required maxLength={160} placeholder="Software engineer" /></Field>
-      <Field id="d-company" label="Company"><Input id="d-company" value={f.company} onChange={set('company')} required maxLength={160} /></Field>
-      <Field id="d-web" label="Company website"><Input id="d-web" type="url" value={f.website} onChange={set('website')} placeholder="https://" /></Field>
-      <Field id="d-desc" label="Description" className="sm:col-span-2">
+      <Field id="d-title" label={t('career.driveTitle')}><Input id="d-title" value={f.title} onChange={set('title')} required minLength={3} maxLength={160} placeholder={t('career.tcsNinja2027')} /></Field>
+      <Field id="d-role" label={t('career.role')}><Input id="d-role" value={f.role} onChange={set('role')} required maxLength={160} placeholder={t('career.softwareEngineer')} /></Field>
+      <Field id="d-company" label={t('career.company')}><Input id="d-company" value={f.company} onChange={set('company')} required maxLength={160} /></Field>
+      <Field id="d-web" label={t('career.companyWebsite')}><Input id="d-web" type="url" value={f.website} onChange={set('website')} placeholder="https://" /></Field>
+      <Field id="d-desc" label={t('career.description')} className="sm:col-span-2">
         <textarea id="d-desc" className="min-h-24 w-full rounded-lg border border-input bg-transparent p-3 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30" value={f.description} onChange={set('description')} maxLength={8000} />
       </Field>
       <div className="grid grid-cols-[1fr_1fr_96px] gap-3 sm:col-span-2">
-        <Field id="d-ctcmin" label="CTC from (per year)"><Input id="d-ctcmin" type="number" min={0} step="1" value={f.ctcMin} onChange={set('ctcMin')} /></Field>
-        <Field id="d-ctcmax" label="CTC up to"><Input id="d-ctcmax" type="number" min={0} step="1" value={f.ctcMax} onChange={set('ctcMax')} /></Field>
-        <Field id="d-cur" label="Currency"><select id="d-cur" className={fieldClass} value={f.currency} onChange={set('currency')}><option>INR</option><option>USD</option><option>EUR</option><option>GBP</option></select></Field>
+        <Field id="d-ctcmin" label={t('career.ctcFromPerYear')}><Input id="d-ctcmin" type="number" min={0} step="1" value={f.ctcMin} onChange={set('ctcMin')} /></Field>
+        <Field id="d-ctcmax" label={t('career.ctcUpTo')}><Input id="d-ctcmax" type="number" min={0} step="1" value={f.ctcMax} onChange={set('ctcMax')} /></Field>
+        <Field id="d-cur" label={t('career.currency')}><select id="d-cur" className={fieldClass} value={f.currency} onChange={set('currency')}><option>INR</option><option>USD</option><option>{t('career.eur')}</option><option>{t('career.gbp')}</option></select></Field>
       </div>
 
       <fieldset className="space-y-3 rounded-2xl border border-border p-4 sm:col-span-2">
-        <legend className="px-1 text-sm font-semibold text-foreground">Eligibility</legend>
+        <legend className="px-1 text-sm font-semibold text-foreground">{t('career.eligibility')}</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field id="d-cgpa" label="Minimum CGPA"><Input id="d-cgpa" type="number" min={0} max={10} step="0.01" value={f.minCgpa} onChange={set('minCgpa')} /></Field>
-          <Field id="d-bl" label="Maximum backlogs"><Input id="d-bl" type="number" min={0} max={100} value={f.maxBacklogs} onChange={set('maxBacklogs')} placeholder="Any" /></Field>
+          <Field id="d-cgpa" label={t('career.minimumCgpa')}><Input id="d-cgpa" type="number" min={0} max={10} step="0.01" value={f.minCgpa} onChange={set('minCgpa')} /></Field>
+          <Field id="d-bl" label={t('career.maximumBacklogs')}><Input id="d-bl" type="number" min={0} max={100} value={f.maxBacklogs} onChange={set('maxBacklogs')} placeholder={t('career.any')} /></Field>
         </div>
         <div>
-          <p className="text-sm font-medium text-foreground">Departments <span className="font-normal text-muted-foreground">(none ticked = all)</span></p>
+          <p className="text-sm font-medium text-foreground">{t('career.departments')}{' '}<span className="font-normal text-muted-foreground">{t('career.noneTickedAll')}</span></p>
           <div className="mt-2 flex flex-wrap gap-2">
             {college.departments.map((d) => (
               <label key={d.id} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border px-3 text-sm">
@@ -90,7 +92,7 @@ export function DriveForm({ initial, onSubmit, busy, submitLabel }: { initial?: 
           </div>
         </div>
         <div>
-          <p className="text-sm font-medium text-foreground">Graduation years <span className="font-normal text-muted-foreground">(none ticked = all)</span></p>
+          <p className="text-sm font-medium text-foreground">{t('career.graduationYears')}{' '}<span className="font-normal text-muted-foreground">{t('career.noneTickedAll')}</span></p>
           <div className="mt-2 flex flex-wrap gap-2">
             {years.map((y) => (
               <label key={y} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-border px-3 text-sm">
@@ -101,26 +103,26 @@ export function DriveForm({ initial, onSubmit, busy, submitLabel }: { initial?: 
         </div>
       </fieldset>
 
-      <Field id="d-apply" label="Apply by"><Input id="d-apply" type="datetime-local" value={f.applyBy} onChange={set('applyBy')} required /></Field>
-      <Field id="d-test" label="Test on"><Input id="d-test" type="datetime-local" value={f.testAt} onChange={set('testAt')} /></Field>
-      <Field id="d-int" label="Interviews on"><Input id="d-int" type="datetime-local" value={f.interviewAt} onChange={set('interviewAt')} /></Field>
-      <Field id="d-mode" label="Selection process">
+      <Field id="d-apply" label={t('career.applyBy')}><Input id="d-apply" type="datetime-local" value={f.applyBy} onChange={set('applyBy')} required /></Field>
+      <Field id="d-test" label={t('career.testOn')}><Input id="d-test" type="datetime-local" value={f.testAt} onChange={set('testAt')} /></Field>
+      <Field id="d-int" label={t('career.interviewsOn')}><Input id="d-int" type="datetime-local" value={f.interviewAt} onChange={set('interviewAt')} /></Field>
+      <Field id="d-mode" label={t('career.selectionProcess')}>
         <select id="d-mode" className={fieldClass} value={f.mode} onChange={set('mode')}>
-          <option value="company_test">Company test on CodeSpectra</option>
-          <option value="ats_job">Company's job pipeline on CodeSpectra</option>
-          <option value="external">Company's own application form</option>
+          <option value="company_test">{t('career.companyTestOnCodespectra')}</option>
+          <option value="ats_job">{t('career.companysJobPipelineOnCodespectra')}</option>
+          <option value="external">{t('career.companysOwnApplicationForm')}</option>
         </select>
       </Field>
       {f.mode === 'company_test' && (
-        <Field id="d-pattern" label="Company test" className="sm:col-span-2">
+        <Field id="d-pattern" label={t('career.companyTest')} className="sm:col-span-2">
           <select id="d-pattern" className={fieldClass} value={f.patternId} onChange={set('patternId')} required>
-            <option value="">Select a test</option>
+            <option value="">{t('career.selectATest')}</option>
             {patterns.map((p) => <option key={p.id} value={p.id}>{p.companyName} — {p.examName}</option>)}
           </select>
         </Field>
       )}
-      {f.mode === 'ats_job' && <Field id="d-job" label="Job id" hint="The company shares the id of a public job on CodeSpectra." className="sm:col-span-2"><Input id="d-job" value={f.atsJobId} onChange={set('atsJobId')} required maxLength={80} /></Field>}
-      {f.mode === 'external' && <Field id="d-url" label="Application link" className="sm:col-span-2"><Input id="d-url" type="url" value={f.externalUrl} onChange={set('externalUrl')} required /></Field>}
+      {f.mode === 'ats_job' && <Field id="d-job" label={t('career.jobId')} hint={t('career.theCompanySharesTheIdOf95b')} className="sm:col-span-2"><Input id="d-job" value={f.atsJobId} onChange={set('atsJobId')} required maxLength={80} /></Field>}
+      {f.mode === 'external' && <Field id="d-url" label={t('career.applicationLink')} className="sm:col-span-2"><Input id="d-url" type="url" value={f.externalUrl} onChange={set('externalUrl')} required /></Field>}
       <div className="sm:col-span-2"><Button type="submit" disabled={busy} className="min-h-11">{submitLabel}</Button></div>
     </form>
   )

@@ -6,7 +6,7 @@ export async function POST(req: Request) {
   try {
     const user = await getAPIUser()
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     }
 
     const body = await req.json().catch(() => ({}))
@@ -27,6 +27,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, onboardingGoal })
   } catch (error) {
     console.error('Onboarding API Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

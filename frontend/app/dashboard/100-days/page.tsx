@@ -17,6 +17,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { SkeletonCard, SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
+import { useT } from '@/lib/i18n/client'
 
 function getCompletedLocal(): Set<number> {
   if (typeof window === 'undefined') return new Set()
@@ -27,6 +28,7 @@ function getCompletedLocal(): Set<number> {
 }
 
 export default function HundredDaysPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -131,20 +133,20 @@ export default function HundredDaysPage() {
       const hundredDaysTour: TourStep[] = [
         {
           target: '[data-tour="100-days-header"]',
-          title: 'Sprint overview',
-          description: 'Your 100-day coding journey lives here, from Day 1 to Day 100.',
+          title: tr('practice.sprintOverview'),
+          description: tr('practice.your100DayCodingJourneyLives42c'),
           position: 'bottom',
         },
         {
           target: '[data-tour="100-days-progress"]',
-          title: 'Resume your journey',
-          description: 'Check your progress jar and jump back in where you left off.',
+          title: tr('practice.resumeYourJourney'),
+          description: tr('practice.checkYourProgressJarAndJump73b'),
           position: 'top',
         },
         {
           target: '[data-tour="100-days-list"]',
-          title: 'Work the days',
-          description: 'Expand any unlocked day to solve its problems and grow your streak.',
+          title: tr('practice.workTheDays'),
+          description: tr('practice.expandAnyUnlockedDayToSolve37c'),
           position: 'top',
         },
       ]
@@ -160,8 +162,8 @@ export default function HundredDaysPage() {
           <SoftGlow className="-inset-x-2 -top-4 rounded-3xl" />
           <PageHeader
             illustration="launch"
-            title="100-day coding sprint"
-            description="One theme a day, a few problems each. Days unlock in order as you finish them."
+            title={tr('practice.n100DayCodingSprint')}
+            description={tr('practice.oneThemeADayAFew52d')}
             icon={<Flame />}
             className="mb-0"
           />
@@ -178,7 +180,7 @@ export default function HundredDaysPage() {
              {/* Progress Card */}
              <Card className="rounded-3xl p-5 border-border/70 flex flex-col md:flex-row gap-6 items-center md:items-start justify-between">
                 <div>
-                   <h2 className="text-base font-semibold text-foreground mb-4">Progress</h2>
+                   <h2 className="text-base font-semibold text-foreground mb-4">{tr('practice.progress')}</h2>
                    
                    {/* Radial Progress (SVG) */}
                    <div className="relative w-32 h-32 flex items-center justify-center">
@@ -190,7 +192,7 @@ export default function HundredDaysPage() {
                      </svg>
                      <div className="absolute flex flex-col items-center justify-center">
                        <span className="text-2xl font-bold tabular-nums text-foreground">{stats.totalSolved}<span className="text-sm font-medium text-muted-foreground">/{stats.totalQ}</span></span>
-                       <span className="text-[11px] text-muted-foreground font-medium">Solved</span>
+                       <span className="text-[11px] text-muted-foreground font-medium">{tr('practice.solved')}</span>
                      </div>
                    </div>
                 </div>
@@ -198,7 +200,7 @@ export default function HundredDaysPage() {
                 <div className="flex-1 w-full space-y-4 pt-2">
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                       <span className="text-green-700 dark:text-green-400">Easy</span>
+                       <span className="text-green-700 dark:text-green-400">{tr('practice.easy')}</span>
                        <span className="text-muted-foreground tabular-nums">{stats.easySolved}/{stats.easyTotal}</span>
                      </div>
                      <div className="w-full bg-muted/40 rounded-full h-1.5">
@@ -207,7 +209,7 @@ export default function HundredDaysPage() {
                    </div>
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                       <span className="text-orange-700 dark:text-orange-400">Medium</span>
+                       <span className="text-orange-700 dark:text-orange-400">{tr('practice.medium')}</span>
                        <span className="text-muted-foreground tabular-nums">{stats.mediumSolved}/{stats.mediumTotal}</span>
                      </div>
                      <div className="w-full bg-muted/40 rounded-full h-1.5">
@@ -216,7 +218,7 @@ export default function HundredDaysPage() {
                    </div>
                    <div>
                      <div className="flex justify-between text-xs font-semibold mb-1.5">
-                       <span className="text-red-700 dark:text-red-400">Hard</span>
+                       <span className="text-red-700 dark:text-red-400">{tr('practice.hard')}</span>
                        <span className="text-muted-foreground tabular-nums">{stats.hardSolved}/{stats.hardTotal}</span>
                      </div>
                      <div className="w-full bg-muted/40 rounded-full h-1.5">
@@ -229,7 +231,7 @@ export default function HundredDaysPage() {
              {/* Heatmap Card */}
              <Card className="rounded-3xl p-5 border-border/70 flex flex-col">
                <div className="flex items-center justify-between mb-4">
-                 <h2 className="text-base font-semibold text-foreground">Recent activity</h2>
+                 <h2 className="text-base font-semibold text-foreground">{tr('practice.recentActivity')}</h2>
                </div>
 
                <div className="flex-1 overflow-x-auto min-h-25 mb-2 -mx-2 px-2 custom-scrollbar">
@@ -249,7 +251,7 @@ export default function HundredDaysPage() {
                </div>
 
                <div className="flex justify-between items-center gap-3 pt-3 border-t border-border/40 mt-auto text-xs text-muted-foreground">
-                 <div>Current streak: <span className="font-semibold tabular-nums text-foreground">{stats.streak} {stats.streak === 1 ? 'day' : 'days'}</span></div>
+                 <div>{tr('practice.currentStreak')}{' '}<span className="font-semibold tabular-nums text-foreground">{stats.streak} {stats.streak === 1 ? tr('practice.day2') : tr('practice.days')}</span></div>
                </div>
              </Card>
           </div>
@@ -259,11 +261,9 @@ export default function HundredDaysPage() {
              <div aria-hidden className="pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-blue-300/25 blur-3xl" />
              <div className="relative flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex-1">
-                   <p className="text-sm font-medium text-white/80 mb-1">Current progress</p>
-                   <h2 className="text-xl font-bold tabular-nums mb-2">Day {stats.done} of 100 complete</h2>
-                   <p className="text-sm text-white/80 max-w-sm">
-                     A little every day. Pick up where you left off and keep your streak going.
-                   </p>
+                   <p className="text-sm font-medium text-white/80 mb-1">{tr('practice.currentProgress')}</p>
+                   <h2 className="text-xl font-bold tabular-nums mb-2">{tr('practice.dayDoneOf100Complete', { done: stats.done })}</h2>
+                   <p className="text-sm text-white/80 max-w-sm">{tr('practice.aLittleEveryDayPickUp7e8')}</p>
                     <Button className="mt-4 gap-2 rounded-full bg-white font-semibold text-[#2448c9] hover:bg-white/90"
                       onClick={() => {
                         const firstIncomplete = HUNDRED_DAYS.find(d => !completed.has(d.day))?.day
@@ -271,8 +271,7 @@ export default function HundredDaysPage() {
                           document.getElementById(`day-${firstIncomplete}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
                           setExpandedDays(prev => new Set([...prev, firstIncomplete]))
                         }
-                      }}>
-                      Resume <ArrowRight className="h-4 w-4" />
+                      }}>{tr('practice.resume')}{' '}<ArrowRight className="h-4 w-4" />
                     </Button>
                 </div>
                 {/* Visual Jar Illustration */}
@@ -315,7 +314,7 @@ export default function HundredDaysPage() {
                     onKeyDown={(e) => { if (isAvailable && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleDay(d.day) } }}
                   >
                      <div>
-                       <h3 className="text-base font-semibold text-foreground">Day {d.day}</h3>
+                       <h3 className="text-base font-semibold text-foreground">{tr('practice.dayDay2', { day: d.day })}</h3>
                        <p className="text-xs text-muted-foreground mt-0.5">{d.theme}</p>
                      </div>
                      <div className="flex items-center gap-3">
@@ -324,7 +323,7 @@ export default function HundredDaysPage() {
                              {isExpanded ? <ChevronUp className="h-4 w-4 text-primary" /> : <ChevronDown className="h-4 w-4 text-primary" />}
                            </div>
                         ) : (
-                           <Lock className="h-4 w-4 text-muted-foreground" aria-label="Locked" />
+                           <Lock className="h-4 w-4 text-muted-foreground" aria-label={tr('practice.locked')} />
                         )}
                      </div>
                   </div>
@@ -332,9 +331,9 @@ export default function HundredDaysPage() {
                   {isExpanded && isAvailable && (
                     <div className="border-t border-border/40 bg-muted/5">
                       <div className="grid grid-cols-12 text-xs font-semibold text-muted-foreground p-3 border-b border-border/40">
-                         <div className="col-span-7">Problem</div>
-                         <div className="col-span-2 text-center">Difficulty</div>
-                         <div className="col-span-3 text-right"><span className="sr-only">Action</span></div>
+                         <div className="col-span-7">{tr('practice.problem')}</div>
+                         <div className="col-span-2 text-center">{tr('practice.difficulty')}</div>
+                         <div className="col-span-3 text-right"><span className="sr-only">{tr('practice.action')}</span></div>
                       </div>
                       
                       <div className="divide-y divide-border/40">
@@ -347,17 +346,16 @@ export default function HundredDaysPage() {
                                    <span className="font-medium text-foreground truncate" title={prob.title}>{prob.title}</span>
                                </div>
                                <div className="col-span-2 text-center">
-                                  <span className={`font-medium text-xs capitalize ${prob.difficulty === 'hard' ? 'text-red-700 dark:text-red-400' : prob.difficulty === 'medium' ? 'text-orange-700 dark:text-orange-400' : 'text-green-700 dark:text-green-400'}`}>{prob.difficulty || 'easy'}</span>
+                                  <span className={`font-medium text-xs capitalize ${prob.difficulty === 'hard' ? 'text-red-700 dark:text-red-400' : prob.difficulty === 'medium' ? 'text-orange-700 dark:text-orange-400' : 'text-green-700 dark:text-green-400'}`}>{prob.difficulty || tr('practice.easy2')}</span>
                                </div>
                                <div className="col-span-3 text-right">
                                    {probDone ? (
                                       <span className="inline-flex items-center gap-1.5 text-green-700 dark:text-green-400 text-xs font-semibold">
-                                        <CheckCircle2 className="h-3.5 w-3.5" /> Solved
-                                      </span>
+                                        <CheckCircle2 className="h-3.5 w-3.5" />{' '}{tr('practice.solved')}</span>
                                     ) : (
                                       <Button size="sm" variant="outline" className="h-7 text-xs rounded-full"
                                         asChild>
-                                        <Link href={`/dashboard/problems/${prob.id}`}>Solve</Link>
+                                        <Link href={`/dashboard/problems/${prob.id}`}>{tr('practice.solve')}</Link>
                                       </Button>
                                     )}
                                </div>
@@ -379,7 +377,7 @@ export default function HundredDaysPage() {
            
            {/* Leaderboard Card */}
            <Card className="rounded-3xl p-5 border-border/70">
-             <h2 className="text-base font-semibold text-foreground mb-4">Leaderboard</h2>
+             <h2 className="text-base font-semibold text-foreground mb-4">{tr('practice.leaderboard')}</h2>
              
              <div className="flex justify-between items-end gap-2 mb-6 h-36 px-4">
                 {/* Rank 2 */}
@@ -388,7 +386,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[1].name} name={leaderboard[1].name} className="h-10 w-10 bg-muted" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1">{leaderboard[1].name}</div>
-                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{Number(leaderboard[1].xp || 0).toLocaleString()} pts</div>
+                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[1].xp || 0).toLocaleString() })}</div>
                    </div>
                    <div className="w-full h-16 bg-primary/10 rounded-t-lg flex items-center justify-center border-t-4 border-primary/40">
                       <span className="text-2xl font-black text-primary/70">2</span>
@@ -403,7 +401,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[0].name} name={leaderboard[0].name} className="h-12 w-12 bg-amber-100 dark:bg-amber-900/40 ring-2 ring-amber-400" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1 text-amber-700 dark:text-amber-400">{leaderboard[0].name}</div>
-                     <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{Number(leaderboard[0].xp || 0).toLocaleString()} pts</div>
+                     <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[0].xp || 0).toLocaleString() })}</div>
                    </div>
                    <div className="w-full h-20 bg-amber-100 dark:bg-amber-900/40 rounded-t-lg flex items-start pt-2 justify-center border-t-4 border-amber-400 shadow-inner">
                       <span className="text-3xl font-black text-amber-600 dark:text-amber-400">1</span>
@@ -417,7 +415,7 @@ export default function HundredDaysPage() {
                    <UserAvatar seed={leaderboard[2].name} name={leaderboard[2].name} className="h-10 w-10 bg-muted" />
                    <div className="text-center w-full">
                      <div className="text-[11px] font-semibold truncate px-1">{leaderboard[2].name}</div>
-                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{Number(leaderboard[2].xp || 0).toLocaleString()} pts</div>
+                     <div className="text-[9px] text-muted-foreground whitespace-nowrap">{tr('practice.nPts', { n: Number(leaderboard[2].xp || 0).toLocaleString() })}</div>
                    </div>
                    <div className="w-full h-12 bg-orange-100 dark:bg-orange-900/40 rounded-t-lg flex items-center justify-center border-t-4 border-orange-300">
                       <span className="text-2xl font-black text-orange-500 dark:text-orange-300">3</span>
@@ -430,32 +428,32 @@ export default function HundredDaysPage() {
                 <div className="flex items-center gap-3">
                    <UserAvatar seed="You" name="You" className="h-8 w-8 bg-muted" />
                    <div>
-                     <div className="font-bold text-sm">You</div>
-                     <div className="text-[10px] text-muted-foreground">{userRank.points.toLocaleString()} pts</div>
+                     <div className="font-bold text-sm">{tr('practice.you')}</div>
+                     <div className="text-[10px] text-muted-foreground">{tr('practice.nPts', { n: userRank.points.toLocaleString() })}</div>
                    </div>
                 </div>
                 <div className="text-right">
                   <div className="font-bold text-sm tabular-nums text-foreground">{userRank.rank || '-'}</div>
-                  <div className="text-[10px] text-muted-foreground">Rank</div>
+                  <div className="text-[10px] text-muted-foreground">{tr('practice.rank')}</div>
                 </div>
              </div>
 
               <Button variant="outline" className="w-full rounded-full text-xs font-semibold" asChild>
-                <Link href="/dashboard/leaderboard">View leaderboard</Link>
+                <Link href="/dashboard/leaderboard">{tr('practice.viewLeaderboard')}</Link>
               </Button>
            </Card>
 
            {/* Badges Card */}
            <Card className="rounded-3xl p-5 border-border/70">
-             <h2 className="text-base font-semibold text-foreground mb-1">Badges</h2>
-             <p className="text-xs text-muted-foreground mb-4">Unlock a badge at each points milestone.</p>
+             <h2 className="text-base font-semibold text-foreground mb-1">{tr('practice.badges')}</h2>
+             <p className="text-xs text-muted-foreground mb-4">{tr('practice.unlockABadgeAtEachPoints529')}</p>
              
              <div className="flex justify-between items-center gap-1.5 mb-2 mt-4 px-1">
                 {[100, 500, 1000, 5000, 10000].map((num, i) => {
                   const unlocked = userRank.points >= num;
                   return (
                     <div key={i} className="flex flex-col items-center group relative">
-                      <div className="relative w-12 h-12 flex items-center justify-center transition-transform duration-300 hover:scale-110 motion-reduce:hover:scale-100" title={`${num} points${unlocked ? ' — unlocked' : ''}`}>
+                      <div className="relative w-12 h-12 flex items-center justify-center transition-transform duration-300 hover:scale-110 motion-reduce:hover:scale-100" title={tr('practice.numPointsValue', { num, value: unlocked ? tr('practice.unlockedSuffix') : '' })}>
                         {/* 3D Hexagon effect */}
                         <div className={`absolute inset-0 rounded-xl rotate-45 border shadow-lg ${unlocked ? 'border-amber-400 bg-amber-200/20 shadow-amber-500/30 dark:shadow-amber-900/30' : 'border-muted bg-muted/20 shadow-none grayscale opacity-50'} `}></div>
                         <div className={`absolute inset-1 rounded-xl rotate-45 border border-white/20 bg-linear-to-br ${unlocked ? 'from-amber-300 to-amber-600' : 'from-muted to-muted-foreground/30'} backdrop-blur-sm z-0`}></div>
@@ -474,12 +472,10 @@ export default function HundredDaysPage() {
            {/* Promotion Card */}
            <Card className="rounded-3xl p-5 border-primary/20 bg-linear-to-br from-primary/10 to-card relative overflow-hidden">
               <div className="relative z-10">
-                <h2 className="text-base font-semibold text-foreground mb-2">Courses</h2>
-                <p className="text-xs text-muted-foreground mb-4 max-w-[160px]">
-                  Learn the topics behind common interview questions.
-                </p>
+                <h2 className="text-base font-semibold text-foreground mb-2">{tr('practice.courses')}</h2>
+                <p className="text-xs text-muted-foreground mb-4 max-w-[160px]">{tr('practice.learnTheTopicsBehindCommonInterview87d')}</p>
                 <Button size="sm" className="rounded-full w-full" asChild>
-                  <Link href="/dashboard/courses">Start now <ArrowRight className="h-3 w-3 ml-2" /></Link>
+                  <Link href="/dashboard/courses">{tr('practice.startNow')}{' '}<ArrowRight className="h-3 w-3 ml-2" /></Link>
                 </Button>
               </div>
               <div aria-hidden className="absolute right-[-20px] top-1/2 -translate-y-1/2 opacity-80 pointer-events-none">

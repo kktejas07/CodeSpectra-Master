@@ -9,7 +9,7 @@ import { ATS_TENANT_COOKIE, listMyMemberships, resolveActorFor, tenantFromReques
  */
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const [memberships, actor] = await Promise.all([listMyMemberships(user), resolveActorFor(user, tenantFromRequest(req))])
     return NextResponse.json(
@@ -28,9 +28,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   let tenant: unknown
-  try { tenant = ((await req.json()) as { tenant?: unknown })?.tenant } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { tenant = ((await req.json()) as { tenant?: unknown })?.tenant } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
   if (typeof tenant !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(tenant)) return NextResponse.json({ error: 'Invalid tenant' }, { status: 400 })
   const actor = await resolveActorFor(user, tenant)
   if (!actor) return NextResponse.json({ error: "You're not on this organization's hiring team" }, { status: 403 })

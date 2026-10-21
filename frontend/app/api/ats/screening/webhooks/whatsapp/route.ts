@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   if (p.get('hub.mode') === 'subscribe' && verifySharedToken(p.get('hub.verify_token'), cfg.whatsapp.verify_token)) {
     return new NextResponse(p.get('hub.challenge') || '', { status: 200, headers: { 'Content-Type': 'text/plain' } })
   }
-  return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
 }
 
 export async function POST(req: NextRequest) {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
   let body: unknown
-  try { body = JSON.parse(raw) } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  try { body = JSON.parse(raw) } catch { return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 }) }
 
   const { messages, calls } = parseMetaWebhook(body)
   // A failed event is released and the whole delivery answered 500 so Meta retries it;

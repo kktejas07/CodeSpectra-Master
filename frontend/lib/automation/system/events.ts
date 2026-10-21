@@ -99,7 +99,7 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
       if (!(await claimOnce(`evrem:${m.kind}:${m.id}:${m.phase}:${m.at}:${m.window}:${uid}`))) continue
       const starting = m.phase === 'start'
       const title = starting ? `${m.name} starts in ${left}` : `${m.name}: submissions close in ${left}`
-      await notify({ user_id: uid, type: starting ? 'hackathon.started' : 'hackathon.ending_soon', title, message: starting ? 'Get your team ready.' : 'Submit your work before the deadline.', link: m.url.replace(getAppOrigin(), ''), icon: 'clock', skip_push: m.window === '24h' })
+      await notify({ user_id: uid, type: starting ? 'hackathon.started' : 'hackathon.ending_soon', title, message: starting ? 'Get your team ready.' : 'Submit your work before the deadline.', title_i18n: { key: starting ? 'event.starts.title' : 'event.closes.title', params: { name: m.name, left } }, message_i18n: { key: starting ? 'event.starts.message' : 'event.closes.message' }, link: m.url.replace(getAppOrigin(), ''), icon: 'clock', skip_push: m.window === '24h' })
       const u = (await db.collection('user').findOne({ id: uid }, { projection: { email: 1, name: 1, fullName: 1 } })) as Doc | null
       if (u?.email) {
         await sendAutomationEmail({
@@ -114,8 +114,9 @@ export async function runEventReminders(now = new Date(), budgetMs = 40_000): Pr
         })
       }
       if (m.window === '1h' && settings.config.wa_template_event) {
-        const { whatsappRecipientForUser, sendWhatsAppTemplate } = await import('../whatsapp')
-        await sendWhatsAppTemplate(await whatsappRecipientForUser(uid), { name: settings.config.wa_template_event, language: configValue(settings.config, 'wa_template_language'), params: [m.name, left] }, { userId: uid }).catch(() => null)
+        const { whatsappRecipientForUser, sendWhatsAppTemplate, templateLanguageForUser } = await import('../whatsapp')
+        const lang = await templateLanguageForUser(uid, { wa_template_language: configValue(settings.config, 'wa_template_language'), wa_template_locales: settings.config.wa_template_locales })
+        await sendWhatsAppTemplate(await whatsappRecipientForUser(uid), { name: settings.config.wa_template_event, ...lang, params: [m.name, left] }, { userId: uid }).catch(() => null)
       }
       reminders++
     }

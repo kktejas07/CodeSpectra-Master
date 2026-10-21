@@ -79,7 +79,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
       if (!sniffAnswerFile(new Uint8Array(bytes), kindOf(mime))) return NextResponse.json({ error: 'That file is not a WebM or MP4 recording.' }, { status: 400 })
       const { scanBuffer } = await import('@/lib/storage/scan')
       const scan = await scanBuffer(bytes, `recording.${kindOf(mime)}`)
-      if (scan === 'infected') return NextResponse.json({ error: 'The security scanner rejected this file.' }, { status: 400 })
+      if (scan === 'infected') return NextResponse.json({ error: 'The security scanner rejected this file.', code: 'scanner_rejected' }, { status: 400 })
       const { putBlob } = await import('@/lib/storage/blobs')
       const blob = await putBlob({ feature: 'interview-sim', tenantId: null, bytes, contentType: mime })
       const durationS = Number(form.get('duration_s')) || undefined
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
     }
 
     const parsed = body.safeParse(await req.json().catch(() => null))
-    if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    if (!parsed.success) return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
     const { startDirectUpload, finishDirectUpload, claimUpload } = await import('@/lib/storage/uploads')
     const { largeUploadLimits } = await import('@/lib/storage/config')
     if (parsed.data.action === 'start') {
@@ -121,7 +121,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const g = await simUser()
   if ('res' in g) return g.res
   const { id } = await ctx.params
-  if (!SESSION_ID_RE.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!SESSION_ID_RE.test(id)) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   try {
     const { recordings } = await import('@/lib/interview-sim/store')
     const rec = await (await recordings()).findOne({ session_id: id, user_id: g.user.id }, { projection: { _id: 0 } })
@@ -149,7 +149,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   const g = await simUser()
   if ('res' in g) return g.res
   const { id } = await ctx.params
-  if (!SESSION_ID_RE.test(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!SESSION_ID_RE.test(id)) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
   try {
     const { deleteRecording } = await import('@/lib/interview-sim/store')
     const ok = await deleteRecording(id, g.user.id)

@@ -14,6 +14,7 @@ import { ContributionGraph } from '@/components/gamification/contribution-graph'
 import { SkillBadges } from '@/components/gamification/skill-badges'
 import { PageHeader, Panel, StatCard, BentoGrid } from '@/components/app/page-kit'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Achievement {
   id: number
@@ -30,6 +31,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 }
 
 export default function AchievementsPage() {
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -64,32 +66,32 @@ export default function AchievementsPage() {
       const achievementsTour: TourStep[] = [
         {
           target: '[data-tour="achievements-header"]',
-          title: 'Your achievements overview',
-          description: 'This page shows your earned achievements, skill badges, and progress for all learners.',
+          title: t('dash.yourAchievementsOverview'),
+          description: t('dash.thisPageShowsYourEarnedAchievements2a9'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-stats"]',
-          title: 'Track level and XP',
-          description: 'Track your level, XP, earned achievements, and solved problems at a glance.',
+          title: t('dash.trackLevelAndXp'),
+          description: t('dash.trackYourLevelXpEarnedAchievements9de'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-graph"]',
-          title: 'Review activity streaks',
-          description: 'Review your contribution graph to spot activity streaks and gaps over time.',
+          title: t('dash.reviewActivityStreaks'),
+          description: t('dash.reviewYourContributionGraphToSpotb24'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-badges"]',
-          title: 'Earn skill badges',
-          description: 'Earn skill badges as you master technologies tracked in the SkillBadges section.',
+          title: t('dash.earnSkillBadges'),
+          description: t('dash.earnSkillBadgesAsYouMasterae9'),
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-tabs"]',
-          title: 'Browse every achievement',
-          description: 'Pro tip: open each achievement card to check progress counts and finish remaining tasks first.',
+          title: t('dash.browseEveryAchievement'),
+          description: t('dash.proTipOpenEachAchievementCard9ec'),
           position: 'bottom',
         },
       ]
@@ -113,8 +115,8 @@ export default function AchievementsPage() {
       <div data-tour="achievements-header">
         <PageHeader
           illustration="leaderboard"
-          title="Achievements and badges"
-          description="Your level, XP and the achievements and skill badges you've earned."
+          title={t('dash.achievementsAndBadges')}
+          description={t('dash.yourLevelXpAndTheAchievementsc64')}
           icon={<Trophy />}
           className="mb-0"
         />
@@ -124,36 +126,36 @@ export default function AchievementsPage() {
         <Panel className="p-4">
           <EmptyState
             illustration="error"
-            title="Couldn't load achievements"
-            description="Check your connection and try again."
-            actionLabel="Try again"
+            title={t('dash.couldntLoadAchievements')}
+            description={t('dash.checkYourConnectionAndTryAgain')}
+            actionLabel={t('common.tryAgain')}
             onAction={() => setReloadKey(k => k + 1)}
           />
         </Panel>
       ) : achievements.length === 0 ? (
         <Panel className="p-4">
           <EmptyState illustration="leaderboard"
-            title="No achievements yet"
-            description="Solve problems and finish challenges to start earning achievements."
-            actionLabel="Go to problems"
+            title={t('dash.noAchievementsYet')}
+            description={t('dash.solveProblemsAndFinishChallengesTo211')}
+            actionLabel={t('dash.goToProblems')}
             actionHref="/dashboard/problems"
           />
         </Panel>
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" data-tour="achievements-stats">
-            <StatCard label="Your level" value={`Level ${level}`} icon={<Zap />} />
-            <StatCard label="Total XP" value={`${xp} XP`} icon={<Flame />} />
-            <StatCard label="Achievements" value={`${earnedCount}/${achievements.length}`} icon={<Trophy />} />
-            <StatCard label="Problems solved" value={solved} icon={<Code2 />} />
+            <StatCard label={t('dash.yourLevel')} value={`Level ${level}`} icon={<Zap />} />
+            <StatCard label={t('dash.totalXp')} value={`${xp} XP`} icon={<Flame />} />
+            <StatCard label={t('dash.achievements')} value={`${earnedCount}/${achievements.length}`} icon={<Trophy />} />
+            <StatCard label={t('dash.problemsSolved')} value={solved} icon={<Code2 />} />
           </div>
 
           <div data-tour="achievements-graph"><ContributionGraph /></div>
           <div data-tour="achievements-badges"><SkillBadges /></div>
           <div data-tour="achievements-tabs"><Tabs defaultValue="achievements">
             <TabsList>
-              <TabsTrigger value="achievements">Achievements</TabsTrigger>
-              {!badgesLocked && <TabsTrigger value="badges">Badges</TabsTrigger>}
+              <TabsTrigger value="achievements">{t('dash.achievements')}</TabsTrigger>
+              {!badgesLocked && <TabsTrigger value="badges">{t('dash.badges')}</TabsTrigger>}
             </TabsList>
             <TabsContent value="achievements">
               <BentoGrid className="lg:grid-cols-3">
@@ -170,7 +172,7 @@ export default function AchievementsPage() {
                           <p className="text-xs text-muted-foreground">{a.description}</p>
                         </div>
                       </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={a.total} aria-valuenow={a.progress} aria-label={`${a.name} progress`}>
+                      <div className="h-1.5 w-full rounded-full bg-muted" role="progressbar" aria-valuemin={0} aria-valuemax={a.total} aria-valuenow={a.progress} aria-label={t('dash.nameProgress', { name: a.name })}>
                         <div className="h-1.5 rounded-full bg-primary transition-all motion-reduce:transition-none" style={{ width: `${a.total ? Math.round((a.progress / a.total) * 100) : 0}%` }} />
                       </div>
                       <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">{a.progress}/{a.total}</p>
@@ -187,7 +189,7 @@ export default function AchievementsPage() {
                   ))}
                 </div>
               ) : (
-                <EmptyState illustration="leaderboard" title="No badges yet" description="Solve problems to earn your first one." actionLabel="Go to problems" actionHref="/dashboard/problems" className="border-0 bg-transparent" />
+                <EmptyState illustration="leaderboard" title={t('dash.noBadgesYet')} description={t('dash.solveProblemsToEarnYourFirst146')} actionLabel={t('dash.goToProblems')} actionHref="/dashboard/problems" className="border-0 bg-transparent" />
               )}
             </TabsContent>}
           </Tabs>

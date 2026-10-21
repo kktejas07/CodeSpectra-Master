@@ -30,17 +30,17 @@ export async function POST(request: Request) {
   try {
     const user = await getAPIUser()
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
     }
 
     const limit = await rateLimitRedis(`face-enroll:${user.id}`, 10, 3600_000)
     if (!limit.ok) {
-      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.` }, { status: 429 })
+      return NextResponse.json({ error: `Too many attempts. Try again in ${limit.retryAfterSec}s.`, code: 'auth_too_many_attempts', params: { seconds: limit.retryAfterSec } }, { status: 429 })
     }
 
     const body = (await request.json().catch(() => ({}))) as { descriptor?: unknown; password?: unknown; code?: unknown }
     if (!isDescriptor(body.descriptor)) {
-      return NextResponse.json({ error: 'Invalid face scan. Try again.' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid face scan. Try again.', code: 'auth_face_invalid' }, { status: 400 })
     }
 
     // ponytail: signup stores `_id` as a UUID string. Passing that UUID to the
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     // Look up via getUserById, then update by the actual `_id`.
     const profile = (await getUserById(user.id)) as (Record<string, unknown> & { _id: unknown }) | null
     if (!profile) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 401 })
     }
 
     if (profile.facial_biometric_template) {
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       },
     )
     if (result.matchedCount === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+      return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 401 })
     }
 
     const actorIp = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
@@ -108,6 +108,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('[FaceEnroll] Error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error', code: 'internal_error' }, { status: 500 })
   }
 }

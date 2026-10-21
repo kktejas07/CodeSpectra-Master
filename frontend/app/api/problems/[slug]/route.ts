@@ -69,10 +69,10 @@ export async function GET(
         return NextResponse.json({ ...rest, can_edit: true })
       }
       if (doc.visibility === 'hackathon_only' && !(await canSeeHackathonProblem(user, doc))) {
-        return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+        return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
       }
       if (doc.is_published === false && doc.visibility !== 'hackathon_only' && !canEditProblem(user, doc)) {
-        return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+        return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
       }
       // Problem packs: locked problems show title only (lib/entitlements-core problemAccess).
       // Hackathon problems are gated by their event instead.
@@ -105,7 +105,7 @@ export async function GET(
   // Fallback: in-memory seed (check both slug and id fields)
   const seed = SEED_PROBLEMS.find((p) => p.slug === slug || p.id === slug)
   if (!seed) {
-    return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
   }
   return NextResponse.json({
     ...seed,
@@ -132,7 +132,7 @@ export async function PATCH(
   try {
     const col = await problems()
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
-    if (!doc) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    if (!doc) return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
 
     if (!canEditProblem(gate.user, doc)) {
       return NextResponse.json({ error: 'Forbidden — only the owner or a platform admin can edit this problem' }, { status: 403 })
@@ -186,7 +186,7 @@ export async function PATCH(
     return NextResponse.json({ ...doc, ...patch })
   } catch (error) {
     console.error('[problems/[slug]]', error)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -210,12 +210,12 @@ export async function DELETE(
   try {
     const col = await problems()
     const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
-    if (!doc) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    if (!doc) return NextResponse.json({ error: 'Problem not found', code: 'problem_not_found' }, { status: 404 })
     await col.deleteOne({ _id: doc._id })
     knowledgeOnLibraryChange('problem', doc.id)
     return NextResponse.json({ success: true, deletedId: doc.slug ?? doc.id })
   } catch (error) {
     console.error('[problems/[slug]]', error)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

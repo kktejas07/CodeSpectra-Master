@@ -44,15 +44,15 @@ export async function POST(req: NextRequest) {
   if ('res' in g) return g.res
   try {
     const raw = await bodyOf(req)
-    if (raw.discount_type === 'trial') return json({ error: 'Free-trial codes are for plans only.' }, 400)
+    if (raw.discount_type === 'trial') return json({ error: 'Free-trial codes are for plans only.', code: 'mkt_trial_plans_only' }, 400)
     const parsed = validateCouponInput({ ...raw, applies_to: 'marketplace', marketplace_funding: undefined }, false)
     if (!parsed.ok) return json({ error: parsed.error }, 400)
     const v = parsed.value
     const col = await billingCoupons()
     if (await col.countDocuments({ seller_id: g.seller.id } as never) >= MAX_COUPONS_PER_SELLER) {
-      return json({ error: `You can have up to ${MAX_COUPONS_PER_SELLER} coupons. Delete old ones first.` }, 400)
+      return json({ error: `You can have up to ${MAX_COUPONS_PER_SELLER} coupons. Delete old ones first.`, code: 'mkt_coupon_limit', params: { max: MAX_COUPONS_PER_SELLER } }, 400)
     }
-    if (await col.findOne({ code: v.code! })) return json({ error: 'That code is taken. Pick another one.' }, 400)
+    if (await col.findOne({ code: v.code! })) return json({ error: 'That code is taken. Pick another one.', code: 'mkt_code_taken' }, 400)
     const coupon: BillingCouponDoc = {
       id: newId(),
       code: v.code!,
@@ -80,10 +80,10 @@ export async function PATCH(req: NextRequest) {
   if ('res' in g) return g.res
   try {
     const id = new URL(req.url).searchParams.get('id')
-    if (!idOk(id)) return json({ error: 'id required' }, 400)
+    if (!idOk(id)) return json({ error: 'id required', code: 'id_required' }, 400)
     const col = await billingCoupons()
     const existing = await col.findOne({ id, seller_id: g.seller.id } as never)
-    if (!existing) return json({ error: 'Not found' }, 404)
+    if (!existing) return json({ error: 'Not found', code: 'not_found' }, 404)
     const raw = await bodyOf(req)
     // Code, type, scope and owner never change.
     const patch: Record<string, unknown> = {}
@@ -94,7 +94,7 @@ export async function PATCH(req: NextRequest) {
     const $set = { ...parsed.value } as Record<string, unknown>
     delete $set.discount_type
     if (existing.discount_type !== 'flat') delete $set.currency
-    if (!Object.keys($set).length) return json({ error: 'Nothing to update' }, 400)
+    if (!Object.keys($set).length) return json({ error: 'Nothing to update', code: 'nothing_to_update' }, 400)
     await col.updateOne({ id, seller_id: g.seller.id } as never, { $set })
     return json({ ok: true })
   } catch (e) {
@@ -107,9 +107,9 @@ export async function DELETE(req: NextRequest) {
   if ('res' in g) return g.res
   try {
     const id = new URL(req.url).searchParams.get('id')
-    if (!idOk(id)) return json({ error: 'id required' }, 400)
+    if (!idOk(id)) return json({ error: 'id required', code: 'id_required' }, 400)
     const r = await (await billingCoupons()).deleteOne({ id, seller_id: g.seller.id } as never)
-    return r.deletedCount ? json({ ok: true }) : json({ error: 'Not found' }, 404)
+    return r.deletedCount ? json({ ok: true }) : json({ error: 'Not found', code: 'not_found' }, 404)
   } catch (e) {
     return errorResponse(e, 'seller coupons')
   }

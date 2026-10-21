@@ -23,6 +23,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data)
   } catch (e) {
     console.error('[learning/videos]', e)
-    return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.' }, { status: 502 })
+    return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 502 })
   }
 }

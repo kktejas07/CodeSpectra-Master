@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 async function limited(req: NextRequest) {
   const l = await rateLimitRedis(`subs:prefs-ip:${clientLimiterKeyFromRequest(req, null)}`, 60, 10 * 60_000)
-  return l.ok ? null : NextResponse.json({ error: `Too many requests. Try again in ${l.retryAfterSec}s.` }, { status: 429 })
+  return l.ok ? null : NextResponse.json({ error: `Too many requests. Try again in ${l.retryAfterSec}s.`, code: 'rate_limited_seconds', params: { seconds: l.retryAfterSec } }, { status: 429 })
 }
 
 export async function GET(req: NextRequest) {

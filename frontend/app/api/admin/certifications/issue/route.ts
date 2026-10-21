@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForRecipient } from '@/lib/i18n/recipient'
 import { newAttemptToken } from '@/lib/db/certifications'
 import { auditAdmin } from '@/lib/admin-audit'
 import { sanitizeMongoInput } from '@/lib/mongo-sanitize'
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   try {
     body = sanitizeMongoInput(await request.json())
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   if (!body.userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 })
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
   const db = await getMongoDb()
   const userCol = db.collection('user')
   const user = await userCol.findOne({ $or: [{ _id: body.userId }, { id: body.userId }] } as any)
-  if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  if (!user) return NextResponse.json({ error: 'User not found', code: 'user_not_found' }, { status: 404 })
 
   // 24 random bytes (crypto.randomBytes) as base64url. Older tokens stay valid.
   const verifyToken = newAttemptToken()
@@ -75,9 +76,10 @@ export async function POST(request: Request) {
   try {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'
     const verifyUrl = `${appUrl}/cert/verify/${verifyToken}`
+    const locale = await localeForRecipient({ userId: String(body.userId || ''), email: user.email })
     await sendEmail(
       user.email,
-      emailTemplates.certificateEarned({
+      emailTemplatesFor(locale).certificateEarned({
         name: attempt.snapshot.name,
         title: body.title,
         certUrl: verifyUrl,

@@ -573,6 +573,11 @@ export async function releaseHackathonResults(
       message: rank !== null
         ? `Your team "${teamName}" ranked #${rank}${standing?.tied ? ' (tied)' : ''} of ${affectedTeams.length} with ${fmt1(total)} points.${summary}`
         : `Results are out. Your team "${teamName}" wasn't ranked (no scored submission).`,
+      title_i18n: { key: 'results.title', params: { title: hk.name } },
+      // The AI report summary stays English (it is generated text); the ranking sentence is translated.
+      message_i18n: rank !== null && !summary
+        ? { key: standing?.tied ? 'results.rankedTeamTiedPoints' : 'results.rankedTeamPoints', params: { name: teamName, rank, total: affectedTeams.length, points: fmt1(total) } }
+        : rank === null ? { key: 'results.unranked', params: { name: teamName } } : undefined,
       link: resultsUrl,
       icon: 'trophy',
       metadata: meta,

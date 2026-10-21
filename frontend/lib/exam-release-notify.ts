@@ -7,7 +7,8 @@
 import type { Db } from 'mongodb'
 import { notify } from '@/lib/notifications'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForRecipient } from '@/lib/i18n/recipient'
 
 type Doc = Record<string, unknown>
 
@@ -30,6 +31,8 @@ export async function notifyResultsReleased(db: Db, exam: Doc, sub: Doc): Promis
         type: 'assessment.results_released',
         title: `Your results for "${examTitle}" are ready`,
         message: `Score: ${pct !== null ? `${pct}%` : score}. Check your dashboard for details.`,
+        title_i18n: { key: 'assessment.results.title', params: { title: examTitle } },
+        message_i18n: { key: 'assessment.results.message', params: { score: pct !== null ? `${pct}%` : String(score) } },
         link: `/dashboard/assessments/${examId}`,
         send_whatsapp: true,
       })
@@ -51,7 +54,7 @@ export async function notifyResultsReleased(db: Db, exam: Doc, sub: Doc): Promis
   } catch { /* name is cosmetic */ }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  const template = emailTemplates.assessmentScoreReleased({
+  const template = emailTemplatesFor(await localeForRecipient({ userId: userId || null, email })).assessmentScoreReleased({
     candidateName,
     examTitle,
     // Same unit as the dashboard: percent of 100.

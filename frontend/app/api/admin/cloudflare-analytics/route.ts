@@ -28,7 +28,7 @@ async function cfFetch(token: string, path: string) {
 export async function GET() {
   const user = await getAPIUser()
   if (!user || user.role !== 'superadmin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return NextResponse.json({ error: 'Forbidden', code: 'forbidden' }, { status: 403 })
   }
 
   const secrets = await readServerSecrets()

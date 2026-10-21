@@ -1,5 +1,5 @@
 'use client'
-import { formatDateTime } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { use, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -16,6 +16,8 @@ import { useToast } from '@/lib/toast-context'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -32,6 +34,9 @@ interface Interview {
 }
 
 export default function InterviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const apiError = useApiError()
+  const { formatDateTime } = useLocaleDates()
+  const { t } = useT()
   const gate = usePageGuard('user')
   const { startTour, setTourSeen } = useTour()
 
@@ -58,44 +63,44 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       const interviewTour: TourStep[] = [
         {
           target: '[data-tour="back-to-interviews"]',
-          title: 'Interview dashboard',
-          description: 'Return to your list of scheduled interviews.',
+          title: t('career.interviewDashboard'),
+          description: t('career.returnToYourListOfScheduled7ef'),
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-details"]',
-          title: 'Interview details',
-          description: 'View the scheduled interview information including title, role, and type.',
+          title: t('career.interviewDetails'),
+          description: t('career.viewTheScheduledInterviewInformationIncld55'),
           position: 'bottom',
         },
         {
           target: '[data-tour="status-controls"]',
-          title: 'Interview controls',
-          description: 'Start or end interviews using these control buttons.',
+          title: t('career.interviewControls'),
+          description: t('career.startOrEndInterviewsUsingThesefde'),
           position: 'bottom',
         },
         {
           target: '[data-tour="current-question"]',
-          title: 'Current question',
-          description: 'The active question you need to answer during the interview.',
+          title: t('career.currentQuestion'),
+          description: t('career.theActiveQuestionYouNeedTod4f'),
           position: 'bottom',
         },
         {
           target: '[data-tour="answered-questions"]',
-          title: 'Answered questions',
-          description: 'Review all your previous answers and feedback.',
+          title: t('career.answeredQuestions'),
+          description: t('career.reviewAllYourPreviousAnswersAnd696'),
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-feedback"]',
-          title: 'AI Feedback',
-          description: 'View performance feedback and suggestions from the AI interviewer.',
+          title: t('career.aiFeedback'),
+          description: t('career.viewPerformanceFeedbackAndSuggestionsFro2dc'),
           position: 'bottom',
         },
         {
           target: '[data-tour="collaborative-editor"]',
-          title: 'Collaborative editor',
-          description: 'Real-time collaborative code editor for writing solutions during the interview.',
+          title: t('career.collaborativeEditor'),
+          description: t('career.realTimeCollaborativeCodeEditorFor41c'),
           position: 'bottom',
         }
       ]
@@ -105,7 +110,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const load = useCallback(async () => {
     try {
       const res = await fetch(`/api/interviews/${id}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error('Interview not found')
+      if (!res.ok) throw new Error(t('career.interviewNotFound'))
       setInterview(await res.json() as Interview)
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     finally { setLoading(false) }
@@ -133,13 +138,13 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       })
       if (!res.ok) {
         const j = (await res.json().catch(() => ({}))) as { error?: string }
-        throw new Error(j.error || 'Your answer wasn’t saved.')
+        throw new Error(apiError(j, t('career.yourAnswerWasntSaved')))
       }
       setCurrentAnswer('')
-      addToast({ type: 'success', title: 'Answer saved' })
+      addToast({ type: 'success', title: t('career.answerSaved') })
       await load()
     } catch (e) {
-      addToast({ type: 'error', title: 'Couldn’t save your answer', message: e instanceof Error ? e.message : 'Please try again.' })
+      addToast({ type: 'error', title: t('career.couldntSaveYourAnswer'), message: e instanceof Error ? e.message : t('career.pleaseTryAgain') })
     } finally { setSubmitting(false) }
   }
 
@@ -163,7 +168,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       <SkeletonCard />
     </div>
   )
-  if (!interview) return <div className="p-10 text-center text-sm text-destructive">{error || 'Not found'}</div>
+  if (!interview) return <div className="p-10 text-center text-sm text-destructive">{error || t('career.notFound')}</div>
 
   const unanswered = interview.questions.filter((q) => !q.answer && !q.skipped)
   const answered = interview.questions.filter((q) => q.answer)
@@ -172,8 +177,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="space-y-6">
       <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" data-tour="back-to-interviews">
-        <ArrowLeft className="h-3 w-3" /> All interviews
-      </Link>
+        <ArrowLeft className="h-3 w-3" />{' '}{t('career.allInterviews')}</Link>
 
       <PageHeader
         className="mb-0"
@@ -185,13 +189,11 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
             <Badge variant={interview.status === 'in_progress' ? 'default' : 'secondary'} className="capitalize">{String(interview.status ?? '').replace('_', ' ')}</Badge>
             {interview.status === 'scheduled' && (
               <Button size="sm" onClick={() => updateStatus('in_progress')}>
-                <Video className="h-3.5 w-3.5 mr-1" /> Start interview
-              </Button>
+                <Video className="h-3.5 w-3.5 mr-1" />{' '}{t('career.startInterview')}</Button>
             )}
             {interview.status === 'in_progress' && (
               <Button size="sm" variant="outline" onClick={() => updateStatus('completed')}>
-                <CheckCircle className="h-3.5 w-3.5 mr-1" /> End interview
-              </Button>
+                <CheckCircle className="h-3.5 w-3.5 mr-1" />{' '}{t('career.endInterview')}</Button>
             )}
           </div>
         }
@@ -202,8 +204,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
           href={`/dashboard/interviews/${id}/live`}
           className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary w-fit"
         >
-          <Phone className="h-4 w-4" /> Join live room
-        </Link>
+          <Phone className="h-4 w-4" />{' '}{t('career.joinLiveRoom')}</Link>
       )}
 
       <div className="flex flex-wrap items-center gap-2 text-xs tabular-nums text-muted-foreground">
@@ -217,7 +218,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
           <div className="flex items-center gap-4">
             <div className="text-3xl font-bold tabular-nums text-primary">{Math.round(interview.overall_score)}%</div>
             <div>
-              <p className="text-sm font-medium text-foreground">Overall score</p>
+              <p className="text-sm font-medium text-foreground">{t('career.overallScore')}</p>
               <div className="h-2 w-48 rounded-full bg-muted overflow-hidden mt-1">
                 <div className="h-full bg-primary rounded-full" style={{ width: `${interview.overall_score}%` }} />
               </div>
@@ -238,14 +239,12 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
           <Textarea
             rows={5} value={currentAnswer}
             onChange={(e) => setCurrentAnswer(e.target.value)}
-            placeholder="Type your answer…"
-            aria-label="Your answer"
+            placeholder={t('career.typeYourAnswer')}
+            aria-label={t('career.yourAnswer')}
           />
           <div className="flex gap-2">
             <Button onClick={() => submitAnswer(currentQ.id)} disabled={submitting || !currentAnswer.trim()}>
-              {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}
-              Submit answer
-            </Button>
+              {submitting ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Send className="mr-1 h-4 w-4" />}{t('career.submitAnswer')}</Button>
             <Button variant="ghost" onClick={async () => {
               await csrfFetch(`/api/interviews/${id}/questions`, {
                 method: 'PATCH',
@@ -254,8 +253,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
               })
               await load()
             }}>
-              <SkipForward className="mr-1 h-4 w-4" /> Skip
-            </Button>
+              <SkipForward className="mr-1 h-4 w-4" />{' '}{t('career.skip')}</Button>
           </div>
         </Card>
       )}
@@ -263,7 +261,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       {/* Answered questions */}
       {answered.length > 0 && (
         <div className="space-y-3" data-tour="answered-questions">
-          <h2 className="text-base font-semibold text-foreground">Answered questions <span className="tabular-nums text-muted-foreground">({answered.length})</span></h2>
+          <h2 className="text-base font-semibold text-foreground">{t('career.answeredQuestions')}{' '}<span className="tabular-nums text-muted-foreground">({answered.length})</span></h2>
           {answered.map((q) => (
             <Card key={q.id} className="rounded-2xl border-border/70 p-4 space-y-2">
               <div className="flex items-center gap-2">
@@ -280,7 +278,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       {/* Feedback */}
       {interview.feedback && interview.feedback.length > 0 && (
         <div className="space-y-3" data-tour="ai-feedback">
-          <h2 className="text-base font-semibold text-foreground">AI feedback</h2>
+          <h2 className="text-base font-semibold text-foreground">{t('career.aiFeedback2')}</h2>
           {interview.feedback.map((f, i) => (
             <Card key={i} className="rounded-2xl border-border/70 p-4 space-y-2">
               <div className="flex items-center justify-between">
@@ -303,7 +301,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
       {interview.status === 'completed' && interview.questions.length === 0 && (
         <Card className="rounded-3xl p-6 text-center">
-          <p className="text-sm text-muted-foreground">No questions were recorded for this interview.</p>
+          <p className="text-sm text-muted-foreground">{t('career.noQuestionsWereRecordedForThis1dd')}</p>
         </Card>
       )}
 
@@ -311,8 +309,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       {(interview.status === 'in_progress' || interview.status === 'scheduled') && (
         <div className="space-y-3" data-tour="collaborative-editor">
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <Code2 className="h-4 w-4 text-primary" aria-hidden /> Collaborative editor
-          </h2>
+            <Code2 className="h-4 w-4 text-primary" aria-hidden />{' '}{t('career.collaborativeEditor')}</h2>
           <CollabEditor
             sessionId={interview.id}
             initialLanguage="javascript"

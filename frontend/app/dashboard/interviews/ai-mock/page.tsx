@@ -15,6 +15,8 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import type { Question, Evaluation } from '@/lib/interviews/ai-mock-types'
 import { createVoiceManager, getVoiceCapabilities } from '@/lib/interviews/ai-mock-voice'
+import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface StoredSession {
   sessionId: string
@@ -42,6 +44,8 @@ function formatTime(sec: number): string {
 }
 
 export default function AiMockSessionPage() {
+  const apiError = useApiError()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -142,7 +146,7 @@ export default function AiMockSessionPage() {
 
       const data = await res.json()
       if (!res.ok) {
-        setError(data.error || 'Failed to submit answer.')
+        setError(apiError(data, tr('career.failedToSubmitAnswer')))
         processingRef.current = false
         setStatus('listening')
         return
@@ -152,7 +156,7 @@ export default function AiMockSessionPage() {
       setCurrentEvaluation(eval_)
       setShowEvaluation(true)
 
-      addTranscriptEntry({ role: 'system', text: `Score: ${eval_.score}/10`, evaluation: eval_ })
+      addTranscriptEntry({ role: 'system', text: tr('career.scoreScore10', { score: eval_.score }), evaluation: eval_ })
 
       // Auto-hide evaluation after 5 seconds
       setTimeout(() => setShowEvaluation(false), 5000)
@@ -182,7 +186,7 @@ export default function AiMockSessionPage() {
         await handleComplete()
       }
     } catch {
-      setError('Network error.')
+      setError(tr('career.networkError'))
       processingRef.current = false
       setStatus('listening')
     }
@@ -293,7 +297,7 @@ export default function AiMockSessionPage() {
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-card/50 backdrop-blur-sm shrink-0">
         <div className="flex items-center gap-3">
           <Brain className="h-5 w-5 text-primary" />
-          <span className="font-semibold text-sm text-foreground hidden sm:inline">AI mock interview</span>
+          <span className="font-semibold text-sm text-foreground hidden sm:inline">{tr('career.aiMockInterview')}</span>
           <Badge variant="outline" className="text-[10px]">{stored.difficulty}</Badge>
         </div>
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -309,8 +313,7 @@ export default function AiMockSessionPage() {
             onClick={handleComplete}
             className="h-7 text-xs"
           >
-            <Flag className="mr-1 h-3 w-3" /> End
-          </Button>
+            <Flag className="mr-1 h-3 w-3" />{' '}{tr('career.end')}</Button>
         </div>
       </div>
 
@@ -347,18 +350,15 @@ export default function AiMockSessionPage() {
           <div className="mt-4 text-center">
             {status === 'speaking' && (
               <p className="text-green-400 text-sm flex items-center gap-2">
-                <Volume2 className="h-4 w-4 animate-pulse motion-reduce:animate-none" /> Interviewer is speaking…
-              </p>
+                <Volume2 className="h-4 w-4 animate-pulse motion-reduce:animate-none" />{' '}{tr('career.interviewerIsSpeaking')}</p>
             )}
             {status === 'listening' && (
               <p className="text-red-400 text-sm flex items-center gap-2">
-                <Mic className="h-4 w-4 animate-pulse motion-reduce:animate-none" /> Listening…
-              </p>
+                <Mic className="h-4 w-4 animate-pulse motion-reduce:animate-none" />{' '}{tr('common.voiceListening')}</p>
             )}
             {status === 'processing' && (
               <p className="text-blue-300 text-sm flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" /> Thinking…
-              </p>
+                <Loader2 className="h-4 w-4 animate-spin" />{' '}{tr('career.thinking')}</p>
             )}
             {interimText && (
               <p className="text-white/70 text-xs mt-2 max-w-md truncate">{interimText}</p>
@@ -376,10 +376,10 @@ export default function AiMockSessionPage() {
                 ) : (
                   <XCircle className="h-4 w-4 text-red-500" />
                 )}
-                <span className="font-semibold text-sm tabular-nums text-foreground">Score: {currentEvaluation.score}/10</span>
+                <span className="font-semibold text-sm tabular-nums text-foreground">{tr('career.scoreScore10', { score: currentEvaluation.score })}</span>
               </div>
               {currentEvaluation.strengths.length > 0 && (
-                <p className="text-xs text-green-700 dark:text-green-400">+{currentEvaluation.strengths.length} strengths</p>
+                <p className="text-xs text-green-700 dark:text-green-400">{tr('career.countStrengths', { count: currentEvaluation.strengths.length })}</p>
               )}
             </div>
           )}
@@ -388,7 +388,7 @@ export default function AiMockSessionPage() {
           {error && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-destructive/90 text-white text-xs px-3 py-1.5 rounded-full">
               {error}
-              <button type="button" onClick={() => setError('')} className="ml-2 underline">Dismiss</button>
+              <button type="button" onClick={() => setError('')} className="ml-2 underline">{tr('career.dismiss')}</button>
             </div>
           )}
         </div>
@@ -396,8 +396,8 @@ export default function AiMockSessionPage() {
         {/* Transcript Panel - Right/Bottom */}
         <div className="flex-1 flex flex-col border-t lg:border-t-0 lg:border-l border-border/40 bg-background min-h-[300px] lg:min-h-0">
           <div className="px-4 py-2 border-b border-border/40 flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Transcript</span>
-            <span className="text-[11px] tabular-nums text-muted-foreground">{transcript.length} messages</span>
+            <span className="text-xs font-medium text-muted-foreground">{tr('career.transcript')}</span>
+            <span className="text-[11px] tabular-nums text-muted-foreground">{tr('career.countMessages', { count: transcript.length })}</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {transcript.map((entry) => (
@@ -415,7 +415,7 @@ export default function AiMockSessionPage() {
                   }`}
                 >
                   {entry.role === 'ai' && (
-                    <p className="text-[10px] text-primary font-medium mb-1">Interviewer</p>
+                    <p className="text-[10px] text-primary font-medium mb-1">{tr('career.interviewer')}</p>
                   )}
                   <p className="whitespace-pre-wrap">{entry.text}</p>
                   {entry.evaluation && (
@@ -448,8 +448,8 @@ export default function AiMockSessionPage() {
               value={textInput}
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleTextSubmit()}
-              placeholder="Type your answer…"
-              aria-label="Your answer"
+              placeholder={tr('career.typeYourAnswer')}
+              aria-label={tr('career.yourAnswer')}
               className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               disabled={status !== 'listening'}
             />
@@ -457,7 +457,7 @@ export default function AiMockSessionPage() {
               onClick={handleTextSubmit}
               disabled={status !== 'listening' || !textInput.trim()}
               size="sm"
-              aria-label="Send answer"
+              aria-label={tr('career.sendAnswer')}
             >
               <Send className="h-4 w-4" />
             </Button>
@@ -466,7 +466,7 @@ export default function AiMockSessionPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setTextMode(false)}
-                aria-label="Answer by voice"
+                aria-label={tr('career.answerByVoice')}
               >
                 <Mic className="h-4 w-4" />
               </Button>
@@ -479,14 +479,12 @@ export default function AiMockSessionPage() {
               size="sm"
               onClick={() => setTextMode(true)}
               className="text-xs"
-            >
-              Type instead
-            </Button>
+            >{tr('career.typeInstead')}</Button>
             <button
               type="button"
               onClick={toggleMic}
               disabled={status === 'processing' || status === 'loading'}
-              aria-label={status === 'listening' ? 'Stop answering' : 'Answer by voice'}
+              aria-label={status === 'listening' ? tr('career.stopAnswering') : tr('career.answerByVoice')}
               className={`h-14 w-14 rounded-full flex items-center justify-center transition-all duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
                 status === 'listening'
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30'
@@ -509,8 +507,7 @@ export default function AiMockSessionPage() {
               onClick={handleComplete}
               className="text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
             >
-              <Flag className="mr-1 h-3 w-3" /> End
-            </Button>
+              <Flag className="mr-1 h-3 w-3" />{' '}{tr('career.end')}</Button>
           </div>
         )}
       </div>
@@ -519,6 +516,7 @@ export default function AiMockSessionPage() {
 }
 
 function ReportView({ sessionId, router }: { sessionId: string; router: ReturnType<typeof useRouter> }) {
+  const { t } = useT()
   const [report, setReport] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
@@ -551,10 +549,8 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
   if (!report) {
     return (
       <div className="text-center text-muted-foreground py-12">
-        <p>We couldn&apos;t load this report. It may still be generating — try again in a minute, or start a new practice interview.</p>
-        <Button variant="outline" className="mt-4" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>
-          Start new interview
-        </Button>
+        <p>{t('career.weCouldntLoadThisReportIte30')}</p>
+        <Button variant="outline" className="mt-4" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>{t('career.startNewInterview')}</Button>
       </div>
     )
   }
@@ -566,19 +562,17 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
       <PageHeader
         className="mb-0"
         icon={<Brain aria-hidden />}
-        title="Interview report"
-        description="How your AI mock interview went, with strengths and what to work on next."
+        title={t('career.interviewReport')}
+        description={t('career.howYourAiMockInterviewWente62')}
         actions={
-          <Button variant="outline" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>
-            Practice again
-          </Button>
+          <Button variant="outline" onClick={() => router.push('/dashboard/interviews/ai-mock/setup')}>{t('career.practiceAgain')}</Button>
         }
       />
 
       {/* Overall Score */}
       <Card className="rounded-3xl border-border/70 p-6 text-center space-y-3">
         <p className={`text-5xl font-bold tabular-nums ${scoreColor}`}>{report.overallScore}</p>
-        <p className="text-sm text-muted-foreground">out of 100</p>
+        <p className="text-sm text-muted-foreground">{t('career.outOf100')}</p>
         <Badge variant="outline" className="text-sm">{report.category}</Badge>
       </Card>
 
@@ -593,7 +587,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {report.topStrengths?.length > 0 && (
           <Card className="rounded-3xl border-border/70 p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-green-700 dark:text-green-400">Strengths</h3>
+            <h3 className="text-sm font-semibold text-green-700 dark:text-green-400">{t('career.strengths')}</h3>
             {report.topStrengths.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
@@ -601,7 +595,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
         )}
         {report.topImprovements?.length > 0 && (
           <Card className="rounded-3xl border-border/70 p-5 space-y-2">
-            <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">Areas to improve</h3>
+            <h3 className="text-sm font-semibold text-amber-700 dark:text-amber-400">{t('career.areasToImprove')}</h3>
             {report.topImprovements.map((s: string, i: number) => (
               <p key={i} className="text-xs text-muted-foreground">• {s}</p>
             ))}
@@ -612,7 +606,7 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
       {/* Resources */}
       {report.recommendedResources?.length > 0 && (
         <Card className="rounded-3xl border-border/70 p-5 space-y-2">
-          <h3 className="text-sm font-semibold text-foreground">Recommended resources</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t('career.recommendedResources')}</h3>
           {report.recommendedResources.map((r: string, i: number) => (
             <p key={i} className="text-xs text-muted-foreground">• {r}</p>
           ))}
@@ -627,12 +621,12 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
           aria-expanded={transcriptOpen}
           className="w-full px-5 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors"
         >
-          <span className="text-sm font-medium text-foreground">Full transcript</span>
+          <span className="text-sm font-medium text-foreground">{t('career.fullTranscript')}</span>
           {transcriptOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
         {transcriptOpen && (
           <div className="px-5 pb-5 border-t border-border/40 max-h-96 overflow-y-auto">
-            <p className="text-xs text-muted-foreground mt-3">Transcript available after session.</p>
+            <p className="text-xs text-muted-foreground mt-3">{t('career.transcriptAvailableAfterSession')}</p>
           </div>
         )}
       </Card>

@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -19,6 +19,7 @@ import { isAdmin, type UserRole } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PageHeader } from '@/components/app/page-kit'
+import { useT } from '@/lib/i18n/client'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -65,6 +66,8 @@ type EventItem = {
 }
 
 function EventCard({ event }: { event: EventItem }) {
+  const { formatDate } = useLocaleDates()
+  const { t } = useT()
   const now = Date.now()
   const starts = new Date(event.starts_at).getTime()
   const ends = new Date(event.ends_at).getTime()
@@ -97,12 +100,11 @@ function EventCard({ event }: { event: EventItem }) {
               <Badge variant="outline" className={`text-[10px] ${statusColor}`}>{statusLabel}</Badge>
               <Badge variant="secondary" className="text-[10px]">
                 {event.type === 'hackathon' ? <Trophy className="w-2.5 h-2.5 mr-1" /> : <Code className="w-2.5 h-2.5 mr-1" />}
-                {event.type === 'hackathon' ? 'Hackathon' : 'Codeathon'}
+                {event.type === 'hackathon' ? t('compete.hackathon2') : t('compete.codeathon')}
               </Badge>
               {event.type === 'hackathon' && event.detailHref && (
                 <Badge variant="secondary" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10">
-                  <Gavel className="w-2.5 h-2.5 mr-1" /> Judge
-                </Badge>
+                  <Gavel className="w-2.5 h-2.5 mr-1" />{' '}{t('compete.judge')}</Badge>
               )}
             </div>
             <h3 className="truncate text-base font-semibold text-foreground">{event.title}</h3>
@@ -129,33 +131,28 @@ function EventCard({ event }: { event: EventItem }) {
           </span>
           {event.tasks_count > 0 && (
             <span className="inline-flex items-center gap-1">
-              <Target className="w-3 h-3" />
-              {event.tasks_count} problems
-            </span>
+              <Target className="w-3 h-3" />{t('compete.tasksCountProblems', { tasks_count: event.tasks_count })}</span>
           )}
         </div>
 
         {isLive && !isClosed && (
           <div className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-green-600 dark:text-green-400">
-            <Timer className="w-3 h-3" /> Ends in <Countdown targetIso={event.ends_at} />
+            <Timer className="w-3 h-3" />{' '}{t('compete.endsIn')}{' '}<Countdown targetIso={event.ends_at} />
           </div>
         )}
         {isUpcoming && (
           <div className="flex items-center gap-1.5 text-xs font-medium tabular-nums text-primary">
-            <Timer className="w-3 h-3" /> Starts in <Countdown targetIso={event.starts_at} />
+            <Timer className="w-3 h-3" />{' '}{t('compete.startsIn')}{' '}<Countdown targetIso={event.starts_at} />
           </div>
         )}
 
         {event.myTeam && (
-          <div className="text-xs text-muted-foreground">
-            Team: <span className="font-medium text-foreground">{event.myTeam.name}</span>
-            {' '}({event.myTeam.members.length} members)
-          </div>
+          <div className="text-xs text-muted-foreground">{t('compete.team3')}{' '}<span className="font-medium text-foreground">{event.myTeam.name}</span>{' '}{t('compete.countMembers', { count: event.myTeam.members.length })}</div>
         )}
 
         <Button size="sm" variant={isLive ? 'default' : 'outline'} className="w-full gap-1.5 text-xs" asChild>
           <Link href={detailUrl}>
-            {isLive ? 'Enter event' : isClosed ? 'View results' : 'View details'}
+            {isLive ? t('compete.enterEvent') : isClosed ? t('compete.viewResults') : t('compete.viewDetails')}
             <ArrowRight className="w-3 h-3" />
           </Link>
         </Button>
@@ -165,6 +162,7 @@ function EventCard({ event }: { event: EventItem }) {
 }
 
 export default function EventsPage() {
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
@@ -183,7 +181,7 @@ export default function EventsPage() {
         fetch('/api/codeathons', { cache: 'no-store' }),
         hasSession ? fetch('/api/hackathons/my-teams', { cache: 'no-store' }).catch(() => null) : Promise.resolve(null),
       ])
-      if (!hRes.ok && !cRes.ok) throw new Error('Failed to load events')
+      if (!hRes.ok && !cRes.ok) throw new Error(tr('compete.failedToLoadEvents'))
 
       const hData = hRes.ok ? await hRes.json() as { items: Hackathon[] } : { items: [] }
       const cData = cRes.ok ? await cRes.json() as { data: Codeathon[] } : { data: [] }
@@ -248,20 +246,20 @@ export default function EventsPage() {
       const eventsTour: TourStep[] = [
         {
           target: '[data-tour="events-header"]',
-          title: 'Browse all events',
-          description: 'Central hub where participants discover hackathons and codeathons in one list.',
+          title: tr('compete.browseAllEvents'),
+          description: tr('compete.centralHubWhereParticipantsDiscoverHacka51e'),
           position: 'bottom',
         },
         {
           target: '[data-tour="events-tabs"]',
-          title: 'Filter events fast',
-          description: 'Switch tabs to show all, joined, live, upcoming, or past events.',
+          title: tr('compete.filterEventsFast'),
+          description: tr('compete.switchTabsToShowAllJoined7d6'),
           position: 'bottom',
         },
         {
           target: '[data-tour="events-grid"]',
-          title: 'Tip enter an event',
-          description: 'Tip: open a card and press its button to enter, view details, or see results.',
+          title: tr('compete.tipEnterAnEvent'),
+          description: tr('compete.tipOpenACardAndPress5ae'),
           position: 'bottom',
         },
       ]
@@ -304,35 +302,35 @@ export default function EventsPage() {
         <PageHeader
           illustration="calendar"
           className="mb-0"
-          title="Events"
-          description="Hackathons, codeathons and coding competitions you can join or follow."
+          title={tr('compete.events')}
+          description={tr('compete.hackathonsCodeathonsAndCodingCompetition94b')}
           icon={<Zap />}
         />
       </div>
 
       <Tabs value={tab} onValueChange={setTab} data-tour="events-tabs">
         <TabsList className="flex h-auto flex-wrap justify-start">
-          <TabsTrigger value="all">All ({events.length})</TabsTrigger>
-          <TabsTrigger value="my">My Events ({myEvents.length})</TabsTrigger>
-          <TabsTrigger value="live">Live ({liveEvents.length})</TabsTrigger>
-          <TabsTrigger value="upcoming">Upcoming ({upcomingEvents.length})</TabsTrigger>
-          <TabsTrigger value="past">Past ({pastEvents.length})</TabsTrigger>
+          <TabsTrigger value="all">{tr('compete.allCount', { count: events.length })}</TabsTrigger>
+          <TabsTrigger value="my">{tr('compete.myEventsCount', { count: myEvents.length })}</TabsTrigger>
+          <TabsTrigger value="live">{tr('compete.liveCount', { count: liveEvents.length })}</TabsTrigger>
+          <TabsTrigger value="upcoming">{tr('compete.upcomingCount', { count: upcomingEvents.length })}</TabsTrigger>
+          <TabsTrigger value="past">{tr('compete.pastCount', { count: pastEvents.length })}</TabsTrigger>
         </TabsList>
 
         <TabsContent value={tab} className="mt-4">
           {loadError && events.length === 0 ? (
             <EmptyState
               illustration="error"
-              title="Couldn't load events"
-              description="Check your connection and try again."
-              actionLabel="Try again"
+              title={tr('compete.couldntLoadEvents')}
+              description={tr('compete.checkYourConnectionAndTryAgain')}
+              actionLabel={tr('common.tryAgain')}
               onAction={() => { setLoading(true); void load() }}
             />
           ) : filtered.length === 0 ? (
             <EmptyState illustration="calendar" 
-              title={tab === 'my' ? 'No events joined' : 'No events found'} 
-              description={tab === 'my' ? "You haven't joined any events yet. Browse upcoming hackathons and codeathons to take part." : 'Nothing here right now. Check the other tabs or come back later.'}
-              actionLabel={tab === 'my' ? 'Explore events' : undefined}
+              title={tab === 'my' ? tr('compete.noEventsJoined') : tr('compete.noEventsFound')} 
+              description={tab === 'my' ? tr('compete.youHaventJoinedAnyEventsYet1e7') : tr('compete.nothingHereRightNowCheckThe516')}
+              actionLabel={tab === 'my' ? tr('compete.exploreEvents') : undefined}
               onAction={tab === 'my' ? () => setTab('all') : undefined}
             />
           ) : (

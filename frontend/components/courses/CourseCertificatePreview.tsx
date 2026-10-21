@@ -6,6 +6,7 @@ import {
   type CertificateData,
   type TemplateKey,
 } from '@/components/cert/CertificateTemplates'
+import { useT } from '@/lib/i18n/client'
 
 const TEMPLATE_KEYS: TemplateKey[] = [
   'classic', 'modern', 'minimal', 'professional', 'corporate', 'academic',
@@ -31,6 +32,7 @@ export function CourseCertificatePreview({
   courseTitle: string
   recipientName?: string
 }) {
+  const { t } = useT()
   const [template, setTemplate] = useState<TemplateKey>('classic')
   const boxRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0.35)
@@ -75,9 +77,7 @@ export function CourseCertificatePreview({
   return (
     <div className="relative w-full max-w-md mx-auto">
       <div className="absolute -top-1 -right-1 z-20 rotate-12">
-        <span className="inline-block bg-slate-900 text-amber-300 text-[10px] font-bold tracking-[0.2em] uppercase px-3 py-1 shadow-lg rounded-sm">
-          Sample
-        </span>
+        <span className="inline-block bg-slate-900 text-amber-300 text-[10px] font-bold tracking-[0.2em] uppercase px-3 py-1 shadow-lg rounded-sm">{t('learning.sample')}</span>
       </div>
 
       <div
@@ -110,16 +110,12 @@ export function CourseCertificatePreview({
               <span
                 key={i}
                 className="text-slate-700/50 text-lg font-black tracking-[0.35em] uppercase -rotate-28"
-              >
-                SAMPLE
-              </span>
+              >{t('learning.sample2')}</span>
             ))}
           </div>
         </div>
       </div>
-      <p className="text-center text-[11px] text-white/75 mt-3">
-        Preview for {displayName} · SuperAdmin template · watermarked sample
-      </p>
+      <p className="text-center text-[11px] text-white/75 mt-3">{t('learning.previewForDisplaynameSuperadminTemplateWd0c', { displayName })}</p>
     </div>
   )
 }

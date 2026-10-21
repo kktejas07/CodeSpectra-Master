@@ -35,18 +35,18 @@ export async function POST(req: NextRequest) {
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+      return NextResponse.json({ error: 'No file provided', code: 'upload_no_file' }, { status: 400 })
     }
 
     // Validate file type
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP, SVG' }, { status: 400 })
+      return NextResponse.json({ error: 'Invalid file type. Allowed: JPEG, PNG, GIF, WebP, SVG', code: 'upload_image_type' }, { status: 400 })
     }
 
     // Max 5MB
     if (file.size > 5 * 1024 * 1024) {
-      return NextResponse.json({ error: 'File too large. Max 5MB' }, { status: 400 })
+      return NextResponse.json({ error: 'File too large. Max 5MB', code: 'upload_too_large_5mb' }, { status: 400 })
     }
 
     let bytes = await file.arrayBuffer()
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     // declared image type and the extension must match it.
     const sniffed = sniffImageMime(new Uint8Array(bytes), { allowSvg: true })
     if (!sniffed || sniffed !== file.type || !imageExtensionMatches(file.name || '', sniffed)) {
-      return NextResponse.json({ error: 'The file content does not match its type. Upload a real JPEG, PNG, GIF, WebP or SVG image.' }, { status: 400 })
+      return NextResponse.json({ error: 'The file content does not match its type. Upload a real JPEG, PNG, GIF, WebP or SVG image.', code: 'upload_image_mismatch' }, { status: 400 })
     }
     let finalType: string = sniffed
 
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       const msg = scanErr instanceof Error ? scanErr.message : String(scanErr)
       console.error('[upload] virus scan error:', msg)
       return NextResponse.json(
-        { error: 'Security scanner is currently offline. Please try again later.' },
+        { error: 'Security scanner is currently offline. Please try again later.', code: 'upload_scanner_offline' },
         { status: 503 },
       )
     }
@@ -119,6 +119,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, url: dataUrl, id })
   } catch (e) {
     console.error('[upload] error:', e)
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: 'Upload failed', code: 'upload_failed' }, { status: 500 })
   }
 }

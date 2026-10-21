@@ -8,6 +8,7 @@
  * to return, so behaviour stays identical.
  */
 import type { APIUser } from '@/lib/route-auth'
+import { withErrorCode } from '@/lib/api-errors'
 
 export type ServiceOk<T> = { ok: true; status: number; data: T }
 export type ServiceErr = {
@@ -30,7 +31,8 @@ export const fail = (status: number, error: string, body?: Record<string, unknow
 
 /** JSON body a route returns for a failed service call. */
 export function errorBody(r: ServiceErr): Record<string, unknown> {
-  return r.body ?? { error: r.error }
+  // `code` added when the message is a known one (lib/api-errors) so the UI can translate it.
+  return withErrorCode(r.body ?? { error: r.error })
 }
 
 /** The acting user, as the services see it (route session or agent caller). */

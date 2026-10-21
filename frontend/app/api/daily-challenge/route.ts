@@ -57,7 +57,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
   } catch (error) {
     console.error('[CodeSpectra] daily-challenge error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', today: todayKey(), problem: null, streak: 0, solved_today: false },
+      { error: 'Internal server error', code: 'internal_error', today: todayKey(), problem: null, streak: 0, solved_today: false },
       { status: 500 },
     )
   }

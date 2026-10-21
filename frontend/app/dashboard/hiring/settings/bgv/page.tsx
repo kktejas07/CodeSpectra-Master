@@ -22,6 +22,7 @@ import type { BgvRegion, BgvCheckType } from '@/lib/ats/contract'
 import type { BgvRegionSettings, BgvSettingsDoc, BgvStateNotice } from '@/lib/ats/bgv/types'
 import { useToast } from '@/lib/toast-context'
 import { IndiaVendorSettings, TestConnection, type VendorSettingsData } from '@/components/hiring/bgv/vendor-settings'
+import { useT } from '@/lib/i18n/client'
 
 type PublicSettings = Omit<BgvSettingsDoc, 'vendor_secret'> & { vendor_keys: Record<string, boolean> & { checkr_api_key: boolean; checkr_webhook_secret: boolean } }
 interface Data extends VendorSettingsData {
@@ -33,13 +34,14 @@ interface Data extends VendorSettingsData {
 }
 
 function CheckGrid({ id, all, value, onChange, disabled }: { id: string; all: Data['checks']['IN']; value: BgvCheckType[]; onChange: (v: BgvCheckType[]) => void; disabled: boolean }) {
+  const { t: tr } = useT()
   return (
     <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
       {all.map((c) => (
         <label key={c.type} htmlFor={`${id}-${c.type}`} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border px-3 text-sm hover:bg-muted/40">
           <input id={`${id}-${c.type}`} type="checkbox" className="h-4 w-4 accent-[var(--primary)]" disabled={disabled} checked={value.includes(c.type)}
             onChange={(e) => onChange(e.target.checked ? [...value, c.type] : value.filter((t) => t !== c.type))} />
-          <span>{c.label}{!c.candidate_input && <span className="block text-xs text-muted-foreground">run by the vendor</span>}</span>
+          <span>{c.label}{!c.candidate_input && <span className="block text-xs text-muted-foreground">{tr('hiring.runByTheVendor')}</span>}</span>
         </label>
       ))}
     </div>
@@ -47,6 +49,7 @@ function CheckGrid({ id, all, value, onChange, disabled }: { id: string; all: Da
 }
 
 function Inner() {
+  const { td, t } = useT()
   const sp = useSearchParams()
   const tenant = sp.get('tenant')
   const q = useAts<Data>(`/api/ats/bgv/settings${tenant ? `?tenant=${encodeURIComponent(tenant)}` : ''}`)
@@ -91,46 +94,46 @@ function Inner() {
     const notices = reg.state_notices || []
     const setNotice = (i: number, patch: Partial<BgvStateNotice>) => setRegion(r, { state_notices: notices.map((n, j) => (j === i ? { ...n, ...patch } : n)) })
     return (
-      <Section key={r} title={REGION_LABELS[r]} description={r === 'IN' ? 'Consent under the Digital Personal Data Protection Act, 2023.' : 'FCRA standalone disclosure, written authorization and state notices.'}>
+      <Section key={r} title={td(`hiring.regionLabels:${r}`, REGION_LABELS[r])} description={r === 'IN' ? t('hiring.consentUnderTheDigitalPersonalDatafc0') : t('hiring.fcraStandaloneDisclosureWrittenAuthorizad10')}>
         <Panel className="space-y-5">
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">Default checks</h3>
-            <p className="text-xs text-muted-foreground">Used when a BGV stage doesn&apos;t pick its own checks.</p>
+            <h3 className="text-sm font-semibold text-foreground">{t('hiring.defaultChecks')}</h3>
+            <p className="text-xs text-muted-foreground">{t('hiring.usedWhenABgvStageDoesntb5c')}</p>
             <CheckGrid id={`def-${r}`} all={d.checks[r]} value={reg.default_checks} onChange={(v) => setRegion(r, { default_checks: v })} disabled={!manage} />
           </div>
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-foreground">Critical checks</h3>
-            <p className="text-xs text-muted-foreground">A discrepancy on one of these makes the result &quot;consider&quot; — a recruiter then decides.</p>
+            <h3 className="text-sm font-semibold text-foreground">{t('hiring.criticalChecks')}</h3>
+            <p className="text-xs text-muted-foreground">{t('hiring.aDiscrepancyOnOneOfThese827')}</p>
             <CheckGrid id={`crit-${r}`} all={d.checks[r]} value={reg.critical_checks} onChange={(v) => setRegion(r, { critical_checks: v })} disabled={!manage} />
           </div>
           {r === 'US' && reg.disclosure && (
-            <Field label={`FCRA disclosure (version ${reg.disclosure.version})`} htmlFor="us-disc" hint="Shown alone on its own page before the authorization — keep anything else off it. {{company}} and {{job_title}} are filled in.">
+            <Field label={t('hiring.fcraDisclosureVersionVersion', { version: reg.disclosure.version })} htmlFor="us-disc" hint={t('hiring.shownAloneOnItsOwnPage6ae')}>
               <Textarea id="us-disc" rows={10} value={reg.disclosure.text} disabled={!manage} onChange={(e) => setRegion(r, { disclosure: { ...reg.disclosure!, text: e.target.value } })} />
             </Field>
           )}
-          <Field label={`${r === 'US' ? 'Authorization' : 'Consent notice'} (version ${reg.consent.version})`} htmlFor={`consent-${r}`} hint="Changing the text creates a new version; signed consents keep the version they signed. Variables: {{company}}, {{job_title}}, {{retention_days}}.">
+          <Field label={t('hiring.valueVersionVersion', { value: r === 'US' ? 'Authorization' : 'Consent notice', version: reg.consent.version })} htmlFor={`consent-${r}`} hint={t('hiring.changingTheTextCreatesANewfde')}>
             <Textarea id={`consent-${r}`} rows={10} value={reg.consent.text} disabled={!manage} onChange={(e) => setRegion(r, { consent: { ...reg.consent, text: e.target.value } })} />
           </Field>
           {r === 'US' && (
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">State notices</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t('hiring.stateNotices')}</h3>
               {notices.map((n, i) => (
                 <div key={i} className="space-y-2 rounded-2xl border border-border p-3">
                   <div className="flex flex-wrap items-end gap-2">
-                    <Field label="State" htmlFor={`ns-${i}`}><NativeSelect id={`ns-${i}`} value={n.state} onChange={(v) => setNotice(i, { state: v })} options={US_STATES.map((s) => ({ value: s, label: s }))} disabled={!manage} className="w-24" /></Field>
-                    <Field label="Title" htmlFor={`nt-${i}`} className="min-w-48 flex-1"><Input id={`nt-${i}`} value={n.title} onChange={(e) => setNotice(i, { title: e.target.value })} disabled={!manage} /></Field>
+                    <Field label={t('hiring.state')} htmlFor={`ns-${i}`}><NativeSelect id={`ns-${i}`} value={n.state} onChange={(v) => setNotice(i, { state: v })} options={US_STATES.map((s) => ({ value: s, label: s }))} disabled={!manage} className="w-24" /></Field>
+                    <Field label={t('hiring.title')} htmlFor={`nt-${i}`} className="min-w-48 flex-1"><Input id={`nt-${i}`} value={n.title} onChange={(e) => setNotice(i, { title: e.target.value })} disabled={!manage} /></Field>
                     <Badge variant="outline">v{n.version}</Badge>
-                    {manage && <Button variant="ghost" size="sm" className="min-h-9" aria-label={`Remove ${n.state} notice`} onClick={() => setRegion(r, { state_notices: notices.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" aria-hidden /></Button>}
+                    {manage && <Button variant="ghost" size="sm" className="min-h-9" aria-label={t('hiring.removeStateNotice', { state: n.state })} onClick={() => setRegion(r, { state_notices: notices.filter((_, j) => j !== i) })}><Trash2 className="h-4 w-4" aria-hidden /></Button>}
                   </div>
-                  <label htmlFor={`nx-${i}`} className="sr-only">Notice text</label>
+                  <label htmlFor={`nx-${i}`} className="sr-only">{t('hiring.noticeText')}</label>
                   <Textarea id={`nx-${i}`} rows={3} value={n.text} onChange={(e) => setNotice(i, { text: e.target.value })} disabled={!manage} />
                 </div>
               ))}
-              {manage && <Button variant="outline" className="min-h-11" onClick={() => setRegion(r, { state_notices: [...notices, { state: 'CA', title: 'State notice', text: '', version: '1' }] })}><Plus className="h-4 w-4" aria-hidden /> Add state notice</Button>}
+              {manage && <Button variant="outline" className="min-h-11" onClick={() => setRegion(r, { state_notices: [...notices, { state: 'CA', title: t('hiring.stateNotice'), text: '', version: '1' }] })}><Plus className="h-4 w-4" aria-hidden />{' '}{t('hiring.addStateNotice')}</Button>}
             </div>
           )}
           <InlineError message={err[r]} />
-          {saveBtn(r, () => void save(r, { regions: { [r]: { default_checks: reg.default_checks, critical_checks: reg.critical_checks, consent: reg.consent.text, ...(r === 'US' ? { disclosure: reg.disclosure?.text, state_notices: notices } : {}) } } }, `${REGION_LABELS[r]} settings saved`))}
+          {saveBtn(r, () => void save(r, { regions: { [r]: { default_checks: reg.default_checks, critical_checks: reg.critical_checks, consent: reg.consent.text, ...(r === 'US' ? { disclosure: reg.disclosure?.text, state_notices: notices } : {}) } } }, `${td(`hiring.regionLabels:${r}`, REGION_LABELS[r])} settings saved`))}
         </Panel>
       </Section>
     )
@@ -146,34 +149,34 @@ function Inner() {
     <div className="space-y-8">
       <p className="flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-foreground">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />
-        <span>{REVIEW_WITH_COUNSEL} The consent, disclosure and notice texts below are generic starting points; local laws (DPDP Act, FCRA, state and city fair-chance laws) decide what yours must say.</span>
+        <span>{t('hiring.reviewWithCounselTheConsentDisclosure199', { REVIEW_WITH_COUNSEL })}</span>
       </p>
-      {!manage && <p className="rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground">Only hiring admins can change these settings.</p>}
+      {!manage && <p className="rounded-xl bg-muted/40 px-4 py-3 text-sm text-muted-foreground">{t('hiring.onlyHiringAdminsCanChangeThese582')}</p>}
 
-      <Section title="Vendor: Checkr (USA)" description="Optional. Without a vendor, your team verifies each check manually. India vendors (IDfy, AuthBridge) are below.">
+      <Section title={t('hiring.vendorCheckrUsa')} description={t('hiring.optionalWithoutAVendorYourTeam81e')}>
         <Panel className="space-y-4">
           <div className="flex flex-wrap gap-2 text-sm">
-            <Badge variant={form.vendor_keys.checkr_api_key ? 'success' : 'outline'}>{form.vendor_keys.checkr_api_key ? <><CheckCircle2 aria-hidden /> API key set</> : 'No API key'}</Badge>
-            <Badge variant={form.vendor_keys.checkr_webhook_secret ? 'success' : 'outline'}>{form.vendor_keys.checkr_webhook_secret ? 'Webhook secret set' : 'Webhook uses the API key'}</Badge>
+            <Badge variant={form.vendor_keys.checkr_api_key ? 'success' : 'outline'}>{form.vendor_keys.checkr_api_key ? <><CheckCircle2 aria-hidden />{' '}{t('hiring.apiKeySet')}</> : t('hiring.noApiKey')}</Badge>
+            <Badge variant={form.vendor_keys.checkr_webhook_secret ? 'success' : 'outline'}>{form.vendor_keys.checkr_webhook_secret ? t('hiring.webhookSecretSet') : t('hiring.webhookUsesTheApiKey')}</Badge>
           </div>
           {manage && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Checkr API key" htmlFor="ck-key" hint="Leave empty to keep the current key."><Input id="ck-key" type="password" autoComplete="off" className="h-11" value={keys.checkr_api_key} onChange={(e) => setKeys({ ...keys, checkr_api_key: e.target.value })} /></Field>
-              <Field label="Webhook secret (optional)" htmlFor="ck-sec" hint="Checkr signs webhooks with your API key unless you set another secret."><Input id="ck-sec" type="password" autoComplete="off" className="h-11" value={keys.checkr_webhook_secret} onChange={(e) => setKeys({ ...keys, checkr_webhook_secret: e.target.value })} /></Field>
+              <Field label={t('hiring.checkrApiKey')} htmlFor="ck-key" hint={t('hiring.leaveEmptyToKeepTheCurrent8b7')}><Input id="ck-key" type="password" autoComplete="off" className="h-11" value={keys.checkr_api_key} onChange={(e) => setKeys({ ...keys, checkr_api_key: e.target.value })} /></Field>
+              <Field label={t('hiring.webhookSecretOptional')} htmlFor="ck-sec" hint={t('hiring.checkrSignsWebhooksWithYourApi376')}><Input id="ck-sec" type="password" autoComplete="off" className="h-11" value={keys.checkr_webhook_secret} onChange={(e) => setKeys({ ...keys, checkr_webhook_secret: e.target.value })} /></Field>
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Package slug" htmlFor="ck-pkg" hint="From your Checkr account, e.g. tasker_standard"><Input id="ck-pkg" className="h-11" value={form.checkr?.package || ''} disabled={!manage} onChange={(e) => setForm({ ...form, checkr: { ...form.checkr!, package: e.target.value } })} /></Field>
-            <Field label="Mode" htmlFor="ck-mode" hint="Report: use the data the candidate gave us. Invitation: Checkr's own form."><NativeSelect id="ck-mode" className="h-11" value={form.checkr?.mode || 'report'} disabled={!manage} onChange={(v) => setForm({ ...form, checkr: { ...form.checkr!, mode: v as 'report' | 'invitation' } })} options={[{ value: 'report', label: 'Report' }, { value: 'invitation', label: 'Invitation' }]} /></Field>
-            <Field label="Work state" htmlFor="ck-state"><NativeSelect id="ck-state" className="h-11" value={form.checkr?.work_state || ''} placeholder="—" disabled={!manage} onChange={(v) => setForm({ ...form, checkr: { ...form.checkr!, work_state: v || null } })} options={US_STATES.map((s) => ({ value: s, label: s }))} /></Field>
-            <Field label="Work city" htmlFor="ck-city"><Input id="ck-city" className="h-11" value={form.checkr?.work_city || ''} disabled={!manage} onChange={(e) => setForm({ ...form, checkr: { ...form.checkr!, work_city: e.target.value } })} /></Field>
+            <Field label={t('hiring.packageSlug')} htmlFor="ck-pkg" hint={t('hiring.fromYourCheckrAccountEGc15')}><Input id="ck-pkg" className="h-11" value={form.checkr?.package || ''} disabled={!manage} onChange={(e) => setForm({ ...form, checkr: { ...form.checkr!, package: e.target.value } })} /></Field>
+            <Field label={t('hiring.mode')} htmlFor="ck-mode" hint={t('hiring.reportUseTheDataTheCandidated8b')}><NativeSelect id="ck-mode" className="h-11" value={form.checkr?.mode || 'report'} disabled={!manage} onChange={(v) => setForm({ ...form, checkr: { ...form.checkr!, mode: v as 'report' | 'invitation' } })} options={[{ value: 'report', label: t('hiring.report') }, { value: 'invitation', label: t('hiring.invitation') }]} /></Field>
+            <Field label={t('hiring.workState')} htmlFor="ck-state"><NativeSelect id="ck-state" className="h-11" value={form.checkr?.work_state || ''} placeholder="—" disabled={!manage} onChange={(v) => setForm({ ...form, checkr: { ...form.checkr!, work_state: v || null } })} options={US_STATES.map((s) => ({ value: s, label: s }))} /></Field>
+            <Field label={t('hiring.workCity')} htmlFor="ck-city"><Input id="ck-city" className="h-11" value={form.checkr?.work_city || ''} disabled={!manage} onChange={(e) => setForm({ ...form, checkr: { ...form.checkr!, work_city: e.target.value } })} /></Field>
           </div>
-          <p className="text-xs text-muted-foreground">Webhook URL to add in Checkr (events: report.created, report.completed, invitation.completed): <code className="break-all font-mono">{d.checkr_webhook_url}</code></p>
+          <p className="text-xs text-muted-foreground">{t('hiring.webhookUrlToAddInCheckr448')}{' '}<code className="break-all font-mono">{d.checkr_webhook_url}</code></p>
           <InlineError message={err.vendor} />
           <div className="flex flex-wrap gap-2">
             {saveBtn('vendor', () => void save('vendor', { checkr: form.checkr, vendor_keys: { ...(keys.checkr_api_key ? { checkr_api_key: keys.checkr_api_key } : {}), ...(keys.checkr_webhook_secret ? { checkr_webhook_secret: keys.checkr_webhook_secret } : {}) } }, 'Vendor settings saved'))}
             {manage && form.vendor_keys.checkr_api_key && <TestConnection vendor="checkr" tenantQuery={tenantQuery} />}
-            {manage && form.vendor_keys.checkr_api_key && <Button variant="outline" className="min-h-11" disabled={!!busy} onClick={() => void save('vendor', { vendor_keys: { checkr_api_key: null, checkr_webhook_secret: null } }, 'Checkr keys removed')}>Remove keys</Button>}
+            {manage && form.vendor_keys.checkr_api_key && <Button variant="outline" className="min-h-11" disabled={!!busy} onClick={() => void save('vendor', { vendor_keys: { checkr_api_key: null, checkr_webhook_secret: null } }, 'Checkr keys removed')}>{t('hiring.removeKeys')}</Button>}
           </div>
         </Panel>
       </Section>
@@ -196,7 +199,7 @@ function Inner() {
       {regionSection('IN')}
       {regionSection('US')}
 
-      <Section title="Timing and retention" description="Applies to new and running background checks.">
+      <Section title={t('hiring.timingAndRetention')} description={t('hiring.appliesToNewAndRunningBackground733')}>
         <Panel className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {num('form_deadline_days', 'Days to complete the form', 'After this the check is closed as not completed.')}
@@ -214,8 +217,9 @@ function Inner() {
 }
 
 export default function BgvSettingsPage() {
+  const { t } = useT()
   return (
-    <HiringShell title="Background checks" description="Region checklists, consent texts, vendors and retention for background verification." icon={<ShieldCheck />}>
+    <HiringShell title={t('hiring.backgroundChecks')} description={t('hiring.regionChecklistsConsentTextsVendorsAnd6df')} icon={<ShieldCheck />}>
       <Suspense fallback={<LoadingRows rows={4} />}>
         <Inner />
       </Suspense>

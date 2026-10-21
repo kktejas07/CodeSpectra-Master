@@ -26,6 +26,7 @@ import {
 import { cn } from '@/lib/utils'
 import { useT } from '@/lib/i18n/client'
 import { LOCALE_META } from '@/lib/i18n/config'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface Options {
   companies: Array<{ slug: string; name: string; patterns: Array<{ id: string; name: string }> }>
@@ -38,6 +39,7 @@ const ROLE_SUGGESTIONS = ['Software engineer', 'Frontend developer', 'Backend de
 const selectCls = 'h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
 
 export default function InterviewSimPage() {
+  const apiError = useApiError()
   const gate = usePageGuard('user')
   const router = useRouter()
   const addToast = useToast()
@@ -97,7 +99,7 @@ export default function InterviewSimPage() {
         }),
       })
       const j = await res.json().catch(() => ({}))
-      if (!res.ok || !j.session?.id) throw new Error(j.error || t('dashboard.simStartFailed'))
+      if (!res.ok || !j.session?.id) throw new Error(apiError(j, t('dashboard.simStartFailed')))
       router.push(`/dashboard/interview-sim/${encodeURIComponent(j.session.id)}`)
     } catch (e) {
       const msg = e instanceof Error ? e.message : t('dashboard.simStartFailed')

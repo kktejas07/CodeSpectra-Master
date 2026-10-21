@@ -23,7 +23,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth().catch(() => null)
   if (!gate || 'error' in gate) {
-    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.', code: 'exam_signin_required' }, { status: 401 })
   }
   const { id: userId, email } = gate.user
   const { id: examId } = await ctx.params
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const rl = rateLimitSlidingWindow(`cad-start:${userId}:${examId}`, 30, 10 * 60_000)
   if (!rl.ok) {
     return NextResponse.json(
-      { error: 'Too many requests. Please try again shortly.' },
+      { error: 'Too many requests. Please try again shortly.', code: 'rate_limited_shortly' },
       { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
     )
   }
@@ -43,9 +43,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   try {
     const db = await getMongoDb()
     const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam || exam.published === false) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    if (!exam || exam.published === false) return NextResponse.json({ error: 'Exam not found', code: 'exam_not_found' }, { status: 404 })
 
-    if (!isCadExam(exam as Record<string, unknown>)) return NextResponse.json({ error: 'This assessment is not a CAD task.' }, { status: 400 })
+    if (!isCadExam(exam as Record<string, unknown>)) return NextResponse.json({ error: 'This assessment is not a CAD task.', code: 'exam_not_cad' }, { status: 400 })
 
     const access = await checkExamEntry(db, exam as Record<string, unknown>, { id: userId, email }, { inviteToken, linkToken }, { claimLinkUse: true })
     if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status })
@@ -82,6 +82,6 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     })
   } catch (e) {
     console.error('[cad-submission/start] POST:', e)
-    return NextResponse.json({ error: 'Could not start the test' }, { status: 500 })
+    return NextResponse.json({ error: 'Could not start the test', code: 'exam_start_failed' }, { status: 500 })
   }
 }

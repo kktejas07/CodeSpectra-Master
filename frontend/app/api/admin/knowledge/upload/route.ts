@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (limited) return limited
   const len = Number(request.headers.get('content-length') || 0)
   if (len > MAX_UPLOAD_BYTES + 64 * 1024) {
-    return NextResponse.json({ error: `Files can be up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.` }, { status: 413 })
+    return NextResponse.json({ error: `Files can be up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.`, code: 'mkt_file_too_large', params: { mb: MAX_UPLOAD_BYTES / 1024 / 1024 } }, { status: 413 })
   }
   let form: FormData
   try {
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const file = form.get('file')
   if (!file || typeof file === 'string') return NextResponse.json({ error: 'Choose a file to upload.' }, { status: 400 })
   if (file.size > MAX_UPLOAD_BYTES) {
-    return NextResponse.json({ error: `Files can be up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.` }, { status: 413 })
+    return NextResponse.json({ error: `Files can be up to ${MAX_UPLOAD_BYTES / 1024 / 1024} MB.`, code: 'mkt_file_too_large', params: { mb: MAX_UPLOAD_BYTES / 1024 / 1024 } }, { status: 413 })
   }
   try {
     const res = await uploadDocument(g.caller, {

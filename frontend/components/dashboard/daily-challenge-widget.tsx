@@ -6,6 +6,7 @@ import { Calendar, Flame, ArrowRight, Loader2, Sparkles } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { OfflineDownloadButton } from '@/components/pwa/offline-download-button'
+import { useT } from '@/lib/i18n/client'
 
 interface DailyData {
   today: string
@@ -24,6 +25,7 @@ interface DailyData {
  * problem + the user's current streak.
  */
 export function DailyChallengeWidget() {
+  const { t: tr } = useT()
   const [data, setData] = useState<DailyData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -38,8 +40,7 @@ export function DailyChallengeWidget() {
   if (loading) {
     return (
       <Card className="h-full flex-row items-center gap-2 rounded-3xl p-5 text-sm text-muted-foreground" data-testid="daily-widget-loading">
-        <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" /> Loading daily challenge…
-      </Card>
+        <Loader2 className="h-4 w-4 animate-spin text-primary motion-reduce:animate-none" />{' '}{tr('dash.loadingDailyChallenge')}</Card>
     )
   }
 
@@ -56,13 +57,10 @@ export function DailyChallengeWidget() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-xs font-medium text-primary">
-              Daily challenge · <span className="tabular-nums">{data.today}</span>
+            <span className="text-xs font-medium text-primary">{tr('dash.dailyChallenge2')}{' '}<span className="tabular-nums">{data.today}</span>
             </span>
             {data.solved_today && (
-              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">
-                ✓ Solved today
-              </span>
+              <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[11px] font-medium text-green-700 dark:text-green-400">{tr('dash.solvedToday')}</span>
             )}
             <span
               className={cn(
@@ -77,11 +75,9 @@ export function DailyChallengeWidget() {
             <span
               className="ml-auto inline-flex items-center gap-1 text-xs font-medium tabular-nums text-amber-700 dark:text-amber-400"
               data-testid="streak-counter"
-              title="Consecutive days with at least one accepted submission"
+              title={tr('dash.consecutiveDaysWithAtLeastOne7b3')}
             >
-              <Flame className="h-3.5 w-3.5" />
-              {data.streak}-day streak
-            </span>
+              <Flame className="h-3.5 w-3.5" />{tr('dash.streakDayStreak', { streak: data.streak })}</span>
           </div>
           <h3 className="mb-1 text-lg font-semibold text-foreground">{data.problem.title}</h3>
           {data.problem.topics?.length > 0 && (
@@ -101,7 +97,7 @@ export function DailyChallengeWidget() {
             className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             data-testid="daily-cta"
           >
-            <Sparkles className="h-3 w-3" /> Solve now <ArrowRight className="h-3 w-3" />
+            <Sparkles className="h-3 w-3" />{' '}{tr('dash.solveNow')}{' '}<ArrowRight className="h-3 w-3" />
           </Link>
           <OfflineDownloadButton day={data.today} className="ml-2 align-middle" />
         </div>

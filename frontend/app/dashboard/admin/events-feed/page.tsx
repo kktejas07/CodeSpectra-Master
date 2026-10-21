@@ -27,6 +27,7 @@ import { EVENT_KINDS, EVENT_MODES, type FeedEventDoc, type SourceState } from '@
 import type { EventsFeedSettings } from '@/lib/events-feed/settings'
 import type { SubscriptionSettings } from '@/lib/subscriptions/settings'
 import type { DeliveryDoc } from '@/lib/subscriptions/types'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type AdminSource = SourceState & { label: string; homepage: string; access: string; terms: string; needs_permission: boolean; requires: string | null; configurable?: { hint: string } | null; builtin: boolean }
 interface Overview {
@@ -53,6 +54,7 @@ async function api<T = Record<string, unknown>>(url: string, method: string, bod
 }
 
 export default function EventsFeedAdminPage() {
+  const { t: tx } = useAdminT()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const [ov, setOv] = useState<Overview | null>(null)
@@ -81,31 +83,31 @@ export default function EventsFeedAdminPage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
       <PageHeader
-        title="Events feed"
-        description="Hackathons, codeathons and contests pulled from public sources every few hours and published automatically. Hide, feature or edit any event; manage who gets notified."
+        title={tx('feed.eventsFeed')}
+        description={tx('feed.hackathonsCodeathonsAndContestsPulled')}
         icon={<CalendarSearch />}
         actions={<Button onClick={() => run('pull', () => api('/api/events-feed/admin/sources', 'POST', { action: 'run' }), 'Pull finished')} disabled={busy === 'pull'} className="h-10 rounded-xl">
           {busy === 'pull' ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <RefreshCw className="h-4 w-4" />} Pull now
         </Button>}
       />
-      {loadError && <Panel className="text-sm text-destructive">{loadError} <Button variant="link" onClick={() => void load()}>Retry</Button></Panel>}
+      {loadError && <Panel className="text-sm text-destructive">{loadError} <Button variant="link" onClick={() => void load()}>{tx('feed.retry')}</Button></Panel>}
       {ov && (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="Live events" value={ov.counts.published} hint={`${ov.counts.featured} featured`} icon={<CalendarSearch />} />
-          <StatCard label="Hidden / archived" value={`${ov.counts.hidden} / ${ov.counts.archived}`} icon={<EyeOff />} />
-          <StatCard label="Email subscribers" value={ov.subscribers.email.active || 0} hint={`${ov.subscribers.email.pending || 0} waiting to confirm`} icon={<Mail />} />
-          <StatCard label="WhatsApp subscribers" value={ov.subscribers.whatsapp.active || 0} hint={`${ov.subscribers.whatsapp.pending || 0} waiting for YES`} icon={<Users />} />
+          <StatCard label={tx('feed.liveEvents')} value={ov.counts.published} hint={`${ov.counts.featured} featured`} icon={<CalendarSearch />} />
+          <StatCard label={tx('feed.hiddenArchived')} value={`${ov.counts.hidden} / ${ov.counts.archived}`} icon={<EyeOff />} />
+          <StatCard label={tx('feed.emailSubscribers')} value={ov.subscribers.email.active || 0} hint={`${ov.subscribers.email.pending || 0} waiting to confirm`} icon={<Mail />} />
+          <StatCard label={tx('feed.whatsappSubscribers')} value={ov.subscribers.whatsapp.active || 0} hint={`${ov.subscribers.whatsapp.pending || 0} waiting for YES`} icon={<Users />} />
         </div>
       )}
       {ov && (
         <Tabs defaultValue="sources" className="space-y-4">
           <TabsList className="flex h-auto flex-wrap justify-start">
-            <TabsTrigger value="sources">Sources</TabsTrigger>
-            <TabsTrigger value="events">Events</TabsTrigger>
-            <TabsTrigger value="subscribers">Subscribers</TabsTrigger>
-            <TabsTrigger value="messages">Messages</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="log">Delivery log</TabsTrigger>
+            <TabsTrigger value="sources">{tx('feed.sources')}</TabsTrigger>
+            <TabsTrigger value="events">{tx('feed.events')}</TabsTrigger>
+            <TabsTrigger value="subscribers">{tx('feed.subscribers')}</TabsTrigger>
+            <TabsTrigger value="messages">{tx('feed.messages')}</TabsTrigger>
+            <TabsTrigger value="settings">{tx('feed.settings')}</TabsTrigger>
+            <TabsTrigger value="log">{tx('feed.deliveryLog')}</TabsTrigger>
           </TabsList>
           <TabsContent value="sources"><SourcesTab ov={ov} busy={busy} run={run} /></TabsContent>
           <TabsContent value="events"><EventsTab /></TabsContent>
@@ -123,16 +125,17 @@ type RunFn = (key: string, fn: () => Promise<unknown>, ok?: string) => Promise<v
 
 /** Feed URL for a configurable built-in source (Lu.ma, Eventbrite, Google / Microsoft / AWS events). */
 function SourceUrlField({ source, busy, run }: { source: AdminSource; busy: string | null; run: RunFn }) {
+  const { t: tx } = useAdminT()
   const [url, setUrl] = useState(source.config?.url || '')
   const id = `src-url-${source.id}`
   return (
     <div className="mt-2 space-y-1">
-      <Label htmlFor={id} className="text-xs text-foreground">Feed URL</Label>
+      <Label htmlFor={id} className="text-xs text-foreground">{tx('feed.feedUrl')}</Label>
       <div className="flex gap-1.5">
         <Input id={id} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" className="h-8 text-xs" maxLength={2048} />
         <Button size="sm" variant="outline" className="h-8 px-2 text-xs" disabled={busy === `cfg:${source.id}` || url === (source.config?.url || '')}
           onClick={() => run(`cfg:${source.id}`, () => api('/api/events-feed/admin/sources', 'POST', { action: 'configure', id: source.id, url: url.trim() }), url.trim() ? 'Feed URL saved' : 'Feed URL cleared')}>
-          Save
+          {tx('common.save')}
         </Button>
       </div>
       <p className="text-[11px] leading-snug">{source.configurable?.hint}</p>
@@ -141,6 +144,7 @@ function SourceUrlField({ source, busy, run }: { source: AdminSource; busy: stri
 }
 
 function SourcesTab({ ov, busy, run }: { ov: Overview; busy: string | null; run: RunFn }) {
+  const { t: tx } = useAdminT()
   const [confirm, setConfirm] = useState<AdminSource | null>(null)
   const [feed, setFeed] = useState({ type: 'rss', name: '', url: '', kind: '', mode: '', country: '' })
   const toggle = (s: AdminSource, enabled: boolean, confirmPermission = false) =>
@@ -151,7 +155,7 @@ function SourcesTab({ ov, busy, run }: { ov: Overview; busy: string | null; run:
       <Panel className="overflow-x-auto p-0">
         <table className="w-full min-w-[760px] text-sm">
           <thead className="border-b border-border text-left text-xs text-muted-foreground">
-            <tr><th className="p-4 font-medium">Source</th><th className="p-4 font-medium">Access and terms</th><th className="p-4 font-medium">Last run</th><th className="p-4 font-medium">Events</th><th className="p-4 font-medium">On</th></tr>
+            <tr><th className="p-4 font-medium">{tx('feed.source')}</th><th className="p-4 font-medium">{tx('feed.accessAndTerms')}</th><th className="p-4 font-medium">{tx('feed.lastRun')}</th><th className="p-4 font-medium">{tx('feed.events')}</th><th className="p-4 font-medium">{tx('feed.on')}</th></tr>
           </thead>
           <tbody>
             {ov.sources.map((s) => (
@@ -198,15 +202,15 @@ function SourcesTab({ ov, busy, run }: { ov: Overview; busy: string | null; run:
       </Panel>
 
       <Panel className="space-y-4">
-        <div className="flex items-center gap-2"><Rss className="h-4 w-4 text-primary" /><h2 className="font-semibold text-foreground">Add an RSS / Atom or iCal feed</h2></div>
-        <p className="text-sm text-muted-foreground">Only add feeds the organiser publishes for reuse. robots.txt is still respected.</p>
+        <div className="flex items-center gap-2"><Rss className="h-4 w-4 text-primary" /><h2 className="font-semibold text-foreground">{tx('feed.addAnRssAtomOr')}</h2></div>
+        <p className="text-sm text-muted-foreground">{tx('feed.onlyAddFeedsTheOrganiser')}</p>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="space-y-1"><Label htmlFor="f-type">Type</Label><select id="f-type" className={`${select} w-full`} value={feed.type} onChange={(e) => setFeed({ ...feed, type: e.target.value })}><option value="rss">RSS / Atom</option><option value="ical">iCal (.ics)</option></select></div>
-          <div className="space-y-1"><Label htmlFor="f-name">Name</Label><Input id="f-name" value={feed.name} onChange={(e) => setFeed({ ...feed, name: e.target.value })} placeholder="City dev community" /></div>
-          <div className="space-y-1"><Label htmlFor="f-url">Feed URL (https)</Label><Input id="f-url" value={feed.url} onChange={(e) => setFeed({ ...feed, url: e.target.value })} placeholder="https://example.org/events.ics" /></div>
-          <div className="space-y-1"><Label htmlFor="f-kind">Default kind</Label><select id="f-kind" className={`${select} w-full`} value={feed.kind} onChange={(e) => setFeed({ ...feed, kind: e.target.value })}><option value="">Guess from title</option>{EVENT_KINDS.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}</select></div>
-          <div className="space-y-1"><Label htmlFor="f-mode">Default format</Label><select id="f-mode" className={`${select} w-full`} value={feed.mode} onChange={(e) => setFeed({ ...feed, mode: e.target.value })}><option value="">Guess from location</option>{EVENT_MODES.map((m) => <option key={m} value={m}>{MODE_LABELS[m]}</option>)}</select></div>
-          <div className="space-y-1"><Label htmlFor="f-country">Country (ISO code)</Label><Input id="f-country" maxLength={2} value={feed.country} onChange={(e) => setFeed({ ...feed, country: e.target.value.toUpperCase() })} placeholder="IN" /></div>
+          <div className="space-y-1"><Label htmlFor="f-type">{tx('common.type')}</Label><select id="f-type" className={`${select} w-full`} value={feed.type} onChange={(e) => setFeed({ ...feed, type: e.target.value })}><option value="rss">RSS / Atom</option><option value="ical">iCal (.ics)</option></select></div>
+          <div className="space-y-1"><Label htmlFor="f-name">{tx('common.name')}</Label><Input id="f-name" value={feed.name} onChange={(e) => setFeed({ ...feed, name: e.target.value })} placeholder={tx('feed.cityDevCommunity')} /></div>
+          <div className="space-y-1"><Label htmlFor="f-url">{tx('feed.feedUrlHttps')}</Label><Input id="f-url" value={feed.url} onChange={(e) => setFeed({ ...feed, url: e.target.value })} placeholder="https://example.org/events.ics" /></div>
+          <div className="space-y-1"><Label htmlFor="f-kind">{tx('feed.defaultKind')}</Label><select id="f-kind" className={`${select} w-full`} value={feed.kind} onChange={(e) => setFeed({ ...feed, kind: e.target.value })}><option value="">{tx('feed.guessFromTitle')}</option>{EVENT_KINDS.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}</select></div>
+          <div className="space-y-1"><Label htmlFor="f-mode">{tx('feed.defaultFormat')}</Label><select id="f-mode" className={`${select} w-full`} value={feed.mode} onChange={(e) => setFeed({ ...feed, mode: e.target.value })}><option value="">{tx('feed.guessFromLocation')}</option>{EVENT_MODES.map((m) => <option key={m} value={m}>{MODE_LABELS[m]}</option>)}</select></div>
+          <div className="space-y-1"><Label htmlFor="f-country">{tx('feed.countryIsoCode')}</Label><Input id="f-country" maxLength={2} value={feed.country} onChange={(e) => setFeed({ ...feed, country: e.target.value.toUpperCase() })} placeholder="IN" /></div>
         </div>
         <Button disabled={busy === 'add-feed'} onClick={() => run('add-feed', async () => { await api('/api/events-feed/admin/sources', 'POST', { action: 'add_feed', ...feed }); setFeed({ type: 'rss', name: '', url: '', kind: '', mode: '', country: '' }) }, 'Feed added')} className="rounded-xl">
           <Plus className="h-4 w-4" /> Add feed
@@ -220,8 +224,8 @@ function SourcesTab({ ov, busy, run }: { ov: Overview; busy: string | null; run:
             <DialogDescription>{confirm?.terms} Only continue if {confirm?.label} has given you written permission (or a partner feed) to list their events automatically. This is recorded in the audit log.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirm(null)}>Cancel</Button>
-            <Button onClick={() => { const s = confirm!; setConfirm(null); void toggle(s, true, true) }}>I have permission — turn on</Button>
+            <Button variant="outline" onClick={() => setConfirm(null)}>{tx('common.cancel')}</Button>
+            <Button onClick={() => { const s = confirm!; setConfirm(null); void toggle(s, true, true) }}>{tx('feed.iHavePermissionTurnOn')}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -230,6 +234,7 @@ function SourcesTab({ ov, busy, run }: { ov: Overview; busy: string | null; run:
 }
 
 function EventsTab() {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [status, setStatus] = useState('published')
   const [q, setQ] = useState('')
@@ -267,18 +272,18 @@ function EventsTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-3">
-        <select aria-label="Status" className={select} value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="published">Live</option><option value="hidden">Hidden</option><option value="archived">Archived</option><option value="">All</option>
+        <select aria-label={tx('common.status')} className={select} value={status} onChange={(e) => setStatus(e.target.value)}>
+          <option value="published">{tx('feed.live')}</option><option value="hidden">{tx('feed.hidden')}</option><option value="archived">{tx('feed.archived')}</option><option value="">{tx('common.all')}</option>
         </select>
-        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title, organiser, source" className="h-10 max-w-sm" aria-label="Search events" />
+        <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx('feed.searchTitleOrganiserSource')} className="h-10 max-w-sm" aria-label={tx('feed.searchEvents')} />
       </div>
       {!rows ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none" /> : rows.length === 0 ? (
-        <EmptyState compact illustration="calendar" title="No events here" description="Turn on a source and press “Pull now” to fetch events." />
+        <EmptyState compact illustration="calendar" title={tx('feed.noEventsHere')} description={tx('feed.turnOnASourceAnd')} />
       ) : (
         <Panel className="overflow-x-auto p-0">
           <table className="w-full min-w-[820px] text-sm">
             <thead className="border-b border-border text-left text-xs text-muted-foreground">
-              <tr><th className="p-3 font-medium">Event</th><th className="p-3 font-medium">Kind</th><th className="p-3 font-medium">Starts (UTC)</th><th className="p-3 font-medium">Source</th><th className="p-3 font-medium">Actions</th></tr>
+              <tr><th className="p-3 font-medium">{tx('feed.event')}</th><th className="p-3 font-medium">{tx('feed.kind')}</th><th className="p-3 font-medium">{tx('feed.startsUtc')}</th><th className="p-3 font-medium">{tx('feed.source')}</th><th className="p-3 font-medium">{tx('common.actions')}</th></tr>
             </thead>
             <tbody>
               {rows.map((e) => (
@@ -286,9 +291,9 @@ function EventsTab() {
                   <td className="max-w-sm p-3">
                     <a href={e.url} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:text-primary">{e.title}</a>
                     <div className="flex flex-wrap gap-1 pt-1">
-                      {e.featured && <Badge className="bg-primary text-primary-foreground">Featured</Badge>}
-                      {e.ai_summary && <Badge variant="outline">AI summary</Badge>}
-                      {e.edited_fields?.length > 0 && <Badge variant="outline">Edited</Badge>}
+                      {e.featured && <Badge className="bg-primary text-primary-foreground">{tx('feed.featured')}</Badge>}
+                      {e.ai_summary && <Badge variant="outline">{tx('feed.aiSummary')}</Badge>}
+                      {e.edited_fields?.length > 0 && <Badge variant="outline">{tx('feed.edited')}</Badge>}
                     </div>
                   </td>
                   <td className="p-3 text-muted-foreground">{KIND_LABELS[e.kind]} · {MODE_LABELS[e.mode]}</td>
@@ -302,7 +307,7 @@ function EventsTab() {
                       <Button size="icon-sm" variant={e.featured ? 'secondary' : 'outline'} aria-label={e.featured ? 'Unfeature' : 'Feature'} onClick={() => patch(e.id, { featured: !e.featured }, e.featured ? 'No longer featured' : 'Featured')}>
                         <Sparkles className="h-4 w-4" />
                       </Button>
-                      <Button size="icon-sm" variant="outline" aria-label="Edit" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon-sm" variant="outline" aria-label={tx('common.edit')} onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button>
                     </div>
                   </td>
                 </tr>
@@ -313,7 +318,7 @@ function EventsTab() {
       )}
       <Dialog open={Boolean(edit)} onOpenChange={(o) => !o && setEdit(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-          <DialogHeader><DialogTitle>Edit event</DialogTitle><DialogDescription>Edited fields are kept — later pulls won’t overwrite them. Times are UTC.</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle>{tx('feed.editEvent')}</DialogTitle><DialogDescription>{tx('feed.editedFieldsAreKeptLater')}</DialogDescription></DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             {([['title', 'Title'], ['url', 'Registration link'], ['organiser', 'Organiser'], ['city', 'City'], ['country', 'Country (ISO code)'], ['themes', 'Themes (comma separated)'], ['prize_amount', 'Prize amount'], ['prize_currency', 'Prize currency']] as const).map(([k, label]) => (
               <div key={k} className="space-y-1"><Label htmlFor={`e-${k}`}>{label}</Label><Input id={`e-${k}`} value={form[k] || ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>
@@ -321,11 +326,11 @@ function EventsTab() {
             {([['starts_at', 'Starts'], ['ends_at', 'Ends'], ['registration_deadline', 'Registration closes']] as const).map(([k, label]) => (
               <div key={k} className="space-y-1"><Label htmlFor={`e-${k}`}>{label}</Label><Input id={`e-${k}`} type="datetime-local" value={form[k] || ''} onChange={(e) => setForm({ ...form, [k]: e.target.value })} /></div>
             ))}
-            <div className="space-y-1"><Label htmlFor="e-kind">Kind</Label><select id="e-kind" className={`${select} w-full`} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>{EVENT_KINDS.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}</select></div>
-            <div className="space-y-1"><Label htmlFor="e-mode">Format</Label><select id="e-mode" className={`${select} w-full`} value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}>{EVENT_MODES.map((m) => <option key={m} value={m}>{MODE_LABELS[m]}</option>)}</select></div>
-            <div className="space-y-1 sm:col-span-2"><Label htmlFor="e-sum">Summary</Label><Textarea id="e-sum" rows={4} value={form.description_summary || ''} onChange={(e) => setForm({ ...form, description_summary: e.target.value })} /></div>
+            <div className="space-y-1"><Label htmlFor="e-kind">{tx('feed.kind')}</Label><select id="e-kind" className={`${select} w-full`} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>{EVENT_KINDS.map((k) => <option key={k} value={k}>{KIND_LABELS[k]}</option>)}</select></div>
+            <div className="space-y-1"><Label htmlFor="e-mode">{tx('feed.format')}</Label><select id="e-mode" className={`${select} w-full`} value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}>{EVENT_MODES.map((m) => <option key={m} value={m}>{MODE_LABELS[m]}</option>)}</select></div>
+            <div className="space-y-1 sm:col-span-2"><Label htmlFor="e-sum">{tx('feed.summary')}</Label><Textarea id="e-sum" rows={4} value={form.description_summary || ''} onChange={(e) => setForm({ ...form, description_summary: e.target.value })} /></div>
           </div>
-          <DialogFooter><Button variant="outline" onClick={() => setEdit(null)}>Cancel</Button><Button onClick={() => void saveEdit()}>Save</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setEdit(null)}>{tx('common.cancel')}</Button><Button onClick={() => void saveEdit()}>{tx('common.save')}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
@@ -333,26 +338,27 @@ function EventsTab() {
 }
 
 function SubscribersTab({ ov }: { ov: Overview }) {
+  const { t: tx } = useAdminT()
   const [rows, setRows] = useState<Record<string, unknown>[] | null>(null)
   useEffect(() => { fetch('/api/events-feed/admin/subscribers', { cache: 'no-store' }).then((r) => r.json()).then((d) => setRows(d.subscribers || [])).catch(() => setRows([])) }, [])
   const s = ov.subscribers
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="All subscribers" value={s.total} />
-        <StatCard label="Events topic" value={s.topics.events || 0} />
-        <StatCard label="Blog topic" value={s.topics.blog || 0} />
+        <StatCard label={tx('feed.allSubscribers')} value={s.total} />
+        <StatCard label={tx('feed.eventsTopic')} value={s.topics.events || 0} />
+        <StatCard label={tx('feed.blogTopic')} value={s.topics.blog || 0} />
       </div>
       <Panel className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">Email: {s.email.active || 0} active · {s.email.pending || 0} pending · {s.email.unsubscribed || 0} unsubscribed · {s.email.bounced || 0} bounced. WhatsApp: {s.whatsapp.active || 0} active · {s.whatsapp.pending || 0} pending · {s.whatsapp.unsubscribed || 0} stopped.</p>
-        <Button asChild variant="outline" className="rounded-xl"><a href="/api/events-feed/admin/subscribers?format=csv" download><Download className="h-4 w-4" /> Export CSV</a></Button>
+        <Button asChild variant="outline" className="rounded-xl"><a href="/api/events-feed/admin/subscribers?format=csv" download><Download className="h-4 w-4" /> {tx('feed.exportCsv')}</a></Button>
       </Panel>
       {!rows ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none" /> : rows.length === 0 ? (
-        <EmptyState compact illustration="notifications" title="No subscribers yet" description="People who use “Notify me” on the events page show up here." />
+        <EmptyState compact illustration="notifications" title={tx('feed.noSubscribersYet')} description={tx('feed.peopleWhoUseNotifyMe')} />
       ) : (
         <Panel className="overflow-x-auto p-0">
           <table className="w-full min-w-[640px] text-sm">
-            <thead className="border-b border-border text-left text-xs text-muted-foreground"><tr><th className="p-3 font-medium">Contact</th><th className="p-3 font-medium">Email</th><th className="p-3 font-medium">WhatsApp</th><th className="p-3 font-medium">Topics</th><th className="p-3 font-medium">Joined</th></tr></thead>
+            <thead className="border-b border-border text-left text-xs text-muted-foreground"><tr><th className="p-3 font-medium">{tx('feed.contact')}</th><th className="p-3 font-medium">{tx('common.email')}</th><th className="p-3 font-medium">WhatsApp</th><th className="p-3 font-medium">{tx('feed.topics')}</th><th className="p-3 font-medium">{tx('feed.joined')}</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={String(r.id)} className="border-b border-border/60 last:border-0">
@@ -372,26 +378,27 @@ function SubscribersTab({ ov }: { ov: Overview }) {
 }
 
 function MessagesTab({ ov, run, busy }: { ov: Overview; run: RunFn; busy: string | null }) {
+  const { t: tx } = useAdminT()
   const [t, setT] = useState({ digest_subject: ov.settings.digest_subject, digest_intro: ov.settings.digest_intro, alert_subject: ov.settings.alert_subject, reminder_subject: ov.settings.reminder_subject })
   const [test, setTest] = useState({ kind: 'digest', email: '', phone: '' })
   const [result, setResult] = useState<string | null>(null)
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel className="space-y-3">
-        <h2 className="font-semibold text-foreground">Message templates</h2>
+        <h2 className="font-semibold text-foreground">{tx('feed.messageTemplates')}</h2>
         <p className="text-xs text-muted-foreground">Placeholders: {'{title}'} in alert / reminder subjects, {'{count}'} and {'{week}'} in the digest subject. Every email adds a manage / unsubscribe footer automatically.</p>
-        <div className="space-y-1"><Label htmlFor="t-ds">Digest subject</Label><Input id="t-ds" value={t.digest_subject} onChange={(e) => setT({ ...t, digest_subject: e.target.value })} /></div>
-        <div className="space-y-1"><Label htmlFor="t-di">Digest intro</Label><Textarea id="t-di" rows={3} value={t.digest_intro} onChange={(e) => setT({ ...t, digest_intro: e.target.value })} /></div>
-        <div className="space-y-1"><Label htmlFor="t-as">Alert subject (email tests)</Label><Input id="t-as" value={t.alert_subject} onChange={(e) => setT({ ...t, alert_subject: e.target.value })} /></div>
-        <div className="space-y-1"><Label htmlFor="t-rs">Reminder subject</Label><Input id="t-rs" value={t.reminder_subject} onChange={(e) => setT({ ...t, reminder_subject: e.target.value })} /></div>
-        <Button disabled={busy === 'tpl'} onClick={() => run('tpl', () => api('/api/events-feed/admin/settings', 'POST', { feed: t }), 'Templates saved')} className="rounded-xl">Save templates</Button>
-        <p className="text-xs text-muted-foreground">WhatsApp messages outside a 24-hour conversation use your approved Meta templates (Settings tab). Alert / reminder templates get 3 body variables: event title, dates or deadline, link.</p>
+        <div className="space-y-1"><Label htmlFor="t-ds">{tx('feed.digestSubject')}</Label><Input id="t-ds" value={t.digest_subject} onChange={(e) => setT({ ...t, digest_subject: e.target.value })} /></div>
+        <div className="space-y-1"><Label htmlFor="t-di">{tx('feed.digestIntro')}</Label><Textarea id="t-di" rows={3} value={t.digest_intro} onChange={(e) => setT({ ...t, digest_intro: e.target.value })} /></div>
+        <div className="space-y-1"><Label htmlFor="t-as">{tx('feed.alertSubjectEmailTests')}</Label><Input id="t-as" value={t.alert_subject} onChange={(e) => setT({ ...t, alert_subject: e.target.value })} /></div>
+        <div className="space-y-1"><Label htmlFor="t-rs">{tx('feed.reminderSubject')}</Label><Input id="t-rs" value={t.reminder_subject} onChange={(e) => setT({ ...t, reminder_subject: e.target.value })} /></div>
+        <Button disabled={busy === 'tpl'} onClick={() => run('tpl', () => api('/api/events-feed/admin/settings', 'POST', { feed: t }), 'Templates saved')} className="rounded-xl">{tx('feed.saveTemplates')}</Button>
+        <p className="text-xs text-muted-foreground">{tx('feed.whatsappMessagesOutsideA24')}</p>
       </Panel>
       <Panel className="space-y-3">
-        <h2 className="font-semibold text-foreground">Send a test</h2>
-        <div className="space-y-1"><Label htmlFor="x-kind">Message</Label><select id="x-kind" className={`${select} w-full`} value={test.kind} onChange={(e) => setTest({ ...test, kind: e.target.value })}><option value="digest">Weekly digest</option><option value="alert">New event alert</option><option value="reminder">Deadline reminder</option></select></div>
-        <div className="space-y-1"><Label htmlFor="x-email">Test email</Label><Input id="x-email" type="email" value={test.email} onChange={(e) => setTest({ ...test, email: e.target.value })} /></div>
-        <div className="space-y-1"><Label htmlFor="x-phone">Test WhatsApp number</Label><Input id="x-phone" type="tel" value={test.phone} onChange={(e) => setTest({ ...test, phone: e.target.value })} placeholder="+91…" /></div>
+        <h2 className="font-semibold text-foreground">{tx('feed.sendATest')}</h2>
+        <div className="space-y-1"><Label htmlFor="x-kind">{tx('feed.message')}</Label><select id="x-kind" className={`${select} w-full`} value={test.kind} onChange={(e) => setTest({ ...test, kind: e.target.value })}><option value="digest">{tx('feed.weeklyDigest')}</option><option value="alert">{tx('feed.newEventAlert')}</option><option value="reminder">{tx('feed.deadlineReminder')}</option></select></div>
+        <div className="space-y-1"><Label htmlFor="x-email">{tx('feed.testEmail')}</Label><Input id="x-email" type="email" value={test.email} onChange={(e) => setTest({ ...test, email: e.target.value })} /></div>
+        <div className="space-y-1"><Label htmlFor="x-phone">{tx('feed.testWhatsappNumber')}</Label><Input id="x-phone" type="tel" value={test.phone} onChange={(e) => setTest({ ...test, phone: e.target.value })} placeholder="+91…" /></div>
         <Button disabled={busy === 'test'} onClick={() => run('test', async () => { const d = await api<{ result: Record<string, string> }>('/api/events-feed/admin/test', 'POST', test); setResult(Object.entries(d.result).map(([k, v]) => `${k}: ${v}`).join(' · ') || 'Nothing sent (no events yet?)') })} className="rounded-xl">
           <Send className="h-4 w-4" /> Send test
         </Button>
@@ -402,6 +409,7 @@ function MessagesTab({ ov, run, busy }: { ov: Overview; run: RunFn; busy: string
 }
 
 function SettingsTab({ ov, run, busy }: { ov: Overview; run: RunFn; busy: string | null }) {
+  const { t: tx } = useAdminT()
   const [f, setF] = useState(ov.settings)
   const [s, setS] = useState(ov.subscription)
   const days = useMemo(() => ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'], [])
@@ -411,13 +419,13 @@ function SettingsTab({ ov, run, busy }: { ov: Overview; run: RunFn; busy: string
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Panel className="space-y-4">
-        <div className="flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /><h2 className="font-semibold text-foreground">Pulling and sending</h2></div>
-        <div className="space-y-1"><Label htmlFor="s-int">Pull every (hours)</Label><Input id="s-int" type="number" min={1} max={72} value={f.pull_interval_hours} onChange={(e) => setF({ ...f, pull_interval_hours: Number(e.target.value) })} className="w-28" />
+        <div className="flex items-center gap-2"><Settings2 className="h-4 w-4 text-primary" /><h2 className="font-semibold text-foreground">{tx('feed.pullingAndSending')}</h2></div>
+        <div className="space-y-1"><Label htmlFor="s-int">{tx('feed.pullEveryHours')}</Label><Input id="s-int" type="number" min={1} max={72} value={f.pull_interval_hours} onChange={(e) => setF({ ...f, pull_interval_hours: Number(e.target.value) })} className="w-28" />
           <p className="text-xs text-muted-foreground">Last pull: {ago(ov.settings.last_pull_at)}</p></div>
         <div className="grid gap-3 sm:grid-cols-3">
-          <div className="space-y-1"><Label htmlFor="s-dd">Digest day</Label><select id="s-dd" className={`${select} w-full`} value={f.digest_day} onChange={(e) => setF({ ...f, digest_day: Number(e.target.value) })}>{days.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></div>
-          <div className="space-y-1"><Label htmlFor="s-dh">Hour</Label><Input id="s-dh" type="number" min={0} max={23} value={f.digest_hour} onChange={(e) => setF({ ...f, digest_hour: Number(e.target.value) })} /></div>
-          <div className="space-y-1"><Label htmlFor="s-tz">Time zone</Label><Input id="s-tz" value={f.digest_timezone} onChange={(e) => setF({ ...f, digest_timezone: e.target.value })} /></div>
+          <div className="space-y-1"><Label htmlFor="s-dd">{tx('feed.digestDay')}</Label><select id="s-dd" className={`${select} w-full`} value={f.digest_day} onChange={(e) => setF({ ...f, digest_day: Number(e.target.value) })}>{days.map((d, i) => <option key={d} value={i}>{d}</option>)}</select></div>
+          <div className="space-y-1"><Label htmlFor="s-dh">{tx('feed.hour')}</Label><Input id="s-dh" type="number" min={0} max={23} value={f.digest_hour} onChange={(e) => setF({ ...f, digest_hour: Number(e.target.value) })} /></div>
+          <div className="space-y-1"><Label htmlFor="s-tz">{tx('feed.timeZone')}</Label><Input id="s-tz" value={f.digest_timezone} onChange={(e) => setF({ ...f, digest_timezone: e.target.value })} /></div>
         </div>
         {bool('digest_enabled', 'Weekly digest (email, plus WhatsApp for people who chose weekly)')}
         {bool('alerts_enabled', 'Instant WhatsApp alerts for new events')}
@@ -426,33 +434,34 @@ function SettingsTab({ ov, run, busy }: { ov: Overview; run: RunFn; busy: string
       </Panel>
       <Panel className="space-y-4">
         <h2 className="font-semibold text-foreground">WhatsApp</h2>
-        <p className="text-xs text-muted-foreground">Uses the Meta WhatsApp Cloud API keys from Settings → Hiring integrations. Without them, messages go to a simulated outbox. Template names must match templates approved in WhatsApp Manager.</p>
-        <div className="space-y-1"><Label htmlFor="w-alert">New-event alert template</Label><Input id="w-alert" value={f.whatsapp_template_alert} onChange={(e) => setF({ ...f, whatsapp_template_alert: e.target.value })} placeholder="event_alert" /></div>
-        <div className="space-y-1"><Label htmlFor="w-rem">Deadline reminder template</Label><Input id="w-rem" value={f.whatsapp_template_reminder} onChange={(e) => setF({ ...f, whatsapp_template_reminder: e.target.value })} placeholder="event_deadline_reminder" /></div>
-        <div className="space-y-1"><Label htmlFor="w-dig">Weekly “hackathons this week” template</Label><Input id="w-dig" value={f.whatsapp_template_digest} onChange={(e) => setF({ ...f, whatsapp_template_digest: e.target.value })} placeholder="events_weekly" /><p className="text-xs text-muted-foreground">{'{{1}}'} = summary, {'{{2}}'} = events link. For people who chose weekly WhatsApp.</p></div>
-        <div className="space-y-1"><Label htmlFor="w-opt">Opt-in confirmation template</Label><Input id="w-opt" value={s.whatsapp_optin_template} onChange={(e) => setS({ ...s, whatsapp_optin_template: e.target.value })} placeholder="updates_optin" /></div>
+        <p className="text-xs text-muted-foreground">{tx('feed.usesTheMetaWhatsappCloud')}</p>
+        <div className="space-y-1"><Label htmlFor="w-alert">{tx('feed.newEventAlertTemplate')}</Label><Input id="w-alert" value={f.whatsapp_template_alert} onChange={(e) => setF({ ...f, whatsapp_template_alert: e.target.value })} placeholder="event_alert" /></div>
+        <div className="space-y-1"><Label htmlFor="w-rem">{tx('feed.deadlineReminderTemplate')}</Label><Input id="w-rem" value={f.whatsapp_template_reminder} onChange={(e) => setF({ ...f, whatsapp_template_reminder: e.target.value })} placeholder="event_deadline_reminder" /></div>
+        <div className="space-y-1"><Label htmlFor="w-dig">{tx('feed.weeklyHackathonsThisWeekTemplate')}</Label><Input id="w-dig" value={f.whatsapp_template_digest} onChange={(e) => setF({ ...f, whatsapp_template_digest: e.target.value })} placeholder="events_weekly" /><p className="text-xs text-muted-foreground">{'{{1}}'} = summary, {'{{2}}'} = events link. For people who chose weekly WhatsApp.</p></div>
+        <div className="space-y-1"><Label htmlFor="w-opt">{tx('feed.optInConfirmationTemplate')}</Label><Input id="w-opt" value={s.whatsapp_optin_template} onChange={(e) => setS({ ...s, whatsapp_optin_template: e.target.value })} placeholder="updates_optin" /></div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1"><Label htmlFor="w-lang">Template language</Label><Input id="w-lang" value={s.whatsapp_template_language} onChange={(e) => setS({ ...s, whatsapp_template_language: e.target.value })} placeholder="en" /></div>
-          <div className="space-y-1"><Label htmlFor="w-num">Public WhatsApp number</Label><Input id="w-num" value={s.whatsapp_display_number} onChange={(e) => setS({ ...s, whatsapp_display_number: e.target.value })} placeholder="+9198…" /></div>
-          <div className="space-y-1"><Label htmlFor="w-qs">Quiet hours start (local)</Label><Input id="w-qs" type="number" min={0} max={23} value={s.quiet_start_hour} onChange={(e) => setS({ ...s, quiet_start_hour: Number(e.target.value) })} /></div>
-          <div className="space-y-1"><Label htmlFor="w-qe">Quiet hours end (local)</Label><Input id="w-qe" type="number" min={0} max={23} value={s.quiet_end_hour} onChange={(e) => setS({ ...s, quiet_end_hour: Number(e.target.value) })} /></div>
+          <div className="space-y-1"><Label htmlFor="w-lang">{tx('feed.templateLanguage')}</Label><Input id="w-lang" value={s.whatsapp_template_language} onChange={(e) => setS({ ...s, whatsapp_template_language: e.target.value })} placeholder="en" /></div>
+          <div className="space-y-1"><Label htmlFor="w-num">{tx('feed.publicWhatsappNumber')}</Label><Input id="w-num" value={s.whatsapp_display_number} onChange={(e) => setS({ ...s, whatsapp_display_number: e.target.value })} placeholder="+9198…" /></div>
+          <div className="space-y-1"><Label htmlFor="w-qs">{tx('feed.quietHoursStartLocal')}</Label><Input id="w-qs" type="number" min={0} max={23} value={s.quiet_start_hour} onChange={(e) => setS({ ...s, quiet_start_hour: Number(e.target.value) })} /></div>
+          <div className="space-y-1"><Label htmlFor="w-qe">{tx('feed.quietHoursEndLocal')}</Label><Input id="w-qe" type="number" min={0} max={23} value={s.quiet_end_hour} onChange={(e) => setS({ ...s, quiet_end_hour: Number(e.target.value) })} /></div>
         </div>
       </Panel>
       <div className="lg:col-span-2">
-        <Button disabled={busy === 'settings'} onClick={() => run('settings', () => api('/api/events-feed/admin/settings', 'POST', { feed: f, subscription: s }), 'Settings saved')} className="h-11 rounded-xl px-6">Save settings</Button>
+        <Button disabled={busy === 'settings'} onClick={() => run('settings', () => api('/api/events-feed/admin/settings', 'POST', { feed: f, subscription: s }), 'Settings saved')} className="h-11 rounded-xl px-6">{tx('feed.saveSettings')}</Button>
       </div>
     </div>
   )
 }
 
 function DeliveryTab({ ov }: { ov: Overview }) {
+  const { t: tx } = useAdminT()
   const [rows, setRows] = useState<DeliveryDoc[] | null>(null)
   useEffect(() => { fetch('/api/events-feed/admin/deliveries', { cache: 'no-store' }).then((r) => r.json()).then((d) => setRows(d.deliveries || [])).catch(() => setRows([])) }, [])
   return (
     <div className="space-y-4">
       <Panel>
-        <h2 className="mb-2 font-semibold text-foreground">Last 30 days</h2>
-        {Object.keys(ov.deliveries).length === 0 ? <p className="text-sm text-muted-foreground">Nothing sent yet.</p> : (
+        <h2 className="mb-2 font-semibold text-foreground">{tx('feed.last30Days')}</h2>
+        {Object.keys(ov.deliveries).length === 0 ? <p className="text-sm text-muted-foreground">{tx('feed.nothingSentYet')}</p> : (
           <ul className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
             {Object.entries(ov.deliveries).map(([type, by]) => (
               <li key={type} className="rounded-2xl border border-border/60 p-3"><span className="font-medium text-foreground">{type}</span>
@@ -462,11 +471,11 @@ function DeliveryTab({ ov }: { ov: Overview }) {
         )}
       </Panel>
       {!rows ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground motion-reduce:animate-none" /> : rows.length === 0 ? (
-        <EmptyState compact illustration="inbox" title="No deliveries yet" description="Digests, alerts and reminders appear here once they go out." />
+        <EmptyState compact illustration="inbox" title={tx('feed.noDeliveriesYet')} description={tx('feed.digestsAlertsAndRemindersAppear')} />
       ) : (
         <Panel className="overflow-x-auto p-0">
           <table className="w-full min-w-[640px] text-sm">
-            <thead className="border-b border-border text-left text-xs text-muted-foreground"><tr><th className="p-3 font-medium">When</th><th className="p-3 font-medium">Type</th><th className="p-3 font-medium">Channel</th><th className="p-3 font-medium">Status</th><th className="p-3 font-medium">Error</th></tr></thead>
+            <thead className="border-b border-border text-left text-xs text-muted-foreground"><tr><th className="p-3 font-medium">{tx('feed.when')}</th><th className="p-3 font-medium">{tx('common.type')}</th><th className="p-3 font-medium">{tx('feed.channel')}</th><th className="p-3 font-medium">{tx('common.status')}</th><th className="p-3 font-medium">{tx('feed.error')}</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.key} className="border-b border-border/60 last:border-0">

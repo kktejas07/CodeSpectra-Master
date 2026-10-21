@@ -11,7 +11,7 @@ export const runtime = 'nodejs'
 
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const db = await getMongoDb()
   const row = await db.collection('integrations').findOne(
     { provider: 'github', user_id: user.id },
@@ -31,7 +31,7 @@ export async function GET() {
 
 export async function DELETE() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   const db = await getMongoDb()
   await db.collection('integrations').deleteOne({ provider: 'github', user_id: user.id })
   return NextResponse.json({ ok: true, connected: false })

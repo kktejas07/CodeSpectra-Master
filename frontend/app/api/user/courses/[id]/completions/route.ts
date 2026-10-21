@@ -35,7 +35,7 @@ type Ctx = { params: Promise<{ id: string }> }
 
 export async function GET(_request: NextRequest, { params }: Ctx) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const { id: courseId } = await params
 
@@ -48,16 +48,16 @@ export async function GET(_request: NextRequest, { params }: Ctx) {
     return NextResponse.json({ completedLessons: status.completedLessonIds, legacyLessons: status.legacyLessonIds })
   } catch (e) {
     console.error('[completions] GET error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest, { params }: Ctx) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
 
   const rl = rateLimitSlidingWindow(`course-complete:${user.id}`, 30, 60_000)
-  if (!rl.ok) return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
+  if (!rl.ok) return NextResponse.json({ error: 'Too many requests', code: 'too_many_requests' }, { status: 429 })
 
   const { id: courseId } = await params
 
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest, { params }: Ctx) {
 
     const db = await getMongoDb()
     const course = await db.collection('courses').findOne({ id: courseId })
-    if (!course) return NextResponse.json({ error: 'Course not found' }, { status: 404 })
+    if (!course) return NextResponse.json({ error: 'Course not found', code: 'course_not_found' }, { status: 404 })
     const found = findLesson(course, lessonId)
     if (!found) return NextResponse.json({ error: 'Lesson not found' }, { status: 404 })
     const { lesson } = found
@@ -158,6 +158,6 @@ export async function POST(request: NextRequest, { params }: Ctx) {
     return NextResponse.json({ success: true, completed: true })
   } catch (e) {
     console.error('[completions] POST error:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

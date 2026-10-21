@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 /** GET /api/user/certificates — the signed-in user's own earned (passed, not revoked) certificates. */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const col = await certificationAttempts()
     const rows = await col

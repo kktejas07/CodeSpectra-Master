@@ -199,7 +199,7 @@ export async function runPostPayment(orderId: string): Promise<void> {
     // Mentor sessions: calendar invite to the mentor (lib/mentors/notify.ts). Never blocks settlement.
     const booked = ok.filter((x) => x.kind === 'service' && x.fulfilment.booking)
     if (booked.length) void import('@/lib/mentors/notify').then((m) => m.onSessionsBooked(order, booked)).catch(() => {})
-    await notify({ user_id: order.buyer_id, type: 'mkt.order_paid', title: `Order ${order.number} confirmed`, message: `${ok.length} item${ok.length === 1 ? '' : 's'} — see your order for downloads, bookings and delivery.`, link: `/dashboard/orders/${order.id}`, icon: 'shopping-bag' }).catch(() => null)
+    await notify({ user_id: order.buyer_id, type: 'mkt.order_paid', title: `Order ${order.number} confirmed`, message: `${ok.length} item${ok.length === 1 ? '' : 's'} — see your order for downloads, bookings and delivery.`, title_i18n: { key: 'mkt.orderConfirmed.title', params: { number: order.number } }, message_i18n: { key: 'mkt.orderConfirmed.message', params: { count: ok.length } }, link: `/dashboard/orders/${order.id}`, icon: 'shopping-bag' }).catch(() => null)
   }
 
   // G. Lines that could not be honoured after a late payment → refund automatically.
@@ -230,7 +230,7 @@ async function refundReplacedOrder(orderId: string): Promise<void> {
     await refundLines(orderId, open.map((l) => l.id), open.reduce((a, l) => a + linePaid(l), 0), `replaced-${orderId}`, { reason: 'replaced_checkout', restock: false })
   }
   if (await claimStep(orderId, 'replaced_email')) {
-    await notify({ user_id: order.buyer_id, type: 'mkt.refund_processed', title: `Order ${order.number} refunded`, message: 'You paid for an older checkout after starting a new one. Your newer order is the one we keep, so this payment has been refunded in full.', link: `/dashboard/orders/${order.id}`, icon: 'alert-circle' }).catch(() => null)
+    await notify({ user_id: order.buyer_id, type: 'mkt.refund_processed', title: `Order ${order.number} refunded`, message: 'You paid for an older checkout after starting a new one. Your newer order is the one we keep, so this payment has been refunded in full.', title_i18n: { key: 'mkt.orderRefunded.title', params: { number: order.number } }, message_i18n: { key: 'mkt.replaced.message' }, link: `/dashboard/orders/${order.id}`, icon: 'alert-circle' }).catch(() => null)
   }
 }
 
@@ -246,7 +246,7 @@ async function refundCouponConflict(orderId: string): Promise<void> {
     await refundLines(orderId, open.map((l) => l.id), open.reduce((a, l) => a + linePaid(l), 0), `coupon-${orderId}`, { reason: 'coupon_unavailable', restock: true })
   }
   if (await claimStep(orderId, 'coupon_conflict_email')) {
-    await notify({ user_id: order.buyer_id, type: 'mkt.refund_processed', title: `Order ${order.number} refunded`, message: 'The coupon on this order had already been used, so the order was cancelled and fully refunded. You can order again without it.', link: `/dashboard/orders/${order.id}`, icon: 'alert-circle' }).catch(() => null)
+    await notify({ user_id: order.buyer_id, type: 'mkt.refund_processed', title: `Order ${order.number} refunded`, message: 'The coupon on this order had already been used, so the order was cancelled and fully refunded. You can order again without it.', title_i18n: { key: 'mkt.orderRefunded.title', params: { number: order.number } }, message_i18n: { key: 'mkt.couponConflict.message' }, link: `/dashboard/orders/${order.id}`, icon: 'alert-circle' }).catch(() => null)
   }
 }
 
@@ -271,7 +271,7 @@ async function release(orderId: string, why: 'failed' | 'expired' | 'replaced' |
   if (why === 'replaced') await closePaymentPage(order)
   if (why === 'failed' && (await claimStep(orderId, 'failed_email'))) {
     await sendPaymentFailed(order)
-    await notify({ user_id: order.buyer_id, type: 'mkt.payment_failed', title: 'Payment did not go through', message: `Nothing was charged for order ${order.number}. Your cart is still saved.`, link: '/marketplace/cart', icon: 'alert-circle' }).catch(() => null)
+    await notify({ user_id: order.buyer_id, type: 'mkt.payment_failed', title: 'Payment did not go through', message: `Nothing was charged for order ${order.number}. Your cart is still saved.`, title_i18n: { key: 'mkt.payFailed.title' }, message_i18n: { key: 'mkt.payFailed.message', params: { number: order.number } }, link: '/marketplace/cart', icon: 'alert-circle' }).catch(() => null)
   }
   return true
 }
@@ -340,7 +340,7 @@ export async function runBuyerSweep(now = new Date()): Promise<{ released: numbe
     if (!o) continue
     const line = o.lines.find((l) => l.id === b.line_id)
     await sendBookingReminder(o.buyer_email, o, line?.title || 'Your session', b.start, b.join_url)
-    await notify({ user_id: o.buyer_id, type: 'mkt.booking_reminder', title: 'Session tomorrow', message: `${(line?.title || 'Your session').slice(0, 80)} starts within 24 hours.`, link: `/dashboard/orders/${o.id}`, icon: 'clock' }).catch(() => null)
+    await notify({ user_id: o.buyer_id, type: 'mkt.booking_reminder', title: 'Session tomorrow', message: `${(line?.title || 'Your session').slice(0, 80)} starts within 24 hours.`, title_i18n: { key: 'mkt.sessionTomorrow.title' }, message_i18n: { key: 'mkt.sessionTomorrow.message', params: { title: (line?.title || 'Your session').slice(0, 80) } }, link: `/dashboard/orders/${o.id}`, icon: 'clock' }).catch(() => null)
     out.reminders++
   }
   return out

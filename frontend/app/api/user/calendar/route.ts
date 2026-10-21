@@ -73,7 +73,7 @@ function dropPinnedInterviews(feed: FeedEntry[], personal: Array<Record<string, 
 /** GET — the signed-in user's own calendar entries plus their hackathon/codeathon dates. */
 export async function GET() {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const db = await getMongoDb()
     const items = await db
@@ -99,7 +99,7 @@ export async function GET() {
     })
   } catch (e) {
     console.error('[user/calendar]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -113,7 +113,7 @@ function safeUrl(v: unknown): string | null {
 /** POST — add one or more events to the in-app calendar (no need to leave CodeSpectra). */
 export async function POST(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const body = await req.json().catch(() => ({}))
     const events = (Array.isArray(body.events) ? body.events : [body]).slice(0, 50)
@@ -144,22 +144,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, items: docs })
   } catch (e) {
     console.error('[user/calendar]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
 /** DELETE — remove an event by id. */
 export async function DELETE(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const id = new URL(req.url).searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    if (!id) return NextResponse.json({ error: 'id required', code: 'id_required' }, { status: 400 })
     const db = await getMongoDb()
     await db.collection(COL).deleteOne({ userId: user.id, id })
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[user/calendar]', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

@@ -129,7 +129,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     body = (await request.json()) as Record<string, unknown>
   } catch {
-    return NextResponse.json({ success: false, error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   const code = body.code

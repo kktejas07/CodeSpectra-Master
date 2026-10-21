@@ -15,11 +15,13 @@ import { QuestionAnswerInput } from '@/components/assessment/QuestionAnswerInput
 import type { PlanItem } from '@/lib/study-plan/types'
 import type { PracticeQuestion } from '@/lib/study-plan/service'
 import { useT } from '@/lib/i18n/client'
+import { useApiError } from '@/lib/i18n/use-api-error'
 
 interface SetData { item: PlanItem; questions: PracticeQuestion[]; results: { question_id: string; correct: boolean }[] }
 interface Graded { results: { question_id: string; correct: boolean; answer?: string; explanation?: string }[]; score: number; total: number }
 
 export default function PracticePage() {
+  const apiError = useApiError()
   const gate = usePageGuard('user')
   const addToast = useToast()
   const { t, rich } = useT()
@@ -30,7 +32,7 @@ export default function PracticePage() {
   const [graded, setGraded] = useState<Graded | null>(null)
   const [busy, setBusy] = useState(false)
   const load = useCallback(() => {
-    fetch(`/api/study-plan/practice/${encodeURIComponent(id)}`, { cache: 'no-store' }).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(j.error || t('errors.couldNotLoad')); setData(j) }).catch((e) => setErr(e.message))
+    fetch(`/api/study-plan/practice/${encodeURIComponent(id)}`, { cache: 'no-store' }).then(async (r) => { const j = await r.json(); if (!r.ok) throw new Error(apiError(j, t('errors.couldNotLoad'))); setData(j) }).catch((e) => setErr(e.message))
   }, [id, t])
   useEffect(() => { if (gate.ready) load() }, [gate.ready, load])
 
@@ -73,7 +75,7 @@ export default function PracticePage() {
             try {
               const r = await csrfFetch(`/api/study-plan/practice/${encodeURIComponent(id)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ answers }) })
               const j = await r.json()
-              if (!r.ok) throw new Error(j.error || t('dashboard.psCheckFailed'))
+              if (!r.ok) throw new Error(apiError(j, t('dashboard.psCheckFailed')))
               setGraded(j)
             } catch (e) { addToast({ type: 'error', title: (e as Error).message }) } finally { setBusy(false) }
           }}>{busy ? t('dashboard.checking') : t('dashboard.checkAnswers', { count: answered })}</Button>

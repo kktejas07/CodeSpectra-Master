@@ -1,5 +1,5 @@
 'use client'
-import { formatDate } from '@/lib/format-datetime'
+import { useLocaleDates } from '@/lib/i18n/use-dates'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -14,6 +14,7 @@ import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { SoftGlow } from '@/components/visuals'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useT } from '@/lib/i18n/client'
 
 interface Problem {
   id: string
@@ -73,6 +74,8 @@ function CountdownTimer({ target }: { target: string }) {
 }
 
 export default function CodeathonsPage() {
+  const { formatDate } = useLocaleDates()
+  const { t: tr } = useT()
   const gate = usePageGuard('user')
   const router = useRouter()
   const { startTour, setTourSeen } = useTour()
@@ -97,20 +100,20 @@ export default function CodeathonsPage() {
       const codeathonsTour: TourStep[] = [
         {
           target: '[data-tour="codeathons-header"]',
-          title: 'Codeathons',
-          description: 'Compete in coding competitions, solve challenges, and win prizes.',
+          title: tr('compete.codeathons'),
+          description: tr('compete.competeInCodingCompetitionsSolveChalleng20a'),
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathons-filters"]',
-          title: 'Filter codeathons',
-          description: 'Filter competitions by status and difficulty level.',
+          title: tr('compete.filterCodeathons'),
+          description: tr('compete.filterCompetitionsByStatusAndDifficultyb54'),
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathons-grid"]',
-          title: 'Codeathon list',
-          description: 'Browse upcoming and ongoing coding competitions.',
+          title: tr('compete.codeathonList'),
+          description: tr('compete.browseUpcomingAndOngoingCodingCompetitio'),
           position: 'bottom',
         },
       ]
@@ -173,15 +176,14 @@ export default function CodeathonsPage() {
             illustration="hackathon"
             className="mb-0"
             icon={<Trophy />}
-            description="Join live coding competitions and prove your skills."
-            title={<span className="inline-flex items-center gap-2">Codeathons
-            <TooltipProvider>
+            description={tr('compete.joinLiveCodingCompetitionsAndProve884')}
+            title={<span className="inline-flex items-center gap-2">{tr('compete.codeathons')}<TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" aria-label="About codeathons" />
+                  <HelpCircle className="h-4 w-4 cursor-help text-muted-foreground" aria-label={tr('compete.aboutCodeathons')} />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-62.5">Compete in coding competitions, solve challenges, and win prizes</p>
+                  <p className="text-xs max-w-62.5">{tr('compete.competeInCodingCompetitionsSolveChalleng881')}</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider></span>}
@@ -194,45 +196,45 @@ export default function CodeathonsPage() {
         <select
           value={filter.status}
           onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
-          aria-label="Filter by status"
+          aria-label={tr('compete.filterByStatus')}
           className="h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
         >
-          <option value="">All statuses</option>
-          <option value="upcoming">Upcoming</option>
-          <option value="active">Active</option>
-          <option value="ended">Ended</option>
+          <option value="">{tr('compete.allStatuses')}</option>
+          <option value="upcoming">{tr('compete.upcoming')}</option>
+          <option value="active">{tr('compete.active')}</option>
+          <option value="ended">{tr('compete.ended')}</option>
         </select>
         <select
           value={filter.difficulty}
           onChange={e => setFilter(f => ({ ...f, difficulty: e.target.value }))}
-          aria-label="Filter by difficulty"
+          aria-label={tr('compete.filterByDifficulty')}
           className="h-10 rounded-xl border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-primary"
         >
-          <option value="">All levels</option>
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
-          <option value="Mixed">Mixed</option>
+          <option value="">{tr('compete.allLevels')}</option>
+          <option value="Easy">{tr('compete.easy')}</option>
+          <option value="Medium">{tr('compete.medium')}</option>
+          <option value="Hard">{tr('compete.hard')}</option>
+          <option value="Mixed">{tr('compete.mixed')}</option>
         </select>
       </div>
 
       {loadError && codeathons.length === 0 ? (
         <EmptyState
           illustration="error"
-          title="Couldn't load codeathons"
-          description="Check your connection and try again."
-          actionLabel="Try again"
+          title={tr('compete.couldntLoadCodeathons')}
+          description={tr('compete.checkYourConnectionAndTryAgain')}
+          actionLabel={tr('common.tryAgain')}
           onAction={() => setReloadKey(k => k + 1)}
         />
       ) : codeathons.length === 0 ? (
         <EmptyState illustration="hackathon"
-          title="No codeathons yet"
-          description="Upcoming competitions will show up here once they're announced. Practise problems in the meantime."
-          actionLabel="Practise problems"
+          title={tr('compete.noCodeathonsYet')}
+          description={tr('compete.upcomingCompetitionsWillShowUpHeread5')}
+          actionLabel={tr('compete.practiseProblems')}
           actionHref="/dashboard/problems"
         />
       ) : filtered.length === 0 ? (
-        <EmptyState variant="search" title="No codeathons match" description="Try a different status or level." />
+        <EmptyState variant="search" title={tr('compete.noCodeathonsMatch')} description={tr('compete.tryADifferentStatusOrLevel')} />
       ) : (
         <div className="cs-stagger grid gap-4 sm:grid-cols-2 xl:grid-cols-3 lg:gap-5" data-tour="codeathons-grid">
           {filtered.map(h => (
@@ -242,7 +244,7 @@ export default function CodeathonsPage() {
                 <h3 className="text-base font-semibold text-foreground line-clamp-1">{h.title}</h3>
                 <div className="flex gap-1.5 shrink-0">
                   <Badge variant="outline" className={getStatusColor(isActive(h) ? 'active' : isUpcoming(h) ? 'upcoming' : h.status)}>
-                    {isActive(h) ? 'Live' : isUpcoming(h) ? 'Upcoming' : <span className="capitalize">{h.status}</span>}
+                    {isActive(h) ? tr('compete.live') : isUpcoming(h) ? tr('compete.upcoming') : <span className="capitalize">{h.status}</span>}
                   </Badge>
                 </div>
               </div>
@@ -270,7 +272,7 @@ export default function CodeathonsPage() {
                   </Badge>
                 )}
                 {h.problems && h.problems.length > 0 && (
-                  <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" />{h.problems.length} problems</span>
+                  <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" />{tr('compete.countProblems', { count: h.problems.length })}</span>
                 )}
               </div>
 
@@ -279,12 +281,12 @@ export default function CodeathonsPage() {
                 {isUpcoming(h) && h.startDate ? (
                   <div className="flex items-center gap-2 text-xs">
                     <Clock className="h-3.5 w-3.5 text-primary" />
-                    <span className="text-muted-foreground">Starts in</span>
+                    <span className="text-muted-foreground">{tr('compete.startsIn')}</span>
                     <CountdownTimer target={h.startDate} />
                   </div>
                 ) : (
                   <div className="flex items-center gap-3 text-xs tabular-nums text-muted-foreground">
-                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{h.startDate ? formatDate(h.startDate) : 'TBA'}</span>
+                    <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{h.startDate ? formatDate(h.startDate) : tr('compete.tba')}</span>
                     <span className="flex items-center gap-1"><Users className="h-3 w-3" />{h.participants || 0}{h.maxParticipants ? `/${h.maxParticipants}` : ''}</span>
                   </div>
                 )}
@@ -306,7 +308,7 @@ export default function CodeathonsPage() {
                   className="w-full"
                   onClick={() => router.push(`/dashboard/codeathons/${h.id}`)}
                 >
-                  {h.registered ? 'Open' : 'Register'}
+                  {h.registered ? tr('compete.open') : tr('compete.register')}
                   <ChevronRight className="h-3.5 w-3.5 ml-1" />
                 </Button>
               </div>

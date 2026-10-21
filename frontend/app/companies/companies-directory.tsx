@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { Search, Building2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import type { CompanyEntry } from '@/lib/companies/company-catalog'
+import { useT } from '@/lib/i18n/client'
+import { useLocalizedHref } from '@/components/i18n/public-language'
 
 interface Props {
   companies: CompanyEntry[]
@@ -12,6 +14,8 @@ interface Props {
 }
 
 export function CompaniesDirectory({ companies, industries }: Props) {
+  const { t, td } = useT()
+  const lp = useLocalizedHref()
   const [query, setQuery] = useState('')
   const [selectedIndustry, setSelectedIndustry] = useState<string>('')
   const [sortBy, setSortBy] = useState<'name' | 'difficulty'>('name')
@@ -47,8 +51,8 @@ export function CompaniesDirectory({ companies, industries }: Props) {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cs-ink-soft" aria-hidden />
           <Input
-            aria-label="Search companies or tech stack"
-            placeholder="Search companies or tech stack..."
+            aria-label={t('publicPages.companiesSearch')}
+            placeholder={t('publicPages.companiesSearchPlaceholder')}
             value={query}
             onChange={e => setQuery(e.target.value)}
             className="h-11 rounded-full border-cs-grid bg-cs-sheet pl-9 text-cs-ink"
@@ -57,38 +61,38 @@ export function CompaniesDirectory({ companies, industries }: Props) {
         <select
           value={selectedIndustry}
           onChange={e => setSelectedIndustry(e.target.value)}
-          aria-label="Industry"
+          aria-label={t('publicPages.companiesIndustry')}
           className="h-11 rounded-full border border-cs-grid bg-cs-sheet px-4 text-sm text-cs-ink focus-visible:outline-2 focus-visible:outline-cs-accent"
         >
-          <option value="">All industries</option>
+          <option value="">{t('publicPages.companiesAllIndustries')}</option>
           {industries.map(ind => (
             <option key={ind} value={ind}>
-              {ind}
+              {td(`publicPages.industry:${ind}`, ind)}
             </option>
           ))}
         </select>
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value as typeof sortBy)}
-          aria-label="Sort companies"
+          aria-label={t('publicPages.companiesSort')}
           className="h-11 rounded-full border border-cs-grid bg-cs-sheet px-4 text-sm text-cs-ink focus-visible:outline-2 focus-visible:outline-cs-accent"
         >
-          <option value="name">Sort by name</option>
-          <option value="difficulty">Sort by difficulty</option>
+          <option value="name">{t('publicPages.companiesSortName')}</option>
+          <option value="difficulty">{t('publicPages.companiesSortDifficulty')}</option>
         </select>
       </div>
 
       {/* Grid */}
       {filtered.length === 0 ? (
         <div className="rounded-3xl border border-dashed border-cs-grid bg-cs-sheet py-16 text-center text-cs-ink-soft">
-          No companies match your search. Try a company name or a technology like Python.
+          {t('publicPages.companiesNoMatch')}
         </div>
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(company => (
             <Link
               key={company.slug}
-              href={`/companies/${company.slug}`}
+              href={lp(`/companies/${company.slug}`)}
               className="group block rounded-3xl border border-cs-grid bg-cs-sheet py-6 shadow-[0_1px_2px_rgba(15,23,41,0.04),0_8px_24px_-12px_rgba(15,23,41,0.10)] transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-0.5 hover:border-cs-accent/40 hover:shadow-[0_18px_40px_-18px_rgba(47,91,231,0.35)] motion-reduce:hover:translate-y-0 dark:shadow-none"
             >
               <div>
@@ -100,7 +104,7 @@ export function CompaniesDirectory({ companies, industries }: Props) {
                     <h3 className="text-lg font-bold tracking-tight text-cs-ink transition-colors group-hover:text-cs-accent-text">
                       {company.name}
                     </h3>
-                    <p className="text-sm text-cs-ink-soft">{company.industry}</p>
+                    <p className="text-sm text-cs-ink-soft">{td(`publicPages.industry:${company.industry}`, company.industry)}</p>
                   </div>
                 </div>
                 <div className="px-6">
@@ -122,7 +126,7 @@ export function CompaniesDirectory({ companies, industries }: Props) {
                 </div>
                 <div className="px-6 pt-3">
                   <div className="flex items-center gap-2 text-xs text-cs-ink-soft">
-                    <span title="Editorial estimate, not measured data">Difficulty (est.)</span>
+                    <span title={t('publicPages.companiesEstimate')}>{t('publicPages.companiesDifficultyEst')}</span>
                     <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-cs-grid" aria-hidden>
                       <div
                         className="bg-green-500"
@@ -137,7 +141,7 @@ export function CompaniesDirectory({ companies, industries }: Props) {
                         style={{ width: `${company.difficultyDistribution.hard}%` }}
                       />
                     </div>
-                    <span className="tabular-nums">{company.difficultyDistribution.hard}% hard</span>
+                    <span className="tabular-nums">{t('publicPages.companiesPctHard', { pct: company.difficultyDistribution.hard })}</span>
                   </div>
                 </div>
               </div>

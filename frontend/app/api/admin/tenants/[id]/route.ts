@@ -20,7 +20,7 @@ export async function PATCH(
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid JSON', code: 'invalid_json' }, { status: 400 })
   }
 
   try {
@@ -32,7 +32,7 @@ export async function PATCH(
     if (body.is_active !== undefined) $set.is_active = Boolean(body.is_active)
 
     if (Object.keys($set).length === 0) {
-      return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })
+      return NextResponse.json({ error: 'Nothing to update', code: 'nothing_to_update' }, { status: 400 })
     }
 
     const result = await col.updateOne({ id }, { $set })

@@ -9,7 +9,8 @@ import { issuePasswordSetupLink, accountSetupEmail } from '@/lib/auth-setup-link
 import { auditAdmin } from '@/lib/admin-audit'
 import bcrypt from 'bcryptjs'
 import { sendEmail } from '@/lib/send-email'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplatesFor } from '@/lib/email-templates'
+import { localeForEmail } from '@/lib/i18n/recipient'
 
 export async function GET() {
   const gate = await requireSuperAdmin()
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
         // Role changed — old sessions must pick up the new role/tenant.
         await revokeAllUserSessions(adminId).catch(() => {})
         try {
-          const r = await sendEmail(adminEmail, emailTemplates.accountCredentials({ name: displayName, email: adminEmail, orgName: name, role: 'Organization Admin' }))
+          const r = await sendEmail(adminEmail, emailTemplatesFor(await localeForEmail(adminEmail)).accountCredentials({ name: displayName, email: adminEmail, orgName: name, role: 'Organization Admin' }))
           emailSent = !!r?.success
         } catch (e) {
           console.error(`[Tenants] Welcome email to ${adminEmail} failed:`, e)
@@ -140,7 +141,7 @@ export async function POST(request: Request) {
         })
         try {
           if (adminPassword) {
-            const r = await sendEmail(adminEmail, emailTemplates.accountCredentials({ name: displayName, email: adminEmail, orgName: name, role: 'Organization Admin' }))
+            const r = await sendEmail(adminEmail, emailTemplatesFor(await localeForEmail(adminEmail)).accountCredentials({ name: displayName, email: adminEmail, orgName: name, role: 'Organization Admin' }))
             emailSent = !!r?.success
           } else {
             const hours = 72

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { EmptyState } from '@/components/ui/empty-state'
 import { resolveRouteAccess } from '@/lib/page-access-map'
+import { getAreaI18n } from '@/lib/i18n/area-server'
 
 /**
  * Branded "can't open this page" screen. proxy.ts rewrites a denied page
@@ -25,6 +26,7 @@ export default async function LockedPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
+  const { t } = await getAreaI18n()
   const params = await searchParams
   const raw = one(params.reason)
   const reason: Reason = raw === 'forbidden' || raw === 'plan' || raw === 'unavailable' ? raw : 'locked'
@@ -34,27 +36,27 @@ export default async function LockedPage({
 
   const copy: Record<Reason, { title: string; description: string; actionLabel: string; actionHref: string }> = {
     locked: {
-      title: 'This page isn’t available yet',
-      description: `The CodeSpectra team has switched ${page} off for now. Check back soon.`,
-      actionLabel: 'Back to dashboard',
+      title: t('dash.thisPageIsntAvailableYet'),
+      description: t('dash.theCodespectraTeamHasSwitchedPage782', { page }),
+      actionLabel: t('dash.backToDashboard'),
       actionHref: '/dashboard',
     },
     forbidden: {
-      title: 'You don’t have access to this page',
-      description: `Your account can’t open ${page}. If you need it, ask your organisation admin.`,
-      actionLabel: 'Back to dashboard',
+      title: t('dash.youDontHaveAccessToThisaeb'),
+      description: t('dash.yourAccountCantOpenPageIfd1c', { page }),
+      actionLabel: t('dash.backToDashboard'),
       actionHref: '/dashboard',
     },
     plan: {
-      title: `Upgrade to use ${page}`,
-      description: 'Your current plan doesn’t include this. Pick a plan that does to unlock it.',
-      actionLabel: 'See plans',
+      title: t('dash.upgradeToUsePage', { page }),
+      description: t('dash.yourCurrentPlanDoesntIncludeThis43a'),
+      actionLabel: t('dash.seePlans'),
       actionHref: '/dashboard/pricing',
     },
     unavailable: {
-      title: 'We couldn’t check your access',
-      description: 'Something went wrong on our side. Try again in a moment.',
-      actionLabel: 'Try again',
+      title: t('dash.weCouldntCheckYourAccess'),
+      description: t('dash.somethingWentWrongOnOurSide85f'),
+      actionLabel: t('common.tryAgain'),
       actionHref: from,
     },
   }

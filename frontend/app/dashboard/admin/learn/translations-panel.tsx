@@ -15,10 +15,12 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { LOCALE_META } from '@/lib/i18n/config'
 import { LEARN_TRANSLATION_LOCALES, type LearnPostDoc, type LearnTranslationLocale } from '@/lib/learn/types'
+import { useAdminT } from '@/lib/i18n/admin'
 
 type Version = Pick<LearnPostDoc, 'id' | 'slug' | 'status' | 'locale' | 'title'>
 
 export function TranslationsPanel({ post, onOpen, onChanged }: { post: LearnPostDoc; onOpen: (id: string) => void; onChanged: () => void }) {
+  const { t: tx } = useAdminT()
   const addToast = useToast()
   const [versions, setVersions] = useState<Version[] | null>(null)
   const [busy, setBusy] = useState<LearnTranslationLocale | null>(null)
@@ -40,7 +42,7 @@ export function TranslationsPanel({ post, onOpen, onChanged }: { post: LearnPost
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'The translation could not be created.')
-      addToast({ type: 'success', title: `${LOCALE_META[locale].english} draft created`, message: 'Review it like any other draft before publishing.' })
+      addToast({ type: 'success', title: `${LOCALE_META[locale].english} draft created`, message: tx('learnTr.reviewItLikeAnyOther') })
       load()
       onChanged()
     } catch (e) {
@@ -77,7 +79,7 @@ export function TranslationsPanel({ post, onOpen, onChanged }: { post: LearnPost
           : 'This is a translation. Edit it here; regenerate translations from the English post.'}
       </p>
       {versions === null ? (
-        <p className="mt-2 text-xs text-muted-foreground">Loading versions…</p>
+        <p className="mt-2 text-xs text-muted-foreground">{tx('learnTr.loadingVersions')}</p>
       ) : others.length > 0 ? (
         <ul className="mt-3 space-y-1.5">
           {others.map((v) => (

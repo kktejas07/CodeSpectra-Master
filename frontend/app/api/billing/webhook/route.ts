@@ -115,6 +115,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           message: status === 'captured'
             ? `Payment of ${sym}${(amount / 100).toFixed(2)} completed.`
             : `Payment of ${sym}${(amount / 100).toFixed(2)} failed.`,
+          title_i18n: { key: status === 'captured' ? 'billing.success.title' : 'billing.failed.title' },
+          message_i18n: { key: status === 'captured' ? 'billing.paid.message' : 'billing.paidFailed.message', params: { amount: `${sym}${(amount / 100).toFixed(2)}` } },
           icon: status === 'captured' ? 'credit-card' : 'alert-circle',
           link: '/dashboard/billing',
         }).catch(() => {})

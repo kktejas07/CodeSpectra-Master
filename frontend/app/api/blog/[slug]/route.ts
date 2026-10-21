@@ -23,11 +23,11 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     const { slug } = await ctx.params
     const col = await blogPosts()
     const post = await col.findOne({ slug })
-    if (!post) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!post) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     if (post.status !== 'published') {
       const gate = await requireSuperAdmin()
-      if ('error' in gate) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if ('error' in gate) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     }
 
     const related = await col
@@ -49,7 +49,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ post, related })
   } catch (e) {
     console.error('[blog] GET slug:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -62,7 +62,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     const body = (await req.json().catch(() => ({}))) as Partial<BlogPostDoc> & { publish?: boolean }
     const col = await blogPosts()
     const existing = await col.findOne({ slug })
-    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!existing) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
 
     const patch: Partial<BlogPostDoc> = { updated_at: nowIso() }
     if (typeof body.title === 'string' && body.title.trim()) patch.title = body.title.trim()
@@ -98,7 +98,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     return NextResponse.json({ post: await col.findOne({ id: existing.id }) })
   } catch (e) {
     console.error('[blog] PATCH:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }
 
@@ -108,11 +108,11 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
     const { slug } = await ctx.params
     const r = await (await blogPosts()).deleteOne({ slug })
-    if (!r.deletedCount) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (!r.deletedCount) return NextResponse.json({ error: 'Not found', code: 'not_found' }, { status: 404 })
     await revalidateContent('news', slug)
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[blog] DELETE:', e)
-    return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })
+    return NextResponse.json({ error: 'Something went wrong. Please try again.', code: 'server_error' }, { status: 500 })
   }
 }

@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: IdRouteContext) {
   const { id } = await params
   const body = (await req.json().catch(() => ({}))) as { line_id?: unknown; file_id?: unknown }
   if (typeof body.line_id !== 'string' || !ID.test(body.line_id) || typeof body.file_id !== 'string' || !ID.test(body.file_id)) {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+    return NextResponse.json({ error: 'Invalid request', code: 'invalid_request' }, { status: 400 })
   }
   try {
     return NextResponse.json(await issueDownloadLink(gate.user.id, id, body.line_id, body.file_id))

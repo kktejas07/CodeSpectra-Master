@@ -145,6 +145,8 @@ export async function completeReferralIfEligible(db: Db, referredId: string): Pr
       type: 'xp.awarded',
       title: `You earned ${xpAmount} XP for a referral`,
       message: 'Someone you invited verified their account and completed their first challenge.',
+      title_i18n: { key: 'xp.referral.title', params: { amount: xpAmount } },
+      message_i18n: { key: 'xp.referral.message' },
       link: '/dashboard/referrals',
       icon: 'user-plus',
       metadata: { xp: String(xpAmount) },

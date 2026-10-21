@@ -18,13 +18,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; fi
     const c = await loadVisible(id, user)
     if (!c) return notFound()
     const f = await readContestFile(user, c, fileId)
-    if (!f) return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    if (!f) return NextResponse.json({ error: 'File not found', code: 'file_not_found' }, { status: 404 })
     // Object storage: 5-minute presigned URL (attachment), issued only after readContestFile's access check.
     const signed = await blobDownloadUrl(f, f.name)
     if (signed) return NextResponse.redirect(signed, { status: 302, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } })
     // Inline: a BSON Binary (its .buffer is the bytes) or a Buffer.
     const bytes = bytesOf(f.data)
-    if (!bytes) return NextResponse.json({ error: 'File not found' }, { status: 404 })
+    if (!bytes) return NextResponse.json({ error: 'File not found', code: 'file_not_found' }, { status: 404 })
     return new NextResponse(new Uint8Array(bytes), {
       headers: {
         'Content-Type': f.mime,

@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!user) return NextResponse.json({ error: 'Unauthorized', code: 'unauthorized' }, { status: 401 })
   try {
     const r = await candidateIntegrity(user, req.nextUrl.searchParams.get('kind') || '', req.nextUrl.searchParams.get('id') || '')
     return r.ok ? NextResponse.json(r.data, { headers: { 'Cache-Control': 'no-store' } }) : NextResponse.json(errorBody(r), { status: r.status })
