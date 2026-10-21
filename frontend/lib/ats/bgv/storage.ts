@@ -1,8 +1,10 @@
 /**
  * BGV document storage. PDF / JPG / PNG only (extension AND magic bytes),
  * 10 MB each, ClamAV scan (same fail-closed scanner as résumé uploads,
- * lib/ats/files.ts), AES-GCM encrypted at rest. Bytes go to the platform's
- * object storage (lib/s3-storage.ts) when configured, else to `ats_bgv_files`.
+ * lib/ats/files.ts), AES-GCM encrypted at rest. Bytes go to the private
+ * uploads bucket (lib/storage; records carry `s3_key`) when configured, else
+ * to the older course-media bucket (lib/s3-storage.ts) when that is set, else
+ * to `ats_bgv_files`. Reads follow the record, so older files keep working.
  * Browsers only ever get a 5-minute signed URL (crypto.fileViewToken).
  */
 import { Binary } from 'mongodb'
@@ -48,6 +50,13 @@ export async function readCapped(req: Request, max: number): Promise<Uint8Array<
 
 const s3Key = (tenantId: string, caseId: string, id: string) => `ats-bgv/${tenantId}/${caseId}/${id}`
 
+type DocRef = Pick<BgvDocument, 'id' | 'storage' | 's3_key'>
+
+async function uploadsBucket() {
+  const cfg = await (await import('@/lib/storage/config')).readStorageConfig()
+  return cfg ? { cfg, s3: await import('@/lib/storage/s3') } : null
+}
+
 async function s3(): Promise<typeof import('@/lib/s3-storage') | null> {
   const mod = await import('@/lib/s3-storage')
   return (await mod.readS3Config()) ? mod : null
@@ -64,6 +73,13 @@ export async function storeDocument(p: { tenantId: string; caseId: string; slot:
   await virusScan(plain, name)
   const id = newId()
   const box = await encryptBytes(plain)
+  const bucket = await uploadsBucket()
+  if (bucket) {
+    const { newObjectKey } = await import('@/lib/storage/keys')
+    const key = newObjectKey('ats-bgv', p.tenantId)
+    await bucket.s3.s3Put(bucket.cfg, key, box, 'application/octet-stream')
+    return { id, slot: p.slot, item: p.item, name, type, size: plain.byteLength, storage: 's3', s3_key: key, scanned: true, uploaded_at: nowIso() }
+  }
   const store = await s3()
   if (store) {
     await store.s3PutObject(s3Key(p.tenantId, p.caseId, id), box, 'application/octet-stream')
@@ -73,9 +89,13 @@ export async function storeDocument(p: { tenantId: string; caseId: string; slot:
   return { id, slot: p.slot, item: p.item, name, type, size: plain.byteLength, storage: store ? 's3' : 'db', scanned: true, uploaded_at: nowIso() }
 }
 
-export async function readDocument(tenantId: string, caseId: string, doc: Pick<BgvDocument, 'id' | 'storage'>): Promise<Buffer | null> {
+export async function readDocument(tenantId: string, caseId: string, doc: DocRef): Promise<Buffer | null> {
   let box: Buffer | null = null
-  if (doc.storage === 's3') {
+  if (doc.storage === 's3' && doc.s3_key) {
+    const bucket = await uploadsBucket()
+    if (!bucket) return null
+    box = await bucket.s3.s3Get(bucket.cfg, doc.s3_key).catch(() => null)
+  } else if (doc.storage === 's3') {
     const store = await s3()
     if (!store) return null
     box = await store.s3GetObject(s3Key(tenantId, caseId, doc.id)).catch(() => null)
@@ -88,10 +108,18 @@ export async function readDocument(tenantId: string, caseId: string, doc: Pick<B
 }
 
 /** Deletes every file it can; throws (after trying all) when any object-storage delete failed. */
-export async function deleteDocuments(tenantId: string, caseId: string, docs: Pick<BgvDocument, 'id' | 'storage'>[]): Promise<void> {
+export async function deleteDocuments(tenantId: string, caseId: string, docs: DocRef[]): Promise<void> {
   if (!docs.length) return
   const failed: string[] = []
-  const s3Docs = docs.filter((d) => d.storage === 's3')
+  const keyed = docs.filter((d) => d.storage === 's3' && d.s3_key)
+  if (keyed.length) {
+    const bucket = await uploadsBucket()
+    if (!bucket) failed.push(...keyed.map((d) => d.id))
+    else for (const d of keyed) {
+      await bucket.s3.s3Delete(bucket.cfg, d.s3_key as string).catch(() => { failed.push(d.id); console.error('[ats/bgv] object delete failed', d.id) })
+    }
+  }
+  const s3Docs = docs.filter((d) => d.storage === 's3' && !d.s3_key)
   if (s3Docs.length) {
     const store = await s3()
     if (!store) failed.push(...s3Docs.map((d) => d.id)) // storage unconfigured: can't confirm the delete

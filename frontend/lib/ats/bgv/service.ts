@@ -858,7 +858,7 @@ export async function eraseCaseData(c: BgvCaseDoc, reason: 'retention' | 'candid
   }
   if (failed) {
     doc.purged_at = null
-    doc.purge_pending = { reason, docs: docs.map((d) => ({ id: d.id, storage: d.storage })), at: nowIso() }
+    doc.purge_pending = { reason, docs: docs.map((d) => ({ id: d.id, storage: d.storage, ...(d.s3_key ? { s3_key: d.s3_key } : {}) })), at: nowIso() }
   } else {
     doc.purge_pending = null
   }

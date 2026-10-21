@@ -26,6 +26,8 @@ export interface BgvDocument {
   type: 'application/pdf' | 'image/jpeg' | 'image/png'
   size: number
   storage: 's3' | 'db'
+  /** Set when the bytes are in the private uploads bucket (lib/storage); absent on legacy course-media-bucket objects. */
+  s3_key?: string
   scanned: boolean
   uploaded_at: string
 }
@@ -130,7 +132,7 @@ export interface BgvCaseDoc {
   /** last candidate self-service link resend (per-case throttle) */
   link_resent_at?: string | null
   /** an erase whose file deletes failed: the files still to delete (retried by the sweep) */
-  purge_pending?: { reason: 'retention' | 'candidate_request'; docs: Pick<BgvDocument, 'id' | 'storage'>[]; at: string } | null
+  purge_pending?: { reason: 'retention' | 'candidate_request'; docs: Pick<BgvDocument, 'id' | 'storage' | 's3_key'>[]; at: string } | null
   /** retention purge ran: documents + data deleted, outcome kept */
   purged_at?: string | null
   purge_reason?: 'retention' | 'candidate_request' | null

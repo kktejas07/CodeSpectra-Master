@@ -49,7 +49,13 @@ function FileLink({ examId, file, video }: { examId: string; file: AnswerFileMet
   const play = async () => {
     setBusy(true)
     try {
-      const r = await fetch(href, { credentials: 'include' })
+      // Bucket-stored recordings: play from a short-lived presigned URL instead of downloading the whole file.
+      const p = await fetch(`${href}?mode=play`, { credentials: 'include' })
+      if (p.ok && (p.headers.get('content-type') || '').includes('application/json')) {
+        const j = (await p.json().catch(() => ({}))) as { url?: string }
+        if (j.url && /^https?:\/\//.test(j.url)) { setUrl(j.url); return }
+      }
+      const r = p.ok && !(p.headers.get('content-type') || '').includes('application/json') ? p : await fetch(href, { credentials: 'include' })
       if (!r.ok) return
       const b = await r.blob()
       setUrl(URL.createObjectURL(new Blob([b], { type: file.type === 'mp4' ? 'video/mp4' : 'video/webm' })))

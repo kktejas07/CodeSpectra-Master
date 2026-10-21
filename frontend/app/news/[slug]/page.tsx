@@ -1,5 +1,6 @@
 /** /news/[slug] — one tech news item (NewsArticle JSON-LD, sources, related items). */
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import DOMPurify from 'isomorphic-dompurify'
@@ -9,18 +10,25 @@ import { NotifyBox } from '@/components/events-feed/notify-box'
 import { JsonLd } from '@/components/seo/json-ld'
 import { coverForPost } from '@/lib/blog-covers'
 import { newsTopicLabel } from '@/lib/signals/feeds'
-import { getNewsPost, listNews, newsTopicOf } from '@/lib/signals/news'
+import { newsTopicOf } from '@/lib/signals/news'
+import { newsListCached, newsPostCached } from '@/lib/cache/public-data'
 import { buildMetadata, ogImagePath } from '@/lib/seo/metadata'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 
+// Rendered per request (never at build: no DB there). Found items come from
+// the data cache (15 min, purged on publish); unknown slugs are not cached
+// (hit-only loaders), so random URLs can't fill the cache. DB errors throw
+// to the error boundary instead of caching a 404.
 export const dynamic = 'force-dynamic'
+
+const loadPost = cache((slug: string) => newsPostCached(slug))
 
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const post = await getNewsPost(slug).catch(() => null)
+  const post = await loadPost(slug)
   if (!post) return { title: 'News item not found', robots: { index: false, follow: true } }
   return buildMetadata({
     title: post.title, description: post.excerpt, path: `/news/${post.slug}`, kind: 'article', type: 'article',
@@ -34,12 +42,12 @@ const plainText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g
 
 export default async function NewsArticlePage({ params }: Props) {
   const { slug } = await params
-  const post = await getNewsPost(slug).catch(() => null)
+  const post = await loadPost(slug)
   if (!post) notFound()
   const topic = newsTopicOf(post.tags)
   const [site, related] = await Promise.all([
     getSiteOrigin(),
-    listNews({ topic, limit: 5 }).then((r) => r.items.filter((n) => n.slug !== post.slug).slice(0, 4)).catch(() => []),
+    newsListCached(topic, 1).then((r) => r.items.filter((n) => n.slug !== post.slug).slice(0, 4)).catch(() => []),
   ])
   const path = `/news/${post.slug}`
   const body = DOMPurify.sanitize(post.body || '')

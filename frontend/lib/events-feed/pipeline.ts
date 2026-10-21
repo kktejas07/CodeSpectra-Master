@@ -14,6 +14,7 @@ import { BUILTIN_CONNECTORS, connectorFor, type Connector } from './sources'
 import { feedCol, nowIso, sourcesCol } from './store'
 import type { ExternalEvent, FeedEventDoc, SourceState } from './types'
 import { knowledgeOnExternalEvent } from '@/lib/rag/hooks'
+import { revalidateContent } from '@/lib/cache/revalidate'
 
 /** Automation event for a newly published external event (once per event id). */
 export function emitNewFeedEvent(doc: FeedEventDoc, now: Date): void {
@@ -223,6 +224,8 @@ export async function runPull(opts: { now?: Date; only?: string[]; get?: HttpGet
 
   report.archived = await archiveEnded(now)
   knowledgeOnExternalEvent([...new Set(changed)])
+  // /events and the landing strip are ISR (no-op when run outside a request).
+  if (changed.length || report.archived) await revalidateContent('events')
   return report
 }
 

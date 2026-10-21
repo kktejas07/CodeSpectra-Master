@@ -208,6 +208,10 @@ export async function DELETE(request: Request) {
     }
     await del('exam_submissions', examFilter)
     await del('exam_submission_attempts', examFilter)
+    // Uploaded answer / CAD files in the private bucket go with their records.
+    const { deleteBlobsFor } = await import('@/lib/storage/blobs')
+    const blobFailures = await deleteBlobsFor(db.collection('exam_submission_files'), examFilter)
+    if (blobFailures) removed.file_objects_failed = blobFailures
     await del('exam_submission_files', examFilter)
     await del('exam_drafts', examFilter)
     await del('exam_identity_checks', examFilter)

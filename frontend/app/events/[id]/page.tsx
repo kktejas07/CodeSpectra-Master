@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Clock, ExternalLink, Globe, MapPin, Sparkles, Trophy } from 'lucide-react'
@@ -7,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { NotifyBox } from '@/components/events-feed/notify-box'
 import { AddToCalendar } from '@/components/events-feed/event-card'
-import { getFeedEvent, listPublishedFeed } from '@/lib/events-feed/query'
+import { feedEventCached } from '@/lib/cache/public-data'
 import { countryName, formatRange, KIND_LABELS, MODE_LABELS, toPublic, withUtm } from '@/lib/events-feed/public'
 import type { PublicFeedEvent } from '@/lib/events-feed/types'
 import { buildMetadata } from '@/lib/seo/metadata'
@@ -16,15 +17,15 @@ import { getSiteOrigin } from '@/lib/seo/settings'
 import { JsonLd } from '@/components/seo/json-ld'
 import { FaqList } from '@/components/seo/faq-list'
 
+// Rendered per request (never at build: no DB there). Found items come from
+// the data cache (15 min, purged on publish); unknown slugs are not cached
+// (hit-only loaders), so random URLs can't fill the cache. DB errors throw
+// to the error boundary instead of caching a 404.
 export const dynamic = 'force-dynamic'
 
 type Props = { params: Promise<{ id: string }> }
 
-async function load(id: string): Promise<PublicFeedEvent | null> {
-  const doc = await getFeedEvent(id).catch(() => null)
-  if (doc) return doc.status === 'hidden' ? null : toPublic(doc)
-  return (await listPublishedFeed().catch(() => [])).find((e) => e.id === id) || null
-}
+const load = cache((id: string): Promise<PublicFeedEvent | null> => feedEventCached(id))
 
 /** Internal hackathons have their real page under /hackathons — canonicalise there (SEO-018). */
 function canonicalFor(ev: PublicFeedEvent): string {

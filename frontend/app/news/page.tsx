@@ -12,12 +12,15 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { NotifyBox } from '@/components/events-feed/notify-box'
 import { JsonLd } from '@/components/seo/json-ld'
 import { NEWS_TOPICS, newsTopicLabel } from '@/lib/signals/feeds'
-import { listNews, parseNewsParams, type NewsCard } from '@/lib/signals/news'
+import { parseNewsParams, type NewsCard } from '@/lib/signals/news'
+import { newsListCached } from '@/lib/cache/public-data'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { breadcrumbJsonLd, compact } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { cn } from '@/lib/utils'
 
+// Per-request HTML (topic / page come from searchParams); the query is cached
+// for 5 min and purged on publish (lib/cache/public-data.ts).
 export const dynamic = 'force-dynamic'
 
 type SP = Promise<Record<string, string | string[] | undefined>>
@@ -85,7 +88,7 @@ function NewsItem({ n }: { n: NewsCard }) {
 export default async function NewsPage({ searchParams }: { searchParams: SP }) {
   const p = parseNewsParams(await searchParams)
   const [list, site] = await Promise.all([
-    listNews({ topic: p.topic, page: p.page }).catch(() => ({ items: [] as NewsCard[], total: 0, page: p.page, pages: 1 })),
+    newsListCached(p.topic, p.page).catch(() => ({ items: [] as NewsCard[], total: 0, page: p.page, pages: 1 })),
     getSiteOrigin(),
   ])
   const jsonLd = [

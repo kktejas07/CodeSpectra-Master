@@ -65,6 +65,37 @@ for (const path of GUARDED) {
   const loc = r.headers.get('location') || ''
   check(r.status >= 300 && r.status < 400 && loc.includes('/auth/login'), `${path} (signed out) → ${r.status} ${loc} (want redirect to /auth/login)`)
 }
+// Wave 7 CSP (lib/csp/policy.ts): the strict policy is sent (Report-Only unless
+// CSP_ENFORCE=1) with a report endpoint; dynamic pages carry a per-request nonce
+// that Next stamps on its scripts; reports are accepted without a CSRF token.
+const strictOf = (res) => {
+  const ro = res.headers.get('content-security-policy-report-only')
+  return ro || res.headers.get('content-security-policy') || ''
+}
+{
+  const r = await fetch(`${BASE}/`, { redirect: 'manual' })
+  const p = strictOf(r)
+  check(p.includes('report-uri /api/csp-report'), `/ strict CSP with report-uri (got ${p ? 'a policy without it' : 'none'})`)
+  check(!/script-src[^;]*'unsafe-eval'/.test(p), `/ strict CSP has no 'unsafe-eval' in script-src`)
+}
+{
+  const r = await fetch(`${BASE}/auth/login`, { redirect: 'manual' })
+  const p = strictOf(r)
+  const nonce = (p.match(/'nonce-([A-Za-z0-9+/=_-]+)'/) || [])[1]
+  check(!!nonce, '/auth/login strict CSP carries a nonce')
+  const html = r.status === 200 ? await r.text() : ''
+  check(!!nonce && html.includes(`nonce="${nonce}"`), '/auth/login scripts carry the response nonce (page rendered per request)')
+  const again = strictOf(await fetch(`${BASE}/auth/login`, { redirect: 'manual' }))
+  check(!!nonce && !again.includes(`'nonce-${nonce}'`), '/auth/login nonce changes per request')
+}
+{
+  const r = await fetch(`${BASE}/api/csp-report`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/csp-report' },
+    body: JSON.stringify({ 'csp-report': { 'document-uri': `${BASE}/`, 'violated-directive': 'script-src-elem', 'blocked-uri': 'inline' } }),
+  })
+  check(r.status === 204, `/api/csp-report → ${r.status} (want 204)`)
+}
 {
   const r = await fetch(`${BASE}/api/cron/tick`, { method: 'POST' })
   check(r.status === 401, `/api/cron/tick without CRON_SECRET → ${r.status} (want 401)`)

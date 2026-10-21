@@ -13,13 +13,18 @@ import { getSeoSettings } from '@/lib/seo/settings'
 import { resolveSiteUrl, SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE } from '@/lib/seo/site'
 import { ogImagePath } from '@/lib/seo/metadata'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/seo/jsonld'
+import { THEME_INIT_SCRIPT } from '@/lib/csp/inline-scripts'
+import { expireSoonIfBuilding } from '@/lib/cache/build-phase'
 
-// Kept app-wide: dashboard client pages read search params without Suspense
-// and must not be prerendered at build (no DB at build time). Public pages
-// still get full server HTML (components/providers.tsx renders children on
-// the server) and CDN-cacheable responses (proxy.ts skips the CSRF cookie on
-// public marketing paths). SEO-004: revisit when the dashboard opts in per segment.
-export const dynamic = 'force-dynamic'
+// Wave 7: no app-wide `force-dynamic` any more. Public marketing / content
+// pages are static or ISR (they read no cookies or session — user state lives
+// in client components); the signed-in app, auth, test-taking and token-link
+// segments opt into per-request rendering in their own layouts (needed for the
+// CSP nonce — lib/csp/policy.ts; tests/csp-dynamic-routes.test.ts guards it).
+// Upper bound for the prerendered pages (no DB reads: about, faq, legal, docs,
+// companies). DB-backed public pages render per request from the tag-purged
+// data cache (lib/cache/public-data.ts) so the DB-less build never ships them empty.
+export const revalidate = 3600
 
 // Self-hosted JetBrains Mono (variable font, latin subset). Previously
 // `next/font/google` which failed the Docker build when the server couldn't
@@ -98,6 +103,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  // Pages prerendered during `next build` had no database: expire them on the
+  // first request so admin SEO settings (verification, org JSON-LD) and analytics ids appear.
+  await expireSoonIfBuilding()
   return (
     <html
       lang="en"
@@ -108,21 +116,8 @@ export default async function RootLayout({
         className="antialiased bg-background text-foreground font-sans"
         suppressHydrationWarning
       >
-        <script
-          id="theme-init"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(){
-                var t = 'dark';
-                try { t = localStorage.getItem('theme') || 'dark'; } catch (e) {}
-                if (t === 'system') {
-                  t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                }
-                document.documentElement.classList.add(t);
-              })();
-            `,
-          }}
-        />
+        {/* Allowed by hash in the strict CSP (lib/csp/inline-scripts.ts). */}
+        <script id="theme-init" dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <SiteJsonLd />
         <Providers>
           <LoadingWrapper>{children}</LoadingWrapper>

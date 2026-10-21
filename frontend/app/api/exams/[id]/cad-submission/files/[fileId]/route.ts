@@ -8,20 +8,12 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { isExamStaff } from '@/lib/exam-access'
+import { blobDownloadUrl, bytesOf, type BlobRef } from '@/lib/storage/blobs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-function toBuffer(data: unknown): Buffer | null {
-  if (!data) return null
-  if (Buffer.isBuffer(data)) return data
-  const bin = data as { buffer?: unknown }
-  if (bin.buffer instanceof Uint8Array) return Buffer.from(bin.buffer)
-  if (data instanceof Uint8Array) return Buffer.from(data)
-  return null
-}
-
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string; fileId: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string; fileId: string }> }) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const { id: examId, fileId } = await ctx.params
@@ -33,7 +25,13 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string; fi
     const staff = !!exam && isExamStaff(gate.user, exam as Record<string, unknown>)
     if (!staff && file.user_id !== gate.user.id) return NextResponse.json({ error: 'File not found' }, { status: 404 })
 
-    const bytes = toBuffer(file.data)
+    // Object storage: a 5-minute presigned URL (attachment, generic type), issued only after the check above.
+    // ?mode=play (answer videos): the URL as JSON with a video type, for the reviewer's <video> element.
+    const play = new URL(req.url).searchParams.get('mode') === 'play' && (file.type === 'webm' || file.type === 'mp4')
+    const signed = await blobDownloadUrl(file as BlobRef, String(file.name || 'file'), play ? `video/${file.type}` : undefined)
+    if (signed && play) return NextResponse.json({ url: signed }, { headers: { 'Cache-Control': 'private, no-store' } })
+    if (signed) return NextResponse.redirect(signed, { status: 302, headers: { 'Cache-Control': 'private, no-store', 'Referrer-Policy': 'no-referrer' } })
+    const bytes = bytesOf(file.data)
     if (!bytes) return NextResponse.json({ error: 'File not found' }, { status: 404 })
     const name = String(file.name || 'file').replace(/[^\w.\- ]/g, '_')
     return new NextResponse(new Uint8Array(bytes), {

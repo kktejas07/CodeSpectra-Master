@@ -7,6 +7,7 @@ import { isValidPlanId } from '@/lib/billing-plan-mode'
 import { mergePlanDefinition } from '@/lib/entitlements-core'
 import { billingSubscriptions } from '@/lib/db/billing'
 import { auditAdmin } from '@/lib/admin-audit'
+import { revalidateContent } from '@/lib/cache/revalidate'
 
 export const dynamic = 'force-dynamic'
 
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
     if (existing) await col.updateOne({ plan: doc.plan }, { $set: doc })
     else await col.insertOne({ ...doc, createdAt: new Date().toISOString() })
     invalidatePlanCache()
+    await revalidateContent('pricing')
     await auditAdmin(gate.user, existing ? 'admin.plan.update' : 'admin.plan.create', 'plan', `plan/${doc.plan}`)
     return NextResponse.json({ plan: doc })
   } catch (e: unknown) {
@@ -129,6 +131,7 @@ export async function DELETE(request: Request) {
     const res = await (await getMongoDb()).collection('plans').deleteOne({ plan })
     if (res.deletedCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     invalidatePlanCache()
+    await revalidateContent('pricing')
     await auditAdmin(gate.user, 'admin.plan.delete', 'plan', `plan/${plan}`, undefined, 'warning')
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {

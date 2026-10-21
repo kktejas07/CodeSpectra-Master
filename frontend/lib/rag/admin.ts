@@ -9,9 +9,10 @@ import type { APIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
 import { scanPrompt } from '@/lib/ai/prompt-guard'
 import { availableEmbedModels } from './embed'
-import { enqueueKnowledge, indexSource, removeSource, sweepKnowledge } from './ingest'
+import { dominantEmbeddingModel, enqueueKnowledge, indexSource, removeSource, sweepKnowledge } from './ingest'
 import { atlasVectorAvailable } from './search'
 import { ragChunks, ragSources, ragUploads, type RagUploadDoc } from './store'
+import { pgvectorReadsActive } from './vector-store'
 import {
   detectUploadType, extractUploadText, MAX_UPLOAD_BYTES, parseTags, UPLOAD_KINDS, type UploadKind,
 } from './sources/uploads'
@@ -108,7 +109,7 @@ export interface KnowledgeStats {
   by_status: Record<string, number>
   models: string[]
   embedding_available: boolean
-  vector_backend: 'atlas' | 'in_process'
+  vector_backend: 'pgvector' | 'atlas' | 'in_process'
   searches_7d: number
 }
 
@@ -117,7 +118,7 @@ export async function knowledgeStats(caller: AgentCaller, tenantParam?: string |
   // CORE-025: a superadmin's organisation filter narrows the counters like the source list.
   const scope = sourceScopeFilter(caller, tenantParam)
   const chunkScope: { tenant_id?: string | null } = 'tenant_id' in scope ? { tenant_id: scope.tenant_id as string | null } : {}
-  const [byType, byStatus, chunkCount, embedded, models, atlasOk] = await Promise.all([
+  const [byType, byStatus, chunkCount, embedded, models, atlasOk, pgOk] = await Promise.all([
     sources.aggregate<{ _id: KnowledgeSourceType; sources: number; chunks: number; ready: number; failed: number; queued: number }>([
       { $match: scope },
       { $group: {
@@ -132,6 +133,7 @@ export async function knowledgeStats(caller: AgentCaller, tenantParam?: string |
     chunks.countDocuments({ ...chunkScope, embedding_model: { $type: 'string' } }),
     availableEmbedModels(),
     caller.role === 'superadmin' ? atlasVectorAvailable() : Promise.resolve(false),
+    caller.role === 'superadmin' ? dominantEmbeddingModel().then(pgvectorReadsActive) : Promise.resolve(false),
   ])
   let searches = 0
   try {
@@ -150,7 +152,7 @@ export async function knowledgeStats(caller: AgentCaller, tenantParam?: string |
     by_status: Object.fromEntries(byStatus.map((r) => [r._id, r.n])),
     models,
     embedding_available: models.length > 0,
-    vector_backend: atlasOk ? 'atlas' : 'in_process',
+    vector_backend: pgOk ? 'pgvector' : atlasOk ? 'atlas' : 'in_process',
     searches_7d: searches,
   }
 }

@@ -5,6 +5,9 @@ import { publicRoute } from '@/lib/seo/public-routes'
 const route = publicRoute('/hackathons')!
 export const metadata = buildMetadata({ title: route.title, description: route.description, path: '/hackathons', kind: 'hackathon' })
 
+// Per-request rendering: the strict CSP stamps a fresh nonce (lib/csp/policy.ts).
+export const dynamic = 'force-dynamic'
+
 export default function Layout({ children }: { children: React.ReactNode }) {
   return children
 }

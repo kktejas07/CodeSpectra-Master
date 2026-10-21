@@ -10,6 +10,7 @@ import {
   type BlogPostDoc,
 } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
+import { revalidateContent } from '@/lib/cache/revalidate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -90,6 +91,10 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
     }
 
     await col.updateOne({ id: existing.id }, { $set: patch })
+    if (existing.status === 'published' || patch.status === 'published') {
+      await revalidateContent('news', existing.slug)
+      if (typeof patch.slug === 'string' && patch.slug !== existing.slug) await revalidateContent('news', patch.slug)
+    }
     return NextResponse.json({ post: await col.findOne({ id: existing.id }) })
   } catch (e) {
     console.error('[blog] PATCH:', e)
@@ -104,6 +109,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     const { slug } = await ctx.params
     const r = await (await blogPosts()).deleteOne({ slug })
     if (!r.deletedCount) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await revalidateContent('news', slug)
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[blog] DELETE:', e)

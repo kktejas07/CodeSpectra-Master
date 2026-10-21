@@ -8,6 +8,7 @@ import { blogPosts, estimateReadMinutes, newBlogId, nowIso, slugifyTitle, type B
 import type { SignalDraftDoc } from '@/lib/db/signal-drafts'
 import { coverForPost } from '@/lib/blog-covers'
 import { newsTags } from './news'
+import { revalidateContent } from '@/lib/cache/revalidate'
 
 export async function publishDraft(draft: SignalDraftDoc, opts: { by: string; auto: boolean }): Promise<BlogPostDoc> {
   const posts = await blogPosts()
@@ -40,5 +41,6 @@ export async function publishDraft(draft: SignalDraftDoc, opts: { by: string; au
   await posts.insertOne(post)
   const { draftsCol } = await import('./store')
   await (await draftsCol()).updateOne({ id: draft.id }, { $set: { status: 'published', blog_slug: slug, auto_published: opts.auto, updated_at: now } })
+  await revalidateContent('news', slug)
   return post
 }

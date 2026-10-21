@@ -10,6 +10,8 @@ export const CSRF_EXEMPT: readonly string[] = [
   '/api/analytics/events',
   // First-party analytics beacons (sendBeacon can't set headers; nothing here acts for the user).
   '/api/analytics/collect',
+  // CSP violation reports: browsers send them without cookies or headers (own rate limit, redacted logs).
+  '/api/csp-report',
   '/api/github/webhook',
   '/api/billing/webhook',
   '/api/billing/stripe-webhook',

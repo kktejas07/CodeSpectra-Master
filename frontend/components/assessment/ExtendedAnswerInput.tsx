@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react'
 import { AlertTriangle, Camera, CheckCircle2, FileUp, Loader2, Play, RotateCcw, Square, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { directUpload, uploadLimits } from '@/lib/storage/direct-upload-client'
 import { canonicalType } from '@/lib/question-types'
 import {
   ANSWER_FILE_MAX_MB, BLACK_BOX_INPUT_MAX, UPLOAD_FILE_KINDS, VIDEO_MAX_SECONDS, acceptForKinds, parseJsonAnswer,
@@ -65,6 +66,18 @@ function fmtSize(n: number): string {
 }
 
 async function uploadAnswerFile(ctx: ExamContext, questionId: string, file: Blob, name: string, extra?: Record<string, string>): Promise<{ id: string; name: string; size: number; type: string; duration_s?: number }> {
+  // Object storage on: bytes go straight to the private bucket (large videos); otherwise the multipart route below.
+  const tokens = { inviteToken: ctx.inviteToken || null, linkToken: ctx.linkToken || null }
+  const direct = await directUpload<{ file?: { id: string; name: string; size: number; type: string; duration_s?: number } }>({
+    url: `/api/exams/${encodeURIComponent(ctx.examId)}/answer-files/direct`,
+    file,
+    start: { question_id: questionId, name, ...tokens },
+    finish: () => ({ question_id: questionId, ...tokens, ...(extra?.duration_s ? { duration_s: Number(extra.duration_s) } : {}) }),
+  })
+  if (!direct.inline) {
+    if (!direct.data.file) throw new Error('Upload failed. Try again.')
+    return direct.data.file
+  }
   const fd = new FormData()
   fd.append('file', file, name)
   fd.append('question_id', questionId)
@@ -300,6 +313,9 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
   const recRef = useRef<MediaRecorder | null>(null)
   const startedRef = useRef(0)
   const urlRef = useRef<string | null>(null)
+  // Recording size budget: the multipart cap, or the direct-upload cap when object storage is on.
+  const [capMb, setCapMb] = useState(ANSWER_FILE_MAX_MB)
+  useEffect(() => { void uploadLimits().then((l) => { if (l.direct && l.video_max_mb > ANSWER_FILE_MAX_MB) setCapMb(l.video_max_mb) }) }, [])
   const supported = typeof window !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && !!pickMime()
   // Every recording counts as a take (first take + the author's retakes).
   const retakesLeft = Math.max(0, cfg.retakes + 1 - takes)
@@ -349,7 +365,7 @@ function VideoResponseInput({ question, value, onChange, readOnly, examContext }
     if (!stream) return
     const mime = pickMime()
     // Keep a full-length recording under the upload cap (≈90% of it, video + 64 kbps audio).
-    const bits = Math.min(1_000_000, Math.floor((ANSWER_FILE_MAX_MB * 8 * 1048576 * 0.9) / maxSeconds) - 64_000)
+    const bits = Math.min(capMb > ANSWER_FILE_MAX_MB ? 2_500_000 : 1_000_000, Math.floor((capMb * 8 * 1048576 * 0.9) / maxSeconds) - 64_000)
     const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: Math.max(150_000, bits), audioBitsPerSecond: 64_000 })
     const chunks: Blob[] = []
     rec.ondataavailable = (ev) => { if (ev.data.size) chunks.push(ev.data) }

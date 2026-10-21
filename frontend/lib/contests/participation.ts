@@ -143,6 +143,8 @@ export interface SubmitInput {
 }
 
 export interface UploadedFile { role: string; name: string; bytes: Uint8Array }
+/** A file the browser already put in the uploads bucket (POST /api/contests/[id]/uploads). */
+export interface DirectFile { role: string; upload_id: string }
 
 type SubResult = ServiceResult<{ submission: ReturnType<typeof submissionView> }>
 
@@ -184,7 +186,7 @@ async function insertSubmission(doc: ContestSubmissionDoc): Promise<SubResult> {
   return ok({ submission: submissionView(doc) }, 201)
 }
 
-export async function submitToContest(user: Who, c: ContestDoc, input: SubmitInput, files: UploadedFile[] = []): Promise<SubResult> {
+export async function submitToContest(user: Who, c: ContestDoc, input: SubmitInput, files: UploadedFile[] = [], direct: DirectFile[] = []): Promise<SubResult> {
   if (!submissionsOpen(c)) return fail(409, 'Submissions are closed.')
   const entry = await myEntry(c.id, user.id)
   if (!entry) return fail(403, 'Join the contest first.')
@@ -291,17 +293,24 @@ export async function submitToContest(user: Who, c: ContestDoc, input: SubmitInp
       const limited = await limit(`contest-upload:${c.id}:${user.id}`, 10, 10 * 60_000, 'Too many uploads.')
       if (limited) return fail(429, limited)
       const refs: ContestFileRef[] = []
+      const { findReadyUpload } = await import('@/lib/storage/uploads')
       for (const slot of meta.files || []) {
         const f = files.find((x) => x.role === slot.role)
+        const d = f ? undefined : direct.find((x) => x.role === slot.role)
         const required = slot.role === 'video' && c.format === 'ideathon' ? c.config.video_required !== false : slot.required
-        if (!f) { if (required) return fail(400, `Add the ${slot.label.toLowerCase()}.`); continue }
-        const bad = checkFile(slot, f)
-        if (bad) return fail(400, bad)
+        if (!f && !d) { if (required) return fail(400, `Add the ${slot.label.toLowerCase()}.`); continue }
+        if (f) {
+          const bad = checkFile(slot, f)
+          if (bad) return fail(400, bad)
+        } else if (d && !(await findReadyUpload({ uploadId: d.upload_id, ownerId: user.id, scope: contestUploadScope(c.id, entry.id, slot.role) }))) {
+          return fail(400, `${slot.label}: upload the file again.`)
+        }
       }
       for (const slot of meta.files || []) {
         const f = files.find((x) => x.role === slot.role)
-        if (!f) continue
-        const stored = await storeFile(c, entry, user.id, slot, f)
+        const d = f ? undefined : direct.find((x) => x.role === slot.role)
+        if (!f && !d) continue
+        const stored = f ? await storeFile(c, entry, user.id, slot, f) : await attachDirectFile(c, entry, user.id, slot, d as DirectFile)
         if (!stored.ok) return stored
         refs.push(stored.data)
       }
@@ -322,11 +331,35 @@ const MIME: Record<string, string> = {
 
 /** Extension + magic bytes for a file slot (pure). Returns a message or null. */
 export function checkFile(slot: FileSlot, f: UploadedFile): string | null {
-  const ext = (f.name.toLowerCase().split('.').pop() || '')
+  return checkFileHead(slot, f.name, f.bytes, f.bytes.byteLength, slot.maxBytes)
+}
+
+/** Byte cap for a slot: the in-request cap, or the larger direct-upload cap when object storage is on. */
+export function slotMaxBytes(slot: FileSlot, large: boolean, limits: { videoBytes: number; fileBytes: number }): number {
+  if (!large) return slot.maxBytes
+  return Math.max(slot.maxBytes, slot.role === 'video' ? limits.videoBytes : limits.fileBytes)
+}
+
+export const contestUploadScope = (contestId: string, entryId: string, role: string) => `contest:${contestId}:${entryId}:${role}`
+
+export const contestMime = (name: string) => MIME[name.toLowerCase().split('.').pop() || ''] || 'application/octet-stream'
+
+/** Extension and size only (before the bytes exist). */
+export function checkFileMeta(slot: FileSlot, name: string, size: number, maxBytes: number): string | null {
+  const ext = (name.toLowerCase().split('.').pop() || '')
   if (!slot.exts.includes(ext)) return `${slot.label}: upload a ${slot.exts.map((e) => e.toUpperCase()).join(' or ')} file.`
-  if (!f.bytes.byteLength) return `${slot.label}: the file is empty.`
-  if (f.bytes.byteLength > slot.maxBytes) return `${slot.label}: files can be up to ${Math.round(slot.maxBytes / 1024 / 1024)} MB.`
-  const h = Buffer.from(f.bytes.subarray(0, 12))
+  if (!size) return `${slot.label}: the file is empty.`
+  if (size > maxBytes) return `${slot.label}: files can be up to ${Math.round(maxBytes / 1024 / 1024)} MB.`
+  return null
+}
+
+/** Same checks as checkFile on the first bytes of a file of `size` bytes (direct uploads sniff a 64 KB range). */
+export function checkFileHead(slot: FileSlot, name: string, head: Uint8Array, size: number, maxBytes: number): string | null {
+  const declared = checkFileMeta(slot, name, size, maxBytes)
+  if (declared) return declared
+  const ext = (name.toLowerCase().split('.').pop() || '')
+  const f = { bytes: head }
+  const h = Buffer.from(head.subarray(0, 12))
   const zip = h[0] === 0x50 && h[1] === 0x4b && h[2] === 0x03 && h[3] === 0x04
   const okBytes =
     ext === 'csv' ? !Buffer.from(f.bytes.subarray(0, 8192)).includes(0)
@@ -348,11 +381,26 @@ async function storeFile(c: ContestDoc, entry: ContestEntryDoc, userId: string, 
     if (e instanceof FileRejected) return fail(e.message.includes('offline') ? 503 : 400, e.message)
     throw e
   }
-  const ext = name.toLowerCase().split('.').pop() || ''
-  // ponytail: bytes live in Mongo (9 MB per file, under the 10 MB request buffer and 16 MB doc cap). Move to lib/s3-storage for bigger videos.
+  const mime = contestMime(name)
+  // Private uploads bucket when configured (lib/storage), else inline in Mongo (≤ 9 MB slots, under the 16 MB doc cap).
+  const { putBlob } = await import('@/lib/storage/blobs')
+  const blob = await putBlob({ feature: 'contest', tenantId: null, bytes: Buffer.from(f.bytes), contentType: mime })
   const doc: ContestFileDoc = {
-    id: rid('f'), contest_id: c.id, entry_id: entry.id, user_id: userId, role: slot.role, name, mime: MIME[ext] || 'application/octet-stream',
-    size: f.bytes.byteLength, storage: 'db', data: Buffer.from(f.bytes), created_at: nowIso(),
+    id: rid('f'), contest_id: c.id, entry_id: entry.id, user_id: userId, role: slot.role, name, mime,
+    size: f.bytes.byteLength, ...blob, created_at: nowIso(),
+  }
+  await (await filesCol()).insertOne(doc)
+  return ok({ id: doc.id, role: doc.role, name: doc.name, mime: doc.mime, size: doc.size })
+}
+
+/** Attach a finished direct upload (already size-, type- and virus-checked) to the entry. */
+async function attachDirectFile(c: ContestDoc, entry: ContestEntryDoc, userId: string, slot: FileSlot, d: DirectFile): Promise<ServiceResult<ContestFileRef>> {
+  const { claimUpload } = await import('@/lib/storage/uploads')
+  const up = await claimUpload({ uploadId: d.upload_id, ownerId: userId, scope: contestUploadScope(c.id, entry.id, slot.role) })
+  if (!up) return fail(400, `${slot.label}: upload the file again.`)
+  const doc: ContestFileDoc = {
+    id: rid('f'), contest_id: c.id, entry_id: entry.id, user_id: userId, role: slot.role, name: up.name, mime: up.content_type,
+    size: up.size, storage: 's3', s3_key: up.key, created_at: nowIso(),
   }
   await (await filesCol()).insertOne(doc)
   return ok({ id: doc.id, role: doc.role, name: doc.name, mime: doc.mime, size: doc.size })

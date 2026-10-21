@@ -15,7 +15,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { LearnMarkdown } from '@/components/learn/learn-markdown'
 import { ShareBar } from '@/components/learn/share-bar'
 import { LearnPostCardView, LevelPill } from '@/components/learn/post-card'
-import { getPublishedPost, relatedPosts } from '@/lib/learn/queries'
+import { learnPostCached, learnRelatedCached, learnSlugCached, teamRelatedCached } from '@/lib/cache/public-data'
 import { extractToc } from '@/lib/learn/markdown'
 import { postUrl } from '@/lib/learn/share'
 import { categoryLabel } from '@/lib/learn/types'
@@ -27,18 +27,21 @@ import { JsonLd } from '@/components/seo/json-ld'
 import { AnswerSummary, SPEAKABLE_SELECTORS } from '@/components/seo/answer-summary'
 import { formatDate } from '@/lib/format-datetime'
 import { TeamArticle } from '@/components/learn/team-article'
-import { relatedTeam, resolveLearnSlug } from '@/lib/learn/team-queries'
 import { teamCategoryLabel } from '@/lib/learn/team-posts'
 
+// Rendered per request (never at build: no DB there). Found items come from
+// the data cache (15 min, purged on publish); unknown slugs are not cached
+// (hit-only loaders), so random URLs can't fill the cache. DB errors throw
+// to the error boundary instead of caching a 404.
 export const dynamic = 'force-dynamic'
 
 type Params = Promise<{ slug: string }>
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params
-  const post = await getPublishedPost(slug).catch(() => null)
+  const post = await learnPostCached(slug).catch(() => null)
   if (!post) {
-    const team = await resolveLearnSlug(slug, false).catch(() => null)
+    const team = await learnSlugCached(slug).catch(() => null)
     const t = team?.post
     if (!t) return { title: 'Post not found', robots: { index: false, follow: true } }
     return buildMetadata({
@@ -81,15 +84,17 @@ function safeDate(iso?: string | null): string {
 
 export default async function LearnPostPage({ params }: { params: Params }) {
   const { slug } = await params
-  const post = await getPublishedPost(slug)
+  const post = await learnPostCached(slug)
   if (!post) {
-    const { decision, post: team } = await resolveLearnSlug(slug, false)
+    const resolved = await learnSlugCached(slug)
+    if (!resolved) notFound()
+    const { decision, post: team } = resolved
     if (decision.kind === 'redirect') permanentRedirect(decision.to)
     if (decision.kind !== 'team' || !team) notFound()
-    const [relatedT, site] = await Promise.all([relatedTeam(team).catch(() => []), getSiteOrigin()])
+    const [relatedT, site] = await Promise.all([teamRelatedCached(slug).catch(() => []), getSiteOrigin()])
     return <TeamArticle post={team} path={`/learn/${encodeURIComponent(slug)}`} related={relatedT} site={site} />
   }
-  const related = await relatedPosts(post).catch(() => [])
+  const related = await learnRelatedCached(post.slug).catch(() => [])
   const toc = extractToc(post.body).filter((t) => t.level === 2)
   const origin = await getSiteOrigin()
   const url = postUrl(origin, post.slug)

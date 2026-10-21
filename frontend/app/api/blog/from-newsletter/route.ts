@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { teamPublicPaths } from '@/lib/learn/team-queries'
 import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
 import { emailCampaigns } from '@/lib/db/email-campaigns'
+import { revalidateContent } from '@/lib/cache/revalidate'
 import {
   blogPosts,
   estimateReadMinutes,
@@ -83,6 +84,7 @@ export async function POST(req: NextRequest) {
     }
 
     await posts.insertOne(doc)
+    if (publish) await revalidateContent('news', doc.slug)
     return NextResponse.json({
       ok: true,
       post: doc,

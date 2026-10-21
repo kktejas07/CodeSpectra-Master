@@ -20,6 +20,7 @@ import { FORMATS, taskLanguages } from '@/lib/contests/formats'
 import { golfLength } from '@/lib/contests/scoring/code'
 import type { ContestPhase, ContestTask, PublicContestView } from '@/lib/contests/types'
 import { FormatIcon, PhaseBadge, fmtWhen, jsonApi } from './shared'
+import { directUpload, uploadLimits } from '@/lib/storage/direct-upload-client'
 
 interface Sub { id: string; task_id: string; status: string; score: number | null; feedback: string; detail: Record<string, unknown>; files: { id: string; name: string; role: string }[]; created_at: string }
 interface Me { entry: { id: string; name: string; kind: string } | null; submissions: Sub[]; certificate_url: string | null }
@@ -334,12 +335,28 @@ function FilesPane({ c, base, onSubmitted }: { c: PublicContestView; base: strin
   const [text, setText] = useState('')
   const [files, setFiles] = useState<Record<string, File | null>>({})
   const { busy, result, call } = useSubmit(base, onSubmitted)
+  const addToast = useToast()
+  const [uploading, setUploading] = useState(false)
+  // Object storage on: files go straight to the private bucket first, with larger caps.
+  const [large, setLarge] = useState<{ video: number; file: number } | null>(null)
+  useEffect(() => { void uploadLimits().then((l) => { if (l.direct) setLarge({ video: l.video_max_mb, file: l.file_max_mb }) }) }, [])
   const design = c.format === 'system_design_jam'
   const words = useMemo(() => text.trim().split(/\s+/).filter(Boolean).length, [text])
-  const submit = () => {
+  const submit = async () => {
     const fd = new FormData()
     fd.append('text', text)
-    for (const [role, f] of Object.entries(files)) if (f) fd.append(role, f)
+    setUploading(true)
+    try {
+      for (const [role, f] of Object.entries(files)) {
+        if (!f) continue
+        const r = large ? await directUpload<{ upload_id?: string }>({ url: `${base}/uploads`, file: f, start: { role, name: f.name }, finish: () => ({ role }) }) : { inline: true as const }
+        if (!r.inline && r.data.upload_id) fd.append(`upload_${role}`, r.data.upload_id)
+        else fd.append(role, f)
+      }
+    } catch (e) {
+      addToast({ type: 'error', title: (e as Error).message })
+      return
+    } finally { setUploading(false) }
     void call('files', '/submissions', { method: 'POST', body: fd }, 'Submitted for judging')
   }
   return (
@@ -353,10 +370,10 @@ function FilesPane({ c, base, onSubmitted }: { c: PublicContestView; base: strin
         <div key={slot.role} className="space-y-1">
           <Label htmlFor={`f-${slot.role}`}>{slot.label}{slot.required || (slot.role === 'video' && c.config.video_required !== false) ? '' : ' (optional)'}</Label>
           <Input id={`f-${slot.role}`} type="file" accept={slot.exts.map((e) => `.${e}`).join(',')} onChange={(e) => setFiles((f) => ({ ...f, [slot.role]: e.target.files?.[0] || null }))} />
-          <p className="text-xs text-muted-foreground">Up to {Math.round(slot.maxBytes / 1024 / 1024)} MB.</p>
+          <p className="text-xs text-muted-foreground">Up to <span className="tabular-nums">{large ? Math.max(Math.round(slot.maxBytes / 1048576), slot.role === 'video' ? large.video : large.file) : Math.round(slot.maxBytes / 1048576)}</span> MB.</p>
         </div>
       ))}
-      <Button disabled={!!busy || text.trim().length < 20} onClick={submit}>{busy ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Send className="h-4 w-4" />} Submit</Button>
+      <Button disabled={!!busy || uploading || text.trim().length < 20} onClick={() => void submit()}>{busy || uploading ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Send className="h-4 w-4" />} Submit</Button>
       <p className="text-xs text-muted-foreground">You can resubmit until the end; judges score your latest version.</p>
       {result?.submission ? <Feedback sub={result.submission as Sub} /> : null}
     </Panel>

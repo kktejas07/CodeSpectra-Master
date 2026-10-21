@@ -3,7 +3,7 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { PageHero } from '@/components/landing/page-hero'
 import { DeviceShowcase } from '@/components/visuals'
 import { EventsExplorer } from '@/components/events-feed/events-explorer'
-import { listPublishedFeed } from '@/lib/events-feed/query'
+import { eventsFeedCached } from '@/lib/cache/public-data'
 import { getAppOrigin } from '@/lib/app-origin'
 import { buildMetadata } from '@/lib/seo/metadata'
 import { publicRoute } from '@/lib/seo/public-routes'
@@ -14,11 +14,14 @@ export const metadata: Metadata = (() => {
   return { ...m, alternates: { ...m.alternates, types: { 'application/rss+xml': '/events/feed.xml' } } }
 })()
 
-// Rendered per request so the build never needs a DB connection.
+// Rendered per request, never at build (the build has no DB). Data comes from
+// the tag-purged data cache (lib/cache/public-data.ts), so the first request
+// after a deploy fills it and later ones don't hit Mongo.
 export const dynamic = 'force-dynamic'
+// A DB outage with nothing cached goes to the error boundary (not an empty list).
 
 export default async function PublicEventsPage() {
-  const events = await listPublishedFeed().catch(() => [])
+  const events = await eventsFeedCached()
   return (
     <PublicPageWrapper>
       <PageHero

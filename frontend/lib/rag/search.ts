@@ -5,6 +5,8 @@
  *     the text fetch — so nothing outside the caller's scope is ever read.
  *  2. Vector: the query is embedded with the corpus's model; only vectors of
  *     that same model are compared (never mixed dims).
+ *       - Postgres + pgvector when RAG_VECTOR_STORE=pgvector and its backfill
+ *         completed (lib/rag/vector-store; docs/devops/09-RAG-Vector-Store.md), else
  *       - MongoDB Atlas $vectorSearch when the index below exists and is
  *         queryable (detected once, re-checked every 10 minutes), else
  *       - in-process cosine over a prefiltered, capped candidate set.
@@ -39,6 +41,7 @@ import { cosine, dedupeBySource, highlightSnippet, reciprocalRankFusion } from '
 import { dominantEmbeddingModel } from './ingest'
 import { ragChunks } from './store'
 import type { RagChunkDoc } from './types'
+import { vectorReadStore, type VectorQuery, type VectorStore } from './vector-store'
 
 export const ATLAS_VECTOR_INDEX = process.env.RAG_ATLAS_VECTOR_INDEX || 'rag_chunks_vector'
 export const ATLAS_VECTOR_MODEL = OPENAI_EMBED_MODEL
@@ -149,25 +152,19 @@ export async function scanVectors(
   }
 }
 
-/** Vector hits, or null when vectors are unavailable (keyword-only). */
-async function vectorSearch(filter: AclFilter, query: string, caller: AgentCaller): Promise<Scored[] | null> {
-  const corpusModel = await dominantEmbeddingModel()
-  // RAG-011: no corpus vectors, or the corpus model can't embed the query → keyword only
-  // (never embed with another model: its vectors would match nothing).
-  if (!corpusModel) return null
-  const emb = await embedTexts([query], { onlyModels: [corpusModel], feature: 'rag_search', userId: caller.userId })
-  if (!emb) {
-    console.warn(`[rag] query embedding with ${corpusModel} unavailable — keyword-only search`)
-    return null
-  }
-  const qv = emb.vectors[0]
-  const scoped: AclFilter = andFilters(filter, { embedding_model: emb.model })
+/**
+ * The default (Mongo) vector store: Atlas $vectorSearch when available, else
+ * the batched in-process cosine scan. Its rows are the rag_chunks documents
+ * ingest already writes (embedding on the row), so the write methods are no-ops.
+ */
+export async function mongoVectorSearch(q: VectorQuery): Promise<Scored[]> {
+  const { filter: scoped, vector: qv, model } = q
   const col = await ragChunks()
 
-  if (emb.model === ATLAS_VECTOR_MODEL && (await atlasVectorAvailable())) {
+  if (model === ATLAS_VECTOR_MODEL && (await atlasVectorAvailable())) {
     try {
       const rows = await col.aggregate<{ id: string; score: number }>([
-        { $vectorSearch: { index: ATLAS_VECTOR_INDEX, path: 'embedding', queryVector: qv, numCandidates: PER_LIST * 8, limit: PER_LIST, filter: scoped } },
+        { $vectorSearch: { index: ATLAS_VECTOR_INDEX, path: 'embedding', queryVector: qv, numCandidates: q.k * 8, limit: q.k, filter: scoped } },
         { $project: { _id: 0, id: 1, score: { $meta: 'vectorSearchScore' } } },
       ]).toArray()
       return rows.map((r) => ({ id: r.id, score: r.score }))
@@ -184,12 +181,46 @@ async function vectorSearch(filter: AclFilter, query: string, caller: AgentCalle
       .limit(n)
       .toArray()) as { id: string; embedding?: number[] }[],
     qv,
+    { k: q.k, minScore: q.minScore },
   )
   if (capped && !warnedCapped) {
     warnedCapped = true
-    console.warn(`[rag] in-process vector scan capped at ${scanned} chunks (RAG_INPROC_MAX_SCAN) — create the Atlas vector index for full recall`)
+    console.warn(`[rag] in-process vector scan capped at ${scanned} chunks (RAG_INPROC_MAX_SCAN) — create the Atlas vector index (or switch to pgvector) for full recall`)
   }
   return hits
+}
+
+export const mongoVectorStore: VectorStore = {
+  kind: 'mongo',
+  search: mongoVectorSearch,
+  replaceSource: async () => {},
+  deleteSource: async () => {},
+  upsert: async (rows) => rows.length,
+  count: async (model) => (await ragChunks()).countDocuments({ embedding_model: model }),
+}
+
+/** Vector hits, or null when vectors are unavailable (keyword-only). */
+async function vectorSearch(filter: AclFilter, query: string, caller: AgentCaller): Promise<Scored[] | null> {
+  const corpusModel = await dominantEmbeddingModel()
+  // RAG-011: no corpus vectors, or the corpus model can't embed the query → keyword only
+  // (never embed with another model: its vectors would match nothing).
+  if (!corpusModel) return null
+  const emb = await embedTexts([query], { onlyModels: [corpusModel], feature: 'rag_search', userId: caller.userId })
+  if (!emb) {
+    console.warn(`[rag] query embedding with ${corpusModel} unavailable — keyword-only search`)
+    return null
+  }
+  const q: VectorQuery = { filter: andFilters(filter, { embedding_model: emb.model }), vector: emb.vectors[0], model: emb.model, k: PER_LIST, minScore: MIN_COSINE }
+  // lib/rag/vector-store: pgvector once RAG_VECTOR_STORE=pgvector and its backfill completed.
+  const store = await vectorReadStore(emb.model)
+  if (store) {
+    try {
+      return await store.search(q)
+    } catch (e) {
+      console.warn('[rag] pgvector search failed, using the Mongo vector path:', (e as Error).message)
+    }
+  }
+  return mongoVectorStore.search(q)
 }
 
 function bodyOf(text: string): string {

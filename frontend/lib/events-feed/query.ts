@@ -11,11 +11,13 @@ import { getAppOrigin } from '@/lib/app-origin'
 import { feedId } from './pipeline'
 import { canonicalUrl } from './normalize'
 
-export async function listPublishedFeed(now = new Date(), limit = 1000): Promise<PublicFeedEvent[]> {
+/** `strict`: a failed feed read throws instead of returning [] (cached callers must not cache an outage as "no events"). */
+export async function listPublishedFeed(now = new Date(), limit = 1000, opts: { strict?: boolean } = {}): Promise<PublicFeedEvent[]> {
   let stored: FeedEventDoc[] = []
   try {
     stored = (await (await feedCol()).find({ status: 'published' }, { projection: { _id: 0 } }).sort({ starts_at: 1 }).limit(limit).toArray()) as FeedEventDoc[]
   } catch (e) {
+    if (opts.strict) throw e
     console.error('[events-feed] list failed:', (e as Error).message)
   }
   const nowIso = now.toISOString()

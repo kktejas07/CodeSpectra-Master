@@ -2,12 +2,13 @@
  * POST /api/contests/[id]/submissions — submit for the contest's format.
  *   JSON: { task_id?, language?, code?, flag?, prompt?, pr_url?, text? }
  *   multipart (datathon predictions, ideathon deck/video, design diagram):
- *     fields task_id?, text?; files named by slot role (predictions | deck | video | diagram).
+ *     fields task_id?, text?; files named by slot role (predictions | deck | video | diagram),
+ *     or upload_<role>=<upload id> for a file sent through POST ./uploads (object storage on).
  * Limits per format live in lib/contests/participation.
  */
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { submitToContest, type UploadedFile } from '@/lib/contests/participation'
+import { submitToContest, type DirectFile, type UploadedFile } from '@/lib/contests/participation'
 import { FORMATS } from '@/lib/contests/formats'
 import { guarded, loadVisible, notFound, respond, unauthorized, withUser } from '@/lib/contests/http'
 
@@ -38,8 +39,12 @@ export async function POST(req: Request, ctx: Ctx) {
       let form: FormData
       try { form = await req.formData() } catch { return NextResponse.json({ error: 'Upload could not be read. Files must be under 9 MB.' }, { status: 400 }) }
       const files: UploadedFile[] = []
+      const direct: DirectFile[] = []
       for (const slot of FORMATS[c.format].files || []) {
         const f = form.get(slot.role)
+        // Large files arrive first through POST ./uploads; the form then only names the upload.
+        const up = form.get(`upload_${slot.role}`)
+        if (typeof up === 'string' && /^up_[0-9a-f]{24}$/.test(up) && !(f instanceof File && f.size > 0)) direct.push({ role: slot.role, upload_id: up })
         if (f instanceof File && f.size > 0) {
           if (f.size > slot.maxBytes) return NextResponse.json({ error: `${slot.label}: files can be up to ${Math.round(slot.maxBytes / 1024 / 1024)} MB.` }, { status: 413 })
           files.push({ role: slot.role, name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })
@@ -47,7 +52,7 @@ export async function POST(req: Request, ctx: Ctx) {
       }
       const fields = jsonSchema.safeParse({ task_id: form.get('task_id') ?? undefined, text: form.get('text') ?? undefined })
       if (!fields.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
-      return respond(await submitToContest(user, c, fields.data, files))
+      return respond(await submitToContest(user, c, fields.data, files, direct))
     }
     const parsed = jsonSchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
