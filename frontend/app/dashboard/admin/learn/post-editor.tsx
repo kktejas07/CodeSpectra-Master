@@ -24,6 +24,7 @@ import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { LEARN_CATEGORIES, LEARN_LEVELS, type LearnPostDoc } from '@/lib/learn/types'
 import { REGENERATABLE_SECTIONS, SECTION_HEADINGS, type SectionKey } from '@/lib/learn/schema'
 import type { LearnAction } from '@/lib/learn/state'
+import { TranslationsPanel } from './translations-panel'
 
 const ACTION_LABEL: Record<LearnAction, string> = {
   approve: 'Approve',
@@ -39,7 +40,7 @@ export function scoreVariant(score: number): 'success' | 'warning' | 'danger' {
   return score >= 80 ? 'success' : score >= 60 ? 'warning' : 'danger'
 }
 
-export function PostEditor({ postId, onClose, onChanged }: { postId: string | null; onClose: () => void; onChanged: () => void }) {
+export function PostEditor({ postId, onClose, onChanged, onOpenPost }: { postId: string | null; onClose: () => void; onChanged: () => void; onOpenPost?: (id: string) => void }) {
   const addToast = useToast()
   const [post, setPost] = useState<LearnPostDoc | null>(null)
   const [actions, setActions] = useState<LearnAction[]>([])
@@ -156,6 +157,8 @@ export function PostEditor({ postId, onClose, onChanged }: { postId: string | nu
               )}
               {post.publish_at && <span className="text-muted-foreground">Publishes {new Date(post.publish_at).toLocaleString()}</span>}
             </div>
+
+            <TranslationsPanel key={post.id} post={post} onOpen={(id) => onOpenPost?.(id)} onChanged={onChanged} />
 
             {post.quality.flags.length > 0 && (
               <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm">

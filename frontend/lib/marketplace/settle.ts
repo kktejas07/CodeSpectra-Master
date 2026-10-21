@@ -70,6 +70,11 @@ async function sellerTenant(sellerId: string): Promise<string | null> {
 /** Create the meeting for a booked session via lib/ats/interviews/providers (Zoom / Meet / Teams on the seller's org); manual otherwise. */
 async function createMeeting(order: OrderDoc, line: OrderLineDoc, bookingId: string, start: string): Promise<{ join_url: string | null; meeting_id: string | null }> {
   const provider = line.service?.provider
+  // Built-in video (LiveKit): a session room page for buyer + seller (lib/mentors/sessions.ts mints the tokens).
+  if (line.service?.mode === 'virtual' && provider === 'livekit') {
+    const { getAppOrigin } = await import('@/lib/app-origin')
+    return { join_url: `${getAppOrigin()}/dashboard/sessions/${encodeURIComponent(bookingId)}`, meeting_id: `mkt-session-${bookingId}` }
+  }
   if (line.service?.mode !== 'virtual' || !provider || !['zoom', 'google_meet', 'teams'].includes(provider)) return { join_url: null, meeting_id: null }
   try {
     const tenantId = await sellerTenant(line.seller_id)
@@ -191,6 +196,9 @@ export async function runPostPayment(orderId: string): Promise<void> {
     const digital = ok.filter((l) => l.kind === 'digital')
     if (digital.length) await sendDownloadReady(order, digital)
     for (const l of ok.filter((x) => x.kind === 'service' && x.fulfilment.booking)) await sendBookingConfirmation(order, l, order.buyer_tz)
+    // Mentor sessions: calendar invite to the mentor (lib/mentors/notify.ts). Never blocks settlement.
+    const booked = ok.filter((x) => x.kind === 'service' && x.fulfilment.booking)
+    if (booked.length) void import('@/lib/mentors/notify').then((m) => m.onSessionsBooked(order, booked)).catch(() => {})
     await notify({ user_id: order.buyer_id, type: 'mkt.order_paid', title: `Order ${order.number} confirmed`, message: `${ok.length} item${ok.length === 1 ? '' : 's'} — see your order for downloads, bookings and delivery.`, link: `/dashboard/orders/${order.id}`, icon: 'shopping-bag' }).catch(() => null)
   }
 

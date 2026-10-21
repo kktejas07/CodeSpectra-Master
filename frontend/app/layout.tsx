@@ -3,6 +3,8 @@ import localFont from 'next/font/local'
 import { Providers } from '@/components/providers'
 import { LoadingWrapper } from '@/components/loading-wrapper'
 import { AnalyticsMount } from '@/components/analytics/analytics-mount'
+import { PwaMount } from '@/components/pwa/pwa-mount'
+import { iosStartupImages, PWA_COLORS } from '@/lib/pwa/config'
 import './globals.css'
 import 'goey-toast/styles.css'
 import 'driver.js/dist/driver.css'
@@ -93,10 +95,21 @@ export async function generateMetadata(): Promise<Metadata> {
       apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
     },
     manifest: '/manifest.webmanifest',
+    // Installed app on iOS (PWA, docs/pwa.md): standalone, light status bar, splash screens.
+    appleWebApp: { capable: true, title: SITE_NAME, statusBarStyle: 'default', startupImage: iosStartupImages() },
   }
 }
 
-export const viewport = { width: 'device-width', initialScale: 1 }
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // Safe-area insets for the installed app (components/pwa/pwa.css).
+  viewportFit: 'cover' as const,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: PWA_COLORS.lightBackground },
+    { media: '(prefers-color-scheme: dark)', color: PWA_COLORS.darkBackground },
+  ],
+}
 
 export default async function RootLayout({
   children,
@@ -107,6 +120,11 @@ export default async function RootLayout({
   // first request so admin SEO settings (verification, org JSON-LD) and analytics ids appear.
   await expireSoonIfBuilding()
   return (
+    // lang stays "en" here: this layout is cached for public pages, so it can't
+    // read the locale cookie. Signed-in / auth / test segments (per request)
+    // wrap their tree in <div lang=…> on the server and sync <html lang> on the
+    // client (components/i18n/locale-root.tsx). Hindi / Telugu Learn posts set
+    // lang on their own container from the post's language.
     <html
       lang="en"
       suppressHydrationWarning
@@ -122,6 +140,7 @@ export default async function RootLayout({
         <Providers>
           <LoadingWrapper>{children}</LoadingWrapper>
           <AnalyticsMount />
+          <PwaMount />
         </Providers>
       </body>
     </html>

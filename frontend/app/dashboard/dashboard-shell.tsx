@@ -28,6 +28,8 @@ import {
 import { cn } from '@/lib/utils'
 import {
   Home,
+  CalendarCheck,
+  GraduationCap,
   Trophy,
   Code2 as CodeIcon,
   BookOpen,
@@ -98,6 +100,7 @@ import {
   Megaphone,
   BrainCircuit,
   Brain,
+  Mic,
   ShieldAlert,
   ShieldCheck,
   Zap,
@@ -120,11 +123,13 @@ import {
   BookOpenText,
   Store,
   ShoppingBag,
+  UserSearch,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PushNotifications } from '@/components/push-notifications'
+import { DashboardPwa } from '@/components/pwa/dashboard-pwa'
 import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
@@ -143,6 +148,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useT } from '@/lib/i18n/client'
+import { LanguageMenuItems } from '@/components/i18n/language-switcher'
 
 const SIDEBAR_COLLAPSED_KEY = 'codespectra-sidebar-collapsed'
 
@@ -185,6 +192,10 @@ export default function DashboardLayout({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
 
   const { user: fbUser, signOut } = useAuth()
+  // Interface language: labels stay English internally (section state, test ids);
+  // only what is rendered goes through `navText` (lib/i18n/messages/*/nav.json).
+  const { t, td } = useT()
+  const navText = (label: string) => td(`nav.label:${label}`, label)
 
   useEffect(() => {
     if (!fbUser) { setUserRole(null); return }
@@ -405,6 +416,7 @@ export default function DashboardLayout({
       '/dashboard/challenges': Target,
       '/dashboard/tracks': GitFork,
       '/dashboard/100-days': Flame,
+      '/dashboard/study-plan': CalendarCheck,
 
       // Events
       '/dashboard/events': CalendarDays,
@@ -429,15 +441,19 @@ export default function DashboardLayout({
 
       // Career
       '/dashboard/jobs': Briefcase,
+      '/dashboard/campus': GraduationCap,
       '/dashboard/interviews': UserCheck,
       '/dashboard/interviews/ai-mock': Brain,
+      '/dashboard/interview-sim': Mic,
       '/dashboard/interviews/feedback': MessageSquare,
       '/dashboard/mock-tests': Sparkles,
       '/dashboard/company-tests': ListChecks,
+      '/dashboard/mentor': GraduationCap,
       '/dashboard/resumes': FileSpreadsheet,
       '/dashboard/assessments': ClipboardCheck,
       '/dashboard/assessments/ai-fluency': BrainCircuit,
       '/dashboard/certifications': Award,
+      '/dashboard/passport': BadgeCheck,
 
       // Tools
       '/dashboard/scanner': ScanSearch,
@@ -446,6 +462,7 @@ export default function DashboardLayout({
 
       // Stats
       '/dashboard/leaderboard': Crown,
+      '/dashboard/leagues': Shield,
       '/dashboard/achievements': Medal,
       '/dashboard/skill-analytics': LineChart,
 
@@ -486,6 +503,7 @@ export default function DashboardLayout({
       '/dashboard/admin/signals': Radio,
       '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,
+      '/dashboard/admin/leagues': Shield,
       '/dashboard/admin/contests': Swords,
       '/dashboard/admin/rag': BrainCircuit,
       '/dashboard/admin/agent': BotMessageSquare,
@@ -508,6 +526,7 @@ export default function DashboardLayout({
       '/dashboard/admin/automations': Zap,
       [p.questionGenerator]: Bot,
       '/dashboard/admin/question-bot': Bot,
+      '/dashboard/admin/interview-sim': Mic,
       '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
       '/dashboard/admin/team/activity': Activity,
@@ -520,7 +539,10 @@ export default function DashboardLayout({
       '/dashboard/admin/help': HelpCircle,
       '/dashboard/admin/sso': KeyRound,
       '/dashboard/admin/kyc': BadgeCheck,
+      '/dashboard/admin/talent': UserSearch,
       '/dashboard/admin/marketplace': Store,
+      '/dashboard/admin/mentors': GraduationCap,
+      '/dashboard/admin/study-plans': CalendarCheck,
       '/dashboard/recruiter-analytics': BarChart3,
       '/companies': Building2,
     }
@@ -629,6 +651,7 @@ export default function DashboardLayout({
       addH(H, 'Overview', LayoutDashboardIcon)
       addH(`${H}/jobs`, 'Jobs', Briefcase)
       addH(`${H}/candidates`, 'Candidates', FileSpreadsheet)
+      addH(`${H}/talent`, 'Talent search', UserSearch)
       addH(`${H}/approvals`, 'Approvals', ClipboardCheck)
       addH(`${H}/interviews`, 'Interviews', UserCheck)
       if (ats.has('admin') || ats.has('recruiter')) {
@@ -703,6 +726,7 @@ export default function DashboardLayout({
     }
     return 'Guide'
   })()
+  const guideTitle = navText(guideFallbackTitle)
 
   const isScannerShell = pathname.startsWith('/dashboard/scanner')
   // ponytail: exact match only — sub-pages like /settings/kyc are standalone
@@ -816,7 +840,7 @@ export default function DashboardLayout({
       <Link
         key={href}
         href={href}
-        title={label}
+        title={navText(label)}
         prefetch={false}
         onClick={() => setSidebarOpen(false)}
         data-testid={`sidebar-nav-${slug}`}
@@ -837,7 +861,7 @@ export default function DashboardLayout({
               sidebarCollapsed && 'lg:sr-only'
             )}
           >
-            {label}
+            {navText(label)}
           </span>
           {badgeCount(leaf.route) > 0 && (
             <span
@@ -896,7 +920,7 @@ export default function DashboardLayout({
                 sidebarCollapsed &&
                   'lg:flex-none lg:justify-center lg:px-0 lg:py-0'
               )}
-              title="Home"
+              title={t('nav.home')}
             >
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] border border-primary/40 bg-primary/12">
                 <CodeIcon className="h-4 w-4 text-primary" />
@@ -912,7 +936,7 @@ export default function DashboardLayout({
             </Link>
             <button
               type="button"
-              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={sidebarCollapsed ? t('nav.expandSidebar') : t('nav.collapseSidebar')}
               className={cn(
                 'ml-auto hidden shrink-0 rounded-md border border-transparent p-2 text-muted-foreground hover:border-border/60 hover:bg-muted/80 hover:text-foreground lg:inline-flex lg:ml-0',
                 sidebarCollapsed && 'lg:mx-auto'
@@ -969,7 +993,7 @@ export default function DashboardLayout({
               <div className="space-y-0.5 px-2 py-2">
                 {!navReady ? (
                   <div className="px-3 py-6 text-center text-xs text-muted-foreground">
-                    Loading navigation…
+                    {t('nav.loadingNavigation')}
                   </div>
                 ) : !sidebarReady ? (
                   <div className="space-y-1.5 px-1">
@@ -993,7 +1017,7 @@ export default function DashboardLayout({
                               sidebarCollapsed && 'lg:sr-only'
                             )}
                           >
-                            <span className="min-w-0 truncate">{label}</span>
+                            <span className="min-w-0 truncate">{navText(label)}</span>
                             <ChevronDown
                               className={cn(
                                 'h-3.5 w-3.5 shrink-0 transition-transform duration-200 opacity-80',
@@ -1046,19 +1070,19 @@ export default function DashboardLayout({
                     )}
                   >
                     <p className="truncate text-sm font-medium leading-tight">
-                      {userProfile?.full_name || 'User'}
+                      {userProfile?.full_name || t('nav.userFallback')}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {userProfile?.role
                         ? getRoleLabel(normalizeUserRole(userProfile.role))
-                        : 'User'}
+                        : t('nav.userFallback')}
                     </p>
                   </div>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" side="top" className="mb-2 w-56">
                 <div className="space-y-1 border-b border-border p-3">
-                  <p className="text-sm font-semibold">{userProfile?.full_name || 'User'}</p>
+                  <p className="text-sm font-semibold">{userProfile?.full_name || t('nav.userFallback')}</p>
                   <p className="truncate text-xs text-muted-foreground">
                     {userProfile?.email || ''}
                   </p>
@@ -1066,25 +1090,25 @@ export default function DashboardLayout({
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/profile" className="flex cursor-pointer items-center gap-2">
                     <User className="h-4 w-4 opacity-70" />
-                    Profile
+                    {t('nav.profile')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/settings" className="flex cursor-pointer items-center gap-2">
                     <Settings className="h-4 w-4 opacity-70" />
-                    Settings
+                    {t('nav.settings')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/billing" className="flex cursor-pointer items-center gap-2">
                     <CreditCard className="h-4 w-4 opacity-70" />
-                    Billing
+                    {t('nav.billing')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/dashboard/notifications" className="flex cursor-pointer items-center gap-2">
                     <Bell className="h-4 w-4 opacity-70" />
-                    Notifications
+                    {t('nav.notifications')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -1093,20 +1117,22 @@ export default function DashboardLayout({
                     className="flex cursor-pointer items-center gap-2"
                   >
                     <SlidersHorizontal className="h-4 w-4 opacity-70" />
-                    Notification preferences
+                    {t('nav.notificationPreferences')}
                   </Link>
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <LanguageMenuItems />
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href="/docs" className="flex cursor-pointer items-center gap-2">
                     <FileText className="h-4 w-4 opacity-70" />
-                    Documentation
+                    {t('nav.documentation')}
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/support" className="flex cursor-pointer items-center gap-2">
                     <LifeBuoy className="h-4 w-4 opacity-70" />
-                    Support
+                    {t('nav.support')}
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -1131,13 +1157,13 @@ export default function DashboardLayout({
                     : 'p-2',
                   pathname.startsWith('/dashboard/notifications') && 'bg-muted text-foreground'
                 )}
-                title="Notifications"
-                aria-label="Notifications"
+                title={t('nav.notifications')}
+                aria-label={t('nav.notifications')}
               >
                 <Bell className="h-4 w-4 shrink-0" />
                 {unreadNotifications > 0 ? (
                   <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground leading-none"
-                    aria-label={`${unreadNotifications} unread notifications`}>
+                    aria-label={t('nav.unreadNotifications', { count: unreadNotifications })}>
                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>
                 ) : null}
@@ -1150,8 +1176,8 @@ export default function DashboardLayout({
                   'flex shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive max-md:min-h-10 max-md:min-w-10',
                   sidebarCollapsed ? 'flex h-9 w-9 items-center justify-center' : 'p-2'
                 )}
-                title="Sign out"
-                aria-label="Sign out"
+                title={t('nav.signOut')}
+                aria-label={t('nav.signOut')}
               >
                 <LogOut className="h-4 w-4 shrink-0" />
               </button>
@@ -1176,13 +1202,13 @@ export default function DashboardLayout({
           <div className="flex flex-col gap-2 border-b border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between lg:px-6">
             <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
               <AlertCircle className="h-5 w-5 shrink-0" />
-              <p><strong>Action needed:</strong> Enroll your face once so you can take proctored assessments.</p>
+              <p><strong>{t('nav.faceBannerTitle')}</strong> {t('nav.faceBannerBody')}</p>
             </div>
             <Link 
               href="/auth/enroll-face?redirect=/dashboard" 
               className="whitespace-nowrap rounded-lg bg-amber-500 px-3.5 py-2 text-center text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-400"
             >
-              Enroll now
+              {t('nav.faceBannerCta')}
             </Link>
           </div>
         )}
@@ -1196,7 +1222,7 @@ export default function DashboardLayout({
               type="button"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 hover:bg-muted lg:hidden"
-              aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+              aria-label={sidebarOpen ? t('nav.closeMenu') : t('nav.openMenu')}
             >
               {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -1205,8 +1231,8 @@ export default function DashboardLayout({
               type="button"
               onClick={handleGuideClick}
               className="flex items-center justify-center rounded-lg p-2 hover:bg-muted max-md:min-h-10 max-md:min-w-10"
-              aria-label="Guide"
-              title="Show guide"
+              aria-label={t('nav.guide')}
+              title={t('nav.showGuide')}
             >
               <HelpCircle className="h-5 w-5" />
             </button>
@@ -1217,7 +1243,7 @@ export default function DashboardLayout({
           open={guideOpen}
           onClose={() => setGuideOpen(false)}
           tourId={guideTourId}
-          fallbackTitle={guideFallbackTitle}
+          fallbackTitle={guideTitle}
         />
 
         {/* Page Content — full width with proper padding */}
@@ -1234,6 +1260,8 @@ export default function DashboardLayout({
 
       {/* Real-time FCM push → XP toasts / notification popups */}
       <PushNotifications userId={userProfile?.id} />
+      {/* Installed app: bottom nav (standalone, small screens) + install card */}
+      <DashboardPwa userId={userProfile?.id} />
       <Celebration />
 
       {/* Global Modals */}

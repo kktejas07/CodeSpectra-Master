@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { PageHeader } from '@/components/app/page-kit'
+import { PushDeviceCard } from '@/components/pwa/push-device-card'
 import { Bell, Mail, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Slack } from '@/components/ui/brand-icons'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -297,6 +298,8 @@ export default function NotificationPreferencesPage() {
               <p className="px-6 py-4 text-sm text-muted-foreground">Couldn&apos;t load digest settings. Refresh the page to try again.</p>
             )}
           </Card>
+
+          <PushDeviceCard />
 
           <Card className="overflow-hidden rounded-3xl border-border/70">
             <div className="border-b border-border/60 px-6 py-4">

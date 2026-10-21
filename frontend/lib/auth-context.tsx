@@ -385,6 +385,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signOutFn = async () => {
+    // PWA: drop this device's app push + offline practice data while the session still exists.
+    await import('@/lib/pwa/sign-out').then((m) => m.pwaSignOutCleanup()).catch(() => undefined)
     try { await firebaseSignOut(getAuth()) } catch {}
     await csrfFetch('/api/auth/session', { method: 'DELETE' })
     setUser(null)

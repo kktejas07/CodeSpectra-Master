@@ -13,12 +13,12 @@ export interface PushPayload {
   data?: Record<string, string>
 }
 
-export async function getPushTokens(userId: string): Promise<string[]> {
+export async function getPushTokens(userId: string, opts: { nativeOnly?: boolean } = {}): Promise<string[]> {
   try {
     const db = await getMongoDb()
     const docs = await db
       .collection('push_tokens')
-      .find({ user_id: userId })
+      .find(opts.nativeOnly ? { user_id: userId, platform: { $in: ['ios', 'android'] } } : { user_id: userId })
       .project({ token: 1, _id: 0 })
       .toArray()
     return docs.map((d) => String(d.token)).filter((t) => t.length >= 20)
@@ -42,8 +42,27 @@ export async function removePushToken(token: string): Promise<void> {
  * if at least one device was targeted, false when unavailable/error.
  */
 export async function sendPushToUser(userId: string, payload: PushPayload): Promise<boolean> {
+  // PWA web push (VAPID) channel + preferences (push channel / per-type switch).
+  // Quiet hours were applied before we got here (lib/notifications-delivery).
+  // When the user has app (VAPID) subscriptions, FCM goes to native app tokens
+  // only, so one browser never shows the same notification twice.
+  let webSent = 0
+  let hasAppPush = false
   try {
-    const tokens = await getPushTokens(userId)
+    const wp = await import('@/lib/pwa/web-push')
+    if (!(await wp.userAllowsPush(userId, payload.data?.type))) return false
+    hasAppPush = await wp.hasWebPushSubscriptions(userId)
+    if (hasAppPush) webSent = await wp.sendWebPushToUser(userId, payload)
+  } catch (e) {
+    console.error('[push] web push failed:', (e as Error)?.message)
+  }
+  const fcmSent = await sendFcmToUser(userId, payload, hasAppPush)
+  return webSent > 0 || fcmSent
+}
+
+async function sendFcmToUser(userId: string, payload: PushPayload, nativeOnly: boolean): Promise<boolean> {
+  try {
+    const tokens = await getPushTokens(userId, { nativeOnly })
     if (tokens.length === 0) return false
 
     const { adminAuth } = await import('@/lib/firebase-admin')

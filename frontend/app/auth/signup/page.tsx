@@ -12,6 +12,8 @@ import { useAuth } from "@/lib/auth-context";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { DeviceShowcase } from "@/components/visuals";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n/client";
+import type { MessageKey } from "@/lib/i18n/catalog";
 import {
   AuthShell,
   AuthHeading,
@@ -28,15 +30,37 @@ import {
 
 type UserType = "School Student" | "College Student" | "Fresher" | "Professional" | "";
 
-const USER_TYPES: { value: Exclude<UserType, "">; label: string; desc: string }[] = [
-  { value: "School Student", label: "School student", desc: "Learning to code" },
-  { value: "College Student", label: "College student", desc: "Preparing for placements" },
-  { value: "Fresher", label: "Recent graduate", desc: "Looking for a first job" },
-  { value: "Professional", label: "Working professional", desc: "Upskilling or changing roles" },
+// Stored values stay English (profile data); only the labels are translated.
+const USER_TYPES: { value: Exclude<UserType, "">; label: MessageKey; desc: MessageKey }[] = [
+  { value: "School Student", label: "auth.typeSchool", desc: "auth.typeSchoolDesc" },
+  { value: "College Student", label: "auth.typeCollege", desc: "auth.typeCollegeDesc" },
+  { value: "Fresher", label: "auth.typeFresher", desc: "auth.typeFresherDesc" },
+  { value: "Professional", label: "auth.typeProfessional", desc: "auth.typeProfessionalDesc" },
 ];
 
-const DOMAINS = ["Engineering", "Management", "Arts & Science", "Medicine", "Law", "Other"];
-const ORG_TYPES = ["Engineering College", "University", "Business School", "School", "Company", "Others"];
+const DOMAINS: { value: string; label: MessageKey }[] = [
+  { value: "Engineering", label: "auth.domainEngineering" },
+  { value: "Management", label: "auth.domainManagement" },
+  { value: "Arts & Science", label: "auth.domainArtsScience" },
+  { value: "Medicine", label: "auth.domainMedicine" },
+  { value: "Law", label: "auth.domainLaw" },
+  { value: "Other", label: "auth.domainOther" },
+];
+const ORG_TYPES: { value: string; label: MessageKey }[] = [
+  { value: "Engineering College", label: "auth.orgEngineeringCollege" },
+  { value: "University", label: "auth.orgUniversity" },
+  { value: "Business School", label: "auth.orgBusinessSchool" },
+  { value: "School", label: "auth.orgSchool" },
+  { value: "Company", label: "auth.orgCompany" },
+  { value: "Others", label: "auth.orgOthers" },
+];
+const EXPERIENCE: { value: string; label: MessageKey }[] = [
+  { value: "0-1 years", label: "auth.exp01" },
+  { value: "1-3 years", label: "auth.exp13" },
+  { value: "3-5 years", label: "auth.exp35" },
+  { value: "5-10 years", label: "auth.exp510" },
+  { value: "10+ years", label: "auth.exp10plus" },
+];
 const MIN_PASSWORD = 8;
 
 function SignupInner() {
@@ -51,6 +75,7 @@ function SignupInner() {
       (isValidPlanId(pickedPlan) ? inAppPricingHref(pickedPlan, parseInterval(searchParams.get("interval"))) : null),
   );
   const refCode = searchParams.get("ref");
+  const { t, rich } = useT();
 
   const [step, setStep] = useState<1 | 2>(1);
 
@@ -99,9 +124,9 @@ function SignupInner() {
   function continueToProfile(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!name.trim()) return setError("Enter your full name.");
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError("Enter a valid email address, like you@example.com.");
-    if (password.length < MIN_PASSWORD) return setError(`Your password needs at least ${MIN_PASSWORD} characters.`);
+    if (!name.trim()) return setError(t("auth.enterFullName"));
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError(t("auth.enterValidEmail"));
+    if (password.length < MIN_PASSWORD) return setError(t("auth.passwordTooShort", { min: MIN_PASSWORD }));
     setStep(2);
     window.scrollTo({ top: 0 });
   }
@@ -156,7 +181,7 @@ function SignupInner() {
       }
       setTurnstileToken(null);
       setTurnstileResetKey((k) => k + 1);
-      const msg = err instanceof Error ? err.message : "Your account couldn’t be created. Try again.";
+      const msg = err instanceof Error ? err.message : t("auth.createFailed");
       setError(msg);
       // Account-level problems (e.g. email already registered) are fixed on step 1.
       if (/email|password/i.test(msg)) setStep(1);
@@ -175,7 +200,7 @@ function SignupInner() {
       router.refresh();
     } catch (err: unknown) {
       const label = provider === "google" ? "Google" : "GitHub";
-      setError(err instanceof Error ? err.message : `${label} sign-up didn’t complete. Try again, or use your email.`);
+      setError(err instanceof Error ? err.message : t("auth.oauthSignupIncomplete", { provider: label }));
     } finally {
       setLoading(false);
     }
@@ -194,35 +219,34 @@ function SignupInner() {
       aside={
         <div className="space-y-8">
           <DeviceShowcase variant="results" compact className="mx-0 max-w-[520px]" />
-          <p className="cs-display max-w-[18ch] text-4xl">Practise, get assessed, get shortlisted.</p>
+          <p className="cs-display max-w-[18ch] text-4xl">{t("auth.signupAsideHeadline")}</p>
           <div className="space-y-6">
-            <AsideNote title="Invited to an assessment?">
-              Create your account with the email address the invite was sent to, so your test is waiting when you
-              sign in.
+            <AsideNote title={t("auth.asideInvitedTitle")}>
+              {t("auth.asideInvitedBody")}
             </AsideNote>
-            <AsideNote title="Hiring, or running campus placements?">
-              <>
-                Accounts here are for individuals.{" "}
-                <Link href="/contact" className="font-semibold text-cs-accent-text underline underline-offset-4">
-                  Book a pilot
-                </Link>{" "}
-                and we’ll set up a workspace for your team.
-              </>
+            <AsideNote title={t("auth.asideHiringTitle")}>
+              {rich("auth.asideHiringBody", {
+                pilot: (
+                  <Link href="/contact" className="font-semibold text-cs-accent-text underline underline-offset-4">
+                    {t("auth.bookPilot")}
+                  </Link>
+                ),
+              })}
             </AsideNote>
           </div>
         </div>
       }
     >
       <p className="mb-3 text-sm font-medium text-cs-ink-soft" aria-live="polite">
-        Step {step} of 2
+        {t("auth.stepOf", { step, total: 2 })}
       </p>
 
       {step === 1 ? (
         <>
-          <AuthHeading title="Create your account">
-            Already have one?{" "}
+          <AuthHeading title={t("auth.createYourAccount")}>
+            {t("auth.alreadyHaveOne")}{" "}
             <Link href={loginHref} className="font-semibold text-cs-accent-text underline decoration-2 underline-offset-4">
-              Sign in
+              {t("auth.signIn")}
             </Link>
           </AuthHeading>
 
@@ -231,7 +255,7 @@ function SignupInner() {
           <form onSubmit={continueToProfile} className="space-y-5" noValidate>
             <Field
               id="name"
-              label="Full name"
+              label={t("auth.fullName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoComplete="name"
@@ -240,7 +264,7 @@ function SignupInner() {
             />
             <Field
               id="email"
-              label="Email"
+              label={t("auth.email")}
               type="email"
               placeholder="you@example.com"
               value={email}
@@ -250,18 +274,18 @@ function SignupInner() {
             />
             <PasswordField
               id="password"
-              label="Password"
+              label={t("auth.password")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
               minLength={MIN_PASSWORD}
               required
-              hint={`At least ${MIN_PASSWORD} characters.`}
+              hint={t("auth.passwordHint", { min: MIN_PASSWORD })}
             />
-            <PrimaryButton type="submit">Continue</PrimaryButton>
+            <PrimaryButton type="submit">{t("common.continue")}</PrimaryButton>
           </form>
 
-          <Divider>or sign up with</Divider>
+          <Divider>{t("auth.orSignUpWith")}</Divider>
 
           <div className="grid grid-cols-2 gap-3">
             <SecondaryButton onClick={() => handleOAuth("google")} disabled={loading}>
@@ -275,15 +299,16 @@ function SignupInner() {
           </div>
 
           <p className="mt-10 text-sm text-cs-ink-soft">
-            By creating an account you agree to the{" "}
-            <Link href="/terms" className="underline hover:text-cs-ink">terms</Link> and{" "}
-            <Link href="/privacy" className="underline hover:text-cs-ink">privacy policy</Link>.
+            {rich("auth.agreeSignUp", {
+              terms: <Link href="/terms" className="underline hover:text-cs-ink">{t("auth.terms")}</Link>,
+              privacy: <Link href="/privacy" className="underline hover:text-cs-ink">{t("auth.privacyPolicy")}</Link>,
+            })}
           </p>
         </>
       ) : (
         <>
-          <AuthHeading title="About you">
-            Optional. It helps us suggest the right practice and assessments.
+          <AuthHeading title={t("auth.aboutYou")}>
+            {t("auth.aboutYouHint")}
           </AuthHeading>
 
           {error && <FormError>{error}</FormError>}
@@ -296,13 +321,13 @@ function SignupInner() {
             className="space-y-7"
           >
             <fieldset>
-              <legend className="mb-3 text-[15px] font-medium">Which describes you best?</legend>
+              <legend className="mb-3 text-[15px] font-medium">{t("auth.whichDescribesYou")}</legend>
               <div className="grid grid-cols-2 gap-2.5">
-                {USER_TYPES.map((t) => {
-                  const selected = userType === t.value;
+                {USER_TYPES.map((ut) => {
+                  const selected = userType === ut.value;
                   return (
                     <label
-                      key={t.value}
+                      key={ut.value}
                       className={cn(
                         "relative cursor-pointer rounded-md border bg-cs-sheet px-3.5 py-3 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-cs-accent-text",
                         selected ? "border-cs-accent ring-1 ring-cs-accent" : "border-cs-grid hover:border-cs-ink-soft",
@@ -311,13 +336,13 @@ function SignupInner() {
                       <input
                         type="radio"
                         name="userType"
-                        value={t.value}
+                        value={ut.value}
                         checked={selected}
-                        onChange={() => setUserType(t.value)}
+                        onChange={() => setUserType(ut.value)}
                         className="sr-only"
                       />
-                      <span className="block font-semibold">{t.label}</span>
-                      <span className="mt-0.5 block text-sm text-cs-ink-soft">{t.desc}</span>
+                      <span className="block font-semibold">{t(ut.label)}</span>
+                      <span className="mt-0.5 block text-sm text-cs-ink-soft">{t(ut.desc)}</span>
                     </label>
                   );
                 })}
@@ -326,11 +351,11 @@ function SignupInner() {
 
             {userType === "School Student" && (
               <div>
-                <label htmlFor="grade" className="mb-1.5 block text-[15px] font-medium">Class</label>
+                <label htmlFor="grade" className="mb-1.5 block text-[15px] font-medium">{t("auth.classLabel")}</label>
                 <Select id="grade" value={classGrade} onChange={(e) => setClassGrade(e.target.value)}>
-                  <option value="">Select your class</option>
+                  <option value="">{t("auth.selectClass")}</option>
                   {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((g) => (
-                    <option key={g} value={g}>Class {g}</option>
+                    <option key={g} value={g}>{t("auth.classN", { n: g })}</option>
                   ))}
                 </Select>
               </div>
@@ -338,9 +363,9 @@ function SignupInner() {
 
             {showDomain && (
               <fieldset>
-                <legend className="mb-3 text-[15px] font-medium">Field of study or work</legend>
+                <legend className="mb-3 text-[15px] font-medium">{t("auth.fieldOfStudy")}</legend>
                 <div className="flex flex-wrap gap-2">
-                  {DOMAINS.map((d) => (
+                  {DOMAINS.map(({ value: d, label }) => (
                     <button
                       type="button"
                       key={d}
@@ -351,13 +376,13 @@ function SignupInner() {
                         domain === d ? "border-cs-ink bg-cs-ink text-cs-paper" : "border-cs-grid bg-cs-sheet hover:border-cs-ink-soft",
                       )}
                     >
-                      {d}
+                      {t(label)}
                     </button>
                   ))}
                 </div>
                 {domain === "Other" && (
                   <div className="mt-3">
-                    <Field id="customDomain" label="Your field" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} />
+                    <Field id="customDomain" label={t("auth.yourField")} value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} />
                   </div>
                 )}
               </fieldset>
@@ -365,9 +390,9 @@ function SignupInner() {
 
             {(userType === "College Student" || userType === "Fresher") && (
               <div>
-                <label htmlFor="gradYear" className="mb-1.5 block text-[15px] font-medium">Graduation year</label>
+                <label htmlFor="gradYear" className="mb-1.5 block text-[15px] font-medium">{t("auth.graduationYear")}</label>
                 <Select id="gradYear" value={graduationYear} onChange={(e) => setGraduationYear(e.target.value)}>
-                  <option value="">Select a year</option>
+                  <option value="">{t("auth.selectYear")}</option>
                   {Array.from({ length: 10 }, (_, i) => thisYear - 3 + i).map((y) => (
                     <option key={y} value={y}>{y}</option>
                   ))}
@@ -377,13 +402,13 @@ function SignupInner() {
 
             {userType === "Professional" && (
               <div className="grid gap-5 sm:grid-cols-2">
-                <Field id="role" label="Current role" placeholder="e.g. Design engineer" value={currentJobRole} onChange={(e) => setCurrentJobRole(e.target.value)} autoComplete="organization-title" />
+                <Field id="role" label={t("auth.currentRole")} placeholder={t("auth.currentRolePlaceholder")} value={currentJobRole} onChange={(e) => setCurrentJobRole(e.target.value)} autoComplete="organization-title" />
                 <div>
-                  <label htmlFor="experience" className="mb-1.5 block text-[15px] font-medium">Experience</label>
+                  <label htmlFor="experience" className="mb-1.5 block text-[15px] font-medium">{t("auth.experience")}</label>
                   <Select id="experience" value={experience} onChange={(e) => setExperience(e.target.value)}>
-                    <option value="">Select</option>
-                    {["0-1 years", "1-3 years", "3-5 years", "5-10 years", "10+ years"].map((x) => (
-                      <option key={x} value={x}>{x}</option>
+                    <option value="">{t("common.select")}</option>
+                    {EXPERIENCE.map((x) => (
+                      <option key={x.value} value={x.value}>{t(x.label)}</option>
                     ))}
                   </Select>
                 </div>
@@ -394,17 +419,17 @@ function SignupInner() {
               <div className="grid gap-5 sm:grid-cols-[1.4fr_1fr]">
                 <Field
                   id="org"
-                  label={userType === "Professional" ? "Company" : "College or university"}
+                  label={userType === "Professional" ? t("auth.company") : t("auth.collegeOrUniversity")}
                   value={organisationName}
                   onChange={(e) => setOrganisationName(e.target.value)}
                   autoComplete="organization"
                 />
                 <div>
-                  <label htmlFor="orgType" className="mb-1.5 block text-[15px] font-medium">Type</label>
+                  <label htmlFor="orgType" className="mb-1.5 block text-[15px] font-medium">{t("auth.orgTypeLabel")}</label>
                   <Select id="orgType" value={organisationType} onChange={(e) => setOrganisationType(e.target.value)}>
-                    <option value="">Select</option>
-                    {ORG_TYPES.map((t) => (
-                      <option key={t} value={t}>{t}</option>
+                    <option value="">{t("common.select")}</option>
+                    {ORG_TYPES.map((o) => (
+                      <option key={o.value} value={o.value}>{t(o.label)}</option>
                     ))}
                   </Select>
                 </div>
@@ -413,7 +438,7 @@ function SignupInner() {
 
             <Field
               id="mobile"
-              label="Mobile number"
+              label={t("auth.mobileNumber")}
               optional
               type="tel"
               inputMode="tel"
@@ -427,10 +452,10 @@ function SignupInner() {
 
             <div className="space-y-3">
               <PrimaryButton type="submit" loading={loading}>
-                Create account
+                {t("auth.createAccountButton")}
               </PrimaryButton>
               <SecondaryButton onClick={() => createAccount(true)} disabled={loading}>
-                Skip and create account
+                {t("auth.skipAndCreate")}
               </SecondaryButton>
             </div>
           </form>
@@ -444,7 +469,7 @@ function SignupInner() {
             className="mt-6 inline-flex items-center gap-1.5 text-[15px] font-semibold text-cs-accent-text hover:underline"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />
-            Back to account details
+            {t("auth.backToAccountDetails")}
           </button>
         </>
       )}

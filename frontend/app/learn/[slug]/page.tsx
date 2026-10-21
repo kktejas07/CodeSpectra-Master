@@ -28,6 +28,12 @@ import { AnswerSummary, SPEAKABLE_SELECTORS } from '@/components/seo/answer-summ
 import { formatDate } from '@/lib/format-datetime'
 import { TeamArticle } from '@/components/learn/team-article'
 import { teamCategoryLabel } from '@/lib/learn/team-posts'
+import { createTranslator, translateDynamic } from '@/lib/i18n/catalog'
+import { loadMessages } from '@/lib/i18n/load'
+import { LOCALE_META, toLocale, type Locale } from '@/lib/i18n/config'
+import { formatDate as formatLocaleDate } from '@/lib/i18n/format'
+import { localeFontClass } from '@/lib/i18n/fonts'
+import { hreflangMap, learnTranslationsCached } from '@/lib/learn/translations-cache'
 
 // Rendered per request (never at build: no DB there). Found items come from
 // the data cache (15 min, purged on publish); unknown slugs are not cached
@@ -58,7 +64,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     })
   }
   const path = `/learn/${encodeURIComponent(post.slug)}`
-  return buildMetadata({
+  const locale = toLocale(post.locale) ?? 'en'
+  const versions = await learnTranslationsCached(post.id, post.translation_of ?? null).catch(() => [])
+  const languages = hreflangMap(versions)
+  const meta = buildMetadata({
     title: post.title,
     description: post.summary,
     path,
@@ -71,6 +80,12 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     tags: post.tags,
     keywords: post.tags,
   })
+  // Hindi / Telugu versions: hreflang alternates link every published language version.
+  return {
+    ...meta,
+    alternates: { ...meta.alternates, ...(Object.keys(languages).length ? { languages } : {}) },
+    openGraph: { ...meta.openGraph, locale: LOCALE_META[locale].og },
+  }
 }
 
 function safeDate(iso?: string | null): string {
@@ -102,6 +117,14 @@ export default async function LearnPostPage({ params }: { params: Params }) {
   const faqs = extractFaqs(post.body)
   const takeaways = extractKeyTakeaways(post.body)
   const autoPublished = post.reviewed_by === 'auto-approve'
+  // Chrome follows the post's own language (no cookie read: the page stays cacheable for everyone).
+  const locale: Locale = toLocale(post.locale) ?? 'en'
+  const messages = await loadMessages(locale)
+  const t = createTranslator(locale, messages)
+  const catLabel = translateDynamic(locale, messages, `learn.category:${post.category}`, categoryLabel(post.category))
+  const versions = await learnTranslationsCached(post.id, post.translation_of ?? null).catch(() => [])
+  const otherVersions = versions.filter((v) => v.slug !== post.slug)
+  const dateText = (iso?: string | null) => (locale === 'en' ? safeDate(iso) : iso ? formatLocaleDate(locale, iso, { year: 'numeric', month: 'short', day: 'numeric' }) : '')
 
   const jsonLd = [
     articleJsonLd({
@@ -122,8 +145,8 @@ export default async function LearnPostPage({ params }: { params: Params }) {
     }),
     breadcrumbJsonLd([
       { name: 'Home', path: '/' },
-      { name: 'Learn', path: '/learn' },
-      { name: categoryLabel(post.category), path: `/learn?category=${post.category}` },
+      { name: t('learn.learn'), path: '/learn' },
+      { name: catLabel, path: `/learn?category=${post.category}` },
       { name: post.title, path },
     ], origin),
     faqJsonLd(faqs),
@@ -132,11 +155,11 @@ export default async function LearnPostPage({ params }: { params: Params }) {
   return (
     <PublicPageWrapper>
       <JsonLd data={jsonLd} />
-      <div className="mx-auto w-full min-w-0 max-w-[1200px] px-4 pb-20 pt-28 sm:px-6 lg:px-8">
-        <nav aria-label="Breadcrumb" className="mb-8 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-          <Link href="/learn" className="hover:text-foreground">Learn</Link>
+      <div lang={locale} className={`mx-auto w-full min-w-0 max-w-[1200px] px-4 pb-20 pt-28 sm:px-6 lg:px-8 ${localeFontClass(locale)}`}>
+        <nav aria-label={t('nav.breadcrumb')} className="mb-8 flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+          <Link href="/learn" className="hover:text-foreground">{t('learn.learn')}</Link>
           <ChevronRight className="h-3 w-3" aria-hidden />
-          <Link href={`/learn?category=${post.category}`} className="hover:text-foreground">{categoryLabel(post.category)}</Link>
+          <Link href={`/learn?category=${post.category}`} className="hover:text-foreground">{catLabel}</Link>
           <ChevronRight className="h-3 w-3" aria-hidden />
           <span className="line-clamp-1 max-w-56 text-foreground sm:max-w-xs" aria-current="page">{post.title}</span>
         </nav>
@@ -144,29 +167,39 @@ export default async function LearnPostPage({ params }: { params: Params }) {
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem]">
           <article className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold text-primary">{categoryLabel(post.category)}</span>
+              <span className="font-semibold text-primary">{catLabel}</span>
               <LevelPill level={post.level} />
               {post.series ? (
                 <Link href={`/learn?series=${encodeURIComponent(post.series)}`} className="text-muted-foreground hover:text-foreground">
-                  Series: {post.series}{post.series_order ? ` · part ${post.series_order}` : ''}
+                  {t('learn.seriesLabel', { series: post.series })}{post.series_order ? ` · ${t('learn.partN', { n: post.series_order })}` : ''}
                 </Link>
               ) : null}
             </div>
             <h1 className="mt-3 max-w-[24ch] text-4xl font-bold tracking-tight text-foreground sm:text-5xl">{post.title}</h1>
             <p className="mt-4 max-w-[65ch] text-lg leading-relaxed text-muted-foreground">{post.summary}</p>
             <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border pb-6 text-sm text-muted-foreground">
-              <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden /><span className="tabular-nums">{post.reading_minutes}</span> min read</span>
-              {post.published_at ? <time dateTime={post.published_at}>{safeDate(post.published_at)}</time> : null}
+              <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden />{t('learn.minRead', { count: post.reading_minutes })}</span>
+              {post.published_at ? <time dateTime={post.published_at}>{dateText(post.published_at)}</time> : null}
+              {otherVersions.length > 0 && (
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <span>{t('learn.alsoIn')}</span>
+                  {otherVersions.map((v) => (
+                    <Link key={v.slug} href={`/learn/${encodeURIComponent(v.slug)}`} hrefLang={v.locale === 'en' ? 'en' : `${v.locale}-IN`} lang={v.locale ?? 'en'} className={`font-medium text-primary hover:underline ${localeFontClass(v.locale)}`}>
+                      {LOCALE_META[(toLocale(v.locale) ?? 'en')].native}
+                    </Link>
+                  ))}
+                </span>
+              )}
             </div>
             <ShareBar slug={post.slug} url={url} title={post.title} summary={post.summary} className="mt-5" countView />
 
             {/* Answer-first summary for snippets, AI answers and voice (speakable). */}
-            <AnswerSummary className="mt-8 max-w-[72ch]" label="Key takeaways" answer={post.summary} points={takeaways} />
+            <AnswerSummary className="mt-8 max-w-[72ch]" label={t('learn.keyTakeaways')} answer={post.summary} points={takeaways} />
 
             <LearnMarkdown content={post.body} className="mt-8 max-w-[72ch]" />
 
             {post.tags.length > 0 && (
-              <ul className="mt-10 flex flex-wrap gap-2" aria-label="Tags">
+              <ul className="mt-10 flex flex-wrap gap-2" aria-label={t('learn.tags')}>
                 {post.tags.map((t) => (
                   <li key={t}>
                     <Link href={`/learn?tag=${encodeURIComponent(t)}`} className="inline-flex min-h-8 items-center rounded-full border border-border px-3 text-xs text-muted-foreground hover:border-primary/40 hover:text-primary">#{t}</Link>
@@ -176,14 +209,13 @@ export default async function LearnPostPage({ params }: { params: Params }) {
             )}
 
             <section className="mt-10 max-w-[72ch] rounded-3xl border border-border bg-muted/30 p-5 text-sm text-muted-foreground">
-              <h2 className="font-semibold text-foreground">About this post and its sources</h2>
+              <h2 className="font-semibold text-foreground">{t('learn.aboutPost')}</h2>
               <p className="mt-1">
-                {autoPublished
-                  ? 'Written by the CodeSpectra learning bot in its own words and published after automated quality checks; our editors review it afterwards.'
-                  : 'Written by the CodeSpectra learning bot in its own words and reviewed by our team before publishing.'}
-                {post.sources.length ? ' The pages it learned from are cited below.' : ''}{' '}
-                <Link href="/editorial-policy" className="text-primary hover:underline">Editorial policy</Link>
-                {post.updated_at ? <> · Last updated <time dateTime={post.updated_at}>{safeDate(post.updated_at)}</time></> : null}
+                {autoPublished ? t('learn.aboutAuto') : t('learn.aboutReviewed')}
+                {locale !== 'en' ? ` ${t('learn.aboutTranslated')}` : ''}
+                {post.sources.length ? ` ${t('learn.sourcesCited')}` : ''}{' '}
+                <Link href="/editorial-policy" className="text-primary hover:underline">{t('learn.editorialPolicy')}</Link>
+                {post.updated_at ? <> · {t('learn.lastUpdated')} <time dateTime={post.updated_at}>{dateText(post.updated_at)}</time></> : null}
               </p>
               {post.sources.length > 0 && (
                 <ul className="mt-3 space-y-1">
@@ -199,15 +231,15 @@ export default async function LearnPostPage({ params }: { params: Params }) {
             </section>
 
             <div className="mt-8 max-w-[72ch]">
-              <p className="mb-3 text-sm font-semibold text-foreground">Found this useful? Share it</p>
+              <p className="mb-3 text-sm font-semibold text-foreground">{t('learn.shareIt')}</p>
               <ShareBar slug={post.slug} url={url} title={post.title} summary={post.summary} />
             </div>
           </article>
 
           <aside className="space-y-6">
             {toc.length > 0 && (
-              <nav aria-label="On this page" className="hidden lg:sticky lg:top-28 lg:block">
-                <p className="text-sm font-semibold text-foreground">On this page</p>
+              <nav aria-label={t('learn.onThisPage')} className="hidden lg:sticky lg:top-28 lg:block">
+                <p className="text-sm font-semibold text-foreground">{t('learn.onThisPage')}</p>
                 <ul className="mt-3 space-y-2 border-l border-border pl-3">
                   {toc.map((t) => (
                     <li key={t.id}><a href={`#${t.id}`} className="text-sm text-muted-foreground hover:text-primary">{t.text}</a></li>
@@ -216,9 +248,9 @@ export default async function LearnPostPage({ params }: { params: Params }) {
               </nav>
             )}
             <div className="rounded-3xl border border-border bg-card p-5">
-              <h2 className="text-base font-semibold text-foreground">Practise it</h2>
+              <h2 className="text-base font-semibold text-foreground">{t('learn.practiseIt')}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                {post.practice.length ? 'Solve related problems with instant feedback on your code.' : 'Turn what you just read into working code.'}
+                {post.practice.length ? t('learn.practiseWithProblems') : t('learn.practiseTurnIntoCode')}
               </p>
               {post.practice.length > 0 && (
                 <ul className="mt-3 space-y-2">
@@ -231,7 +263,7 @@ export default async function LearnPostPage({ params }: { params: Params }) {
                 </ul>
               )}
               <Link href="/dashboard/problems" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-[filter] hover:brightness-110">
-                Start practising
+                {t('learn.startPractising')}
               </Link>
             </div>
           </aside>
@@ -239,7 +271,7 @@ export default async function LearnPostPage({ params }: { params: Params }) {
 
         {related.length > 0 && (
           <section className="mt-16" aria-labelledby="related-heading">
-            <h2 id="related-heading" className="text-2xl font-bold tracking-tight text-foreground">Keep learning</h2>
+            <h2 id="related-heading" className="text-2xl font-bold tracking-tight text-foreground">{t('learn.keepLearning')}</h2>
             <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {related.map((r) => <LearnPostCardView key={r.slug} post={r} />)}
             </div>

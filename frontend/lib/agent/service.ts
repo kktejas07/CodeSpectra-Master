@@ -106,6 +106,8 @@ export async function runChatTurn(opts: {
   message: string
   signal: AbortSignal
   emit: (e: AgentStreamEvent) => void
+  /** Interface language of the caller (lib/i18n) — passed into the system prompt. */
+  locale?: 'en' | 'hi' | 'te'
 }): Promise<TurnResult & { credits: number; charge: TurnCharge }> {
   const { caller, conv, message, signal, emit } = opts
   // Persistence stays keyed to the session caller; tools + knowledge act in the chosen tenant.
@@ -147,6 +149,7 @@ export async function runChatTurn(opts: {
       userText: message,
       signal,
       memorySummary: memory.summary,
+      locale: opts.locale,
       maxSteps: settings.max_steps_per_turn,
       maxTokensPerTurn: settings.max_tokens_per_turn,
     },

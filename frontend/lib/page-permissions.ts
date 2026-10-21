@@ -54,6 +54,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   // Hiring & ATS
   '/dashboard/admin/jobs',
   '/dashboard/admin/resumes',
+  '/dashboard/admin/talent',
 
   // KYC & Verification
   '/dashboard/admin/kyc',
@@ -63,6 +64,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/ai-inventory',
   '/dashboard/admin/question-generator',
   '/dashboard/admin/question-bot',
+  '/dashboard/admin/interview-sim',
   '/dashboard/admin/company-patterns',
   '/dashboard/admin/courses',
   '/dashboard/admin/courses/[id]',
@@ -87,6 +89,9 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/resources',
   '/dashboard/admin/billing',
   '/dashboard/admin/marketplace',
+  '/dashboard/admin/mentors',
+  '/dashboard/admin/study-plans',
+  '/dashboard/admin/leagues',
   '/dashboard/admin/help',
 ]
 
@@ -179,6 +184,9 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/challenges',
   '/dashboard/tracks',
   '/dashboard/100-days',
+  // Personalised study plan (APIs scope every read/write to the signed-in learner)
+  '/dashboard/study-plan',
+  '/dashboard/study-plan/practice/[id]',
 
   // Events & Competitions
   '/dashboard/events',
@@ -204,9 +212,15 @@ export const ALL_USER_ROUTES: string[] = [
   
   // Career & Hiring
   '/dashboard/jobs',
+  // Campus placement: /api/campus* checks college membership / placement-team role server-side.
+  '/dashboard/campus',
+  '/dashboard/placement',
+  '/dashboard/placement/drives/[id]',
   '/dashboard/interviews',
   '/dashboard/interviews/ai-mock',
   '/dashboard/interviews/ai-mock/setup',
+  '/dashboard/interview-sim',
+  '/dashboard/interview-sim/[sessionId]',
   '/dashboard/mock-tests',
   '/dashboard/mock-tests/history',
   '/dashboard/company-tests',
@@ -216,6 +230,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/assessments/ai-fluency',
   '/dashboard/assessments/ai-fluency/setup',
   '/dashboard/certifications',
+  '/dashboard/passport',
 
   // Hiring pipeline (ATS). Open to any signed-in role here because interviewers
   // and clients are ordinary users; membership + ATS role are enforced server-side
@@ -233,6 +248,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/hiring/settings',
   '/dashboard/hiring/client',
   '/dashboard/hiring/client/jobs/[id]',
+  '/dashboard/hiring/talent',
 
   // Tools
   '/dashboard/scanner',
@@ -241,6 +257,7 @@ export const ALL_USER_ROUTES: string[] = [
 
   // Stats & Progress
   '/dashboard/leaderboard',
+  '/dashboard/leagues',
   '/dashboard/achievements',
   '/dashboard/skill-analytics',
 
@@ -263,6 +280,10 @@ export const ALL_USER_ROUTES: string[] = [
   // Marketplace seller area (any signed-in user can apply; APIs require an approved seller)
   '/dashboard/seller',
   '/dashboard/seller/apply',
+
+  // Mentoring (any signed-in user; APIs check the mentor / the booking's learner or mentor)
+  '/dashboard/mentor',
+  '/dashboard/sessions/[id]',
 
   // Agent (LAST)
   '/dashboard/agent',
@@ -329,6 +350,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/automations': 'Automations',
   '/dashboard/admin/question-generator': 'Question generator',
   '/dashboard/admin/question-bot': 'Question bot',
+  '/dashboard/admin/interview-sim': 'Mock interviews',
   '/dashboard/admin/company-patterns': 'Company patterns',
   '/dashboard/admin/courses': 'Course management',
   '/dashboard/admin/courses/[id]': 'Edit course',
@@ -368,13 +390,21 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/skill-analytics': 'Skill Analytics',
   '/dashboard/identity-verify': 'Identity Verify',
   '/dashboard/leaderboard': 'Leaderboard',
+  '/dashboard/leagues': 'Leagues',
+  '/dashboard/campus': 'Campus',
+  '/dashboard/placement': 'Placement console',
+  '/dashboard/placement/drives/[id]': 'Placement drive',
+  '/dashboard/admin/leagues': 'Leagues',
   '/dashboard/achievements': 'Achievements',
   '/dashboard/certifications': 'Certifications',
+  '/dashboard/passport': 'Skill passport',
   '/dashboard/pricing': 'Pricing',
   '/dashboard/challenges': 'Challenges',
   '/dashboard/interviews': 'Interviews',
   '/dashboard/interviews/ai-mock': 'AI Mock Interview',
   '/dashboard/interviews/ai-mock/setup': 'AI Mock Setup',
+  '/dashboard/interview-sim': 'Mock interview',
+  '/dashboard/interview-sim/[sessionId]': 'Mock interview session',
   '/dashboard/mock-tests': 'Mock Tests',
   '/dashboard/mock-tests/history': 'Mock Test History',
   '/dashboard/company-tests': 'Company tests',
@@ -392,6 +422,12 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/seller': 'Seller dashboard',
   '/dashboard/seller/apply': 'Sell on CodeSpectra',
   '/dashboard/admin/marketplace': 'Marketplace',
+  '/dashboard/admin/mentors': 'Mentors',
+  '/dashboard/admin/study-plans': 'Study plans',
+  '/dashboard/study-plan': 'Study plan',
+  '/dashboard/study-plan/practice/[id]': 'Practice set',
+  '/dashboard/mentor': 'Mentoring',
+  '/dashboard/sessions/[id]': 'Mentoring session',
   '/dashboard/notifications': 'Notifications',
   '/dashboard/calendar': 'Calendar',
   '/dashboard/notifications/preferences': 'Notification Preferences',
@@ -430,6 +466,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/hiring/settings': 'Hiring settings',
   '/dashboard/hiring/client': 'Client portal',
   '/dashboard/hiring/client/jobs/[id]': 'Client review',
+  '/dashboard/hiring/talent': 'Talent search',
+  '/dashboard/admin/talent': 'Talent search',
   '/companies': 'Companies',
 }
 

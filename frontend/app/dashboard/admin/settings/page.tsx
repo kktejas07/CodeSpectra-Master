@@ -178,6 +178,9 @@ type SecretsDraft = {
   firebase_messaging_sender_id: string
   firebase_app_id: string
   firebase_vapid_key: string
+  webpush_vapid_public_key: string
+  webpush_vapid_private_key: string
+  webpush_vapid_subject: string
   cloudflare_zone_id: string
   cloudflare_api_token: string
   phonepe_merchant_id: string
@@ -257,6 +260,9 @@ const emptySecretsDraft = (): SecretsDraft => ({
   firebase_messaging_sender_id: '',
   firebase_app_id: '',
   firebase_vapid_key: '',
+  webpush_vapid_public_key: '',
+  webpush_vapid_private_key: '',
+  webpush_vapid_subject: '',
   cloudflare_zone_id: '',
   cloudflare_api_token: '',
   phonepe_merchant_id: '',
@@ -725,6 +731,7 @@ function SystemSettingsInner() {
         'trusted_origins_extra', 'github_client_id',
         'firebase_api_key', 'firebase_auth_domain', 'firebase_project_id',
         'firebase_storage_bucket', 'firebase_messaging_sender_id', 'firebase_app_id', 'firebase_vapid_key',
+        'webpush_vapid_public_key', 'webpush_vapid_subject',
         'phonepe_salt_index', 'phonepe_merchant_id',
       ] as const
       for (const k of plainFields) {
@@ -2298,6 +2305,10 @@ function SystemSettingsInner() {
                       { key: 'firebase_messaging_sender_id', label: 'Messaging sender ID', ph: '123456789012' },
                       { key: 'firebase_app_id', label: 'App ID', ph: '1:123456789012:web:abc123' },
                       { key: 'firebase_vapid_key', label: 'Web push VAPID key', ph: 'BL…' },
+                      // PWA web push (docs/pwa.md): generate with `npx web-push generate-vapid-keys`
+                      { key: 'webpush_vapid_public_key', label: 'App push public key (VAPID)', ph: 'BP…' },
+                      { key: 'webpush_vapid_private_key', label: 'App push private key (VAPID)', ph: 'secret' },
+                      { key: 'webpush_vapid_subject', label: 'App push contact', ph: 'mailto:support@codespectra.ai' },
                     ].map(({ key, label, ph }) => (
                           <div key={key} className="space-y-1.5">
                         <Label className="text-foreground">{label}</Label>

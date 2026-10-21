@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { problems } from '@/lib/db/problems'
 import { getUserStreak } from '@/lib/activity-streak'
+import { dailyIndex, todayKey } from '@/lib/pwa/offline-payload'
 
 export const runtime = 'nodejs'
 
@@ -30,7 +31,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     }
 
     const today = todayKey()
-    const idx = simpleHash(today) % allProblems.length
+    const idx = dailyIndex(today, allProblems.length)
     const problem = allProblems[idx]
 
     // Compute the user's streak.
@@ -60,13 +61,4 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
       { status: 500 },
     )
   }
-}
-
-function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-function simpleHash(s: string): number {
-  let h = 0
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0
-  return Math.abs(h)
 }

@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/auth-context";
 import { csrfFetch } from "@/lib/csrf-fetch";
 import { SoftGlow } from "@/components/visuals";
 import { Scene } from "@/components/illustrations/scenes";
+import { useT } from "@/lib/i18n/client";
 
 function EnrollFaceInner() {
   const router = useRouter();
@@ -28,6 +29,7 @@ function EnrollFaceInner() {
   const [reauthSecret, setReauthSecret] = useState("");
   const [pendingDescriptor, setPendingDescriptor] = useState<number[] | null>(null);
   const { user } = useAuth();
+  const { t } = useT();
 
   const isMandatory = user?.createdAt 
     ? new Date().getTime() - new Date(user.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000 
@@ -54,11 +56,11 @@ function EnrollFaceInner() {
           setPendingDescriptor(descriptor);
           setReauth(data.methods || { password: false, totp: false });
           setReauthSecret("");
-          setError(data.error || "Confirm it’s you to replace your face scan.");
+          setError(data.error || t("auth.confirmToReplaceFace"));
           setLoading(false);
           return;
         }
-        throw new Error(data.error || `Your face scan couldn’t be saved (${res.status}).`);
+        throw new Error(data.error || t("auth.faceSaveFailed", { status: res.status }));
       }
 
       router.push(redirectTo);
@@ -70,15 +72,15 @@ function EnrollFaceInner() {
       setReauth(null);
       setCameraKey((k) => k + 1);
     }
-  }, [router, redirectTo, reauth]);
+  }, [router, redirectTo, reauth, t]);
 
   const handleCapture = useCallback(async (descriptor: Float32Array | null) => {
     if (!descriptor) {
-      setError("Your face wasn’t detected. Try again in good light.");
+      setError(t("auth.faceNotDetected"));
       return;
     }
     await submit(Array.from(descriptor));
-  }, [submit]);
+  }, [submit, t]);
 
   const handleError = useCallback((err: Error) => setError(err.message), []);
 
@@ -96,14 +98,14 @@ function EnrollFaceInner() {
         <div className="flex flex-col items-center text-center space-y-4">
           <Scene name="proctored-test" className="w-full max-w-[200px] sm:max-w-[280px]" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Secure your account</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{t("auth.secureYourAccount")}</h1>
             <p className="text-sm text-muted-foreground mt-2">
-              Enroll your face to verify your identity during assessments and to sign in with your face. On a new device we’ll also email you a code.
+              {t("auth.enrollFaceIntro")}
             </p>
             {isMandatory && (
               <div className="mt-4 flex items-center gap-2 bg-yellow-500/10 text-yellow-600 text-sm rounded-lg p-3">
                 <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>The 7-day grace period has expired. Face enrollment is now mandatory to continue.</span>
+                <span>{t("auth.faceGraceExpired")}</span>
               </div>
             )}
           </div>
@@ -122,7 +124,7 @@ function EnrollFaceInner() {
             onSubmit={(e) => { e.preventDefault(); if (reauthSecret) void submit(pendingDescriptor, reauthSecret); }}
           >
             <Label htmlFor="reauth-secret">
-              {reauth.password && reauth.totp ? "Password or authenticator code" : reauth.password ? "Password" : "Authenticator code"}
+              {reauth.password && reauth.totp ? t("auth.passwordOrCode") : reauth.password ? t("auth.password") : t("auth.authenticatorCode")}
             </Label>
             <Input
               id="reauth-secret"
@@ -134,7 +136,7 @@ function EnrollFaceInner() {
               autoFocus
             />
             <Button type="submit" className="w-full" disabled={loading || !reauthSecret}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm and save"}
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t("auth.confirmAndSave")}
             </Button>
           </form>
         )}
@@ -150,7 +152,7 @@ function EnrollFaceInner() {
 
         <div className="space-y-4 pt-4 border-t border-border">
           <p className="text-xs text-center text-muted-foreground">
-            Your biometric data is encrypted and securely stored. We do not store raw images or video.
+            {t("auth.biometricNotice")}
           </p>
           <div className="flex flex-col gap-2">
             {!isMandatory && (
@@ -160,7 +162,7 @@ function EnrollFaceInner() {
                 disabled={loading}
                 className="text-muted-foreground"
               >
-                Skip for now
+                {t("auth.skipForNow")}
               </Button>
             )}
           </div>

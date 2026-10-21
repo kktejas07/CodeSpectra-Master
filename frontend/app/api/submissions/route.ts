@@ -12,6 +12,7 @@ import {
 import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS, getXpRewards } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
 import { limitRequest } from '@/lib/rate-limit'
+import { claimIdempotency, idempotencyCol, parseIdempotencyKey, settleIdempotency } from '@/lib/submission-idempotency'
 import { getUserEntitlements, checkLimit, windowStart, checkProblemAccess, packLockedError } from '@/lib/entitlements'
 import type { PistonExecuteResult } from '@/lib/piston'
 
@@ -78,7 +79,39 @@ function classifyStatus(res: PistonExecuteResult): {
   return { status: 'accepted' }
 }
 
+/**
+ * POST /api/submissions. With an `Idempotency-Key` header (offline answers
+ * synced by the PWA, lib/submission-idempotency.ts) a repeat of the same key
+ * returns the first result instead of grading twice.
+ */
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const idem = parseIdempotencyKey(request.headers.get('idempotency-key'))
+  if (!idem) return gradeSubmission(request)
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+  const col = await idempotencyCol()
+  const claim = await claimIdempotency(col, gate.user.id, idem)
+  if (claim.kind === 'replay') {
+    return NextResponse.json(claim.body, { status: claim.status, headers: { 'Idempotent-Replayed': 'true' } })
+  }
+  if (claim.kind === 'in_progress') {
+    return NextResponse.json({ error: 'This answer is already being graded.' }, { status: 425, headers: { 'Retry-After': '30' } })
+  }
+  let res: NextResponse
+  try {
+    res = await gradeSubmission(request)
+  } catch (e) {
+    await settleIdempotency(col, gate.user.id, idem, 500, null).catch(() => undefined)
+    throw e
+  }
+  const body = await res.clone().json().catch(() => null)
+  await settleIdempotency(col, gate.user.id, idem, res.status, body).catch((e) => console.error('[submissions] idempotency save failed:', (e as Error)?.message))
+  return res
+}
+
+async function gradeSubmission(request: NextRequest): Promise<NextResponse> {
   const gate = await requireAuth()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })

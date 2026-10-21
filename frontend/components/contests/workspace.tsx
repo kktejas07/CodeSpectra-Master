@@ -21,6 +21,8 @@ import { golfLength } from '@/lib/contests/scoring/code'
 import type { ContestPhase, ContestTask, PublicContestView } from '@/lib/contests/types'
 import { FormatIcon, PhaseBadge, fmtWhen, jsonApi } from './shared'
 import { directUpload, uploadLimits } from '@/lib/storage/direct-upload-client'
+import { IntegrityConsent, useIntegrityConfig } from '@/components/integrity/IntegrityConsent'
+import { IntegrityMonitor } from '@/components/integrity/IntegrityMonitor'
 
 interface Sub { id: string; task_id: string; status: string; score: number | null; feedback: string; detail: Record<string, unknown>; files: { id: string; name: string; role: string }[]; created_at: string }
 interface Me { entry: { id: string; name: string; kind: string } | null; submissions: Sub[]; certificate_url: string | null }
@@ -34,6 +36,9 @@ export function ContestWorkspace({ slug }: { slug: string }) {
   const [me, setMe] = useState<Me | null>(null)
   const [state, setState] = useState<'loading' | 'signed_out' | 'error' | 'ready'>('loading')
   const [error, setError] = useState('')
+  // Integrity checks (lib/integrity): opt-in per contest; consent before the workspace opens.
+  const integrity = useIntegrityConfig('contest', slug)
+  const [integrityConsent, setIntegrityConsent] = useState(false)
 
   const loadMe = useCallback(async () => {
     const res = await fetch(`${base}/entry`, { credentials: 'include', cache: 'no-store' })
@@ -79,7 +84,16 @@ export function ContestWorkspace({ slug }: { slug: string }) {
         </div>
       </header>
       {!live && <Panel className="text-sm text-muted-foreground">{contest.phase === 'registration' || contest.phase === 'upcoming' ? `Submissions open ${fmtWhen(c.schedule.starts_at, c.schedule.timezone)}.` : 'Submissions are closed. Your history is below.'}</Panel>}
-      {live && <FormatPane contest={c} base={base} subs={me.submissions} onSubmitted={loadMe} />}
+      {live && integrity.config?.enabled && !integrity.config.consented && !integrityConsent && (
+        <Panel className="space-y-3">
+          <IntegrityConsent config={integrity.config} checked={integrityConsent} onChange={setIntegrityConsent} />
+          <p className="text-xs text-muted-foreground">Tick the box to open the tasks.</p>
+        </Panel>
+      )}
+      {live && integrity.loaded && (!integrity.config?.enabled || integrity.config.consented || integrityConsent) && <FormatPane contest={c} base={base} subs={me.submissions} onSubmitted={loadMe} />}
+      {live && integrity.config?.enabled && (integrity.config.consented || integrityConsent) && (
+        <IntegrityMonitor kind="contest" targetId={slug} config={integrity.config} active />
+      )}
       <History subs={me.submissions} contest={c} base={base} />
     </div>
   )
@@ -234,7 +248,7 @@ function CodeSubmit({ c, task, base, onSubmitted }: { c: PublicContestView; task
           {c.format === 'code_golf' && <p className="font-mono text-sm tabular-nums text-muted-foreground" aria-live="polite">{golfLength(code)} characters</p>}
         </div>
         <Label htmlFor="code" className="sr-only">Code</Label>
-        <textarea id="code" value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} className={textareaCode} placeholder="Write your solution. Read from stdin, print to stdout." />
+        <textarea id="code" data-integrity-q={/^[A-Za-z0-9_-]{1,80}$/.test(String(task.id)) ? String(task.id) : undefined} value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} className={textareaCode} placeholder="Write your solution. Read from stdin, print to stdout." />
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" disabled={!!busy || !code.trim()} onClick={async () => setRunResult(await call('run', '/run', json({ mode: 'samples', task_id: task.id, language, code })))}>
             {busy === 'run' ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Play className="h-4 w-4" />} Run samples

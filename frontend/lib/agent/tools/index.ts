@@ -22,11 +22,17 @@ import {
 import { createProblemTool } from './write/problems'
 import { createContestTool, publishContestTool, releaseContestResultsTool } from './write/contests'
 import { getQuestionCoverageTool } from './read/question-bot'
+import { getIntegrityReportTool } from './read/integrity'
+import { listPlacementDrivesTool, getBatchReadinessTool } from './read/campus'
 import { runQuestionBotTool } from './write/question-bot'
+import { getStudyPlanTool } from './read/study-plan'
+import { regenerateStudyPlanTool } from './write/study-plan'
 import { buildCompanyTestTool } from './write/company-tests'
+import { startMockInterviewTool } from './write/interview-sim'
 import {
   listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
 } from './read/ats'
+import { searchTalentTool } from './read/talent'
 import {
   createJobTool, updateJobTool, setJobStatusTool, moveApplicationStageTool, rejectApplicationTool, shortlistApplicantsTool,
   scheduleInterviewTool, startBotScreeningTool, recordHrDecisionTool,
@@ -48,9 +54,13 @@ export const ALL_TOOLS: AnyTool[] = [
   listTestsTool, getTestTool, getTestResultsTool, getCandidateTool, listInvitesTool,
   listHackathonsTool, getHackathonTool, listCodeathonsTool, getCodeathonTool,
   searchQuestionBankTool, searchProblemsTool, getQuestionCoverageTool,
+  getIntegrityReportTool,
   getAnalyticsTool, getPlanUsageTool,
+  // campus placement (college placement teams)
+  listPlacementDrivesTool, getBatchReadinessTool,
   // hiring pipeline (ATS)
   listJobsTool, getJobTool, listApplicantsTool, getApplicationTool, getInterviewScorecardsTool, getHiringFunnelTool, getBgvStatusTool,
+  searchTalentTool,
   // marketplace, Learn, events feed, automations, usage
   listMarketplaceProductsTool, listMarketplaceOrdersTool, listMarketplaceSellersTool, listMarketplacePayoutsTool, getMarketplaceSalesTool,
   listLearnTopicsTool, listLearnPostsTool, searchFeedEventsTool, getFeedStatsTool,
@@ -71,6 +81,8 @@ export const ALL_TOOLS: AnyTool[] = [
   createWorkflowFromTemplateTool, setWorkflowEnabledTool, rerunWorkflowRunTool, scheduleAgentTaskTool,
   updateCodeathonTool, publishCodeathonTool, updateProblemTool, publishProblemTool, addQuestionsToBankTool,
   runQuestionBotTool,
+  getStudyPlanTool, regenerateStudyPlanTool,
+  startMockInterviewTool,
 ]
 
 const BY_NAME = new Map<string, AnyTool>(ALL_TOOLS.map((t) => [t.name, t]))

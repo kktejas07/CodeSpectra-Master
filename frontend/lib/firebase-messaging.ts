@@ -14,6 +14,7 @@ import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/mess
 import { getApp, getApps } from 'firebase/app'
 import { getFirebaseAuth, prefetchFirebaseConfig } from '@/lib/firebase'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { FCM_SW_SCOPE } from '@/lib/pwa/config'
 
 let _messaging: Messaging | null = null
 let _vapidKey = ''
@@ -73,12 +74,20 @@ export async function registerPushToken(userId: string): Promise<string | null> 
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') return null
     }
-    const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
-    await navigator.serviceWorker.ready
+    // Own scope (Firebase's default): scope "/" belongs to the app worker
+    // /sw.js (PWA, lib/pwa/config.ts) — registering here at "/" would replace it.
+    const reg = await navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: FCM_SW_SCOPE })
+    const pending = reg.installing || reg.waiting
+    if (!reg.active && pending) {
+      await new Promise<void>((resolve) => {
+        const t = setTimeout(resolve, 5000)
+        pending.addEventListener('statechange', () => { if (pending.state === 'activated') { clearTimeout(t); resolve() } })
+      })
+    }
     // Tell the SW to initialise FCM so background messages get shown.
     if (reg.active) reg.active.postMessage({ type: 'INIT_MESSAGING' })
 
-    const token = await getToken(messaging, { vapidKey: _vapidKey || undefined })
+    const token = await getToken(messaging, { vapidKey: _vapidKey || undefined, serviceWorkerRegistration: reg })
     if (!token) return null
 
     await csrfFetch('/api/notifications/push-token', {

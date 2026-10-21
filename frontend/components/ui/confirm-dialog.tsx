@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Trash2, X } from 'lucide-react'
+import { useT } from '@/lib/i18n/client'
 
 interface ConfirmDialogProps {
   open: boolean
@@ -18,12 +19,13 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = 'Confirm',
-  cancelLabel = 'Cancel',
+  confirmLabel,
+  cancelLabel,
   variant = 'destructive',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useT()
   if (!open) return null
 
   return (
@@ -42,7 +44,7 @@ export function ConfirmDialog({
         <button
           type="button"
           onClick={onCancel}
-          aria-label="Close"
+          aria-label={t('common.close')}
           className="absolute top-3 right-3 rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X aria-hidden className="h-4 w-4" />
@@ -66,13 +68,13 @@ export function ConfirmDialog({
         {/* Actions */}
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={onCancel}>
-            {cancelLabel}
+            {cancelLabel ?? t('common.cancel')}
           </Button>
           <Button
             variant={variant === 'destructive' ? 'destructive' : 'default'}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('common.confirm')}
           </Button>
         </div>
       </div>

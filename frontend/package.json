@@ -119,6 +119,7 @@
     "ua-parser-js": "^2.0.10",
     "vaul": "^1.1.2",
     "vidstack": "^1.15.6",
+    "web-push": "3.6.7",
     "zod": "^4.5.4",
     "zustand": "^5.0.15"
   },
@@ -136,6 +137,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@types/uuid": "9",
+    "@types/web-push": "3.6.4",
     "@vitejs/plugin-react": "^6.1.1",
     "dotenv": "^18.0.5",
     "jsdom": "^30.1.1",

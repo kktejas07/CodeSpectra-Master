@@ -114,6 +114,8 @@ const AUTH_PROFILE_FIELDS = {
   _id: 1, id: 1, email: 1, name: 1, fullName: 1, role: 1, status: 1, isActive: 1, deletedAt: 1,
   tenantId: 1, organizationId: 1, session_version: 1, sessions_revoked_at: 1,
   lastLoginMethod: 1, lastLoginAt: 1, firebase_uid: 1,
+  // Interface language (lib/i18n/server.ts) — rides on the same cached read.
+  ui_locale: 1,
 } as const
 
 export interface AuthProfile extends AuthProfileLike {
@@ -124,6 +126,8 @@ export interface AuthProfile extends AuthProfileLike {
   fullName?: string | null
   lastLoginMethod?: string | null
   lastLoginAt?: Date | null
+  /** 'en' | 'hi' | 'te' — set from Settings / the account menu (PUT /api/user/locale). */
+  ui_locale?: string | null
 }
 
 const _profileCache = new Map<string, { at: number; profile: AuthProfile | null }>()

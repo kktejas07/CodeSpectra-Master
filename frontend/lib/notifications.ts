@@ -190,6 +190,7 @@ async function deliverOutOfApp(input: NotifyInput, doc: NotificationDoc): Promis
         link: doc.link || undefined,
         data: {
           type: doc.type,
+          notification_id: doc.id,
           category: String(doc.category),
           icon: String(doc.icon),
           ...Object.fromEntries(Object.entries(doc.metadata || {}).map(([k, v]) => [k, String(v)])),

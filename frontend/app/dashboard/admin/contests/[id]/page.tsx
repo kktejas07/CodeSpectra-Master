@@ -7,7 +7,7 @@
  */
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, ExternalLink, Loader2, Rocket, Save, Trophy, XCircle } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Loader2, Rocket, Save, ShieldCheck, Trophy, XCircle } from 'lucide-react'
 import { PageHeader, Panel } from '@/components/app/page-kit'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,6 +61,7 @@ export default function AdminContestPage({ params }: { params: Promise<{ id: str
         actions={data.staff ? (
           <>
             <Button asChild variant="outline" className="h-10 rounded-xl"><Link href={`/contests/${c.slug}`} target="_blank"><ExternalLink className="h-4 w-4" /> Public page</Link></Button>
+            <Button asChild variant="outline" className="h-10 rounded-xl"><Link href={`/dashboard/admin/contests/${encodeURIComponent(c.id)}/integrity`}><ShieldCheck className="h-4 w-4" aria-hidden /> Integrity</Link></Button>
             {c.status === 'draft' && <Button className="h-10 rounded-xl" disabled={!!busy || c.config_errors.length > 0} onClick={() => void run('publish', () => jsonApi(base, json('POST', { action: 'publish' })), 'Published')}>{busy === 'publish' ? <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Rocket className="h-4 w-4" />} Publish</Button>}
             {c.status === 'published' && !c.results_released && <Button variant="outline" className="h-10 rounded-xl" disabled={!!busy} onClick={() => void run('unpublish', () => jsonApi(base, json('POST', { action: 'unpublish' })), 'Back to draft')}>Unpublish</Button>}
           </>

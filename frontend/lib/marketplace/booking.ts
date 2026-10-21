@@ -30,7 +30,7 @@ export const slotKey = (productId: string, startIso: string) => `${productId}|${
 export function serviceSpec(p: Pick<ProductDoc, 'service'>): ServiceSpec | null {
   const s = p.service
   if (!s || !s.duration_min || !s.timezone) return null
-  return { duration_min: s.duration_min, weekly: s.weekly || [], timezone: s.timezone, buffer_min: s.buffer_min }
+  return { duration_min: s.duration_min, weekly: s.weekly || [], timezone: s.timezone, buffer_min: s.buffer_min, max_per_day: s.max_per_day }
 }
 
 /** Held/booked intervals of this seller in a window (a seller can't be in two sessions at once). */

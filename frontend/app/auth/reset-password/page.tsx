@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { SoftGlow } from "@/components/visuals";
 import { Illustration } from "@/components/illustrations/spot";
+import { useT } from "@/lib/i18n/client";
 
 function ResetPasswordInner() {
   const router = useRouter();
@@ -29,18 +30,19 @@ function ResetPasswordInner() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { confirmPasswordReset } = useAuth();
+  const { t } = useT();
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
+      setError(t("auth.passwordsDontMatch"));
       return;
     }
 
     if (!oobCode) {
-      setError("Invalid or missing reset code");
+      setError(t("auth.resetCodeMissing"));
       return;
     }
 
@@ -51,7 +53,7 @@ function ResetPasswordInner() {
       setSuccess(true);
       setTimeout(() => router.push("/auth/login"), 2000);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to reset password";
+      const msg = err instanceof Error ? err.message : t("auth.resetFailed");
       setError(msg);
     } finally {
       setLoading(false);
@@ -69,10 +71,10 @@ function ResetPasswordInner() {
             </div>
             <span className="font-semibold text-lg tracking-tight">CodeSpectra</span>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Invalid reset link</h1>
-          <p className="text-muted-foreground">This reset link is invalid or expired.</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("auth.invalidResetLink")}</h1>
+          <p className="text-muted-foreground">{t("auth.resetLinkExpired")}</p>
           <Button variant="outline" asChild>
-            <Link href="/auth/forgot-password">Request a new reset link</Link>
+            <Link href="/auth/forgot-password">{t("auth.requestNewResetLink")}</Link>
           </Button>
         </div>
       </div>
@@ -90,16 +92,16 @@ function ResetPasswordInner() {
             </div>
             <span className="font-semibold text-lg tracking-tight">CodeSpectra</span>
           </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Set new password</h1>
-          <p className="text-muted-foreground mt-2">Enter your new password below</p>
+          <h1 className="text-2xl font-bold tracking-tight">{t("auth.setNewPassword")}</h1>
+          <p className="text-muted-foreground mt-2">{t("auth.enterNewPasswordBelow")}</p>
         </div>
 
         <div className="bg-card border border-border/40 rounded-xl p-6">
           {success ? (
             <div className="text-center space-y-4">
               <Illustration name="success" className="mx-auto w-40" />
-              <p className="text-sm text-muted-foreground">Password reset successfully!</p>
-              <p className="text-xs text-muted-foreground">Redirecting to sign in...</p>
+              <p className="text-sm text-muted-foreground">{t("auth.resetSuccess")}</p>
+              <p className="text-xs text-muted-foreground">{t("auth.redirectingToSignIn")}</p>
             </div>
           ) : (
             <form onSubmit={onSubmit} className="space-y-4">
@@ -111,12 +113,12 @@ function ResetPasswordInner() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="password">New password</Label>
+                <Label htmlFor="password">{t("auth.newPassword")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <PasswordInput
                     id="password"
-                    placeholder="At least 8 characters"
+                    placeholder={t("auth.passwordHint", { min: 8 })}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="pl-10"
@@ -128,12 +130,12 @@ function ResetPasswordInner() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm new password</Label>
+                <Label htmlFor="confirmPassword">{t("auth.confirmNewPassword")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <PasswordInput
                     id="confirmPassword"
-                    placeholder="Repeat your password"
+                    placeholder={t("auth.repeatPassword")}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pl-10"
@@ -150,7 +152,7 @@ function ResetPasswordInner() {
                 ) : (
                   <Lock className="w-4 h-4" />
                 )}
-                {loading ? "Resetting..." : "Reset password"}
+                {loading ? t("auth.resetting") : t("auth.resetPassword")}
               </Button>
             </form>
           )}
@@ -162,7 +164,7 @@ function ResetPasswordInner() {
             className="text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
           >
             <ArrowLeft className="w-3 h-3" />
-            Back to sign in
+            {t("auth.backToSignIn")}
           </Link>
         </p>
       </div>

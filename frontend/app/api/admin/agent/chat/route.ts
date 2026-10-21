@@ -23,6 +23,8 @@ export async function POST(req: Request): Promise<Response> {
   const gate = await requireAgentCaller()
   if ('response' in gate) return gate.response
   const { caller } = gate
+  // Reply in the caller's interface language (profile → cookie → Accept-Language).
+  const locale = await import('@/lib/i18n/server').then((m) => m.getRequestLocale({ userId: caller.userId })).catch(() => 'en' as const)
 
   // Per-user message rate limits are admin-configurable (copilot usage settings).
   const settings = await getBudgetSettings()
@@ -78,7 +80,7 @@ export async function POST(req: Request): Promise<Response> {
       }
       send({ type: 'conversation', id: conv.id, title: conv.title, created, ...(caller.role === 'superadmin' ? { tenantId: conv.scope_tenant_id ?? null } : {}) })
       try {
-        const r = await runChatTurn({ caller, conv, message, signal: abort.signal, emit: send })
+        const r = await runChatTurn({ caller, conv, message, signal: abort.signal, emit: send, locale })
         if (r.status === 'error') {
           const friendly = /unavailable|No AI model/i.test(r.error || '') ? r.error! : 'The AI model failed to answer. Try again in a moment.'
           send({ type: 'error', message: friendly })

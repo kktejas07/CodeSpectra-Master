@@ -372,6 +372,8 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     const sla = await sweepSla(now)
     if (late || sla.rejected) logger.info(`[ats] ${late} assessment deadline(s) missed, ${sla.rejected} SLA rejection(s)`)
   }, { maxAttempts: 4, retryAfterMs: 10 * 60_000, leaseMs: 30 * 60_000 })
+  // Mock-interview recordings past their retention (lib/interview-sim/store.ts). Once per UTC day.
+  await job('interview-sim-retention', dayWindow(now), async () => (await import('./interview-sim/store')).sweepExpiredRecordings(now), { maxAttempts: 3, retryAfterMs: 30 * 60_000, leaseMs: 10 * 60_000 })
 
   // ── Heavy content lane ────────────────────────────────────────────────────
   const heavy = async () => {
@@ -395,9 +397,15 @@ export async function runAtsMinuteSweeps(now: Date = new Date(), opts: { heavyIn
     if (await qb.questionBotDue(now).catch(() => false)) {
       await job('question-bot', dayWindow(now), async () => qb.runQuestionBot({ trigger: 'cron', now }), { maxAttempts: 2, retryAfterMs: 30 * 60_000, leaseMs: 30 * 60_000 })
     }
+    // Test integrity (lib/integrity/similarity-job.ts): purge expired violation snapshots, then
+    // similar-code clusters + AI-written signals for ended tests / contests. Every 5 minutes.
+    await job('integrity', fiveMin, async () => (await import('./integrity/similarity-job')).runIntegritySweep(now), { leaseMs: 15 * 60_000 })
+    // Study plans (lib/study-plan/service.ts): build next week for plans whose week ended (per-plan lock)
+    // and send each learner's reminder at their local hour (claimed per local day). Once per UTC hour.
+    await job('study-plans', `${iso.slice(0, 13)}sp`, async () => (await import('./study-plan/service')).runStudyPlanTick(now), { leaseMs: 15 * 60_000 })
   }
   if (opts.heavyInBackground) {
-    report.background = ['learn', 'events-feed', 'news-digest', 'analytics', 'seo-indexnow', 'question-bot']
+    report.background = ['learn', 'events-feed', 'news-digest', 'analytics', 'seo-indexnow', 'question-bot', 'integrity', 'study-plans']
     void heavy().catch((e) => console.error('[scheduler] content lane error:', e))
   } else {
     await heavy()
