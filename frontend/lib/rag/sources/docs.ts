@@ -14,9 +14,9 @@ import type { ExtractedSource } from '../types'
 
 export const DOC_PAGE_SOURCES: Record<string, { file: string; title: string; url: string; kind: 'faq' | 'legal' | 'help' }> = {
   'page:faq': { file: 'lib/seo/faq-content.ts', title: 'Frequently asked questions', url: '/faq', kind: 'faq' },
-  'page:privacy': { file: 'app/privacy/page.tsx', title: 'Privacy policy', url: '/privacy', kind: 'legal' },
-  'page:terms': { file: 'app/terms/page.tsx', title: 'Terms of service', url: '/terms', kind: 'legal' },
-  'page:cookies': { file: 'app/cookies/page.tsx', title: 'Cookie policy', url: '/cookies', kind: 'legal' },
+  'page:privacy': { file: 'app/privacy/privacy-body.tsx', title: 'Privacy policy', url: '/privacy', kind: 'legal' },
+  'page:terms': { file: 'app/terms/terms-body.tsx', title: 'Terms of service', url: '/terms', kind: 'legal' },
+  'page:cookies': { file: 'app/cookies/cookies-body.tsx', title: 'Cookie policy', url: '/cookies', kind: 'legal' },
   'page:security': { file: 'app/security/page.tsx', title: 'Security', url: '/security', kind: 'legal' },
   'page:admin-help': { file: 'app/dashboard/admin/help/page.tsx', title: 'Admin help centre', url: '/dashboard/admin/help', kind: 'help' },
 }
