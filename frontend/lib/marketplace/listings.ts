@@ -127,6 +127,8 @@ export function validateProduct(raw: unknown, opts: { strict?: boolean; kind?: I
     if (!validTimezone(timezone)) errors.push('Choose a valid time zone.')
     const buffer_min = intOr(s.buffer_min, 0) as number
     if (!isInt(buffer_min, 0, 120)) errors.push('Buffer must be 0–120 minutes.')
+    const max_per_day = intOr(s.max_per_day, 0) as number
+    if (!isInt(max_per_day, 0, 24)) errors.push('Sessions per day must be 0–24 (0 = no limit).')
     const weekly: { dow: number; start: string; end: string }[] = []
     for (const r of (Array.isArray(s.weekly) ? s.weekly : []).slice(0, 50)) {
       const dow = intOr(r?.dow) as number
@@ -137,7 +139,7 @@ export function validateProduct(raw: unknown, opts: { strict?: boolean; kind?: I
     }
     if ((Array.isArray(s.weekly) ? s.weekly.length : 0) > 50) errors.push('Up to 50 availability windows.')
     if (opts.strict && !weekly.length) errors.push('Add at least one weekly availability window.')
-    v.service = { duration_min, mode, provider, slots_source: 'weekly_rules', weekly, timezone, buffer_min }
+    v.service = { duration_min, mode, provider, slots_source: 'weekly_rules', weekly, timezone, buffer_min, ...(max_per_day > 0 ? { max_per_day } : {}) }
   }
 
   return errors.length ? { ok: false, errors: [...new Set(errors)] } : { ok: true, value: v }

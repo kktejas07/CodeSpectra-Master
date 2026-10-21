@@ -100,6 +100,12 @@ export async function decideRefund(actorId: string, id: string, decision: 'appro
     if (!u.modifiedCount) throw new MktError(409, 'This request was just updated — reload and try again.')
     const { audit } = await import('./sellers')
     await audit(actorId, 'refund.rejected', id, note, 'refund')
+    // A rejected dispute releases the seller's funds it was holding (mentor
+    // sessions park them 60 days out while the dispute is open).
+    if (r.type === 'dispute') {
+      const { rescheduleLineHold } = await import('./ledger')
+      for (const lineId of r.line_ids ?? []) await rescheduleLineHold(r.order_id, lineId, nowIso()).catch(() => {})
+    }
     const { notify } = await import('@/lib/notifications')
     await notify({ user_id: r.buyer_id, type: 'mkt.refund_update', title: 'Refund request declined', message: note, link: `/dashboard/orders/${r.order_id}` }).catch(() => null)
     return { ...r, status: 'rejected', note }

@@ -28,6 +28,8 @@ import {
 import { cn } from '@/lib/utils'
 import {
   Home,
+  CalendarCheck,
+  GraduationCap,
   Trophy,
   Code2 as CodeIcon,
   BookOpen,
@@ -98,6 +100,7 @@ import {
   Megaphone,
   BrainCircuit,
   Brain,
+  Mic,
   ShieldAlert,
   ShieldCheck,
   Zap,
@@ -120,6 +123,7 @@ import {
   BookOpenText,
   Store,
   ShoppingBag,
+  UserSearch,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -405,6 +409,7 @@ export default function DashboardLayout({
       '/dashboard/challenges': Target,
       '/dashboard/tracks': GitFork,
       '/dashboard/100-days': Flame,
+      '/dashboard/study-plan': CalendarCheck,
 
       // Events
       '/dashboard/events': CalendarDays,
@@ -429,15 +434,19 @@ export default function DashboardLayout({
 
       // Career
       '/dashboard/jobs': Briefcase,
+      '/dashboard/campus': GraduationCap,
       '/dashboard/interviews': UserCheck,
       '/dashboard/interviews/ai-mock': Brain,
+      '/dashboard/interview-sim': Mic,
       '/dashboard/interviews/feedback': MessageSquare,
       '/dashboard/mock-tests': Sparkles,
       '/dashboard/company-tests': ListChecks,
+      '/dashboard/mentor': GraduationCap,
       '/dashboard/resumes': FileSpreadsheet,
       '/dashboard/assessments': ClipboardCheck,
       '/dashboard/assessments/ai-fluency': BrainCircuit,
       '/dashboard/certifications': Award,
+      '/dashboard/passport': BadgeCheck,
 
       // Tools
       '/dashboard/scanner': ScanSearch,
@@ -446,6 +455,7 @@ export default function DashboardLayout({
 
       // Stats
       '/dashboard/leaderboard': Crown,
+      '/dashboard/leagues': Shield,
       '/dashboard/achievements': Medal,
       '/dashboard/skill-analytics': LineChart,
 
@@ -486,6 +496,7 @@ export default function DashboardLayout({
       '/dashboard/admin/signals': Radio,
       '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,
+      '/dashboard/admin/leagues': Shield,
       '/dashboard/admin/contests': Swords,
       '/dashboard/admin/rag': BrainCircuit,
       '/dashboard/admin/agent': BotMessageSquare,
@@ -508,6 +519,7 @@ export default function DashboardLayout({
       '/dashboard/admin/automations': Zap,
       [p.questionGenerator]: Bot,
       '/dashboard/admin/question-bot': Bot,
+      '/dashboard/admin/interview-sim': Mic,
       '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
       '/dashboard/admin/team/activity': Activity,
@@ -520,7 +532,10 @@ export default function DashboardLayout({
       '/dashboard/admin/help': HelpCircle,
       '/dashboard/admin/sso': KeyRound,
       '/dashboard/admin/kyc': BadgeCheck,
+      '/dashboard/admin/talent': UserSearch,
       '/dashboard/admin/marketplace': Store,
+      '/dashboard/admin/mentors': GraduationCap,
+      '/dashboard/admin/study-plans': CalendarCheck,
       '/dashboard/recruiter-analytics': BarChart3,
       '/companies': Building2,
     }
@@ -629,6 +644,7 @@ export default function DashboardLayout({
       addH(H, 'Overview', LayoutDashboardIcon)
       addH(`${H}/jobs`, 'Jobs', Briefcase)
       addH(`${H}/candidates`, 'Candidates', FileSpreadsheet)
+      addH(`${H}/talent`, 'Talent search', UserSearch)
       addH(`${H}/approvals`, 'Approvals', ClipboardCheck)
       addH(`${H}/interviews`, 'Interviews', UserCheck)
       if (ats.has('admin') || ats.has('recruiter')) {

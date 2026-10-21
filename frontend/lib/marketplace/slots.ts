@@ -5,7 +5,7 @@
  */
 
 export interface WeeklyRule { dow: number; start: string; end: string }
-export interface ServiceSpec { duration_min: number; weekly: WeeklyRule[]; timezone: string; buffer_min?: number }
+export interface ServiceSpec { duration_min: number; weekly: WeeklyRule[]; timezone: string; buffer_min?: number; /** Max held/booked sessions per seller-local day (all of the seller's services); 0/absent = no cap. */ max_per_day?: number }
 
 const HM = /^([01]\d|2[0-3]):([0-5]\d)$/
 
@@ -71,6 +71,18 @@ export function generateSlots(spec: ServiceSpec, q: SlotQuery): string[] {
   const taken = (q.taken || []).map((b) => [Date.parse(b.start) - buffer * 60_000, Date.parse(b.end) + buffer * 60_000] as const)
   const max = q.max ?? 500
   const out = new Set<number>()
+  // Daily cap: count the seller's taken sessions per seller-local date.
+  const cap = Math.max(0, Math.floor(spec.max_per_day ?? 0))
+  const perDay = new Map<string, number>()
+  if (cap > 0) {
+    for (const b of q.taken || []) {
+      const t = Date.parse(b.start)
+      if (!Number.isFinite(t)) continue
+      const p = partsIn(spec.timezone, t)
+      const k = `${p.y}-${p.m}-${p.d}`
+      perDay.set(k, (perDay.get(k) || 0) + 1)
+    }
+  }
 
   // Walk seller-local calendar days covering [from, to] (one day of slack each side).
   const startLocal = partsIn(spec.timezone, q.fromMs - 86_400_000)
@@ -78,6 +90,7 @@ export function generateSlots(spec: ServiceSpec, q: SlotQuery): string[] {
   for (let i = 0; i < days && out.size < max; i++) {
     const day = new Date(Date.UTC(startLocal.y, startLocal.m - 1, startLocal.d + i))
     const y = day.getUTCFullYear(), m = day.getUTCMonth() + 1, d = day.getUTCDate(), dow = day.getUTCDay()
+    if (cap > 0 && (perDay.get(`${y}-${m}-${d}`) || 0) >= cap) continue
     for (const rule of spec.weekly || []) {
       if (rule.dow !== dow) continue
       const a = parseHm(rule.start), b = parseHm(rule.end)

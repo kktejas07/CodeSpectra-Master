@@ -16,9 +16,11 @@ import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
+import { IntegrityMonitor } from '@/components/integrity/IntegrityMonitor'
+import { IntegrityConsent, useIntegrityConfig } from '@/components/integrity/IntegrityConsent'
 import { QuestionAnswerInput } from '@/components/assessment/QuestionAnswerInput'
 import { AdaptiveRunner, type AdaptiveViewPayload } from '@/components/assessment/AdaptiveRunner'
-import { metaFor } from '@/lib/question-types'
+import { metaFor, isCodingType } from '@/lib/question-types'
 import { useDateFormat } from '@/lib/use-platform-timezone'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -198,6 +200,11 @@ export default function CandidateAssessmentPage() {
 
   // Recording Consent
   const [recordingConsent, setRecordingConsent] = useState(false)
+  // Integrity checks (lib/integrity): opt-in per test by the author; consent before start.
+  const integrity = useIntegrityConfig('exam', params.id ? String(params.id) : null, !!user)
+  const [integrityConsent, setIntegrityConsent] = useState(false)
+  const integrityOn = !!integrity.config?.enabled
+  const integrityBlocksStart = integrityOn && !integrityConsent && !integrity.config?.consented
   // Phones can't share the screen or (iPhone) go full screen — tell candidates before they start.
   const [onMobile, setOnMobile] = useState(false)
   useEffect(() => { setOnMobile(isMobileUserAgent(navigator.userAgent)) }, [])
@@ -972,7 +979,10 @@ export default function CandidateAssessmentPage() {
               <span>You already started this attempt. The timer kept running; your saved answers will be restored.</span>
             </div>
           )}
-          <Button onClick={() => { afterIdentityRef.current = { kind: 'start' }; setShowVerification(true) }} disabled={starting} className="w-full text-base font-semibold h-12 rounded-xl gap-2">
+          {integrity.config && integrityOn && (
+            <IntegrityConsent config={integrity.config} checked={integrityConsent || integrity.config.consented} onChange={setIntegrityConsent} />
+          )}
+          <Button onClick={() => { afterIdentityRef.current = { kind: 'start' }; setShowVerification(true) }} disabled={starting || integrityBlocksStart} className="w-full text-base font-semibold h-12 rounded-xl gap-2">
             {starting && <Loader2 className="h-4 w-4 animate-spin" />}
             {resuming ? 'Resume assessment' : 'Start assessment'}
           </Button>
@@ -1003,7 +1013,11 @@ export default function CandidateAssessmentPage() {
     <>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined} identityStatus={identityStatus} examTitle={exam.title}>
       <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted} enforceFullscreen={hasStarted}>
-      <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent} />
+      {/* With integrity checks on, continuous video runs only when the author enabled it. */}
+      <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent && (!integrityOn || !!integrity.config?.continuous_video)} />
+      {integrity.config && integrityOn && (
+        <IntegrityMonitor kind="exam" targetId={String(params.id)} config={integrity.config} active={hasStarted && !isSubmitted} />
+      )}
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-4 sm:px-6 py-3 flex items-center justify-between gap-3 shadow-xs">
@@ -1018,7 +1032,7 @@ export default function CandidateAssessmentPage() {
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-          {recordingConsent && hasStarted && (
+          {recordingConsent && hasStarted && (!integrityOn || !!integrity.config?.continuous_video) && (
             <div className="flex items-center gap-1.5 text-[11px] font-medium text-red-600 dark:text-red-400">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="animate-ping motion-reduce:animate-none absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
@@ -1187,7 +1201,7 @@ export default function CandidateAssessmentPage() {
               </div>
             </div>
 
-            <div className="pt-4">
+            <div className="pt-4" data-integrity-q={isCodingType(currentQ.type) ? currentQ.id : undefined}>
               <QuestionAnswerInput
                 question={currentQ}
                 value={answers[currentQ.id]}

@@ -1610,9 +1610,14 @@ export default function ExamResultsPage() {
           description="Review submissions, grade open answers, check proctoring and release scores to candidates."
           icon={<CheckCheck />}
           actions={
+            <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/recordings`)}>
               <Film className="h-4 w-4" /> Recordings
             </Button>
+            <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => router.push(`/dashboard/admin/assessments/${params.id}/integrity`)}>
+              <ShieldAlert className="h-4 w-4" /> Integrity
+            </Button>
+            </div>
           }
         />
         <div className="flex flex-wrap items-center gap-2">

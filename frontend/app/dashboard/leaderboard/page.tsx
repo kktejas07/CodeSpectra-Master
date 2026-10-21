@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -178,6 +179,7 @@ export default function LeaderboardPage() {
             description={`${categories.find((c) => c.id === activeCategory)?.label ?? 'Global'} rankings, ${activeTab === 'month' ? 'points earned this month' : 'all-time points'}.`}
             icon={<BarChart3 />}
             className="mb-0"
+            actions={<Button asChild size="sm" variant="outline"><Link href="/dashboard/leagues">Team and college leagues</Link></Button>}
           />
         </div>
 

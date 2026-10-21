@@ -58,7 +58,7 @@ export interface Product {
   variants?: ProductVariant[] // physical (size/format) — price/stock per variant
   stock?: number | null // physical without variants; null = unlimited
   digital?: { file_ids: string[]; download_limit: number; license_note?: string } | null
-  service?: { duration_min: number; mode: 'virtual' | 'in_person'; provider?: 'livekit' | 'zoom' | 'google_meet' | 'teams' | 'manual'; slots_source: 'weekly_rules'; weekly: { dow: number; start: string; end: string }[]; timezone: string; buffer_min?: number } | null
+  service?: { duration_min: number; mode: 'virtual' | 'in_person'; provider?: 'livekit' | 'zoom' | 'google_meet' | 'teams' | 'manual'; slots_source: 'weekly_rules'; weekly: { dow: number; start: string; end: string }[]; timezone: string; buffer_min?: number; max_per_day?: number } | null
   shipping?: { weight_g?: number; ships_from: string; regions: string[]; fee: number; free_over?: number | null; dispatch_days: number } | null
   status: 'draft' | 'pending_review' | 'published' | 'rejected' | 'archived'
   rating?: { avg: number; count: number }

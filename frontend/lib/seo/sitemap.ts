@@ -158,6 +158,9 @@ export async function loadSitemapEntries(type: SitemapType): Promise<SitemapEntr
         const rows = await (await productsCol()).find({ status: 'published', seller_id: { $in: [...sellers.keys()] } }, { projection: { _id: 0, slug: 1, updated_at: 1 } }).limit(MAX_URLS).toArray()
         const out: SitemapEntry[] = rows.map((p) => ({ path: `/marketplace/p/${p.slug}`, lastmod: p.updated_at, changefreq: 'weekly', priority: 0.6 }))
         for (const s of sellers.values()) out.push({ path: `/marketplace/s/${s.slug}`, lastmod: s.updated_at, changefreq: 'weekly', priority: 0.4 })
+        // Verified mentors (lib/mentors): /mentors/<slug>.
+        const { loadDirectory } = await import('@/lib/mentors/service')
+        for (const m of await loadDirectory().catch(() => [])) out.push({ path: `/mentors/${m.slug}`, changefreq: 'weekly', priority: 0.5 })
         return out
       })
     case 'companies':

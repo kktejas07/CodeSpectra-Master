@@ -24,6 +24,9 @@ const CASCADE: Array<{ collection: string; field: string }> = [
   { collection: 'id_card_tokens', field: 'user_id' },
   { collection: 'user_ai_settings', field: 'user_id' },
   { collection: 'device_fingerprints', field: 'user_id' },
+  // Skill passport + talent-search opt-in and the invites sent to this learner.
+  { collection: 'skill_passports', field: 'user_id' },
+  { collection: 'talent_invites', field: 'learner_id' },
 ]
 
 /**

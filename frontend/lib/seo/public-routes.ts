@@ -38,6 +38,8 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   { path: '/events', title: 'Hackathons, codeathons and contests worldwide', description: 'Upcoming hackathons, codeathons, buildathons, CTFs and coding contests worldwide. Filter by format, country and deadline.', group: 'pages', updated: U, priority: 0.8, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
   { path: '/learn', title: 'Learn: algorithms, system design and engineering', description: 'Free explainers on algorithms, system design, design patterns and engineering practice, with runnable code and practice problems.', group: 'pages', updated: U, priority: 0.8, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
   { path: '/marketplace', title: 'Marketplace: books, courses and mock interviews', description: 'Buy books, courses, e-books and templates, or book mentoring and mock interviews with CodeSpectra and approved sellers.', group: 'pages', updated: U, priority: 0.7, changefreq: 'daily', schema: ['CollectionPage'], llms: true },
+  { path: '/mentors', title: 'Mentors: mock interviews, code reviews and career guidance', description: 'Book paid 1:1 sessions with verified engineers: mock interviews, code reviews, resume reviews and career guidance.', group: 'pages', updated: '2026-10-21', priority: 0.6, changefreq: 'daily', schema: ['CollectionPage'] },
+  { path: '/leagues', title: 'University and team leagues', description: 'Quarterly league tables for colleges and teams, built from released results of contests, codeathons, hackathons and the arena on CodeSpectra.', group: 'pages', updated: '2026-10-21', priority: 0.6, changefreq: 'daily', schema: ['CollectionPage', 'BreadcrumbList'] },
   { path: '/companies', title: 'Company interview prep guides', description: 'How top tech companies interview: rounds, difficulty mix and sample questions, with practice on CodeSpectra.', group: 'pages', updated: U, priority: 0.7, changefreq: 'monthly', schema: ['CollectionPage'], llms: true },
   { path: '/news', title: 'Tech news for developers and students', description: 'Daily tech news for builders: cloud releases, security advisories, language releases, AI and India tech careers, summarised from primary sources.', group: 'pages', updated: '2026-10-21', priority: 0.7, changefreq: 'daily', schema: ['CollectionPage', 'ItemList'], llms: true },
   { path: '/newsletter', title: 'Newsletter', description: 'Subscribe to the CodeSpectra newsletter for new Learn posts, events and product updates. Browse past issues.', group: 'pages', updated: U, priority: 0.4, changefreq: 'weekly', schema: [] },
@@ -59,7 +61,7 @@ export function publicRoute(path: string): PublicRoute | undefined {
 }
 
 /** Prefixes of public content sections (detail pages live under these). */
-const PUBLIC_PREFIXES = ['/learn/', '/events/', '/jobs/', '/marketplace/p/', '/marketplace/s/', '/companies/', '/docs/', '/news/', '/newsletter/', '/compare/']
+const PUBLIC_PREFIXES = ['/learn/', '/events/', '/jobs/', '/marketplace/p/', '/marketplace/s/', '/mentors/', '/companies/', '/docs/', '/news/', '/newsletter/', '/compare/', '/leagues/']
 
 /**
  * True for public, cacheable marketing/content pages (no per-user cookies needed).
