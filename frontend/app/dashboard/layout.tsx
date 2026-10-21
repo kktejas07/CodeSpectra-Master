@@ -83,6 +83,7 @@ import {
   UserCheck,
   FileSpreadsheet,
   ClipboardCheck,
+  ListChecks,
   Boxes,
   ScanFace,
   Crown,
@@ -418,7 +419,6 @@ export default function DashboardLayout({
       '/dashboard/interview-prep': Video,
 
       // Discover
-      '/dashboard/quizzes': HelpCircle,
       '/dashboard/articles': Newspaper,
       '/dashboard/resources': Library,
 
@@ -433,6 +433,7 @@ export default function DashboardLayout({
       '/dashboard/interviews/ai-mock': Brain,
       '/dashboard/interviews/feedback': MessageSquare,
       '/dashboard/mock-tests': Sparkles,
+      '/dashboard/company-tests': ListChecks,
       '/dashboard/resumes': FileSpreadsheet,
       '/dashboard/assessments': ClipboardCheck,
       '/dashboard/assessments/ai-fluency': BrainCircuit,

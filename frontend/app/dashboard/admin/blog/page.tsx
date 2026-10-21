@@ -30,6 +30,8 @@ import { EmptyState } from '@/components/ui/empty-state'
 type Post = {
   id: string
   slug: string
+  /** Public URL from /api/blog (/learn/<slug> or /news/<slug>). */
+  public_path?: string
   title: string
   excerpt: string
   body: string
@@ -209,9 +211,9 @@ export default function AdminBlogPage() {
         title="Newsroom"
         description={
           <>
-            Articles on the public{' '}
-            <Link href="/blog" className="font-medium text-primary hover:underline" target="_blank">
-              blog
+            Posts shown in{' '}
+            <Link href="/learn?source=team" className="font-medium text-primary hover:underline" target="_blank">
+              Learn, under From the team
             </Link>
             . Publish newsletters here too when they should stay readable for good.
           </>
@@ -390,7 +392,7 @@ export default function AdminBlogPage() {
                     <Badge variant={p.status === 'published' ? 'default' : 'outline'} className="capitalize">{p.status}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground truncate">
-                    /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
+                    {p.public_path || `/learn/${p.slug}`} · {p.read_minutes} min · {p.author_name}
                   </p>
                 </div>
               </div>
@@ -410,7 +412,7 @@ export default function AdminBlogPage() {
                   AI cover
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/blog/${p.slug}`} target="_blank">
+                  <Link href={p.public_path || `/learn/${encodeURIComponent(p.slug)}`} target="_blank">
                     <Eye className="mr-1 h-3.5 w-3.5" /> View
                   </Link>
                 </Button>

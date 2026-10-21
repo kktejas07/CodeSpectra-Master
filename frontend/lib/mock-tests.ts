@@ -1,7 +1,7 @@
-/** Sample mock tests shown on /dashboard/mock-tests and /dashboard/quizzes. Shared so the
+/** Sample mock tests shown on /dashboard/mock-tests. Shared so the
  * setup and take pages can resolve company/role for an id when query params are absent.
  * `pattern` links an entry to a company exam pattern (Admin → Company patterns): the
- * quizzes page opens the timed, sectioned practice run for it instead of the AI mock. */
+ * catalogue opens the timed, sectioned practice run for it instead of the AI mock. */
 export interface MockTestCatalogItem {
   id: string
   company: string

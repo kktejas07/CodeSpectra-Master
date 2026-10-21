@@ -104,8 +104,8 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
               <Link href="/newsletter" className="font-medium text-cs-accent-text hover:underline">
                 ← All newsletters
               </Link>
-              <Link href="/blog" className="font-medium text-cs-accent-text hover:underline">
-                Newsroom
+              <Link href="/learn" className="font-medium text-cs-accent-text hover:underline">
+                Learn
               </Link>
               <Link
                 href="/dashboard/notifications"

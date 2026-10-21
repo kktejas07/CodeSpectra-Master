@@ -31,7 +31,7 @@ export default function NotFound() {
             in your latest email.
           </p>
 
-          <form action="/blog" method="get" role="search" className="mt-8 flex w-full max-w-md gap-2">
+          <form action="/learn" method="get" role="search" className="mt-8 flex w-full max-w-md gap-2">
             <label htmlFor="nf-q" className="sr-only">Search articles and guides</label>
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />

@@ -57,6 +57,8 @@ type Tab = 'newsroom' | 'signals'
 type Post = {
   id: string
   slug: string
+  /** Public URL from /api/blog (/learn/<slug> or /news/<slug>). */
+  public_path?: string
   title: string
   excerpt: string
   body: string
@@ -101,8 +103,8 @@ export default function ContentStudioPage() {
         description={
           <>
             Write original posts or turn RSS feeds into drafts for review. Everything publishes to{' '}
-            <Link href="/blog" className="text-primary hover:underline" target="_blank">
-              /blog
+            <Link href="/learn?source=team" className="text-primary hover:underline" target="_blank">
+              /learn
             </Link>
             .
           </>
@@ -547,7 +549,7 @@ function NewsroomTab() {
                     <Badge variant={p.status === 'published' ? 'success' : 'outline'} className="capitalize">{p.status}</Badge>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground truncate">
-                    /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
+                    {p.public_path || `/learn/${p.slug}`} · {p.read_minutes} min · {p.author_name}
                   </p>
                 </div>
               </div>
@@ -557,7 +559,7 @@ function NewsroomTab() {
                   AI cover
                 </Button>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/blog/${p.slug}`} target="_blank">
+                  <Link href={p.public_path || `/learn/${encodeURIComponent(p.slug)}`} target="_blank">
                     <Eye className="mr-1 h-3.5 w-3.5" /> View
                   </Link>
                 </Button>
@@ -694,7 +696,7 @@ function SignalsTab() {
                       </span>
                     ))}
                     {d.blog_slug ? (
-                      <> · <Link href={`/blog/${d.blog_slug}`} className="text-primary hover:underline">/blog/{d.blog_slug}</Link></>
+                      <> · <Link href={`/news/${d.blog_slug}`} className="text-primary hover:underline">/news/{d.blog_slug}</Link></>
                     ) : null}
                   </p>
                 </div>

@@ -12,6 +12,8 @@ export interface ListParams {
   level?: string | null
   tag?: string | null
   series?: string | null
+  /** 'team': only "From the team" posts (blog_posts). */
+  source?: string | null
   featured?: boolean
   page?: number
   limit?: number
@@ -29,13 +31,14 @@ export function parseListParams(sp: URLSearchParams | Record<string, string | st
     level: get('level'),
     tag: get('tag'),
     series: get('series'),
+    source: get('source'),
     featured: get('featured') === '1',
     page: Number(get('page')) || 1,
     limit: Number(get('limit')) || undefined,
   }
 }
 
-export async function listPublished(p: ListParams): Promise<{ items: LearnPostCard[]; total: number; page: number; pages: number }> {
+function publishedFilter(p: ListParams): Filter<LearnPostDoc> {
   const filter: Filter<LearnPostDoc> = { status: 'published' }
   if (isLearnCategory(p.category)) filter.category = p.category
   if (isLearnLevel(p.level)) filter.level = p.level
@@ -49,6 +52,23 @@ export async function listPublished(p: ListParams): Promise<{ items: LearnPostCa
     const re = new RegExp(sanitizeRegex(q), 'i')
     filter.$or = [{ title: re }, { summary: re }, { tags: re }]
   }
+  return filter
+}
+
+/** Newest published posts matching the filters (first `take`), with the total — for the merged Learn + team listing. */
+export async function listPublishedTop(p: ListParams, take: number): Promise<{ items: LearnPostCard[]; total: number }> {
+  const filter = publishedFilter(p)
+  const col = await learnPosts()
+  const [items, total] = await Promise.all([
+    col.find(filter, { projection: CARD_PROJECTION }).sort({ published_at: -1 }).limit(Math.max(1, take)).toArray(),
+    col.countDocuments(filter),
+  ])
+  return { items: items as LearnPostCard[], total }
+}
+
+export async function listPublished(p: ListParams): Promise<{ items: LearnPostCard[]; total: number; page: number; pages: number }> {
+  const filter = publishedFilter(p)
+  const series = typeof p.series === 'string' ? p.series.trim().slice(0, 80) : ''
   const limit = Math.max(1, Math.min(48, Math.floor(p.limit ?? 12)))
   const page = Math.max(1, Math.min(500, Math.floor(p.page ?? 1)))
   const col = await learnPosts()

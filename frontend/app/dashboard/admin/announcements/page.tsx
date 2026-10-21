@@ -164,7 +164,7 @@ export default function AnnouncementsPage() {
 
                 <div>
                   <Label>Link <span className="text-muted-foreground text-xs">(optional)</span></Label>
-                  <Input aria-label="Link (optional)" value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="mt-1.5" placeholder="https://codespectra.ai/blog/update" type="url" />
+                  <Input aria-label="Link (optional)" value={form.link} onChange={e => setForm(f => ({ ...f, link: e.target.value }))} className="mt-1.5" placeholder="https://codespectra.ai/learn/update" type="url" />
                 </div>
 
                 <div>

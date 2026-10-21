@@ -81,8 +81,13 @@ export async function changedPublicUrls(site: string, sinceIso: string): Promise
       .then((r) => r.forEach((h) => h.slug && add(`/hackathons/${encodeURIComponent(String(h.slug))}`))).catch(() => {}),
     db.collection('mkt_products').find({ status: 'published', updated_at: since }, { projection: { _id: 0, slug: 1 } }).limit(2000).toArray()
       .then((r) => r.forEach((p) => add(`/marketplace/p/${encodeURIComponent(String(p.slug))}`))).catch(() => {}),
-    db.collection('blog_posts').find({ status: 'published', updated_at: since }, { projection: { _id: 0, slug: 1 } }).limit(1000).toArray()
-      .then((r) => r.forEach((p) => add(`/blog/${encodeURIComponent(String(p.slug))}`))).catch(() => {}),
+    // Team posts live under /learn (news under /news); Learn posts own a shared slug (lib/learn/team-posts).
+    db.collection('blog_posts').find({ status: 'published', updated_at: since }, { projection: { _id: 0, slug: 1, tags: 1, category: 1 } }).limit(1000).toArray()
+      .then(async (r) => {
+        const { teamPublicPaths } = await import('@/lib/learn/team-queries')
+        const paths = await teamPublicPaths(r.map((p) => ({ slug: String(p.slug), tags: Array.isArray(p.tags) ? p.tags : [], category: p.category })))
+        paths.forEach((path) => add(path))
+      }).catch(() => {}),
   ])
   return out
 }

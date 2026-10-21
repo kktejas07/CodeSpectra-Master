@@ -12,6 +12,7 @@ import {
   type BlogPostDoc,
 } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
+import { teamPublicPaths } from '@/lib/learn/team-queries'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,7 +56,10 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    return NextResponse.json({ items: list, categories: BLOG_CATEGORIES, total: list.length })
+    // Where each post is public now: /learn/<slug> (team- prefix if a Learn post owns it) or /news/<slug>.
+    const paths = await teamPublicPaths(list).catch(() => new Map<string, string>())
+    const items = list.map((p) => ({ ...p, public_path: paths.get(p.slug) || `/learn/${encodeURIComponent(p.slug)}` }))
+    return NextResponse.json({ items, categories: BLOG_CATEGORIES, total: items.length })
   } catch (e) {
     console.error('[blog] GET list:', e)
     return NextResponse.json({ error: 'Something went wrong. Please try again.' }, { status: 500 })

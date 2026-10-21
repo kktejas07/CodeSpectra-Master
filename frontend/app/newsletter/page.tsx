@@ -59,9 +59,9 @@ export default async function NewsletterIndexPage() {
             variant="notifications"
             illustration="inbox"
             title="No newsletters published yet"
-            description="In the meantime, the Newsroom has the latest articles."
-            actionLabel="Open the Newsroom"
-            actionHref="/blog"
+            description="In the meantime, Learn has the latest articles from the team."
+            actionLabel="Open Learn"
+            actionHref="/learn"
           />
         ) : (
           <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -113,8 +113,8 @@ export default async function NewsletterIndexPage() {
         )}
 
         <p className="mt-10 flex flex-wrap gap-4 text-sm text-cs-ink-soft">
-          <Link href="/blog" className="font-medium text-cs-accent-text hover:underline">
-            ← Newsroom
+          <Link href="/learn" className="font-medium text-cs-accent-text hover:underline">
+            ← Learn
           </Link>
           <Link
             href="/dashboard/notifications"

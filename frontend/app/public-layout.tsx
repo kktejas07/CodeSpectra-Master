@@ -105,7 +105,6 @@ export function PublicPageWrapper({
     { href: '/marketplace', label: 'Marketplace' },
     { href: '/learn', label: 'Learn' },
     { href: '/news', label: 'News' },
-    { href: '/blog', label: 'Blog' },
     { href: '/docs', label: 'Docs' },
   ]
 
@@ -258,7 +257,6 @@ export function PublicPageWrapper({
                 <li><Link href="/newsletter" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Newsletter</Link></li>
                 <li><Link href="/learn" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Learn</Link></li>
                 <li><Link href="/news" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Tech news</Link></li>
-                <li><Link href="/blog" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Blog</Link></li>
                 <li><Link href="/api-reference" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">API reference</Link></li>
                 <li><Link href="/support" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">Support</Link></li>
                 <li><Link href="/faq" className="text-sm text-cs-ink-soft hover:text-cs-ink transition-colors duration-200">FAQ</Link></li>

@@ -1,18 +1,28 @@
-/** GET /learn/rss.xml — RSS 2.0 feed of the latest published Learn posts. */
+/** GET /learn/rss.xml — RSS 2.0 feed of the latest published Learn posts and "From the team" posts. */
 import { latestPublished } from '@/lib/learn/queries'
 import { escapeHtml } from '@/lib/safe-html'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { postUrl } from '@/lib/learn/share'
 import { categoryLabel } from '@/lib/learn/types'
+import { latestTeam } from '@/lib/learn/team-queries'
+import { TEAM_LABEL, teamCategoryLabel } from '@/lib/learn/team-posts'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const origin = await getSiteOrigin()
-  let posts: Awaited<ReturnType<typeof latestPublished>> = []
+  type Item = { slug: string; title: string; summary: string; category: string; published_at?: string | null }
+  let posts: Item[] = []
   try {
-    posts = await latestPublished(50)
+    const [learn, team] = await Promise.all([
+      latestPublished(50),
+      latestTeam(50).catch(() => []),
+    ])
+    posts = [
+      ...learn.map((p) => ({ ...p, category: categoryLabel(p.category) })),
+      ...team.map((p) => ({ ...p, category: `${TEAM_LABEL}: ${teamCategoryLabel(p.category)}` })),
+    ].sort((a, b) => String(b.published_at || '').localeCompare(String(a.published_at || ''))).slice(0, 50)
   } catch (e) {
     console.error('[learn] rss:', (e as Error)?.message)
   }
@@ -23,7 +33,7 @@ export async function GET() {
       <link>${escapeHtml(link)}</link>
       <guid isPermaLink="true">${escapeHtml(link)}</guid>
       <description>${escapeHtml(p.summary)}</description>
-      <category>${escapeHtml(categoryLabel(p.category))}</category>
+      <category>${escapeHtml(p.category)}</category>
       ${p.published_at ? `<pubDate>${new Date(p.published_at).toUTCString()}</pubDate>` : ''}
     </item>`
   }).join('\n')
@@ -33,7 +43,7 @@ export async function GET() {
     <title>CodeSpectra Learn</title>
     <link>${escapeHtml(`${origin}/learn`)}</link>
     <atom:link href="${escapeHtml(`${origin}/learn/rss.xml`)}" rel="self" type="application/rss+xml" />
-    <description>Original explainers on algorithms, system design and engineering practices.</description>
+    <description>Original explainers on algorithms, system design and engineering practices, plus notes from the CodeSpectra team.</description>
     <language>en</language>
 ${items}
   </channel>

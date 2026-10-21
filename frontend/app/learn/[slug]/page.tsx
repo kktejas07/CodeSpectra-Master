@@ -3,10 +3,13 @@
  * syntax highlighting, table of contents, copy-code, share bar, practice CTA,
  * related posts, sources. SEO: metadata + Open Graph (dynamic image in
  * opengraph-image.tsx) + JSON-LD Article.
+ *
+ * The slug resolves to a Learn post first, then a "From the team" post
+ * (blog_posts) — lib/learn/team-posts.ts decideLearnSlug.
  */
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { ChevronRight, Clock, ExternalLink } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { LearnMarkdown } from '@/components/learn/learn-markdown'
@@ -23,6 +26,9 @@ import { getSiteOrigin } from '@/lib/seo/settings'
 import { JsonLd } from '@/components/seo/json-ld'
 import { AnswerSummary, SPEAKABLE_SELECTORS } from '@/components/seo/answer-summary'
 import { formatDate } from '@/lib/format-datetime'
+import { TeamArticle } from '@/components/learn/team-article'
+import { relatedTeam, resolveLearnSlug } from '@/lib/learn/team-queries'
+import { teamCategoryLabel } from '@/lib/learn/team-posts'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,7 +37,23 @@ type Params = Promise<{ slug: string }>
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { slug } = await params
   const post = await getPublishedPost(slug).catch(() => null)
-  if (!post) return { title: 'Post not found', robots: { index: false, follow: true } }
+  if (!post) {
+    const team = await resolveLearnSlug(slug, false).catch(() => null)
+    const t = team?.post
+    if (!t) return { title: 'Post not found', robots: { index: false, follow: true } }
+    return buildMetadata({
+      title: t.title,
+      description: t.excerpt,
+      path: `/learn/${encodeURIComponent(slug)}`,
+      kind: 'article',
+      type: 'article',
+      image: t.cover_image || undefined,
+      publishedTime: t.published_at,
+      modifiedTime: t.updated_at,
+      section: teamCategoryLabel(t.category),
+      tags: t.tags,
+    })
+  }
   const path = `/learn/${encodeURIComponent(post.slug)}`
   return buildMetadata({
     title: post.title,
@@ -60,7 +82,13 @@ function safeDate(iso?: string | null): string {
 export default async function LearnPostPage({ params }: { params: Params }) {
   const { slug } = await params
   const post = await getPublishedPost(slug)
-  if (!post) notFound()
+  if (!post) {
+    const { decision, post: team } = await resolveLearnSlug(slug, false)
+    if (decision.kind === 'redirect') permanentRedirect(decision.to)
+    if (decision.kind !== 'team' || !team) notFound()
+    const [relatedT, site] = await Promise.all([relatedTeam(team).catch(() => []), getSiteOrigin()])
+    return <TeamArticle post={team} path={`/learn/${encodeURIComponent(slug)}`} related={relatedT} site={site} />
+  }
   const related = await relatedPosts(post).catch(() => [])
   const toc = extractToc(post.body).filter((t) => t.level === 2)
   const origin = await getSiteOrigin()

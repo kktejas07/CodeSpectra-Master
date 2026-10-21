@@ -125,7 +125,6 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/notifications': 'notifications',
   '/dashboard/notifications/preferences': 'notification-preferences',
   '/dashboard/jobs': 'jobs',
-  '/dashboard/quizzes': 'quizzes',
   '/dashboard/mock-tests': 'mock-tests',
   '/dashboard/mock-tests/[id]': 'mock-test-detail',
   '/dashboard/challenges': 'challenges',

@@ -103,6 +103,7 @@ exports[`route → access map coverage > matches the snapshot (add new pages to 
   "/dashboard/codeathons": "/dashboard/codeathons → user",
   "/dashboard/codeathons/[id]": "/dashboard/codeathons → user",
   "/dashboard/codeathons/[id]/problems/[problemId]": "/dashboard/codeathons → user",
+  "/dashboard/company-tests": "/dashboard/company-tests → user",
   "/dashboard/company-tests/[patternId]": "/dashboard/company-tests/[patternId] → user",
   "/dashboard/courses": "/dashboard/courses → user",
   "/dashboard/courses/[id]": "/dashboard/courses → user",

@@ -1,7 +1,8 @@
 /**
  * Public: the practice tests for a company page — each active pattern's
  * sections and which of Easy / Moderate / Tough are ready. No questions or
- * question ids. GET ?company=<slug> or ?pattern=<id>
+ * question ids. GET ?company=<slug>, ?pattern=<id>, or ?all=1 (every active
+ * pattern, for the /dashboard/company-tests listing)
  */
 import { NextResponse, type NextRequest } from 'next/server'
 import { getPattern, listPatterns, versions } from '@/lib/company-tests/db'
@@ -15,11 +16,14 @@ export async function GET(req: NextRequest) {
   const company = (sp.get('company') || '').trim().toLowerCase()
   const patternId = (sp.get('pattern') || '').trim().toLowerCase()
   const SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/
-  if (!SLUG.test(company) && !SLUG.test(patternId)) return NextResponse.json({ error: 'Give a company or a pattern' }, { status: 400 })
+  const all = sp.get('all') === '1'
+  if (!all && !SLUG.test(company) && !SLUG.test(patternId)) return NextResponse.json({ error: 'Give a company or a pattern' }, { status: 400 })
   try {
-    const list = SLUG.test(patternId)
-      ? [await getPattern(patternId)].filter((p): p is NonNullable<typeof p> => !!p && p.active)
-      : await listPatterns({ companySlug: company, activeOnly: true })
+    const list = all
+      ? await listPatterns({ activeOnly: true })
+      : SLUG.test(patternId)
+        ? [await getPattern(patternId)].filter((p): p is NonNullable<typeof p> => !!p && p.active)
+        : await listPatterns({ companySlug: company, activeOnly: true })
     const vs = list.length
       ? await (await versions()).find({ patternId: { $in: list.map((p) => p.id) } }, { projection: { _id: 0 } }).toArray()
       : []

@@ -665,9 +665,9 @@ export default function CronJobsPage() {
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <ExternalLink className="h-3 w-3" />
-              Public blog:{' '}
-              <Link href="/blog" className="text-primary hover:underline" target="_blank">
-                /blog
+              Public posts:{' '}
+              <Link href="/learn?source=team" className="text-primary hover:underline" target="_blank">
+                /learn
               </Link>
             </span>
             <span>

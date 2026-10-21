@@ -1,7 +1,7 @@
 /**
  * /news — public tech news (Signals): topic filter, pagination, RSS, an
  * ItemList of NewsArticle JSON-LD, and the daily digest sign-up. Separate from
- * /blog (product newsroom). Server-rendered from published items only.
+ * /learn ("From the team" product posts). Server-rendered from published items only.
  */
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -135,7 +135,7 @@ export default async function NewsPage({ searchParams }: { searchParams: SP }) {
           <NotifyBox topic="news" />
           <p className="flex items-start gap-2 px-2 text-xs leading-relaxed text-muted-foreground">
             <Newspaper className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-            Summaries are written by CodeSpectra from public feeds and checked against their sources. Product updates live on the <Link href="/blog" className="text-primary hover:underline">blog</Link>.
+            Summaries are written by CodeSpectra from public feeds and checked against their sources. Product updates from the team live in <Link href="/learn?source=team" className="text-primary hover:underline">Learn</Link>.
           </p>
         </aside>
       </div>

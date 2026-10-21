@@ -12,7 +12,7 @@
 import { escapeHtml } from '@/lib/safe-html'
 import { PUBLIC_ROUTES } from './public-routes'
 
-export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'blog', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
+export const SITEMAP_TYPES = ['pages', 'legal', 'learn', 'news', 'docs', 'events', 'jobs', 'hackathons', 'marketplace', 'companies', 'compare'] as const
 export type SitemapType = (typeof SITEMAP_TYPES)[number]
 
 export interface SitemapEntry {
@@ -100,20 +100,19 @@ export async function loadSitemapEntries(type: SitemapType): Promise<SitemapEntr
     case 'learn':
       return safe(async () => {
         const { latestPublished } = await import('@/lib/learn/queries')
-        return (await latestPublished(MAX_URLS)).map((p) => ({ path: `/learn/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly', priority: 0.7 }))
+        const { latestTeam } = await import('@/lib/learn/team-queries')
+        // "From the team" posts (blog_posts, not news) live under /learn too; /blog/* 301s here.
+        const [learn, team] = await Promise.all([latestPublished(MAX_URLS), latestTeam(MAX_URLS).catch(() => [])])
+        return [
+          ...learn.map((p) => ({ path: `/learn/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly' as const, priority: 0.7 })),
+          ...team.map((p) => ({ path: `/learn/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly' as const, priority: 0.5 })),
+        ].slice(0, MAX_URLS)
       })
     case 'news':
       return safe(async () => {
         const { newsPostsCol } = await import('@/lib/signals/store')
         const rows = await (await newsPostsCol()).find({ status: 'published', tags: 'signals' }, { projection: { _id: 0, slug: 1, updated_at: 1, published_at: 1 } }).sort({ published_at: -1 }).limit(MAX_URLS).toArray()
         return rows.map((p) => ({ path: `/news/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly', priority: 0.5 }))
-      })
-    case 'blog':
-      return safe(async () => {
-        const { blogPosts } = await import('@/lib/db/blog-posts')
-        // News posts (tag 'signals') live at /news/<slug>; /blog/<slug> redirects there.
-        const rows = await (await blogPosts()).find({ status: 'published', tags: { $ne: 'signals' } }, { projection: { _id: 0, slug: 1, updated_at: 1, published_at: 1 } }).sort({ published_at: -1 }).limit(MAX_URLS).toArray()
-        return rows.map((p) => ({ path: `/blog/${p.slug}`, lastmod: p.updated_at || p.published_at, changefreq: 'monthly', priority: 0.5 }))
       })
     case 'docs':
       return safe(async () => {

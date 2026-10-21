@@ -2,6 +2,8 @@
 import { ImageResponse } from 'next/og'
 import { getPublishedPost } from '@/lib/learn/queries'
 import { categoryLabel } from '@/lib/learn/types'
+import { resolveLearnSlug } from '@/lib/learn/team-queries'
+import { TEAM_LABEL, teamCategoryLabel } from '@/lib/learn/team-posts'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,8 +14,12 @@ export const contentType = 'image/png'
 export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const post = await getPublishedPost(slug).catch(() => null)
-  const title = post?.title ?? 'CodeSpectra Learn'
-  const meta = post ? `${categoryLabel(post.category)} · ${post.level} · ${post.reading_minutes} min read` : 'Algorithms, system design and engineering practices'
+  // A "From the team" post (blog_posts) when no Learn post has this slug.
+  const team = post ? null : (await resolveLearnSlug(slug, false).catch(() => null))?.post ?? null
+  const title = post?.title ?? team?.title ?? 'CodeSpectra Learn'
+  const meta = post
+    ? `${categoryLabel(post.category)} · ${post.level} · ${post.reading_minutes} min read`
+    : team ? `${TEAM_LABEL} · ${teamCategoryLabel(team.category)} · ${team.read_minutes} min read` : 'Algorithms, system design and engineering practices'
   return new ImageResponse(
     (
       <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: 72, background: '#2F5BE7', color: '#ffffff', fontFamily: 'sans-serif' }}>
