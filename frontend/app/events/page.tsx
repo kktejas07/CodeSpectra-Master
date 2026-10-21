@@ -14,8 +14,10 @@ export const metadata: Metadata = (() => {
   return { ...m, alternates: { ...m.alternates, types: { 'application/rss+xml': '/events/feed.xml' } } }
 })()
 
-// Rendered per request so the build never needs a DB connection.
-export const dynamic = 'force-dynamic'
+// ISR, 5 min; the feed pipeline and admin edits purge it on change
+// (lib/cache/revalidate.ts). At build (no DB) the list is empty and the root
+// layout expires that placeholder on the first request.
+export const revalidate = 300
 
 export default async function PublicEventsPage() {
   const events = await listPublishedFeed().catch(() => [])

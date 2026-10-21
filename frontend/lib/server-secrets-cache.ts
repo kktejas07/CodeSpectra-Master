@@ -122,6 +122,16 @@ export type ServerSecretsRecord = {
   s3_bucket?: string
   s3_access_key_id?: string
   s3_secret_access_key?: string
+  // --- Private uploads bucket (lib/storage/config.ts; env UPLOADS_S3_*) ----
+  uploads_s3_bucket?: string
+  uploads_s3_region?: string
+  uploads_s3_endpoint?: string           // empty = AWS S3
+  uploads_s3_force_path_style?: string   // 'true' for MinIO
+  uploads_s3_access_key_id?: string      // empty = IAM role / default chain
+  uploads_s3_secret_access_key?: string
+  uploads_s3_kms_key_id?: string
+  uploads_s3_sse?: string                // AES256 | aws:kms | none
+  uploads_s3_pending_tag?: string        // 'false' on R2 (no object tagging)
   // --- PhonePe -----------------------------------------------------------
   phonepe_merchant_id?: string
   phonepe_salt_key?: string
@@ -185,6 +195,9 @@ export type ServerSecretsRecord = {
   linkedin_partner_id?: string
   analytics_retention_days?: string
   analytics_custom_events?: string
+  // --- Knowledge vector store (lib/rag/vector-store; env PGVECTOR_URL / RAG_VECTOR_STORE)
+  pgvector_url?: string
+  rag_vector_store?: string
 }
 
 interface PlatformSettingDoc {

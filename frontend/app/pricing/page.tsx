@@ -16,7 +16,9 @@ import { publicRoute } from '@/lib/seo/public-routes'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { PricingClient, type PublicPlan } from './pricing-client'
 
-export const dynamic = 'force-dynamic'
+// ISR, 15 min; admin plan changes purge it (app/api/admin/plans). Plans fall
+// back to the built-in catalogue when the DB is unreachable (build time).
+export const revalidate = 900
 
 const route = publicRoute('/pricing')!
 export const metadata = buildMetadata({ title: route.title, description: route.description, path: '/pricing' })

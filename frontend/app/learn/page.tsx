@@ -12,13 +12,16 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { HubCardView } from '@/components/learn/post-card'
 import { LearnCategoryIcon } from '@/components/learn/category-icon'
 import { NotifyBox } from '@/components/events-feed/notify-box'
-import { parseListParams, publishedSeries } from '@/lib/learn/queries'
-import { listHub } from '@/lib/learn/team-queries'
+import { parseListParams } from '@/lib/learn/queries'
+import type { listHub } from '@/lib/learn/team-queries'
+import { learnHubCached, learnSeriesCached } from '@/lib/cache/public-data'
 import { TEAM_CATEGORIES, TEAM_LABEL, TEAM_SOURCE, isTeamCategory, teamCategoryLabel } from '@/lib/learn/team-posts'
 import { LEARN_CATEGORIES, LEARN_LEVELS, categoryLabel } from '@/lib/learn/types'
 import { cn } from '@/lib/utils'
 import { buildMetadata } from '@/lib/seo/metadata'
 
+// Per-request HTML (filters / paging come from searchParams); the queries are
+// cached for 5 min and purged on publish (lib/cache/public-data.ts).
 export const dynamic = 'force-dynamic'
 
 type SP = Promise<Record<string, string | string[] | undefined>>
@@ -89,7 +92,7 @@ export default async function LearnPage({ searchParams }: { searchParams: SP }) 
   let data: Awaited<ReturnType<typeof listHub>> = { items: [], total: 0, page: 1, pages: 1 }
   let series: string[] = []
   try {
-    ;[data, series] = await Promise.all([listHub(params), publishedSeries()])
+    ;[data, series] = await Promise.all([learnHubCached(params), learnSeriesCached()])
   } catch (e) {
     console.error('[learn] page:', (e as Error)?.message)
   }

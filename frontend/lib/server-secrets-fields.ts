@@ -64,6 +64,7 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'cloudflare_api_token',
   'r2_secret_access_key',
   's3_secret_access_key',
+  'uploads_s3_secret_access_key',
   'phonepe_salt_key',
   'phonepe_webhook_secret',
   'stripe_secret_key',
@@ -86,6 +87,8 @@ export const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'ats_google_client_secret',
   'ats_microsoft_client_secret',
   'livekit_api_secret',
+  // Knowledge vector store (Postgres URL carries credentials)
+  'pgvector_url',
 ]
 
 export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
@@ -112,6 +115,15 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   's3_region',
   's3_bucket',
   's3_access_key_id',
+  // Private uploads bucket (lib/storage/config.ts)
+  'uploads_s3_bucket',
+  'uploads_s3_region',
+  'uploads_s3_endpoint',
+  'uploads_s3_force_path_style',
+  'uploads_s3_access_key_id',
+  'uploads_s3_kms_key_id',
+  'uploads_s3_sse',
+  'uploads_s3_pending_tag',
   'firebase_api_key',
   'firebase_auth_domain',
   'firebase_project_id',
@@ -157,6 +169,8 @@ export const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'analytics_retention_days',
   // W4-06: extra client custom-event names accepted by /api/analytics/collect (comma-separated)
   'analytics_custom_events',
+  // Knowledge vector store: mongo | pgvector
+  'rag_vector_store',
 ]
 
 /** Keys shown on Admin → Settings → Hiring integrations (env fallback = KEY.toUpperCase()). */

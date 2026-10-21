@@ -20,6 +20,7 @@ import { embedTexts, availableEmbedModels } from './embed'
 import { effectiveVisibility } from './acl'
 import { iterateSourceIds, loadSource } from './sources'
 import { ragChunks, ragMeta, ragSources } from './store'
+import { mirrorDeleteSource, mirrorReplaceSource } from './vector-store'
 import {
   KNOWLEDGE_SOURCE_TYPES, TENANT_TYPES, sourceKey, tenantKey,
   type KnowledgeSourceType, type RagChunkDoc, type RagSourceDoc,
@@ -69,6 +70,7 @@ export async function removeSource(type: KnowledgeSourceType, sourceId: string):
   const [chunks, sources] = await Promise.all([ragChunks(), ragSources()])
   await chunks.deleteMany({ source_type: type, source_id: sourceId })
   await sources.deleteOne({ type, source_id: sourceId })
+  await mirrorDeleteSource(type, sourceId)
 }
 
 export async function indexSource(type: KnowledgeSourceType, sourceId: string, opts: IndexOptions = {}): Promise<{ chunks: number }> {
@@ -133,6 +135,8 @@ export async function indexSource(type: KnowledgeSourceType, sourceId: string, o
     await chunksCol.bulkWrite(ops, { ordered: false })
   }
   await chunksCol.deleteMany({ source_type: type, source_id: sourceId, chunk_index: { $gte: rows.length } })
+  // pgvector (when configured) gets the same vectors; a failure is queued, never thrown.
+  await mirrorReplaceSource(type, sourceId, rows)
 
   const set: Partial<RagSourceDoc> & Record<string, unknown> = {
     type,
@@ -304,7 +308,10 @@ export async function purgeUserKnowledge(userId: string): Promise<number> {
     { type: 'attempt_summary', source_id: { $regex: `:${esc}$` } },
   ] }
   const rows = await sources.find(filter as never, { projection: { _id: 0, type: 1, source_id: 1 } }).limit(5000).toArray()
-  for (const r of rows) await chunks.deleteMany({ source_type: r.type, source_id: r.source_id })
+  for (const r of rows) {
+    await chunks.deleteMany({ source_type: r.type, source_id: r.source_id })
+    await mirrorDeleteSource(r.type, r.source_id)
+  }
   await sources.deleteMany(filter as never)
   return rows.length
 }
@@ -351,8 +358,9 @@ export async function vectorHealthAlert(now = new Date()): Promise<string | null
   if (!models.length && total > 0) problem = 'No embedding provider is answering, so knowledge search is keyword-only. Add an OpenAI / OpenRouter or Gemini key in Settings → AI.'
   else {
     const { atlasVectorAvailable, INPROC_MAX_SCAN } = await import('./search')
-    if (!(await atlasVectorAvailable()) && total > INPROC_MAX_SCAN) {
-      problem = `The knowledge base has ${total.toLocaleString('en-US')} chunks and no Atlas vector index, so each query's vector search reads at most ${INPROC_MAX_SCAN.toLocaleString('en-US')} chunks (within the caller's tenant / type scope) and may miss relevant content. Create the Atlas vector index (recommended; definition in lib/rag/search.ts). Raising RAG_INPROC_MAX_SCAN trades recall for memory and Mongo I/O on every query.`
+    const { pgvectorReadsActive } = await import('./vector-store')
+    if (total > INPROC_MAX_SCAN && !(await atlasVectorAvailable()) && !(await pgvectorReadsActive(await dominantEmbeddingModel()))) {
+      problem = `The knowledge base has ${total.toLocaleString('en-US')} chunks and no Atlas vector index, so each query's vector search reads at most ${INPROC_MAX_SCAN.toLocaleString('en-US')} chunks (within the caller's tenant / type scope) and may miss relevant content. Create the Atlas vector index (definition in lib/rag/search.ts) or move vectors to Postgres + pgvector (docs/devops/09-RAG-Vector-Store.md). Raising RAG_INPROC_MAX_SCAN trades recall for memory and Mongo I/O on every query.`
     }
   }
   if (!problem) return null
@@ -428,6 +436,13 @@ export async function runKnowledgeTick(): Promise<void> {
       await vectorHealthAlert(now).catch((e) => console.error('[rag] vector health check failed:', e))
     }).catch((e) => console.error('[rag] hourly maintenance failed:', e))
     await maybeWeeklyLiveEval(now).catch((e) => console.error('[rag] weekly live eval failed:', e))
+    // pgvector: re-sync failed mirror writes, and keep an unfinished backfill moving.
+    {
+      const { drainVectorOutbox } = await import('./vector-store')
+      const { continueBackfill } = await import('./vector-store/backfill')
+      await drainVectorOutbox({ budgetMs: 5_000 }).catch((e) => console.error('[rag] vector outbox drain failed:', e))
+      await continueBackfill(15_000).catch((e) => console.error('[rag] pgvector backfill step failed:', e))
+    }
     // AGT-007: weekly copilot behaviour eval rides the same scheduler tick.
     const { weeklyEvalDue, runWeeklyCopilotEval } = await import('@/lib/agent/eval/weekly')
     if (weeklyEvalDue(now)) {

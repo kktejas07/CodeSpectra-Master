@@ -16,6 +16,7 @@ import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
 import { backendPost } from '@/lib/ai/backend'
 import { isStepFile } from '@/lib/upload-sniff'
 import { CAD_MAX_FILE_BYTES, cadFileExtOk, type CadFileKind, type CadFileMeta } from '@/lib/cad-submission'
+import { deleteBlobsFor, putBlob } from '@/lib/storage/blobs'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -113,12 +114,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       user_id: user.id,
       email: user.email,
       content_type: 'application/octet-stream',
-      data: bytes,
+      // Private uploads bucket when configured (lib/storage), else inline as before.
+      ...(await putBlob({ feature: 'exam-cad', tenantId: (exam.tenant_id as string) ?? null, bytes, contentType: 'application/octet-stream' })),
       status: 'staged',
       submission_id: null,
     })
-    // One staged file per kind: drop the one this upload replaces.
-    await col.deleteMany({ exam_id: examId, user_id: user.id, kind, status: 'staged', id: { $ne: meta.id } })
+    // One staged file per kind: drop the one this upload replaces (record + object).
+    const replaced = { exam_id: examId, user_id: user.id, kind, status: 'staged', id: { $ne: meta.id } }
+    await deleteBlobsFor(col, replaced)
+    await col.deleteMany(replaced)
 
     return NextResponse.json({ ok: true, file: meta }, { status: 201 })
   } catch (e) {

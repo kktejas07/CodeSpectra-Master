@@ -162,6 +162,8 @@ export async function editEvent(id: string, b: Record<string, unknown>): Promise
   await col.updateOne({ id }, { $set: { ...r.set, edited_fields: edited } })
   const { knowledgeOnExternalEvent } = await import('@/lib/rag/hooks')
   knowledgeOnExternalEvent(id)
+  const { revalidateContent } = await import('@/lib/cache/revalidate')
+  await revalidateContent('events', id)
   return { ok: true, event: { ...doc, ...r.set, edited_fields: edited } as FeedEventDoc }
 }
 

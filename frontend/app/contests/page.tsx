@@ -11,7 +11,9 @@ import { breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 import { logger } from '@/lib/logger'
 
-export const dynamic = 'force-dynamic'
+// ISR, 5 min; publish / unpublish / close purge it (lib/contests/service.ts).
+// Live phase and registration state load client-side on the detail page.
+export const revalidate = 300
 
 async function load(): Promise<ContestCard[] | null> {
   try {

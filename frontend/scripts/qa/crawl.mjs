@@ -310,6 +310,8 @@ async function main() {
     consoleErrorPages: pages.filter(([, e]) => e.consoleErrors.length).length,
     consoleErrors: pages.reduce((n, [, e]) => n + e.consoleErrors.length, 0),
     pageErrors: pages.reduce((n, [, e]) => n + e.pageErrors.length, 0),
+    // Wave 7: strict CSP ships Report-Only first; violations show up as console errors (reported, not gating).
+    cspViolations: pages.reduce((n, [, e]) => n + e.consoleErrors.filter((m) => /Content Security Policy/i.test(m)).length, 0),
     titleIssues: titleIssues.length,
     imagesWithoutAlt: pages.reduce((n, [, e]) => n + e.imagesWithoutAlt.length, 0),
     bigImages: [...new Set(pages.flatMap(([, e]) => e.bigImages.map((b) => b.url)))].length,
@@ -330,7 +332,7 @@ async function main() {
   for (const b of report.brokenLinks) console.log(`  ${b.status}${b.error ? ' ' + b.error : ''} ${b.href}  ← ${b.from.join(', ')}`)
   console.log(`Server errors (5xx): ${s.serverErrors.length}  nav errors: ${s.navErrors.length}`)
   for (const e of [...s.serverErrors, ...s.navErrors]) console.log(`  ${e.page} ${e.status ?? e.error}`)
-  console.log(`Console errors: ${s.consoleErrors} on ${s.consoleErrorPages} pages; uncaught page errors: ${s.pageErrors}`)
+  console.log(`Console errors: ${s.consoleErrors} on ${s.consoleErrorPages} pages (CSP violations: ${s.cspViolations}); uncaught page errors: ${s.pageErrors}`)
   for (const [p, e] of pages) if (e.pageErrors.length) console.log(`  pageerror ${p}: ${e.pageErrors[0]}`)
   console.log(`Title issues: ${s.titleIssues}`)
   for (const t of titleIssues) console.log(`  ${t.issue}: ${t.title ?? t.page}${t.pages ? ' → ' + t.pages.join(', ') : ''}`)

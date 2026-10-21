@@ -55,7 +55,7 @@ export default function MyPage() {
 | File | Purpose |
 |---|---|
 | `frontend/lib/page-permissions.ts` | Route arrays + ROUTE_LABELS + section headers |
-| `frontend/app/dashboard/layout.tsx` | Sidebar rendering + 3-layer filter |
+| `frontend/app/dashboard/dashboard-shell.tsx` | Sidebar rendering + 3-layer filter (`layout.tsx` is the thin server wrapper) |
 | `frontend/app/api/user/my-permissions/route.ts` | Returns `{ readable, denied }` for logged-in role |
 | `frontend/app/api/admin/permissions/roles/route.ts` | CRUD for role permissions (saves ALL resources including denied) |
 | `frontend/lib/route-auth.ts` | 60s in-memory permission cache (`_permCache`), `getAPIUser()` |

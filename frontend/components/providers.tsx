@@ -15,9 +15,14 @@ import { TourProvider } from '@/components/tour/tour-context'
  * `suppressHydrationWarning` on <html> (app/layout.tsx) and theme-dependent
  * widgets wait for their own mount (components/nav-theme-switch.tsx).
  */
+const INERT_SCRIPT = { type: 'application/json' } as const
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+    // scriptProps: next-themes' own pre-hydration <script> is inert (a JSON data
+    // block) — it can't carry the CSP nonce, and app/layout.tsx's hashed
+    // theme-init script already sets the class + color-scheme before paint.
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange scriptProps={INERT_SCRIPT}>
       <AuthProvider>
         <TourProvider>
           <ToastProvider>

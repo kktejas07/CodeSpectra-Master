@@ -30,7 +30,13 @@ import { TeamArticle } from '@/components/learn/team-article'
 import { relatedTeam, resolveLearnSlug } from '@/lib/learn/team-queries'
 import { teamCategoryLabel } from '@/lib/learn/team-posts'
 
-export const dynamic = 'force-dynamic'
+// ISR: rendered on first visit, cached 15 min, purged on publish / edit
+// (lib/cache/revalidate.ts). No build-time paths. Page-body DB errors are not
+// caught, so a failed regeneration keeps the cached page.
+export const revalidate = 900
+export function generateStaticParams() {
+  return []
+}
 
 type Params = Promise<{ slug: string }>
 

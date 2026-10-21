@@ -53,7 +53,7 @@ interface Stats {
   by_status: Record<string, number>
   models: string[]
   embedding_available: boolean
-  vector_backend: 'atlas' | 'in_process'
+  vector_backend: 'pgvector' | 'atlas' | 'in_process'
   searches_7d: number
 }
 
@@ -362,7 +362,7 @@ export default function KnowledgePage() {
           label="Semantic coverage"
           value={coverage === null ? '—' : `${coverage}%`}
           icon={<Sparkles />}
-          hint={stats ? (stats.embedding_available ? `${stats.vector_backend === 'atlas' ? 'Atlas vector search' : 'In-app vector search'}` : 'No embedding key — keyword search only') : undefined}
+          hint={stats ? (stats.embedding_available ? `${stats.vector_backend === 'pgvector' ? 'Postgres pgvector' : stats.vector_backend === 'atlas' ? 'Atlas vector search' : 'In-app vector search'}` : 'No embedding key — keyword search only') : undefined}
         />
         <StatCard label="Searches, last 7 days" value={stats ? stats.searches_7d.toLocaleString() : '—'} icon={<Activity />} />
       </div>

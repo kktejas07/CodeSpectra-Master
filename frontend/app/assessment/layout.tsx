@@ -4,6 +4,9 @@ import { privateMetadata } from '@/lib/seo/metadata'
 // noindex,nofollow + no-referrer so the URL never reaches search results or third parties.
 export const metadata = privateMetadata('Assessment')
 
+// Per-request rendering: the strict CSP stamps a fresh nonce (lib/csp/policy.ts).
+export const dynamic = 'force-dynamic'
+
 export default function AssessmentLayout({ children }: { children: React.ReactNode }) {
   return children
 }

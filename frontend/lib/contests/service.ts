@@ -15,6 +15,7 @@ import { addedJudges } from '@/lib/services/judge-emails'
 import { parseRepoUrl } from '@/lib/hackathons/repo-audit'
 import { certificateKindFor, codeathonCertificateWording, publicName, releaseXp } from '@/lib/codeathon-results'
 import { logger } from '@/lib/logger'
+import { revalidateContent } from '@/lib/cache/revalidate'
 import { ok, fail, type ServiceResult, type ServiceUser } from '@/lib/services/result'
 import { contestPhase, sanitizeCommon, parseFormat, slugify, splitConfig } from './config'
 import { FORMATS, rankDirection } from './formats'
@@ -210,6 +211,7 @@ export async function updateContest(user: ServiceUser, idOrSlug: string, body: R
   await col.updateOne({ id: cur.id }, { $set: set })
   const next = clean(await col.findOne({ id: cur.id }))!
   await notifyNewJudges(next, addedJudges(next.judging.judges, cur.judging?.judges))
+  if (cur.status !== 'draft') await revalidateContent('contests', cur.slug)
   return ok(next)
 }
 
@@ -235,6 +237,8 @@ export async function setContestStatus(user: ServiceUser, idOrSlug: string, acti
     if (c.status === 'closed') return fail(409, 'Already closed.')
     await col.updateOne({ id: c.id }, { $set: { status: 'closed', updated_at: now } })
   }
+  // /contests is ISR: show (or drop) the contest now.
+  await revalidateContent('contests', c.slug)
   return ok(clean(await col.findOne({ id: c.id }))!)
 }
 

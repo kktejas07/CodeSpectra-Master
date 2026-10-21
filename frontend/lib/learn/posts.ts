@@ -4,6 +4,7 @@
  * and view/share counters. Server only.
  */
 import { knowledgeOnLearnPost } from '@/lib/rag/hooks'
+import { revalidateContent } from '@/lib/cache/revalidate'
 import { learnPosts } from './store'
 import { transition, type LearnAction } from './state'
 import { readingMinutes, sanitizeMarkdown } from './markdown'
@@ -42,6 +43,8 @@ export async function applyPostAction(
   if (!r) return { error: 'The post changed while you were reviewing it. Reload and try again.', status: 409 }
   if (cur.status === 'published' || r.status === 'published') knowledgeOnLearnPost(id)
   if (r.status === 'published' && cur.status !== 'published') emitPostPublished(r as LearnPostDoc)
+  // Public pages are ISR: refresh /learn and the post now (going live or coming down).
+  if (cur.status === 'published' || r.status === 'published') await revalidateContent('learn', r.slug)
   return { post: r as LearnPostDoc }
 }
 
@@ -92,6 +95,7 @@ export async function editPost(id: string, edit: PostEdit): Promise<{ post?: Lea
   try {
     const r = await col.findOneAndUpdate({ id }, { $set: set }, { returnDocument: 'after', projection: { _id: 0 } })
     if (r?.status === 'published') knowledgeOnLearnPost(id)
+    if (r?.status === 'published') await revalidateContent('learn', r.slug)
     return { post: r as LearnPostDoc }
   } catch {
     return { error: 'That link is already used by another post.', status: 409 }
@@ -113,6 +117,7 @@ export async function publishDuePosts(now: Date = new Date()): Promise<number> {
       n++
       knowledgeOnLearnPost(p.id)
       emitPostPublished(p as LearnPostDoc)
+      await revalidateContent('learn', p.slug)
     }
   }
   return n

@@ -31,6 +31,9 @@ Re-run: `python3 <scratchpad>/routes.py out.json` (the regex inventory used in w
 | `POST /api/exams/[id]/identity` | candidate | JPEG/PNG/WebP magic bytes | data-URL cap | ClamAV scan |
 | `POST /api/exams/[id]/submit`, `…/cad-submission` (snapshots) | candidate | `data:image/(png|jpeg|webp)` only | 2 MB | — |
 | `POST /api/exams/[id]/cad-submission/files` | candidate | Extension allowlist; **STEP header check** `ISO-10303-21` (wave 5); native CAD formats are vendor-specific (extension + scan) | 9 MB | ClamAV scan |
+| `POST /api/exams/[id]/answer-files` | candidate in a running attempt | Author's allowlist, **extension + magic bytes** (`lib/upload-sniff`) | 9 MB (author cap) | ClamAV scan; infected rejected, scanner offline → `unscanned` |
+| `POST /api/exams/[id]/answer-files/direct` (wave 7) | candidate in a running attempt | Presigned PUT signed for exact size + type; finalize: HEAD size, SSE present, **magic bytes on a 64 KB range GET** | video 500 MB (`UPLOADS_VIDEO_MAX_MB`) | ClamAV ≤ `UPLOADS_SCAN_MAX_MB`, else `unscanned`; upload id bound to user + exam + question + attempt, claimed once |
+| `POST /api/contests/[id]/submissions` (multipart) / `…/uploads` (wave 7, direct) | entry member while open | Slot extension + magic bytes (`checkFileHead`) | 9 MB inline; 500 MB video / 100 MB other direct | ClamAV, fail closed (scanner offline → retry); upload id bound to user + entry + slot |
 | `POST /api/proctor/session-recording` | candidate in an attempt | MIME allowlist `video/webm|mp4` (`normalizeMime`), stored encrypted, served only to reviewers | 8 MB/chunk, per-attempt cap | upload window |
 | `POST /api/ats/jobs/[id]/resumes`, `POST /api/ats/public/jobs/[id]/apply` | recruiter / applicant | PDF/DOCX/TXT/MD by **extension + magic bytes** (`lib/rag/sources/uploads`) | 5 MB each, 80 MB batch | ClamAV scan, Turnstile for guests |
 | `POST /api/ats/bgv/portal/upload` | candidate (token) | PDF/JPG/PNG **extension + magic bytes** (`lib/ats/bgv/storage`) | 10 MB | per-case cap |
@@ -38,6 +41,14 @@ Re-run: `python3 <scratchpad>/routes.py out.json` (the regex inventory used in w
 | `POST /api/admin/knowledge/upload` | admin | PDF/DOCX/TXT/MD extension + magic bytes | 10 MB | text length cap |
 
 Objects in R2/S3 are private; reads go through signed URLs (1 h) — `lib/s3-storage.ts`.
+
+User uploads (answer files/videos, CAD, contest files, new BGV documents) use the
+separate **private uploads bucket** (`lib/storage`, wave 7): Block Public Access,
+no ACLs, SSE-S3/KMS on every write, TLS-only bucket policy, least-privilege IAM on
+the `u/` prefix, keys without PII. Downloads are presigned GETs of **≤ 5 minutes**
+(attachment, generic type) handed out only after the route's access check;
+objects are deleted with their records. Without the bucket these stay in MongoDB.
+Policies and CORS: `docs/devops/05-Production-Checklist.md` §6.
 
 ## 3. Webhooks
 
@@ -71,3 +82,36 @@ Objects in R2/S3 are private; reads go through signed URLs (1 h) — `lib/s3-sto
 - **Deletions / candidate outcomes**: course create/update/delete, exam invite revoke/delete, manual grading, result release, pipeline stage moves, bulk score release.
 
 Not logged (by design — no state change worth auditing or high-volume AI generation): AI generation/test endpoints (`courses/generate-*`, `blog/ai-*`, `llm-test`, `llm-health`, `r2/test`, `redis/test`, `whatsapp/test-connection`), searches (`rag/search`, `knowledge/search`), reminder sends, plagiarism runs.
+
+## 5. Content Security Policy and third-party scripts (wave 7)
+
+Built in `frontend/lib/csp/policy.ts`, sent by `frontend/proxy.ts` on every HTML response (not on `/api/*` or static files). Guards: `tests/csp-policy.test.ts`, `tests/csp-dynamic-routes.test.ts`, `scripts/ci-smoke.mjs`.
+
+**Decision.** Next.js 16 can only nonce its scripts while rendering a request, so a nonce on every page would force the whole app dynamic and undo ISR. Experimental SRI only covers external chunks: prerendered pages still carry inline RSC payload scripts. So the policy has two strict variants:
+
+| Pages | Rendering | `script-src` |
+| --- | --- | --- |
+| Public marketing / content (`isPublicMarketingPath`: landing, pricing, legal, `/learn`, `/news`, `/events`, `/companies`, `/contests`, `/docs` …) | static or ISR, no cookies or session on the server | `'self' 'unsafe-inline' 'wasm-unsafe-eval'` + the host allow-list. **No `'unsafe-eval'`.** Inline is required by the prerendered RSC payload. |
+| Everything else (dashboard, auth, assessments, token links) | per request (`dynamic = 'force-dynamic'` in the segment layout) | `'self' 'nonce-<per request>' 'strict-dynamic'` + SHA-256 of the two pre-hydration scripts (`lib/csp/inline-scripts.ts`) + `'wasm-unsafe-eval'`. **No `'unsafe-inline'`, no `'unsafe-eval'`.** |
+
+`style-src` keeps `'unsafe-inline'` in both: React `style` props, framer-motion, next/font and Radix positioning write inline style attributes, and Next has no nonce for style attributes. Also in both: `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'none'`, `upgrade-insecure-requests`, `img-src 'self' data: blob: https:` (no plain http), and `report-uri /api/csp-report` + `report-to csp` (`Reporting-Endpoints`).
+
+**Rollout.** `CSP_ENFORCE` unset or `0` (default): the previous permissive policy stays enforced, and the strict policy goes out as `Content-Security-Policy-Report-Only`. `CSP_ENFORCE=1`: the strict policy is enforced and the legacy one is dropped. Flip it once the report log is clean for a week. Roll back by unsetting it, no rebuild needed (the proxy reads it per request).
+
+**Reports.** `POST /api/csp-report` accepts both report formats. It is CSRF-exempt (browsers send reports without cookies), rate-limited to 30 per minute per IP, and caps bodies at 64 KB. It always returns 204 and logs one `[csp] …` line per violation. Logged fields: directive, blocked origin, and document and source URL as origin + path. Query strings, fragments, script samples, the user agent and the IP are dropped, and opaque path segments (tokens, ids) become `:id`.
+
+**Third-party script inventory** (only these origins are allowed):
+
+| Origin | Why | Loaded by |
+| --- | --- | --- |
+| `cdn.jsdelivr.net`, `cdnjs.cloudflare.com` | Monaco editor loader and workers, face-api model and pdf.js fallbacks | `components/code-scanner/code-editor.tsx`, face/pdf loaders |
+| `apis.google.com`, `www.gstatic.com` (+ frames `*.firebaseapp.com`) | Firebase Auth (Google sign-in) | Firebase SDK |
+| `challenges.cloudflare.com` | Turnstile captcha (script, frame, connect) | `components/auth/turnstile-widget.tsx` |
+| `static.cloudflareinsights.com` (+ connect `cloudflareinsights.com`) | Cloudflare Web Analytics beacon (CDN-injected) | Cloudflare |
+| `checkout.razorpay.com` (+ frames `api.razorpay.com`) | Razorpay checkout | `lib/razorpay-checkout.ts` |
+| GA4 / GTM / PostHog Cloud / Clarity / Meta Pixel / LinkedIn Insight | Optional, consent-gated, admin-configured | `components/analytics/third-party-tags.tsx` (hosts in `lib/analytics/integrations.ts` `TAG_*_HOSTS`) |
+| Same origin | FingerprintJS (`/vendor/fingerprintjs.min.js`), face-api models (`/models`) | `lib/fingerprint.ts`, proctoring |
+
+Connect-only origins cover Firebase, browser-side AI and GitHub calls, payments, YouTube thumbnails, presigned bucket URLs (R2, S3, GCS, Hetzner) and LiveKit Cloud (`wss://*.livekit.cloud`). Frames: YouTube, Razorpay, Firebase and Turnstile.
+
+**Caching and user data.** The root layout no longer forces dynamic rendering. Cached pages read no cookies, headers or session on the server: user state on public pages comes from client components. `tests/csp-dynamic-routes.test.ts` fails if a marketing page imports `next/headers` or awaits an auth helper, and if any non-marketing page could be prerendered.

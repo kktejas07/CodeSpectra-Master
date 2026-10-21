@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ArrowLeft, Clock, ExternalLink, Globe, MapPin, Sparkles, Trophy } from 'lucide-react'
@@ -16,15 +17,22 @@ import { getSiteOrigin } from '@/lib/seo/settings'
 import { JsonLd } from '@/components/seo/json-ld'
 import { FaqList } from '@/components/seo/faq-list'
 
-export const dynamic = 'force-dynamic'
+// ISR: rendered on first visit, cached 10 min, purged when the feed or an
+// admin edit changes events (lib/cache/revalidate.ts). No build-time paths.
+export const revalidate = 600
+export function generateStaticParams() {
+  return []
+}
 
 type Props = { params: Promise<{ id: string }> }
 
-async function load(id: string): Promise<PublicFeedEvent | null> {
-  const doc = await getFeedEvent(id).catch(() => null)
+// DB errors propagate (no catch): a failed regeneration keeps the cached page
+// instead of caching a 404.
+const load = cache(async (id: string): Promise<PublicFeedEvent | null> => {
+  const doc = await getFeedEvent(id)
   if (doc) return doc.status === 'hidden' ? null : toPublic(doc)
-  return (await listPublishedFeed().catch(() => [])).find((e) => e.id === id) || null
-}
+  return (await listPublishedFeed()).find((e) => e.id === id) || null
+})
 
 /** Internal hackathons have their real page under /hackathons — canonicalise there (SEO-018). */
 function canonicalFor(ev: PublicFeedEvent): string {

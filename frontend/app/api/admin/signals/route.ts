@@ -87,7 +87,11 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.action === 'unpublish' || body.action === 'delete') {
-      if (draft.blog_slug) await (await blogPosts()).deleteOne({ slug: draft.blog_slug })
+      if (draft.blog_slug) {
+        await (await blogPosts()).deleteOne({ slug: draft.blog_slug })
+        const { revalidateContent } = await import('@/lib/cache/revalidate')
+        await revalidateContent('news', draft.blog_slug)
+      }
       if (body.action === 'delete') {
         await col.deleteOne({ id: body.id })
         return NextResponse.json({ ok: true, status: 'deleted' })

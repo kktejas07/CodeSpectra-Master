@@ -6,36 +6,14 @@ import { isCsrfExempt } from '@/lib/csrf-exempt'
 import { isPublicMarketingPath } from '@/lib/seo/public-routes'
 import { PERMISSIONS_POLICY } from '@/lib/security-headers'
 import { TAG_CONNECT_HOSTS, TAG_FRAME_HOSTS, TAG_SCRIPT_HOSTS } from '@/lib/analytics/integrations'
+import { cspHeaders, cspMode, makeNonce, type CspHeaderPlan } from '@/lib/csp/policy'
 import { bearerSkipsCsrf, corsAllowedOrigins, httpsRedirectUrl, impersonationBlocked, isPageRequestPath, loginCsrfBlocked } from '@/lib/request-guards'
 
 // Optional analytics / ad tags (Admin → Settings → Analytics) load only after
 // visitor consent (components/analytics/third-party-tags.tsx); their hosts are
-// listed once in lib/analytics/integrations.ts.
-function withTagHosts(directive: string): string {
-  const name = directive.split(' ')[0]
-  if (name === 'script-src' || name === 'script-src-elem') return `${directive} ${TAG_SCRIPT_HOSTS.join(' ')}`
-  if (name === 'connect-src') return `${directive} ${TAG_CONNECT_HOSTS.join(' ')}`
-  if (name === 'frame-src') return `${directive} ${TAG_FRAME_HOSTS.join(' ')}`
-  return directive
-}
-
-const CSP = [
-  "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com",
-  "script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com",
-  "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
-  "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com data:",
-  "img-src 'self' data: blob: https: http:",
-  "connect-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://challenges.cloudflare.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.github.com https://*.razorpay.com https://api.razorpay.com https://checkout.razorpay.com wss://*.firebaseio.com https://i.ytimg.com https://*.r2.cloudflarestorage.com https://*.cloudflarestorage.com https://*.amazonaws.com https://s3.amazonaws.com https://storage.googleapis.com https://*.your-objectstorage.com",
-  "frame-src 'self' blob: data: https://*.firebaseapp.com https://checkout.razorpay.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com",
-  "worker-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-  "child-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-  "media-src 'self' blob: data: https:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "manifest-src 'self'",
-].map(withTagHosts).join('; ')
+// listed once in lib/analytics/integrations.ts. The CSP itself is built in
+// lib/csp/policy.ts (static vs nonce variant, CSP_ENFORCE rollout flag).
+const TAG_HOSTS = { script: TAG_SCRIPT_HOSTS, connect: TAG_CONNECT_HOSTS, frame: TAG_FRAME_HOSTS }
 
 const HSTS = 'max-age=63072000; includeSubDomains; preload'
 
@@ -49,7 +27,7 @@ const SESSION_COOKIE = 'codespectra_session'
  * plan-gated → the branded /dashboard/locked page (rewrite, URL kept).
  * Returns null when the request may continue.
  */
-async function pageGate(request: NextRequest): Promise<NextResponse | null> {
+async function pageGate(request: NextRequest, forward?: { request: { headers: Headers } }): Promise<NextResponse | null> {
   const { pathname, search } = request.nextUrl
   const { resolveRouteAccess, lockedPagePath } = await import('@/lib/page-access-map')
   const access = resolveRouteAccess(pathname)
@@ -62,7 +40,7 @@ async function pageGate(request: NextRequest): Promise<NextResponse | null> {
       authorization: request.headers.get('authorization'),
     })
     if (result.action === 'next') return null
-    if (result.action === 'maintenance') return NextResponse.rewrite(new URL('/maintenance', request.url))
+    if (result.action === 'maintenance') return NextResponse.rewrite(new URL('/maintenance', request.url), forward)
     if (result.action === 'setup_2fa') {
       const url = new URL('/auth/two-factor-setup', request.url)
       url.searchParams.set('redirectTo', pathname + search)
@@ -73,12 +51,19 @@ async function pageGate(request: NextRequest): Promise<NextResponse | null> {
       url.searchParams.set('redirectTo', pathname + search)
       return NextResponse.redirect(url)
     }
-    return NextResponse.rewrite(new URL(lockedPagePath(result.reason, pathname, result.feature), request.url))
+    return NextResponse.rewrite(new URL(lockedPagePath(result.reason, pathname, result.feature), request.url), forward)
   } catch (e) {
     // Fail closed: never render a guarded page we could not check.
     console.error('[proxy] page gate failed:', e)
-    return NextResponse.rewrite(new URL(lockedPagePath('unavailable', pathname), request.url))
+    return NextResponse.rewrite(new URL(lockedPagePath('unavailable', pathname), request.url), forward)
   }
+}
+
+/** NextResponse.next() init that forwards the nonce'd CSP to the renderer. */
+function withRequestCsp(request: NextRequest, value: string) {
+  const headers = new Headers(request.headers)
+  headers.set('content-security-policy', value)
+  return { request: { headers } }
 }
 
 function isPageRequest(pathname: string): boolean {
@@ -97,7 +82,25 @@ export async function proxy(request: NextRequest) {
     return redirect
   }
 
-  const response = (isPageRequest(pathname) ? await pageGate(request) : null) ?? NextResponse.next()
+  // CSP for HTML pages only (not API/static responses). Public marketing /
+  // content pages are static or ISR → the static variant; every other page is
+  // rendered per request → a fresh nonce, handed to Next through the request
+  // CSP header so it can stamp its own scripts (lib/csp/policy.ts).
+  const isHtmlPage = !pathname.startsWith('/_next/') && !pathname.startsWith('/api/') && !pathname.includes('.')
+  let csp: CspHeaderPlan | null = null
+  if (isHtmlPage) {
+    const variant = isPublicMarketingPath(pathname) ? 'static' : 'nonce'
+    csp = cspHeaders({
+      mode: cspMode(),
+      variant,
+      nonce: variant === 'nonce' ? makeNonce() : undefined,
+      dev: process.env.NODE_ENV === 'development',
+      tags: TAG_HOSTS,
+    })
+  }
+  const forward = csp?.requestCsp ? withRequestCsp(request, csp.requestCsp) : undefined
+
+  const response = (isPageRequest(pathname) ? await pageGate(request, forward) : null) ?? NextResponse.next(forward)
 
   // Global API rate limiting (best-effort edge layer). Generous threshold catches
   // only egregious abuse — per-route limits in Node handlers are the real guard.
@@ -200,13 +203,8 @@ export async function proxy(request: NextRequest) {
     response.headers.set('Access-Control-Max-Age', '86400')
   }
 
-  // CSP only for HTML pages (not API/static responses)
-  if (
-    !pathname.startsWith('/_next/') &&
-    !pathname.startsWith('/api/') &&
-    !pathname.includes('.')
-  ) {
-    response.headers.set('Content-Security-Policy', CSP)
+  if (csp) {
+    for (const [k, v] of Object.entries(csp.response)) response.headers.set(k, v)
     response.headers.set('X-Frame-Options', 'DENY')
   }
 

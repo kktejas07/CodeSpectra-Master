@@ -1,5 +1,6 @@
 /** /news/[slug] — one tech news item (NewsArticle JSON-LD, sources, related items). */
 import type { Metadata } from 'next'
+import { cache } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import DOMPurify from 'isomorphic-dompurify'
@@ -14,13 +15,22 @@ import { buildMetadata, ogImagePath } from '@/lib/seo/metadata'
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/seo/jsonld'
 import { getSiteOrigin } from '@/lib/seo/settings'
 
-export const dynamic = 'force-dynamic'
+// ISR: rendered on first visit, cached 15 min, purged on publish / unpublish
+// (lib/cache/revalidate.ts). No build-time paths.
+export const revalidate = 900
+export function generateStaticParams() {
+  return []
+}
+
+// DB errors propagate (no catch): a failed regeneration keeps the cached page
+// instead of caching a 404.
+const loadPost = cache((slug: string) => getNewsPost(slug))
 
 type Props = { params: Promise<{ slug: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params
-  const post = await getNewsPost(slug).catch(() => null)
+  const post = await loadPost(slug)
   if (!post) return { title: 'News item not found', robots: { index: false, follow: true } }
   return buildMetadata({
     title: post.title, description: post.excerpt, path: `/news/${post.slug}`, kind: 'article', type: 'article',
@@ -34,7 +44,7 @@ const plainText = (html: string) => html.replace(/<[^>]+>/g, ' ').replace(/\s+/g
 
 export default async function NewsArticlePage({ params }: Props) {
   const { slug } = await params
-  const post = await getNewsPost(slug).catch(() => null)
+  const post = await loadPost(slug)
   if (!post) notFound()
   const topic = newsTopicOf(post.tags)
   const [site, related] = await Promise.all([

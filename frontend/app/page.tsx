@@ -19,6 +19,9 @@ import { SITE_NAME } from '@/lib/seo/site'
 import type { LearnPostCard } from '@/lib/learn/types'
 import type { PublicFeedEvent } from '@/lib/events-feed/types'
 
+// ISR, 10 min (latest Learn posts + upcoming events strip); publishing either purges it.
+export const revalidate = 600
+
 const route = publicRoute('/')!
 export const metadata = { ...buildMetadata({ title: `${SITE_NAME}: ${route.title}`, description: route.description, path: '/', kind: 'default' }) }
 

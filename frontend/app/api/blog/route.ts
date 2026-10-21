@@ -13,6 +13,7 @@ import {
 } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
 import { teamPublicPaths } from '@/lib/learn/team-queries'
+import { revalidateContent } from '@/lib/cache/revalidate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -112,6 +113,8 @@ export async function POST(req: NextRequest) {
     }
 
     await col.insertOne(doc)
+    // Team / news posts show on the ISR /learn and /news pages.
+    if (publish) await revalidateContent('news', doc.slug)
     
     // Notify superadmins if published
     if (publish) {

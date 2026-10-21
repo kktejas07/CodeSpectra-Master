@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useRef } from 'react'
 import { Cog, ClipboardCheck, Download, FileStack, GitCompare, Layers, ScanFace, Trophy, Users } from 'lucide-react'
@@ -24,9 +25,9 @@ const PHOTOS: Partial<Record<'code' | 'cad' | 'proctor' | 'podium' | 'team', str
 
 function BentoVisual({ v, className }: { v: Visual; className?: string }) {
   if (v.photo) {
+    // Local renders in /public/images/landing → optimised (AVIF/WebP, srcset) by next/image.
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={v.photo} alt={v.alt} width={v.w ?? 800} height={v.h ?? 600} loading="lazy" decoding="async" className={cn('h-full w-full object-contain', className)} />
+      <Image src={v.photo} alt={v.alt} width={v.w ?? 800} height={v.h ?? 600} sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" className={cn('h-full w-full object-contain', className)} />
     )
   }
   return v.svg ? <ThemeIllustration name={v.svg} alt={v.alt} width={v.w ?? 480} height={v.h ?? 360} className={className} /> : null

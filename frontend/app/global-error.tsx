@@ -1,5 +1,7 @@
 'use client'
 
+import { GLOBAL_ERROR_THEME_SCRIPT } from '@/lib/csp/inline-scripts'
+
 /**
  * Root-level error UI. Replaces the root layout, so no globals.css, fonts or
  * theme class reach it — everything is inline. Colours follow the stored
@@ -27,7 +29,6 @@ const CSS = `
 .ge-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 `
 
-const THEME_INIT = `(function(){try{var t=localStorage.getItem('theme')||'dark';if(t==='light'||t==='dark'){document.body.classList.add('ge-'+t)}}catch(e){}})();`
 
 function Logo({ size = 18 }: { size?: number }) {
   return (
@@ -57,7 +58,7 @@ export default function GlobalErrorPage({
         <style dangerouslySetInnerHTML={{ __html: CSS }} />
       </head>
       <body className="ge">
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+        <script dangerouslySetInnerHTML={{ __html: GLOBAL_ERROR_THEME_SCRIPT }} />
         <div className="ge-glow" aria-hidden />
         <main className="ge-in" role="alert">
           <a href="/" className="ge-brand" aria-label="CodeSpectra home">
