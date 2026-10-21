@@ -7,6 +7,7 @@ import { isPublicMarketingPath } from '@/lib/seo/public-routes'
 import { PERMISSIONS_POLICY } from '@/lib/security-headers'
 import { TAG_CONNECT_HOSTS, TAG_FRAME_HOSTS, TAG_SCRIPT_HOSTS } from '@/lib/analytics/integrations'
 import { cspHeaders, cspMode, makeNonce, type CspHeaderPlan } from '@/lib/csp/policy'
+import { currentStorageOrigin } from '@/lib/csp/storage-origin'
 import { bearerSkipsCsrf, corsAllowedOrigins, httpsRedirectUrl, impersonationBlocked, isPageRequestPath, loginCsrfBlocked } from '@/lib/request-guards'
 
 // Optional analytics / ad tags (Admin → Settings → Analytics) load only after
@@ -96,6 +97,8 @@ export async function proxy(request: NextRequest) {
       nonce: variant === 'nonce' ? makeNonce() : undefined,
       dev: process.env.NODE_ENV === 'development',
       tags: TAG_HOSTS,
+      // Private-upload bucket (presigned PUT/GET), only when S3 is configured.
+      storage: await currentStorageOrigin(),
     })
   }
   const forward = csp?.requestCsp ? withRequestCsp(request, csp.requestCsp) : undefined

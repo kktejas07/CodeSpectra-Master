@@ -131,7 +131,8 @@ export function makeNonce(): string {
  * enforced while CSP_ENFORCE is off so production keeps its current
  * protection during the report-only period.
  */
-export function legacyCsp(tags: TagHosts = NO_TAGS): string {
+export function legacyCsp(tags: TagHosts = NO_TAGS, storage: string | null = null): string {
+  const st = storage ? ` ${storage}` : ''
   const scripts = `'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com https://challenges.cloudflare.com ${tags.script.join(' ')}`.trim()
   return join([
     "default-src 'self'",
@@ -140,11 +141,11 @@ export function legacyCsp(tags: TagHosts = NO_TAGS): string {
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
     "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https: http:",
-    `connect-src 'self' blob: data: ${CONNECT_HOSTS.join(' ')} ${tags.connect.join(' ')}`.trim(),
+    `connect-src 'self' blob: data: ${CONNECT_HOSTS.join(' ')} ${tags.connect.join(' ')}`.trim() + st,
     `frame-src 'self' blob: data: ${FRAME_HOSTS.join(' ')} ${tags.frame.join(' ')}`.trim(),
     "worker-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
     "child-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
-    "media-src 'self' blob: data: https:",
+    `media-src 'self' blob: data: https:${st}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -159,6 +160,8 @@ export interface StrictCspOptions {
   dev?: boolean
   tags?: TagHosts
   reportUri?: string
+  /** Private-upload bucket origin (lib/csp/storage-origin.ts): presigned PUT + GET. */
+  storage?: string | null
 }
 
 /** The strict policy (report-only by default, enforced with CSP_ENFORCE=1). */
@@ -182,6 +185,7 @@ export function strictCsp(opts: StrictCspOptions): string {
     scriptSrc = `'self' 'unsafe-inline' 'wasm-unsafe-eval'${devEval} ${hosts.join(' ')}`
   }
   const report = opts.reportUri ?? CSP_REPORT_PATH
+  const st = opts.storage ? ` ${opts.storage}` : ''
   return join([
     "default-src 'self'",
     `script-src ${scriptSrc}`,
@@ -193,11 +197,11 @@ export function strictCsp(opts: StrictCspOptions): string {
     `font-src 'self' data: ${FONT_HOSTS.join(' ')}`,
     // Publisher og:images (news, events), avatars and bucket files come from
     // arbitrary HTTPS hosts; plain http images are no longer allowed.
-    "img-src 'self' data: blob: https:",
-    `connect-src 'self' blob: data: ${[...CONNECT_HOSTS, ...tags.connect].join(' ')}`,
+    `img-src 'self' data: blob: https:${st}`,
+    `connect-src 'self' blob: data: ${[...CONNECT_HOSTS, ...tags.connect].join(' ')}${st}`,
     `frame-src 'self' blob: ${[...FRAME_HOSTS, ...tags.frame].join(' ')}`,
     `worker-src 'self' blob: ${WORKER_HOSTS.join(' ')}`,
-    "media-src 'self' blob: data: https:",
+    `media-src 'self' blob: data: https:${st}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -220,8 +224,8 @@ export interface CspHeaderPlan {
 }
 
 /** Which headers a page response gets for a given mode / variant. */
-export function cspHeaders(opts: { mode: CspMode; variant: CspVariant; nonce?: string; dev?: boolean; tags?: TagHosts }): CspHeaderPlan {
-  const strict = strictCsp({ variant: opts.variant, nonce: opts.nonce, dev: opts.dev, tags: opts.tags })
+export function cspHeaders(opts: { mode: CspMode; variant: CspVariant; nonce?: string; dev?: boolean; tags?: TagHosts; storage?: string | null }): CspHeaderPlan {
+  const strict = strictCsp({ variant: opts.variant, nonce: opts.nonce, dev: opts.dev, tags: opts.tags, storage: opts.storage })
   const response: Record<string, string> = {
     // Reporting API endpoint for `report-to` (report-uri covers older browsers).
     'Reporting-Endpoints': `${CSP_REPORT_GROUP}="${CSP_REPORT_PATH}"`,
@@ -229,7 +233,7 @@ export function cspHeaders(opts: { mode: CspMode; variant: CspVariant; nonce?: s
   if (opts.mode === 'enforce') {
     response['Content-Security-Policy'] = strict
   } else {
-    response['Content-Security-Policy'] = legacyCsp(opts.tags)
+    response['Content-Security-Policy'] = legacyCsp(opts.tags, opts.storage)
     response['Content-Security-Policy-Report-Only'] = strict
   }
   return { response, requestCsp: opts.variant === 'nonce' ? strict : undefined }

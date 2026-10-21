@@ -110,8 +110,8 @@ describe('pgvector config', () => {
   it('rejects non-postgres URLs, and the fingerprint never contains credentials', () => {
     expect(() => pgConnectionOptions('mysql://u:p@h/db')).toThrow()
     expect(() => pgConnectionOptions('not a url')).toThrow()
-    const a = pgConnectionOptions('postgres://alice:secret1@db.example.com/rag')
-    const b = pgConnectionOptions('postgres://bob:secret2@db.example.com/rag')
+    const a = pgConnectionOptions('postgres://alice:secret1@db.example.com/rag') // gitleaks:allow
+    const b = pgConnectionOptions('postgres://bob:secret2@db.example.com/rag') // gitleaks:allow
     expect(a.fingerprint).toBe(b.fingerprint)
     expect(a.fingerprint).not.toMatch(/secret|alice/)
   })

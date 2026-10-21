@@ -1,7 +1,7 @@
 /**
  * pgvector store against a REAL Postgres + pgvector (≥ 0.8). Opt-in: set
  * PGVECTOR_TEST_URL (e.g. a CI service container `pgvector/pgvector:pg17` →
- * postgres://postgres:postgres@localhost:5432/postgres); skipped otherwise.
+ * postgres://postgres:postgres@localhost:5432/postgres); skipped otherwise. // gitleaks:allow
  * Uses a throw-away model name → its own table, dropped afterwards.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
