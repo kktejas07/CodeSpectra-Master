@@ -355,7 +355,7 @@
   "billing_state_invalid": "మీ రాష్ట్రాన్ని ఎంచుకోండి.",
   "licence_org_admin_only": "మీ సంస్థ అడ్మిన్ మాత్రమే లైసెన్స్‌లను నిర్వహించగలరు.",
   "licence_org_required": "ఒక సంస్థను ఎంచుకోండి.",
-  "licence_org_not_found": "సంస్థ కనబడలేదు.",
+  "licence_org_not_found": "ఆ సంస్థ కనబడలేదు.",
   "licence_not_found": "లైసెన్స్ కనబడలేదు.",
   "licence_min_seats": "ఇది కనీస సీట్ల సంఖ్య కంటే తక్కువ.",
   "licence_seats_below_used": "ఇప్పటికే వాడుతున్న సీట్ల కంటే తక్కువ కొనలేరు.",

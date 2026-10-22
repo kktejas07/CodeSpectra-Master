@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     const r = await planChangeContext(gate.user.id, parsed.data.plan_id, interval)
     if (!r.ok) return NextResponse.json({ error: r.code, code: `billing_${r.code}` }, { status: STATUS[r.code] ?? 409 })
     const { sub, target, quote } = r.ctx
-    if (!quote.ok) return NextResponse.json({ error: 'invalid', code: 'billing_invalid' }, { status: 409 })
+    if (!quote.ok) return NextResponse.json(apiErrorFor('billing_invalid'), { status: 409 })
     const preview = { kind: quote.kind, charge_now: quote.chargeNow, credit: quote.credit, currency: target.currency, period_end: quote.periodEnd, plan: { id: target.id, name: target.name, interval } }
     if (!parsed.data.confirm) return NextResponse.json({ preview })
     if (quote.kind === 'downgrade_at_renewal' || quote.kind === 'no_change') {

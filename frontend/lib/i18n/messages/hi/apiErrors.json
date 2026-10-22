@@ -355,7 +355,7 @@
   "billing_state_invalid": "अपना राज्य चुनें।",
   "licence_org_admin_only": "सिर्फ आपके संगठन के एडमिन लाइसेंस संभाल सकते हैं।",
   "licence_org_required": "एक संगठन चुनें।",
-  "licence_org_not_found": "संगठन नहीं मिला।",
+  "licence_org_not_found": "वह संगठन नहीं मिला।",
   "licence_not_found": "लाइसेंस नहीं मिला।",
   "licence_min_seats": "यह सीटों की न्यूनतम संख्या से कम है।",
   "licence_seats_below_used": "इस्तेमाल हो रही सीटों से कम सीटें नहीं खरीदी जा सकतीं।",

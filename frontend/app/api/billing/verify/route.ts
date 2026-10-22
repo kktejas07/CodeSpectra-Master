@@ -168,7 +168,7 @@ async function verifySubscription(userId: string, body: VerifyReq): Promise<Next
   const paymentId = String(body.razorpay_payment_id || '')
   const signature = String(body.razorpay_signature || '')
   if (!/^sub_[A-Za-z0-9]{6,40}$/.test(subscriptionId) || !/^pay_[A-Za-z0-9]{6,40}$/.test(paymentId) || !signature) {
-    return NextResponse.json({ error: 'missing fields', code: 'missing_fields' }, { status: 400 })
+    return NextResponse.json({ error: 'Missing required fields', code: 'missing_fields' }, { status: 400 })
   }
   if (!(await verifySubscriptionPaymentSignature({ subscription_id: subscriptionId, payment_id: paymentId, signature }))) {
     return NextResponse.json({ error: 'signature_mismatch' }, { status: 400 })

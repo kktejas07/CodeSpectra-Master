@@ -25,7 +25,7 @@ describe('automation mail in the recipient language', () => {
     expect(localizeMail({ ...mail, i18n: undefined }, 'te')).toEqual({ ...mail, i18n: undefined })
   })
   it('plural keys and multi-part bodies', () => {
-    const m = localizeMail({ subject: 's', heading: 'h', i18n: { subject: { key: 'auto.expiry.subject', params: { count: 3 } }, heading: { key: 'auto.expiry.heading', params: { count: 1 } }, body: [{ key: 'auto.hi', params: { name: 'Asha' } }, { key: 'auto.dunning.last' }] } }, 'te')
+    const m = localizeMail({ subject: 's', heading: 'h', bodyText: '', i18n: { subject: { key: 'auto.expiry.subject', params: { count: 3 } }, heading: { key: 'auto.expiry.heading', params: { count: 1 } }, body: [{ key: 'auto.hi', params: { name: 'Asha' } }, { key: 'auto.dunning.last' }] } }, 'te')
     expect(m.subject).toContain('3')
     expect(m.bodyText).toMatch(/^నమస్తే Asha,\n\n/)
   })

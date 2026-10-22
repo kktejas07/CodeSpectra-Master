@@ -355,7 +355,7 @@
   "billing_state_invalid": "Choose your state.",
   "licence_org_admin_only": "Only your organisation admin can manage licences.",
   "licence_org_required": "Choose an organisation.",
-  "licence_org_not_found": "Organisation not found.",
+  "licence_org_not_found": "That organisation was not found.",
   "licence_not_found": "Licence not found.",
   "licence_min_seats": "That's below the minimum number of seats.",
   "licence_seats_below_used": "You can't buy fewer seats than are already in use.",

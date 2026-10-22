@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   try {
     const { issueManualLicence } = await import('@/lib/billing/licences')
     const lic = await issueManualLicence({ orgId: parsed.data.org_id, seats: parsed.data.seats, currency: parsed.data.currency, endsAt: new Date(parsed.data.ends_at).toISOString(), actorId: gate.user.id })
-    if (!lic) return NextResponse.json({ error: 'Organisation not found.', code: 'licence_org_not_found' }, { status: 404 })
+    if (!lic) return NextResponse.json({ error: 'That organisation was not found.', code: 'licence_org_not_found' }, { status: 404 })
     await auditAdmin(gate.user, 'admin.licence.issue', 'licence', `licence/${lic.id}`, `${lic.org_id} ${lic.seats} seats`)
     return NextResponse.json({ licence: lic }, { status: 201 })
   } catch (e) {

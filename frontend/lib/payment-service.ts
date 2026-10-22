@@ -216,7 +216,8 @@ export class PaymentService {
     // Account credit (referral rewards): prepaid orders only; debited when the order is paid.
     if (opts.useCredit !== false && plan.amount_paise > 0 && plan.kind !== 'one_time') {
       const { availableCredit } = await import('@/lib/billing/credits')
-      const credit = Math.min(plan.amount_paise, await availableCredit(userId, plan.currency))
+      // Credit is a bonus: a lookup failure just means none is applied.
+      const credit = Math.min(plan.amount_paise, await availableCredit(userId, plan.currency).catch(() => 0))
       if (credit > 0) {
         plan = { ...plan, amount_paise: plan.amount_paise - credit }
         extras.fields = { ...extras.fields, credit_applied: credit }
@@ -230,8 +231,13 @@ export class PaymentService {
       const { getBillingSettings } = await import('@/lib/billing/settings')
       const country = (countryCode || '').toUpperCase()
       if (razorpayRecurringEligible(plan) && (!country || country === 'IN') && (await getBillingSettings()).razorpay_autopay) {
-        const r = await createRazorpaySubscriptionCheckout(userId, plan)
-        return { provider: 'razorpay', gateway_id: r.subscription_id, subscription_id: r.subscription_id, key_id: r.key_id, amount_paise: plan.amount_paise, currency: plan.currency, plan }
+        try {
+          const r = await createRazorpaySubscriptionCheckout(userId, plan)
+          return { provider: 'razorpay', gateway_id: r.subscription_id, subscription_id: r.subscription_id, key_id: r.key_id, amount_paise: plan.amount_paise, currency: plan.currency, plan }
+        } catch (e) {
+          // Subscriptions not enabled on the Razorpay account (or Razorpay down): sell the period prepaid instead.
+          console.error('[payment-service] Razorpay subscription unavailable, using a one-time order:', (e as Error)?.message)
+        }
       }
     }
 
