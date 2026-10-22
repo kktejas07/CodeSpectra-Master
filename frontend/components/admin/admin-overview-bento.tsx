@@ -113,7 +113,7 @@ export function AdminOverviewBento({ totalUsers, usersLoaded, proctorHref }: { t
           loadingLabel={loading}
           value={ov.data ? number(ov.data.ai.requests) : undefined}
           unit={ov.data ? t('overview.aiUnit') : undefined}
-          hint={ov.data ? `${t('overview.aiHint', { tokens: number(ov.data.ai.tokens), failed: number(ov.data.ai.failed) })} ${t('overview.aiNote')}` : undefined}
+          hint={ov.data ? <>{t('overview.aiHint', { tokens: number(ov.data.ai.tokens), failed: number(ov.data.ai.failed) })}<span className="mt-1 block text-xs">{t('overview.aiNote')}</span></> : undefined}
           empty={ov.error ? failed : undefined}
           series={ov.data?.ai.by_day}
           seriesLabel={t('overview.aiTrend')}

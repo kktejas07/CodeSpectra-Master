@@ -1215,6 +1215,7 @@ html[data-a11y-font='dyslexic'] .font-mono { font-family: var(--font-mono), ui-m
   background-size: 200% 100%;
   animation: bento-shimmer 1.4s ease-in-out infinite;
 }
+[data-tone='brand'] .bento-skel { background: hsl(0 0% 100% / 0.22); animation: none; }
 @media (prefers-reduced-motion: reduce) {
   .bento-skel { animation: none; }
 }

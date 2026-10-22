@@ -14,7 +14,8 @@ function a11y(label?: string) {
 /** Line + soft area. Needs ≥ 2 points; flat series draw a mid line. */
 export function Sparkline({ data, label, className, area = true }: { data: number[]; label?: string; className?: string; area?: boolean }) {
   const pts = data.filter((n) => Number.isFinite(n))
-  if (pts.length < 2) return null
+  // Nothing to show: too few points, or an all-zero series (a flat line at 0 reads as data).
+  if (pts.length < 2 || pts.every((n) => n === 0)) return null
   const W = 120
   const H = 36
   const pad = 3
@@ -35,7 +36,7 @@ export function Sparkline({ data, label, className, area = true }: { data: numbe
 
 /** Vertical columns; the last (current) one is solid, the rest tinted. */
 export function MiniBars({ data, label, className, highlightLast = true }: { data: number[]; label?: string; className?: string; highlightLast?: boolean }) {
-  if (!data.length) return null
+  if (!data.length || data.every((n) => n === 0)) return null
   const max = Math.max(...data, 1)
   return (
     <div className={cn('flex h-14 items-end gap-1 text-primary', className)} {...a11y(label)}>

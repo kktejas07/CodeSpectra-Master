@@ -45,7 +45,7 @@ export function PlacementOverview({ onGoto }: { onGoto: (tab: string) => void })
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t('career.graduationYear')}>
         {years.map((y) => (
-          <Button key={y.year} size="sm" variant={y.year === s.year ? 'default' : 'outline'} aria-pressed={y.year === s.year} onClick={() => setYear(y.year)}>{t('career.classOfYear', { year: y.year })}</Button>
+          <Button key={y.year} size="sm" variant={y.year === s.year ? 'default' : 'outline'} aria-pressed={y.year === s.year} onClick={() => setYear(y.year)}>{t('career.classOfYear', { year: String(y.year) })}</Button>
         ))}
       </div>
       <BentoGrid cols={4}>
@@ -55,7 +55,7 @@ export function PlacementOverview({ onGoto }: { onGoto: (tab: string) => void })
               <BentoIcon><Percent aria-hidden /></BentoIcon>
               <BentoTitle className="text-[15px] font-medium text-primary-foreground/85">{t('career.placed')}</BentoTitle>
             </div>
-            <div className="mt-6 flex flex-wrap items-center gap-6">
+            <div className="my-auto flex flex-wrap items-center gap-6 py-6">
               <Meter value={s.placed_pct} size={132} className="text-primary-foreground [&_div]:text-primary-foreground">
                 <span className="bento-num text-5xl">{s.placed_pct}%</span>
               </Meter>

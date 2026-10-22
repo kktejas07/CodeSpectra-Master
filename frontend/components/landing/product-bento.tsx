@@ -237,7 +237,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
   const t = publicT(locale)
   const lp = (p: string) => localizedPath(p, locale)
   const n = PLATFORM_COUNTS
-  const chips = [t('landing.bentoChipMcq'), t('landing.bentoChipCoding'), t('landing.bentoChipSql'), t('landing.bentoChipMatching'), t('landing.bentoChipHotspot'), t('landing.bentoChipVideo'), t('landing.bentoChipEssay'), t('landing.bentoChipTyping')]
+  const chips = [t('landing.bentoChipMcq'), t('landing.bentoChipCoding'), 'SQL', t('landing.bentoChipMatching'), t('landing.bentoChipHotspot'), t('landing.bentoChipVideo'), t('landing.bentoChipEssay'), t('landing.bentoChipTyping')]
   const levels = [t('landing.bentoLevelBeginner'), t('landing.bentoLevelIntermediate'), t('landing.bentoLevelAdvanced'), t('landing.bentoLevelExpert')]
   const checks = [t('public.bentoCheckFace'), t('public.bentoCheckTabs'), t('public.bentoCheckPaste')]
 
@@ -249,13 +249,11 @@ export function ProductBento({ locale }: { locale: Locale }) {
           <QuestionStack />
         </BentoWell>
         <BentoBody className="flex-none">
-          <div className="flex items-start gap-3">
+          <div className="flex items-center gap-3">
             <BentoIcon><ListChecks /></BentoIcon>
-            <div className="min-w-0">
-              <BentoTitle>{t('landing.bentoAssessTitle', { n: n.questionTypes })}</BentoTitle>
-              <BentoText>{t('landing.bentoAssessBody')}</BentoText>
-            </div>
+            <BentoTitle className="min-w-0">{t('landing.bentoAssessTitle', { n: n.questionTypes })}</BentoTitle>
           </div>
+          <BentoText className="mt-2">{t('landing.bentoAssessBody')}</BentoText>
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {chips.map((c) => (
               <li key={c} className="rounded-full border border-border/80 bg-background/70 px-2.5 py-1 text-xs font-medium text-foreground">{c}</li>
@@ -283,7 +281,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
         title={t('landing.bentoProctorTitle')}
         text={t('landing.bentoProctorBody')}
         visual={<ProctorVisual checks={checks} trust={t('landing.bentoProctorTrust')} />}
-        wellClassName="h-40 sm:h-44"
+        wellClassName="h-48 sm:h-44"
       />
 
       <BentoFeature

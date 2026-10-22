@@ -120,13 +120,11 @@ export function BentoFeature({
     <BentoCard {...base}>
       {visualFirst && well}
       <BentoBody>
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           {icon && <BentoIcon>{icon}</BentoIcon>}
-          <div className="min-w-0">
-            <BentoTitle as={heading}>{title}</BentoTitle>
-            {text && <BentoText>{text}</BentoText>}
-          </div>
+          <BentoTitle as={heading} className="min-w-0">{title}</BentoTitle>
         </div>
+        {text && <BentoText className="mt-2">{text}</BentoText>}
         {tags && tags.length > 0 && (
           <ul className="mt-3 flex flex-wrap gap-1.5">
             {tags.map((t) => (

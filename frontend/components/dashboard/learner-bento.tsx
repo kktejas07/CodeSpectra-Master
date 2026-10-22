@@ -122,7 +122,7 @@ export function LearnerBento({ stats }: { stats: LearnerStats }) {
         <BentoList
           span={2}
           smSpan={2}
-          rows={2}
+          rows={plan.loading || (plan.data && plan.data.today_items.length > 0) ? 2 : 1}
           icon={<CalendarCheck />}
           title={t('dash.bentoTodayPlan')}
           loading={plan.loading}
@@ -283,7 +283,7 @@ export function LearnerBento({ stats }: { stats: LearnerStats }) {
         </BentoCard>
 
         {/* Daily challenge keeps its own card; it just takes a bento slot */}
-        <div data-hint="daily-challenge" className={`min-w-0 ${spanClass({ span: 2, smSpan: 2 })}`}>
+        <div data-hint="daily-challenge" className={`min-w-0 empty:hidden ${spanClass({ span: 2, smSpan: 2 })}`}>
           <DailyChallengeWidget />
         </div>
 
