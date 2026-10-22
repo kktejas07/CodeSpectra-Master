@@ -27,7 +27,7 @@ export const PLATFORM_COUNTS = {
 
 /* ── Well visuals ────────────────────────────────────────────────────── */
 
-function QuestionStack({ chips }: { chips: string[] }) {
+function QuestionStack() {
   return (
     <div className="absolute inset-0 flex items-center justify-center p-5" lang="en">
       {/* back sheets: a code question and an SQL question peeking out */}
@@ -56,11 +56,6 @@ function QuestionStack({ chips }: { chips: string[] }) {
             </li>
           ))}
         </ul>
-      </div>
-      <div className="absolute inset-x-4 bottom-3 hidden flex-wrap justify-center gap-1.5 sm:flex">
-        {chips.slice(0, 4).map((c) => (
-          <span key={c} className="rounded-full border border-border bg-background/90 px-2 py-0.5 text-[11px] font-medium text-foreground">{c}</span>
-        ))}
       </div>
     </div>
   )
@@ -107,9 +102,9 @@ function ProctorVisual({ checks, trust }: { checks: string[]; trust: string }) {
             <span className="truncate">{c}</span>
           </div>
         ))}
-        <div className="flex items-baseline justify-between rounded-lg bg-primary/10 px-2 py-1.5 text-[11px] font-medium text-primary">
+        <div className="flex items-baseline justify-between rounded-lg bg-primary/10 px-2 py-1.5 text-[11px] font-medium text-foreground">
           <span className="truncate">{trust}</span>
-          <span className="bento-num text-lg">92</span>
+          <span className="bento-num text-lg text-primary">92</span>
         </div>
       </div>
     </div>
@@ -251,7 +246,7 @@ export function ProductBento({ locale }: { locale: Locale }) {
       {/* The one big card: the assessment itself */}
       <BentoCard span={3} rows={2} smSpan={2} href={lp('/features')}>
         <BentoWell className="h-64 sm:h-72 lg:h-auto lg:flex-1 lg:min-h-80">
-          <QuestionStack chips={chips} />
+          <QuestionStack />
         </BentoWell>
         <BentoBody className="flex-none">
           <div className="flex items-start gap-3">
