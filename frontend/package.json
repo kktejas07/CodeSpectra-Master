@@ -54,7 +54,7 @@
     "@radix-ui/react-tooltip": "^1.2.16",
     "@radix-ui/react-use-effect-event": "^0.0.5",
     "@remotion/bundler": "4.0.513",
-    "@remotion/player": "^4.0.513",
+    "@remotion/player": "^4.0.537",
     "@remotion/renderer": "4.0.513",
     "@tailwindcss/typography": "^0.5.20",
     "@types/qrcode": "^1.5.6",

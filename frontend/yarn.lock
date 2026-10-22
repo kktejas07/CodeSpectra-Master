@@ -2922,12 +2922,19 @@
     mediabunny "1.50.8"
     remotion "4.0.513"
 
-"@remotion/player@4.0.513", "@remotion/player@^4.0.513":
+"@remotion/player@4.0.513":
   version "4.0.513"
   resolved "https://registry.npmjs.org/@remotion/player/-/player-4.0.513.tgz"
   integrity sha512-7zBJIypNp7duagRy7SghedEPtIpIF96Lb+r2EZnGMKRbm8PYc6nO2JOnX+gRnMszaULmaLId3pQHMThOy7CJyA==
   dependencies:
     remotion "4.0.513"
+
+"@remotion/player@^4.0.537":
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/@remotion/player/-/player-4.0.537.tgz#f43e8d13bfbea4684dd65e707c4fc12d588aef1b"
+  integrity sha512-zXY13uIqBr6q1fHAaiDvnXVMB8Wqs2BVoJTcXHlhhpoPoH4tGByzLc+961hhxMJjUR4Ubc2JRIaNbUckHEh46A==
+  dependencies:
+    remotion "4.0.537"
 
 "@remotion/renderer@4.0.513":
   version "4.0.513"
@@ -8643,10 +8650,15 @@ remark-stringify@^11.0.0:
     mdast-util-to-markdown "^2.0.0"
     unified "^11.0.0"
 
-remotion@4.0.513, remotion@^4.0.513:
+remotion@4.0.513:
   version "4.0.513"
   resolved "https://registry.npmjs.org/remotion/-/remotion-4.0.513.tgz"
   integrity sha512-cDaUqFq7GBuxYYSINhfXy5+X7V4L3fSy3lDL4G/7v61jCpEzYcRQftAKo2Cyj1evHt34bn++4eMMUZBMh624yA==
+
+remotion@4.0.537, remotion@^4.0.513:
+  version "4.0.537"
+  resolved "https://registry.yarnpkg.com/remotion/-/remotion-4.0.537.tgz#c25919b4702a21b439ae0bb43147ace2eac0b2ac"
+  integrity sha512-chlB4+lnCWnDr6Pk+fDh3vWgac/ntGduq4VUpDsXzY1Pzu6URdnl40LUClK4ZlS3mwMv2U0oflE7qjZ9LGpVWg==
 
 require-directory@^2.1.1:
   version "2.1.1"
