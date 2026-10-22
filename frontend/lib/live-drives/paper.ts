@@ -21,7 +21,7 @@ export class PaperError extends Error {
 
 export async function buildPaper(driveId: string, patternId: string, level: PracticeLevel): Promise<PaperDoc> {
   const pattern = await getPattern(patternId)
-  if (!pattern || !pattern.active) throw new PaperError('That company test is not available.', 409, 'ld_test_unavailable')
+  if (!pattern || !pattern.active) throw new PaperError('That company test is not available.', 409, 'campus_test_unavailable')
   const stored = await (await versions()).findOne({ id: versionId(patternId, level) }, { projection: { _id: 0 } })
   if (!stored) throw new PaperError('That level of the test is not built yet. Pick another level.', 409, 'ld_level_not_ready')
   const version = await reconcileVersion(stored, pattern)

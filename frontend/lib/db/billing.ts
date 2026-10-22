@@ -235,13 +235,24 @@ export async function reserveCouponUse(couponId: string, userId: string, orderId
       active: true,
       // Per-person limit (default 1): this user's reservations + redemptions so far.
       $and: [
-        { $expr: { $lt: [{ $size: { $filter: { input: { $ifNull: ['$redemptions', []] }, cond: { $eq: ['$$this.user_id', userId] } } } }, { $ifNull: ['$per_user_limit', 1] }] } },
+        await perUserFilter(col, couponId, userId),
         { $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }] },
       ],
     } as any,
     { $inc: { current_uses: 1 }, $push: { redemptions: reservation as any } },
   )
   return res.modifiedCount > 0
+}
+
+/**
+ * Atomic per-person limit filter: one use per user (the default) is a plain
+ * `$ne`; a coupon allowing more counts this user's entries in the array.
+ */
+async function perUserFilter(col: Collection<BillingCouponDoc>, couponId: string, userId: string): Promise<Record<string, unknown>> {
+  const c = await col.findOne({ id: couponId }, { projection: { per_user_limit: 1 } })
+  const limit = Number.isInteger(c?.per_user_limit) && (c!.per_user_limit as number) > 1 ? (c!.per_user_limit as number) : 1
+  if (limit === 1) return { 'redemptions.user_id': { $ne: userId } }
+  return { $expr: { $lt: [{ $size: { $filter: { input: { $ifNull: ['$redemptions', []] }, cond: { $eq: ['$$this.user_id', userId] } } } }, limit] } }
 }
 
 /** Give back an order-bound reservation (abandoned / failed / replaced checkout). Idempotent. */
@@ -293,7 +304,7 @@ export async function finalizeCouponRedemption(
       {
         id: couponId,
         $and: [
-          { $expr: { $lt: [{ $size: { $filter: { input: { $ifNull: ['$redemptions', []] }, cond: { $eq: ['$$this.user_id', userId] } } } }, { $ifNull: ['$per_user_limit', 1] }] } },
+          await perUserFilter(col, couponId, userId),
           { $or: [{ max_uses: { $lte: 0 } }, { $expr: { $lt: ['$current_uses', '$max_uses'] } }] },
         ],
       } as any,

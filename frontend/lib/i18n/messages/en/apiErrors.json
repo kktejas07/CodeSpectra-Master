@@ -429,7 +429,6 @@
   "ld_start_first": "Start the drive test first.",
   "ld_start_in_past": "Pick a start time in the future first.",
   "ld_still_running": "Some candidates are still writing. End the drive or wait for their time to run out.",
-  "ld_test_unavailable": "That company test is not available.",
   "ld_too_large": "Request too large",
   "ld_unscored": "Score every submission before publishing.",
   "pro_cert_status_invalid": "Choose draft, published or retired.",

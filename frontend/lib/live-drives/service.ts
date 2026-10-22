@@ -141,7 +141,7 @@ export async function createDrive(user: APIUser, raw: unknown): Promise<LiveDriv
     }
   }
   const pattern = await getPattern(i.pattern_id)
-  if (!pattern || !pattern.active) throw err('That company test is not available.', 409, 'ld_test_unavailable')
+  if (!pattern || !pattern.active) throw err('That company test is not available.', 409, 'campus_test_unavailable')
   const now = nowIso()
   const doc: LiveDriveDoc = {
     id: newId(), title: i.title, owner, links,
