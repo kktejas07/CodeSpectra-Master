@@ -1,7 +1,7 @@
 /** Proctored certifications — pure rules (lib/pro-certs/pure.ts, lib/pro-certs/types.ts). */
 import { describe, expect, it } from 'vitest'
 import {
-  addMonths, attemptEligibility, credentialIdFrom, credentialState, decideOutcome, isProCredentialId, linkedInAddUrl,
+  addMonths, attemptEligibility, credentialIdFrom, discountedPrice, credentialState, decideOutcome, isProCredentialId, linkedInAddUrl,
   publishProblems, renewedExpiry, scorePercent, selectQuestions, type PoolItem,
 } from '@/lib/pro-certs/pure'
 import { PROGRAM_TEMPLATES, ProgramInputSchema } from '@/lib/pro-certs/types'
@@ -144,6 +144,17 @@ describe('credentials', () => {
     const u = new URL(linkedInAddUrl({ title: 'Java Associate', issuedAt: '2026-10-23T00:00:00Z', expiresAt: '2028-10-23T00:00:00Z', credentialId: 'CSC-A', verifyUrl: 'https://codespectra.ai/verify/CSC-A' }))
     expect(u.origin + u.pathname).toBe('https://www.linkedin.com/profile/add')
     expect(Object.fromEntries(u.searchParams)).toMatchObject({ startTask: 'CERTIFICATION_NAME', name: 'Java Associate', issueYear: '2026', issueMonth: '10', expirationYear: '2028', expirationMonth: '10', certId: 'CSC-A', certUrl: 'https://codespectra.ai/verify/CSC-A', organizationName: 'CodeSpectra' })
+  })
+})
+
+describe('discountedPrice', () => {
+  it('applies the plan member discount with the gateway minimum', () => {
+    expect(discountedPrice(49900, 0)).toBe(49900)
+    expect(discountedPrice(49900, 20)).toBe(39920)
+    expect(discountedPrice(49900, 100)).toBe(0)
+    expect(discountedPrice(49900, Infinity)).toBe(49900)
+    expect(discountedPrice(150, 50)).toBe(100)
+    expect(discountedPrice(0, 10)).toBe(0)
   })
 })
 

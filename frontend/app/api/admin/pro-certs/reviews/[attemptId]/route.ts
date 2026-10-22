@@ -18,7 +18,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ attemptId: str
   const { attemptId } = await ctx.params
   if (!/^[A-Za-z0-9-]{8,64}$/.test(attemptId)) return json({ error: 'Attempt not found.', code: 'pro_cert_attempt_not_found' }, 404)
   const b = Body.safeParse(await req.json().catch(() => null))
-  if (!b.success) return json({ error: 'Choose approve or reject.', code: 'pro_cert_invalid' }, 400)
+  if (!b.success) return json({ error: 'Choose approve or reject.', code: 'pro_cert_review_action_invalid' }, 400)
   if (b.data.action === 'reject' && !b.data.note) return json({ error: 'Add a note explaining the rejection.', code: 'pro_cert_note_required' }, 400)
   try {
     const { decideReview } = await import('@/lib/pro-certs/service')

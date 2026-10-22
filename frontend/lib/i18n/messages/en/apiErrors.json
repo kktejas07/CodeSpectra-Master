@@ -431,5 +431,8 @@
   "ld_still_running": "Some candidates are still writing. End the drive or wait for their time to run out.",
   "ld_test_unavailable": "That company test is not available.",
   "ld_too_large": "Request too large",
-  "ld_unscored": "Score every submission before publishing."
+  "ld_unscored": "Score every submission before publishing.",
+  "pro_cert_status_invalid": "Choose draft, published or retired.",
+  "pro_cert_review_action_invalid": "Choose approve or reject.",
+  "pro_cert_currency_required": "Choose a currency."
 }

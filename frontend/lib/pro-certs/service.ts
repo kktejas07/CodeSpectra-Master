@@ -24,7 +24,7 @@ import { DEFAULT_DOMAINS, domainBankFilter } from '@/lib/question-bot/domains'
 import { normalizeSections } from '@/lib/exam-sections'
 import { attempts, credentials, exposure, isDup, orders, programs } from './db'
 import {
-  addMonths, attemptEligibility, credentialIdFrom, credentialState, decideOutcome, isProCredentialId, priceFor,
+  addMonths, attemptEligibility, credentialIdFrom, discountedPrice, credentialState, decideOutcome, isProCredentialId, priceFor,
   publicProgram, publishProblems, renewedExpiry, scorePercent, selectQuestions, sectionQuestionCount, type Eligibility, type PoolItem,
 } from './pure'
 import {
@@ -189,20 +189,17 @@ export async function myOpenAttempts(userId: string): Promise<Array<Pick<Attempt
 // ─── Checkout ────────────────────────────────────────────────────────────────
 
 /**
- * Billing integration hook: when the billing module exposes
- * `hasEntitlement(userId, key)` and the user's plan includes free
- * certification attempts, the attempt is free. Until then everyone pays.
- * TODO(billing): replace with a consumable credit (decrement on use) once the
- * billing agent's entitlement helper supports counters.
+ * Plan member discount on certification attempts: the billing module's
+ * `cert_discount_pct` entitlement (lib/entitlements hasEntitlement), the same
+ * one the marketplace applies to certification products. 100% = free attempt.
  */
-async function freeAttemptEntitled(userId: string): Promise<boolean> {
+async function memberDiscountPct(userId: string): Promise<number> {
   try {
-    const mod = (await import('@/lib/entitlements')) as unknown as Record<string, unknown>
-    const fn = mod.hasEntitlement
-    if (typeof fn !== 'function') return false
-    return (await (fn as (u: string, k: string) => Promise<boolean> | boolean)(userId, 'pro_certs.free_attempt')) === true
+    const { hasEntitlement } = await import('@/lib/entitlements')
+    const d = await hasEntitlement({ id: userId, role: 'user' }, 'cert_discount_pct')
+    return d.allowed ? Number(d.limit) : 0
   } catch {
-    return false
+    return 0
   }
 }
 
@@ -220,14 +217,15 @@ export async function checkout(user: { id: string; email: string }, slug: string
   }
   const listPrice = priceFor(p, currency)
   if (listPrice === null) throw new ProCertError(400, 'pro_cert_currency_unavailable', 'This certification is not sold in that currency.')
-  const free = listPrice === 0 || (await freeAttemptEntitled(user.id))
+  const amount = discountedPrice(listPrice, await memberDiscountPct(user.id))
+  const free = amount === 0
   const { pickGateway, startPayment } = await import('./payments')
   const gateway = free ? 'free' : await pickGateway(currency)
   if (!gateway) throw new ProCertError(503, 'pro_cert_payments_unavailable', "Payments aren't set up yet. Please try again later.")
   const now = nowIso()
   const order: CertOrderDoc = {
     id: randomUUID(), user_id: user.id, user_email: user.email, program_id: p.id, program_slug: p.slug, renews_credential_id: el.renewal,
-    currency, amount: free ? 0 : listPrice, gateway, payment: { ref: null, intent: null, txn: null, paid_amount: null },
+    currency, amount, gateway, payment: { ref: null, intent: null, txn: null, paid_amount: null },
     status: 'pending', attempt_id: null, created_at: now, updated_at: now, paid_at: null,
   }
   await (await orders()).insertOne({ ...order })

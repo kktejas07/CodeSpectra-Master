@@ -59,7 +59,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const { id } = await ctx.params
   if (!idOk(id)) return json({ error: 'Certification not found.', code: 'pro_cert_not_found' }, 404)
   const b = StatusBody.safeParse(await req.json().catch(() => null))
-  if (!b.success) return json({ error: 'Choose draft, published or retired.', code: 'pro_cert_invalid' }, 400)
+  if (!b.success) return json({ error: 'Choose draft, published or retired.', code: 'pro_cert_status_invalid' }, 400)
   try {
     const { setProgramStatus } = await import('@/lib/pro-certs/service')
     const p = await setProgramStatus(id, b.data.status)

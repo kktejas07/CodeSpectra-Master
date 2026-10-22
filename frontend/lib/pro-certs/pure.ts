@@ -320,6 +320,16 @@ export function priceFor(p: Pick<ProgramDoc, 'price'>, currency: CertCurrency): 
   return typeof v === 'number' && Number.isInteger(v) && v >= 0 ? v : null
 }
 
+/**
+ * Price after a plan member discount (percent, clamped 0–100; non-finite = none).
+ * A non-zero result is at least 100 minor units (gateway minimum, e.g. PhonePe ₹1).
+ */
+export function discountedPrice(listMinor: number, pct: number): number {
+  const p = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 0
+  const v = Math.round((listMinor * (100 - p)) / 100)
+  return v <= 0 ? 0 : Math.max(100, v)
+}
+
 /** Publishing checks beyond the schema: at least one currency, section minutes fit, questions to draw. */
 export function publishProblems(p: Pick<ProgramDoc, 'price' | 'blueprint'>): string[] {
   const out: string[] = []

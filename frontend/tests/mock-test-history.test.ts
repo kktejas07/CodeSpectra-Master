@@ -93,6 +93,7 @@ describe('ai mock interview resume selection', () => {
       experience: [{ id: 'e1', company: 'Acme', role: 'SDE', dates: '2022–2024', description: 'Built APIs.' }],
       education: [{ id: 'd1', institution: 'JNTU', degree: 'B.Tech', dates: '2022' }],
       skills: 'Go, SQL',
+      targetRole: '', projects: [], certificates: [], achievements: [],
     })
     expect(text).toContain('Asha Rao')
     expect(text).toContain('SDE at Acme (2022–2024)')

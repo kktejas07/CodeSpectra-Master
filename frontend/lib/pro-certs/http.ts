@@ -13,5 +13,5 @@ export function json(body: unknown, status = 200) {
 export function errorJson(e: unknown, label: string) {
   if (e instanceof ProCertError) return json({ error: e.message, code: e.code, ...(e.params ? { params: e.params } : {}) }, e.status)
   console.error(`[pro-certs] ${label}:`, (e as Error)?.message?.slice(0, 300))
-  return json({ error: 'Something went wrong. Try again.', code: 'pro_cert_failed' }, 500)
+  return json({ error: 'Something went wrong with the certification. Try again.', code: 'pro_cert_failed' }, 500)
 }

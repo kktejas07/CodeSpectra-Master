@@ -309,7 +309,7 @@ export async function activatePaidOrder(order: BillingOrderDoc, paymentDocId?: s
     await afterPaid(order)
     return { subscription: null }
   }
-  let kind = order.plan_kind
+  let kind: BillingOrderDoc['plan_kind'] = order.plan_kind
   let durationDays = order.duration_days
   if (!kind) {
     const resolved = await resolveBillingPlan(order.plan_id, order.interval || 'month').catch(() => null)

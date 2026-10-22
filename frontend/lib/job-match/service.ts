@@ -123,8 +123,10 @@ export async function applyWithVersion(user: APIUser, jobId: string, draftId: st
   const { resumeDrafts } = await import('@/app/api/resumes/_lib/builder-data')
   const draft = await (await resumeDrafts()).findOne({ id: draftId, user_id: user.id }, { projection: { _id: 0 } })
   if (!draft) throw new MatchError('Résumé version not found', 404, 'resume_version_missing')
-  const { resumeToText } = await import('@/lib/resume/builder')
-  const text = resumeToText(draft.data)
+  const { resumeToText, sanitizeBuilderData, EMPTY_RESUME } = await import('@/lib/resume/builder')
+  // Older drafts predate projects / certificates / achievements: normalise first.
+  const data = sanitizeBuilderData(draft.data) ?? EMPTY_RESUME
+  const text = resumeToText(data)
   if (text.length < 80) throw new MatchError('Add more to this résumé version before applying.', 400, 'resume_version_thin')
   const { applyToJob, ApplyError } = await import('@/lib/ats/apply')
   try {
@@ -132,7 +134,7 @@ export async function applyWithVersion(user: APIUser, jobId: string, draftId: st
       user: { id: user.id, email: user.email, name: user.fullName || user.name },
       resume: { file_name: `${draft.name || 'Resume'}.txt`.slice(0, 120), text: text.slice(0, 60_000) },
       cover_letter: coverLetter ? coverLetter.slice(0, 5000) : null,
-      location: draft.data.personal.location || null,
+      location: data.personal.location || null,
     })
     return { application_id: r.application.id, created: r.created }
   } catch (e) {

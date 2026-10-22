@@ -20,7 +20,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ slug: string }
   const rl = await rateLimitRedis(`pro-cert-checkout:${g.user.id}`, 10, 10 * 60_000)
   if (!rl.ok) return json({ error: 'Too many requests. Please try again shortly.', code: 'rate_limited_shortly' }, 429)
   const b = Body.safeParse(await req.json().catch(() => null))
-  if (!b.success) return json({ error: 'Choose a currency.', code: 'pro_cert_invalid' }, 400)
+  if (!b.success) return json({ error: 'Choose a currency.', code: 'pro_cert_currency_required' }, 400)
   const { slug } = await ctx.params
   try {
     const { checkout } = await import('@/lib/pro-certs/service')
