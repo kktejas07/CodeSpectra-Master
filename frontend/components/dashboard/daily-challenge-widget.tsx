@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Calendar, Flame, ArrowRight, Loader2, Sparkles } from 'lucide-react'
+import { Calendar, ArrowRight, Loader2, Sparkles } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { OfflineDownloadButton } from '@/components/pwa/offline-download-button'
@@ -77,7 +78,7 @@ export function DailyChallengeWidget() {
               data-testid="streak-counter"
               title={tr('dash.consecutiveDaysWithAtLeastOne7b3')}
             >
-              <Flame className="h-3.5 w-3.5" />{tr('dash.streakDayStreak', { streak: data.streak })}</span>
+              <AnimatedIcon name="bolt" size={14} autoplay={data.streak > 0} />{tr('dash.streakDayStreak', { streak: data.streak })}</span>
           </div>
           <h3 className="mb-1 text-lg font-semibold text-foreground">{data.problem.title}</h3>
           {data.problem.topics?.length > 0 && (

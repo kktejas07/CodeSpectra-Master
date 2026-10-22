@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Panel, Section, BentoGrid } from '@/components/app/page-kit'
@@ -188,7 +189,7 @@ function PrepCard({ track }: { track: CertTrack }) {
           {track.examBookingUrl && (
             <Button className="w-full gap-2" asChild>
               <a href={track.examBookingUrl} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />{' '}{t('learning.bookOfficialExam')}</a>
+                <AnimatedIcon name="external-link" />{' '}{t('learning.bookOfficialExam')}</a>
             </Button>
           )}
         </div>
@@ -227,7 +228,7 @@ function FreeCard({ track }: { track: CertTrack }) {
         <div className="border-t border-border/40 pt-3">
           <Button className="w-full gap-2" asChild>
             <a href={track.freeStudyUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" />{' '}{t('learning.startFree')}</a>
+              <AnimatedIcon name="external-link" />{' '}{t('learning.startFree')}</a>
           </Button>
         </div>
       </div>

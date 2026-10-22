@@ -1,5 +1,6 @@
 'use client'
 
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 import { useState } from 'react'
 import { Loader2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -48,7 +49,9 @@ export function UnlockPackButton({
   }
 
   return (
+    <NativePurchaseGate compact>
     <Button size={size} className={className} onClick={() => void buy()} disabled={busy}>
       {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Lock className="h-4 w-4" aria-hidden />}{t('practice.unlockWithName', { name: pack.name })}</Button>
+    </NativePurchaseGate>
   )
 }

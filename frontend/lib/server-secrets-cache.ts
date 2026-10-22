@@ -61,6 +61,13 @@ export type ServerSecretsRecord = {
   play_integrity_service_account_json?: string
   android_package_names?: string
   android_cert_sha256?: string
+  // --- iOS app (App Attest / DeviceCheck) — lib/mobile/app-attest.ts ---------
+  apple_team_id?: string
+  ios_bundle_ids?: string
+  ios_app_attest_allow_development?: string
+  apple_app_attest_root_ca_pem?: string
+  apple_devicecheck_key_id?: string
+  apple_devicecheck_private_key?: string
   // --- Web push (VAPID, PWA — docs/pwa.md). Env fallback VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY / VAPID_SUBJECT.
   webpush_vapid_public_key?: string
   webpush_vapid_private_key?: string

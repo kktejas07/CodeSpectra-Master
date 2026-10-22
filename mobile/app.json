@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CodeSpectra",
+    "name": "CodeSpectra Legacy",
     "slug": "codespectra",
     "version": "0.1.0",
     "orientation": "portrait",
@@ -11,7 +11,7 @@
     "primaryColor": "#00D681",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.codespectra.app",
+      "bundleIdentifier": "ai.codespectra.legacy",
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
@@ -19,7 +19,7 @@
       }
     },
     "android": {
-      "package": "ai.codespectra.app",
+      "package": "ai.codespectra.legacy",
       "versionCode": 1,
       "permissions": [
         "CAMERA"

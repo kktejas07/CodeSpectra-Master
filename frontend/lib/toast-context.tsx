@@ -2,6 +2,8 @@
 
 import { useCallback, type ReactNode } from 'react'
 import { GooeyToaster, gooeyToast } from 'goey-toast'
+// Static import is fine: AnimatedIcon loads its Lottie player lazily (never in this root chunk).
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 
 /**
  * Single toast system for the entire app — goey-toast
@@ -103,6 +105,8 @@ export function useToast() {
       description: toast.message ?? undefined,
       action: toast.action,
       timing: { displayDuration: duration },
+      // Success gets the animated check (plays once; still frame under reduced motion).
+      ...(toast.type === 'success' ? { icon: <AnimatedIcon name="check-circle" size={18} autoplay hover={false} /> } : {}),
     })
   }, [])
   return addToast

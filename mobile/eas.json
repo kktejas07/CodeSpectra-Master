@@ -23,10 +23,5 @@
       "ios": { "resourceClass": "m-medium" }
     }
   },
-  "submit": {
-    "production": {
-      "android": { "track": "internal", "releaseStatus": "draft" },
-      "ios": { "ascAppId": "REPLACE_WITH_APP_STORE_CONNECT_APP_ID" }
-    }
-  }
+  "submit": {}
 }

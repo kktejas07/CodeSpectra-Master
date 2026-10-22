@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Bridge to the CodeSpectra Android app (mobile/capacitor: a Capacitor shell
- * that loads this site). In a normal browser every export is a safe no-op,
+ * Bridge to the CodeSpectra Android and iOS apps (mobile/capacitor: a
+ * Capacitor shell that loads this site). In a normal browser every export is a safe no-op,
  * so pages work unchanged.
  *
  * The shell injects `window.Capacitor` (native-bridge.js, document start,
@@ -10,9 +10,9 @@
  * through Capacitor.nativePromise / nativeCallback, which is what core
  * itself does on Android.
  *
- * Plugins used: CodeSpectraNative (shell: lockdown, Play Integrity, share,
- * system bars, consent dialog), PushNotifications, BiometricAuthNative,
- * SecureStorage (Android Keystore).
+ * Plugins used: CodeSpectraNative (shell: lockdown, Play Integrity / App
+ * Attest, share, system bars, consent dialog), PushNotifications,
+ * BiometricAuthNative, SecureStorage (Android Keystore / iOS Keychain).
  */
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -30,14 +30,40 @@ function cap(): CapacitorGlobal | null {
   return c && typeof c.nativePromise === 'function' ? c : null
 }
 
-/** True only inside the Android app shell. */
-export function isNativeApp(): boolean {
+export type NativePlatform = 'android' | 'ios'
+
+/** 'android' / 'ios' inside our app shell, otherwise null. */
+export function nativePlatform(): NativePlatform | null {
   const c = cap()
   try {
-    return !!c && c.isNativePlatform?.() === true && c.getPlatform?.() === 'android'
+    if (!c || c.isNativePlatform?.() !== true) return null
+    const p = c.getPlatform?.()
+    return p === 'android' || p === 'ios' ? p : null
   } catch {
-    return false
+    return null
   }
+}
+
+/** True only inside the Android or iOS app shell. */
+export function isNativeApp(): boolean {
+  return nativePlatform() !== null
+}
+
+/**
+ * Store rules (Apple 3.1.1, Google Play payments): the app may not sell
+ * digital plans outside in-app purchase. Unless the build turned IAP on
+ * (the shell then adds `CSIAP/1` to its user agent), purchase buttons are
+ * hidden in the app — see components/native/native-purchase-gate.tsx.
+ * Pure on the user agent so it can be tested; browsers always may buy.
+ */
+export function purchasesAllowedFor(userAgent: string, inApp: boolean): boolean {
+  if (!inApp && !/\bCodeSpectra(Android|IOS)\//.test(userAgent)) return true
+  return /\bCSIAP\/1\b/.test(userAgent)
+}
+
+export function nativePurchasesAllowed(): boolean {
+  if (typeof navigator === 'undefined') return true
+  return purchasesAllowedFor(navigator.userAgent || '', isNativeApp())
 }
 
 export function hasNativePlugin(name: string): boolean {
@@ -141,7 +167,7 @@ export async function startNativeLockdown(opts: {
         session_kind: opts.sessionKind,
         session_id: opts.sessionId,
         event_type: `native_${e.type}`,
-        meta: { source: 'android', ...(e.duration_ms != null ? { duration_ms: e.duration_ms } : {}), ...(e.screens != null ? { screens: e.screens } : {}) },
+        meta: { source: nativePlatform() ?? 'android', ...(e.duration_ms != null ? { duration_ms: e.duration_ms } : {}), ...(e.screens != null ? { screens: e.screens } : {}) },
       }),
     }).catch(() => {})
   })
@@ -164,9 +190,9 @@ export async function startNativeLockdown(opts: {
   }
 }
 
-// ── Device integrity (Play Integrity) ────────────────────────────────────
+// ── Device integrity (Play Integrity / App Attest) ───────────────────────
 
-export interface DeviceAttestation { trust: 'strong' | 'device' | 'basic' | 'none'; app_recognized: boolean }
+export interface DeviceAttestation { trust: 'strong' | 'device' | 'basic' | 'none'; app_recognized: boolean; reattest?: boolean }
 
 export async function attestDevice(ctx: { sessionKind?: 'exam' | 'problem' | 'interview'; sessionId?: string } = {}): Promise<DeviceAttestation | null> {
   if (!hasNativePlugin('CodeSpectraNative')) return null
@@ -174,21 +200,36 @@ export async function attestDevice(ctx: { sessionKind?: 'exam' | 'problem' | 'in
   if (!n.ok) return null
   const { nonce } = (await n.json()) as { nonce?: string }
   if (!nonce) return null
-  const [{ token }, info] = await Promise.all([
-    nativeCall<{ token: string }>('CodeSpectraNative', 'requestIntegrityToken', { nonce }),
+  const [att, info] = await Promise.all([
+    nativeCall<{ token: string; kind?: 'attestation' | 'assertion' | 'devicecheck'; keyId?: string }>('CodeSpectraNative', 'requestIntegrityToken', { nonce }),
     nativeCall<{ packageName: string }>('CodeSpectraNative', 'appInfo'),
   ])
+  const ios = nativePlatform() === 'ios'
   const r = await csrfFetch('/api/mobile/integrity', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, nonce, package_name: info.packageName, session_kind: ctx.sessionKind, session_id: ctx.sessionId }),
+    body: JSON.stringify(ios
+      ? { platform: 'ios', kind: att.kind, token: att.token, key_id: att.keyId, bundle_id: info.packageName, nonce, session_kind: ctx.sessionKind, session_id: ctx.sessionId }
+      : { token: att.token, nonce, package_name: info.packageName, session_kind: ctx.sessionKind, session_id: ctx.sessionId }),
   })
-  return r.ok ? ((await r.json()) as DeviceAttestation) : null
+  if (!r.ok) return null
+  const out = (await r.json()) as DeviceAttestation
+  // The server lost (or never stored) this App Attest key: make a new one next time.
+  if (ios && out.reattest) await nativeCall('CodeSpectraNative', 'resetAppAttestKey').catch(() => {})
+  return out
 }
 
 // ── Push (FCM) ───────────────────────────────────────────────────────────
 
 const PUSH_TOKEN_KEY = 'cs-native-push-token'
+let iosTapListening = false
+
+/** Pure: a same-site path ("/x", never "//host", a URL or control characters). */
+export function isSafeSitePath(link: unknown): link is string {
+  if (typeof link !== 'string' || link.length > 2048 || !link.startsWith('/') || link.startsWith('//')) return false
+  if (/[\\\u0000-\u0020\u007f]/.test(link)) return false
+  try { return new URL(link, 'https://x.invalid').host === 'x.invalid' } catch { return false }
+}
 
 /** Ask for notification permission and register this device's FCM token with the existing push channel. */
 export async function registerNativePush(): Promise<boolean> {
@@ -209,10 +250,19 @@ export async function registerNativePush(): Promise<boolean> {
       void csrfFetch('/api/notifications/push-token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, platform: 'android' }),
+        body: JSON.stringify({ token, platform: nativePlatform() ?? 'android' }),
       }).then((r) => finish(r.ok), () => finish(false))
     })
     const offErr = nativeListen('PushNotifications', 'registrationError', () => finish(false))
+    // Android opens notification taps natively (DeepLinks.java); on iOS the
+    // push plugin keeps the tap until we listen, then we open data.link.
+    if (nativePlatform() === 'ios' && !iosTapListening) {
+      iosTapListening = true
+      nativeListen<{ notification?: { data?: { link?: unknown } } }>('PushNotifications', 'pushNotificationActionPerformed', (a) => {
+        const link = a?.notification?.data?.link
+        if (isSafeSitePath(link)) window.location.assign(link)
+      })
+    }
     nativeCall('PushNotifications', 'register').catch(() => finish(false))
     setTimeout(() => finish(false), 20_000)
   })
@@ -243,7 +293,8 @@ async function secureGet(key: string): Promise<string | null> {
   return typeof r?.data === 'string' && r.data ? r.data : null
 }
 async function secureSet(key: string, data: string): Promise<void> {
-  await nativeCall('SecureStorage', 'internalSetItem', { prefixedKey: KEY_PREFIX + key, data, sync: false })
+  // iOS: Keychain "when unlocked, this device only" (never restored to another device).
+  await nativeCall('SecureStorage', 'internalSetItem', { prefixedKey: KEY_PREFIX + key, data, sync: false, ...(nativePlatform() === 'ios' ? { access: 1 } : {}) })
 }
 async function secureRemove(key: string): Promise<void> {
   await nativeCall('SecureStorage', 'internalRemoveItem', { prefixedKey: KEY_PREFIX + key, sync: false }).catch(() => {})

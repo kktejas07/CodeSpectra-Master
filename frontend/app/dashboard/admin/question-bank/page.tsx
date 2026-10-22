@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye, CheckCircle2 } from 'lucide-react'
+import { Database, Loader2, Trash2, Pencil, Sparkles, ChevronLeft, ChevronRight, X, Eye, CheckCircle2 } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 import { metaFor, QUESTION_TYPES } from '@/lib/question-types'
 import { extendedFieldsOf, type ExtendedQuestionFields } from '@/lib/question-extensions'
@@ -331,13 +332,13 @@ export default function QuestionBankPage() {
                 <Sparkles className="w-4 h-4" />Generate with AI
               </Button>
               <Button variant="outline" className="gap-2" onClick={() => setImportOpen(true)}>
-                <FileUp className="w-4 h-4" />Import
+                <AnimatedIcon name="upload" />Import
               </Button>
               <Button variant="outline" className="gap-2" onClick={handleExport} disabled={rows.length === 0}>
-                <Download className="w-4 h-4" />Export
+                <AnimatedIcon name="download" />Export
               </Button>
               <Button className="gap-2" onClick={() => openEdit()}>
-                <Plus className="w-4 h-4" />Add question
+                <AnimatedIcon name="create-new-folder" />Add question
               </Button>
             </>
           }
@@ -763,7 +764,7 @@ export default function QuestionBankPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)}><X className="w-3.5 h-3.5 mr-1" />{tx('common.cancel')}</Button>
             <Button className="gap-2" onClick={handleImport} disabled={importBusy || !importText.trim()}>
-              {importBusy ? <><Loader2 className="w-4 h-4 animate-spin" />{tx('qbank.importing')}</> : <><FileUp className="w-4 h-4" />{tx('qbank.import')}</>}
+              {importBusy ? <><Loader2 className="w-4 h-4 animate-spin" />{tx('qbank.importing')}</> : <><AnimatedIcon name="upload" />{tx('qbank.import')}</>}
             </Button>
           </DialogFooter>
         </DialogContent>

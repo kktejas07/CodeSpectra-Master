@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { CodeXml, Menu, X } from 'lucide-react'
+import { CodeXml } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { useState, useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { copyrightLine } from '@/lib/copyright'
@@ -32,7 +33,7 @@ const FOOTER_COLUMNS = [
   { title: 'public.footProduct', links: [['/features', 'public.navFeatures'], ['/pricing', 'public.navPricing'], ['/marketplace', 'public.navMarketplace'], ['/jobs', 'public.footJobBoard'], ['/hackathons', 'public.navHackathons'], ['/events', 'public.navEvents'], ['/companies', 'public.footInterviewPrep']] },
   { title: 'public.footResources', links: [['/docs', 'public.footDocs'], ['/newsletter', 'public.footNewsletter'], ['/learn', 'public.navLearn'], ['/news', 'public.footTechNews'], ['/api-reference', 'public.footApi'], ['/support', 'public.footSupport'], ['/faq', 'public.footFaq']] },
   { title: 'public.footCompany', links: [['/about', 'public.footAbout'], ['/contact', 'public.footContact'], ['/careers', 'public.footCareers'], ['/security', 'public.footSecurity'], ['/open-source', 'public.footOpenSource'], ['/editorial-policy', 'public.footEditorial']] },
-  { title: 'public.footLegal', links: [['/privacy', 'public.footPrivacy'], ['/terms', 'public.footTerms'], ['/cookies', 'public.footCookies']] },
+  { title: 'public.footLegal', links: [['/privacy', 'public.footPrivacy'], ['/terms', 'public.footTerms'], ['/cookies', 'public.footCookies'], ['/credits', 'public.footCredits']] },
 ] as const
 
 export function PublicPageWrapper({
@@ -190,7 +191,7 @@ export function PublicPageWrapper({
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-menu"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+              <AnimatedIcon name={mobileMenuOpen ? 'close' : 'menu'} size={20} />
             </button>
           </div>
         </div>

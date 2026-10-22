@@ -98,5 +98,7 @@
   "pSummaryLabel": "Pricing in short",
   "pSummaryFree": "CodeSpectra has a free plan, and candidates always practise free.",
   "pSummaryPractise": "Candidates practise free.",
-  "pSummaryTeams": "Hiring teams pay monthly or annually (annual saves about {pct}% on Pro), or agree a campus or company licence with sales."
+  "pSummaryTeams": "Hiring teams pay monthly or annually (annual saves about {pct}% on Pro), or agree a campus or company licence with sales.",
+  "pFeaturesTitle": "What every plan runs on",
+  "pFeaturesLead": "Plans differ in limits and seats. The platform underneath is the same."
 }

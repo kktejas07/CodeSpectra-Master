@@ -1,4 +1,5 @@
 'use client'
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useLocaleDates } from '@/lib/i18n/use-dates'
 
@@ -502,7 +503,7 @@ function BillingContent() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-2" data-tour="billing-actions">
-          <Button onClick={() => setUpgradeOpen(true)} disabled={Boolean(busy)}>{t('account.upgradeChangePlan')}</Button>
+          <NativePurchaseGate compact><Button onClick={() => setUpgradeOpen(true)} disabled={Boolean(busy)}>{t('account.upgradeChangePlan')}</Button></NativePurchaseGate>
           <Button variant="outline" onClick={() => setCycleOpen(true)} disabled={Boolean(busy) || isCanceled || subscription.planId === 'free'}>{t('account.changeBillingCycle')}</Button>
           {isCanceled ? (
             <Button variant="outline" onClick={() => void resumeSub()} disabled={Boolean(busy)}>

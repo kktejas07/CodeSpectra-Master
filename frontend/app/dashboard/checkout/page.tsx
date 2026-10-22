@@ -1,5 +1,6 @@
 'use client'
 
+import { NativePurchaseGate } from '@/components/native/native-purchase-gate'
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -288,7 +289,7 @@ function CheckoutInner() {
 export default function CheckoutPage() {
   return (
     <Suspense fallback={<div className="mx-auto max-w-5xl px-4 py-6"><SkeletonCard /></div>}>
-      <CheckoutInner />
+      <NativePurchaseGate><CheckoutInner /></NativePurchaseGate>
     </Suspense>
   )
 }

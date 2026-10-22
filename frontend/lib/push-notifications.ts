@@ -80,6 +80,9 @@ async function sendFcmToUser(userId: string, payload: PushPayload, nativeOnly: b
       webpush: {
         fcmOptions: { link },
       },
+      // iOS app: FCM relays to APNs (APNs key uploaded in Firebase). Default
+      // sound; the tap opens data.link (lib/native-bridge registerNativePush).
+      apns: { payload: { aps: { sound: 'default' } } },
     })
     return true
   } catch (e) {

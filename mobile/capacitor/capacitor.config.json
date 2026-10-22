@@ -15,6 +15,15 @@
     "appendUserAgent": "CodeSpectraAndroid/1",
     "backgroundColor": "#080D17"
   },
+  "ios": {
+    "contentInset": "never",
+    "appendUserAgent": "CodeSpectraIOS/1",
+    "backgroundColor": "#080D17",
+    "allowsLinkPreview": false,
+    "webContentsDebuggingEnabled": false,
+    "limitsNavigationsToAppBoundDomains": false,
+    "preferredContentMode": "mobile"
+  },
   "plugins": {
     "SplashScreen": {
       "launchShowDuration": 1500,

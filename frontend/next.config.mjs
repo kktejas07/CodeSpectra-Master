@@ -40,6 +40,20 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // iOS Universal Links: Apple fetches this extension-less file and
+        // requires application/json (mobile/capacitor/docs/APP_STORE.md).
+        source: '/.well-known/apple-app-site-association',
+        headers: [
+          { key: 'Content-Type', value: 'application/json' },
+          { key: 'Cache-Control', value: 'public, max-age=3600' },
+        ],
+      },
+      {
+        // Content-hashed by scripts/build-animated-icons.mjs → safe to cache forever.
+        source: '/animated-icons/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
         source: '/dashboard/identity-verify/:path*',
         headers: [
           {

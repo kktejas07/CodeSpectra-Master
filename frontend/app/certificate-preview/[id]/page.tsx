@@ -7,7 +7,8 @@ import Link from 'next/link'
 import QRCode from 'qrcode'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Award, Download, Share2, ShieldCheck } from 'lucide-react'
+import { Award, ShieldCheck } from 'lucide-react'
+import { AnimatedIcon } from '@/components/icons/AnimatedIcon'
 import { useToast } from '@/lib/toast-context'
 import { BrandLogo } from '@/app/public-layout'
 import { DeviceShowcase, SoftGlow } from '@/components/visuals'
@@ -38,6 +39,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
   const [data, setData] = useState<VerifyResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [qrDataUrl, setQrDataUrl] = useState('')
+  const [pdfSaved, setPdfSaved] = useState(false)
   const addToast = useToast()
 
   // Public verify page for this certificate (same token the API verifies).
@@ -166,11 +168,11 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
           </div>
 
           <div className="mt-6 md:mt-0 flex items-center gap-3 justify-center print:hidden">
-            <Button variant="outline" className="gap-2 shadow-sm rounded-full" onClick={() => window.print()}>
-              <Download className="h-4 w-4" /> Download PDF
+            <Button variant="outline" className="gap-2 shadow-sm rounded-full" onClick={() => { window.print(); setPdfSaved(true) }}>
+              <AnimatedIcon name={pdfSaved ? 'download-done' : 'download'} /> Download PDF
             </Button>
             <Button className="gap-2 shadow-sm rounded-full" onClick={share}>
-              <Share2 className="h-4 w-4" /> Share
+              <AnimatedIcon name="share" /> Share
             </Button>
           </div>
         </div>
