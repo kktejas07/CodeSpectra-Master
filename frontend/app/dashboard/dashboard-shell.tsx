@@ -96,6 +96,7 @@ import {
   Server,
   KeyRound,
   Users2,
+  Link2,
   Ticket,
   Megaphone,
   BrainCircuit,
@@ -436,11 +437,13 @@ export default function DashboardLayout({
       '/dashboard/courses': BookOpen,
       '/dashboard/courses/my': UserRound,
       '/dashboard/courses/wishlist': Heart,
+      '/dashboard/cohorts': Users2,
       '/dashboard/interview-prep': Video,
 
       // Discover
       '/dashboard/articles': Newspaper,
       '/dashboard/resources': Library,
+      '/dashboard/community': MessageSquare,
 
       // My Activity
       '/dashboard/activity/recent': History,
@@ -548,6 +551,7 @@ export default function DashboardLayout({
       '/dashboard/admin/hiring-manager-report': FileBarChart,
       '/dashboard/admin/billing': Receipt,
       '/dashboard/admin/licences': KeyRound,
+      '/dashboard/admin/connected-apps': Link2,
       '/dashboard/admin/help': HelpCircle,
       '/dashboard/admin/sso': KeyRound,
       '/dashboard/admin/kyc': BadgeCheck,

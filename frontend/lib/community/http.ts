@@ -47,7 +47,7 @@ export function idOk(id: unknown): id is string {
 /** Signed-in caller; writes are rate limited per user (bucket + max per minute). */
 export async function userGate(req: Request, opts: { write?: boolean; bucket?: string; max?: number; windowMs?: number } = {}): Promise<{ user: APIUser } | { res: NextResponse }> {
   const a = await requireAuth()
-  if ('error' in a) return { res: json(apiErrorBody(a.error), a.status) }
+  if ('error' in a) return { res: json(apiErrorBody(a.error || 'Unauthorized'), a.status) }
   if (opts.write) {
     const limited = await limitRequest(req, opts.bucket || 'community', a.user.id, opts.max ?? 30, opts.windowMs ?? 60_000)
     if (limited) return { res: limited }
@@ -58,7 +58,10 @@ export async function userGate(req: Request, opts: { write?: boolean; bucket?: s
 /** Organisation admin (tenant_admin with an org) or superadmin, admin 2FA enforced; writes rate limited. */
 export async function adminGate(req: Request, opts: { write?: boolean; superOnly?: boolean } = {}): Promise<{ user: APIUser } | { res: NextResponse }> {
   const a = opts.superOnly ? await requireSuperAdmin() : await requireAdmin()
-  if ('error' in a) return { res: json(apiErrorBody(a.error, 'code' in a ? (a as { code?: string }).code : undefined), a.status) }
+  if ('error' in a) {
+    const code = (a as { code?: string }).code
+    return { res: json(apiErrorBody(a.error || 'Forbidden', code), a.status) }
+  }
   if (opts.write) {
     const limited = await limitRequest(req, 'community-admin', a.user.id, 60, 60_000)
     if (limited) return { res: limited }

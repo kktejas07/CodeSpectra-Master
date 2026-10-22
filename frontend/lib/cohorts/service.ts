@@ -69,7 +69,7 @@ function publicCohort(c: CohortDoc) {
 
 export async function listCohorts(user: APIUser) {
   const [all, mine] = await Promise.all([
-    (await cohortsCol()).find({ status: { $in: ['open', 'running', 'completed', ...(user.role === 'user' ? [] : ['draft'])] } }, { projection: { _id: 0 } }).sort({ starts_at: -1 }).limit(200).toArray(),
+    (await cohortsCol()).find({ status: { $in: ['open', 'running', 'completed', ...(user.role === 'user' ? [] : ['draft'])] as CohortDoc['status'][] } }, { projection: { _id: 0 } }).sort({ starts_at: -1 }).limit(200).toArray(),
     (await membersCol()).find({ user_id: user.id, status: { $ne: 'dropped' } }, { projection: { _id: 0, cohort_id: 1, role: 1, status: 1 } }).limit(200).toArray(),
   ])
   const roles = new Map(mine.map((m) => [m.cohort_id, m]))
@@ -190,7 +190,7 @@ async function progressFor(cohort: CohortDoc, userId: string, sessions?: CohortS
     sessions ?? (await sessionsCol()).find({ cohort_id: cohort.id }, { projection: { _id: 0 } }).limit(200).toArray(),
     assignments ?? (await assignmentsCol()).find({ cohort_id: cohort.id }, { projection: { _id: 0 } }).limit(100).toArray(),
     (await attendanceCol()).find({ cohort_id: cohort.id, user_id: userId }, { projection: { _id: 0, session_id: 1, status: 1 } }).limit(500).toArray(),
-    (await submissionsCol()).find({ cohort_id: cohort.id, user_id: userId, final_pct: { $type: 'number' } }, { projection: { _id: 0, assignment_id: 1, final_pct: 1 } }).limit(1000).toArray(),
+    (await submissionsCol()).find({ cohort_id: cohort.id, user_id: userId, final_pct: { $type: 'number' } } as never, { projection: { _id: 0, assignment_id: 1, final_pct: 1 } }).limit(1000).toArray(),
   ])
   const scores: Record<string, number> = {}
   for (const s of subs) scores[s.assignment_id] = Math.max(scores[s.assignment_id] ?? 0, s.final_pct as number)

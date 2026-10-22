@@ -19,8 +19,9 @@ import type career from './messages/en/career.json'
 import type market from './messages/en/market.json'
 import type hiring from './messages/en/hiring.json'
 import type tools from './messages/en/tools.json'
+import type community from './messages/en/community.json'
 
-export const AREA_NAMESPACES = ['dash', 'practice', 'compete', 'learning', 'account', 'career', 'market', 'hiring', 'tools'] as const
+export const AREA_NAMESPACES = ['dash', 'practice', 'compete', 'learning', 'account', 'career', 'market', 'hiring', 'tools', 'community'] as const
 export type AreaNamespace = (typeof AREA_NAMESPACES)[number]
 
 /** Type-only view of the area catalogs (for MessageKey); nothing is bundled. */
@@ -34,6 +35,7 @@ export interface AreaEnMessages {
   market: typeof market
   hiring: typeof hiring
   tools: typeof tools
+  community: typeof community
 }
 
 /** Namespaces this wave added (completeness + hard-coded-text tests). */

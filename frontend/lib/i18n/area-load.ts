@@ -17,16 +17,19 @@ const LOADERS: Record<Locale, Record<AreaNamespace, () => Promise<Table>>> = {
     dash: () => json(import('./messages/en/dash.json')), practice: () => json(import('./messages/en/practice.json')), compete: () => json(import('./messages/en/compete.json')),
     learning: () => json(import('./messages/en/learning.json')), account: () => json(import('./messages/en/account.json')), career: () => json(import('./messages/en/career.json')),
     market: () => json(import('./messages/en/market.json')), hiring: () => json(import('./messages/en/hiring.json')), tools: () => json(import('./messages/en/tools.json')),
+    community: () => json(import('./messages/en/community.json')),
   },
   hi: {
     dash: () => json(import('./messages/hi/dash.json')), practice: () => json(import('./messages/hi/practice.json')), compete: () => json(import('./messages/hi/compete.json')),
     learning: () => json(import('./messages/hi/learning.json')), account: () => json(import('./messages/hi/account.json')), career: () => json(import('./messages/hi/career.json')),
     market: () => json(import('./messages/hi/market.json')), hiring: () => json(import('./messages/hi/hiring.json')), tools: () => json(import('./messages/hi/tools.json')),
+    community: () => json(import('./messages/hi/community.json')),
   },
   te: {
     dash: () => json(import('./messages/te/dash.json')), practice: () => json(import('./messages/te/practice.json')), compete: () => json(import('./messages/te/compete.json')),
     learning: () => json(import('./messages/te/learning.json')), account: () => json(import('./messages/te/account.json')), career: () => json(import('./messages/te/career.json')),
     market: () => json(import('./messages/te/market.json')), hiring: () => json(import('./messages/te/hiring.json')), tools: () => json(import('./messages/te/tools.json')),
+    community: () => json(import('./messages/te/community.json')),
   },
 }
 

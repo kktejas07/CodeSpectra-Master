@@ -219,5 +219,15 @@
   "label:Live drives": "లైవ్ డ్రైవ్‌లు",
   "label:Live drive control room": "లైవ్ డ్రైవ్ కంట్రోల్ రూమ్",
   "label:Jobs for you": "మీ కోసం ఉద్యోగాలు",
-  "label:Best matches": "ఉత్తమ మ్యాచ్‌లు"
+  "label:Best matches": "ఉత్తమ మ్యాచ్‌లు",
+  "label:Cohorts": "కోహార్ట్‌లు",
+  "label:Cohort": "కోహార్ట్",
+  "label:New cohort": "కొత్త కోహార్ట్",
+  "label:Grading queue": "గ్రేడింగ్ క్యూ",
+  "label:Community": "కమ్యూనిటీ",
+  "label:New thread": "కొత్త థ్రెడ్",
+  "label:Thread": "థ్రెడ్",
+  "label:Study group": "స్టడీ గ్రూప్",
+  "label:Community moderation": "కమ్యూనిటీ మోడరేషన్",
+  "label:Connected apps": "కనెక్ట్ చేసిన యాప్‌లు"
 }

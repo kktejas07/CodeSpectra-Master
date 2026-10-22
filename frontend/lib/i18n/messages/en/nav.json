@@ -219,5 +219,15 @@
   "label:Live drives": "Live drives",
   "label:Live drive control room": "Live drive control room",
   "label:Jobs for you": "Jobs for you",
-  "label:Best matches": "Best matches"
+  "label:Best matches": "Best matches",
+  "label:Cohorts": "Cohorts",
+  "label:Cohort": "Cohort",
+  "label:New cohort": "New cohort",
+  "label:Grading queue": "Grading queue",
+  "label:Community": "Community",
+  "label:New thread": "New thread",
+  "label:Thread": "Thread",
+  "label:Study group": "Study group",
+  "label:Community moderation": "Community moderation",
+  "label:Connected apps": "Connected apps"
 }

@@ -212,7 +212,7 @@ export async function syncGrades(tenantId: string, linkId: string, onlyEmail?: s
   if (!roster.length) return { updated: 0, roster: 0 }
   const emails = roster.map((r) => r.email)
   const subs = await (await getMongoDb()).collection('exam_submissions').find({ exam_id: link.exam_id, score_released: true, email: { $in: emails } }, { projection: { _id: 0, email: 1, score: 1, max_score: 1, score_released: 1 } }).limit(20_000).toArray()
-  const percents = bestPercentByEmail(subs)
+  const percents = bestPercentByEmail(subs as Parameters<typeof bestPercentByEmail>[0])
   if (!percents.size) return { updated: 0, roster: roster.length }
   const submissions = await paged<{ id: string; userId: string; assignedGrade?: number }>(tenantId, `/courses/${link.course_id}/courseWork/${link.coursework_id}/studentSubmissions`, 'studentSubmissions', 5000)
   const patches = gradePatches({ submissions, rosterEmails: new Map(roster.map((r) => [r.google_user_id, r.email])), percents, maxPoints: link.max_points })
