@@ -344,6 +344,27 @@ export default function SettingsPage() {
             </div>
           </Card>
 
+          <Card className="overflow-hidden rounded-3xl border-border/70">
+            <div className="border-b border-border/60 px-6 py-4">
+              <div className="flex items-center gap-2 text-foreground">
+                <Palette className="h-5 w-5 text-primary" aria-hidden />
+                <h2 className="text-lg font-semibold">{t('account.moreSettingsTitle')}</h2>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{t('account.moreSettingsBody')}</p>
+            </div>
+            <div className="flex flex-col gap-2 px-6 py-4 sm:flex-row sm:flex-wrap">
+              <Button variant="outline" className="justify-between rounded-lg" asChild>
+                <Link href="/dashboard/settings/accessibility">{t('account.a11yTitle')}<ChevronRight className="h-4 w-4" aria-hidden /></Link>
+              </Button>
+              <Button variant="outline" className="justify-between rounded-lg" asChild>
+                <Link href="/dashboard/settings/whatsapp-practice">{t('account.waTitle')}<ChevronRight className="h-4 w-4" aria-hidden /></Link>
+              </Button>
+              <Button variant="outline" className="justify-between rounded-lg" asChild>
+                <Link href="/dashboard/settings/guardians">{t('account.grTitle')}<ChevronRight className="h-4 w-4" aria-hidden /></Link>
+              </Button>
+            </div>
+          </Card>
+
           <Card className="overflow-hidden rounded-3xl border-border/70" data-tour="settings-security">
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
